@@ -1,0 +1,59 @@
+name: CoreScopeViewer
+options:
+  bundleIdPrefix: com.meshtexas
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+
+configs:
+  Debug: debug
+  Release: release
+
+targets:
+  CoreScopeViewer:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: CoreScopeViewer
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.meshtexas.corescopeviewer
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_CFBundleDisplayName: CoreScope
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        MARKETING_VERSION: "0.1"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_STRICT_CONCURRENCY: complete
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+
+  CoreScopeViewerTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: CoreScopeViewerTests
+    dependencies:
+      - target: CoreScopeViewer
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  CoreScopeViewer:
+    build:
+      targets:
+        CoreScopeViewer: all
+        CoreScopeViewerTests: [test]
+    test:
+      targets:
+        - CoreScopeViewerTests
+    run:
+      config: Debug
+    archive:
+      config: Release

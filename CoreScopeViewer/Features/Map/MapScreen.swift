@@ -1,0 +1,999 @@
+import MapKit
+import SwiftUI
+
+struct MapScreen: View {
+    let isTabActive: Bool
+
+    @Environment(AnalyzerSettings.self) private var settings
+    @Environment(RegionFilterStore.self) private var regionFilter
+    @Environment(LiveFeedService.self) private var liveFeed
+    @Environment(ObserverRegionLookup.self) private var observerRegionLookup
+    @State private var viewModel = MapViewModel()
+    @State private var cameraPosition: MapCameraPosition = .automatic
+    @State private var visibleRegion: MKCoordinateRegion?
+    @State private var selectedNode: MeshNode?
+    @State private var displayedNodes: [MeshNode] = []
+    @State private var nodeClusters: [NodeCluster] = []
+    @State private var iataCoordinates: [String: CLLocationCoordinate2D] = [:]
+    @State private var mapDisplayStyle = MapDisplayStyle.persisted
+    @State private var locationManager = MapLocationManager()
+    @Namespace private var mapScope
+    @State private var hasCenteredCamera = false
+    @State private var activePings: [ActivePing] = []
+    @State private var processedEventIds: Set<String> = []
+    @State private var isInitialLoadComplete = false
+    @State private var isChangingRegion = false
+    @State private var isLocatingUser = false
+
+    private struct NodeCluster: Identifiable {
+        let id: String
+        let coordinate: CLLocationCoordinate2D
+        let count: Int
+    }
+
+    private enum MapDisplayStyle: String, CaseIterable, Identifiable {
+        case standard
+        case imagery
+        case hybrid
+
+        static let defaultsKey = "mapDisplayStyle"
+
+        static var persisted: Self {
+            guard let rawValue = UserDefaults.standard.string(forKey: defaultsKey),
+                  let style = Self(rawValue: rawValue) else {
+                return .standard
+            }
+            return style
+        }
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .standard: "Standard"
+            case .imagery: "Satellite"
+            case .hybrid: "Hybrid"
+            }
+        }
+
+        var systemImage: String {
+            switch self {
+            case .standard: "map"
+            case .imagery: "globe.americas.fill"
+            case .hybrid: "map.fill"
+            }
+        }
+
+        var style: MapStyle {
+            switch self {
+            case .standard: .standard
+            case .imagery: .imagery
+            case .hybrid: .hybrid
+            }
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            TimelineView(
+                .animation(
+                    minimumInterval: mapUpdateInterval,
+                    paused: activePings.isEmpty || !isTabActive
+                )
+            ) { context in
+                mapContent(at: context.date)
+            }
+                .mapScope(mapScope)
+                .navigationTitle("Live Map")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        Menu {
+                            ForEach(MapDisplayStyle.allCases) { style in
+                                Button {
+                                    mapDisplayStyle = style
+                                } label: {
+                                    if mapDisplayStyle == style {
+                                        Label(style.title, systemImage: "checkmark")
+                                    } else {
+                                        Label(style.title, systemImage: style.systemImage)
+                                    }
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "map")
+                        }
+
+                    }
+                }
+                .navigationDestination(item: $selectedNode) { node in
+                    NodeDetailScreen(node: node)
+                }
+                .overlay(alignment: .topLeading) {
+                    regionScopeControl
+                        .padding(.leading, 12)
+                        .padding(.top, 12)
+                }
+                .overlay(alignment: .bottomLeading) {
+                    Button(action: centerOnUserLocation) {
+                        Image(systemName: "location.fill")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(Color.accentColor)
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .padding(.leading, 12)
+                    .padding(.bottom, 40)
+                    .accessibilityLabel("Center on my location")
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    zoomControl
+                        .padding(.trailing, 12)
+                        .padding(.bottom, 40)
+                }
+                .overlay(alignment: .bottom) {
+                    if !viewModel.nodes.isEmpty {
+                        Text("\(viewModel.nodes.count) nodes")
+                            .font(.caption)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(.thinMaterial, in: Capsule())
+                            .padding(.bottom, 8)
+                    }
+                }
+                .overlay {
+                    if let errorMessage = viewModel.errorMessage {
+                        ContentUnavailableView(
+                            "Couldn't load nodes",
+                            systemImage: "wifi.slash",
+                            description: Text(errorMessage)
+                        )
+                    }
+                }
+                .overlay {
+                    if viewModel.isLoading || isChangingRegion || isLocatingUser {
+                        LoadingIndicator(title: mapLoadingTitle)
+                    }
+                }
+        }
+        .task {
+            viewModel.configure(settings: settings)
+            await viewModel.loadMapDefaults()
+            centerCameraIfNeeded()
+            processedEventIds = Set(liveFeed.recentEvents.map { liveEventKey(for: $0) })
+            isInitialLoadComplete = true
+        }
+        .task(id: regionFilter.selectedRegion) {
+            isChangingRegion = true
+            defer { isChangingRegion = false }
+
+            viewModel.configure(settings: settings)
+            await viewModel.loadNodes(region: regionFilter.selectedRegion)
+            await viewModel.loadPackets(region: regionFilter.selectedRegion)
+            await zoomToRegionSelection()
+            processHistoricalPackets()
+            processIncomingEvents()
+        }
+        .refreshable {
+            await viewModel.loadNodes(region: regionFilter.selectedRegion, forceRefresh: true)
+            await viewModel.loadPackets(region: regionFilter.selectedRegion, forceRefresh: true)
+            processHistoricalPackets()
+            processIncomingEvents()
+        }
+        .onChange(of: liveFeed.recentEvents.first?.id) {
+            if isInitialLoadComplete {
+                processIncomingEvents()
+            }
+        }
+        .onChange(of: liveFeed.recentEvents.count) {
+            if isInitialLoadComplete {
+                processIncomingEvents()
+            }
+        }
+        .onChange(of: observerRegionLookup.isLoaded) { _, isLoaded in
+            guard isLoaded else { return }
+            rebuildPathsAfterLoadingObservers()
+        }
+        .onChange(of: viewModel.nodes) {
+            updateDisplayedNodes()
+        }
+        .onChange(of: mapDisplayStyle) {
+            UserDefaults.standard.set(mapDisplayStyle.rawValue, forKey: MapDisplayStyle.defaultsKey)
+        }
+    }
+
+    @ViewBuilder
+    private func mapContent(at date: Date) -> some View {
+        let currentPings = activePings.filter {
+            $0.hasStarted(at: date) && !$0.isExpired(at: date)
+        }
+
+        MapReader { proxy in
+            Map(position: $cameraPosition, scope: mapScope) {
+                UserAnnotation()
+
+                ForEach(displayedNodes) { node in
+                    if let coordinate = node.coordinate {
+                        Annotation(node.name ?? shortKey(node.publicKey), coordinate: coordinate, anchor: .center) {
+                            Image(systemName: NodeRoleStyle.symbolName(for: node.role))
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 16, height: 16)
+                                .background(NodeRoleStyle.color(for: node.role), in: Circle())
+                                .overlay {
+                                    Circle()
+                                        .stroke(.white.opacity(0.75), lineWidth: 1)
+                                }
+                                .accessibilityLabel(node.name ?? shortKey(node.publicKey))
+                        }
+                    }
+                }
+
+                ForEach(nodeClusters) { cluster in
+                    Annotation("\(cluster.count) nodes", coordinate: cluster.coordinate, anchor: .center) {
+                        Text("\(cluster.count)")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(.white)
+                            .frame(minWidth: 28, minHeight: 28)
+                            .background(.blue, in: Circle())
+                            .overlay {
+                                Circle()
+                                    .stroke(.white.opacity(0.8), lineWidth: 1)
+                            }
+                            .accessibilityLabel("\(cluster.count) nearby nodes")
+                    }
+                }
+
+                // Keep the route visible while its packet signal travels across it.
+                ForEach(currentPings.filter { !$0.isPulse }) { ping in
+                    let progress = ping.progress(at: date)
+                    let fadeOpacity = max(0.15, (1.0 - progress) * 0.85)
+                    MapPolyline(coordinates: [ping.start, ping.end])
+                        .stroke(
+                            ping.pathColor.opacity(fadeOpacity),
+                            style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round)
+                        )
+                }
+
+                // Stationary Breadcrumbs along active routes during travel phase
+                ForEach(trailDots(at: date)) { dot in
+                    Annotation("", coordinate: dot.coordinate) {
+                        Circle()
+                            .fill(dot.color.opacity(dot.opacity))
+                            .frame(width: 6, height: 6)
+                    }
+                }
+
+                // Traveling Packet Signal Dots & Single-Node Pulse Rings
+                ForEach(currentPings) { ping in
+                    let travelProgress = ping.travelProgress(at: date)
+                    if ping.isPulse {
+                        let progress = ping.progress(at: date)
+                        Annotation("", coordinate: ping.start) {
+                            Circle()
+                                .stroke(ping.pathColor, lineWidth: 2.5)
+                                .frame(width: 12 + progress * 32, height: 12 + progress * 32)
+                                .opacity(1.0 - progress)
+                        }
+                    } else if travelProgress < 1.0 {
+                        Annotation("", coordinate: ping.currentCoordinate(at: date)) {
+                            ZStack {
+                                Circle()
+                                    .fill(ping.pathColor.opacity(0.35))
+                                    .frame(width: 30, height: 30)
+                                Circle()
+                                    .fill(ping.pathColor)
+                                    .frame(width: 16, height: 16)
+                                    .shadow(color: ping.pathColor.opacity(0.95), radius: 8)
+                                Circle()
+                                    .fill(.white)
+                                    .frame(width: 5, height: 5)
+                            }
+                            .opacity(1.0 - travelProgress * 0.5)
+                        }
+                    }
+                }
+            }
+            .mapStyle(mapDisplayStyle.style)
+            .mapControls {
+                MapCompass()
+                MapScaleView()
+            }
+            .onMapCameraChange(frequency: .onEnd) { context in
+                visibleRegion = context.region
+                updateDisplayedNodes(in: context.region)
+            }
+            .onTapGesture { screenPoint in
+                if let cluster = nearestCluster(to: screenPoint, using: proxy) {
+                    zoomToCluster(cluster)
+                } else {
+                    selectedNode = nearestNode(to: screenPoint, using: proxy)
+                }
+            }
+        }
+    }
+
+    private func updateDisplayedNodes(in region: MKCoordinateRegion? = nil) {
+        guard let region = region ?? visibleRegion else {
+            displayedNodes = viewModel.nodes.filter { validCoordinate($0.coordinate) != nil }
+            nodeClusters = []
+            return
+        }
+
+        // Keep a small off-screen buffer to avoid marker churn at the edge.
+        let latitudeLimit = region.span.latitudeDelta * 0.7
+        let longitudeLimit = region.span.longitudeDelta * 0.7
+        let visibleNodes = viewModel.nodes.filter { node in
+            guard let coordinate = validCoordinate(node.coordinate) else { return false }
+            let latitudeDifference = abs(coordinate.latitude - region.center.latitude)
+            let longitudeDifference = abs(
+                (coordinate.longitude - region.center.longitude + 540)
+                    .truncatingRemainder(dividingBy: 360) - 180
+            )
+            return latitudeDifference <= latitudeLimit
+                && longitudeDifference <= longitudeLimit
+        }
+
+        // At close zoom levels, every node stays individually selectable.
+        guard max(region.span.latitudeDelta, region.span.longitudeDelta) > 0.8 else {
+            displayedNodes = visibleNodes
+            nodeClusters = []
+            return
+        }
+
+        let latitudeCellSize = region.span.latitudeDelta / 12
+        let longitudeCellSize = region.span.longitudeDelta / 12
+        var nodesByCell: [String: [MeshNode]] = [:]
+
+        for node in visibleNodes {
+            guard let coordinate = validCoordinate(node.coordinate) else { continue }
+            let latitudeCell = Int(floor((coordinate.latitude + 90) / latitudeCellSize))
+            let longitudeCell = Int(floor((coordinate.longitude + 180) / longitudeCellSize))
+            let key = "\(latitudeCell)-\(longitudeCell)"
+            nodesByCell[key, default: []].append(node)
+        }
+
+        var individualNodes: [MeshNode] = []
+        var clusters: [NodeCluster] = []
+        for (key, nodes) in nodesByCell {
+            guard nodes.count >= 3 else {
+                individualNodes.append(contentsOf: nodes)
+                continue
+            }
+
+            let coordinates = nodes.compactMap { validCoordinate($0.coordinate) }
+            let latitude = coordinates.map(\.latitude).reduce(0, +) / Double(coordinates.count)
+            let longitude = coordinates.map(\.longitude).reduce(0, +) / Double(coordinates.count)
+            clusters.append(
+                NodeCluster(
+                    id: "cluster-\(key)",
+                    coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
+                    count: nodes.count
+                )
+            )
+        }
+
+        displayedNodes = individualNodes
+        nodeClusters = clusters.sorted { $0.id < $1.id }
+    }
+
+    private var regionScopeControl: some View {
+        Menu {
+            Button {
+                regionFilter.selectedRegion = nil
+            } label: {
+                if regionFilter.selectedRegion == nil {
+                    Label("All Regions", systemImage: "checkmark")
+                } else {
+                    Text("All Regions")
+                }
+            }
+
+            if !regionFilter.options.isEmpty {
+                Divider()
+                ForEach(regionFilter.options, id: \.self) { code in
+                    Button {
+                        regionFilter.selectedRegion = code
+                    } label: {
+                        if regionFilter.selectedRegion == code {
+                            Label(regionFilter.label(for: code), systemImage: "checkmark")
+                        } else {
+                            Text(regionFilter.label(for: code))
+                        }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "line.3.horizontal.decrease.circle.fill")
+                Text(regionScopeTitle)
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.semibold))
+            }
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(.thinMaterial, in: Capsule())
+        }
+        .accessibilityLabel("Region scope: \(regionScopeTitle)")
+    }
+
+    private var regionScopeTitle: String {
+        guard let selectedRegion = regionFilter.selectedRegion else {
+            return "All Regions"
+        }
+        return "\(selectedRegion) · \(regionFilter.label(for: selectedRegion))"
+    }
+
+    private var mapLoadingTitle: String {
+        if isLocatingUser {
+            return "Locating you…"
+        }
+        if let selectedRegion = regionFilter.selectedRegion {
+            return "Loading \(selectedRegion)…"
+        }
+        return "Loading all regions…"
+    }
+
+    private var mapUpdateInterval: TimeInterval {
+        // Only redraw rapidly while a packet marker or pulse is moving. Once
+        // routes are static, a one-second refresh is enough for their fade-out.
+        activePings.contains { $0.isPulse || $0.travelProgress() < 1.0 }
+            ? 1.0 / 12.0
+            : 1.0
+    }
+
+    private var zoomControl: some View {
+        VStack(spacing: 0) {
+            Button {
+                zoom(by: 0.5)
+            } label: {
+                Image(systemName: "plus")
+                    .frame(width: 36, height: 36)
+            }
+            Divider().frame(width: 28)
+            Button {
+                zoom(by: 2)
+            } label: {
+                Image(systemName: "minus")
+                    .frame(width: 36, height: 36)
+            }
+        }
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private func shortKey(_ key: String) -> String {
+        String(key.prefix(8)).uppercased()
+    }
+
+    private struct TrailDot: Identifiable {
+        let id: String
+        let coordinate: CLLocationCoordinate2D
+        let opacity: Double
+        let color: Color
+    }
+
+    private func trailDots(at date: Date) -> [TrailDot] {
+        activePings
+            .filter { !$0.isExpired(at: date) && !$0.isPulse && $0.travelProgress(at: date) < 1.0 }
+            .flatMap { ping in
+                let travelProgress = ping.travelProgress(at: date)
+                let dotOpacity = (1.0 - travelProgress) * 0.75
+                return ActivePing.trailFractions
+                    .filter { $0 <= travelProgress }
+                    .map { fraction in
+                        TrailDot(
+                            id: "\(ping.id)-\(fraction)",
+                            coordinate: ping.coordinate(atFraction: fraction),
+                            opacity: dotOpacity,
+                            color: ping.pathColor
+                        )
+                    }
+            }
+    }
+
+    private func nearestNode(to screenPoint: CGPoint, using proxy: MapProxy) -> MeshNode? {
+        let maxTapDistance: CGFloat = 44
+        var closestNode: MeshNode?
+        var closestDistance = maxTapDistance
+        for node in viewModel.nodes {
+            guard let coordinate = node.coordinate,
+                  let nodeScreenPoint = proxy.convert(coordinate, to: .local) else { continue }
+            let distance = hypot(nodeScreenPoint.x - screenPoint.x, nodeScreenPoint.y - screenPoint.y)
+            if distance < closestDistance {
+                closestDistance = distance
+                closestNode = node
+            }
+        }
+        return closestNode
+    }
+
+    private func nearestCluster(to screenPoint: CGPoint, using proxy: MapProxy) -> NodeCluster? {
+        let maxTapDistance: CGFloat = 24
+        var closestCluster: NodeCluster?
+        var closestDistance = maxTapDistance
+
+        for cluster in nodeClusters {
+            guard let clusterScreenPoint = proxy.convert(cluster.coordinate, to: .local) else { continue }
+            let distance = hypot(
+                clusterScreenPoint.x - screenPoint.x,
+                clusterScreenPoint.y - screenPoint.y
+            )
+            if distance < closestDistance {
+                closestDistance = distance
+                closestCluster = cluster
+            }
+        }
+
+        return closestCluster
+    }
+
+    private func zoomToCluster(_ cluster: NodeCluster) {
+        guard let visibleRegion else { return }
+
+        let span = MKCoordinateSpan(
+            latitudeDelta: max(visibleRegion.span.latitudeDelta * 0.45, 0.05),
+            longitudeDelta: max(visibleRegion.span.longitudeDelta * 0.45, 0.05)
+        )
+        let region = MKCoordinateRegion(center: cluster.coordinate, span: span)
+        withAnimation {
+            cameraPosition = .region(region)
+        }
+        self.visibleRegion = region
+    }
+
+    private func centerOnUserLocation() {
+        isLocatingUser = true
+        locationManager.requestCurrentLocation(
+            completion: { coordinate in
+                moveCamera(to: coordinate, radiusKm: 25)
+                isLocatingUser = false
+            },
+            failure: {
+                isLocatingUser = false
+            }
+        )
+    }
+
+    private func zoom(by factor: Double) {
+        guard let region = visibleRegion else { return }
+        let newSpan = MKCoordinateSpan(
+            latitudeDelta: min(max(region.span.latitudeDelta * factor, 0.002), 100),
+            longitudeDelta: min(max(region.span.longitudeDelta * factor, 0.002), 100)
+        )
+        withAnimation {
+            cameraPosition = .region(MKCoordinateRegion(center: region.center, span: newSpan))
+        }
+    }
+
+    private func centerCameraIfNeeded() {
+        guard !hasCenteredCamera, let defaults = viewModel.mapDefaults else { return }
+        let center = CLLocationCoordinate2D(latitude: defaults.latitude, longitude: defaults.longitude)
+        let span = MKCoordinateSpan(latitudeDelta: 4, longitudeDelta: 4)
+        let region = MKCoordinateRegion(center: center, span: span)
+        cameraPosition = .region(region)
+        visibleRegion = region
+        hasCenteredCamera = true
+    }
+
+    private func zoomToRegionSelection() async {
+        guard let selectedRegion = regionFilter.selectedRegion else {
+            if let defaults = viewModel.mapDefaults {
+                moveCamera(
+                    to: CLLocationCoordinate2D(latitude: defaults.latitude, longitude: defaults.longitude),
+                    radiusKm: 250
+                )
+            }
+            return
+        }
+
+        let code = selectedRegion.uppercased()
+        if let coordinate = iataCoordinates[code] {
+            moveCamera(to: coordinate)
+            return
+        }
+
+        let request = MKLocalSearch.Request(naturalLanguageQuery: "\(code) airport")
+        request.pointOfInterestFilter = MKPointOfInterestFilter(including: [.airport])
+
+        guard let response = try? await MKLocalSearch(request: request).start(),
+              let coordinate = response.mapItems.first?.placemark.coordinate,
+              CLLocationCoordinate2DIsValid(coordinate),
+              !Task.isCancelled,
+              regionFilter.selectedRegion?.uppercased() == code else {
+            return
+        }
+
+        iataCoordinates[code] = coordinate
+        moveCamera(to: coordinate)
+    }
+
+    private func moveCamera(to center: CLLocationCoordinate2D, radiusKm: Double = 65) {
+        let latitudeSpan = max((radiusKm * 2.4) / 111, 0.3)
+        let longitudeSpan = max(
+            latitudeSpan / max(cos(center.latitude * .pi / 180), 0.2),
+            0.3
+        )
+        let region = MKCoordinateRegion(
+            center: center,
+            span: MKCoordinateSpan(
+                latitudeDelta: latitudeSpan,
+                longitudeDelta: longitudeSpan
+            )
+        )
+        withAnimation {
+            cameraPosition = .region(region)
+        }
+        visibleRegion = region
+    }
+
+    private var defaultReferenceCoordinate: CLLocationCoordinate2D? {
+        if let selectedRegion = regionFilter.selectedRegion,
+           let coordinate = iataCoordinates[selectedRegion.uppercased()] {
+            return coordinate
+        }
+        if let mapDefaults = viewModel.mapDefaults {
+            return CLLocationCoordinate2D(latitude: mapDefaults.latitude, longitude: mapDefaults.longitude)
+        }
+        if let firstNode = viewModel.nodes.first(where: { validCoordinate($0.coordinate) != nil }),
+           let coord = validCoordinate(firstNode.coordinate) {
+            return coord
+        }
+        return nil
+    }
+
+    private func processHistoricalPackets() {
+        var historicalPings: [ActivePing] = []
+        let now = Date()
+
+        for packet in viewModel.recentPackets {
+            let age = now.timeIntervalSince(packet.timestamp)
+            guard age < 12.0 else { continue }
+
+            let subchains = resolvedSubchains(for: packet)
+            let pathColor = ActivePing.color(forHash: packet.hash)
+
+            for subchain in subchains {
+                if subchain.count >= 2 {
+                    for index in 0..<(subchain.count - 1) {
+                        let p1 = subchain[index]
+                        let p2 = subchain[index + 1]
+                        if isValidHopDistance(from: p1, to: p2) {
+                            historicalPings.append(
+                                ActivePing(from: p1, to: p2, createdAt: packet.timestamp, duration: 12.0, color: pathColor)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        guard !historicalPings.isEmpty else { return }
+        activePings.append(contentsOf: historicalPings)
+        if activePings.count > 100 {
+            activePings.removeFirst(activePings.count - 100)
+        }
+    }
+
+    private func liveEventKey(for envelope: LiveEnvelope) -> String {
+        // A packet can be received by more than one observer. Its database ID
+        // is shared, but each observer/path combination is a distinct route.
+        [
+            String(envelope.id),
+            envelope.data.observerId ?? "",
+            envelope.data.pathJson ?? "",
+            envelope.data.hash ?? ""
+        ].joined(separator: "|")
+    }
+
+    private func rebuildPathsAfterLoadingObservers() {
+        // Packets can arrive while the observer roster is still loading. Rebuild
+        // their route segments now that each observer can anchor the final hop.
+        activePings = []
+        processedEventIds = []
+        processHistoricalPackets()
+        processIncomingEvents()
+    }
+
+    private func processIncomingEvents() {
+        activePings.removeAll { $0.isExpired(at: .now) }
+
+        var newPings: [ActivePing] = []
+        for event in liveFeed.recentEvents {
+            guard event.type == "packet" else { continue }
+            let eventKey = liveEventKey(for: event)
+            if processedEventIds.contains(eventKey) { continue }
+            processedEventIds.insert(eventKey)
+
+            let subchains = resolvedSubchains(for: event)
+            let pathColor = ActivePing.color(forHash: event.data.hash ?? event.data.raw)
+
+            for subchain in subchains {
+                if subchain.count >= 2 {
+                    for index in 0..<(subchain.count - 1) {
+                        let p1 = subchain[index]
+                        let p2 = subchain[index + 1]
+                        if isValidHopDistance(from: p1, to: p2) {
+                            // Stagger each segment so a live route unfolds hop
+                            // by hop instead of every line appearing at once.
+                            let hopStart = Date.now.addingTimeInterval(Double(index) * 0.45)
+                            newPings.append(
+                                ActivePing(from: p1, to: p2, createdAt: hopStart, duration: 12.0, color: pathColor)
+                            )
+                        }
+                    }
+                } else if let onlyPoint = subchain.first {
+                    newPings.append(
+                        ActivePing(pulseAt: onlyPoint, createdAt: .now, duration: 3.0, color: pathColor)
+                    )
+                }
+            }
+        }
+
+        if processedEventIds.count > 500 {
+            processedEventIds.subtract(processedEventIds.prefix(250))
+        }
+
+        guard !newPings.isEmpty else { return }
+        activePings.append(contentsOf: newPings)
+        if activePings.count > 100 {
+            activePings.removeFirst(activePings.count - 100)
+        }
+    }
+
+    private struct DecodedJsonHelper: Decodable {
+        let path: LivePath?
+        let resolvedPath: [String?]?
+
+        enum CodingKeys: String, CodingKey {
+            case path
+            case resolvedPath = "resolved_path"
+        }
+    }
+
+    private func resolvedSubchains(for packet: Packet) -> [[CLLocationCoordinate2D]] {
+        var hops: [String] = []
+        var resolvedPubkeys: [String?] = []
+
+        if let decodedJson = packet.decodedJson {
+            if let jsonData = decodedJson.data(using: .utf8),
+               let decoded = try? JSONDecoder().decode(DecodedJsonHelper.self, from: jsonData) {
+                hops = decoded.path?.hops ?? []
+                resolvedPubkeys = decoded.resolvedPath ?? []
+            }
+        }
+
+        if hops.isEmpty, let pathJson = packet.pathJson {
+            hops = parseHops(from: pathJson)
+        }
+
+        if hops.isEmpty, let rawHex = packet.rawHex {
+            hops = parseHops(from: rawHex)
+        }
+
+        return resolvedSubchains(
+            hops: hops,
+            resolvedPubkeys: resolvedPubkeys,
+            observerId: packet.observerId,
+            observerName: packet.observerName
+        )
+    }
+
+    private func resolvedSubchains(for envelope: LiveEnvelope) -> [[CLLocationCoordinate2D]] {
+        let hops = extractHops(from: envelope.data)
+        let resolvedPubkeys = envelope.data.resolvedPath ?? []
+        return resolvedSubchains(
+            hops: hops,
+            resolvedPubkeys: resolvedPubkeys,
+            observerId: envelope.data.observerId,
+            observerName: envelope.data.observerName
+        )
+    }
+
+    private func resolvedSubchains(
+        hops: [String],
+        resolvedPubkeys: [String?],
+        observerId: String?,
+        observerName: String?
+    ) -> [[CLLocationCoordinate2D]] {
+        let observerCoord = resolveObserverCoordinate(
+            observerId: observerId,
+            observerName: observerName
+        )
+
+        let maxCount = max(hops.count, resolvedPubkeys.count)
+        var resolvedCoords: [CLLocationCoordinate2D?] = Array(repeating: nil, count: maxCount)
+
+        var referenceCoord: CLLocationCoordinate2D? = observerCoord ?? defaultReferenceCoordinate
+
+        for index in stride(from: maxCount - 1, through: 0, by: -1) {
+            var coord: CLLocationCoordinate2D? = nil
+
+            if index < resolvedPubkeys.count, let pubkey = resolvedPubkeys[index], !pubkey.isEmpty {
+                coord = resolveCoordinate(keyOrPrefix: pubkey, nearCoordinate: referenceCoord)
+            }
+
+            if coord == nil && index < hops.count {
+                let hop = hops[index]
+                coord = resolveCoordinate(keyOrPrefix: hop, nearCoordinate: referenceCoord)
+            }
+
+            resolvedCoords[index] = coord
+            if let coord {
+                referenceCoord = coord
+            }
+        }
+
+        var optionalChain: [CLLocationCoordinate2D?] = resolvedCoords
+        if let observerCoord {
+            optionalChain.append(observerCoord)
+        }
+
+        var subchains: [[CLLocationCoordinate2D]] = []
+        var currentSubchain: [CLLocationCoordinate2D] = []
+
+        for item in optionalChain {
+            if let coord = item {
+                currentSubchain.append(coord)
+            } else {
+                if !currentSubchain.isEmpty {
+                    subchains.append(currentSubchain)
+                    currentSubchain = []
+                }
+            }
+        }
+        if !currentSubchain.isEmpty {
+            subchains.append(currentSubchain)
+        }
+
+        return subchains
+    }
+
+    private func extractHops(from data: LivePacketData) -> [String] {
+        if let hops = data.decoded?.path?.hops, !hops.isEmpty {
+            return hops
+        }
+        if let pathJson = data.pathJson {
+            let parsed = parseHops(from: pathJson)
+            if !parsed.isEmpty { return parsed }
+        }
+        if let raw = data.raw {
+            let parsed = parseHops(from: raw)
+            if !parsed.isEmpty { return parsed }
+        }
+        return []
+    }
+
+    private func parseHops(from rawPath: String?) -> [String] {
+        guard let rawPath = rawPath?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !rawPath.isEmpty else { return [] }
+
+        guard let jsonData = rawPath.data(using: .utf8) else { return [] }
+
+        // Format 1: [ "4f", "a1" ]
+        if let stringArray = try? JSONDecoder().decode([String].self, from: jsonData) {
+            return stringArray
+        }
+
+        // Format 2: [ 79, 1, 163 ] (Integer array of byte hashes)
+        if let intArray = try? JSONDecoder().decode([Int].self, from: jsonData) {
+            return intArray.map { String(format: "%02x", $0) }
+        }
+
+        // Format 3: [ { "pubkey": "..." }, ... ] or [ { "hash": "..." }, ... ]
+        struct HopObject: Decodable {
+            let pubkey: String?
+            let hash: String?
+            let key: String?
+        }
+        if let objectArray = try? JSONDecoder().decode([HopObject].self, from: jsonData) {
+            return objectArray.compactMap { $0.pubkey ?? $0.hash ?? $0.key }
+        }
+
+        // Format 4: Comma-separated or space-separated string "4f,a1,c3"
+        let components = rawPath
+            .components(separatedBy: CharacterSet(charactersIn: ",[]\" "))
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        return components
+    }
+
+    private func resolveObserverCoordinate(observerId: String?, observerName: String?) -> CLLocationCoordinate2D? {
+        if let observerId {
+            if let coord = observerRegionLookup.coordinateById[observerId] {
+                return coord
+            }
+            if let coord = observerRegionLookup.coordinateById[observerId.lowercased()] {
+                return coord
+            }
+            if let coord = resolveCoordinate(keyOrPrefix: observerId, nearCoordinate: defaultReferenceCoordinate) {
+                return coord
+            }
+        }
+        if let observerName {
+            if let coord = observerRegionLookup.coordinateByName[observerName] {
+                return coord
+            }
+            if let coord = observerRegionLookup.coordinateByName[observerName.lowercased()] {
+                return coord
+            }
+            if let node = viewModel.nodes.first(where: { $0.name?.lowercased() == observerName.lowercased() }),
+               let coord = validCoordinate(node.coordinate) {
+                return coord
+            }
+        }
+        return nil
+    }
+
+    private func resolveCoordinate(keyOrPrefix: String, nearCoordinate: CLLocationCoordinate2D?) -> CLLocationCoordinate2D? {
+        let cleanKey = keyOrPrefix.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanKey.isEmpty else { return nil }
+        let lowerKey = cleanKey.lowercased()
+
+        // 1. Exact pubkey lookup (O(1))
+        if let node = viewModel.nodesByPubkey[lowerKey],
+           let coord = validCoordinate(node.coordinate) {
+            return coord
+        }
+
+        // 2. Exact node name lookup
+        if let node = viewModel.nodes.first(where: {
+            $0.name?.lowercased() == lowerKey && validCoordinate($0.coordinate) != nil
+        }), let coord = validCoordinate(node.coordinate) {
+            return coord
+        }
+
+        // 3. Prefix match on publicKey
+        let upperPrefix = cleanKey.uppercased()
+        var matches = viewModel.nodes.compactMap { node -> (MeshNode, CLLocationCoordinate2D)? in
+            guard node.publicKey.uppercased().hasPrefix(upperPrefix),
+                  let coord = validCoordinate(node.coordinate) else { return nil }
+            return (node, coord)
+        }
+
+        // 4. Fallback: Prefix match on node name
+        if matches.isEmpty {
+            matches = viewModel.nodes.compactMap { node -> (MeshNode, CLLocationCoordinate2D)? in
+                guard let name = node.name?.uppercased(),
+                      name.hasPrefix(upperPrefix),
+                      let coord = validCoordinate(node.coordinate) else { return nil }
+                return (node, coord)
+            }
+        }
+
+        guard !matches.isEmpty else { return nil }
+
+        if matches.count == 1 {
+            return matches[0].1
+        }
+
+        if let reference = nearCoordinate {
+            let refLoc = CLLocation(latitude: reference.latitude, longitude: reference.longitude)
+            let sorted = matches.sorted { m1, m2 in
+                let d1 = refLoc.distance(from: CLLocation(latitude: m1.1.latitude, longitude: m1.1.longitude))
+                let d2 = refLoc.distance(from: CLLocation(latitude: m2.1.latitude, longitude: m2.1.longitude))
+                return d1 < d2
+            }
+            return sorted[0].1
+        }
+
+        return matches[0].1
+    }
+
+    private func validCoordinate(_ coordinate: CLLocationCoordinate2D?) -> CLLocationCoordinate2D? {
+        guard let coordinate, coordinate.latitude != 0 || coordinate.longitude != 0 else { return nil }
+        return coordinate
+    }
+
+    private func isValidHopDistance(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) -> Bool {
+        // A MeshCore route can legitimately span more than 150 km. Coordinates
+        // reach this point only after a node or observer lookup, so do not apply
+        // an arbitrary geographic cap that would hide valid long-distance paths.
+        CLLocationCoordinate2DIsValid(from)
+            && CLLocationCoordinate2DIsValid(to)
+            && (from.latitude != 0 || from.longitude != 0)
+            && (to.latitude != 0 || to.longitude != 0)
+    }
+}
