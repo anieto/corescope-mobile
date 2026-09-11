@@ -52,6 +52,10 @@ struct APIClient: Sendable {
         self.decoder = Self.makeDecoder()
     }
 
+    var cacheIdentifier: String {
+        baseURL.absoluteString
+    }
+
     private static func makeDecoder() -> JSONDecoder {
         let fractional = ISO8601DateFormatter()
         fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

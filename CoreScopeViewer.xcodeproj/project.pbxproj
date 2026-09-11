@@ -17,19 +17,24 @@
 		22E6EDC06317772F4D948AC2 /* AnalyzerSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E45D252950987721EF3D106 /* AnalyzerSettings.swift */; };
 		24D59BC2523DFDDA78B44597 /* Observer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 676EB2594CA764CE13BDDE59 /* Observer.swift */; };
 		2C1CCC5A4340804F13F8D110 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6EDB07FE4BF732F4BA52606B /* Assets.xcassets */; };
+		2CB0E2884918B39C50850A22 /* AnalyzerSourceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4ABA4E1CD390396A7DC9A33 /* AnalyzerSourceRegistry.swift */; };
+		31C733CCC554E34636022A89 /* OnboardingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9AFF0E38F9E8C2C60829E93 /* OnboardingScreen.swift */; };
 		37EEBAD9BA7B400246063847 /* NodeDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75CDCA22232763038FF030C6 /* NodeDetailViewModel.swift */; };
 		3BE961FDCF2336382895F4C3 /* ModelDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C78C1620C6A3A352DD6B687 /* ModelDecodingTests.swift */; };
 		3D366579F73DA99203CE929F /* ChannelDetailScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B3BFBBCF86390A7CA4DC384 /* ChannelDetailScreen.swift */; };
 		428DFF511FD959A5CF90835A /* ObserverDetailScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E7320B1D9D6A2930636717B /* ObserverDetailScreen.swift */; };
 		49B403B3A96E9DF41C17C923 /* ObserversViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6A10E44528CF92E7266D645 /* ObserversViewModel.swift */; };
+		524F4D5E1EF00C2775837C6C /* MonitorChannelSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B06635B0C942C4C8FAA66B61 /* MonitorChannelSheet.swift */; };
 		597B05A58DFD199CB78FAAC0 /* PacketDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1995A14EECD0A20DEE44C713 /* PacketDetailViewModel.swift */; };
 		6444F2623473A5D38104F233 /* MapLocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E1E309A8A435B7E5A61ADE9 /* MapLocationManager.swift */; };
 		67B0687608CD2E73C4D606AE /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 156F101DF4008880E14D2E48 /* APIClient.swift */; };
 		6A8C5BB6EED7A1F412DCCA73 /* AnalyzerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = C065EB0A8515DA2BC9A34D70 /* AnalyzerConfig.swift */; };
 		720AC3BF3F9FAFDCD5C48C40 /* LoadingIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D52E290B7121585A1C7A0699 /* LoadingIndicator.swift */; };
 		73FBC544410EBB6331BE2670 /* NodeRoleStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73004474B78DC6135A5F3FD4 /* NodeRoleStyle.swift */; };
+		748C3658362BEB182690BA21 /* us-sources.json in Resources */ = {isa = PBXBuildFile; fileRef = C779CBD001144856373F59F6 /* us-sources.json */; };
 		895D2DD9450C64472E7693F6 /* NodeHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2267353D97D345808DF80E40 /* NodeHealth.swift */; };
 		9083F3FDE761C318E4470B7D /* RegionFilterMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BE824AF6B92A1D9B2F38BFD /* RegionFilterMenu.swift */; };
+		90D4CE6F2C401B52C0B93D79 /* ChannelListCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9015F94DEA99D9D7D3D862F9 /* ChannelListCache.swift */; };
 		9599A7997960A45E6E506D71 /* LiveFeedMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7203589BC65FD11EE431398C /* LiveFeedMessage.swift */; };
 		991103E1F7308562934622AD /* AboutScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37795BF9DC79999D3E6DE8A3 /* AboutScreen.swift */; };
 		A062762334B67CCF1DBD2BF2 /* MapScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD272A0CF4993A57B4A1C6D /* MapScreen.swift */; };
@@ -40,12 +45,15 @@
 		BE866EEEF408BDB6C8E103D8 /* MapViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEE734231B3A2D9FDE62ADB6 /* MapViewModel.swift */; };
 		C164A5108399198FAE295FE5 /* ObserverRegionLookup.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADCAFF1DCB55B911F5AFFC20 /* ObserverRegionLookup.swift */; };
 		D0703CF5F57B875F611F2ADD /* PacketDetailScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD5219A5DB2C5DFB2F49A982 /* PacketDetailScreen.swift */; };
+		D79DF7E587202E277463644A /* AnalyzerSourcePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BA4982D8889A079D6CEBCB9 /* AnalyzerSourcePicker.swift */; };
 		D86C8FE8DEB5CE51B1FFC834 /* CoreScopeViewerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AD4E0C32DC0423479F83C43 /* CoreScopeViewerApp.swift */; };
 		DB22D3F08439100648510953 /* NodeDetailScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CE357DF8B6328C61A2E23E4 /* NodeDetailScreen.swift */; };
 		DE7EBA2547154396308F7F57 /* ChannelsListScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C7F345F00561DDBC5C46D1 /* ChannelsListScreen.swift */; };
 		EACC350C9F65CBA27A0B4D24 /* Channel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33B9A5F539B49B860F434D81 /* Channel.swift */; };
+		EF6E45CEC2D585AC27B07648 /* MonitoredChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DDB2DCCCDD470E5A169EBA3 /* MonitoredChannel.swift */; };
 		F2137327FBC92FE87A764EE0 /* RegionFilterStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FB247C32E6BA4792D18D413 /* RegionFilterStore.swift */; };
 		F7AAC2A15896BF2122A20C22 /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B46AA4A5FB82FC08E16B31 /* SettingsScreen.swift */; };
+		F82F20C851C52EAC49BC3931 /* ChannelMonitorStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F93FC8366CD37CCF8C3B02C /* ChannelMonitorStore.swift */; };
 		F880AFD88BBD5C97812E65C7 /* Packet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA006DDF6B3AF7AC55C16467 /* Packet.swift */; };
 /* End PBXBuildFile section */
 
@@ -72,13 +80,14 @@
 		3E45D252950987721EF3D106 /* AnalyzerSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerSettings.swift; sourceTree = "<group>"; };
 		3EA14BD4E3A32FA9B63B54B0 /* PacketReplayStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketReplayStore.swift; sourceTree = "<group>"; };
 		4B3BFBBCF86390A7CA4DC384 /* ChannelDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelDetailScreen.swift; sourceTree = "<group>"; };
+		4BA4982D8889A079D6CEBCB9 /* AnalyzerSourcePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerSourcePicker.swift; sourceTree = "<group>"; };
 		4E7320B1D9D6A2930636717B /* ObserverDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObserverDetailScreen.swift; sourceTree = "<group>"; };
 		5394A1ABEC13641DD68ADB69 /* Node.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Node.swift; sourceTree = "<group>"; };
 		676EB2594CA764CE13BDDE59 /* Observer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Observer.swift; sourceTree = "<group>"; };
 		6AD4E0C32DC0423479F83C43 /* CoreScopeViewerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreScopeViewerApp.swift; sourceTree = "<group>"; };
 		6BD272A0CF4993A57B4A1C6D /* MapScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapScreen.swift; sourceTree = "<group>"; };
 		6BE824AF6B92A1D9B2F38BFD /* RegionFilterMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionFilterMenu.swift; sourceTree = "<group>"; };
-		6CC49543CC83FFA8F008F3A0 /* CoreScopeViewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoreScopeViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6CC49543CC83FFA8F008F3A0 /* CoreScopeViewer.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CoreScopeViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6EDB07FE4BF732F4BA52606B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7203589BC65FD11EE431398C /* LiveFeedMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveFeedMessage.swift; sourceTree = "<group>"; };
 		73004474B78DC6135A5F3FD4 /* NodeRoleStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeRoleStyle.swift; sourceTree = "<group>"; };
@@ -87,18 +96,26 @@
 		7B81EF733A0ED4E34BFF0B04 /* ActivePing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivePing.swift; sourceTree = "<group>"; };
 		7B88FE5992019C3F4F94F11D /* ObserversListScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObserversListScreen.swift; sourceTree = "<group>"; };
 		7DCDF693CC75852E92D3700F /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootTabView.swift; sourceTree = "<group>"; };
+		7DDB2DCCCDD470E5A169EBA3 /* MonitoredChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitoredChannel.swift; sourceTree = "<group>"; };
 		8464149BFBEDBC4B0BB32E42 /* CoreScopeViewerTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CoreScopeViewerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9015F94DEA99D9D7D3D862F9 /* ChannelListCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelListCache.swift; sourceTree = "<group>"; };
 		95B46AA4A5FB82FC08E16B31 /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
+		9F93FC8366CD37CCF8C3B02C /* ChannelMonitorStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelMonitorStore.swift; sourceTree = "<group>"; };
 		A62096554B0D06BB184965F9 /* LiveFeedService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveFeedService.swift; sourceTree = "<group>"; };
+		A9AFF0E38F9E8C2C60829E93 /* OnboardingScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingScreen.swift; sourceTree = "<group>"; };
 		ADCAFF1DCB55B911F5AFFC20 /* ObserverRegionLookup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObserverRegionLookup.swift; sourceTree = "<group>"; };
+		B06635B0C942C4C8FAA66B61 /* MonitorChannelSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorChannelSheet.swift; sourceTree = "<group>"; };
 		B302D4D26193BFC6975CDF82 /* URLPathEncodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLPathEncodingTests.swift; sourceTree = "<group>"; };
 		B5A6EF6652A955D16C20CA75 /* PacketDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketDetail.swift; sourceTree = "<group>"; };
 		B6A10E44528CF92E7266D645 /* ObserversViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObserversViewModel.swift; sourceTree = "<group>"; };
 		B90D68BBC5B7652894943018 /* ChannelsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelsViewModel.swift; sourceTree = "<group>"; };
 		C065EB0A8515DA2BC9A34D70 /* AnalyzerConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerConfig.swift; sourceTree = "<group>"; };
+		C5D4ED33E4851776E90D52DD /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		C779CBD001144856373F59F6 /* us-sources.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "us-sources.json"; sourceTree = "<group>"; };
 		CD5219A5DB2C5DFB2F49A982 /* PacketDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketDetailScreen.swift; sourceTree = "<group>"; };
 		D4C7F345F00561DDBC5C46D1 /* ChannelsListScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelsListScreen.swift; sourceTree = "<group>"; };
 		D52E290B7121585A1C7A0699 /* LoadingIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingIndicator.swift; sourceTree = "<group>"; };
+		E4ABA4E1CD390396A7DC9A33 /* AnalyzerSourceRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerSourceRegistry.swift; sourceTree = "<group>"; };
 		E60D53B8493F9BAD7C5BAD05 /* PacketFeedScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketFeedScreen.swift; sourceTree = "<group>"; };
 		EA006DDF6B3AF7AC55C16467 /* Packet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Packet.swift; sourceTree = "<group>"; };
 		FEE734231B3A2D9FDE62ADB6 /* MapViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapViewModel.swift; sourceTree = "<group>"; };
@@ -117,6 +134,7 @@
 		2498CA4BA277AAB21F0D0508 /* CoreScopeViewer */ = {
 			isa = PBXGroup;
 			children = (
+				C5D4ED33E4851776E90D52DD /* Info.plist */,
 				CAF911F21CF27CD80B03170B /* App */,
 				695A43CD2A3961F82BD8230F /* Features */,
 				98513FB82352F666556D2473 /* Models */,
@@ -124,6 +142,14 @@
 				A82C0A1F37D0CAD5AEB38BF5 /* Resources */,
 			);
 			path = CoreScopeViewer;
+			sourceTree = "<group>";
+		};
+		34F851437983B18C6D3E010B /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				A9AFF0E38F9E8C2C60829E93 /* OnboardingScreen.swift */,
+			);
+			path = Onboarding;
 			sourceTree = "<group>";
 		};
 		3E1EAA03D7A7690E12C1C155 /* PacketFeed */ = {
@@ -163,6 +189,7 @@
 				6125734C3C0F47B22B9C93F0 /* Map */,
 				E3EEA2BB0CC0AE8FECBBF32E /* NodeDetail */,
 				532D2538F3BE80E40E244348 /* Observers */,
+				34F851437983B18C6D3E010B /* Onboarding */,
 				3E1EAA03D7A7690E12C1C155 /* PacketFeed */,
 				B6D9125F11D4615413A8DDA1 /* Settings */,
 				C4CDB038930790E265B0CF22 /* Shared */,
@@ -176,6 +203,7 @@
 				C065EB0A8515DA2BC9A34D70 /* AnalyzerConfig.swift */,
 				33B9A5F539B49B860F434D81 /* Channel.swift */,
 				7203589BC65FD11EE431398C /* LiveFeedMessage.swift */,
+				7DDB2DCCCDD470E5A169EBA3 /* MonitoredChannel.swift */,
 				5394A1ABEC13641DD68ADB69 /* Node.swift */,
 				2267353D97D345808DF80E40 /* NodeHealth.swift */,
 				676EB2594CA764CE13BDDE59 /* Observer.swift */,
@@ -189,6 +217,7 @@
 			isa = PBXGroup;
 			children = (
 				6EDB07FE4BF732F4BA52606B /* Assets.xcassets */,
+				C779CBD001144856373F59F6 /* us-sources.json */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -197,6 +226,7 @@
 			isa = PBXGroup;
 			children = (
 				37795BF9DC79999D3E6DE8A3 /* AboutScreen.swift */,
+				4BA4982D8889A079D6CEBCB9 /* AnalyzerSourcePicker.swift */,
 				78E6E9CACE3528A4828C2A2D /* AppearanceSettings.swift */,
 				95B46AA4A5FB82FC08E16B31 /* SettingsScreen.swift */,
 			);
@@ -227,6 +257,7 @@
 				4B3BFBBCF86390A7CA4DC384 /* ChannelDetailScreen.swift */,
 				D4C7F345F00561DDBC5C46D1 /* ChannelsListScreen.swift */,
 				B90D68BBC5B7652894943018 /* ChannelsViewModel.swift */,
+				B06635B0C942C4C8FAA66B61 /* MonitorChannelSheet.swift */,
 			);
 			path = Channels;
 			sourceTree = "<group>";
@@ -255,7 +286,10 @@
 			isa = PBXGroup;
 			children = (
 				3E45D252950987721EF3D106 /* AnalyzerSettings.swift */,
+				E4ABA4E1CD390396A7DC9A33 /* AnalyzerSourceRegistry.swift */,
 				156F101DF4008880E14D2E48 /* APIClient.swift */,
+				9015F94DEA99D9D7D3D862F9 /* ChannelListCache.swift */,
+				9F93FC8366CD37CCF8C3B02C /* ChannelMonitorStore.swift */,
 				A62096554B0D06BB184965F9 /* LiveFeedService.swift */,
 				ADCAFF1DCB55B911F5AFFC20 /* ObserverRegionLookup.swift */,
 				3EA14BD4E3A32FA9B63B54B0 /* PacketReplayStore.swift */,
@@ -320,6 +354,11 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					1FC5C9B7DAF19C9465D027C0 = {
+						DevelopmentTeam = B4F4XYTQLN;
+					};
+				};
 			};
 			buildConfigurationList = 3953E4BE5CC27A65C9F3D94D /* Build configuration list for PBXProject "CoreScopeViewer" */;
 			developmentRegion = en;
@@ -347,6 +386,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2C1CCC5A4340804F13F8D110 /* Assets.xcassets in Resources */,
+				748C3658362BEB182690BA21 /* us-sources.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -371,9 +411,13 @@
 				B5BD63C91E6B93FAA59ED007 /* ActivePing.swift in Sources */,
 				6A8C5BB6EED7A1F412DCCA73 /* AnalyzerConfig.swift in Sources */,
 				22E6EDC06317772F4D948AC2 /* AnalyzerSettings.swift in Sources */,
+				D79DF7E587202E277463644A /* AnalyzerSourcePicker.swift in Sources */,
+				2CB0E2884918B39C50850A22 /* AnalyzerSourceRegistry.swift in Sources */,
 				14C15315F31A80B68EECD9B5 /* AppearanceSettings.swift in Sources */,
 				EACC350C9F65CBA27A0B4D24 /* Channel.swift in Sources */,
 				3D366579F73DA99203CE929F /* ChannelDetailScreen.swift in Sources */,
+				90D4CE6F2C401B52C0B93D79 /* ChannelListCache.swift in Sources */,
+				F82F20C851C52EAC49BC3931 /* ChannelMonitorStore.swift in Sources */,
 				DE7EBA2547154396308F7F57 /* ChannelsListScreen.swift in Sources */,
 				0C8DD2E83491E4744AEA1380 /* ChannelsViewModel.swift in Sources */,
 				D86C8FE8DEB5CE51B1FFC834 /* CoreScopeViewerApp.swift in Sources */,
@@ -383,6 +427,8 @@
 				6444F2623473A5D38104F233 /* MapLocationManager.swift in Sources */,
 				A062762334B67CCF1DBD2BF2 /* MapScreen.swift in Sources */,
 				BE866EEEF408BDB6C8E103D8 /* MapViewModel.swift in Sources */,
+				524F4D5E1EF00C2775837C6C /* MonitorChannelSheet.swift in Sources */,
+				EF6E45CEC2D585AC27B07648 /* MonitoredChannel.swift in Sources */,
 				14BBB677BE2C96A01E15E7D3 /* Node.swift in Sources */,
 				DB22D3F08439100648510953 /* NodeDetailScreen.swift in Sources */,
 				37EEBAD9BA7B400246063847 /* NodeDetailViewModel.swift in Sources */,
@@ -393,6 +439,7 @@
 				C164A5108399198FAE295FE5 /* ObserverRegionLookup.swift in Sources */,
 				14122A2028E526B38FA4AEE4 /* ObserversListScreen.swift in Sources */,
 				49B403B3A96E9DF41C17C923 /* ObserversViewModel.swift in Sources */,
+				31C733CCC554E34636022A89 /* OnboardingScreen.swift in Sources */,
 				F880AFD88BBD5C97812E65C7 /* Packet.swift in Sources */,
 				01D4A148FE7AC5A25B15E907 /* PacketDetail.swift in Sources */,
 				D0703CF5F57B875F611F2ADD /* PacketDetailScreen.swift in Sources */,
@@ -420,12 +467,14 @@
 		3C2997DBF79EDA58C990F93D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = B4F4XYTQLN;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = CoreScope;
+				INFOPLIST_FILE = CoreScopeViewer/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NodeScope;
+				INFOPLIST_KEY_CFBundleIconName = AppIcon;
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Your location centers the map around your current position.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -436,7 +485,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.meshtexas.corescopeviewer;
+				PRODUCT_BUNDLE_IDENTIFIER = com.meshtexas.nodescope;
 				SDKROOT = iphoneos;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
@@ -604,12 +653,14 @@
 		B7F8CE769958DFE905B499D6 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = B4F4XYTQLN;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = CoreScope;
+				INFOPLIST_FILE = CoreScopeViewer/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NodeScope;
+				INFOPLIST_KEY_CFBundleIconName = AppIcon;
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Your location centers the map around your current position.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -620,7 +671,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.meshtexas.corescopeviewer;
+				PRODUCT_BUNDLE_IDENTIFIER = com.meshtexas.nodescope;
 				SDKROOT = iphoneos;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;

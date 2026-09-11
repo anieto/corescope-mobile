@@ -2,6 +2,8 @@ import SwiftUI
 
 struct RootTabView: View {
     @Environment(PacketReplayStore.self) private var packetReplayStore
+    @Environment(AnalyzerSettings.self) private var settings
+    @Environment(RegionFilterStore.self) private var regionFilter
 
     private enum Tab: Hashable {
         case map
@@ -32,6 +34,9 @@ struct RootTabView: View {
         }
         .onChange(of: packetReplayStore.requestID) {
             selectedTab = .map
+        }
+        .task(id: "\(settings.host)|\(regionFilter.selectedRegion ?? "")") {
+            await ChannelsViewModel.preload(settings: settings, region: regionFilter.selectedRegion)
         }
     }
 }

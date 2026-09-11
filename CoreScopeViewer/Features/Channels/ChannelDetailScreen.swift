@@ -5,6 +5,7 @@ struct ChannelDetailScreen: View {
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(ObserverRegionLookup.self) private var observerRegionLookup
+    @Environment(ChannelMonitorStore.self) private var monitorStore
     @State private var viewModel = ChannelsViewModel()
 
     var body: some View {
@@ -47,15 +48,15 @@ struct ChannelDetailScreen: View {
                 LoadingIndicator()
             }
         }
-        .task {
+        .task(id: "\(channel.hash)|\(regionFilter.selectedRegion ?? "")") {
             viewModel.configure(settings: settings)
-            await viewModel.loadMessages(hash: channel.hash)
+            await loadMessages()
         }
         .navigationDestination(for: ChannelMessage.self) { message in
             PacketDetailScreen(message: message)
         }
         .refreshable {
-            await viewModel.loadMessages(hash: channel.hash)
+            await loadMessages()
         }
     }
 
@@ -68,12 +69,25 @@ struct ChannelDetailScreen: View {
     /// top-to-bottom regardless of what the server returns.
     private var orderedMessages: [ChannelMessage] {
         var messages = viewModel.messages
-        if let selectedRegion = regionFilter.selectedRegion {
+        if monitorStore.channel(matching: channel) == nil,
+           let selectedRegion = regionFilter.selectedRegion {
             messages = messages.filter { message in
                 message.observers.contains { observerRegionLookup.iataByName[$0] == selectedRegion }
             }
         }
         return messages.sorted { $0.timestamp < $1.timestamp }
+    }
+
+    private func loadMessages() async {
+        if let monitoredChannel = monitorStore.channel(matching: channel) {
+            await viewModel.loadMonitoredMessages(
+                channel: monitoredChannel,
+                region: regionFilter.selectedRegion
+            )
+            monitorStore.updateSummary(for: monitoredChannel.channelName, messages: viewModel.messages)
+        } else {
+            await viewModel.loadMessages(hash: channel.hash)
+        }
     }
 
     private func scrollToBottom(proxy: ScrollViewProxy, animated: Bool = true) {

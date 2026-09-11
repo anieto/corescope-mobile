@@ -30,12 +30,31 @@ final class AnalyzerSettings {
         URL(string: "wss://\(normalizedHost)")!
     }
 
+    static func normalizedHost(_ value: String) -> String {
+        var candidate = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !candidate.isEmpty else { return "" }
+
+        if !candidate.contains("://") {
+            candidate = "https://\(candidate)"
+        }
+
+        guard let components = URLComponents(string: candidate),
+              let host = components.host else {
+            return value
+                .replacingOccurrences(of: "https://", with: "")
+                .replacingOccurrences(of: "wss://", with: "")
+                .replacingOccurrences(of: "http://", with: "")
+                .replacingOccurrences(of: "ws://", with: "")
+                .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        }
+
+        if let port = components.port {
+            return "\(host):\(port)"
+        }
+        return host
+    }
+
     private var normalizedHost: String {
-        host
-            .replacingOccurrences(of: "https://", with: "")
-            .replacingOccurrences(of: "wss://", with: "")
-            .replacingOccurrences(of: "http://", with: "")
-            .replacingOccurrences(of: "ws://", with: "")
-            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        Self.normalizedHost(host)
     }
 }

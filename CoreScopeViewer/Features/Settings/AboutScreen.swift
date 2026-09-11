@@ -8,7 +8,7 @@ struct AboutScreen: View {
                     Image(systemName: "antenna.radiowaves.left.and.right.circle.fill")
                         .font(.system(size: 56))
                         .foregroundStyle(Color.accentColor)
-                    Text("CoreScope Viewer")
+                    Text("NodeScope")
                         .font(.title3.weight(.semibold))
                     Text("Version \(Self.appVersion) (\(Self.buildNumber))")
                         .font(.caption)
@@ -21,7 +21,7 @@ struct AboutScreen: View {
 
             Section("What This Is") {
                 Text(
-                    "CoreScope Viewer is an unofficial, read-only companion app for " +
+                    "NodeScope is an unofficial, read-only companion app for " +
                     "CoreScope, the mesh network analyzer used by MeshTexas and other " +
                     "MeshCore communities. It talks directly to a CoreScope server's " +
                     "public API to show the same live nodes, packet traffic, channel " +

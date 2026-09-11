@@ -40,20 +40,18 @@ struct SettingsScreen: View {
                 }
 
                 Section {
-                    TextField("analyzer.meshtexas.org", text: $hostInput)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .keyboardType(.URL)
-
-                    Button("Save & Reconnect") {
-                        applyHostChange(hostInput)
+                    NavigationLink {
+                        AnalyzerSourcePickerScreen(
+                            selectedHost: $hostInput,
+                            appliesSelectionImmediately: true,
+                            onSelection: { host in
+                                applyHostChange(host)
+                            }
+                        )
+                    } label: {
+                        LabeledContent("Choose Source", value: settings.host)
                     }
-                    .disabled(hostInput.trimmingCharacters(in: .whitespaces).isEmpty)
 
-                    Button("Reset to MeshTexas Default", role: .destructive) {
-                        hostInput = AnalyzerSettings.defaultHost
-                        applyHostChange(hostInput)
-                    }
                 } header: {
                     Text("Analyzer Source")
                 } footer: {
@@ -110,7 +108,10 @@ struct SettingsScreen: View {
     /// against the old host, so reload it fresh rather than leaving a
     /// stale region code silently filtering the new host's data.
     private func applyHostChange(_ newHost: String) {
-        settings.host = newHost
+        let normalizedHost = AnalyzerSettings.normalizedHost(newHost)
+        guard !normalizedHost.isEmpty else { return }
+        hostInput = normalizedHost
+        settings.host = normalizedHost
         liveFeed.connect()
         regionFilter.reset()
         regionFilter.configure(settings: settings)

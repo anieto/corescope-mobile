@@ -8,7 +8,7 @@ import Observation
 /// opening their own socket.
 @Observable
 @MainActor
-final class LiveFeedService: NSObject, @preconcurrency URLSessionWebSocketDelegate {
+final class LiveFeedService: NSObject, URLSessionWebSocketDelegate {
     private(set) var recentEvents: [LiveEnvelope] = []
     private(set) var isConnected = false
     private(set) var lastError: String?
@@ -99,26 +99,30 @@ final class LiveFeedService: NSObject, @preconcurrency URLSessionWebSocketDelega
         }
     }
 
-    func urlSession(
+    nonisolated func urlSession(
         _ session: URLSession,
         webSocketTask: URLSessionWebSocketTask,
         didOpenWithProtocol protocol: String?
     ) {
-        guard webSocketTask === task else { return }
-        isConnected = true
-        lastError = nil
+        Task { @MainActor [weak self] in
+            guard let self, webSocketTask === self.task else { return }
+            self.isConnected = true
+            self.lastError = nil
+        }
     }
 
-    func urlSession(
+    nonisolated func urlSession(
         _ session: URLSession,
         webSocketTask: URLSessionWebSocketTask,
         didCloseWith closeCode: URLSessionWebSocketTask.CloseCode,
         reason: Data?
     ) {
-        guard webSocketTask === task else { return }
         let message = reason.flatMap { String(data: $0, encoding: .utf8) }
             ?? "Server closed the connection (code \(closeCode.rawValue))."
-        connectionFailed(message)
+        Task { @MainActor [weak self] in
+            guard let self, webSocketTask === self.task else { return }
+            self.connectionFailed(message)
+        }
     }
 
     private func connectionFailed(_ message: String) {
