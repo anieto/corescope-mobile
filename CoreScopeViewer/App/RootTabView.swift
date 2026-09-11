@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct RootTabView: View {
+    @Environment(PacketReplayStore.self) private var packetReplayStore
+
     private enum Tab: Hashable {
         case map
         case channels
@@ -27,6 +29,9 @@ struct RootTabView: View {
             SettingsScreen()
                 .tabItem { Label("Settings", systemImage: "gearshape") }
                 .tag(Tab.settings)
+        }
+        .onChange(of: packetReplayStore.requestID) {
+            selectedTab = .map
         }
     }
 }

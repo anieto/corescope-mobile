@@ -5,11 +5,12 @@ final class MapLocationManager: NSObject, @preconcurrency CLLocationManagerDeleg
     private let locationManager = CLLocationManager()
     private var completion: ((CLLocationCoordinate2D) -> Void)?
     private var failure: (() -> Void)?
+    private var timeoutTask: Task<Void, Never>?
 
     override init() {
         super.init()
         locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
+        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
     }
 
     func requestCurrentLocation(
@@ -24,11 +25,17 @@ final class MapLocationManager: NSObject, @preconcurrency CLLocationManagerDeleg
             return
         }
 
+        if let cachedLocation = locationManager.location,
+           Date().timeIntervalSince(cachedLocation.timestamp) < 5 * 60 {
+            finish(with: cachedLocation.coordinate)
+            return
+        }
+
         switch locationManager.authorizationStatus {
         case .notDetermined:
             locationManager.requestWhenInUseAuthorization()
         case .authorizedAlways, .authorizedWhenInUse:
-            locationManager.requestLocation()
+            startLocationUpdate()
         case .denied, .restricted:
             finishWithFailure()
         @unknown default:
@@ -37,9 +44,11 @@ final class MapLocationManager: NSObject, @preconcurrency CLLocationManagerDeleg
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        guard completion != nil else { return }
+
         switch manager.authorizationStatus {
         case .authorizedAlways, .authorizedWhenInUse:
-            manager.requestLocation()
+            startLocationUpdate()
         case .denied, .restricted:
             finishWithFailure()
         case .notDetermined:
@@ -51,16 +60,36 @@ final class MapLocationManager: NSObject, @preconcurrency CLLocationManagerDeleg
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let coordinate = locations.last?.coordinate else { return }
-        completion?(coordinate)
-        completion = nil
-        failure = nil
+        finish(with: coordinate)
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         finishWithFailure()
     }
 
+    private func startLocationUpdate() {
+        locationManager.startUpdatingLocation()
+        timeoutTask?.cancel()
+        timeoutTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(12))
+            guard !Task.isCancelled else { return }
+            self?.finishWithFailure()
+        }
+    }
+
+    private func finish(with coordinate: CLLocationCoordinate2D) {
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        locationManager.stopUpdatingLocation()
+        completion?(coordinate)
+        completion = nil
+        failure = nil
+    }
+
     private func finishWithFailure() {
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        locationManager.stopUpdatingLocation()
         failure?()
         completion = nil
         failure = nil

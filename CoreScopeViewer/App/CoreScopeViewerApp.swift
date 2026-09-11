@@ -6,6 +6,8 @@ struct CoreScopeViewerApp: App {
     @State private var liveFeed: LiveFeedService
     @State private var regionFilter = RegionFilterStore()
     @State private var observerRegionLookup = ObserverRegionLookup()
+    @State private var packetReplayStore = PacketReplayStore()
+    @State private var appearanceSettings = AppearanceSettings()
 
     init() {
         let settings = AnalyzerSettings()
@@ -20,6 +22,9 @@ struct CoreScopeViewerApp: App {
                 .environment(liveFeed)
                 .environment(regionFilter)
                 .environment(observerRegionLookup)
+                .environment(packetReplayStore)
+                .environment(appearanceSettings)
+                .preferredColorScheme(appearanceSettings.mode.colorScheme)
                 .task {
                     liveFeed.connect()
                     regionFilter.configure(settings: settings)

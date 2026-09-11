@@ -51,6 +51,9 @@ struct ChannelDetailScreen: View {
             viewModel.configure(settings: settings)
             await viewModel.loadMessages(hash: channel.hash)
         }
+        .navigationDestination(for: ChannelMessage.self) { message in
+            PacketDetailScreen(message: message)
+        }
         .refreshable {
             await viewModel.loadMessages(hash: channel.hash)
         }
@@ -87,6 +90,7 @@ struct ChannelDetailScreen: View {
 
 private struct ChatBubbleRow: View {
     let message: ChannelMessage
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -113,10 +117,19 @@ private struct ChatBubbleRow: View {
                 }
                 .font(.caption2)
                 .foregroundStyle(.secondary)
+
+                NavigationLink(value: message) {
+                    Label("View Packet", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
+                        .font(.caption.weight(.semibold))
+                }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .background(senderColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(bubbleFill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(senderColor.opacity(colorScheme == .dark ? 0.55 : 0.25), lineWidth: 1)
+            }
         }
         .frame(maxWidth: 300, alignment: .leading)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -128,5 +141,9 @@ private struct ChatBubbleRow: View {
         let palette: [Color] = [.blue, .green, .orange, .purple, .pink, .teal, .indigo, .brown]
         let index = abs(message.sender.hashValue) % palette.count
         return palette[index]
+    }
+
+    private var bubbleFill: Color {
+        senderColor.opacity(colorScheme == .dark ? 0.34 : 0.16)
     }
 }

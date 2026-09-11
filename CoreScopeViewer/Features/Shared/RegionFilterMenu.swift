@@ -26,19 +26,16 @@ struct RegionFilterMenu: View {
                 }
             }
         } label: {
-            // A badge dot rather than relying on the outline/.fill SF Symbol
-            // variants alone — those read as nearly identical at toolbar
-            // size once the system applies its own tint, making it hard to
-            // tell at a glance whether a filter is active.
-            Image(systemName: "line.3.horizontal.decrease.circle")
-                .overlay(alignment: .topTrailing) {
-                    if regionFilter.selectedRegion != nil {
-                        Circle()
-                            .fill(Color.accentColor)
-                            .frame(width: 9, height: 9)
-                            .offset(x: 2, y: -2)
-                    }
+            // The region code text itself (e.g. "AUS") is enough to show a
+            // filter is active, so no separate badge dot is needed on top
+            // of it.
+            HStack(spacing: 4) {
+                Image(systemName: "line.3.horizontal.decrease.circle")
+                if let selectedRegion = regionFilter.selectedRegion {
+                    Text(selectedRegion)
+                        .font(.caption.weight(.semibold))
                 }
+            }
         }
     }
 }

@@ -76,6 +76,17 @@ final class MapViewModel {
         cacheNamespace = settings.host.lowercased()
     }
 
+    /// Analyzer hosts have independent node sets and map defaults. Clear the
+    /// displayed state before loading a new source so old-host data cannot
+    /// briefly appear or influence the next camera position.
+    func resetForAnalyzerSource() {
+        nodes = []
+        recentPackets = []
+        mapDefaults = nil
+        errorMessage = nil
+        isLoading = false
+    }
+
     func loadMapDefaults() async {
         let cacheKey = "map-defaults-\(cacheNamespace)"
         if let cached: MapDefaults = await MapResponseCache.shared.value(

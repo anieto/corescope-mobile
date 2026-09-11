@@ -8,7 +8,7 @@ import Observation
 /// opening their own socket.
 @Observable
 @MainActor
-final class LiveFeedService {
+final class LiveFeedService: NSObject, @preconcurrency URLSessionWebSocketDelegate {
     private(set) var recentEvents: [LiveEnvelope] = []
     private(set) var isConnected = false
     private(set) var lastError: String?
@@ -17,22 +17,29 @@ final class LiveFeedService {
     private let decoder = JSONDecoder()
 
     private var settings: AnalyzerSettings?
+    private var session: URLSession!
     private var task: URLSessionWebSocketTask?
     private var receiveTask: Task<Void, Never>?
     private var reconnectTask: Task<Void, Never>?
 
     init(settings: AnalyzerSettings) {
         self.settings = settings
+        super.init()
+        session = URLSession(
+            configuration: .default,
+            delegate: self,
+            delegateQueue: nil
+        )
     }
 
     func connect() {
         guard let settings else { return }
         disconnect()
 
-        let socketTask = URLSession.shared.webSocketTask(with: settings.webSocketURL)
+        let socketTask = session.webSocketTask(with: settings.webSocketURL)
         task = socketTask
         socketTask.resume()
-        isConnected = true
+        isConnected = false
         lastError = nil
         listen()
     }
@@ -53,9 +60,7 @@ final class LiveFeedService {
                     self.handle(message)
                 } catch {
                     guard !Task.isCancelled else { return }
-                    self.isConnected = false
-                    self.lastError = error.localizedDescription
-                    self.scheduleReconnect()
+                    self.connectionFailed(error.localizedDescription)
                     return
                 }
             }
@@ -86,10 +91,39 @@ final class LiveFeedService {
     }
 
     private func scheduleReconnect() {
+        reconnectTask?.cancel()
         reconnectTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(3))
             guard let self, !Task.isCancelled else { return }
             self.connect()
         }
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        webSocketTask: URLSessionWebSocketTask,
+        didOpenWithProtocol protocol: String?
+    ) {
+        guard webSocketTask === task else { return }
+        isConnected = true
+        lastError = nil
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        webSocketTask: URLSessionWebSocketTask,
+        didCloseWith closeCode: URLSessionWebSocketTask.CloseCode,
+        reason: Data?
+    ) {
+        guard webSocketTask === task else { return }
+        let message = reason.flatMap { String(data: $0, encoding: .utf8) }
+            ?? "Server closed the connection (code \(closeCode.rawValue))."
+        connectionFailed(message)
+    }
+
+    private func connectionFailed(_ message: String) {
+        isConnected = false
+        lastError = message
+        scheduleReconnect()
     }
 }

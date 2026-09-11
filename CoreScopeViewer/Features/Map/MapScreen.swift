@@ -8,6 +8,8 @@ struct MapScreen: View {
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(LiveFeedService.self) private var liveFeed
     @Environment(ObserverRegionLookup.self) private var observerRegionLookup
+    @Environment(PacketReplayStore.self) private var packetReplayStore
+    @Environment(\.colorScheme) private var colorScheme
     @State private var viewModel = MapViewModel()
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var visibleRegion: MKCoordinateRegion?
@@ -17,13 +19,19 @@ struct MapScreen: View {
     @State private var iataCoordinates: [String: CLLocationCoordinate2D] = [:]
     @State private var mapDisplayStyle = MapDisplayStyle.persisted
     @State private var locationManager = MapLocationManager()
+    @State private var userLocation: CLLocationCoordinate2D?
     @Namespace private var mapScope
     @State private var hasCenteredCamera = false
     @State private var activePings: [ActivePing] = []
+    @State private var replayPings: [ActivePing] = []
+    @State private var isReplayMode = false
+    @State private var showsReplayRouteOnly = true
     @State private var processedEventIds: Set<String> = []
     @State private var isInitialLoadComplete = false
     @State private var isChangingRegion = false
     @State private var isLocatingUser = false
+    @State private var pendingReplayRequestID: UUID?
+    @State private var loadedAnalyzerHost = ""
 
     private struct NodeCluster: Identifiable {
         let id: String
@@ -78,7 +86,7 @@ struct MapScreen: View {
             TimelineView(
                 .animation(
                     minimumInterval: mapUpdateInterval,
-                    paused: activePings.isEmpty || !isTabActive
+                    paused: pingsForDisplay.isEmpty || !isTabActive
                 )
             ) { context in
                 mapContent(at: context.date)
@@ -133,14 +141,19 @@ struct MapScreen: View {
                         .padding(.bottom, 40)
                 }
                 .overlay(alignment: .bottom) {
-                    if !viewModel.nodes.isEmpty {
-                        Text("\(viewModel.nodes.count) nodes")
-                            .font(.caption)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(.thinMaterial, in: Capsule())
-                            .padding(.bottom, 8)
+                    VStack(spacing: 8) {
+                        if isReplayMode {
+                            replayControl
+                        }
+                        if !viewModel.nodes.isEmpty {
+                            Text("\(viewModel.nodes.count) nodes")
+                                .font(.caption)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(.thinMaterial, in: Capsule())
+                        }
                     }
+                    .padding(.bottom, 8)
                 }
                 .overlay {
                     if let errorMessage = viewModel.errorMessage {
@@ -152,26 +165,60 @@ struct MapScreen: View {
                     }
                 }
                 .overlay {
-                    if viewModel.isLoading || isChangingRegion || isLocatingUser {
+                    if (viewModel.isLoading && !isReplayMode) || (isChangingRegion && !isReplayMode) || isLocatingUser {
                         LoadingIndicator(title: mapLoadingTitle)
                     }
                 }
         }
         .task {
-            viewModel.configure(settings: settings)
-            await viewModel.loadMapDefaults()
-            centerCameraIfNeeded()
             processedEventIds = Set(liveFeed.recentEvents.map { liveEventKey(for: $0) })
             isInitialLoadComplete = true
         }
-        .task(id: regionFilter.selectedRegion) {
+        .task(id: "\(settings.host.lowercased())-\(regionFilter.selectedRegion ?? "all")") {
+            let sourceHost = settings.host
+            let selectedRegion = regionFilter.selectedRegion
             isChangingRegion = true
-            defer { isChangingRegion = false }
+            defer {
+                isChangingRegion = false
+                replayPendingPacketIfNeeded()
+            }
+
+            if loadedAnalyzerHost != sourceHost {
+                loadedAnalyzerHost = sourceHost
+                viewModel.resetForAnalyzerSource()
+                iataCoordinates = [:]
+                activePings = []
+                replayPings = []
+                isReplayMode = false
+                hasCenteredCamera = false
+                cameraPosition = .automatic
+            }
 
             viewModel.configure(settings: settings)
-            await viewModel.loadNodes(region: regionFilter.selectedRegion)
-            await viewModel.loadPackets(region: regionFilter.selectedRegion)
-            await zoomToRegionSelection()
+            await viewModel.loadMapDefaults()
+
+            // A newer host or region selection started loading while this
+            // request was suspended. Only the current request may move the
+            // camera or replace the displayed data.
+            guard sourceHost == settings.host,
+                  selectedRegion == regionFilter.selectedRegion else {
+                return
+            }
+
+            // These requests are independent. Starting the IATA lookup now
+            // avoids making users wait for a full node refresh before the map
+            // can move to their selected region.
+            async let nodes: Void = viewModel.loadNodes(region: regionFilter.selectedRegion)
+            async let packets: Void = viewModel.loadPackets(region: regionFilter.selectedRegion)
+            async let regionZoom: Void = zoomToRegionSelection()
+
+            // Once the camera has reached the selected IATA area, cached node
+            // data is ready to use. Don't hold the map behind a loader while
+            // the freshness check continues in the background.
+            await regionZoom
+            isChangingRegion = false
+            _ = await (nodes, packets)
+
             processHistoricalPackets()
             processIncomingEvents()
         }
@@ -201,19 +248,22 @@ struct MapScreen: View {
         .onChange(of: mapDisplayStyle) {
             UserDefaults.standard.set(mapDisplayStyle.rawValue, forKey: MapDisplayStyle.defaultsKey)
         }
+        .onChange(of: packetReplayStore.requestID) {
+            queuePacketReplay()
+        }
     }
 
     @ViewBuilder
     private func mapContent(at date: Date) -> some View {
-        let currentPings = activePings.filter {
+        let currentPings = pingsForDisplay.filter {
             $0.hasStarted(at: date) && !$0.isExpired(at: date)
         }
+        let mapNodes = isReplayMode && showsReplayRouteOnly ? replayRouteNodes : displayedNodes
+        let mapClusters = isReplayMode && showsReplayRouteOnly ? [] : nodeClusters
 
         MapReader { proxy in
             Map(position: $cameraPosition, scope: mapScope) {
-                UserAnnotation()
-
-                ForEach(displayedNodes) { node in
+                ForEach(mapNodes) { node in
                     if let coordinate = node.coordinate {
                         Annotation(node.name ?? shortKey(node.publicKey), coordinate: coordinate, anchor: .center) {
                             Image(systemName: NodeRoleStyle.symbolName(for: node.role))
@@ -230,7 +280,7 @@ struct MapScreen: View {
                     }
                 }
 
-                ForEach(nodeClusters) { cluster in
+                ForEach(mapClusters) { cluster in
                     Annotation("\(cluster.count) nodes", coordinate: cluster.coordinate, anchor: .center) {
                         Text("\(cluster.count)")
                             .font(.caption2.weight(.bold))
@@ -280,18 +330,50 @@ struct MapScreen: View {
                         Annotation("", coordinate: ping.currentCoordinate(at: date)) {
                             ZStack {
                                 Circle()
-                                    .fill(ping.pathColor.opacity(0.35))
+                                    .fill(ping.signalColor.opacity(0.35))
                                     .frame(width: 30, height: 30)
                                 Circle()
-                                    .fill(ping.pathColor)
+                                    .fill(ping.signalColor)
                                     .frame(width: 16, height: 16)
-                                    .shadow(color: ping.pathColor.opacity(0.95), radius: 8)
+                                    .shadow(color: ping.signalColor.opacity(0.95), radius: 8)
                                 Circle()
                                     .fill(.white)
                                     .frame(width: 5, height: 5)
                             }
                             .opacity(1.0 - travelProgress * 0.5)
                         }
+                    }
+                }
+
+                // Float the user indicator above its exact coordinate. MapKit
+                // may place a node above the annotation's anchor point, so the
+                // marker itself stays entirely outside a co-located node.
+                if let userLocation {
+                    Annotation("Your location", coordinate: userLocation, anchor: .bottom) {
+                        VStack(spacing: 4) {
+                            Text("You")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(.primary)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(.thinMaterial, in: Capsule())
+                            ZStack {
+                                Circle()
+                                    .fill(Color.accentColor.opacity(0.22))
+                                    .frame(width: 42, height: 42)
+                                Circle()
+                                    .fill(.white)
+                                    .frame(width: 28, height: 28)
+                                    .shadow(color: .black.opacity(0.25), radius: 2)
+                                Circle()
+                                    .fill(Color.accentColor)
+                                    .frame(width: 20, height: 20)
+                                Circle()
+                                    .fill(.white)
+                                    .frame(width: 6, height: 6)
+                            }
+                        }
+                        .accessibilityLabel("Your location")
                     }
                 }
             }
@@ -436,10 +518,68 @@ struct MapScreen: View {
         return "Loading all regions…"
     }
 
+    private var pingsForDisplay: [ActivePing] {
+        isReplayMode ? replayPings : activePings
+    }
+
+    private var replayRouteNodes: [MeshNode] {
+        let routeKeys = Set(packetReplayStore.resolvedPath.map { $0.lowercased() })
+        return viewModel.nodes.filter { routeKeys.contains($0.publicKey.lowercased()) }
+    }
+
+    private var isReplayPlaying: Bool {
+        // The button reflects packet travel, not the slower line fade-out.
+        replayPings.contains { $0.travelProgress() < 1.0 }
+    }
+
+    private var replayControl: some View {
+        HStack(spacing: 4) {
+            Button {
+                replayPacketRoute(recenter: false)
+            } label: {
+                Label(
+                    isReplayPlaying ? "Replay" : "Play Again",
+                    systemImage: isReplayPlaying ? "play.fill" : "arrow.counterclockwise"
+                )
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.accentColor, in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isReplayPlaying ? "Replay in progress" : "Play replay again")
+
+            Button("Live") {
+                isReplayMode = false
+                replayPings = []
+            }
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+
+            Button {
+                showsReplayRouteOnly.toggle()
+            } label: {
+                Label("Route Only", systemImage: showsReplayRouteOnly ? "checkmark.circle.fill" : "circle")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(showsReplayRouteOnly ? Color.accentColor : .primary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 8)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Show route nodes only")
+            .accessibilityValue(showsReplayRouteOnly ? "On" : "Off")
+        }
+        .padding(4)
+        .background(.thinMaterial, in: Capsule())
+        .accessibilityElement(children: .contain)
+    }
+
     private var mapUpdateInterval: TimeInterval {
         // Only redraw rapidly while a packet marker or pulse is moving. Once
         // routes are static, a one-second refresh is enough for their fade-out.
-        activePings.contains { $0.isPulse || $0.travelProgress() < 1.0 }
+        pingsForDisplay.contains { $0.isPulse || $0.travelProgress() < 1.0 }
             ? 1.0 / 12.0
             : 1.0
     }
@@ -475,7 +615,7 @@ struct MapScreen: View {
     }
 
     private func trailDots(at date: Date) -> [TrailDot] {
-        activePings
+        pingsForDisplay
             .filter { !$0.isExpired(at: date) && !$0.isPulse && $0.travelProgress(at: date) < 1.0 }
             .flatMap { ping in
                 let travelProgress = ping.travelProgress(at: date)
@@ -543,11 +683,92 @@ struct MapScreen: View {
         self.visibleRegion = region
     }
 
+    private func queuePacketReplay() {
+        pendingReplayRequestID = packetReplayStore.requestID
+        guard !isChangingRegion else { return }
+        replayPendingPacketIfNeeded()
+    }
+
+    private func replayPendingPacketIfNeeded() {
+        guard pendingReplayRequestID == packetReplayStore.requestID else { return }
+        pendingReplayRequestID = nil
+        replayPacketRoute()
+    }
+
+    private func replayPacketRoute(recenter: Bool = true) {
+        let coordinates = packetReplayStore.resolvedPath.compactMap { publicKey in
+            validCoordinate(viewModel.nodesByPubkey[publicKey.lowercased()]?.coordinate)
+        }
+        guard coordinates.count >= 2 else { return }
+
+        let routeColor: Color = colorScheme == .dark
+            ? Color(red: 0.35, green: 0.78, blue: 1.0)
+            : .orange
+        let signalColor: Color = colorScheme == .dark ? .orange : .blue
+
+        // Travel: each hop's signal dot starts moving `travelStagger` after
+        // the previous one, so the dot visibly hops down the route in order.
+        let travelStagger = 0.30
+        let travelDuration = 1.35
+        let replayStart = Date.now.addingTimeInterval(0.25)
+        let hopCount = coordinates.count - 1
+
+        // Fade: rather than every segment decaying on the same clock (which
+        // reads as the whole route dissolving at once regardless of how the
+        // travel was staggered), each hop's fade only begins once the
+        // previous hop has fully dissolved — so the route disappears in the
+        // same first-hop-to-last-hop order it was drawn in. `holdAfterTravel`
+        // keeps the completed route fully visible briefly once the signal
+        // reaches the end, before the sequential dissolve starts.
+        let holdAfterTravel = 1.5
+        let fadeDurationPerSegment = 1.0
+        let lastTravelEnd = replayStart.addingTimeInterval(Double(max(hopCount - 1, 0)) * travelStagger + travelDuration)
+        let fadeSequenceStart = lastTravelEnd.addingTimeInterval(holdAfterTravel)
+
+        let segments = zip(coordinates, coordinates.dropFirst()).enumerated().map { index, pair in
+            ActivePing(
+                from: pair.0,
+                to: pair.1,
+                createdAt: replayStart.addingTimeInterval(Double(index) * travelStagger),
+                fadeStartsAt: fadeSequenceStart.addingTimeInterval(Double(index) * fadeDurationPerSegment),
+                duration: fadeDurationPerSegment,
+                travelDuration: travelDuration,
+                color: routeColor,
+                signalColor: signalColor
+            )
+        }
+        replayPings = segments
+        isReplayMode = true
+        hasCenteredCamera = true
+
+        guard recenter else { return }
+
+        let latitudeRange = coordinates.map(\.latitude)
+        let longitudeRange = coordinates.map(\.longitude)
+        guard let minimumLatitude = latitudeRange.min(),
+              let maximumLatitude = latitudeRange.max(),
+              let minimumLongitude = longitudeRange.min(),
+              let maximumLongitude = longitudeRange.max() else {
+            return
+        }
+
+        let center = CLLocationCoordinate2D(
+            latitude: (minimumLatitude + maximumLatitude) / 2,
+            longitude: (minimumLongitude + maximumLongitude) / 2
+        )
+        let radiusKm = max(
+            max(maximumLatitude - minimumLatitude, maximumLongitude - minimumLongitude) * 42,
+            5
+        )
+        moveCamera(to: center, radiusKm: radiusKm)
+    }
+
     private func centerOnUserLocation() {
         isLocatingUser = true
         locationManager.requestCurrentLocation(
             completion: { coordinate in
-                moveCamera(to: coordinate, radiusKm: 25)
+                userLocation = coordinate
+                moveCamera(to: coordinate, radiusKm: 10)
                 isLocatingUser = false
             },
             failure: {
@@ -578,6 +799,7 @@ struct MapScreen: View {
     }
 
     private func zoomToRegionSelection() async {
+        guard !isReplayMode else { return }
         guard let selectedRegion = regionFilter.selectedRegion else {
             if let defaults = viewModel.mapDefaults {
                 moveCamera(
@@ -589,7 +811,7 @@ struct MapScreen: View {
         }
 
         let code = selectedRegion.uppercased()
-        if let coordinate = iataCoordinates[code] {
+        if let coordinate = iataCoordinates[code], !isReplayMode {
             moveCamera(to: coordinate)
             return
         }
@@ -601,6 +823,7 @@ struct MapScreen: View {
               let coordinate = response.mapItems.first?.placemark.coordinate,
               CLLocationCoordinate2DIsValid(coordinate),
               !Task.isCancelled,
+              !isReplayMode,
               regionFilter.selectedRegion?.uppercased() == code else {
             return
         }
@@ -609,11 +832,11 @@ struct MapScreen: View {
         moveCamera(to: coordinate)
     }
 
-    private func moveCamera(to center: CLLocationCoordinate2D, radiusKm: Double = 65) {
-        let latitudeSpan = max((radiusKm * 2.4) / 111, 0.3)
+    private func moveCamera(to center: CLLocationCoordinate2D, radiusKm: Double = 45) {
+        let latitudeSpan = max((radiusKm * 2.4) / 111, 0.15)
         let longitudeSpan = max(
             latitudeSpan / max(cos(center.latitude * .pi / 180), 0.2),
-            0.3
+            0.15
         )
         let region = MKCoordinateRegion(
             center: center,
@@ -652,7 +875,7 @@ struct MapScreen: View {
             guard age < 12.0 else { continue }
 
             let subchains = resolvedSubchains(for: packet)
-            let pathColor = ActivePing.color(forHash: packet.hash)
+            let pathColor = ActivePing.color(forHash: packet.hash, colorScheme: colorScheme)
 
             for subchain in subchains {
                 if subchain.count >= 2 {
@@ -707,7 +930,7 @@ struct MapScreen: View {
             processedEventIds.insert(eventKey)
 
             let subchains = resolvedSubchains(for: event)
-            let pathColor = ActivePing.color(forHash: event.data.hash ?? event.data.raw)
+            let pathColor = ActivePing.color(forHash: event.data.hash ?? event.data.raw, colorScheme: colorScheme)
 
             for subchain in subchains {
                 if subchain.count >= 2 {
