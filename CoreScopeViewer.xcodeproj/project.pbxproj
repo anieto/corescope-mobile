@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		01D4A148FE7AC5A25B15E907 /* PacketDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5A6EF6652A955D16C20CA75 /* PacketDetail.swift */; };
 		036ACF59063991FAB8B4D9A0 /* URLPathEncodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B302D4D26193BFC6975CDF82 /* URLPathEncodingTests.swift */; };
+		03B190BC4F609F777566C95A /* PacketFeedCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DAD10D87590C6C200BFBC6E /* PacketFeedCache.swift */; };
 		0C8DD2E83491E4744AEA1380 /* ChannelsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B90D68BBC5B7652894943018 /* ChannelsViewModel.swift */; };
 		0F0D91D6301E5CA8492D24A1 /* PacketFeedScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = E60D53B8493F9BAD7C5BAD05 /* PacketFeedScreen.swift */; };
 		14122A2028E526B38FA4AEE4 /* ObserversListScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B88FE5992019C3F4F94F11D /* ObserversListScreen.swift */; };
@@ -30,25 +31,24 @@
 		67B0687608CD2E73C4D606AE /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 156F101DF4008880E14D2E48 /* APIClient.swift */; };
 		6A8C5BB6EED7A1F412DCCA73 /* AnalyzerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = C065EB0A8515DA2BC9A34D70 /* AnalyzerConfig.swift */; };
 		720AC3BF3F9FAFDCD5C48C40 /* LoadingIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D52E290B7121585A1C7A0699 /* LoadingIndicator.swift */; };
-		A9C41AD63E21693DABA18C9F /* ReadableColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A05AD75F2429884974FCAFE3 /* ReadableColor.swift */; };
-		7FD64E780858931DB83D7626 /* SenderColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 907E1808B28C42142DC60CCB /* SenderColor.swift */; };
-		C5B8E5C6A515B18A0419E5F1 /* RelativeTime.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5EABD7FB6F88E772BFADCD1 /* RelativeTime.swift */; };
 		73FBC544410EBB6331BE2670 /* NodeRoleStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73004474B78DC6135A5F3FD4 /* NodeRoleStyle.swift */; };
 		748C3658362BEB182690BA21 /* us-sources.json in Resources */ = {isa = PBXBuildFile; fileRef = C779CBD001144856373F59F6 /* us-sources.json */; };
+		7FD64E780858931DB83D7626 /* SenderColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 907E1808B28C42142DC60CCB /* SenderColor.swift */; };
 		895D2DD9450C64472E7693F6 /* NodeHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2267353D97D345808DF80E40 /* NodeHealth.swift */; };
 		9083F3FDE761C318E4470B7D /* RegionFilterMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BE824AF6B92A1D9B2F38BFD /* RegionFilterMenu.swift */; };
 		90D4CE6F2C401B52C0B93D79 /* ChannelListCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9015F94DEA99D9D7D3D862F9 /* ChannelListCache.swift */; };
-		B0DCED8334A1BA3F9BC785AA /* ChannelMessagesCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FE9E05B0BCB29E6CD05859F /* ChannelMessagesCache.swift */; };
-		03B190BC4F609F777566C95A /* PacketFeedCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DAD10D87590C6C200BFBC6E /* PacketFeedCache.swift */; };
 		9599A7997960A45E6E506D71 /* LiveFeedMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7203589BC65FD11EE431398C /* LiveFeedMessage.swift */; };
 		991103E1F7308562934622AD /* AboutScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37795BF9DC79999D3E6DE8A3 /* AboutScreen.swift */; };
 		A062762334B67CCF1DBD2BF2 /* MapScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD272A0CF4993A57B4A1C6D /* MapScreen.swift */; };
+		A9C41AD63E21693DABA18C9F /* ReadableColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A05AD75F2429884974FCAFE3 /* ReadableColor.swift */; };
 		ACBA05674E6F7E851685EB56 /* LiveFeedService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A62096554B0D06BB184965F9 /* LiveFeedService.swift */; };
+		B0DCED8334A1BA3F9BC785AA /* ChannelMessagesCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FE9E05B0BCB29E6CD05859F /* ChannelMessagesCache.swift */; };
 		B2894ACD708E45B661A41E4A /* PacketReplayStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EA14BD4E3A32FA9B63B54B0 /* PacketReplayStore.swift */; };
 		B5BD63C91E6B93FAA59ED007 /* ActivePing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B81EF733A0ED4E34BFF0B04 /* ActivePing.swift */; };
 		B5E00F5D8D1377267C747B76 /* RootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DCDF693CC75852E92D3700F /* RootTabView.swift */; };
 		BE866EEEF408BDB6C8E103D8 /* MapViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEE734231B3A2D9FDE62ADB6 /* MapViewModel.swift */; };
 		C164A5108399198FAE295FE5 /* ObserverRegionLookup.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADCAFF1DCB55B911F5AFFC20 /* ObserverRegionLookup.swift */; };
+		C5B8E5C6A515B18A0419E5F1 /* RelativeTime.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5EABD7FB6F88E772BFADCD1 /* RelativeTime.swift */; };
 		D0703CF5F57B875F611F2ADD /* PacketDetailScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD5219A5DB2C5DFB2F49A982 /* PacketDetailScreen.swift */; };
 		D79DF7E587202E277463644A /* AnalyzerSourcePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BA4982D8889A079D6CEBCB9 /* AnalyzerSourcePicker.swift */; };
 		D86C8FE8DEB5CE51B1FFC834 /* CoreScopeViewerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AD4E0C32DC0423479F83C43 /* CoreScopeViewerApp.swift */; };
@@ -82,17 +82,19 @@
 		33B9A5F539B49B860F434D81 /* Channel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Channel.swift; sourceTree = "<group>"; };
 		37795BF9DC79999D3E6DE8A3 /* AboutScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutScreen.swift; sourceTree = "<group>"; };
 		3C78C1620C6A3A352DD6B687 /* ModelDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDecodingTests.swift; sourceTree = "<group>"; };
+		3DAD10D87590C6C200BFBC6E /* PacketFeedCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketFeedCache.swift; sourceTree = "<group>"; };
 		3E45D252950987721EF3D106 /* AnalyzerSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerSettings.swift; sourceTree = "<group>"; };
 		3EA14BD4E3A32FA9B63B54B0 /* PacketReplayStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketReplayStore.swift; sourceTree = "<group>"; };
 		4B3BFBBCF86390A7CA4DC384 /* ChannelDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelDetailScreen.swift; sourceTree = "<group>"; };
 		4BA4982D8889A079D6CEBCB9 /* AnalyzerSourcePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerSourcePicker.swift; sourceTree = "<group>"; };
 		4E7320B1D9D6A2930636717B /* ObserverDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObserverDetailScreen.swift; sourceTree = "<group>"; };
 		5394A1ABEC13641DD68ADB69 /* Node.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Node.swift; sourceTree = "<group>"; };
+		5FE9E05B0BCB29E6CD05859F /* ChannelMessagesCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelMessagesCache.swift; sourceTree = "<group>"; };
 		676EB2594CA764CE13BDDE59 /* Observer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Observer.swift; sourceTree = "<group>"; };
 		6AD4E0C32DC0423479F83C43 /* CoreScopeViewerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreScopeViewerApp.swift; sourceTree = "<group>"; };
 		6BD272A0CF4993A57B4A1C6D /* MapScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapScreen.swift; sourceTree = "<group>"; };
 		6BE824AF6B92A1D9B2F38BFD /* RegionFilterMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionFilterMenu.swift; sourceTree = "<group>"; };
-		6CC49543CC83FFA8F008F3A0 /* CoreScopeViewer.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CoreScopeViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6CC49543CC83FFA8F008F3A0 /* CoreScopeViewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoreScopeViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6EDB07FE4BF732F4BA52606B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7203589BC65FD11EE431398C /* LiveFeedMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveFeedMessage.swift; sourceTree = "<group>"; };
 		73004474B78DC6135A5F3FD4 /* NodeRoleStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeRoleStyle.swift; sourceTree = "<group>"; };
@@ -104,10 +106,10 @@
 		7DDB2DCCCDD470E5A169EBA3 /* MonitoredChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitoredChannel.swift; sourceTree = "<group>"; };
 		8464149BFBEDBC4B0BB32E42 /* CoreScopeViewerTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CoreScopeViewerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9015F94DEA99D9D7D3D862F9 /* ChannelListCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelListCache.swift; sourceTree = "<group>"; };
-		5FE9E05B0BCB29E6CD05859F /* ChannelMessagesCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelMessagesCache.swift; sourceTree = "<group>"; };
-		3DAD10D87590C6C200BFBC6E /* PacketFeedCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketFeedCache.swift; sourceTree = "<group>"; };
+		907E1808B28C42142DC60CCB /* SenderColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SenderColor.swift; sourceTree = "<group>"; };
 		95B46AA4A5FB82FC08E16B31 /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
 		9F93FC8366CD37CCF8C3B02C /* ChannelMonitorStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelMonitorStore.swift; sourceTree = "<group>"; };
+		A05AD75F2429884974FCAFE3 /* ReadableColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadableColor.swift; sourceTree = "<group>"; };
 		A62096554B0D06BB184965F9 /* LiveFeedService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveFeedService.swift; sourceTree = "<group>"; };
 		A9AFF0E38F9E8C2C60829E93 /* OnboardingScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingScreen.swift; sourceTree = "<group>"; };
 		ADCAFF1DCB55B911F5AFFC20 /* ObserverRegionLookup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObserverRegionLookup.swift; sourceTree = "<group>"; };
@@ -122,12 +124,10 @@
 		CD5219A5DB2C5DFB2F49A982 /* PacketDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketDetailScreen.swift; sourceTree = "<group>"; };
 		D4C7F345F00561DDBC5C46D1 /* ChannelsListScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelsListScreen.swift; sourceTree = "<group>"; };
 		D52E290B7121585A1C7A0699 /* LoadingIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingIndicator.swift; sourceTree = "<group>"; };
-		A05AD75F2429884974FCAFE3 /* ReadableColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadableColor.swift; sourceTree = "<group>"; };
-		907E1808B28C42142DC60CCB /* SenderColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SenderColor.swift; sourceTree = "<group>"; };
-		F5EABD7FB6F88E772BFADCD1 /* RelativeTime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelativeTime.swift; sourceTree = "<group>"; };
 		E4ABA4E1CD390396A7DC9A33 /* AnalyzerSourceRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerSourceRegistry.swift; sourceTree = "<group>"; };
 		E60D53B8493F9BAD7C5BAD05 /* PacketFeedScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketFeedScreen.swift; sourceTree = "<group>"; };
 		EA006DDF6B3AF7AC55C16467 /* Packet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Packet.swift; sourceTree = "<group>"; };
+		F5EABD7FB6F88E772BFADCD1 /* RelativeTime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelativeTime.swift; sourceTree = "<group>"; };
 		FEE734231B3A2D9FDE62ADB6 /* MapViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapViewModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -504,7 +504,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 0.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.meshtexas.nodescope;
 				SDKROOT = iphoneos;
 				SWIFT_STRICT_CONCURRENCY = complete;
@@ -690,7 +690,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 0.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.meshtexas.nodescope;
 				SDKROOT = iphoneos;
 				SWIFT_STRICT_CONCURRENCY = complete;

@@ -67,5 +67,9 @@ this repository.
 
 ## License
 
-NodeScope is available under the [MIT License](LICENSE).
-
+NodeScope is free and open-source software licensed under the
+[GNU General Public License version 3](LICENSE), with a narrow
+[Application Store Distribution Exception](LICENSE-APP-STORE-EXCEPTION.md).
+Commercial use is allowed, but distributed modifications must remain under
+GPLv3 and their corresponding source must be made available to recipients.
+See [NOTICE](NOTICE) for the required attribution.

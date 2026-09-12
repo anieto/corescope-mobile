@@ -84,6 +84,25 @@ struct AboutScreen: View {
                     }
                 }
             }
+
+            Section("License") {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("NodeScope · Copyright © 2026 Adam Nieto")
+                        .font(.subheadline.weight(.semibold))
+                    Text(
+                        "Free and open-source software licensed under GNU GPL version 3 with an application-store distribution exception. You may share and modify it under those terms. NodeScope comes with absolutely no warranty."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 2)
+
+                if let licenseURL = URL(string: "https://www.gnu.org/licenses/gpl-3.0.html") {
+                    Link(destination: licenseURL) {
+                        ProjectLinkRow(icon: "doc.text.fill", title: "View GPLv3 License")
+                    }
+                }
+            }
         }
         .contentMargins(.bottom, 104, for: .scrollContent)
         .navigationTitle("About")
