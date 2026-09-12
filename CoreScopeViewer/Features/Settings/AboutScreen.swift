@@ -44,7 +44,7 @@ struct AboutScreen: View {
                 Text(
                     "This app has no backend of its own. Everything shown here comes " +
                     "from whatever analyzer host is configured in Settings, and it's " +
-                    "not affiliated with the CoreScope project or MeshTexas."
+                    "not affiliated with the CoreScope or MeshCore projects."
                 )
                 .foregroundStyle(.secondary)
             }
@@ -72,11 +72,17 @@ struct AboutScreen: View {
                 )
             }
 
-            // TODO: replace with the real URLs once the CoreScope project
-            // link and NodeScope's GitHub page are available.
             Section("Project Links") {
-                PlaceholderLinkRow(icon: "shippingbox.fill", title: "CoreScope Project")
-                PlaceholderLinkRow(icon: "chevron.left.forwardslash.chevron.right", title: "NodeScope on GitHub")
+                if let coreScopeURL = URL(string: "https://github.com/Kpa-clawbot/CoreScope") {
+                    Link(destination: coreScopeURL) {
+                        ProjectLinkRow(icon: "shippingbox.fill", title: "CoreScope Project")
+                    }
+                }
+                if let nodeScopeURL = URL(string: "https://github.com/anieto/corescope-mobile") {
+                    Link(destination: nodeScopeURL) {
+                        ProjectLinkRow(icon: "chevron.left.forwardslash.chevron.right", title: "NodeScope on GitHub")
+                    }
+                }
             }
         }
         .contentMargins(.bottom, 104, for: .scrollContent)
@@ -107,7 +113,7 @@ struct AboutScreen: View {
     }
 }
 
-private struct PlaceholderLinkRow: View {
+private struct ProjectLinkRow: View {
     let icon: String
     let title: String
 
@@ -120,12 +126,9 @@ private struct PlaceholderLinkRow: View {
             Text(title)
                 .font(.subheadline)
             Spacer()
-            Text("Coming Soon")
-                .font(.caption2.weight(.semibold))
+            Image(systemName: "arrow.up.right")
+                .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(.quaternary, in: Capsule())
         }
         .foregroundStyle(.secondary)
     }
