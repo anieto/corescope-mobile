@@ -23,6 +23,9 @@ final class PacketDetailViewModel {
             detail = try await apiClient.get("/api/packets/\(hash.urlPathComponentEncoded)")
             errorMessage = nil
         } catch {
+            if error is CancellationError || (error as? URLError)?.code == .cancelled {
+                return
+            }
             errorMessage = error.localizedDescription
         }
     }

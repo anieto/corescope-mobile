@@ -53,7 +53,26 @@ struct ObserverAnalyticsResponse: Codable, Sendable {
     let packetTypes: [String: Int]
     let nodesTimeline: [LabeledCount]
     let snrDistribution: [SnrBucket]
-    let recentPackets: [Packet]
+    let recentPackets: [ObserverRecentPacket]
+}
+
+/// The observer analytics endpoint returns a lightweight packet projection,
+/// not the complete `/api/packets` shape represented by `Packet`.
+struct ObserverRecentPacket: Codable, Sendable, Identifiable {
+    let id: Int
+    let hash: String
+    let timestamp: Date
+    let payloadType: Int
+    let snr: Double?
+    let rssi: Double?
+    let direction: String?
+
+    var payloadTypeName: String { PayloadType.name(for: payloadType) }
+
+    enum CodingKeys: String, CodingKey {
+        case id, hash, timestamp, snr, rssi, direction
+        case payloadType = "payload_type"
+    }
 }
 
 struct LabeledCount: Codable, Sendable, Identifiable {

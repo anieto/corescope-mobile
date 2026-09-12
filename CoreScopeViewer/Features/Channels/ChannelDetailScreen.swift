@@ -6,16 +6,29 @@ struct ChannelDetailScreen: View {
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(ObserverRegionLookup.self) private var observerRegionLookup
     @Environment(ChannelMonitorStore.self) private var monitorStore
+    @Environment(LiveFeedService.self) private var liveFeed
     @State private var viewModel = ChannelsViewModel()
+    @State private var lastProcessedLiveEventID: Int?
+    @State private var liveRefreshTask: Task<Void, Never>?
+
+    private let scrollBottomID = "channel-conversation-bottom"
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 14) {
                     ForEach(orderedMessages) { message in
-                        ChatBubbleRow(message: message)
+                        ChatBubbleRow(
+                            message: message,
+                            isTrailing: messageSides[message.id] ?? false
+                        )
                             .id(message.id)
                     }
+
+                    Color.clear
+                        .frame(height: 92)
+                        .id(scrollBottomID)
+                        .accessibilityHidden(true)
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 12)
@@ -43,9 +56,10 @@ struct ChannelDetailScreen: View {
                 )
             }
         }
-        .overlay {
+        .overlay(alignment: .top) {
             if viewModel.isLoading {
-                LoadingIndicator()
+                LoadingIndicator(title: "Loading messages…")
+                    .padding(.top, 8)
             }
         }
         .task(id: "\(channel.hash)|\(regionFilter.selectedRegion ?? "")") {
@@ -56,8 +70,48 @@ struct ChannelDetailScreen: View {
             PacketDetailScreen(message: message)
         }
         .refreshable {
-            await loadMessages()
+            await loadMessages(forceRefresh: true)
         }
+        .onChange(of: liveFeed.recentEvents.first?.id) {
+            scheduleLiveRefreshIfNeeded()
+        }
+        .onDisappear {
+            liveRefreshTask?.cancel()
+        }
+    }
+
+    /// New GRP_TXT packets arrive continuously over the shared WebSocket feed
+    /// while this screen is open. A single new message often shows up as
+    /// several back-to-back events (once per observer), so this waits for a
+    /// short quiet period before re-fetching rather than refreshing on every
+    /// individual event.
+    ///
+    /// The relevance check below is deliberately permissive rather than a
+    /// strict `type == "packet" && payloadType == grpTxt` match: the feed can
+    /// also emit `type == "message"` events (undocumented shape, never
+    /// modeled here), and a "packet" event can legitimately arrive with
+    /// `decoded` entirely absent (decode can happen asynchronously
+    /// server-side). Treating both of those as "something may be relevant,
+    /// go check" — rather than silently dropping them — trades a few extra
+    /// refreshes for actually catching new messages.
+    private func scheduleLiveRefreshIfNeeded() {
+        guard let latestEvent = liveFeed.recentEvents.first,
+              latestEvent.id != lastProcessedLiveEventID else { return }
+        lastProcessedLiveEventID = latestEvent.id
+        guard isPossiblyChannelRelevant(latestEvent) else { return }
+
+        liveRefreshTask?.cancel()
+        liveRefreshTask = Task {
+            try? await Task.sleep(for: .seconds(1))
+            guard !Task.isCancelled else { return }
+            await loadMessages(forceRefresh: true)
+        }
+    }
+
+    private func isPossiblyChannelRelevant(_ event: LiveEnvelope) -> Bool {
+        guard event.type == "packet" else { return true }
+        let payloadType = event.data.decoded?.header?.payloadType
+        return payloadType == nil || payloadType == PayloadType.grpTxt.rawValue
     }
 
     /// /api/channels/:hash/messages has no region query parameter, unlike
@@ -78,86 +132,139 @@ struct ChannelDetailScreen: View {
         return messages.sorted { $0.timestamp < $1.timestamp }
     }
 
-    private func loadMessages() async {
+    /// Alternates speakers across the conversation, while preserving a
+    /// sender's side for an uninterrupted run of their own messages.
+    private var messageSides: [Int: Bool] {
+        var sides: [Int: Bool] = [:]
+        var previousSender: String?
+        var isTrailing = false
+
+        for message in orderedMessages {
+            if let previousSender, previousSender != message.sender {
+                isTrailing.toggle()
+            }
+            sides[message.id] = isTrailing
+            previousSender = message.sender
+        }
+        return sides
+    }
+
+    private func loadMessages(forceRefresh: Bool = false) async {
         if let monitoredChannel = monitorStore.channel(matching: channel) {
             await viewModel.loadMonitoredMessages(
                 channel: monitoredChannel,
-                region: regionFilter.selectedRegion
+                region: regionFilter.selectedRegion,
+                forceRefresh: forceRefresh
             )
             monitorStore.updateSummary(for: monitoredChannel.channelName, messages: viewModel.messages)
         } else {
-            await viewModel.loadMessages(hash: channel.hash)
+            await viewModel.loadMessages(hash: channel.hash, forceRefresh: forceRefresh)
         }
     }
 
     private func scrollToBottom(proxy: ScrollViewProxy, animated: Bool = true) {
-        guard let last = orderedMessages.last else { return }
+        guard !orderedMessages.isEmpty else { return }
         if animated {
             withAnimation {
-                proxy.scrollTo(last.id, anchor: .bottom)
+                proxy.scrollTo(scrollBottomID, anchor: .bottom)
             }
         } else {
-            proxy.scrollTo(last.id, anchor: .bottom)
+            proxy.scrollTo(scrollBottomID, anchor: .bottom)
         }
     }
 }
 
 private struct ChatBubbleRow: View {
     let message: ChannelMessage
+    let isTrailing: Bool
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(message.sender)
-                .font(.caption.bold())
-                .foregroundStyle(senderColor)
-                .padding(.leading, 4)
+        HStack(spacing: 0) {
+            if isTrailing {
+                Spacer(minLength: 0)
+            }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(message.text)
-                    .font(.body)
-                    .foregroundStyle(.primary)
-                    .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: isTrailing ? .trailing : .leading, spacing: 3) {
+                Text(message.sender)
+                    .font(.caption.bold())
+                    .foregroundStyle(SenderColor.color(for: message.sender, colorScheme: colorScheme))
+                    .padding(isTrailing ? .trailing : .leading, 4)
 
-                HStack(spacing: 6) {
-                    Text(message.timestamp.formatted(date: .omitted, time: .shortened))
-                    if message.repeats > 1 {
-                        Text("· heard \(message.repeats)×")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(message.text)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(message.timestamp.formatted(date: .abbreviated, time: .shortened))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+
+                    HStack(spacing: 6) {
+                        if message.repeats > 1 {
+                            MessageMetricChip(
+                                text: "Heard \(message.repeats)×",
+                                symbol: "ear.fill",
+                                color: NodeScopeStyle.signal
+                            )
+                        }
+                        MessageMetricChip(
+                            text: "\(message.hops) hop\(message.hops == 1 ? "" : "s")",
+                            symbol: "point.3.connected.trianglepath.dotted",
+                            color: NodeScopeStyle.activity
+                        )
+                        if let snr = message.snr {
+                            MessageMetricChip(
+                                text: String(format: "%.1f dB", snr),
+                                symbol: "waveform",
+                                color: .secondary
+                            )
+                        }
                     }
-                    Text("· \(message.hops) hop\(message.hops == 1 ? "" : "s")")
-                    if let snr = message.snr {
-                        Text("· \(String(format: "%.1f dB", snr))")
+
+                    NavigationLink(value: message) {
+                        Label("View Packet", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
+                            .font(.caption.weight(.semibold))
                     }
                 }
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-
-                NavigationLink(value: message) {
-                    Label("View Packet", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
-                        .font(.caption.weight(.semibold))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    SenderColor.bubbleFill(for: message.sender, colorScheme: colorScheme),
+                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(SenderColor.bubbleStroke(for: message.sender, colorScheme: colorScheme), lineWidth: 1)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(bubbleFill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(senderColor.opacity(colorScheme == .dark ? 0.55 : 0.25), lineWidth: 1)
+
+            if !isTrailing {
+                Spacer(minLength: 0)
             }
         }
-        .frame(maxWidth: 300, alignment: .leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity)
     }
+}
 
-    /// A consistent, deterministic color per sender (not per message) so a
-    /// conversation with multiple senders reads visually like a group chat.
-    private var senderColor: Color {
-        let palette: [Color] = [.blue, .green, .orange, .purple, .pink, .teal, .indigo, .brown]
-        let index = abs(message.sender.hashValue) % palette.count
-        return palette[index]
-    }
+private struct MessageMetricChip: View {
+    let text: String
+    let symbol: String
+    let color: Color
+    @Environment(\.colorScheme) private var colorScheme
 
-    private var bubbleFill: Color {
-        senderColor.opacity(colorScheme == .dark ? 0.34 : 0.16)
+    var body: some View {
+        // NodeScopeStyle.activity (and any similarly bright accent color) is
+        // too light to read as text against this bubble's light-mode
+        // background at full saturation — readableForeground keeps its
+        // orange identity but pulls the brightness into a legible range.
+        let readableColor = color.readableForeground(for: colorScheme)
+        Label(text, systemImage: symbol)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(readableColor)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 4)
+            .background(readableColor.opacity(0.11), in: Capsule())
     }
 }

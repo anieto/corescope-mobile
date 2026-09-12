@@ -30,6 +30,16 @@ final class ObserversViewModel {
 
     func loadAnalytics(id: String) async {
         guard let apiClient else { return }
-        analytics = try? await apiClient.get("/api/observers/\(id.urlPathComponentEncoded)/analytics")
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            analytics = try await apiClient.get("/api/observers/\(id.urlPathComponentEncoded)/analytics")
+            errorMessage = nil
+        } catch {
+            if error is CancellationError || (error as? URLError)?.code == .cancelled {
+                return
+            }
+            errorMessage = error.localizedDescription
+        }
     }
 }

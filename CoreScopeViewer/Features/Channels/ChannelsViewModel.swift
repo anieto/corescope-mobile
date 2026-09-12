@@ -45,38 +45,39 @@ final class ChannelsViewModel {
         _ = try? await ChannelListCache.shared.load(for: key, using: apiClient)
     }
 
-    func loadMessages(hash: String) async {
+    func loadMessages(hash: String, forceRefresh: Bool = false) async {
         guard let apiClient else { return }
-        isLoading = true
+        isLoading = messages.isEmpty
         defer { isLoading = false }
         do {
-            let response: ChannelMessagesResponse = try await apiClient.get(
-                "/api/channels/\(hash.urlPathComponentEncoded)/messages"
+            let key = ChannelMessagesCache.Key(source: apiClient.cacheIdentifier, hash: hash)
+            messages = try await ChannelMessagesCache.shared.load(
+                for: key,
+                using: apiClient,
+                forceRefresh: forceRefresh
             )
-            messages = response.messages
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
-    func loadMonitoredMessages(channel: MonitoredChannel, region: String?) async {
+    func loadMonitoredMessages(channel: MonitoredChannel, region: String?, forceRefresh: Bool = false) async {
         guard let apiClient,
               let channelHash = ChannelCrypto.channelHash(for: channel.keyHex) else { return }
         isLoading = messages.isEmpty
         defer { isLoading = false }
 
         do {
-            var query = [
-                URLQueryItem(name: "limit", value: "1000"),
-                URLQueryItem(name: "payloadType", value: "5")
-            ]
-            if let region {
-                query.append(URLQueryItem(name: "region", value: region))
-            }
-            let response: PacketsResponse = try await apiClient.get("/api/packets", query: query)
-            messages = response.packets.compactMap {
-                decrypt(packet: $0, channel: channel, channelHash: channelHash)
+            let key = PacketFeedCache.Key(source: apiClient.cacheIdentifier, region: region)
+            let packets = try await PacketFeedCache.shared.load(
+                for: key,
+                using: apiClient,
+                forceRefresh: forceRefresh
+            )
+            messages = packets.compactMap { packet in
+                guard let payload = Self.parsePayload(for: packet) else { return nil }
+                return Self.message(from: packet, payload: payload, channel: channel, channelHash: channelHash)
             }
             errorMessage = nil
         } catch {
@@ -87,24 +88,27 @@ final class ChannelsViewModel {
     func refreshMonitoredSummaries(
         channels: [MonitoredChannel],
         region: String?,
-        monitorStore: ChannelMonitorStore
+        monitorStore: ChannelMonitorStore,
+        forceRefresh: Bool = false
     ) async {
         guard let apiClient, !channels.isEmpty else { return }
 
         do {
-            var query = [
-                URLQueryItem(name: "limit", value: "1000"),
-                URLQueryItem(name: "payloadType", value: "5")
-            ]
-            if let region {
-                query.append(URLQueryItem(name: "region", value: region))
+            let key = PacketFeedCache.Key(source: apiClient.cacheIdentifier, region: region)
+            let packets = try await PacketFeedCache.shared.load(for: key, using: apiClient, forceRefresh: forceRefresh)
+
+            // Each packet's payload is independent of which channel is being
+            // summarized, so it's parsed once here rather than once per
+            // channel — with several monitored channels that previously meant
+            // re-decoding the same JSON for every one of them.
+            let parsedPackets = packets.compactMap { packet in
+                Self.parsePayload(for: packet).map { (packet: packet, payload: $0) }
             }
-            let response: PacketsResponse = try await apiClient.get("/api/packets", query: query)
 
             for channel in channels {
                 guard let channelHash = ChannelCrypto.channelHash(for: channel.keyHex) else { continue }
-                let messages = response.packets.compactMap {
-                    decrypt(packet: $0, channel: channel, channelHash: channelHash)
+                let messages = parsedPackets.compactMap {
+                    Self.message(from: $0.packet, payload: $0.payload, channel: channel, channelHash: channelHash)
                 }
                 monitorStore.updateSummary(for: channel.channelName, messages: messages)
             }
@@ -114,13 +118,22 @@ final class ChannelsViewModel {
         }
     }
 
-    private func decrypt(packet: Packet, channel: MonitoredChannel, channelHash: Int) -> ChannelMessage? {
+    private static let payloadDecoder = JSONDecoder()
+
+    private static func parsePayload(for packet: Packet) -> GroupPayload? {
         guard let decodedJSON = packet.decodedJson,
-              let data = decodedJSON.data(using: .utf8),
-              let payload = try? JSONDecoder().decode(GroupPayload.self, from: data) else {
+              let data = decodedJSON.data(using: .utf8) else {
             return nil
         }
+        return try? payloadDecoder.decode(GroupPayload.self, from: data)
+    }
 
+    private static func message(
+        from packet: Packet,
+        payload: GroupPayload,
+        channel: MonitoredChannel,
+        channelHash: Int
+    ) -> ChannelMessage? {
         if payload.type == "CHAN", payload.channel == channel.channelName {
             return ChannelMessage(
                 sender: payload.sender ?? "Unknown",

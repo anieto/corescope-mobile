@@ -5,9 +5,22 @@ struct AboutScreen: View {
         List {
             Section {
                 VStack(spacing: 10) {
-                    Image(systemName: "antenna.radiowaves.left.and.right.circle.fill")
-                        .font(.system(size: 56))
-                        .foregroundStyle(Color.accentColor)
+                    if let appIcon = Self.appIcon {
+                        Image(uiImage: appIcon)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 72, height: 72)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(.white.opacity(0.15), lineWidth: 1)
+                            }
+                            .shadow(color: .black.opacity(0.15), radius: 6, y: 3)
+                    } else {
+                        Image(systemName: "antenna.radiowaves.left.and.right.circle.fill")
+                            .font(.system(size: 56))
+                            .foregroundStyle(Color.accentColor)
+                    }
                     Text("NodeScope")
                         .font(.title3.weight(.semibold))
                     Text("Version \(Self.appVersion) (\(Self.buildNumber))")
@@ -58,7 +71,15 @@ struct AboutScreen: View {
                     detail: "Available on Map, Channels, and Observers. Narrows everything to one region and zooms the map there automatically."
                 )
             }
+
+            // TODO: replace with the real URLs once the CoreScope project
+            // link and NodeScope's GitHub page are available.
+            Section("Project Links") {
+                PlaceholderLinkRow(icon: "shippingbox.fill", title: "CoreScope Project")
+                PlaceholderLinkRow(icon: "chevron.left.forwardslash.chevron.right", title: "NodeScope on GitHub")
+            }
         }
+        .contentMargins(.bottom, 104, for: .scrollContent)
         .navigationTitle("About")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -69,6 +90,44 @@ struct AboutScreen: View {
 
     private static var buildNumber: String {
         Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
+    }
+
+    /// `Image("AppIcon")` can't resolve an asset catalog app-icon set
+    /// directly, so this reads the actual rendered icon filename Info.plist
+    /// records for the app (the same one iOS shows on the home screen) and
+    /// loads it by name instead.
+    private static var appIcon: UIImage? {
+        guard let icons = Bundle.main.infoDictionary?["CFBundleIcons"] as? [String: Any],
+              let primary = icons["CFBundlePrimaryIcon"] as? [String: Any],
+              let files = primary["CFBundleIconFiles"] as? [String],
+              let lastFile = files.last else {
+            return nil
+        }
+        return UIImage(named: lastFile)
+    }
+}
+
+private struct PlaceholderLinkRow: View {
+    let icon: String
+    let title: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .frame(width: 24)
+            Text(title)
+                .font(.subheadline)
+            Spacer()
+            Text("Coming Soon")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(.quaternary, in: Capsule())
+        }
+        .foregroundStyle(.secondary)
     }
 }
 

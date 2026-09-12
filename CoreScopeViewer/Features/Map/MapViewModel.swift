@@ -116,6 +116,7 @@ final class MapViewModel {
             hadCachedNodes = true
         } else {
             hadCachedNodes = false
+            errorMessage = nil
         }
 
         guard let apiClient,
@@ -143,6 +144,9 @@ final class MapViewModel {
             await MapResponseCache.shared.store(response, for: cacheKey)
             recordRefresh(for: cacheKey)
         } catch {
+            if error is CancellationError || (error as? URLError)?.code == .cancelled {
+                return
+            }
             if nodes.isEmpty {
                 errorMessage = error.localizedDescription
             }

@@ -1,16 +1,19 @@
 import SwiftUI
 
 struct SettingsScreen: View {
+    let resetID: UUID
+
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(LiveFeedService.self) private var liveFeed
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(ObserverRegionLookup.self) private var observerRegionLookup
     @Environment(AppearanceSettings.self) private var appearanceSettings
-    @State private var hostInput: String = ""
+    @State private var hostInput = ""
     @State private var sourceSaveStatus: SourceSaveStatus?
     @State private var sourceSaveID = UUID()
+    @State private var navigationPath = NavigationPath()
 
-    private enum SourceSaveStatus: Equatable {
+    fileprivate enum SourceSaveStatus: Equatable {
         case connecting
         case connected
         case failed(String)
@@ -19,94 +22,85 @@ struct SettingsScreen: View {
     var body: some View {
         @Bindable var appearanceSettings = appearanceSettings
 
-        NavigationStack {
-            Form {
-                Section {
+        NavigationStack(path: $navigationPath) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    SettingsHeader(isConnected: liveFeed.isConnected)
+
+                    SettingsPanel(title: "Appearance", symbol: "circle.lefthalf.filled") {
+                        Picker("Appearance", selection: $appearanceSettings.mode) {
+                            ForEach(AppearanceSettings.Mode.allCases) { mode in
+                                Text(mode.label).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                    }
+
+                    SettingsPanel(title: "Analyzer Source", symbol: "server.rack") {
+                        NavigationLink {
+                            AnalyzerSourcePickerScreen(
+                                selectedHost: $hostInput,
+                                appliesSelectionImmediately: true,
+                                onSelection: { host in applyHostChange(host) }
+                            )
+                        } label: {
+                            SettingsNavigationRow(
+                                title: "Choose Source",
+                                value: settings.host,
+                                symbol: "point.3.connected.trianglepath.dotted"
+                            )
+                        }
+                        .buttonStyle(.plain)
+
+                        Text("Every screen reads regions, areas, and map defaults from this CoreScope analyzer.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    SettingsPanel(title: "Connection", symbol: "wave.3.right") {
+                        ConnectionStatusRow(
+                            isConnected: liveFeed.isConnected,
+                            host: settings.host,
+                            error: liveFeed.lastError
+                        )
+                    }
+
                     NavigationLink {
                         AboutScreen()
                     } label: {
-                        Label("About & How to Use", systemImage: "info.circle")
-                    }
-                }
-
-                Section("Appearance") {
-                    Picker("Appearance", selection: $appearanceSettings.mode) {
-                        ForEach(AppearanceSettings.Mode.allCases) { mode in
-                            Text(mode.label).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                }
-
-                Section {
-                    NavigationLink {
-                        AnalyzerSourcePickerScreen(
-                            selectedHost: $hostInput,
-                            appliesSelectionImmediately: true,
-                            onSelection: { host in
-                                applyHostChange(host)
-                            }
+                        SettingsNavigationRow(
+                            title: "About & How to Use",
+                            value: "NodeScope field guide",
+                            symbol: "info.circle.fill"
                         )
-                    } label: {
-                        LabeledContent("Choose Source", value: settings.host)
+                        .padding(16)
+                        .instrumentCard()
                     }
-
-                } header: {
-                    Text("Analyzer Source")
-                } footer: {
-                    Text(
-                        "The CoreScope server this app connects to. Point it at any " +
-                        "community's analyzer — every screen reads its regions, areas, " +
-                        "and map defaults from that host, nothing is hardcoded to Texas."
-                    )
+                    .buttonStyle(.plain)
                 }
-
-                Section("Connection") {
-                    LabeledContent("Status") {
-                        // A plain HStack instead of `Label` here — a `Label`
-                        // nested inside `LabeledContent`'s trailing content
-                        // was inflating the whole row to several hundred
-                        // points tall (some SF Symbol/List-row sizing
-                        // interaction), even though the symbol itself
-                        // renders at a normal size everywhere else in the
-                        // app. An explicitly-sized Image sidesteps it.
-                        HStack(spacing: 4) {
-                            Image(systemName: liveFeed.isConnected ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                .font(.body)
-                            Text(liveFeed.isConnected ? "Connected" : "Disconnected")
-                        }
-                        .foregroundStyle(liveFeed.isConnected ? .green : .red)
-                    }
-                    LabeledContent("Server", value: settings.host)
-                    if let error = liveFeed.lastError {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                    }
-                }
+                .padding(.horizontal, 20)
+                .padding(.top, 18)
+                .padding(.bottom, 112)
             }
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
+            .background(NodeScopeBackground())
+            .toolbar(.hidden, for: .navigationBar)
             .onAppear { hostInput = settings.host }
             .overlay(alignment: .bottom) {
                 if let sourceSaveStatus {
-                    sourceSaveBanner(for: sourceSaveStatus)
-                        .font(.subheadline.weight(.semibold))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(.thinMaterial, in: Capsule())
-                        .padding(.bottom, 18)
+                    SettingsSaveBanner(status: sourceSaveStatus)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 104)
                         .accessibilityAddTraits(.isStaticText)
                 }
             }
             .animation(.easeInOut(duration: 0.2), value: sourceSaveStatus)
         }
+        .onChange(of: resetID) {
+            navigationPath = NavigationPath()
+        }
     }
 
-    /// Changing hosts invalidates the region list and any selection made
-    /// against the old host, so reload it fresh rather than leaving a
-    /// stale region code silently filtering the new host's data.
     private func applyHostChange(_ newHost: String) {
         let normalizedHost = AnalyzerSettings.normalizedHost(newHost)
         guard !normalizedHost.isEmpty else { return }
@@ -123,24 +117,6 @@ struct SettingsScreen: View {
             async let coords: Void = regionFilter.loadIataCoords()
             async let observerRegions: Void = observerRegionLookup.load()
             _ = await (regions, coords, observerRegions)
-        }
-    }
-
-    @ViewBuilder
-    private func sourceSaveBanner(for status: SourceSaveStatus) -> some View {
-        switch status {
-        case .connecting:
-            HStack(spacing: 8) {
-                ProgressView()
-                Text("Source saved — connecting")
-            }
-            .foregroundStyle(.primary)
-        case .connected:
-            Label("Source connected", systemImage: "checkmark.circle.fill")
-                .foregroundStyle(.green)
-        case .failed(let message):
-            Label(message, systemImage: "xmark.circle.fill")
-                .foregroundStyle(.red)
         }
     }
 
@@ -176,5 +152,137 @@ struct SettingsScreen: View {
             guard sourceSaveID == saveID else { return }
             sourceSaveStatus = nil
         }
+    }
+}
+
+private struct SettingsHeader: View {
+    let isConnected: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 10) {
+                Text("Settings")
+                    .font(.largeTitle.bold())
+                MeshNodeMotif(color: NodeScopeStyle.signal)
+            }
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
+                    .frame(width: 7, height: 7)
+                Text(isConnected ? "Analyzer connected" : "Analyzer offline")
+            }
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct SettingsPanel<Content: View>: View {
+    let title: LocalizedStringKey
+    let symbol: String
+    @ViewBuilder let content: Content
+
+    init(title: LocalizedStringKey, symbol: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.symbol = symbol
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label(title, systemImage: symbol)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(NodeScopeStyle.signal)
+                .textCase(.uppercase)
+            content
+        }
+        .padding(16)
+        .instrumentCard()
+    }
+}
+
+private struct SettingsNavigationRow: View {
+    let title: LocalizedStringKey
+    let value: String
+    let symbol: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol)
+                .foregroundStyle(NodeScopeStyle.signal)
+                .frame(width: 32, height: 32)
+                .background(NodeScopeStyle.signal.opacity(0.11), in: RoundedRectangle(cornerRadius: 10))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Text(value)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption.bold())
+                .foregroundStyle(.tertiary)
+        }
+        .contentShape(Rectangle())
+    }
+}
+
+private struct ConnectionStatusRow: View {
+    let isConnected: Bool
+    let host: String
+    let error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                HStack(spacing: 7) {
+                    Circle()
+                        .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
+                        .frame(width: 9, height: 9)
+                    Text(isConnected ? "Connected" : "Disconnected")
+                        .font(.subheadline.weight(.semibold))
+                }
+                Spacer()
+                Text(host)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            if let error {
+                Label(error, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(NodeScopeStyle.activity)
+            }
+        }
+    }
+}
+
+private struct SettingsSaveBanner: View {
+    let status: SettingsScreen.SourceSaveStatus
+
+    var body: some View {
+        HStack(spacing: 8) {
+            switch status {
+            case .connecting:
+                MeshRouteActivityIndicator()
+                Text("Source saved — connecting")
+            case .connected:
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(NodeScopeStyle.healthy)
+                Text("Source connected")
+            case .failed(let message):
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(NodeScopeStyle.activity)
+                Text(message)
+                    .lineLimit(2)
+            }
+        }
+        .font(.subheadline.weight(.semibold))
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial, in: Capsule())
     }
 }

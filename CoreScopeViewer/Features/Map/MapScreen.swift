@@ -3,6 +3,7 @@ import SwiftUI
 
 struct MapScreen: View {
     let isTabActive: Bool
+    let resetID: UUID
 
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(RegionFilterStore.self) private var regionFilter
@@ -32,6 +33,10 @@ struct MapScreen: View {
     @State private var isLocatingUser = false
     @State private var pendingReplayRequestID: UUID?
     @State private var loadedAnalyzerHost = ""
+
+    // The map remains edge-to-edge, while interactive controls sit above the
+    // app-level floating dock rendered by RootTabView.
+    private let floatingDockClearance: CGFloat = 96
 
     private struct NodeCluster: Identifiable {
         let id: String
@@ -92,9 +97,19 @@ struct MapScreen: View {
                 mapContent(at: context.date)
             }
                 .mapScope(mapScope)
-                .navigationTitle("Live Map")
-                .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(liveFeed.isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
+                                .frame(width: 7, height: 7)
+                            Text("Live Map")
+                                .font(.headline)
+                                .fixedSize()
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(liveFeed.isConnected ? "Live Map, connected" : "Live Map, reconnecting")
+                    }
                     ToolbarItemGroup(placement: .topBarTrailing) {
                         Menu {
                             ForEach(MapDisplayStyle.allCases) { style in
@@ -132,18 +147,21 @@ struct MapScreen: View {
                     .buttonStyle(.plain)
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .padding(.leading, 12)
-                    .padding(.bottom, 40)
+                    .padding(.bottom, floatingDockClearance)
                     .accessibilityLabel("Center on my location")
                 }
                 .overlay(alignment: .bottomTrailing) {
                     zoomControl
                         .padding(.trailing, 12)
-                        .padding(.bottom, 40)
+                        .padding(.bottom, floatingDockClearance)
                 }
                 .overlay(alignment: .bottom) {
                     VStack(spacing: 8) {
                         if isReplayMode {
-                            replayControl
+                            VStack(spacing: 8) {
+                                replayControl
+                                routeOptionsControl
+                            }
                         }
                         if !viewModel.nodes.isEmpty {
                             Text("\(viewModel.nodes.count) nodes")
@@ -153,7 +171,7 @@ struct MapScreen: View {
                                 .background(.thinMaterial, in: Capsule())
                         }
                     }
-                    .padding(.bottom, 8)
+                    .padding(.bottom, floatingDockClearance)
                 }
                 .overlay {
                     if let errorMessage = viewModel.errorMessage {
@@ -164,11 +182,17 @@ struct MapScreen: View {
                         )
                     }
                 }
-                .overlay {
+                .overlay(alignment: .topTrailing) {
                     if (viewModel.isLoading && !isReplayMode) || (isChangingRegion && !isReplayMode) || isLocatingUser {
                         LoadingIndicator(title: mapLoadingTitle)
+                            .padding(.top, 12)
+                            .padding(.trailing, 12)
+                            .allowsHitTesting(false)
                     }
                 }
+        }
+        .onChange(of: resetID) {
+            selectedNode = nil
         }
         .task {
             processedEventIds = Set(liveFeed.recentEvents.map { liveEventKey(for: $0) })
@@ -178,6 +202,7 @@ struct MapScreen: View {
             let sourceHost = settings.host
             let selectedRegion = regionFilter.selectedRegion
             isChangingRegion = true
+            async let minimumLoaderDuration: Void = keepRegionLoaderVisible()
             defer {
                 isChangingRegion = false
                 replayPendingPacketIfNeeded()
@@ -197,6 +222,8 @@ struct MapScreen: View {
             viewModel.configure(settings: settings)
             await viewModel.loadMapDefaults()
 
+            guard !Task.isCancelled else { return }
+
             // A newer host or region selection started loading while this
             // request was suspended. Only the current request may move the
             // camera or replace the displayed data.
@@ -215,7 +242,7 @@ struct MapScreen: View {
             // Once the camera has reached the selected IATA area, cached node
             // data is ready to use. Don't hold the map behind a loader while
             // the freshness check continues in the background.
-            await regionZoom
+            _ = await (regionZoom, minimumLoaderDuration)
             isChangingRegion = false
             _ = await (nodes, packets)
 
@@ -251,6 +278,18 @@ struct MapScreen: View {
         .onChange(of: packetReplayStore.requestID) {
             queuePacketReplay()
         }
+        .onChange(of: packetReplayStore.selectedRouteIndex) {
+            guard isReplayMode else { return }
+            // Only re-fit the camera when the newly selected route would
+            // actually fall outside the current viewport — switching between
+            // routes that share the same on-screen area shouldn't jump the map.
+            let isOffScreen = !isRouteFullyVisible(currentRouteCoordinates())
+            replayPacketRoute(recenter: isOffScreen)
+        }
+    }
+
+    private func keepRegionLoaderVisible() async {
+        try? await Task.sleep(for: .milliseconds(700))
     }
 
     @ViewBuilder
@@ -557,6 +596,46 @@ struct MapScreen: View {
             .font(.caption.weight(.semibold))
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
+        }
+        .padding(4)
+        .background(.thinMaterial, in: Capsule())
+        .accessibilityElement(children: .contain)
+    }
+
+    private var routeOptionsControl: some View {
+        HStack(spacing: 4) {
+            if packetReplayStore.routes.count > 1 {
+                Menu {
+                    ForEach(packetReplayStore.routes.indices, id: \.self) { index in
+                        Button {
+                            packetReplayStore.selectRoute(at: index)
+                        } label: {
+                            let hopCount = packetReplayStore.routes[index].count
+                            let title = "Route \(index + 1) · \(hopCount) hops"
+                            if index == packetReplayStore.selectedRouteIndex {
+                                Label(title, systemImage: "checkmark")
+                            } else {
+                                Text(title)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "point.topleft.down.curvedto.point.bottomright.up")
+                        Text("Route \(packetReplayStore.selectedRouteIndex + 1) of \(packetReplayStore.routes.count)")
+                        Image(systemName: "chevron.down")
+                            .font(.caption2.weight(.semibold))
+                    }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                }
+                .accessibilityLabel("Choose route")
+
+                Divider()
+                    .frame(height: 16)
+            }
 
             Button {
                 showsReplayRouteOnly.toggle()
@@ -564,7 +643,7 @@ struct MapScreen: View {
                 Label("Route Only", systemImage: showsReplayRouteOnly ? "checkmark.circle.fill" : "circle")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(showsReplayRouteOnly ? Color.accentColor : .primary)
-                    .padding(.horizontal, 8)
+                    .padding(.horizontal, 10)
                     .padding(.vertical, 8)
             }
             .buttonStyle(.plain)
@@ -695,10 +774,38 @@ struct MapScreen: View {
         replayPacketRoute()
     }
 
-    private func replayPacketRoute(recenter: Bool = true) {
-        let coordinates = packetReplayStore.resolvedPath.compactMap { publicKey in
+    private func currentRouteCoordinates() -> [CLLocationCoordinate2D] {
+        packetReplayStore.resolvedPath.compactMap { publicKey in
             validCoordinate(viewModel.nodesByPubkey[publicKey.lowercased()]?.coordinate)
         }
+    }
+
+    // Roughly how much of the screen's vertical span the bottom-anchored
+    // replay controls (Play/Live + route pills) occupy, used both to keep
+    // freshly-framed routes clear of them and to decide whether a route the
+    // user just switched to is still usably on screen.
+    private let replayControlsClearanceFraction: Double = 0.18
+
+    private func isRouteFullyVisible(_ coordinates: [CLLocationCoordinate2D]) -> Bool {
+        guard let visibleRegion else { return coordinates.isEmpty }
+        let latitudeLimit = visibleRegion.span.latitudeDelta / 2
+        let longitudeLimit = visibleRegion.span.longitudeDelta / 2
+        let bottomClearance = visibleRegion.span.latitudeDelta * replayControlsClearanceFraction
+        let minimumLatitude = visibleRegion.center.latitude - latitudeLimit + bottomClearance
+        let maximumLatitude = visibleRegion.center.latitude + latitudeLimit
+        return coordinates.allSatisfy { coordinate in
+            let longitudeDifference = abs(
+                (coordinate.longitude - visibleRegion.center.longitude + 540)
+                    .truncatingRemainder(dividingBy: 360) - 180
+            )
+            return coordinate.latitude >= minimumLatitude
+                && coordinate.latitude <= maximumLatitude
+                && longitudeDifference <= longitudeLimit
+        }
+    }
+
+    private func replayPacketRoute(recenter: Bool = true) {
+        let coordinates = currentRouteCoordinates()
         guard coordinates.count >= 2 else { return }
 
         let routeColor: Color = colorScheme == .dark
@@ -760,7 +867,7 @@ struct MapScreen: View {
             max(maximumLatitude - minimumLatitude, maximumLongitude - minimumLongitude) * 42,
             5
         )
-        moveCamera(to: center, radiusKm: radiusKm)
+        moveCamera(to: center, radiusKm: radiusKm, verticalBiasFraction: replayControlsClearanceFraction)
     }
 
     private func centerOnUserLocation() {
@@ -832,14 +939,25 @@ struct MapScreen: View {
         moveCamera(to: coordinate)
     }
 
-    private func moveCamera(to center: CLLocationCoordinate2D, radiusKm: Double = 45) {
+    private func moveCamera(
+        to center: CLLocationCoordinate2D,
+        radiusKm: Double = 45,
+        verticalBiasFraction: Double = 0
+    ) {
         let latitudeSpan = max((radiusKm * 2.4) / 111, 0.15)
         let longitudeSpan = max(
             latitudeSpan / max(cos(center.latitude * .pi / 180), 0.2),
             0.15
         )
+        // Shifting the framed center south moves the requested coordinate
+        // toward the top of the screen, clear of the bottom-anchored replay
+        // controls. A fraction of 0 keeps the normal dead-center framing.
+        let biasedCenter = CLLocationCoordinate2D(
+            latitude: center.latitude - latitudeSpan * verticalBiasFraction,
+            longitude: center.longitude
+        )
         let region = MKCoordinateRegion(
-            center: center,
+            center: biasedCenter,
             span: MKCoordinateSpan(
                 latitudeDelta: latitudeSpan,
                 longitudeDelta: longitudeSpan

@@ -4,6 +4,8 @@ import SwiftUI
 /// looks and behaves identically everywhere, backed by the single
 /// `RegionFilterStore` selection.
 struct RegionFilterMenu: View {
+    var showsSelection = true
+
     @Environment(RegionFilterStore.self) private var regionFilter
 
     var body: some View {
@@ -31,7 +33,7 @@ struct RegionFilterMenu: View {
             // of it.
             HStack(spacing: 4) {
                 Image(systemName: "line.3.horizontal.decrease.circle")
-                if let selectedRegion = regionFilter.selectedRegion {
+                if showsSelection, let selectedRegion = regionFilter.selectedRegion {
                     Text(selectedRegion)
                         .font(.caption.weight(.semibold))
                 }

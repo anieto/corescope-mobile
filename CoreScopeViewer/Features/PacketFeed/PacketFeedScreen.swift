@@ -39,7 +39,7 @@ struct PacketFeedScreen: View {
             }
             .overlay {
                 if regionFilter.selectedRegion != nil && !observerRegionLookup.isLoaded {
-                    LoadingIndicator()
+                    LoadingIndicator(title: "Loading region…")
                 }
             }
         }

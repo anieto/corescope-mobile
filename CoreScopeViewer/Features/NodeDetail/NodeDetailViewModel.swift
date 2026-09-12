@@ -7,7 +7,7 @@ final class NodeDetailViewModel {
     var health: NodeHealthResponse?
     var paths: NodePathsResponse?
     var reach: NodeReachResponse?
-    var isLoading = false
+    var isLoading = true
 
     private var apiClient: APIClient?
 
