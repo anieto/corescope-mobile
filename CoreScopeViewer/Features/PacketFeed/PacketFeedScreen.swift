@@ -12,6 +12,8 @@ struct PacketFeedScreen: View {
                 PacketRow(data: envelope.data)
             }
             .listStyle(.plain)
+            .adaptiveContentWidth()
+            .background(Color(uiColor: .systemBackground).ignoresSafeArea())
             .navigationTitle("Live Packets")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

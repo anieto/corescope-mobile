@@ -42,6 +42,7 @@ struct PacketDetailScreen: View {
             }
             .padding(16)
             .padding(.bottom, 104)
+            .adaptiveContentWidth()
         }
         .background(NodeScopeBackground())
         .navigationTitle("Packet")

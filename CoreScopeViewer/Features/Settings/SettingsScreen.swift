@@ -26,6 +26,7 @@ struct SettingsScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     SettingsHeader(isConnected: liveFeed.isConnected)
+                        .iPadWindowControlsClearance()
 
                     SettingsPanel(title: "Appearance", symbol: "circle.lefthalf.filled") {
                         Picker("Appearance", selection: $appearanceSettings.mode) {
@@ -82,6 +83,7 @@ struct SettingsScreen: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 18)
                 .padding(.bottom, 112)
+                .adaptiveContentWidth()
             }
             .background(NodeScopeBackground())
             .toolbar(.hidden, for: .navigationBar)

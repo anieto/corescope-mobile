@@ -121,6 +121,7 @@ struct OnboardingScreen: View {
             .disabled(selectedHost.isEmpty)
             .padding(.bottom, 28)
         }
+        .adaptiveContentWidth(720)
     }
 
     private var overview: some View {
@@ -178,6 +179,7 @@ struct OnboardingScreen: View {
             .controlSize(.large)
             .padding(.bottom, 28)
         }
+        .adaptiveContentWidth(720)
     }
 
     private var selectedSourceName: String {

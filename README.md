@@ -3,7 +3,7 @@
 NodeScope is an unofficial, read-only native client for
 [CoreScope](https://github.com/Kpa-clawbot/CoreScope)-compatible mesh network
 analyzers. It presents live MeshCore nodes, packet routes, channel traffic, and
-observer telemetry in an interface designed for iPhone.
+observer telemetry in an adaptive interface designed for iPhone and iPad.
 
 > [!IMPORTANT]
 > NodeScope is an independent project. It is not affiliated with or endorsed by
@@ -30,7 +30,7 @@ configured analyzer and performs monitored-channel decryption locally.
 
 ## Requirements
 
-- iOS 18.0 or later
+- iOS or iPadOS 18.0 or later
 - A Mac with Xcode and an Apple development team for device installation
 - Network access to a CoreScope-compatible analyzer over HTTPS and secure WebSocket
 

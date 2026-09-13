@@ -1,3 +1,4 @@
+import SafariServices
 import SwiftUI
 
 struct ChannelDetailScreen: View {
@@ -10,6 +11,7 @@ struct ChannelDetailScreen: View {
     @State private var viewModel = ChannelsViewModel()
     @State private var lastProcessedLiveEventID: Int?
     @State private var liveRefreshTask: Task<Void, Never>?
+    @State private var browserLink: BrowserLink?
 
     private let scrollBottomID = "channel-conversation-bottom"
 
@@ -20,7 +22,8 @@ struct ChannelDetailScreen: View {
                     ForEach(orderedMessages) { message in
                         ChatBubbleRow(
                             message: message,
-                            isTrailing: messageSides[message.id] ?? false
+                            isTrailing: messageSides[message.id] ?? false,
+                            openURL: { browserLink = BrowserLink(url: $0) }
                         )
                             .id(message.id)
                     }
@@ -32,6 +35,7 @@ struct ChannelDetailScreen: View {
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 12)
+                .adaptiveContentWidth(760)
             }
             .onChange(of: viewModel.messages.count) {
                 scrollToBottom(proxy: proxy)
@@ -71,6 +75,10 @@ struct ChannelDetailScreen: View {
         }
         .refreshable {
             await loadMessages(forceRefresh: true)
+        }
+        .sheet(item: $browserLink) { link in
+            InAppBrowser(url: link.url)
+                .ignoresSafeArea()
         }
         .onChange(of: liveFeed.recentEvents.first?.id) {
             scheduleLiveRefreshIfNeeded()
@@ -177,6 +185,7 @@ struct ChannelDetailScreen: View {
 private struct ChatBubbleRow: View {
     let message: ChannelMessage
     let isTrailing: Bool
+    let openURL: (URL) -> Void
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -192,7 +201,7 @@ private struct ChatBubbleRow: View {
                     .padding(isTrailing ? .trailing : .leading, 4)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(message.text)
+                    MessageLinkText(text: message.text, openURL: openURL)
                         .font(.body)
                         .foregroundStyle(.primary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -246,6 +255,62 @@ private struct ChatBubbleRow: View {
         }
         .frame(maxWidth: .infinity)
     }
+}
+
+private struct MessageLinkText: View {
+    let text: String
+    let openURL: (URL) -> Void
+
+    var body: some View {
+        Text(linkifiedText)
+            .environment(\.openURL, OpenURLAction { url in
+                guard Self.isWebURL(url) else { return .systemAction }
+                openURL(url)
+                return .handled
+            })
+    }
+
+    private var linkifiedText: AttributedString {
+        var attributed = AttributedString(text)
+        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
+            return attributed
+        }
+
+        let fullRange = NSRange(text.startIndex..<text.endIndex, in: text)
+        for match in detector.matches(in: text, range: fullRange) {
+            guard let url = match.url,
+                  Self.isWebURL(url),
+                  let stringRange = Range(match.range, in: text),
+                  let lower = AttributedString.Index(stringRange.lowerBound, within: attributed),
+                  let upper = AttributedString.Index(stringRange.upperBound, within: attributed) else {
+                continue
+            }
+            attributed[lower..<upper].link = url
+            attributed[lower..<upper].foregroundColor = NodeScopeStyle.signal
+            attributed[lower..<upper].underlineStyle = .single
+        }
+        return attributed
+    }
+
+    private static func isWebURL(_ url: URL) -> Bool {
+        guard let scheme = url.scheme?.lowercased() else { return false }
+        return scheme == "http" || scheme == "https"
+    }
+}
+
+private struct BrowserLink: Identifiable {
+    let url: URL
+    var id: String { url.absoluteString }
+}
+
+private struct InAppBrowser: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        SFSafariViewController(url: url)
+    }
+
+    func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
 }
 
 private struct MessageMetricChip: View {

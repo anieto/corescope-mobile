@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum NodeScopeStyle {
     static let signal = Color(red: 0.16, green: 0.62, blue: 1.0)
@@ -107,6 +108,20 @@ struct InstrumentCardModifier: ViewModifier {
 extension View {
     func instrumentCard() -> some View {
         modifier(InstrumentCardModifier())
+    }
+
+    /// Keeps information-dense phone layouts readable on iPad while naturally
+    /// filling compact windows used by Split View and Stage Manager.
+    func adaptiveContentWidth(_ maxWidth: CGFloat = 840) -> some View {
+        frame(maxWidth: maxWidth)
+            .frame(maxWidth: .infinity)
+    }
+
+    /// iPadOS window controls can occupy the upper-leading corner without
+    /// contributing to SwiftUI's safe-area inset. Keep custom page headers
+    /// below that chrome while leaving the compact iPhone layout unchanged.
+    func iPadWindowControlsClearance() -> some View {
+        padding(.top, UIDevice.current.userInterfaceIdiom == .pad ? 34 : 0)
     }
 }
 

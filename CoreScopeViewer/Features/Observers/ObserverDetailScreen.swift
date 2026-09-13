@@ -31,6 +31,7 @@ struct ObserverDetailScreen: View {
             }
             .padding(16)
             .padding(.bottom, 96)
+            .adaptiveContentWidth()
         }
         .background(NodeScopeBackground())
         .navigationTitle(observer.name ?? "Observer")

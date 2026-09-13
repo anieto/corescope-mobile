@@ -21,6 +21,7 @@ struct ObserversListScreen: View {
                     isConnected: liveFeed.isConnected,
                     regionName: regionFilter.selectedRegion.map(regionFilter.label(for:))
                 )
+                .iPadWindowControlsClearance()
                 .instrumentListRow(top: 18, bottom: 10)
 
                 if viewModel.isLoading {
@@ -71,6 +72,8 @@ struct ObserversListScreen: View {
             .scrollContentBackground(.hidden)
             .background(NodeScopeBackground())
             .listStyle(.plain)
+            .adaptiveContentWidth()
+            .background(NodeScopeBackground())
             .contentMargins(.bottom, 104, for: .scrollContent)
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: MeshObserver.self) { observer in

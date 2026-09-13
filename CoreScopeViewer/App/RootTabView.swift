@@ -66,6 +66,7 @@ struct RootTabView: View {
                     selectedTab = tab
                 }
             }
+                .frame(maxWidth: 680)
                 .padding(.horizontal, 18)
                 .padding(.bottom, 8)
         }

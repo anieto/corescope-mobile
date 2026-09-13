@@ -40,6 +40,7 @@ struct MonitorChannelSheet: View {
                     .disabled(!canSave)
                 }
                 .padding(20)
+                .adaptiveContentWidth(720)
             }
             .background(NodeScopeBackground())
             .navigationTitle("Add Channel")

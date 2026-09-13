@@ -79,6 +79,7 @@
 		2CE357DF8B6328C61A2E23E4 /* NodeDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeDetailScreen.swift; sourceTree = "<group>"; };
 		2E1E309A8A435B7E5A61ADE9 /* MapLocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapLocationManager.swift; sourceTree = "<group>"; };
 		2FB247C32E6BA4792D18D413 /* RegionFilterStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionFilterStore.swift; sourceTree = "<group>"; };
+		3154F46330575E71002CEDB2 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		33B9A5F539B49B860F434D81 /* Channel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Channel.swift; sourceTree = "<group>"; };
 		37795BF9DC79999D3E6DE8A3 /* AboutScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutScreen.swift; sourceTree = "<group>"; };
 		3C78C1620C6A3A352DD6B687 /* ModelDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDecodingTests.swift; sourceTree = "<group>"; };
@@ -94,7 +95,7 @@
 		6AD4E0C32DC0423479F83C43 /* CoreScopeViewerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreScopeViewerApp.swift; sourceTree = "<group>"; };
 		6BD272A0CF4993A57B4A1C6D /* MapScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapScreen.swift; sourceTree = "<group>"; };
 		6BE824AF6B92A1D9B2F38BFD /* RegionFilterMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionFilterMenu.swift; sourceTree = "<group>"; };
-		6CC49543CC83FFA8F008F3A0 /* CoreScopeViewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoreScopeViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6CC49543CC83FFA8F008F3A0 /* NodeScope.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NodeScope.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6EDB07FE4BF732F4BA52606B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7203589BC65FD11EE431398C /* LiveFeedMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveFeedMessage.swift; sourceTree = "<group>"; };
 		73004474B78DC6135A5F3FD4 /* NodeRoleStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeRoleStyle.swift; sourceTree = "<group>"; };
@@ -135,7 +136,7 @@
 		002B449ACE62846A6E279DD7 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				6CC49543CC83FFA8F008F3A0 /* CoreScopeViewer.app */,
+				6CC49543CC83FFA8F008F3A0 /* NodeScope.app */,
 				8464149BFBEDBC4B0BB32E42 /* CoreScopeViewerTests.xctest */,
 			);
 			name = Products;
@@ -150,6 +151,7 @@
 				98513FB82352F666556D2473 /* Models */,
 				E7B16BFA479D5C9A9CB0C62A /* Networking */,
 				A82C0A1F37D0CAD5AEB38BF5 /* Resources */,
+				3154F46330575E71002CEDB2 /* PrivacyInfo.xcprivacy */,
 			);
 			path = CoreScopeViewer;
 			sourceTree = "<group>";
@@ -340,7 +342,7 @@
 			packageProductDependencies = (
 			);
 			productName = CoreScopeViewer;
-			productReference = 6CC49543CC83FFA8F008F3A0 /* CoreScopeViewer.app */;
+			productReference = 6CC49543CC83FFA8F008F3A0 /* NodeScope.app */;
 			productType = "com.apple.product-type.application";
 		};
 		5C75D56D7971E1C9412A462E /* CoreScopeViewerTests */ = {
@@ -489,7 +491,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = B4F4XYTQLN;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CoreScopeViewer/Info.plist;
@@ -498,18 +500,22 @@
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Your location centers the map around your current position.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.1;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.meshtexas.nodescope;
+				PRODUCT_MODULE_NAME = CoreScopeViewer;
+				PRODUCT_NAME = NodeScope;
 				SDKROOT = iphoneos;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -675,7 +681,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = B4F4XYTQLN;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CoreScopeViewer/Info.plist;
@@ -684,18 +690,22 @@
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Your location centers the map around your current position.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.1;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.meshtexas.nodescope;
+				PRODUCT_MODULE_NAME = CoreScopeViewer;
+				PRODUCT_NAME = NodeScope;
 				SDKROOT = iphoneos;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};

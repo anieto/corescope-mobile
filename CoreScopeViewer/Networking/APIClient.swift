@@ -1,5 +1,72 @@
 import Foundation
 
+/// Shared persistent cache for read-only API responses. Values are isolated by
+/// analyzer and endpoint, kept in memory after first use, and concurrent refreshes
+/// for the same key share one request.
+actor APIResponseCache {
+    static let shared = APIResponseCache()
+
+    private struct Entry<Value: Codable>: Codable {
+        let savedAt: Date
+        let value: Value
+    }
+
+    private var memoryData: [String: Data] = [:]
+    private var inFlightRefreshes: [String: Task<Data, Error>] = [:]
+
+    func value<Value: Codable>(
+        for key: String,
+        maximumAge: TimeInterval
+    ) -> Value? {
+        let data = memoryData[key] ?? (try? Data(contentsOf: fileURL(for: key)))
+        guard let data,
+              let entry = try? JSONDecoder().decode(Entry<Value>.self, from: data),
+              Date().timeIntervalSince(entry.savedAt) <= maximumAge else {
+            return nil
+        }
+        memoryData[key] = data
+        return entry.value
+    }
+
+    func refresh<Value: Codable & Sendable>(
+        for key: String,
+        loader: @escaping @Sendable () async throws -> Value
+    ) async throws -> Value {
+        if let inFlight = inFlightRefreshes[key] {
+            let data = try await inFlight.value
+            return try JSONDecoder().decode(Entry<Value>.self, from: data).value
+        }
+
+        let refresh = Task<Data, Error> {
+            let value = try await loader()
+            return try JSONEncoder().encode(Entry(savedAt: .now, value: value))
+        }
+        inFlightRefreshes[key] = refresh
+        do {
+            let data = try await refresh.value
+            memoryData[key] = data
+            try? data.write(to: fileURL(for: key), options: .atomic)
+            inFlightRefreshes[key] = nil
+            return try JSONDecoder().decode(Entry<Value>.self, from: data).value
+        } catch {
+            inFlightRefreshes[key] = nil
+            throw error
+        }
+    }
+
+    private func fileURL(for key: String) -> URL {
+        let fileName = key.data(using: .utf8)?
+            .base64EncodedString()
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "+", with: "-")
+            ?? UUID().uuidString
+        let directory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("APIResponseCache", isDirectory: true)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory.appendingPathComponent(fileName).appendingPathExtension("json")
+    }
+}
+
 extension String {
     /// Percent-encodes this string for safe use as a single URL path
     /// segment. CoreScope uses a channel's display name as its `hash`

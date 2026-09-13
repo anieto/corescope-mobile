@@ -4,6 +4,8 @@ import Observation
 private actor MapResponseCache {
     static let shared = MapResponseCache()
 
+    private var memoryData: [String: Data] = [:]
+
     private struct Entry<Value: Codable>: Codable {
         let savedAt: Date
         let value: Value
@@ -14,11 +16,12 @@ private actor MapResponseCache {
         maximumAge: TimeInterval
     ) -> Value? {
         let url = fileURL(for: key)
-        guard let data = try? Data(contentsOf: url),
+        guard let data = memoryData[key] ?? (try? Data(contentsOf: url)),
               let entry = try? JSONDecoder().decode(Entry<Value>.self, from: data),
               Date().timeIntervalSince(entry.savedAt) <= maximumAge else {
             return nil
         }
+        memoryData[key] = data
         return entry.value
     }
 
@@ -26,6 +29,7 @@ private actor MapResponseCache {
         let url = fileURL(for: key)
         let entry = Entry(savedAt: .now, value: value)
         guard let data = try? JSONEncoder().encode(entry) else { return }
+        memoryData[key] = data
         try? data.write(to: url, options: .atomic)
     }
 
@@ -70,6 +74,7 @@ final class MapViewModel {
     private var apiClient: APIClient?
     private var cacheNamespace = ""
     private let automaticRefreshInterval: TimeInterval = 30
+    private let staleCacheLifetime: TimeInterval = 7 * 24 * 60 * 60
 
     func configure(settings: AnalyzerSettings) {
         apiClient = APIClient(settings: settings)
@@ -88,12 +93,14 @@ final class MapViewModel {
     }
 
     func loadMapDefaults() async {
+        guard mapDefaults == nil else { return }
         let cacheKey = "map-defaults-\(cacheNamespace)"
         if let cached: MapDefaults = await MapResponseCache.shared.value(
             for: cacheKey,
-            maximumAge: 24 * 60 * 60
+            maximumAge: staleCacheLifetime
         ) {
             mapDefaults = cached
+            return
         }
 
         guard let apiClient else { return }
@@ -109,7 +116,7 @@ final class MapViewModel {
         let hadCachedNodes: Bool
         if let cached: NodesResponse = await MapResponseCache.shared.value(
             for: cacheKey,
-            maximumAge: 10 * 60
+            maximumAge: staleCacheLifetime
         ) {
             nodes = cached.nodes
             errorMessage = nil
@@ -157,7 +164,7 @@ final class MapViewModel {
         let cacheKey = "map-packets-\(cacheNamespace)-\(region ?? "all")"
         if let cached: PacketsResponse = await MapResponseCache.shared.value(
             for: cacheKey,
-            maximumAge: 10 * 60
+            maximumAge: staleCacheLifetime
         ) {
             recentPackets = cached.packets
         }

@@ -18,6 +18,8 @@ targets:
       - path: CoreScopeViewer
     settings:
       base:
+        PRODUCT_NAME: NodeScope
+        PRODUCT_MODULE_NAME: CoreScopeViewer
         PRODUCT_BUNDLE_IDENTIFIER: com.meshtexas.nodescope
         DEVELOPMENT_TEAM: B4F4XYTQLN
         SWIFT_VERSION: "6.0"
@@ -28,9 +30,11 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: NodeScope
         INFOPLIST_KEY_CFBundleIconName: AppIcon
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
-        MARKETING_VERSION: "0.1"
-        CURRENT_PROJECT_VERSION: "1"
-        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        INFOPLIST_KEY_UIRequiresFullScreen: YES
+        MARKETING_VERSION: "0.2.0"
+        CURRENT_PROJECT_VERSION: "2"
+        TARGETED_DEVICE_FAMILY: "1,2"
         SWIFT_STRICT_CONCURRENCY: complete
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 

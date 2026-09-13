@@ -17,6 +17,7 @@ struct MapScreen: View {
     @State private var selectedNode: MeshNode?
     @State private var displayedNodes: [MeshNode] = []
     @State private var nodeClusters: [NodeCluster] = []
+    @State private var visibleNodesByCoordinate: [CoordinateKey: MeshNode] = [:]
     @State private var iataCoordinates: [String: CLLocationCoordinate2D] = [:]
     @State private var mapDisplayStyle = MapDisplayStyle.persisted
     @State private var locationManager = MapLocationManager()
@@ -33,15 +34,47 @@ struct MapScreen: View {
     @State private var isLocatingUser = false
     @State private var pendingReplayRequestID: UUID?
     @State private var loadedAnalyzerHost = ""
+    @State private var displayUpdateTask: Task<Void, Never>?
 
     // The map remains edge-to-edge, while interactive controls sit above the
     // app-level floating dock rendered by RootTabView.
     private let floatingDockClearance: CGFloat = 96
 
-    private struct NodeCluster: Identifiable {
+    private struct NodeCluster: Identifiable, Sendable {
         let id: String
         let coordinate: CLLocationCoordinate2D
         let count: Int
+        let memberCoordinates: Set<CoordinateKey>
+    }
+
+    private struct CoordinateKey: Hashable, Sendable {
+        let latitude: Double
+        let longitude: Double
+
+        init(_ coordinate: CLLocationCoordinate2D) {
+            latitude = coordinate.latitude
+            longitude = coordinate.longitude
+        }
+    }
+
+    private struct DisplayRegion: Sendable {
+        let centerLatitude: Double
+        let centerLongitude: Double
+        let latitudeDelta: Double
+        let longitudeDelta: Double
+
+        init(_ region: MKCoordinateRegion) {
+            centerLatitude = region.center.latitude
+            centerLongitude = region.center.longitude
+            latitudeDelta = region.span.latitudeDelta
+            longitudeDelta = region.span.longitudeDelta
+        }
+    }
+
+    private struct DisplayResult: Sendable {
+        let nodes: [MeshNode]
+        let clusters: [NodeCluster]
+        let nodesByCoordinate: [CoordinateKey: MeshNode]
     }
 
     private enum MapDisplayStyle: String, CaseIterable, Identifiable {
@@ -193,6 +226,13 @@ struct MapScreen: View {
         }
         .onChange(of: resetID) {
             selectedNode = nil
+            pendingReplayRequestID = nil
+            replayPings = []
+            isReplayMode = false
+            showsReplayRouteOnly = true
+        }
+        .onDisappear {
+            displayUpdateTask?.cancel()
         }
         .task {
             processedEventIds = Set(liveFeed.recentEvents.map { liveEventKey(for: $0) })
@@ -297,8 +337,18 @@ struct MapScreen: View {
         let currentPings = pingsForDisplay.filter {
             $0.hasStarted(at: date) && !$0.isExpired(at: date)
         }
-        let mapNodes = isReplayMode && showsReplayRouteOnly ? replayRouteNodes : displayedNodes
-        let mapClusters = isReplayMode && showsReplayRouteOnly ? [] : nodeClusters
+        let routeCoordinates = Set(currentPings.flatMap {
+            [CoordinateKey($0.start), CoordinateKey($0.end)]
+        })
+        let routeNodes = routeCoordinates.compactMap { visibleNodesByCoordinate[$0] }
+        let baseNodes = isReplayMode && showsReplayRouteOnly ? replayRouteNodes : displayedNodes
+        let mapNodes = Array(Dictionary(
+            baseNodes.map { ($0.id, $0) } + routeNodes.map { ($0.id, $0) },
+            uniquingKeysWith: { first, _ in first }
+        ).values)
+        let mapClusters = isReplayMode && showsReplayRouteOnly
+            ? []
+            : nodeClusters.filter { $0.memberCoordinates.isDisjoint(with: routeCoordinates) }
 
         MapReader { proxy in
             Map(position: $cameraPosition, scope: mapScope) {
@@ -436,67 +486,125 @@ struct MapScreen: View {
     }
 
     private func updateDisplayedNodes(in region: MKCoordinateRegion? = nil) {
-        guard let region = region ?? visibleRegion else {
-            displayedNodes = viewModel.nodes.filter { validCoordinate($0.coordinate) != nil }
-            nodeClusters = []
-            return
-        }
-
-        // Keep a small off-screen buffer to avoid marker churn at the edge.
-        let latitudeLimit = region.span.latitudeDelta * 0.7
-        let longitudeLimit = region.span.longitudeDelta * 0.7
-        let visibleNodes = viewModel.nodes.filter { node in
-            guard let coordinate = validCoordinate(node.coordinate) else { return false }
-            let latitudeDifference = abs(coordinate.latitude - region.center.latitude)
-            let longitudeDifference = abs(
-                (coordinate.longitude - region.center.longitude + 540)
-                    .truncatingRemainder(dividingBy: 360) - 180
-            )
-            return latitudeDifference <= latitudeLimit
-                && longitudeDifference <= longitudeLimit
-        }
-
-        // At close zoom levels, every node stays individually selectable.
-        guard max(region.span.latitudeDelta, region.span.longitudeDelta) > 0.8 else {
-            displayedNodes = visibleNodes
-            nodeClusters = []
-            return
-        }
-
-        let latitudeCellSize = region.span.latitudeDelta / 12
-        let longitudeCellSize = region.span.longitudeDelta / 12
-        var nodesByCell: [String: [MeshNode]] = [:]
-
-        for node in visibleNodes {
-            guard let coordinate = validCoordinate(node.coordinate) else { continue }
-            let latitudeCell = Int(floor((coordinate.latitude + 90) / latitudeCellSize))
-            let longitudeCell = Int(floor((coordinate.longitude + 180) / longitudeCellSize))
-            let key = "\(latitudeCell)-\(longitudeCell)"
-            nodesByCell[key, default: []].append(node)
-        }
-
-        var individualNodes: [MeshNode] = []
-        var clusters: [NodeCluster] = []
-        for (key, nodes) in nodesByCell {
-            guard nodes.count >= 3 else {
-                individualNodes.append(contentsOf: nodes)
-                continue
+        let nodes = viewModel.nodes
+        let displayRegion = (region ?? visibleRegion).map(DisplayRegion.init)
+        displayUpdateTask?.cancel()
+        displayUpdateTask = Task {
+            let worker = Task.detached(priority: .userInitiated) {
+                Self.makeDisplayResult(nodes: nodes, region: displayRegion)
             }
+            let result = await withTaskCancellationHandler {
+                await worker.value
+            } onCancel: {
+                worker.cancel()
+            }
+            guard !Task.isCancelled, let result else { return }
+            displayedNodes = result.nodes
+            nodeClusters = result.clusters
+            visibleNodesByCoordinate = result.nodesByCoordinate
+        }
+    }
 
-            let coordinates = nodes.compactMap { validCoordinate($0.coordinate) }
-            let latitude = coordinates.map(\.latitude).reduce(0, +) / Double(coordinates.count)
-            let longitude = coordinates.map(\.longitude).reduce(0, +) / Double(coordinates.count)
-            clusters.append(
-                NodeCluster(
-                    id: "cluster-\(key)",
-                    coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
-                    count: nodes.count
+    nonisolated private static func makeDisplayResult(
+        nodes: [MeshNode],
+        region: DisplayRegion?
+    ) -> DisplayResult? {
+        let validNodes = nodes.filter { node in
+            guard !Task.isCancelled, let latitude = node.lat, let longitude = node.lon else { return false }
+            return latitude != 0 || longitude != 0
+        }
+        guard !Task.isCancelled else { return nil }
+        guard let region else {
+            return DisplayResult(
+                nodes: validNodes,
+                clusters: [],
+                nodesByCoordinate: Dictionary(
+                    validNodes.compactMap { node in
+                        node.coordinate.map { (CoordinateKey($0), node) }
+                    },
+                    uniquingKeysWith: { first, _ in first }
                 )
             )
         }
 
-        displayedNodes = individualNodes
-        nodeClusters = clusters.sorted { $0.id < $1.id }
+        // Keep a small off-screen buffer to avoid marker churn at the edge.
+        let latitudeLimit = region.latitudeDelta * 0.7
+        let longitudeLimit = region.longitudeDelta * 0.7
+        let visibleNodes = validNodes.filter { node in
+            guard !Task.isCancelled, let latitude = node.lat, let longitude = node.lon else { return false }
+            let longitudeDifference = abs(
+                (longitude - region.centerLongitude + 540)
+                    .truncatingRemainder(dividingBy: 360) - 180
+            )
+            return abs(latitude - region.centerLatitude) <= latitudeLimit
+                && longitudeDifference <= longitudeLimit
+        }
+        guard !Task.isCancelled else { return nil }
+
+        // At close zoom levels, every node stays individually selectable.
+        guard max(region.latitudeDelta, region.longitudeDelta) > 0.8 else {
+            return DisplayResult(
+                nodes: visibleNodes,
+                clusters: [],
+                nodesByCoordinate: Dictionary(
+                    visibleNodes.compactMap { node in
+                        node.coordinate.map { (CoordinateKey($0), node) }
+                    },
+                    uniquingKeysWith: { first, _ in first }
+                )
+            )
+        }
+
+        let latitudeCellSize = region.latitudeDelta / 12
+        let longitudeCellSize = region.longitudeDelta / 12
+        var nodesByCell: [String: [MeshNode]] = [:]
+        for node in visibleNodes {
+            guard !Task.isCancelled, let latitude = node.lat, let longitude = node.lon else { return nil }
+            let latitudeCell = Int(floor((latitude + 90) / latitudeCellSize))
+            let longitudeCell = Int(floor((longitude + 180) / longitudeCellSize))
+            nodesByCell["\(latitudeCell)-\(longitudeCell)", default: []].append(node)
+        }
+
+        var individualNodes: [MeshNode] = []
+        var clusters: [NodeCluster] = []
+        for (key, cellNodes) in nodesByCell {
+            guard !Task.isCancelled else { return nil }
+            guard cellNodes.count >= 3 else {
+                individualNodes.append(contentsOf: cellNodes)
+                continue
+            }
+
+            var latitudeTotal = 0.0
+            var longitudeTotal = 0.0
+            for node in cellNodes {
+                latitudeTotal += node.lat ?? 0
+                longitudeTotal += node.lon ?? 0
+            }
+            clusters.append(
+                NodeCluster(
+                    id: "cluster-\(key)",
+                    coordinate: CLLocationCoordinate2D(
+                        latitude: latitudeTotal / Double(cellNodes.count),
+                        longitude: longitudeTotal / Double(cellNodes.count)
+                    ),
+                    count: cellNodes.count,
+                    memberCoordinates: Set(cellNodes.compactMap { node in
+                        node.coordinate.map(CoordinateKey.init)
+                    })
+                )
+            )
+        }
+
+        return DisplayResult(
+            nodes: individualNodes,
+            clusters: clusters.sorted { $0.id < $1.id },
+            nodesByCoordinate: Dictionary(
+                visibleNodes.compactMap { node in
+                    node.coordinate.map { (CoordinateKey($0), node) }
+                },
+                uniquingKeysWith: { first, _ in first }
+            )
+        )
     }
 
     private var regionScopeControl: some View {

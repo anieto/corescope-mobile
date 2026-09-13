@@ -21,6 +21,7 @@ struct ChannelsListScreen: View {
                     regionName: regionFilter.selectedRegion.map(regionFilter.label(for:)),
                     addChannel: { isShowingAddChannel = true }
                 )
+                .iPadWindowControlsClearance()
                 .listRowInsets(EdgeInsets(top: 18, leading: 20, bottom: 8, trailing: 20))
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
@@ -68,6 +69,8 @@ struct ChannelsListScreen: View {
             .scrollContentBackground(.hidden)
             .background(NodeScopeBackground())
             .listStyle(.plain)
+            .adaptiveContentWidth()
+            .background(NodeScopeBackground())
             .contentMargins(.bottom, 104, for: .scrollContent)
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: MeshChannel.self) { channel in

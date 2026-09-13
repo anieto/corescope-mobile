@@ -86,6 +86,8 @@ struct AnalyzerSourcePickerScreen: View {
                     .foregroundStyle(metadataColor)
             }
         }
+        .adaptiveContentWidth()
+        .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
         .navigationTitle("Analyzer Source")
         .navigationBarTitleDisplayMode(.inline)
         .task {
