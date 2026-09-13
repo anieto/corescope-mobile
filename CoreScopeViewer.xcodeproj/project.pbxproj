@@ -105,7 +105,7 @@
 		7B88FE5992019C3F4F94F11D /* ObserversListScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObserversListScreen.swift; sourceTree = "<group>"; };
 		7DCDF693CC75852E92D3700F /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootTabView.swift; sourceTree = "<group>"; };
 		7DDB2DCCCDD470E5A169EBA3 /* MonitoredChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitoredChannel.swift; sourceTree = "<group>"; };
-		8464149BFBEDBC4B0BB32E42 /* CoreScopeViewerTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CoreScopeViewerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8464149BFBEDBC4B0BB32E42 /* CoreScopeViewerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CoreScopeViewerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9015F94DEA99D9D7D3D862F9 /* ChannelListCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelListCache.swift; sourceTree = "<group>"; };
 		907E1808B28C42142DC60CCB /* SenderColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SenderColor.swift; sourceTree = "<group>"; };
 		95B46AA4A5FB82FC08E16B31 /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
@@ -534,7 +534,7 @@
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CoreScopeViewer.app/CoreScopeViewer";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NodeScope.app/NodeScope";
 			};
 			name = Release;
 		};
@@ -609,7 +609,7 @@
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CoreScopeViewer.app/CoreScopeViewer";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NodeScope.app/NodeScope";
 			};
 			name = Debug;
 		};

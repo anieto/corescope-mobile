@@ -49,6 +49,8 @@ targets:
     settings:
       base:
         SWIFT_VERSION: "6.0"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/NodeScope.app/NodeScope"
+        BUNDLE_LOADER: "$(TEST_HOST)"
         GENERATE_INFOPLIST_FILE: YES
 
 schemes:
