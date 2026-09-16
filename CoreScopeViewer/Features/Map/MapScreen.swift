@@ -36,9 +36,8 @@ struct MapScreen: View {
     @State private var pendingReplayRequestID: UUID?
     @State private var loadedAnalyzerHost = ""
     @State private var displayUpdateTask: Task<Void, Never>?
-    @State private var searchText = ""
-    @State private var matchingNodeCount = 0
     @State private var isSearchPresented = false
+    @State private var highlightedNodeID: String?
 
     // The map remains edge-to-edge, while interactive controls sit above the
     // app-level floating dock rendered by RootTabView.
@@ -155,9 +154,9 @@ struct MapScreen: View {
                         .accessibilityLabel("Refresh map data")
 
                         Button(action: toggleMapSearch) {
-                            Image(systemName: isSearchPresented ? "xmark" : "magnifyingglass")
+                            Image(systemName: "magnifyingglass")
                         }
-                        .accessibilityLabel(isSearchPresented ? "Close node search" : "Search nodes")
+                        .accessibilityLabel("Search nodes")
 
                         Menu {
                             ForEach(MapDisplayStyle.allCases) { style in
@@ -183,10 +182,6 @@ struct MapScreen: View {
                 .overlay(alignment: .topLeading) {
                     VStack(alignment: .leading, spacing: 8) {
                         regionScopeControl
-                        if isSearchPresented {
-                            InstrumentSearchField(text: $searchText, prompt: "Search nodes")
-                                .frame(maxWidth: 300)
-                        }
                         if !viewModel.nodes.isEmpty {
                             DataLoadStatusView(
                                 lastUpdatedAt: viewModel.lastUpdatedAt,
@@ -227,7 +222,7 @@ struct MapScreen: View {
                             }
                         }
                         if !viewModel.nodes.isEmpty {
-                            Text("\(searchText.isEmpty ? viewModel.nodes.count : matchingNodeCount) nodes")
+                            Text("\(viewModel.nodes.count) nodes")
                                 .font(.caption)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 4)
@@ -254,14 +249,19 @@ struct MapScreen: View {
                     }
                 }
         }
+        .sheet(isPresented: $isSearchPresented) {
+            MapNodeSearchSheet(nodes: viewModel.nodes, selectNode: focusOnSearchedNode)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
         .onChange(of: resetID) {
             selectedNode = nil
             pendingReplayRequestID = nil
             replayPings = []
             isReplayMode = false
             showsReplayRouteOnly = true
-            searchText = ""
             isSearchPresented = false
+            highlightedNodeID = nil
         }
         .onDisappear {
             displayUpdateTask?.cancel()
@@ -338,9 +338,6 @@ struct MapScreen: View {
         .onChange(of: viewModel.nodes) {
             updateDisplayedNodes()
         }
-        .onChange(of: searchText) {
-            updateDisplayedNodes()
-        }
         .onChange(of: mapDisplayStyle) {
             UserDefaults.standard.set(mapDisplayStyle.rawValue, forKey: MapDisplayStyle.defaultsKey)
         }
@@ -374,11 +371,19 @@ struct MapScreen: View {
     }
 
     private func toggleMapSearch() {
-        withAnimation(.easeInOut(duration: 0.2)) {
-            isSearchPresented.toggle()
-            if !isSearchPresented {
-                searchText = ""
-            }
+        isSearchPresented = true
+    }
+
+    private func focusOnSearchedNode(_ node: MeshNode) {
+        guard let coordinate = validCoordinate(node.coordinate) else { return }
+        highlightedNodeID = node.id
+        withAnimation(.easeInOut(duration: 0.35)) {
+            cameraPosition = .region(
+                MKCoordinateRegion(
+                    center: coordinate,
+                    span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08)
+                )
+            )
         }
     }
 
@@ -405,15 +410,23 @@ struct MapScreen: View {
                 ForEach(mapNodes) { node in
                     if let coordinate = node.coordinate {
                         Annotation(node.name ?? shortKey(node.publicKey), coordinate: coordinate, anchor: .center) {
+                            let isHighlighted = node.id == highlightedNodeID
                             Image(systemName: NodeRoleStyle.symbolName(for: node.role))
                                 .font(.caption2.weight(.semibold))
                                 .foregroundStyle(.white)
-                                .frame(width: 16, height: 16)
+                                .frame(
+                                    width: isHighlighted ? 26 : 16,
+                                    height: isHighlighted ? 26 : 16
+                                )
                                 .background(NodeRoleStyle.color(for: node.role), in: Circle())
                                 .overlay {
                                     Circle()
-                                        .stroke(.white.opacity(0.75), lineWidth: 1)
+                                        .stroke(.white.opacity(0.9), lineWidth: isHighlighted ? 3 : 1)
                                 }
+                                .shadow(
+                                    color: isHighlighted ? NodeScopeStyle.signal.opacity(0.65) : .clear,
+                                    radius: 8
+                                )
                                 .accessibilityLabel(node.name ?? shortKey(node.publicKey))
                         }
                     }
@@ -536,13 +549,7 @@ struct MapScreen: View {
     }
 
     private func updateDisplayedNodes(in region: MKCoordinateRegion? = nil) {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let nodes = query.isEmpty ? viewModel.nodes : viewModel.nodes.filter { node in
-            node.name?.localizedCaseInsensitiveContains(query) == true
-                || node.publicKey.localizedCaseInsensitiveContains(query)
-                || node.role.localizedCaseInsensitiveContains(query)
-        }
-        matchingNodeCount = nodes.count
+        let nodes = viewModel.nodes
         let displayRegion = (region ?? visibleRegion).map(DisplayRegion.init)
         displayUpdateTask?.cancel()
         displayUpdateTask = Task {
@@ -1503,5 +1510,126 @@ struct MapScreen: View {
             && CLLocationCoordinate2DIsValid(to)
             && (from.latitude != 0 || from.longitude != 0)
             && (to.latitude != 0 || to.longitude != 0)
+    }
+}
+
+private struct MapNodeSearchSheet: View {
+    let nodes: [MeshNode]
+    let selectNode: (MeshNode) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+    @State private var results: [MeshNode] = []
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 12) {
+                InstrumentSearchField(text: $query, prompt: "Name, key, or role")
+                    .padding(.horizontal, 16)
+
+                if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    ContentUnavailableView(
+                        "Find a Node",
+                        systemImage: "magnifyingglass",
+                        description: Text("Search by node name, public key, or role.")
+                    )
+                } else if results.isEmpty {
+                    ContentUnavailableView.search(text: query)
+                } else {
+                    List(results) { node in
+                        Button {
+                            dismiss()
+                            selectNode(node)
+                        } label: {
+                            MapNodeSearchRow(
+                                name: node.name ?? "Unnamed Node",
+                                role: node.role,
+                                publicKey: node.publicKey,
+                                lastSeen: node.lastSeen
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .padding(.top, 8)
+            .navigationTitle("Search Nodes")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+            .onAppear(perform: updateResults)
+            .onChange(of: query) {
+                updateResults()
+            }
+            .onChange(of: nodes) {
+                updateResults()
+            }
+        }
+    }
+
+    private func updateResults() {
+        let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedQuery.isEmpty else {
+            results = []
+            return
+        }
+
+        results = nodes.lazy.filter { node in
+            guard let coordinate = node.coordinate,
+                  coordinate.latitude != 0 || coordinate.longitude != 0 else {
+                return false
+            }
+            return node.name?.localizedCaseInsensitiveContains(normalizedQuery) == true
+                || node.publicKey.localizedCaseInsensitiveContains(normalizedQuery)
+                || node.role.localizedCaseInsensitiveContains(normalizedQuery)
+        }
+        .sorted { lhs, rhs in
+            let lhsName = lhs.name ?? lhs.publicKey
+            let rhsName = rhs.name ?? rhs.publicKey
+            return lhsName.localizedCaseInsensitiveCompare(rhsName) == .orderedAscending
+        }
+    }
+}
+
+private struct MapNodeSearchRow: View {
+    let name: String
+    let role: String
+    let publicKey: String
+    let lastSeen: Date
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: NodeRoleStyle.symbolName(for: role))
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(width: 38, height: 38)
+                .background(NodeRoleStyle.color(for: role), in: Circle())
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(name)
+                    .font(.headline)
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(role.capitalized)
+                    Text("·")
+                    Text(publicKey.prefix(10).uppercased())
+                        .font(.caption.monospaced())
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Text(lastSeen, style: .relative)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+        .contentShape(Rectangle())
+        .padding(.vertical, 4)
     }
 }
