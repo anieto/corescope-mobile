@@ -7,6 +7,7 @@ final class PacketDetailViewModel {
     var detail: PacketDetailResponse?
     var isLoading = false
     var errorMessage: String?
+    var lastUpdatedAt: Date?
 
     private var apiClient: APIClient?
     private var cacheNamespace = ""
@@ -24,6 +25,7 @@ final class PacketDetailViewModel {
             maximumAge: 24 * 60 * 60
         ) {
             detail = cached
+            lastUpdatedAt = await APIResponseCache.shared.savedAt(for: cacheKey)
             errorMessage = nil
         }
         isLoading = detail == nil
@@ -33,6 +35,7 @@ final class PacketDetailViewModel {
             detail = try await APIResponseCache.shared.refresh(for: cacheKey) {
                 try await apiClient.get("/api/packets/\(hash.urlPathComponentEncoded)")
             }
+            lastUpdatedAt = .now
             errorMessage = nil
         } catch {
             if error is CancellationError || (error as? URLError)?.code == .cancelled {

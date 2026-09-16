@@ -13,6 +13,13 @@ struct NodeDetailScreen: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
+                DataLoadStatusView(
+                    lastUpdatedAt: viewModel.lastUpdatedAt,
+                    errorMessage: viewModel.errorMessage,
+                    hasContent: viewModel.health != nil || viewModel.paths != nil || viewModel.reach != nil,
+                    retry: retryNodeData
+                )
+
                 NodeIdentityCard(node: node)
 
                 if let reach = viewModel.reach {
@@ -47,6 +54,12 @@ struct NodeDetailScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             viewModel.configure(settings: settings)
+            await viewModel.load(pubkey: node.publicKey)
+        }
+    }
+
+    private func retryNodeData() {
+        Task {
             await viewModel.load(pubkey: node.publicKey)
         }
     }

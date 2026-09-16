@@ -11,6 +11,10 @@ private actor MapResponseCache {
         let value: Value
     }
 
+    private struct TimestampEntry: Decodable {
+        let savedAt: Date
+    }
+
     func value<Value: Codable>(
         for key: String,
         maximumAge: TimeInterval
@@ -31,6 +35,16 @@ private actor MapResponseCache {
         guard let data = try? JSONEncoder().encode(entry) else { return }
         memoryData[key] = data
         try? data.write(to: url, options: .atomic)
+    }
+
+    func savedAt(for key: String) -> Date? {
+        let data = memoryData[key] ?? (try? Data(contentsOf: fileURL(for: key)))
+        guard let data,
+              let entry = try? JSONDecoder().decode(TimestampEntry.self, from: data) else {
+            return nil
+        }
+        memoryData[key] = data
+        return entry.savedAt
     }
 
     private func fileURL(for key: String) -> URL {
@@ -66,6 +80,7 @@ final class MapViewModel {
     var mapDefaults: MapDefaults?
     var isLoading = false
     var errorMessage: String?
+    var lastUpdatedAt: Date?
 
     /// O(1) exact-pubkey lookup for resolving `resolved_path` entries on
     /// every live packet, instead of scanning up to ~1,000 nodes per hop.
@@ -89,6 +104,7 @@ final class MapViewModel {
         recentPackets = []
         mapDefaults = nil
         errorMessage = nil
+        lastUpdatedAt = nil
         isLoading = false
     }
 
@@ -119,6 +135,7 @@ final class MapViewModel {
             maximumAge: staleCacheLifetime
         ) {
             nodes = cached.nodes
+            lastUpdatedAt = await MapResponseCache.shared.savedAt(for: cacheKey)
             errorMessage = nil
             hadCachedNodes = true
         } else {
@@ -147,6 +164,7 @@ final class MapViewModel {
             }
             let response: NodesResponse = try await apiClient.get("/api/nodes", query: query)
             nodes = response.nodes
+            lastUpdatedAt = .now
             errorMessage = nil
             await MapResponseCache.shared.store(response, for: cacheKey)
             recordRefresh(for: cacheKey)
@@ -154,9 +172,7 @@ final class MapViewModel {
             if error is CancellationError || (error as? URLError)?.code == .cancelled {
                 return
             }
-            if nodes.isEmpty {
-                errorMessage = error.localizedDescription
-            }
+            errorMessage = error.localizedDescription
         }
     }
 

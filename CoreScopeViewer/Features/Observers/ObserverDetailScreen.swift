@@ -9,6 +9,18 @@ struct ObserverDetailScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                if viewModel.isLoading {
+                    LoadingIndicator(title: "Loading observer analytics…")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                DataLoadStatusView(
+                    lastUpdatedAt: viewModel.lastUpdatedAt,
+                    errorMessage: viewModel.errorMessage,
+                    hasContent: viewModel.analytics != nil,
+                    retry: retryAnalytics
+                )
+
                 ObserverIdentityCard(observer: observer)
 
                 if let analytics = viewModel.analytics {
@@ -36,19 +48,14 @@ struct ObserverDetailScreen: View {
         .background(NodeScopeBackground())
         .navigationTitle(observer.name ?? "Observer")
         .navigationBarTitleDisplayMode(.inline)
-        .overlay {
-            if viewModel.isLoading {
-                LoadingIndicator(title: "Loading observer analytics…")
-            } else if let errorMessage = viewModel.errorMessage {
-                ContentUnavailableView(
-                    "Couldn't load analytics",
-                    systemImage: "chart.xyaxis.line",
-                    description: Text(errorMessage)
-                )
-            }
-        }
         .task {
             viewModel.configure(settings: settings)
+            await viewModel.loadAnalytics(id: observer.id)
+        }
+    }
+
+    private func retryAnalytics() {
+        Task {
             await viewModel.loadAnalytics(id: observer.id)
         }
     }

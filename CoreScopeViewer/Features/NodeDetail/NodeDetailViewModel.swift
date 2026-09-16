@@ -14,6 +14,8 @@ final class NodeDetailViewModel {
     var paths: NodePathsResponse?
     var reach: NodeReachResponse?
     var isLoading = true
+    var errorMessage: String?
+    var lastUpdatedAt: Date?
 
     private var apiClient: APIClient?
     private var cacheNamespace = ""
@@ -33,14 +35,17 @@ final class NodeDetailViewModel {
             health = cached.health
             paths = cached.paths
             reach = cached.reach
+            lastUpdatedAt = await APIResponseCache.shared.savedAt(for: cacheKey)
+            errorMessage = nil
         }
         isLoading = health == nil && paths == nil && reach == nil
         defer { isLoading = false }
 
         let encodedPubkey = pubkey.urlPathComponentEncoded
-        guard let fresh: NodeDetailCacheValue = try? await APIResponseCache.shared.refresh(
-            for: cacheKey,
-            loader: {
+        do {
+            let fresh: NodeDetailCacheValue = try await APIResponseCache.shared.refresh(
+                for: cacheKey,
+                loader: {
                 async let healthTask: NodeHealthResponse? = try? apiClient.get("/api/nodes/\(encodedPubkey)/health")
                 async let pathsTask: NodePathsResponse? = try? apiClient.get("/api/nodes/\(encodedPubkey)/paths")
                 async let reachTask: NodeReachResponse? = try? apiClient.get("/api/nodes/\(encodedPubkey)/reach")
@@ -53,10 +58,18 @@ final class NodeDetailViewModel {
                     throw URLError(.cannotLoadFromNetwork)
                 }
                 return result
+                }
+            )
+            health = fresh.health
+            paths = fresh.paths
+            reach = fresh.reach
+            lastUpdatedAt = .now
+            errorMessage = nil
+        } catch {
+            if error is CancellationError || (error as? URLError)?.code == .cancelled {
+                return
             }
-        ) else { return }
-        health = fresh.health
-        paths = fresh.paths
-        reach = fresh.reach
+            errorMessage = error.localizedDescription
+        }
     }
 }

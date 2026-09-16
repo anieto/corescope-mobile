@@ -166,9 +166,20 @@ struct MapScreen: View {
                     NodeDetailScreen(node: node)
                 }
                 .overlay(alignment: .topLeading) {
-                    regionScopeControl
-                        .padding(.leading, 12)
-                        .padding(.top, 12)
+                    VStack(alignment: .leading, spacing: 8) {
+                        regionScopeControl
+                        if !viewModel.nodes.isEmpty {
+                            DataLoadStatusView(
+                                lastUpdatedAt: viewModel.lastUpdatedAt,
+                                errorMessage: viewModel.errorMessage,
+                                hasContent: true,
+                                retry: retryMapLoad
+                            )
+                            .frame(maxWidth: 300, alignment: .leading)
+                        }
+                    }
+                    .padding(.leading, 12)
+                    .padding(.top, 12)
                 }
                 .overlay(alignment: .bottomLeading) {
                     Button(action: centerOnUserLocation) {
@@ -207,7 +218,7 @@ struct MapScreen: View {
                     .padding(.bottom, floatingDockClearance)
                 }
                 .overlay {
-                    if let errorMessage = viewModel.errorMessage {
+                    if let errorMessage = viewModel.errorMessage, viewModel.nodes.isEmpty {
                         ContentUnavailableView(
                             "Couldn't load nodes",
                             systemImage: "wifi.slash",
@@ -330,6 +341,15 @@ struct MapScreen: View {
 
     private func keepRegionLoaderVisible() async {
         try? await Task.sleep(for: .milliseconds(700))
+    }
+
+    private func retryMapLoad() {
+        Task {
+            await viewModel.loadNodes(region: regionFilter.selectedRegion, forceRefresh: true)
+            await viewModel.loadPackets(region: regionFilter.selectedRegion, forceRefresh: true)
+            processHistoricalPackets()
+            processIncomingEvents()
+        }
     }
 
     @ViewBuilder

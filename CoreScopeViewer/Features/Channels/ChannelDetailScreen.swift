@@ -52,8 +52,18 @@ struct ChannelDetailScreen: View {
                 RegionFilterMenu()
             }
         }
+        .safeAreaInset(edge: .top) {
+            DataLoadStatusView(
+                lastUpdatedAt: viewModel.lastUpdatedAt,
+                errorMessage: viewModel.errorMessage,
+                hasContent: !orderedMessages.isEmpty,
+                retry: { Task { await loadMessages(forceRefresh: true) } }
+            )
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+        }
         .overlay {
-            if orderedMessages.isEmpty && !viewModel.isLoading {
+            if orderedMessages.isEmpty && !viewModel.isLoading && viewModel.errorMessage == nil {
                 ContentUnavailableView(
                     regionFilter.selectedRegion == nil ? "No messages yet" : "No messages from this region",
                     systemImage: "message"

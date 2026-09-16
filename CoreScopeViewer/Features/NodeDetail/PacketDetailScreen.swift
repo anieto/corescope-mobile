@@ -10,6 +10,18 @@ struct PacketDetailScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                if viewModel.isLoading {
+                    LoadingIndicator(title: "Loading packet…")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                DataLoadStatusView(
+                    lastUpdatedAt: viewModel.lastUpdatedAt,
+                    errorMessage: viewModel.errorMessage,
+                    hasContent: viewModel.detail != nil,
+                    retry: retryPacket
+                )
+
                 if !message.text.isEmpty {
                     PacketMessageCard(sender: message.sender, text: message.text)
                 }
@@ -47,19 +59,15 @@ struct PacketDetailScreen: View {
         .background(NodeScopeBackground())
         .navigationTitle("Packet")
         .navigationBarTitleDisplayMode(.inline)
-        .overlay {
-            if viewModel.isLoading {
-                LoadingIndicator(title: "Loading packet…")
-            } else if let error = viewModel.errorMessage {
-                ContentUnavailableView(
-                    "Couldn't load packet",
-                    systemImage: "wifi.slash",
-                    description: Text(error)
-                )
-            }
-        }
         .task {
             viewModel.configure(settings: settings)
+            await viewModel.loadPacket(hash: message.packetHash)
+            selectedRouteIndex = 0
+        }
+    }
+
+    private func retryPacket() {
+        Task {
             await viewModel.loadPacket(hash: message.packetHash)
             selectedRouteIndex = 0
         }
