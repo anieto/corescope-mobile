@@ -12,6 +12,7 @@ struct ChannelsListScreen: View {
     @State private var navigationPath = NavigationPath()
     @State private var lastProcessedLiveEventID: Int?
     @State private var liveRefreshTask: Task<Void, Never>?
+    @State private var searchText = ""
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -25,6 +26,11 @@ struct ChannelsListScreen: View {
                 .listRowInsets(EdgeInsets(top: 18, leading: 20, bottom: 8, trailing: 20))
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
+
+                InstrumentSearchField(text: $searchText, prompt: "Search channels")
+                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 8, trailing: 20))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
 
                 if viewModel.isLoading {
                     LoadingIndicator(title: "Syncing mesh traffic")
@@ -90,14 +96,18 @@ struct ChannelsListScreen: View {
                 ChannelDetailScreen(channel: channel)
             }
             .overlay {
-                if viewModel.channels.isEmpty && monitorStore.channels.isEmpty && !viewModel.isLoading {
-                    ContentUnavailableView("No channels yet", systemImage: "number")
+                if orderedChannels.isEmpty && monitoredChannels.isEmpty && !viewModel.isLoading {
+                    ContentUnavailableView(
+                        searchText.isEmpty ? "No channels yet" : "No matching channels",
+                        systemImage: searchText.isEmpty ? "number" : "magnifyingglass"
+                    )
                 }
             }
         }
         .onChange(of: resetID) {
             navigationPath = NavigationPath()
             isShowingAddChannel = false
+            searchText = ""
         }
         .task(id: "\(settings.host)|\(regionFilter.selectedRegion ?? "")") {
             viewModel.configure(settings: settings)
@@ -165,6 +175,7 @@ struct ChannelsListScreen: View {
     private var orderedChannels: [MeshChannel] {
         viewModel.channels.filter { serverChannel in
             !monitorStore.channels.contains { $0.channelName == serverChannel.name }
+                && matchesSearch(serverChannel)
         }
         .sorted { lhs, rhs in
             let lhsIsPublic = lhs.name.caseInsensitiveCompare("Public") == .orderedSame
@@ -187,10 +198,19 @@ struct ChannelsListScreen: View {
                 lastActivity: monitoredChannel.lastActivity ?? .distantPast
             )
         }
+        .filter(matchesSearch)
     }
 
     private var monitoredChannelIDs: String {
         monitorStore.channels.map(\.id).sorted().joined(separator: "|")
+    }
+
+    private func matchesSearch(_ channel: MeshChannel) -> Bool {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return true }
+        return channel.name.localizedCaseInsensitiveContains(query)
+            || channel.lastMessage?.localizedCaseInsensitiveContains(query) == true
+            || channel.lastSender?.localizedCaseInsensitiveContains(query) == true
     }
 
     private func retryChannelLoad() {

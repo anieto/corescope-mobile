@@ -36,6 +36,8 @@ struct MapScreen: View {
     @State private var pendingReplayRequestID: UUID?
     @State private var loadedAnalyzerHost = ""
     @State private var displayUpdateTask: Task<Void, Never>?
+    @State private var searchText = ""
+    @State private var matchingNodeCount = 0
 
     // The map remains edge-to-edge, while interactive controls sit above the
     // app-level floating dock rendered by RootTabView.
@@ -172,6 +174,7 @@ struct MapScreen: View {
                 .navigationDestination(item: $selectedNode) { node in
                     NodeDetailScreen(node: node)
                 }
+                .searchable(text: $searchText, prompt: "Search nodes")
                 .overlay(alignment: .topLeading) {
                     VStack(alignment: .leading, spacing: 8) {
                         regionScopeControl
@@ -215,7 +218,7 @@ struct MapScreen: View {
                             }
                         }
                         if !viewModel.nodes.isEmpty {
-                            Text("\(viewModel.nodes.count) nodes")
+                            Text("\(searchText.isEmpty ? viewModel.nodes.count : matchingNodeCount) nodes")
                                 .font(.caption)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 4)
@@ -248,6 +251,7 @@ struct MapScreen: View {
             replayPings = []
             isReplayMode = false
             showsReplayRouteOnly = true
+            searchText = ""
         }
         .onDisappear {
             displayUpdateTask?.cancel()
@@ -322,6 +326,9 @@ struct MapScreen: View {
             rebuildPathsAfterLoadingObservers()
         }
         .onChange(of: viewModel.nodes) {
+            updateDisplayedNodes()
+        }
+        .onChange(of: searchText) {
             updateDisplayedNodes()
         }
         .onChange(of: mapDisplayStyle) {
@@ -510,7 +517,13 @@ struct MapScreen: View {
     }
 
     private func updateDisplayedNodes(in region: MKCoordinateRegion? = nil) {
-        let nodes = viewModel.nodes
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let nodes = query.isEmpty ? viewModel.nodes : viewModel.nodes.filter { node in
+            node.name?.localizedCaseInsensitiveContains(query) == true
+                || node.publicKey.localizedCaseInsensitiveContains(query)
+                || node.role.localizedCaseInsensitiveContains(query)
+        }
+        matchingNodeCount = nodes.count
         let displayRegion = (region ?? visibleRegion).map(DisplayRegion.init)
         displayUpdateTask?.cancel()
         displayUpdateTask = Task {

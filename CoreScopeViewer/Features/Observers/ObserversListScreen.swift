@@ -8,10 +8,19 @@ struct ObserversListScreen: View {
     @Environment(LiveFeedService.self) private var liveFeed
     @State private var viewModel = ObserversViewModel()
     @State private var navigationPath = NavigationPath()
+    @State private var searchText = ""
 
     private var filteredObservers: [MeshObserver] {
-        guard let selectedRegion = regionFilter.selectedRegion else { return viewModel.observers }
-        return viewModel.observers.filter { $0.iata == selectedRegion }
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return viewModel.observers.filter { observer in
+            let matchesRegion = regionFilter.selectedRegion == nil || observer.iata == regionFilter.selectedRegion
+            let matchesQuery = query.isEmpty
+                || observer.name?.localizedCaseInsensitiveContains(query) == true
+                || observer.id.localizedCaseInsensitiveContains(query)
+                || observer.iata?.localizedCaseInsensitiveContains(query) == true
+                || observer.model?.localizedCaseInsensitiveContains(query) == true
+            return matchesRegion && matchesQuery
+        }
     }
 
     var body: some View {
@@ -23,6 +32,9 @@ struct ObserversListScreen: View {
                 )
                 .iPadWindowControlsClearance()
                 .instrumentListRow(top: 18, bottom: 10)
+
+                InstrumentSearchField(text: $searchText, prompt: "Search observer nodes")
+                    .instrumentListRow(top: 0, bottom: 8)
 
                 if viewModel.isLoading {
                     LoadingIndicator(title: "Polling observer network")
@@ -98,6 +110,7 @@ struct ObserversListScreen: View {
         }
         .onChange(of: resetID) {
             navigationPath = NavigationPath()
+            searchText = ""
         }
         .task {
             viewModel.configure(settings: settings)
