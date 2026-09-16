@@ -13,6 +13,7 @@ struct ChannelsListScreen: View {
     @State private var lastProcessedLiveEventID: Int?
     @State private var liveRefreshTask: Task<Void, Never>?
     @State private var searchText = ""
+    @State private var isSearchPresented = false
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -20,6 +21,8 @@ struct ChannelsListScreen: View {
                 ChannelsHeader(
                     isConnected: liveFeed.isConnected,
                     regionName: regionFilter.selectedRegion.map(regionFilter.label(for:)),
+                    isSearchPresented: isSearchPresented,
+                    toggleSearch: toggleSearch,
                     addChannel: { isShowingAddChannel = true }
                 )
                 .iPadWindowControlsClearance()
@@ -27,10 +30,12 @@ struct ChannelsListScreen: View {
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
 
-                InstrumentSearchField(text: $searchText, prompt: "Search channels")
-                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 8, trailing: 20))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+                if isSearchPresented {
+                    InstrumentSearchField(text: $searchText, prompt: "Search channels")
+                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 8, trailing: 20))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                }
 
                 if viewModel.isLoading {
                     LoadingIndicator(title: "Syncing mesh traffic")
@@ -108,6 +113,7 @@ struct ChannelsListScreen: View {
             navigationPath = NavigationPath()
             isShowingAddChannel = false
             searchText = ""
+            isSearchPresented = false
         }
         .task(id: "\(settings.host)|\(regionFilter.selectedRegion ?? "")") {
             viewModel.configure(settings: settings)
@@ -219,6 +225,15 @@ struct ChannelsListScreen: View {
         }
     }
 
+    private func toggleSearch() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isSearchPresented.toggle()
+            if !isSearchPresented {
+                searchText = ""
+            }
+        }
+    }
+
     private func channelRow(_ channel: MeshChannel) -> some View {
         NavigationLink(value: channel) {
             ChannelCard(
@@ -249,6 +264,8 @@ struct ChannelsListScreen: View {
 private struct ChannelsHeader: View {
     let isConnected: Bool
     let regionName: String?
+    let isSearchPresented: Bool
+    let toggleSearch: () -> Void
     let addChannel: () -> Void
 
     var body: some View {
@@ -274,6 +291,15 @@ private struct ChannelsHeader: View {
             Spacer()
 
             HStack(spacing: 10) {
+                Button(action: toggleSearch) {
+                    Image(systemName: isSearchPresented ? "xmark" : "magnifyingglass")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(NodeScopeStyle.signal)
+                        .frame(width: 40, height: 40)
+                        .background(.thinMaterial, in: Circle())
+                }
+                .accessibilityLabel(isSearchPresented ? "Close channel search" : "Search channels")
+
                 RegionFilterMenu()
                     .foregroundStyle(NodeScopeStyle.signal)
                     .padding(.horizontal, 10)

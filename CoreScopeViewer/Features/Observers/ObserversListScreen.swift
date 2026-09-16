@@ -9,6 +9,7 @@ struct ObserversListScreen: View {
     @State private var viewModel = ObserversViewModel()
     @State private var navigationPath = NavigationPath()
     @State private var searchText = ""
+    @State private var isSearchPresented = false
 
     private var filteredObservers: [MeshObserver] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -28,13 +29,17 @@ struct ObserversListScreen: View {
             List {
                 ObserversHeader(
                     isConnected: liveFeed.isConnected,
-                    regionName: regionFilter.selectedRegion.map(regionFilter.label(for:))
+                    regionName: regionFilter.selectedRegion.map(regionFilter.label(for:)),
+                    isSearchPresented: isSearchPresented,
+                    toggleSearch: toggleSearch
                 )
                 .iPadWindowControlsClearance()
                 .instrumentListRow(top: 18, bottom: 10)
 
-                InstrumentSearchField(text: $searchText, prompt: "Search observer nodes")
-                    .instrumentListRow(top: 0, bottom: 8)
+                if isSearchPresented {
+                    InstrumentSearchField(text: $searchText, prompt: "Search observer nodes")
+                        .instrumentListRow(top: 0, bottom: 8)
+                }
 
                 if viewModel.isLoading {
                     LoadingIndicator(title: "Polling observer network")
@@ -111,6 +116,7 @@ struct ObserversListScreen: View {
         .onChange(of: resetID) {
             navigationPath = NavigationPath()
             searchText = ""
+            isSearchPresented = false
         }
         .task {
             viewModel.configure(settings: settings)
@@ -126,11 +132,22 @@ struct ObserversListScreen: View {
             await viewModel.loadObservers()
         }
     }
+
+    private func toggleSearch() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isSearchPresented.toggle()
+            if !isSearchPresented {
+                searchText = ""
+            }
+        }
+    }
 }
 
 private struct ObserversHeader: View {
     let isConnected: Bool
     let regionName: String?
+    let isSearchPresented: Bool
+    let toggleSearch: () -> Void
 
     var body: some View {
         HStack(alignment: .top) {
@@ -152,12 +169,23 @@ private struct ObserversHeader: View {
 
             Spacer()
 
-            RegionFilterMenu()
-                .foregroundStyle(NodeScopeStyle.signal)
-                .padding(.horizontal, 10)
-                .frame(minWidth: 40, minHeight: 40)
-                .background(.thinMaterial, in: Capsule())
-                .accessibilityLabel("Filter observers by region")
+            HStack(spacing: 10) {
+                Button(action: toggleSearch) {
+                    Image(systemName: isSearchPresented ? "xmark" : "magnifyingglass")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(NodeScopeStyle.signal)
+                        .frame(width: 40, height: 40)
+                        .background(.thinMaterial, in: Circle())
+                }
+                .accessibilityLabel(isSearchPresented ? "Close observer search" : "Search observers")
+
+                RegionFilterMenu()
+                    .foregroundStyle(NodeScopeStyle.signal)
+                    .padding(.horizontal, 10)
+                    .frame(minWidth: 40, minHeight: 40)
+                    .background(.thinMaterial, in: Capsule())
+                    .accessibilityLabel("Filter observers by region")
+            }
         }
     }
 }
