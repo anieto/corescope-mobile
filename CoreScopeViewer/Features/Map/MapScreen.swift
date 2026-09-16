@@ -1520,6 +1520,9 @@ private struct MapNodeSearchSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
     @State private var results: [MeshNode] = []
+    @State private var selectedRoles: Set<String> = []
+
+    private let roles = ["repeater", "room", "companion", "sensor"]
 
     var body: some View {
         NavigationStack {
@@ -1527,7 +1530,29 @@ private struct MapNodeSearchSheet: View {
                 InstrumentSearchField(text: $query, prompt: "Name, key, or role")
                     .padding(.horizontal, 16)
 
-                if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        MapRoleFilterChip(
+                            title: "All",
+                            symbol: "circle.grid.2x2.fill",
+                            color: NodeScopeStyle.signal,
+                            isSelected: selectedRoles.isEmpty,
+                            action: { selectedRoles = [] }
+                        )
+                        ForEach(roles, id: \.self) { role in
+                            MapRoleFilterChip(
+                                title: role.capitalized,
+                                symbol: NodeRoleStyle.symbolName(for: role),
+                                color: NodeRoleStyle.color(for: role),
+                                isSelected: selectedRoles.contains(role),
+                                action: { toggleRole(role) }
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+
+                if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedRoles.isEmpty {
                     ContentUnavailableView(
                         "Find a Node",
                         systemImage: "magnifyingglass",
@@ -1568,12 +1593,15 @@ private struct MapNodeSearchSheet: View {
             .onChange(of: nodes) {
                 updateResults()
             }
+            .onChange(of: selectedRoles) {
+                updateResults()
+            }
         }
     }
 
     private func updateResults() {
         let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !normalizedQuery.isEmpty else {
+        guard !normalizedQuery.isEmpty || !selectedRoles.isEmpty else {
             results = []
             return
         }
@@ -1583,15 +1611,45 @@ private struct MapNodeSearchSheet: View {
                   coordinate.latitude != 0 || coordinate.longitude != 0 else {
                 return false
             }
-            return node.name?.localizedCaseInsensitiveContains(normalizedQuery) == true
+            return normalizedQuery.isEmpty
+                || node.name?.localizedCaseInsensitiveContains(normalizedQuery) == true
                 || node.publicKey.localizedCaseInsensitiveContains(normalizedQuery)
                 || node.role.localizedCaseInsensitiveContains(normalizedQuery)
         }
+        .filter { selectedRoles.isEmpty || selectedRoles.contains($0.role) }
         .sorted { lhs, rhs in
             let lhsName = lhs.name ?? lhs.publicKey
             let rhsName = rhs.name ?? rhs.publicKey
             return lhsName.localizedCaseInsensitiveCompare(rhsName) == .orderedAscending
         }
+    }
+
+    private func toggleRole(_ role: String) {
+        if selectedRoles.contains(role) {
+            selectedRoles.remove(role)
+        } else {
+            selectedRoles.insert(role)
+        }
+    }
+}
+
+private struct MapRoleFilterChip: View {
+    let title: String
+    let symbol: String
+    let color: Color
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label(title, systemImage: symbol)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(isSelected ? .white : color)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 8)
+                .background(isSelected ? color : color.opacity(0.11), in: Capsule())
+        }
+        .buttonStyle(.plain)
     }
 }
 
