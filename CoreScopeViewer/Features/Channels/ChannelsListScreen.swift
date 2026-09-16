@@ -145,7 +145,7 @@ struct ChannelsListScreen: View {
     /// isn't confirmed to be an unrelated payload type triggers a refresh.
     private func isPossiblyChannelRelevant(_ event: LiveEnvelope) -> Bool {
         guard event.type == "packet" else { return true }
-        let payloadType = event.data.decoded?.header?.payloadType
+        let payloadType = event.data?.decoded?.header?.payloadType
         return payloadType == nil || payloadType == PayloadType.grpTxt.rawValue
     }
 

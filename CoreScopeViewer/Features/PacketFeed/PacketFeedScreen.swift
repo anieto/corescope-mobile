@@ -9,7 +9,9 @@ struct PacketFeedScreen: View {
     var body: some View {
         NavigationStack {
             List(filteredEvents) { envelope in
-                PacketRow(data: envelope.data)
+                if let data = envelope.data {
+                    PacketRow(data: data)
+                }
             }
             .listStyle(.plain)
             .adaptiveContentWidth()
@@ -51,14 +53,14 @@ struct PacketFeedScreen: View {
         var events = liveFeed.recentEvents.filter { $0.type == "packet" }
 
         if let filterType {
-            events = events.filter { $0.data.decoded?.header?.payloadType == filterType }
+            events = events.filter { $0.data?.decoded?.header?.payloadType == filterType }
         }
 
         if let selectedRegion = regionFilter.selectedRegion {
             // /api/observers is the only source of an observer's region, so
             // a packet from an observer we haven't resolved yet is excluded
             // rather than guessed at while a region filter is active.
-            events = events.filter { observerRegionLookup.iataById[$0.data.observerId ?? ""] == selectedRegion }
+            events = events.filter { observerRegionLookup.iataById[$0.data?.observerId ?? ""] == selectedRegion }
         }
 
         return events

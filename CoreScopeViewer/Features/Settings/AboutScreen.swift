@@ -87,7 +87,7 @@ struct AboutScreen: View {
 
             Section("License") {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("NodeScope · Copyright © 2026 Adam Nieto")
+                    Text("NodeScope · Copyright © 2026 BetweenThieves Development")
                         .font(.subheadline.weight(.semibold))
                     Text(
                         "Free and open-source software licensed under GNU GPL version 3 with an application-store distribution exception. You may share and modify it under those terms. NodeScope comes with absolutely no warranty."

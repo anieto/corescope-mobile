@@ -1,7 +1,13 @@
 import Foundation
 
-/// WebSocket message envelope: { "type": "packet" | "message", "data": {...} }
-/// Both message types share the same `data` shape.
+/// WebSocket message envelope: { "type": "packet" | "message" | "heartbeat", "data": {...} }
+/// "packet" and "message" share the same `data` shape. "heartbeat" carries
+/// no `data` field at all — the server writes `{"type":"heartbeat"}` on
+/// every ping tick (websocket.go's `wsHeartbeat`, added upstream so
+/// public/app.js can detect a silent connection and reconnect) — so `data`
+/// must stay Optional. LiveFeedService skips inserting heartbeat envelopes
+/// into the feed; `id` falls back to -1 for that case since it's never
+/// actually used for a heartbeat.
 ///
 /// The published docs/api-spec.md documents this field as `observer`
 /// (described as "observer_id"), but the server actually sends the key
@@ -10,9 +16,9 @@ import Foundation
 /// feed's raw JSON rather than trusting the docs a second time.
 struct LiveEnvelope: Codable, Sendable, Identifiable {
     let type: String
-    let data: LivePacketData
+    let data: LivePacketData?
 
-    var id: Int { data.id }
+    var id: Int { data?.id ?? -1 }
 }
 
 struct LivePacketData: Codable, Sendable {

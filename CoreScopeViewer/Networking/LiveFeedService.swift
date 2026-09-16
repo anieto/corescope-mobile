@@ -81,6 +81,10 @@ final class LiveFeedService: NSObject, URLSessionWebSocketDelegate {
 
         do {
             let envelope = try decoder.decode(LiveEnvelope.self, from: data)
+            // Heartbeat frames (see LiveEnvelope) carry no packet data and
+            // aren't meant to be displayed — just proof the connection is
+            // alive. Nothing else currently depends on receiving them.
+            guard envelope.data != nil else { return }
             recentEvents.insert(envelope, at: 0)
             if recentEvents.count > maxEvents {
                 recentEvents.removeLast(recentEvents.count - maxEvents)

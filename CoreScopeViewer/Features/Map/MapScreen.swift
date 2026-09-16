@@ -1130,9 +1130,9 @@ struct MapScreen: View {
         // is shared, but each observer/path combination is a distinct route.
         [
             String(envelope.id),
-            envelope.data.observerId ?? "",
-            envelope.data.pathJson ?? "",
-            envelope.data.hash ?? ""
+            envelope.data?.observerId ?? "",
+            envelope.data?.pathJson ?? "",
+            envelope.data?.hash ?? ""
         ].joined(separator: "|")
     }
 
@@ -1156,7 +1156,7 @@ struct MapScreen: View {
             processedEventIds.insert(eventKey)
 
             let subchains = resolvedSubchains(for: event)
-            let pathColor = ActivePing.color(forHash: event.data.hash ?? event.data.raw, colorScheme: colorScheme)
+            let pathColor = ActivePing.color(forHash: event.data?.hash ?? event.data?.raw, colorScheme: colorScheme)
 
             for subchain in subchains {
                 if subchain.count >= 2 {
@@ -1230,13 +1230,16 @@ struct MapScreen: View {
     }
 
     private func resolvedSubchains(for envelope: LiveEnvelope) -> [[CLLocationCoordinate2D]] {
-        let hops = extractHops(from: envelope.data)
-        let resolvedPubkeys = envelope.data.resolvedPath ?? []
+        // Heartbeat envelopes (no data) never reach here — processIncomingEvents
+        // already filters to type == "packet" before calling this.
+        guard let data = envelope.data else { return [] }
+        let hops = extractHops(from: data)
+        let resolvedPubkeys = data.resolvedPath ?? []
         return resolvedSubchains(
             hops: hops,
             resolvedPubkeys: resolvedPubkeys,
-            observerId: envelope.data.observerId,
-            observerName: envelope.data.observerName
+            observerId: data.observerId,
+            observerName: data.observerName
         )
     }
 

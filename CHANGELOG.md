@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.1 - 2026-09-16
+
+Patch release improving live-feed reliability and finalizing BetweenThieves
+Development branding.
+
+### Improved
+
+- Accept WebSocket heartbeat envelopes that do not contain packet data
+- Ignore heartbeat frames in channel, packet-feed, and live-map presentation
+- Updated the app bundle identifier to `com.btdev.nodescope`
+- Updated in-app copyright attribution to BetweenThieves Development
+
 ## 0.2.0 - 2026-09-13
 
 Release candidate with the complete NodeScope interface refresh and native

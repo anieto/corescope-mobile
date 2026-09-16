@@ -105,20 +105,21 @@ struct ModelDecodingTests {
         """.data(using: .utf8)!
 
         let envelope = try JSONDecoder().decode(LiveEnvelope.self, from: json)
+        let data = try #require(envelope.data)
 
         #expect(envelope.type == "packet")
-        #expect(envelope.data.decoded?.header?.payloadTypeName == "ADVERT")
-        #expect(envelope.data.snr == 6.5)
+        #expect(data.decoded?.header?.payloadTypeName == "ADVERT")
+        #expect(data.snr == 6.5)
         #expect(envelope.id == 991)
         // The published docs call this field "observer" but the live server
         // actually sends "observer_id" — verified against raw WS traffic.
-        #expect(envelope.data.observerId == "obs-1")
+        #expect(data.observerId == "obs-1")
         // `resolved_path` is undocumented but present on real traffic: full
         // pubkeys aligned 1:1 with `path.hops`, with `null` where the server
         // itself couldn't resolve that hop.
-        #expect(envelope.data.resolvedPath?.count == 2)
-        #expect(envelope.data.resolvedPath?[0] == "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9")
-        #expect(envelope.data.resolvedPath?[1] == nil)
+        #expect(data.resolvedPath?.count == 2)
+        #expect(data.resolvedPath?[0] == "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9")
+        #expect(data.resolvedPath?[1] == nil)
     }
 
     @Test func decodesLiveEnvelopeWithMissingDecoded() throws {
@@ -134,11 +135,22 @@ struct ModelDecodingTests {
         """.data(using: .utf8)!
 
         let envelope = try JSONDecoder().decode(LiveEnvelope.self, from: json)
+        let data = try #require(envelope.data)
 
         #expect(envelope.type == "packet")
         #expect(envelope.id == 992)
-        #expect(envelope.data.decoded == nil)
-        #expect(envelope.data.pathJson == #"["c3","d4"]"#)
+        #expect(data.decoded == nil)
+        #expect(data.pathJson == #"["c3","d4"]"#)
+    }
+
+    @Test func decodesHeartbeatWithoutData() throws {
+        let json = #"{"type":"heartbeat"}"#.data(using: .utf8)!
+
+        let envelope = try JSONDecoder().decode(LiveEnvelope.self, from: json)
+
+        #expect(envelope.type == "heartbeat")
+        #expect(envelope.data == nil)
+        #expect(envelope.id == -1)
     }
 
     @Test func decodesRegionsMap() throws {
