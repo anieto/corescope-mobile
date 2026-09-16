@@ -100,7 +100,7 @@
 		6AD4E0C32DC0423479F83C43 /* CoreScopeViewerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreScopeViewerApp.swift; sourceTree = "<group>"; };
 		6BD272A0CF4993A57B4A1C6D /* MapScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapScreen.swift; sourceTree = "<group>"; };
 		6BE824AF6B92A1D9B2F38BFD /* RegionFilterMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionFilterMenu.swift; sourceTree = "<group>"; };
-		6CC49543CC83FFA8F008F3A0 /* CoreScopeViewer.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; name = CoreScopeViewer.app; path = NodeScope.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6CC49543CC83FFA8F008F3A0 /* NodeScope.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NodeScope.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6EDB07FE4BF732F4BA52606B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7203589BC65FD11EE431398C /* LiveFeedMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveFeedMessage.swift; sourceTree = "<group>"; };
 		73004474B78DC6135A5F3FD4 /* NodeRoleStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeRoleStyle.swift; sourceTree = "<group>"; };
@@ -141,7 +141,7 @@
 		002B449ACE62846A6E279DD7 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				6CC49543CC83FFA8F008F3A0 /* CoreScopeViewer.app */,
+				6CC49543CC83FFA8F008F3A0 /* NodeScope.app */,
 				8464149BFBEDBC4B0BB32E42 /* CoreScopeViewerTests.xctest */,
 			);
 			name = Products;
@@ -349,7 +349,7 @@
 			packageProductDependencies = (
 			);
 			productName = CoreScopeViewer;
-			productReference = 6CC49543CC83FFA8F008F3A0 /* CoreScopeViewer.app */;
+			productReference = 6CC49543CC83FFA8F008F3A0 /* NodeScope.app */;
 			productType = "com.apple.product-type.application";
 		};
 		5C75D56D7971E1C9412A462E /* CoreScopeViewerTests */ = {
@@ -503,7 +503,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = CW335GEDYX;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CoreScopeViewer/Info.plist;
@@ -520,7 +520,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.2.1;
+				MARKETING_VERSION = 0.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.btdev.nodescope;
 				PRODUCT_MODULE_NAME = CoreScopeViewer;
 				PRODUCT_NAME = NodeScope;
@@ -694,7 +694,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = CW335GEDYX;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CoreScopeViewer/Info.plist;
@@ -711,7 +711,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.2.1;
+				MARKETING_VERSION = 0.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.btdev.nodescope;
 				PRODUCT_MODULE_NAME = CoreScopeViewer;
 				PRODUCT_NAME = NodeScope;
