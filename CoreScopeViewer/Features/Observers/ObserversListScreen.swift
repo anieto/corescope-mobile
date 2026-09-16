@@ -177,6 +177,7 @@ private struct ObserversHeader: View {
                         .frame(width: 40, height: 40)
                         .background(.thinMaterial, in: Circle())
                 }
+                .buttonStyle(.plain)
                 .accessibilityLabel(isSearchPresented ? "Close observer search" : "Search observers")
 
                 RegionFilterMenu()

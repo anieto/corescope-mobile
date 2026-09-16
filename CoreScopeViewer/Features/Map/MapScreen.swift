@@ -38,6 +38,7 @@ struct MapScreen: View {
     @State private var displayUpdateTask: Task<Void, Never>?
     @State private var searchText = ""
     @State private var matchingNodeCount = 0
+    @State private var isSearchPresented = false
 
     // The map remains edge-to-edge, while interactive controls sit above the
     // app-level floating dock rendered by RootTabView.
@@ -153,6 +154,11 @@ struct MapScreen: View {
                         .disabled(isRefreshingMap)
                         .accessibilityLabel("Refresh map data")
 
+                        Button(action: toggleMapSearch) {
+                            Image(systemName: isSearchPresented ? "xmark" : "magnifyingglass")
+                        }
+                        .accessibilityLabel(isSearchPresented ? "Close node search" : "Search nodes")
+
                         Menu {
                             ForEach(MapDisplayStyle.allCases) { style in
                                 Button {
@@ -174,10 +180,13 @@ struct MapScreen: View {
                 .navigationDestination(item: $selectedNode) { node in
                     NodeDetailScreen(node: node)
                 }
-                .searchable(text: $searchText, prompt: "Search nodes")
                 .overlay(alignment: .topLeading) {
                     VStack(alignment: .leading, spacing: 8) {
                         regionScopeControl
+                        if isSearchPresented {
+                            InstrumentSearchField(text: $searchText, prompt: "Search nodes")
+                                .frame(maxWidth: 300)
+                        }
                         if !viewModel.nodes.isEmpty {
                             DataLoadStatusView(
                                 lastUpdatedAt: viewModel.lastUpdatedAt,
@@ -252,6 +261,7 @@ struct MapScreen: View {
             isReplayMode = false
             showsReplayRouteOnly = true
             searchText = ""
+            isSearchPresented = false
         }
         .onDisappear {
             displayUpdateTask?.cancel()
@@ -360,6 +370,15 @@ struct MapScreen: View {
             await viewModel.loadPackets(region: regionFilter.selectedRegion, forceRefresh: true)
             processHistoricalPackets()
             processIncomingEvents()
+        }
+    }
+
+    private func toggleMapSearch() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isSearchPresented.toggle()
+            if !isSearchPresented {
+                searchText = ""
+            }
         }
     }
 

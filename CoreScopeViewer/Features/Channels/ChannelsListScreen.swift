@@ -298,6 +298,7 @@ private struct ChannelsHeader: View {
                         .frame(width: 40, height: 40)
                         .background(.thinMaterial, in: Circle())
                 }
+                .buttonStyle(.plain)
                 .accessibilityLabel(isSearchPresented ? "Close channel search" : "Search channels")
 
                 RegionFilterMenu()
@@ -314,6 +315,7 @@ private struct ChannelsHeader: View {
                         .frame(width: 40, height: 40)
                         .background(NodeScopeStyle.signal, in: Circle())
                 }
+                .buttonStyle(.plain)
                 .accessibilityLabel("Add Channel")
             }
         }
