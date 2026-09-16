@@ -32,6 +32,7 @@ struct MapScreen: View {
     @State private var isInitialLoadComplete = false
     @State private var isChangingRegion = false
     @State private var isLocatingUser = false
+    @State private var isRefreshingMap = false
     @State private var pendingReplayRequestID: UUID?
     @State private var loadedAnalyzerHost = ""
     @State private var displayUpdateTask: Task<Void, Never>?
@@ -144,6 +145,12 @@ struct MapScreen: View {
                         .accessibilityLabel(liveFeed.isConnected ? "Live Map, connected" : "Live Map, reconnecting")
                     }
                     ToolbarItemGroup(placement: .topBarTrailing) {
+                        Button(action: retryMapLoad) {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                        .disabled(isRefreshingMap)
+                        .accessibilityLabel("Refresh map data")
+
                         Menu {
                             ForEach(MapDisplayStyle.allCases) { style in
                                 Button {
@@ -300,12 +307,6 @@ struct MapScreen: View {
             processHistoricalPackets()
             processIncomingEvents()
         }
-        .refreshable {
-            await viewModel.loadNodes(region: regionFilter.selectedRegion, forceRefresh: true)
-            await viewModel.loadPackets(region: regionFilter.selectedRegion, forceRefresh: true)
-            processHistoricalPackets()
-            processIncomingEvents()
-        }
         .onChange(of: liveFeed.recentEvents.first?.id) {
             if isInitialLoadComplete {
                 processIncomingEvents()
@@ -344,7 +345,10 @@ struct MapScreen: View {
     }
 
     private func retryMapLoad() {
+        guard !isRefreshingMap else { return }
+        isRefreshingMap = true
         Task {
+            defer { isRefreshingMap = false }
             await viewModel.loadNodes(region: regionFilter.selectedRegion, forceRefresh: true)
             await viewModel.loadPackets(region: regionFilter.selectedRegion, forceRefresh: true)
             processHistoricalPackets()
