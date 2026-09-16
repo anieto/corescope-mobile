@@ -8,6 +8,7 @@ final class ChannelsViewModel {
     var messages: [ChannelMessage] = []
     var isLoading = false
     var errorMessage: String?
+    var lastUpdatedAt: Date?
 
     private var apiClient: APIClient?
     private var configuredSourceIdentifier: String?
@@ -17,6 +18,8 @@ final class ChannelsViewModel {
         if configuredSourceIdentifier != client.cacheIdentifier {
             channels = []
             messages = []
+            lastUpdatedAt = nil
+            errorMessage = nil
             configuredSourceIdentifier = client.cacheIdentifier
         }
         apiClient = client
@@ -33,6 +36,7 @@ final class ChannelsViewModel {
                 using: apiClient,
                 forceRefresh: forceRefresh
             )
+            lastUpdatedAt = .now
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -56,6 +60,7 @@ final class ChannelsViewModel {
                 using: apiClient,
                 forceRefresh: forceRefresh
             )
+            lastUpdatedAt = .now
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -79,6 +84,7 @@ final class ChannelsViewModel {
                 guard let payload = Self.parsePayload(for: packet) else { return nil }
                 return Self.message(from: packet, payload: payload, channel: channel, channelHash: channelHash)
             }
+            lastUpdatedAt = .now
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription

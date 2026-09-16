@@ -33,6 +33,19 @@ struct ChannelsListScreen: View {
                         .listRowSeparator(.hidden)
                 }
 
+                if !viewModel.isLoading,
+                   viewModel.lastUpdatedAt != nil || viewModel.errorMessage != nil {
+                    DataLoadStatusView(
+                        lastUpdatedAt: viewModel.lastUpdatedAt,
+                        errorMessage: viewModel.errorMessage,
+                        hasContent: !viewModel.channels.isEmpty,
+                        retry: retryChannelLoad
+                    )
+                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 8, trailing: 20))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                }
+
                 if !monitoredChannels.isEmpty {
                     Section {
                         ForEach(monitoredChannels) { channel in
@@ -178,6 +191,12 @@ struct ChannelsListScreen: View {
 
     private var monitoredChannelIDs: String {
         monitorStore.channels.map(\.id).sorted().joined(separator: "|")
+    }
+
+    private func retryChannelLoad() {
+        Task {
+            await viewModel.loadChannels(region: regionFilter.selectedRegion, forceRefresh: true)
+        }
     }
 
     private func channelRow(_ channel: MeshChannel) -> some View {

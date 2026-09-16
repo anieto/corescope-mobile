@@ -8,6 +8,7 @@ final class ObserversViewModel {
     var analytics: ObserverAnalyticsResponse?
     var isLoading = false
     var errorMessage: String?
+    var lastUpdatedAt: Date?
 
     private var apiClient: APIClient?
     private var cacheNamespace = ""
@@ -26,6 +27,7 @@ final class ObserversViewModel {
             maximumAge: staleCacheLifetime
         ) {
             observers = cached.observers
+            lastUpdatedAt = await APIResponseCache.shared.savedAt(for: cacheKey)
             errorMessage = nil
         }
         isLoading = observers.isEmpty
@@ -35,6 +37,7 @@ final class ObserversViewModel {
                 try await apiClient.get("/api/observers")
             }
             observers = response.observers
+            lastUpdatedAt = .now
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -49,6 +52,7 @@ final class ObserversViewModel {
             maximumAge: 24 * 60 * 60
         ) {
             analytics = cached
+            lastUpdatedAt = await APIResponseCache.shared.savedAt(for: cacheKey)
             errorMessage = nil
         }
         isLoading = analytics == nil
@@ -57,6 +61,7 @@ final class ObserversViewModel {
             analytics = try await APIResponseCache.shared.refresh(for: cacheKey) {
                 try await apiClient.get("/api/observers/\(id.urlPathComponentEncoded)/analytics")
             }
+            lastUpdatedAt = .now
             errorMessage = nil
         } catch {
             if error is CancellationError || (error as? URLError)?.code == .cancelled {

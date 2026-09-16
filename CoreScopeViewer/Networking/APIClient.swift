@@ -11,6 +11,10 @@ actor APIResponseCache {
         let value: Value
     }
 
+    private struct TimestampEntry: Decodable {
+        let savedAt: Date
+    }
+
     private var memoryData: [String: Data] = [:]
     private var inFlightRefreshes: [String: Task<Data, Error>] = [:]
 
@@ -26,6 +30,16 @@ actor APIResponseCache {
         }
         memoryData[key] = data
         return entry.value
+    }
+
+    func savedAt(for key: String) -> Date? {
+        let data = memoryData[key] ?? (try? Data(contentsOf: fileURL(for: key)))
+        guard let data,
+              let entry = try? JSONDecoder().decode(TimestampEntry.self, from: data) else {
+            return nil
+        }
+        memoryData[key] = data
+        return entry.savedAt
     }
 
     func refresh<Value: Codable & Sendable>(

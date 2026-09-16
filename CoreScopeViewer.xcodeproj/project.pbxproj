@@ -50,6 +50,7 @@
 		BE866EEEF408BDB6C8E103D8 /* MapViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEE734231B3A2D9FDE62ADB6 /* MapViewModel.swift */; };
 		C164A5108399198FAE295FE5 /* ObserverRegionLookup.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADCAFF1DCB55B911F5AFFC20 /* ObserverRegionLookup.swift */; };
 		D0703CF5F57B875F611F2ADD /* PacketDetailScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD5219A5DB2C5DFB2F49A982 /* PacketDetailScreen.swift */; };
+		D10FFE35F47798056E28EB1C /* DataLoadStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29E28B950F28EA62CB22D383 /* DataLoadStatusView.swift */; };
 		D79DF7E587202E277463644A /* AnalyzerSourcePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BA4982D8889A079D6CEBCB9 /* AnalyzerSourcePicker.swift */; };
 		D86C8FE8DEB5CE51B1FFC834 /* CoreScopeViewerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AD4E0C32DC0423479F83C43 /* CoreScopeViewerApp.swift */; };
 		DAAB4861A12F70E15A9DBA56 /* PacketFeedCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB52868AE176502884D9781C /* PacketFeedCache.swift */; };
@@ -78,6 +79,7 @@
 		1995A14EECD0A20DEE44C713 /* PacketDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketDetailViewModel.swift; sourceTree = "<group>"; };
 		1B8EBAA696FEC61136DADD69 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		2267353D97D345808DF80E40 /* NodeHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeHealth.swift; sourceTree = "<group>"; };
+		29E28B950F28EA62CB22D383 /* DataLoadStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataLoadStatusView.swift; sourceTree = "<group>"; };
 		2B296BB4A0028909CEC54B69 /* ReadableColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadableColor.swift; sourceTree = "<group>"; };
 		2CE357DF8B6328C61A2E23E4 /* NodeDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeDetailScreen.swift; sourceTree = "<group>"; };
 		2E1E309A8A435B7E5A61ADE9 /* MapLocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapLocationManager.swift; sourceTree = "<group>"; };
@@ -249,6 +251,7 @@
 		C4CDB038930790E265B0CF22 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				29E28B950F28EA62CB22D383 /* DataLoadStatusView.swift */,
 				D52E290B7121585A1C7A0699 /* LoadingIndicator.swift */,
 				2B296BB4A0028909CEC54B69 /* ReadableColor.swift */,
 				6BE824AF6B92A1D9B2F38BFD /* RegionFilterMenu.swift */,
@@ -442,6 +445,7 @@
 				DE7EBA2547154396308F7F57 /* ChannelsListScreen.swift in Sources */,
 				0C8DD2E83491E4744AEA1380 /* ChannelsViewModel.swift in Sources */,
 				D86C8FE8DEB5CE51B1FFC834 /* CoreScopeViewerApp.swift in Sources */,
+				D10FFE35F47798056E28EB1C /* DataLoadStatusView.swift in Sources */,
 				9599A7997960A45E6E506D71 /* LiveFeedMessage.swift in Sources */,
 				ACBA05674E6F7E851685EB56 /* LiveFeedService.swift in Sources */,
 				720AC3BF3F9FAFDCD5C48C40 /* LoadingIndicator.swift in Sources */,

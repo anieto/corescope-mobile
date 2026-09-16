@@ -29,6 +29,17 @@ struct ObserversListScreen: View {
                         .instrumentListRow(top: 0, bottom: 8)
                 }
 
+                if !viewModel.isLoading,
+                   viewModel.lastUpdatedAt != nil || viewModel.errorMessage != nil {
+                    DataLoadStatusView(
+                        lastUpdatedAt: viewModel.lastUpdatedAt,
+                        errorMessage: viewModel.errorMessage,
+                        hasContent: !viewModel.observers.isEmpty,
+                        retry: retryObserverLoad
+                    )
+                    .instrumentListRow(top: 0, bottom: 8)
+                }
+
                 if !filteredObservers.isEmpty {
                     ObserverSummaryGrid(
                         observerCount: filteredObservers.count,
@@ -93,6 +104,12 @@ struct ObserversListScreen: View {
             await viewModel.loadObservers()
         }
         .refreshable {
+            await viewModel.loadObservers()
+        }
+    }
+
+    private func retryObserverLoad() {
+        Task {
             await viewModel.loadObservers()
         }
     }
