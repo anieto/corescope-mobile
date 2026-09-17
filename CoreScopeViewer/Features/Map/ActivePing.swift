@@ -27,6 +27,10 @@ struct ActivePing: Identifiable, Sendable {
     let travelDuration: TimeInterval
     let pathColor: Color
     let signalColor: Color
+    let routeID: String?
+    let segmentIndex: Int
+    let packetHash: String?
+    let observerName: String?
 
     init(
         from start: CLLocationCoordinate2D,
@@ -36,7 +40,11 @@ struct ActivePing: Identifiable, Sendable {
         duration: TimeInterval = 12.0,
         travelDuration: TimeInterval = 2.25,
         color: Color = .yellow,
-        signalColor: Color? = nil
+        signalColor: Color? = nil,
+        routeID: String? = nil,
+        segmentIndex: Int = 0,
+        packetHash: String? = nil,
+        observerName: String? = nil
     ) {
         self.start = start
         self.end = end
@@ -47,6 +55,10 @@ struct ActivePing: Identifiable, Sendable {
         self.travelDuration = travelDuration
         self.pathColor = color
         self.signalColor = signalColor ?? color
+        self.routeID = routeID
+        self.segmentIndex = segmentIndex
+        self.packetHash = packetHash
+        self.observerName = observerName
     }
 
     init(
@@ -64,6 +76,10 @@ struct ActivePing: Identifiable, Sendable {
         self.travelDuration = 0
         self.pathColor = color
         self.signalColor = color
+        self.routeID = nil
+        self.segmentIndex = 0
+        self.packetHash = nil
+        self.observerName = nil
     }
 
     /// Fade progress (0 = fully visible, 1 = fully dissolved). Clamped at 0

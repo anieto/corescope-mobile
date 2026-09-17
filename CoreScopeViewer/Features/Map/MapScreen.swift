@@ -41,6 +41,7 @@ struct MapScreen: View {
     @State private var displayUpdateTask: Task<Void, Never>?
     @State private var isSearchPresented = false
     @State private var isMapFiltersPresented = false
+    @State private var selectedRouteDetails: MapRouteDetails?
     @State private var highlightedNodeID: String?
     @State private var lastHandledNavigationRequestID: UUID?
 
@@ -274,6 +275,11 @@ struct MapScreen: View {
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
+        .sheet(item: $selectedRouteDetails) { route in
+            MapRouteDetailsSheet(route: route)
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
         .onChange(of: resetID) {
             selectedNode = nil
             pendingReplayRequestID = nil
@@ -282,6 +288,7 @@ struct MapScreen: View {
             showsReplayRouteOnly = true
             isSearchPresented = false
             isMapFiltersPresented = false
+            selectedRouteDetails = nil
             highlightedNodeID = nil
         }
         .onDisappear {
@@ -481,23 +488,35 @@ struct MapScreen: View {
                     if let coordinate = node.coordinate {
                         Annotation(node.name ?? shortKey(node.publicKey), coordinate: coordinate, anchor: .center) {
                             let isHighlighted = node.id == highlightedNodeID
-                            Image(systemName: NodeRoleStyle.symbolName(for: node.role))
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .frame(
-                                    width: isHighlighted ? 26 : 16,
-                                    height: isHighlighted ? 26 : 16
-                                )
-                                .background(NodeRoleStyle.color(for: node.role), in: Circle())
-                                .overlay {
-                                    Circle()
-                                        .stroke(.white.opacity(0.9), lineWidth: isHighlighted ? 3 : 1)
-                                }
-                                .shadow(
-                                    color: isHighlighted ? NodeScopeStyle.signal.opacity(0.65) : .clear,
-                                    radius: 8
-                                )
-                                .accessibilityLabel(node.name ?? shortKey(node.publicKey))
+                            let isRouteHop = routeCoordinates.contains(CoordinateKey(coordinate))
+                            Button {
+                                selectedNode = node
+                            } label: {
+                                Image(systemName: NodeRoleStyle.symbolName(for: node.role))
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                    .frame(
+                                        width: isHighlighted ? 26 : 16,
+                                        height: isHighlighted ? 26 : 16
+                                    )
+                                    .background(NodeRoleStyle.color(for: node.role), in: Circle())
+                                    .overlay {
+                                        Circle()
+                                            .stroke(
+                                                .white.opacity(0.9),
+                                                lineWidth: isHighlighted ? 3 : (isRouteHop ? 2 : 1)
+                                            )
+                                    }
+                                    .shadow(
+                                        color: isHighlighted ? NodeScopeStyle.signal.opacity(0.65) : .clear,
+                                        radius: 8
+                                    )
+                                    .frame(width: 32, height: 32)
+                                    .contentShape(Circle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(node.name ?? shortKey(node.publicKey))
+                            .accessibilityHint(isRouteHop ? "Opens details for this route hop" : "Opens node details")
                         }
                     }
                 }
@@ -611,8 +630,10 @@ struct MapScreen: View {
             .onTapGesture { screenPoint in
                 if let cluster = nearestCluster(to: screenPoint, using: proxy) {
                     zoomToCluster(cluster)
-                } else {
-                    selectedNode = nearestNode(to: screenPoint, using: proxy)
+                } else if let route = nearestRoute(to: screenPoint, using: proxy, at: date) {
+                    selectedRouteDetails = route
+                } else if let node = nearestNode(to: screenPoint, using: proxy) {
+                    selectedNode = node
                 }
             }
         }
@@ -1004,6 +1025,83 @@ struct MapScreen: View {
         return closestNode
     }
 
+    private func nearestRoute(to screenPoint: CGPoint, using proxy: MapProxy, at date: Date) -> MapRouteDetails? {
+        let visibleSegments = pingsForDisplay.filter {
+            !$0.isPulse && $0.hasStarted(at: date) && !$0.isExpired(at: date)
+        }
+        // Keep the rendered route narrow, but give every segment a generous
+        // invisible hit corridor so it remains practical to select by touch.
+        let maximumDistance: CGFloat = 36
+        var closestSegment: ActivePing?
+        var closestDistance = maximumDistance
+
+        for segment in visibleSegments {
+            guard let start = proxy.convert(segment.start, to: .local),
+                  let end = proxy.convert(segment.end, to: .local) else { continue }
+            let distance = distance(from: screenPoint, toSegmentFrom: start, to: end)
+            if distance < closestDistance {
+                closestDistance = distance
+                closestSegment = segment
+            }
+        }
+
+        guard let closestSegment else { return nil }
+        let routeSegments: [ActivePing]
+        if let routeID = closestSegment.routeID {
+            routeSegments = visibleSegments
+                .filter { $0.routeID == routeID }
+                .sorted { $0.segmentIndex < $1.segmentIndex }
+        } else {
+            routeSegments = [closestSegment]
+        }
+        guard let firstSegment = routeSegments.first else { return nil }
+
+        let coordinates = [firstSegment.start] + routeSegments.map(\.end)
+        let hops = coordinates.enumerated().map { index, coordinate in
+            let node = node(at: coordinate)
+            let fallbackTitle = index == coordinates.count - 1
+                ? (firstSegment.observerName ?? "Unknown node")
+                : "Unknown node"
+            return MapRouteHop(
+                id: "\(firstSegment.routeID ?? firstSegment.id.uuidString)-\(index)",
+                position: index + 1,
+                title: node?.name ?? fallbackTitle,
+                publicKey: node?.publicKey,
+                node: node
+            )
+        }
+        return MapRouteDetails(
+            id: firstSegment.routeID ?? firstSegment.id.uuidString,
+            packetHash: firstSegment.packetHash,
+            observerName: firstSegment.observerName,
+            hops: hops
+        )
+    }
+
+    private func node(at coordinate: CLLocationCoordinate2D) -> MeshNode? {
+        if let exactNode = viewModel.nodesByPubkey.values.first(where: {
+            guard let nodeCoordinate = $0.coordinate else { return false }
+            return abs(nodeCoordinate.latitude - coordinate.latitude) < 0.000_001
+                && abs(nodeCoordinate.longitude - coordinate.longitude) < 0.000_001
+        }) {
+            return exactNode
+        }
+        return nil
+    }
+
+    private func distance(from point: CGPoint, toSegmentFrom start: CGPoint, to end: CGPoint) -> CGFloat {
+        let deltaX = end.x - start.x
+        let deltaY = end.y - start.y
+        let lengthSquared = deltaX * deltaX + deltaY * deltaY
+        guard lengthSquared > 0 else { return hypot(point.x - start.x, point.y - start.y) }
+        let projection = min(max(
+            ((point.x - start.x) * deltaX + (point.y - start.y) * deltaY) / lengthSquared,
+            0
+        ), 1)
+        let nearest = CGPoint(x: start.x + projection * deltaX, y: start.y + projection * deltaY)
+        return hypot(point.x - nearest.x, point.y - nearest.y)
+    }
+
     private func nearestCluster(to screenPoint: CGPoint, using proxy: MapProxy) -> NodeCluster? {
         let maxTapDistance: CGFloat = 24
         var closestCluster: NodeCluster?
@@ -1117,7 +1215,10 @@ struct MapScreen: View {
                 duration: fadeDurationPerSegment,
                 travelDuration: travelDuration,
                 color: routeColor,
-                signalColor: signalColor
+                signalColor: signalColor,
+                routeID: "replay-\(packetReplayStore.packetHash)-\(packetReplayStore.selectedRouteIndex)",
+                segmentIndex: index,
+                packetHash: packetReplayStore.packetHash
             )
         }
         replayPings = segments
@@ -1277,14 +1378,24 @@ struct MapScreen: View {
             let subchains = resolvedSubchains(for: packet)
             let pathColor = ActivePing.color(forHash: packet.hash, colorScheme: colorScheme)
 
-            for subchain in subchains {
+            for (subchainIndex, subchain) in subchains.enumerated() {
                 if subchain.count >= 2 {
                     for index in 0..<(subchain.count - 1) {
                         let p1 = subchain[index]
                         let p2 = subchain[index + 1]
                         if isValidHopDistance(from: p1, to: p2) {
                             historicalPings.append(
-                                ActivePing(from: p1, to: p2, createdAt: packet.timestamp, duration: 12.0, color: pathColor)
+                                ActivePing(
+                                    from: p1,
+                                    to: p2,
+                                    createdAt: packet.timestamp,
+                                    duration: 12.0,
+                                    color: pathColor,
+                                    routeID: "historical-\(packet.hash)-\(packet.observerId ?? "")-\(subchainIndex)",
+                                    segmentIndex: index,
+                                    packetHash: packet.hash,
+                                    observerName: packet.observerName
+                                )
                             )
                         }
                     }
@@ -1339,7 +1450,7 @@ struct MapScreen: View {
             let subchains = resolvedSubchains(for: event)
             let pathColor = ActivePing.color(forHash: event.data?.hash ?? event.data?.raw, colorScheme: colorScheme)
 
-            for subchain in subchains {
+            for (subchainIndex, subchain) in subchains.enumerated() {
                 if subchain.count >= 2 {
                     for index in 0..<(subchain.count - 1) {
                         let p1 = subchain[index]
@@ -1349,7 +1460,17 @@ struct MapScreen: View {
                             // by hop instead of every line appearing at once.
                             let hopStart = Date.now.addingTimeInterval(Double(index) * 0.45)
                             newPings.append(
-                                ActivePing(from: p1, to: p2, createdAt: hopStart, duration: 12.0, color: pathColor)
+                                ActivePing(
+                                    from: p1,
+                                    to: p2,
+                                    createdAt: hopStart,
+                                    duration: 12.0,
+                                    color: pathColor,
+                                    routeID: "live-\(eventKey)-\(subchainIndex)",
+                                    segmentIndex: index,
+                                    packetHash: event.data?.hash,
+                                    observerName: event.data?.observerName
+                                )
                             )
                         }
                     }
@@ -1671,6 +1792,96 @@ struct MapScreen: View {
             && CLLocationCoordinate2DIsValid(to)
             && (from.latitude != 0 || from.longitude != 0)
             && (to.latitude != 0 || to.longitude != 0)
+    }
+}
+
+private struct MapRouteDetails: Identifiable {
+    let id: String
+    let packetHash: String?
+    let observerName: String?
+    let hops: [MapRouteHop]
+}
+
+private struct MapRouteHop: Identifiable {
+    let id: String
+    let position: Int
+    let title: String
+    let publicKey: String?
+    let node: MeshNode?
+}
+
+private struct MapRouteDetailsSheet: View {
+    let route: MapRouteDetails
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Summary") {
+                    LabeledContent("Hops", value: "\(route.hops.count)")
+                    if let observerName = route.observerName, !observerName.isEmpty {
+                        LabeledContent("Observer", value: observerName)
+                    }
+                    if let packetHash = route.packetHash, !packetHash.isEmpty {
+                        LabeledContent("Packet", value: String(packetHash.prefix(12)).uppercased())
+                    }
+                }
+
+                Section("Route") {
+                    ForEach(route.hops) { hop in
+                        if let node = hop.node {
+                            NavigationLink {
+                                NodeDetailScreen(node: node)
+                            } label: {
+                                MapRouteHopRow(hop: hop, showsDisclosureIndicator: false)
+                            }
+                        } else {
+                            MapRouteHopRow(hop: hop, showsDisclosureIndicator: false)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Route Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+private struct MapRouteHopRow: View {
+    let hop: MapRouteHop
+    let showsDisclosureIndicator: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text("\(hop.position)")
+                .font(.caption.bold())
+                .foregroundStyle(.white)
+                .frame(width: 26, height: 26)
+                .background(NodeScopeStyle.signal, in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(hop.title)
+                    .foregroundStyle(.primary)
+                if let publicKey = hop.publicKey {
+                    Text(publicKey)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            Spacer()
+            if showsDisclosureIndicator {
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .contentShape(Rectangle())
     }
 }
 
