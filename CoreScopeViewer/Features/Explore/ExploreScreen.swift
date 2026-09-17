@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ExploreScreen: View {
     let resetID: UUID
@@ -168,6 +169,7 @@ struct ExploreScreen: View {
                 FavoriteRow(item: item)
             }
             .favoriteRowStyle(remove: { favoritesStore.remove(item) })
+            .nodeQuickActions(node)
         } else if let observer = item.observer {
             NavigationLink(value: observer) {
                 FavoriteRow(item: item)
@@ -191,6 +193,7 @@ struct ExploreScreen: View {
                 RecentRow(item: item)
             }
             .recentRowStyle(remove: { recentItemsStore.remove(item) })
+            .nodeQuickActions(node)
         } else if let observer = item.observer {
             NavigationLink(value: observer) {
                 RecentRow(item: item)
@@ -750,6 +753,7 @@ private struct GlobalSearchSheet: View {
                             select: { select(node) },
                             toggleFavorite: { favoritesStore.toggle(node: node, source: favoriteSource) }
                         )
+                        .nodeQuickActions(node)
                     }
                 }
             }
@@ -971,5 +975,39 @@ private extension View {
                     Label("Remove from Recent", systemImage: "clock.badge.xmark")
                 }
             }
+    }
+
+    func nodeQuickActions(_ node: MeshNode) -> some View {
+        modifier(NodeQuickActionsModifier(node: node))
+    }
+}
+
+private struct NodeQuickActionsModifier: ViewModifier {
+    let node: MeshNode
+
+    @Environment(AppNavigationStore.self) private var appNavigationStore
+    @Environment(\.dismiss) private var dismiss
+
+    func body(content: Content) -> some View {
+        content.contextMenu {
+            Button {
+                dismiss()
+                appNavigationStore.showOnMap(node)
+            } label: {
+                Label("Show on Map", systemImage: "map")
+            }
+            .disabled(!canShowOnMap)
+
+            Button {
+                UIPasteboard.general.string = node.publicKey
+            } label: {
+                Label("Copy Public Key", systemImage: "doc.on.doc")
+            }
+        }
+    }
+
+    private var canShowOnMap: Bool {
+        guard let coordinate = node.coordinate else { return false }
+        return coordinate.latitude != 0 || coordinate.longitude != 0
     }
 }

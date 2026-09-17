@@ -4,6 +4,7 @@ struct RootTabView: View {
     @Environment(PacketReplayStore.self) private var packetReplayStore
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(RegionFilterStore.self) private var regionFilter
+    @Environment(AppNavigationStore.self) private var appNavigationStore
 
     fileprivate enum Tab: String, Hashable, CaseIterable {
         case map
@@ -86,6 +87,16 @@ struct RootTabView: View {
         }
         .onChange(of: packetReplayStore.requestID) {
             selectedTab = .map
+        }
+        .onChange(of: appNavigationStore.requestID) {
+            switch appNavigationStore.destination {
+            case .mapNode:
+                selectedTab = .map
+            case .observer:
+                selectedTab = .observers
+            case nil:
+                break
+            }
         }
         .onAppear {
             if lastSelectedTabRawValue == "favorites" {

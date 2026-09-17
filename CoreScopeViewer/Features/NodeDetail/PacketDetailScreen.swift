@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct PacketDetailScreen: View {
     let message: ChannelMessage
@@ -60,6 +61,20 @@ struct PacketDetailScreen: View {
         .background(NodeScopeBackground())
         .navigationTitle("Packet")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button {
+                        UIPasteboard.general.string = message.packetHash
+                    } label: {
+                        Label("Copy Packet Hash", systemImage: "doc.on.doc")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .accessibilityLabel("Packet actions")
+            }
+        }
         .onAppear {
             recentItemsStore.record(
                 message: message,

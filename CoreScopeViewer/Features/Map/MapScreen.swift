@@ -10,6 +10,7 @@ struct MapScreen: View {
     @Environment(LiveFeedService.self) private var liveFeed
     @Environment(ObserverRegionLookup.self) private var observerRegionLookup
     @Environment(PacketReplayStore.self) private var packetReplayStore
+    @Environment(AppNavigationStore.self) private var appNavigationStore
     @Environment(\.colorScheme) private var colorScheme
     @State private var viewModel = MapViewModel()
     @State private var cameraPosition: MapCameraPosition = .automatic
@@ -38,6 +39,7 @@ struct MapScreen: View {
     @State private var displayUpdateTask: Task<Void, Never>?
     @State private var isSearchPresented = false
     @State private var highlightedNodeID: String?
+    @State private var lastHandledNavigationRequestID: UUID?
 
     // The map remains edge-to-edge, while interactive controls sit above the
     // app-level floating dock rendered by RootTabView.
@@ -320,6 +322,7 @@ struct MapScreen: View {
 
             processHistoricalPackets()
             processIncomingEvents()
+            handleNavigationRequest()
         }
         .onChange(of: liveFeed.recentEvents.first?.id) {
             if isInitialLoadComplete {
@@ -343,6 +346,9 @@ struct MapScreen: View {
         }
         .onChange(of: packetReplayStore.requestID) {
             queuePacketReplay()
+        }
+        .onChange(of: appNavigationStore.requestID) {
+            handleNavigationRequest()
         }
         .onChange(of: packetReplayStore.selectedRouteIndex) {
             guard isReplayMode else { return }
@@ -385,6 +391,19 @@ struct MapScreen: View {
                 )
             )
         }
+    }
+
+    private func handleNavigationRequest() {
+        guard lastHandledNavigationRequestID != appNavigationStore.requestID,
+              case .mapNode(let node) = appNavigationStore.destination else { return }
+        if regionFilter.selectedRegion != nil,
+           !viewModel.nodes.contains(where: { $0.id == node.id }) {
+            regionFilter.selectedRegion = nil
+            return
+        }
+        lastHandledNavigationRequestID = appNavigationStore.requestID
+        selectedNode = nil
+        focusOnSearchedNode(node)
     }
 
     @ViewBuilder

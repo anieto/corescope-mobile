@@ -1,5 +1,6 @@
 import SafariServices
 import SwiftUI
+import UIKit
 
 struct ChannelDetailScreen: View {
     let channel: MeshChannel
@@ -55,6 +56,18 @@ struct ChannelDetailScreen: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 favoriteButton
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button {
+                        UIPasteboard.general.string = channel.name
+                    } label: {
+                        Label("Copy Channel Name", systemImage: "doc.on.doc")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .accessibilityLabel("Channel actions")
             }
             ToolbarItem(placement: .topBarTrailing) {
                 RegionFilterMenu()

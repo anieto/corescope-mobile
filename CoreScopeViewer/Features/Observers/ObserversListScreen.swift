@@ -6,6 +6,7 @@ struct ObserversListScreen: View {
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(LiveFeedService.self) private var liveFeed
+    @Environment(AppNavigationStore.self) private var appNavigationStore
     @State private var viewModel = ObserversViewModel()
     @State private var navigationPath = NavigationPath()
     @State private var searchText = ""
@@ -15,6 +16,7 @@ struct ObserversListScreen: View {
     @State private var activityFilter = ObserverActivityFilter.all
     @State private var selectedModel: String?
     @State private var sortOption = ObserverSortOption.recent
+    @State private var lastHandledNavigationRequestID: UUID?
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -118,6 +120,7 @@ struct ObserversListScreen: View {
             viewModel.configure(settings: settings)
             await viewModel.loadObservers()
             updateVisibleObservers()
+            openRequestedObserverIfAvailable()
         }
         .refreshable {
             await viewModel.loadObservers()
@@ -129,6 +132,7 @@ struct ObserversListScreen: View {
         .onChange(of: activityFilter) { updateVisibleObservers() }
         .onChange(of: selectedModel) { updateVisibleObservers() }
         .onChange(of: sortOption) { updateVisibleObservers() }
+        .onChange(of: appNavigationStore.requestID) { openRequestedObserverIfAvailable() }
     }
 
     private func retryObserverLoad() {
@@ -136,6 +140,15 @@ struct ObserversListScreen: View {
             await viewModel.loadObservers()
             updateVisibleObservers()
         }
+    }
+
+    private func openRequestedObserverIfAvailable() {
+        guard lastHandledNavigationRequestID != appNavigationStore.requestID,
+              case .observer(let observerID) = appNavigationStore.destination,
+              let observer = viewModel.observers.first(where: { $0.id == observerID }) else { return }
+        lastHandledNavigationRequestID = appNavigationStore.requestID
+        navigationPath = NavigationPath()
+        navigationPath.append(observer)
     }
 
     private func toggleSearch() {

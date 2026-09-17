@@ -1,5 +1,6 @@
 import Charts
 import SwiftUI
+import UIKit
 
 struct ObserverDetailScreen: View {
     let observer: MeshObserver
@@ -56,6 +57,18 @@ struct ObserverDetailScreen: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 favoriteButton
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button {
+                        UIPasteboard.general.string = observer.id
+                    } label: {
+                        Label("Copy Observer ID", systemImage: "doc.on.doc")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .accessibilityLabel("Observer actions")
             }
         }
         .task {

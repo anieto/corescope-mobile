@@ -25,6 +25,7 @@
 		316FDFFB305C490A00FBA3B4 /* ExploreScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FDFFA305C490A00FBA3B4 /* ExploreScreen.swift */; };
 		316FDFFD305C4DDE00FBA3B4 /* RecentItemsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FDFFC305C4DDE00FBA3B4 /* RecentItemsStore.swift */; };
 		316FDFFF305C6CB100FBA3B4 /* SearchHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FDFFE305C6CB100FBA3B4 /* SearchHistoryStore.swift */; };
+		316FE001305C6EA300FBA3B4 /* AppNavigationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FE000305C6EA300FBA3B4 /* AppNavigationStore.swift */; };
 		31C733CCC554E34636022A89 /* OnboardingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9AFF0E38F9E8C2C60829E93 /* OnboardingScreen.swift */; };
 		37EEBAD9BA7B400246063847 /* NodeDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75CDCA22232763038FF030C6 /* NodeDetailViewModel.swift */; };
 		3BE961FDCF2336382895F4C3 /* ModelDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C78C1620C6A3A352DD6B687 /* ModelDecodingTests.swift */; };
@@ -94,6 +95,7 @@
 		316FDFFA305C490A00FBA3B4 /* ExploreScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExploreScreen.swift; sourceTree = "<group>"; };
 		316FDFFC305C4DDE00FBA3B4 /* RecentItemsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentItemsStore.swift; sourceTree = "<group>"; };
 		316FDFFE305C6CB100FBA3B4 /* SearchHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchHistoryStore.swift; sourceTree = "<group>"; };
+		316FE000305C6EA300FBA3B4 /* AppNavigationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNavigationStore.swift; sourceTree = "<group>"; };
 		33B9A5F539B49B860F434D81 /* Channel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Channel.swift; sourceTree = "<group>"; };
 		36B0A5E6DC5812474734F2C7 /* SenderColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SenderColor.swift; sourceTree = "<group>"; };
 		37795BF9DC79999D3E6DE8A3 /* AboutScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutScreen.swift; sourceTree = "<group>"; };
@@ -338,6 +340,7 @@
 				316FDFF5305C483200FBA3B4 /* FavoritesStore.swift */,
 				316FDFFC305C4DDE00FBA3B4 /* RecentItemsStore.swift */,
 				316FDFFE305C6CB100FBA3B4 /* SearchHistoryStore.swift */,
+				316FE000305C6EA300FBA3B4 /* AppNavigationStore.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -469,6 +472,7 @@
 				F82F20C851C52EAC49BC3931 /* ChannelMonitorStore.swift in Sources */,
 				DE7EBA2547154396308F7F57 /* ChannelsListScreen.swift in Sources */,
 				0C8DD2E83491E4744AEA1380 /* ChannelsViewModel.swift in Sources */,
+				316FE001305C6EA300FBA3B4 /* AppNavigationStore.swift in Sources */,
 				D86C8FE8DEB5CE51B1FFC834 /* CoreScopeViewerApp.swift in Sources */,
 				D10FFE35F47798056E28EB1C /* DataLoadStatusView.swift in Sources */,
 				9599A7997960A45E6E506D71 /* LiveFeedMessage.swift in Sources */,

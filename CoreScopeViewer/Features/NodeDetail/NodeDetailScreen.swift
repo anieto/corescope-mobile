@@ -1,10 +1,12 @@
 import SwiftUI
+import UIKit
 
 struct NodeDetailScreen: View {
     let node: MeshNode
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(FavoritesStore.self) private var favoritesStore
     @Environment(RecentItemsStore.self) private var recentItemsStore
+    @Environment(AppNavigationStore.self) private var appNavigationStore
     @State private var viewModel = NodeDetailViewModel()
 
     var body: some View {
@@ -33,7 +35,10 @@ struct NodeDetailScreen: View {
                 if let health = viewModel.health {
                     NodeHealthCard(stats: health.stats)
                     if !health.observers.isEmpty {
-                        NodeObserversCard(observers: health.observers)
+                        NodeObserversCard(
+                            observers: health.observers,
+                            openObserver: { appNavigationStore.openObserver(id: $0) }
+                        )
                     }
                 }
 
@@ -61,11 +66,39 @@ struct NodeDetailScreen: View {
             ToolbarItem(placement: .topBarTrailing) {
                 favoriteButton
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                quickActionsMenu
+            }
         }
         .task {
             viewModel.configure(settings: settings)
             await viewModel.load(pubkey: node.publicKey)
         }
+    }
+
+    private var quickActionsMenu: some View {
+        Menu {
+            Button {
+                appNavigationStore.showOnMap(node)
+            } label: {
+                Label("Show on Map", systemImage: "map")
+            }
+            .disabled(!canShowOnMap)
+
+            Button {
+                UIPasteboard.general.string = node.publicKey
+            } label: {
+                Label("Copy Public Key", systemImage: "doc.on.doc")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+        .accessibilityLabel("Node actions")
+    }
+
+    private var canShowOnMap: Bool {
+        guard let coordinate = node.coordinate else { return false }
+        return coordinate.latitude != 0 || coordinate.longitude != 0
     }
 
     private var favoriteButton: some View {
@@ -237,6 +270,7 @@ private struct NodeMetricTile: View {
 
 private struct NodeObserversCard: View {
     let observers: [NodeObserverStat]
+    let openObserver: (String) -> Void
     @State private var isExpanded = false
 
     private var visibleObservers: ArraySlice<NodeObserverStat> {
@@ -247,7 +281,10 @@ private struct NodeObserversCard: View {
         NodeDetailCard(title: "Heard By", symbol: "ear.badge.waveform") {
             VStack(spacing: 0) {
                 ForEach(visibleObservers) { observer in
-                    HStack(spacing: 10) {
+                    Button {
+                        openObserver(observer.observerId)
+                    } label: {
+                        HStack(spacing: 10) {
                         Circle()
                             .fill(NodeScopeStyle.healthy.opacity(0.14))
                             .frame(width: 32, height: 32)
@@ -271,7 +308,13 @@ private struct NodeObserversCard: View {
                         Text("\(observer.packetCount) pkts")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(NodeScopeStyle.signal)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                     .padding(.vertical, 9)
                     if observer.id != visibleObservers.last?.id {
                         Divider().opacity(0.3)
