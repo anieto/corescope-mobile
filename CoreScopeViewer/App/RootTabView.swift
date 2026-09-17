@@ -7,6 +7,7 @@ struct RootTabView: View {
 
     fileprivate enum Tab: Hashable, CaseIterable {
         case map
+        case favorites
         case channels
         case observers
         case settings
@@ -14,6 +15,7 @@ struct RootTabView: View {
         var title: LocalizedStringKey {
             switch self {
             case .map: "Map"
+            case .favorites: "Favorites"
             case .channels: "Channels"
             case .observers: "Observers"
             case .settings: "Settings"
@@ -23,6 +25,7 @@ struct RootTabView: View {
         var symbol: String {
             switch self {
             case .map: "map"
+            case .favorites: "star"
             case .channels: "bubble.left.and.bubble.right"
             case .observers: "antenna.radiowaves.left.and.right"
             case .settings: "slider.horizontal.3"
@@ -41,6 +44,11 @@ struct RootTabView: View {
                 .toolbar(.hidden, for: .tabBar)
                 .tabItem { Label("Map", systemImage: "map") }
                 .tag(Tab.map)
+
+            FavoritesScreen(resetID: resetIDs[.favorites] ?? UUID())
+                .toolbar(.hidden, for: .tabBar)
+                .tabItem { Label("Favorites", systemImage: "star") }
+                .tag(Tab.favorites)
 
             ChannelsListScreen(resetID: resetIDs[.channels] ?? UUID())
                 .toolbar(.hidden, for: .tabBar)

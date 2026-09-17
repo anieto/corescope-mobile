@@ -4,6 +4,7 @@ import SwiftUI
 struct ObserverDetailScreen: View {
     let observer: MeshObserver
     @Environment(AnalyzerSettings.self) private var settings
+    @Environment(FavoritesStore.self) private var favoritesStore
     @State private var viewModel = ObserversViewModel()
 
     var body: some View {
@@ -48,10 +49,34 @@ struct ObserverDetailScreen: View {
         .background(NodeScopeBackground())
         .navigationTitle(observer.name ?? "Observer")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                favoriteButton
+            }
+        }
         .task {
             viewModel.configure(settings: settings)
             await viewModel.loadAnalytics(id: observer.id)
         }
+    }
+
+    private var favoriteButton: some View {
+        let isFavorite = favoritesStore.contains(
+            kind: .observer,
+            entityID: observer.id,
+            source: favoriteSource
+        )
+        return Button {
+            favoritesStore.toggle(observer: observer, source: favoriteSource)
+        } label: {
+            Image(systemName: isFavorite ? "star.fill" : "star")
+        }
+        .tint(NodeScopeStyle.signal)
+        .accessibilityLabel(isFavorite ? "Remove observer from favorites" : "Add observer to favorites")
+    }
+
+    private var favoriteSource: String {
+        AnalyzerSettings.normalizedHost(settings.host)
     }
 
     private func retryAnalytics() {

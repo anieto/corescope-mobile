@@ -8,6 +8,7 @@ struct ChannelDetailScreen: View {
     @Environment(ObserverRegionLookup.self) private var observerRegionLookup
     @Environment(ChannelMonitorStore.self) private var monitorStore
     @Environment(LiveFeedService.self) private var liveFeed
+    @Environment(FavoritesStore.self) private var favoritesStore
     @State private var viewModel = ChannelsViewModel()
     @State private var lastProcessedLiveEventID: Int?
     @State private var liveRefreshTask: Task<Void, Never>?
@@ -48,6 +49,9 @@ struct ChannelDetailScreen: View {
         .navigationTitle(channel.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                favoriteButton
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 RegionFilterMenu()
             }
@@ -96,6 +100,25 @@ struct ChannelDetailScreen: View {
         .onDisappear {
             liveRefreshTask?.cancel()
         }
+    }
+
+    private var favoriteButton: some View {
+        let isFavorite = favoritesStore.contains(
+            kind: .channel,
+            entityID: channel.id,
+            source: favoriteSource
+        )
+        return Button {
+            favoritesStore.toggle(channel: channel, source: favoriteSource)
+        } label: {
+            Image(systemName: isFavorite ? "star.fill" : "star")
+        }
+        .tint(NodeScopeStyle.signal)
+        .accessibilityLabel(isFavorite ? "Remove channel from favorites" : "Add channel to favorites")
+    }
+
+    private var favoriteSource: String {
+        AnalyzerSettings.normalizedHost(settings.host)
     }
 
     /// New GRP_TXT packets arrive continuously over the shared WebSocket feed

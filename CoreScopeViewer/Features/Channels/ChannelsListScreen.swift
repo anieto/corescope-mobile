@@ -14,6 +14,11 @@ struct ChannelsListScreen: View {
     @State private var liveRefreshTask: Task<Void, Never>?
     @State private var searchText = ""
     @State private var isSearchPresented = false
+    @State private var visibleServerChannels: [MeshChannel] = []
+    @State private var visibleMonitoredChannels: [MeshChannel] = []
+    @State private var sourceFilter = ChannelSourceFilter.all
+    @State private var activityFilter = ChannelActivityFilter.all
+    @State private var sortOption = ChannelSortOption.recent
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -23,6 +28,9 @@ struct ChannelsListScreen: View {
                     regionName: regionFilter.selectedRegion.map(regionFilter.label(for:)),
                     isSearchPresented: isSearchPresented,
                     toggleSearch: toggleSearch,
+                    sourceFilter: $sourceFilter,
+                    activityFilter: $activityFilter,
+                    sortOption: $sortOption,
                     addChannel: { isShowingAddChannel = true }
                 )
                 .iPadWindowControlsClearance()
@@ -57,13 +65,13 @@ struct ChannelsListScreen: View {
                     .listRowSeparator(.hidden)
                 }
 
-                if !monitoredChannels.isEmpty {
+                if !visibleMonitoredChannels.isEmpty {
                     Section {
-                        ForEach(monitoredChannels) { channel in
+                        ForEach(visibleMonitoredChannels) { channel in
                             channelRow(channel)
                         }
                     } header: {
-                        MonitoringSectionHeader(count: monitoredChannels.count)
+                        MonitoringSectionHeader(count: visibleMonitoredChannels.count)
                             .textCase(nil)
                     }
                 }
@@ -79,7 +87,7 @@ struct ChannelsListScreen: View {
                     }
                 } else {
                     Section {
-                        ForEach(orderedChannels) { channel in
+                        ForEach(visibleServerChannels) { channel in
                             channelRow(channel)
                         }
                     } header: {
@@ -101,7 +109,7 @@ struct ChannelsListScreen: View {
                 ChannelDetailScreen(channel: channel)
             }
             .overlay {
-                if orderedChannels.isEmpty && monitoredChannels.isEmpty && !viewModel.isLoading {
+                if visibleServerChannels.isEmpty && visibleMonitoredChannels.isEmpty && !viewModel.isLoading {
                     ContentUnavailableView(
                         searchText.isEmpty ? "No channels yet" : "No matching channels",
                         systemImage: searchText.isEmpty ? "number" : "magnifyingglass"
@@ -118,6 +126,7 @@ struct ChannelsListScreen: View {
         .task(id: "\(settings.host)|\(regionFilter.selectedRegion ?? "")") {
             viewModel.configure(settings: settings)
             await viewModel.loadChannels(region: regionFilter.selectedRegion)
+            updateVisibleChannels()
         }
         .task(id: monitoredChannelIDs) {
             viewModel.configure(settings: settings)
@@ -126,10 +135,18 @@ struct ChannelsListScreen: View {
                 region: regionFilter.selectedRegion,
                 monitorStore: monitorStore
             )
+            updateVisibleChannels()
         }
         .refreshable {
             await viewModel.loadChannels(region: regionFilter.selectedRegion, forceRefresh: true)
+            updateVisibleChannels()
         }
+        .onChange(of: viewModel.channels) { updateVisibleChannels() }
+        .onChange(of: monitoredChannelIDs) { updateVisibleChannels() }
+        .onChange(of: searchText) { updateVisibleChannels() }
+        .onChange(of: sourceFilter) { updateVisibleChannels() }
+        .onChange(of: activityFilter) { updateVisibleChannels() }
+        .onChange(of: sortOption) { updateVisibleChannels() }
         .onChange(of: liveFeed.recentEvents.first?.id) {
             scheduleLiveRefreshIfNeeded()
         }
@@ -178,23 +195,8 @@ struct ChannelsListScreen: View {
         return payloadType == nil || payloadType == PayloadType.grpTxt.rawValue
     }
 
-    private var orderedChannels: [MeshChannel] {
-        viewModel.channels.filter { serverChannel in
-            !monitorStore.channels.contains { $0.channelName == serverChannel.name }
-                && matchesSearch(serverChannel)
-        }
-        .sorted { lhs, rhs in
-            let lhsIsPublic = lhs.name.caseInsensitiveCompare("Public") == .orderedSame
-            let rhsIsPublic = rhs.name.caseInsensitiveCompare("Public") == .orderedSame
-            if lhsIsPublic != rhsIsPublic {
-                return lhsIsPublic
-            }
-            return lhs.lastActivity > rhs.lastActivity
-        }
-    }
-
-    private var monitoredChannels: [MeshChannel] {
-        monitorStore.channels.map { monitoredChannel in
+    private func updateVisibleChannels() {
+        let monitored = monitorStore.channels.map { monitoredChannel in
             MeshChannel(
                 hash: "user:\(monitoredChannel.channelName)",
                 name: monitoredChannel.title,
@@ -204,7 +206,41 @@ struct ChannelsListScreen: View {
                 lastActivity: monitoredChannel.lastActivity ?? .distantPast
             )
         }
-        .filter(matchesSearch)
+
+        visibleMonitoredChannels = sourceFilter == .server
+            ? []
+            : sortChannels(monitored.filter(matchesFilters))
+
+        let monitoredNames = Set(monitorStore.channels.map(\.channelName))
+        let server = viewModel.channels.filter { channel in
+            !monitoredNames.contains(channel.name) && matchesFilters(channel)
+        }
+        visibleServerChannels = sourceFilter == .monitored
+            ? []
+            : sortChannels(server)
+    }
+
+    private func matchesFilters(_ channel: MeshChannel) -> Bool {
+        let matchesActivity = activityFilter == .all || channel.lastActivity.timeIntervalSinceNow > -3600
+        return matchesActivity && matchesSearch(channel)
+    }
+
+    private func sortChannels(_ channels: [MeshChannel]) -> [MeshChannel] {
+        channels.sorted { lhs, rhs in
+            switch sortOption {
+            case .recent:
+                let lhsIsPublic = lhs.name.caseInsensitiveCompare("Public") == .orderedSame
+                let rhsIsPublic = rhs.name.caseInsensitiveCompare("Public") == .orderedSame
+                if lhsIsPublic != rhsIsPublic { return lhsIsPublic }
+                return lhs.lastActivity > rhs.lastActivity
+            case .messageCount:
+                return lhs.messageCount == rhs.messageCount
+                    ? lhs.lastActivity > rhs.lastActivity
+                    : lhs.messageCount > rhs.messageCount
+            case .name:
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            }
+        }
     }
 
     private var monitoredChannelIDs: String {
@@ -261,11 +297,57 @@ struct ChannelsListScreen: View {
     }
 }
 
+private enum ChannelSourceFilter: String, CaseIterable, Identifiable {
+    case all
+    case monitored
+    case server
+
+    var id: String { rawValue }
+    var title: LocalizedStringResource {
+        switch self {
+        case .all: "All Channels"
+        case .monitored: "Monitored on This Device"
+        case .server: "Server Monitored"
+        }
+    }
+}
+
+private enum ChannelActivityFilter: String, CaseIterable, Identifiable {
+    case all
+    case recent
+
+    var id: String { rawValue }
+    var title: LocalizedStringResource {
+        switch self {
+        case .all: "All Activity"
+        case .recent: "Active in One Hour"
+        }
+    }
+}
+
+private enum ChannelSortOption: String, CaseIterable, Identifiable {
+    case recent
+    case messageCount
+    case name
+
+    var id: String { rawValue }
+    var title: LocalizedStringResource {
+        switch self {
+        case .recent: "Recent Activity"
+        case .messageCount: "Message Count"
+        case .name: "Name"
+        }
+    }
+}
+
 private struct ChannelsHeader: View {
     let isConnected: Bool
     let regionName: String?
     let isSearchPresented: Bool
     let toggleSearch: () -> Void
+    @Binding var sourceFilter: ChannelSourceFilter
+    @Binding var activityFilter: ChannelActivityFilter
+    @Binding var sortOption: ChannelSortOption
     let addChannel: () -> Void
 
     var body: some View {
@@ -291,6 +373,12 @@ private struct ChannelsHeader: View {
             Spacer()
 
             HStack(spacing: 10) {
+                ChannelFilterMenu(
+                    sourceFilter: $sourceFilter,
+                    activityFilter: $activityFilter,
+                    sortOption: $sortOption
+                )
+
                 Button(action: toggleSearch) {
                     Image(systemName: isSearchPresented ? "xmark" : "magnifyingglass")
                         .font(.body.weight(.semibold))
@@ -319,6 +407,57 @@ private struct ChannelsHeader: View {
                 .accessibilityLabel("Add Channel")
             }
         }
+    }
+}
+
+private struct ChannelFilterMenu: View {
+    @Binding var sourceFilter: ChannelSourceFilter
+    @Binding var activityFilter: ChannelActivityFilter
+    @Binding var sortOption: ChannelSortOption
+
+    private var hasActiveFilter: Bool {
+        sourceFilter != .all || activityFilter != .all || sortOption != .recent
+    }
+
+    var body: some View {
+        Menu {
+            Section("Source") {
+                ForEach(ChannelSourceFilter.allCases) { option in
+                    Button {
+                        sourceFilter = option
+                    } label: {
+                        Label(option.title, systemImage: sourceFilter == option ? "checkmark" : "tray.full")
+                    }
+                }
+            }
+
+            Section("Activity") {
+                ForEach(ChannelActivityFilter.allCases) { option in
+                    Button {
+                        activityFilter = option
+                    } label: {
+                        Label(option.title, systemImage: activityFilter == option ? "checkmark" : "clock")
+                    }
+                }
+            }
+
+            Section("Sort By") {
+                ForEach(ChannelSortOption.allCases) { option in
+                    Button {
+                        sortOption = option
+                    } label: {
+                        Label(option.title, systemImage: sortOption == option ? "checkmark" : "arrow.up.arrow.down")
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: hasActiveFilter ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(NodeScopeStyle.signal)
+                .frame(width: 40, height: 40)
+                .background(.thinMaterial, in: Circle())
+        }
+        .accessibilityLabel("Filter and sort channels")
     }
 }
 

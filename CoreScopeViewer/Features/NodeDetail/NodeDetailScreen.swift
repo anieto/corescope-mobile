@@ -3,6 +3,7 @@ import SwiftUI
 struct NodeDetailScreen: View {
     let node: MeshNode
     @Environment(AnalyzerSettings.self) private var settings
+    @Environment(FavoritesStore.self) private var favoritesStore
     @State private var viewModel = NodeDetailViewModel()
 
     var body: some View {
@@ -52,10 +53,34 @@ struct NodeDetailScreen: View {
         .background(NodeScopeBackground())
         .navigationTitle(node.name ?? "Node")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                favoriteButton
+            }
+        }
         .task {
             viewModel.configure(settings: settings)
             await viewModel.load(pubkey: node.publicKey)
         }
+    }
+
+    private var favoriteButton: some View {
+        let isFavorite = favoritesStore.contains(
+            kind: .node,
+            entityID: node.publicKey,
+            source: favoriteSource
+        )
+        return Button {
+            favoritesStore.toggle(node: node, source: favoriteSource)
+        } label: {
+            Image(systemName: isFavorite ? "star.fill" : "star")
+        }
+        .tint(NodeScopeStyle.signal)
+        .accessibilityLabel(isFavorite ? "Remove node from favorites" : "Add node to favorites")
+    }
+
+    private var favoriteSource: String {
+        AnalyzerSettings.normalizedHost(settings.host)
     }
 
     private func retryNodeData() {

@@ -21,6 +21,8 @@
 		2CB0E2884918B39C50850A22 /* AnalyzerSourceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4ABA4E1CD390396A7DC9A33 /* AnalyzerSourceRegistry.swift */; };
 		2D447FFABF6B77349DA614A1 /* SenderColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36B0A5E6DC5812474734F2C7 /* SenderColor.swift */; };
 		3144E9F7305B2A4300B57F18 /* InstrumentSearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3144E9F6305B2A4300B57F18 /* InstrumentSearchField.swift */; };
+		316FDFF6305C483200FBA3B4 /* FavoritesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FDFF5305C483200FBA3B4 /* FavoritesStore.swift */; };
+		316FDFFB305C490A00FBA3B4 /* FavoritesScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FDFFA305C490A00FBA3B4 /* FavoritesScreen.swift */; };
 		31C733CCC554E34636022A89 /* OnboardingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9AFF0E38F9E8C2C60829E93 /* OnboardingScreen.swift */; };
 		37EEBAD9BA7B400246063847 /* NodeDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75CDCA22232763038FF030C6 /* NodeDetailViewModel.swift */; };
 		3BE961FDCF2336382895F4C3 /* ModelDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C78C1620C6A3A352DD6B687 /* ModelDecodingTests.swift */; };
@@ -86,6 +88,8 @@
 		2E1E309A8A435B7E5A61ADE9 /* MapLocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapLocationManager.swift; sourceTree = "<group>"; };
 		2FB247C32E6BA4792D18D413 /* RegionFilterStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionFilterStore.swift; sourceTree = "<group>"; };
 		3144E9F6305B2A4300B57F18 /* InstrumentSearchField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstrumentSearchField.swift; sourceTree = "<group>"; };
+		316FDFF5305C483200FBA3B4 /* FavoritesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesStore.swift; sourceTree = "<group>"; };
+		316FDFFA305C490A00FBA3B4 /* FavoritesScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesScreen.swift; sourceTree = "<group>"; };
 		33B9A5F539B49B860F434D81 /* Channel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Channel.swift; sourceTree = "<group>"; };
 		36B0A5E6DC5812474734F2C7 /* SenderColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SenderColor.swift; sourceTree = "<group>"; };
 		37795BF9DC79999D3E6DE8A3 /* AboutScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutScreen.swift; sourceTree = "<group>"; };
@@ -161,6 +165,14 @@
 			path = CoreScopeViewer;
 			sourceTree = "<group>";
 		};
+		316FDFF9305C490A00FBA3B4 /* Favorites */ = {
+			isa = PBXGroup;
+			children = (
+				316FDFFA305C490A00FBA3B4 /* FavoritesScreen.swift */,
+			);
+			path = Favorites;
+			sourceTree = "<group>";
+		};
 		34F851437983B18C6D3E010B /* Onboarding */ = {
 			isa = PBXGroup;
 			children = (
@@ -210,6 +222,7 @@
 				3E1EAA03D7A7690E12C1C155 /* PacketFeed */,
 				B6D9125F11D4615413A8DDA1 /* Settings */,
 				C4CDB038930790E265B0CF22 /* Shared */,
+				316FDFF9305C490A00FBA3B4 /* Favorites */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -318,6 +331,7 @@
 				AB52868AE176502884D9781C /* PacketFeedCache.swift */,
 				3EA14BD4E3A32FA9B63B54B0 /* PacketReplayStore.swift */,
 				2FB247C32E6BA4792D18D413 /* RegionFilterStore.swift */,
+				316FDFF5305C483200FBA3B4 /* FavoritesStore.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -469,6 +483,7 @@
 				14122A2028E526B38FA4AEE4 /* ObserversListScreen.swift in Sources */,
 				49B403B3A96E9DF41C17C923 /* ObserversViewModel.swift in Sources */,
 				31C733CCC554E34636022A89 /* OnboardingScreen.swift in Sources */,
+				316FDFFB305C490A00FBA3B4 /* FavoritesScreen.swift in Sources */,
 				F880AFD88BBD5C97812E65C7 /* Packet.swift in Sources */,
 				01D4A148FE7AC5A25B15E907 /* PacketDetail.swift in Sources */,
 				D0703CF5F57B875F611F2ADD /* PacketDetailScreen.swift in Sources */,
@@ -483,6 +498,7 @@
 				B5E00F5D8D1377267C747B76 /* RootTabView.swift in Sources */,
 				2D447FFABF6B77349DA614A1 /* SenderColor.swift in Sources */,
 				F7AAC2A15896BF2122A20C22 /* SettingsScreen.swift in Sources */,
+				316FDFF6305C483200FBA3B4 /* FavoritesStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
