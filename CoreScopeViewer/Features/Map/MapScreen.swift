@@ -40,6 +40,7 @@ struct MapScreen: View {
     @State private var loadedAnalyzerHost = ""
     @State private var displayUpdateTask: Task<Void, Never>?
     @State private var isSearchPresented = false
+    @State private var isMapFiltersPresented = false
     @State private var highlightedNodeID: String?
     @State private var lastHandledNavigationRequestID: UUID?
 
@@ -188,7 +189,10 @@ struct MapScreen: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 8) {
                             regionScopeControl
-                            MapNodeFilterMenu(filters: $nodeFilters)
+                            MapNodeFilterButton(
+                                activeFilterCount: nodeFilters.activeFilterCount,
+                                action: { isMapFiltersPresented = true }
+                            )
                         }
                         if !viewModel.nodes.isEmpty {
                             DataLoadStatusView(
@@ -262,6 +266,14 @@ struct MapScreen: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $isMapFiltersPresented) {
+            MapNodeFilterSheet(
+                filters: $nodeFilters,
+                observers: mapObserverOptions
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
         .onChange(of: resetID) {
             selectedNode = nil
             pendingReplayRequestID = nil
@@ -269,6 +281,7 @@ struct MapScreen: View {
             isReplayMode = false
             showsReplayRouteOnly = true
             isSearchPresented = false
+            isMapFiltersPresented = false
             highlightedNodeID = nil
         }
         .onDisappear {
@@ -282,6 +295,15 @@ struct MapScreen: View {
             let sourceHost = settings.host
             let selectedRegion = regionFilter.selectedRegion
             isChangingRegion = true
+            let analyzerChanged = loadedAnalyzerHost != sourceHost
+
+            if analyzerChanged {
+                nodeFilters = MapNodeFilterSelection.persisted(for: sourceHost)
+            } else {
+                // An observer belongs to one region, so changing scope resets
+                // an observer selection that may no longer be available.
+                nodeFilters.selectedObserverID = nil
+            }
 
             // Routes are scoped independently from the node list. Remove
             // animations created under the previous scope before rebuilding
@@ -295,7 +317,7 @@ struct MapScreen: View {
                 replayPendingPacketIfNeeded()
             }
 
-            if loadedAnalyzerHost != sourceHost {
+            if analyzerChanged {
                 loadedAnalyzerHost = sourceHost
                 viewModel.resetForAnalyzerSource()
                 iataCoordinates = [:]
@@ -349,13 +371,18 @@ struct MapScreen: View {
         }
         .onChange(of: observerRegionLookup.isLoaded) { _, isLoaded in
             guard isLoaded else { return }
+            validateSelectedObserver()
             rebuildPathsAfterLoadingObservers()
         }
         .onChange(of: viewModel.nodes) {
             updateDisplayedNodes()
         }
         .onChange(of: nodeFilters) {
+            nodeFilters.persist(for: settings.host)
             updateDisplayedNodes()
+            if !isChangingRegion {
+                rebuildPathsForCurrentFilters()
+            }
         }
         .onChange(of: mapDisplayStyle) {
             UserDefaults.standard.set(mapDisplayStyle.rawValue, forKey: MapDisplayStyle.defaultsKey)
@@ -406,6 +433,14 @@ struct MapScreen: View {
                     span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08)
                 )
             )
+        }
+    }
+
+    private func validateSelectedObserver() {
+        guard let selectedObserverID = nodeFilters.selectedObserverID else { return }
+        let availableObserverIDs = Set(mapObserverOptions.map(\.id))
+        if !availableObserverIDs.contains(selectedObserverID) {
+            nodeFilters.selectedObserverID = nil
         }
     }
 
@@ -768,6 +803,24 @@ struct MapScreen: View {
             return "All Regions"
         }
         return "\(selectedRegion) · \(regionFilter.label(for: selectedRegion))"
+    }
+
+    private var mapObserverOptions: [MapObserverOption] {
+        let selectedRegion = regionFilter.selectedRegion?.uppercased()
+        return observerRegionLookup.observers
+            .filter { observer in
+                selectedRegion == nil || observer.iata?.uppercased() == selectedRegion
+            }
+            .map { observer in
+                MapObserverOption(
+                    id: observer.id,
+                    title: observer.name ?? observer.id,
+                    iata: observer.iata
+                )
+            }
+            .sorted { lhs, rhs in
+                lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
+            }
     }
 
     private var mapLoadingTitle: String {
@@ -1217,7 +1270,7 @@ struct MapScreen: View {
             guard observationMatchesSelectedRegion(
                 observerId: packet.observerId,
                 observerName: packet.observerName
-            ) else {
+            ), observationMatchesSelectedObserver(observerId: packet.observerId) else {
                 continue
             }
 
@@ -1279,7 +1332,7 @@ struct MapScreen: View {
             guard observationMatchesSelectedRegion(
                 observerId: event.data?.observerId,
                 observerName: event.data?.observerName
-            ) else {
+            ), observationMatchesSelectedObserver(observerId: event.data?.observerId) else {
                 continue
             }
 
@@ -1317,6 +1370,20 @@ struct MapScreen: View {
         if activePings.count > 100 {
             activePings.removeFirst(activePings.count - 100)
         }
+    }
+
+    private func rebuildPathsForCurrentFilters() {
+        activePings = []
+        processedEventIds = []
+        processHistoricalPackets()
+        processIncomingEvents()
+    }
+
+    private func observationMatchesSelectedObserver(observerId: String?) -> Bool {
+        guard let selectedObserverID = nodeFilters.selectedObserverID?.lowercased() else {
+            return true
+        }
+        return observerId?.lowercased() == selectedObserverID
     }
 
     private func observationMatchesSelectedRegion(
@@ -1607,12 +1674,53 @@ struct MapScreen: View {
     }
 }
 
-private struct MapNodeFilterSelection: Equatable {
-    var selectedRoles: Set<String> = []
-    var activityFilter: MapNodeActivityFilter = .all
+private struct MapObserverOption: Identifiable, Hashable {
+    let id: String
+    let title: String
+    let iata: String?
 }
 
-private enum MapNodeActivityFilter: String, CaseIterable, Identifiable {
+private struct MapNodeFilterSelection: Codable, Equatable {
+    var selectedRoles: Set<String> = []
+    var activityFilter: MapNodeActivityFilter = .all
+    var selectedObserverID: String?
+
+    var isFiltering: Bool {
+        !selectedRoles.isEmpty || activityFilter != .all || selectedObserverID != nil
+    }
+
+    var activeFilterCount: Int {
+        (selectedRoles.isEmpty ? 0 : 1)
+            + (activityFilter == .all ? 0 : 1)
+            + (selectedObserverID == nil ? 0 : 1)
+    }
+
+    static func persisted(for analyzerHost: String) -> Self {
+        guard let data = UserDefaults.standard.data(forKey: defaultsKey(for: analyzerHost)),
+              let selection = try? JSONDecoder().decode(Self.self, from: data) else {
+            return Self()
+        }
+        return selection
+    }
+
+    func persist(for analyzerHost: String) {
+        let key = Self.defaultsKey(for: analyzerHost)
+        guard isFiltering else {
+            UserDefaults.standard.removeObject(forKey: key)
+            return
+        }
+        guard let data = try? JSONEncoder().encode(self) else { return }
+        UserDefaults.standard.set(data, forKey: key)
+    }
+
+    private static func defaultsKey(for analyzerHost: String) -> String {
+        let normalizedHost = analyzerHost.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let hostIdentifier = Data(normalizedHost.utf8).base64EncodedString()
+        return "mapNodeFilters.\(hostIdentifier)"
+    }
+}
+
+private enum MapNodeActivityFilter: String, CaseIterable, Codable, Identifiable {
     case all
     case fifteenMinutes
     case oneHour
@@ -1642,82 +1750,263 @@ private enum MapNodeActivityFilter: String, CaseIterable, Identifiable {
     }
 }
 
-private struct MapNodeFilterMenu: View {
-    @Binding var filters: MapNodeFilterSelection
-
-    private let roles = ["repeater", "room", "companion", "sensor"]
+private struct MapNodeFilterButton: View {
+    let activeFilterCount: Int
+    let action: () -> Void
 
     private var isFiltering: Bool {
-        !filters.selectedRoles.isEmpty || filters.activityFilter != .all
+        activeFilterCount > 0
     }
 
     var body: some View {
-        Menu {
-            Section("Activity") {
-                ForEach(MapNodeActivityFilter.allCases) { filter in
-                    Button {
-                        filters.activityFilter = filter
-                    } label: {
-                        if filters.activityFilter == filter {
-                            Label(filter.title, systemImage: "checkmark")
-                        } else {
-                            Text(filter.title)
-                        }
-                    }
+        Button(action: action) {
+            HStack(spacing: 5) {
+                Image(systemName: isFiltering
+                    ? "line.3.horizontal.decrease.circle.fill"
+                    : "line.3.horizontal.decrease.circle"
+                )
+                if isFiltering {
+                    Text("\(activeFilterCount) active")
                 }
             }
-
-            Section("Node Roles") {
-                Button {
-                    filters.selectedRoles = []
-                } label: {
-                    if filters.selectedRoles.isEmpty {
-                        Label("All Roles", systemImage: "checkmark")
-                    } else {
-                        Text("All Roles")
-                    }
-                }
-
-                ForEach(roles, id: \.self) { role in
-                    Button {
-                        toggleRole(role)
-                    } label: {
-                        if filters.selectedRoles.contains(role) {
-                            Label(role.capitalized, systemImage: "checkmark")
-                        } else {
-                            Label(role.capitalized, systemImage: NodeRoleStyle.symbolName(for: role))
-                        }
-                    }
-                }
-            }
-
-            if isFiltering {
-                Divider()
-                Button("Reset Map Filters", systemImage: "arrow.counterclockwise") {
-                    filters.selectedRoles = []
-                    filters.activityFilter = .all
-                }
-            }
-        } label: {
-            Image(systemName: isFiltering
-                ? "line.3.horizontal.decrease.circle.fill"
-                : "line.3.horizontal.decrease.circle"
-            )
-                .font(.body.weight(.semibold))
-                .foregroundStyle(isFiltering ? NodeScopeStyle.signal : Color.primary)
-                .frame(width: 34, height: 34)
-                .background(.thinMaterial, in: Circle())
+            .font(.body.weight(.semibold))
+            .foregroundStyle(isFiltering ? NodeScopeStyle.signal : Color.primary)
+            .frame(minWidth: 34, minHeight: 34)
+            .padding(.horizontal, isFiltering ? 8 : 0)
+            .background(.thinMaterial, in: Capsule())
         }
+        .buttonStyle(.plain)
         .accessibilityLabel("Map filters")
-        .accessibilityValue(isFiltering ? "Active" : "None")
+        .accessibilityValue(isFiltering ? "\(activeFilterCount) active" : "None")
+    }
+}
+
+private struct MapNodeFilterSheet: View {
+    @Binding var filters: MapNodeFilterSelection
+    let observers: [MapObserverOption]
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var isObserverPickerPresented = false
+
+    private var selectedObserverTitle: String {
+        guard let selectedObserverID = filters.selectedObserverID else {
+            return "All Observers"
+        }
+        return observers.first(where: { $0.id == selectedObserverID })?.title ?? "Selected Observer"
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                MapActivityFilterSection(selection: $filters.activityFilter)
+                MapRoleFilterSection(selectedRoles: $filters.selectedRoles)
+                MapObserverFilterSummarySection(
+                    selectedObserverTitle: selectedObserverTitle,
+                    action: { isObserverPickerPresented = true }
+                )
+
+                if filters.isFiltering {
+                    Section {
+                        Button("Reset All Filters", systemImage: "arrow.counterclockwise") {
+                            filters = MapNodeFilterSelection()
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Map Filters")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .sheet(isPresented: $isObserverPickerPresented) {
+                MapObserverPickerSheet(
+                    selectedObserverID: $filters.selectedObserverID,
+                    observers: observers
+                )
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+            }
+        }
+    }
+}
+
+private struct MapActivityFilterSection: View {
+    @Binding var selection: MapNodeActivityFilter
+
+    var body: some View {
+        Section("Activity") {
+            ForEach(MapNodeActivityFilter.allCases) { filter in
+                Button {
+                    selection = filter
+                } label: {
+                    HStack {
+                        Text(filter.title)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        if selection == filter {
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(NodeScopeStyle.signal)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct MapRoleFilterSection: View {
+    @Binding var selectedRoles: Set<String>
+
+    private let roles = ["repeater", "room", "companion", "sensor"]
+
+    var body: some View {
+        Section("Node Roles") {
+            Button {
+                selectedRoles = []
+            } label: {
+                filterRow(title: "All Roles", symbol: "circle.grid.2x2", isSelected: selectedRoles.isEmpty)
+            }
+
+            ForEach(roles, id: \.self) { role in
+                Button {
+                    toggleRole(role)
+                } label: {
+                    filterRow(
+                        title: role.capitalized,
+                        symbol: NodeRoleStyle.symbolName(for: role),
+                        isSelected: selectedRoles.contains(role)
+                    )
+                }
+            }
+        }
+    }
+
+    private func filterRow(title: String, symbol: String, isSelected: Bool) -> some View {
+        HStack {
+            Label(title, systemImage: symbol)
+                .foregroundStyle(.primary)
+            Spacer()
+            if isSelected {
+                Image(systemName: "checkmark")
+                    .foregroundStyle(NodeScopeStyle.signal)
+            }
+        }
     }
 
     private func toggleRole(_ role: String) {
-        if filters.selectedRoles.contains(role) {
-            filters.selectedRoles.remove(role)
+        if selectedRoles.contains(role) {
+            selectedRoles.remove(role)
         } else {
-            filters.selectedRoles.insert(role)
+            selectedRoles.insert(role)
         }
+    }
+}
+
+private struct MapObserverFilterSummarySection: View {
+    let selectedObserverTitle: String
+    let action: () -> Void
+
+    var body: some View {
+        Section {
+            Button(action: action) {
+                HStack {
+                    Label("Choose Observer", systemImage: "antenna.radiowaves.left.and.right")
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Text(selectedObserverTitle)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+        } header: {
+            Text("Route Observer")
+        } footer: {
+            Text("Limits live and recent routes to packets received by the selected observer. Node markers are still controlled by the region, activity, and role filters.")
+        }
+    }
+}
+
+private struct MapObserverPickerSheet: View {
+    @Binding var selectedObserverID: String?
+    let observers: [MapObserverOption]
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+
+    private var matchingObservers: [MapObserverOption] {
+        let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedQuery.isEmpty else { return observers }
+        return observers.filter { observer in
+            observer.title.localizedCaseInsensitiveContains(normalizedQuery)
+                || observer.id.localizedCaseInsensitiveContains(normalizedQuery)
+                || observer.iata?.localizedCaseInsensitiveContains(normalizedQuery) == true
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Button {
+                    select(nil)
+                } label: {
+                    observerRow(
+                        title: "All Observers",
+                        subtitle: "Show routes received by any observer",
+                        isSelected: selectedObserverID == nil
+                    )
+                }
+
+                ForEach(matchingObservers) { observer in
+                    Button {
+                        select(observer.id)
+                    } label: {
+                        observerRow(
+                            title: observer.title,
+                            subtitle: observer.iata,
+                            isSelected: selectedObserverID == observer.id
+                        )
+                    }
+                }
+            }
+            .navigationTitle("Route Observer")
+            .navigationBarTitleDisplayMode(.inline)
+            .searchable(text: $query, prompt: "Name, ID, or region")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func select(_ observerID: String?) {
+        selectedObserverID = observerID
+        dismiss()
+    }
+
+    private func observerRow(title: String, subtitle: String?, isSelected: Bool) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .foregroundStyle(.primary)
+                if let subtitle, !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+            if isSelected {
+                Image(systemName: "checkmark")
+                    .foregroundStyle(NodeScopeStyle.signal)
+            }
+        }
+        .contentShape(Rectangle())
     }
 }
 

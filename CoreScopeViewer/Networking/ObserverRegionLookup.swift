@@ -14,6 +14,7 @@ import Observation
 @Observable
 @MainActor
 final class ObserverRegionLookup {
+    private(set) var observers: [MeshObserver] = []
     private(set) var iataById: [String: String] = [:]
     private(set) var iataByName: [String: String] = [:]
     private(set) var coordinateById: [String: CLLocationCoordinate2D] = [:]
@@ -31,6 +32,7 @@ final class ObserverRegionLookup {
     /// Call when the analyzer host changes — a lookup built from the old
     /// host's observers is meaningless (and likely wrong) for the new one.
     func reset() {
+        observers = []
         iataById = [:]
         iataByName = [:]
         coordinateById = [:]
@@ -78,6 +80,7 @@ final class ObserverRegionLookup {
                 }
             }
         }
+        observers = response.observers
         iataById = byId
         iataByName = byName
         coordinateById = byCoordinateId
