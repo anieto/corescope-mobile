@@ -1823,6 +1823,39 @@ private struct MapRouteDetails: Identifiable {
     let sender: String?
     let messageText: String?
     let hops: [MapRouteHop]
+
+    var shareText: String {
+        var lines = [
+            "NodeScope Route",
+            "Hops: \(hops.count)",
+            "Observed: \(observedAt.formatted(.relative(presentation: .named)))"
+        ]
+        if let observerName, !observerName.isEmpty {
+            lines.append("Observer: \(observerName)")
+        }
+        if let snr {
+            lines.append("SNR: \(snr.formatted(.number.precision(.fractionLength(1)))) dB")
+        }
+        if let rssi {
+            lines.append("RSSI: \(rssi.formatted(.number.precision(.fractionLength(0)))) dBm")
+        }
+        if let packetHash, !packetHash.isEmpty {
+            lines.append("Packet: \(packetHash.uppercased())")
+        }
+        if let messageText = messageText?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !messageText.isEmpty {
+            lines.append("")
+            lines.append(sender.map { "Message from \($0):" } ?? "Message:")
+            lines.append(messageText)
+        }
+        lines.append("")
+        lines.append("Route:")
+        for hop in hops {
+            let key = hop.publicKey.map { " (\($0))" } ?? ""
+            lines.append("\(hop.position). \(hop.title)\(key)")
+        }
+        return lines.joined(separator: "\n")
+    }
 }
 
 private struct MapRouteHop: Identifiable {
@@ -1886,6 +1919,15 @@ private struct MapRouteDetailsSheet: View {
             .navigationTitle("Route Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    ShareLink(
+                        item: route.shareText,
+                        subject: Text("NodeScope Route"),
+                        message: Text("Route details from NodeScope")
+                    ) {
+                        Label("Share Route", systemImage: "square.and.arrow.up")
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                 }
