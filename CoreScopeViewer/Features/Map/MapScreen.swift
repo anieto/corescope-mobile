@@ -276,6 +276,13 @@ struct MapScreen: View {
             let sourceHost = settings.host
             let selectedRegion = regionFilter.selectedRegion
             isChangingRegion = true
+
+            // Routes are scoped independently from the node list. Remove
+            // animations created under the previous scope before rebuilding
+            // from region-filtered packet observations.
+            activePings = []
+            processedEventIds = []
+
             async let minimumLoaderDuration: Void = keepRegionLoaderVisible()
             defer {
                 isChangingRegion = false
@@ -1181,6 +1188,12 @@ struct MapScreen: View {
         for packet in viewModel.recentPackets {
             let age = now.timeIntervalSince(packet.timestamp)
             guard age < 12.0 else { continue }
+            guard observationMatchesSelectedRegion(
+                observerId: packet.observerId,
+                observerName: packet.observerName
+            ) else {
+                continue
+            }
 
             let subchains = resolvedSubchains(for: packet)
             let pathColor = ActivePing.color(forHash: packet.hash, colorScheme: colorScheme)
@@ -1237,6 +1250,13 @@ struct MapScreen: View {
             if processedEventIds.contains(eventKey) { continue }
             processedEventIds.insert(eventKey)
 
+            guard observationMatchesSelectedRegion(
+                observerId: event.data?.observerId,
+                observerName: event.data?.observerName
+            ) else {
+                continue
+            }
+
             let subchains = resolvedSubchains(for: event)
             let pathColor = ActivePing.color(forHash: event.data?.hash ?? event.data?.raw, colorScheme: colorScheme)
 
@@ -1271,6 +1291,35 @@ struct MapScreen: View {
         if activePings.count > 100 {
             activePings.removeFirst(activePings.count - 100)
         }
+    }
+
+    private func observationMatchesSelectedRegion(
+        observerId: String?,
+        observerName: String?
+    ) -> Bool {
+        guard let selectedRegion = regionFilter.selectedRegion?.uppercased() else {
+            return true
+        }
+
+        if let observerId {
+            let observerRegion = observerRegionLookup.iataById[observerId]
+                ?? observerRegionLookup.iataById[observerId.lowercased()]
+            if let observerRegion {
+                return observerRegion.uppercased() == selectedRegion
+            }
+        }
+
+        if let observerName {
+            let observerRegion = observerRegionLookup.iataByName[observerName]
+                ?? observerRegionLookup.iataByName[observerName.lowercased()]
+            if let observerRegion {
+                return observerRegion.uppercased() == selectedRegion
+            }
+        }
+
+        // While scoped, unknown observers fail closed. Once the observer
+        // roster loads, rebuildPathsAfterLoadingObservers() retries them.
+        return false
     }
 
     private struct DecodedJsonHelper: Decodable {
