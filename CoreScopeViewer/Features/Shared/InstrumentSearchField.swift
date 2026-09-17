@@ -9,9 +9,11 @@ struct InstrumentSearchField: View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(NodeScopeStyle.signal)
+                .accessibilityHidden(true)
 
             TextField(prompt, text: $text)
                 .textInputAutocapitalization(.never)
+                .accessibilityAddTraits(.isSearchField)
                 .autocorrectionDisabled()
                 .focused($isFocused)
 

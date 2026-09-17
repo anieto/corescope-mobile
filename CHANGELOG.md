@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.3.0 - 2026-09-17
+
+Release focused on making frequently used mesh data faster to find, save, and
+revisit.
+
+### Added
+
+- Explore hub for analyzer-scoped favorite channels, nodes, and observers
+- Unified search across nodes, observers, channels, public keys, and packet hashes
+- Recent searches and recently viewed network items
+- Reorderable favorites with node-role icons and direct favorite management
+- Quick actions to show nodes on the map and copy public keys, observer IDs,
+  channel names, and packet hashes
+- Direct navigation from a node's Heard By list to observer details
+
+### Improved
+
+- Channel filtering and sorting
+- Empty-state guidance for discovering and saving network items
+- Dark-mode separation for recently viewed rows
+- VoiceOver access to node quick actions and clearer search-field semantics
+- Dynamic Type behavior in the floating tab dock
+
 ## 0.2.1 - 2026-09-16
 
 Patch release improving live-feed reliability and finalizing BetweenThieves

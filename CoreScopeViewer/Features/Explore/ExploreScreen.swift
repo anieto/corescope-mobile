@@ -989,21 +989,37 @@ private struct NodeQuickActionsModifier: ViewModifier {
     @Environment(\.dismiss) private var dismiss
 
     func body(content: Content) -> some View {
-        content.contextMenu {
-            Button {
-                dismiss()
-                appNavigationStore.showOnMap(node)
-            } label: {
-                Label("Show on Map", systemImage: "map")
-            }
-            .disabled(!canShowOnMap)
+        content
+            .contextMenu {
+                Button {
+                    showOnMap()
+                } label: {
+                    Label("Show on Map", systemImage: "map")
+                }
+                .disabled(!canShowOnMap)
 
-            Button {
-                UIPasteboard.general.string = node.publicKey
-            } label: {
-                Label("Copy Public Key", systemImage: "doc.on.doc")
+                Button {
+                    copyPublicKey()
+                } label: {
+                    Label("Copy Public Key", systemImage: "doc.on.doc")
+                }
             }
-        }
+            .accessibilityAction(named: "Show on Map") {
+                guard canShowOnMap else { return }
+                showOnMap()
+            }
+            .accessibilityAction(named: "Copy Public Key") {
+                copyPublicKey()
+            }
+    }
+
+    private func showOnMap() {
+        dismiss()
+        appNavigationStore.showOnMap(node)
+    }
+
+    private func copyPublicKey() {
+        UIPasteboard.general.string = node.publicKey
     }
 
     private var canShowOnMap: Bool {

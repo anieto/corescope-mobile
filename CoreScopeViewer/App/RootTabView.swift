@@ -126,7 +126,7 @@ private struct FloatingTabDock: View {
                 } label: {
                     VStack(spacing: 3) {
                         Image(systemName: tab.symbol)
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.body.weight(.semibold))
                         Text(tab.title)
                             .font(.caption2.weight(.semibold))
                     }
