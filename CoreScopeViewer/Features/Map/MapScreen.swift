@@ -1,5 +1,6 @@
 import MapKit
 import SwiftUI
+import UIKit
 
 struct MapScreen: View {
     let isTabActive: Bool
@@ -1074,6 +1075,11 @@ struct MapScreen: View {
             id: firstSegment.routeID ?? firstSegment.id.uuidString,
             packetHash: firstSegment.packetHash,
             observerName: firstSegment.observerName,
+            observedAt: firstSegment.observedAt,
+            snr: firstSegment.snr,
+            rssi: firstSegment.rssi,
+            sender: firstSegment.sender,
+            messageText: firstSegment.messageText,
             hops: hops
         )
     }
@@ -1218,7 +1224,12 @@ struct MapScreen: View {
                 signalColor: signalColor,
                 routeID: "replay-\(packetReplayStore.packetHash)-\(packetReplayStore.selectedRouteIndex)",
                 segmentIndex: index,
-                packetHash: packetReplayStore.packetHash
+                packetHash: packetReplayStore.packetHash,
+                observedAt: packetReplayStore.observedAt,
+                snr: packetReplayStore.snr,
+                rssi: packetReplayStore.rssi,
+                sender: packetReplayStore.sender,
+                messageText: packetReplayStore.messageText
             )
         }
         replayPings = segments
@@ -1394,7 +1405,10 @@ struct MapScreen: View {
                                     routeID: "historical-\(packet.hash)-\(packet.observerId ?? "")-\(subchainIndex)",
                                     segmentIndex: index,
                                     packetHash: packet.hash,
-                                    observerName: packet.observerName
+                                    observerName: packet.observerName,
+                                    observedAt: packet.timestamp,
+                                    snr: packet.snr,
+                                    rssi: packet.rssi
                                 )
                             )
                         }
@@ -1449,6 +1463,7 @@ struct MapScreen: View {
 
             let subchains = resolvedSubchains(for: event)
             let pathColor = ActivePing.color(forHash: event.data?.hash ?? event.data?.raw, colorScheme: colorScheme)
+            let observedAt = Date.now
 
             for (subchainIndex, subchain) in subchains.enumerated() {
                 if subchain.count >= 2 {
@@ -1469,7 +1484,10 @@ struct MapScreen: View {
                                     routeID: "live-\(eventKey)-\(subchainIndex)",
                                     segmentIndex: index,
                                     packetHash: event.data?.hash,
-                                    observerName: event.data?.observerName
+                                    observerName: event.data?.observerName,
+                                    observedAt: observedAt,
+                                    snr: event.data?.snr,
+                                    rssi: event.data?.rssi
                                 )
                             )
                         }
@@ -1799,6 +1817,11 @@ private struct MapRouteDetails: Identifiable {
     let id: String
     let packetHash: String?
     let observerName: String?
+    let observedAt: Date
+    let snr: Double?
+    let rssi: Double?
+    let sender: String?
+    let messageText: String?
     let hops: [MapRouteHop]
 }
 
@@ -1820,12 +1843,30 @@ private struct MapRouteDetailsSheet: View {
             List {
                 Section("Summary") {
                     LabeledContent("Hops", value: "\(route.hops.count)")
+                    LabeledContent("Age") {
+                        Text(route.observedAt, style: .relative)
+                    }
                     if let observerName = route.observerName, !observerName.isEmpty {
                         LabeledContent("Observer", value: observerName)
+                    }
+                    if let snr = route.snr {
+                        LabeledContent("SNR") {
+                            Text("\(snr, format: .number.precision(.fractionLength(1))) dB")
+                        }
+                    }
+                    if let rssi = route.rssi {
+                        LabeledContent("RSSI") {
+                            Text("\(rssi, format: .number.precision(.fractionLength(0))) dBm")
+                        }
                     }
                     if let packetHash = route.packetHash, !packetHash.isEmpty {
                         LabeledContent("Packet", value: String(packetHash.prefix(12)).uppercased())
                     }
+                }
+
+                if let messageText = route.messageText?.trimmingCharacters(in: .whitespacesAndNewlines),
+                   !messageText.isEmpty {
+                    MapRouteMessageSection(sender: route.sender, messageText: messageText)
                 }
 
                 Section("Route") {
@@ -1849,6 +1890,40 @@ private struct MapRouteDetailsSheet: View {
                     Button("Done") { dismiss() }
                 }
             }
+        }
+    }
+}
+
+private struct MapRouteMessageSection: View {
+    let sender: String?
+    let messageText: String
+
+    @State private var isExpanded = false
+
+    var body: some View {
+        Section("Message") {
+            VStack(alignment: .leading, spacing: 6) {
+                if let sender, !sender.isEmpty {
+                    Text(sender)
+                        .font(.subheadline.weight(.semibold))
+                }
+                Text(messageText)
+                    .lineLimit(isExpanded ? nil : 4)
+                    .textSelection(.enabled)
+                    .contextMenu {
+                        Button("Copy Message", systemImage: "doc.on.doc") {
+                            UIPasteboard.general.string = messageText
+                        }
+                    }
+
+                if messageText.count > 180 {
+                    Button(isExpanded ? "Show Less" : "Show More") {
+                        isExpanded.toggle()
+                    }
+                    .font(.caption.weight(.semibold))
+                }
+            }
+            .padding(.vertical, 2)
         }
     }
 }

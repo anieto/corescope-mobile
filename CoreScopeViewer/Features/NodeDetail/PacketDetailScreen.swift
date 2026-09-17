@@ -45,7 +45,12 @@ struct PacketDetailScreen: View {
                             replayStore.replay(
                                 routes: routes,
                                 selectedIndex: selectedRouteIndex,
-                                packetHash: detail.packet.hash
+                                packetHash: detail.packet.hash,
+                                observedAt: detail.packet.timestamp,
+                                snr: detail.packet.snr,
+                                rssi: detail.packet.rssi,
+                                sender: message.sender,
+                                messageText: message.text
                             )
                         }
                     )

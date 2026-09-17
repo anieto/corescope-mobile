@@ -31,6 +31,11 @@ struct ActivePing: Identifiable, Sendable {
     let segmentIndex: Int
     let packetHash: String?
     let observerName: String?
+    let observedAt: Date
+    let snr: Double?
+    let rssi: Double?
+    let sender: String?
+    let messageText: String?
 
     init(
         from start: CLLocationCoordinate2D,
@@ -44,7 +49,12 @@ struct ActivePing: Identifiable, Sendable {
         routeID: String? = nil,
         segmentIndex: Int = 0,
         packetHash: String? = nil,
-        observerName: String? = nil
+        observerName: String? = nil,
+        observedAt: Date? = nil,
+        snr: Double? = nil,
+        rssi: Double? = nil,
+        sender: String? = nil,
+        messageText: String? = nil
     ) {
         self.start = start
         self.end = end
@@ -59,6 +69,11 @@ struct ActivePing: Identifiable, Sendable {
         self.segmentIndex = segmentIndex
         self.packetHash = packetHash
         self.observerName = observerName
+        self.observedAt = observedAt ?? createdAt
+        self.snr = snr
+        self.rssi = rssi
+        self.sender = sender
+        self.messageText = messageText
     }
 
     init(
@@ -80,6 +95,11 @@ struct ActivePing: Identifiable, Sendable {
         self.segmentIndex = 0
         self.packetHash = nil
         self.observerName = nil
+        self.observedAt = createdAt
+        self.snr = nil
+        self.rssi = nil
+        self.sender = nil
+        self.messageText = nil
     }
 
     /// Fade progress (0 = fully visible, 1 = fully dissolved). Clamped at 0
