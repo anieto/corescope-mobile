@@ -4,6 +4,7 @@ struct NodeDetailScreen: View {
     let node: MeshNode
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(FavoritesStore.self) private var favoritesStore
+    @Environment(RecentItemsStore.self) private var recentItemsStore
     @State private var viewModel = NodeDetailViewModel()
 
     var body: some View {
@@ -53,6 +54,9 @@ struct NodeDetailScreen: View {
         .background(NodeScopeBackground())
         .navigationTitle(node.name ?? "Node")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            recentItemsStore.record(node: node, source: favoriteSource)
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 favoriteButton

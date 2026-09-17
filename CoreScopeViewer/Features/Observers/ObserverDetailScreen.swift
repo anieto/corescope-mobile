@@ -5,6 +5,7 @@ struct ObserverDetailScreen: View {
     let observer: MeshObserver
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(FavoritesStore.self) private var favoritesStore
+    @Environment(RecentItemsStore.self) private var recentItemsStore
     @State private var viewModel = ObserversViewModel()
 
     var body: some View {
@@ -49,6 +50,9 @@ struct ObserverDetailScreen: View {
         .background(NodeScopeBackground())
         .navigationTitle(observer.name ?? "Observer")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            recentItemsStore.record(observer: observer, source: favoriteSource)
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 favoriteButton

@@ -11,6 +11,7 @@ struct NodeScopeApp: App {
     @State private var analyzerSourceRegistry = AnalyzerSourceRegistry()
     @State private var channelMonitorStore = ChannelMonitorStore()
     @State private var favoritesStore = FavoritesStore()
+    @State private var recentItemsStore = RecentItemsStore()
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
     init() {
@@ -39,6 +40,7 @@ struct NodeScopeApp: App {
             .environment(analyzerSourceRegistry)
             .environment(channelMonitorStore)
             .environment(favoritesStore)
+            .environment(recentItemsStore)
             .preferredColorScheme(appearanceSettings.mode.colorScheme)
             .task {
                 await analyzerSourceRegistry.refresh()

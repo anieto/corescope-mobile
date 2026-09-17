@@ -9,6 +9,7 @@ struct ChannelDetailScreen: View {
     @Environment(ChannelMonitorStore.self) private var monitorStore
     @Environment(LiveFeedService.self) private var liveFeed
     @Environment(FavoritesStore.self) private var favoritesStore
+    @Environment(RecentItemsStore.self) private var recentItemsStore
     @State private var viewModel = ChannelsViewModel()
     @State private var lastProcessedLiveEventID: Int?
     @State private var liveRefreshTask: Task<Void, Never>?
@@ -48,6 +49,9 @@ struct ChannelDetailScreen: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle(channel.name)
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            recentItemsStore.record(channel: channel, source: favoriteSource)
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 favoriteButton

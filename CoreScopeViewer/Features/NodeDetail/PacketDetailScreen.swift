@@ -4,6 +4,7 @@ struct PacketDetailScreen: View {
     let message: ChannelMessage
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(PacketReplayStore.self) private var replayStore
+    @Environment(RecentItemsStore.self) private var recentItemsStore
     @State private var viewModel = PacketDetailViewModel()
     @State private var selectedRouteIndex = 0
 
@@ -59,6 +60,12 @@ struct PacketDetailScreen: View {
         .background(NodeScopeBackground())
         .navigationTitle("Packet")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            recentItemsStore.record(
+                message: message,
+                source: AnalyzerSettings.normalizedHost(settings.host)
+            )
+        }
         .task {
             viewModel.configure(settings: settings)
             await viewModel.loadPacket(hash: message.packetHash)

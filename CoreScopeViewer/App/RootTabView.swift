@@ -5,9 +5,9 @@ struct RootTabView: View {
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(RegionFilterStore.self) private var regionFilter
 
-    fileprivate enum Tab: Hashable, CaseIterable {
+    fileprivate enum Tab: String, Hashable, CaseIterable {
         case map
-        case favorites
+        case explore
         case channels
         case observers
         case settings
@@ -15,7 +15,7 @@ struct RootTabView: View {
         var title: LocalizedStringKey {
             switch self {
             case .map: "Map"
-            case .favorites: "Favorites"
+            case .explore: "Explore"
             case .channels: "Channels"
             case .observers: "Observers"
             case .settings: "Settings"
@@ -25,7 +25,7 @@ struct RootTabView: View {
         var symbol: String {
             switch self {
             case .map: "map"
-            case .favorites: "star"
+            case .explore: "safari"
             case .channels: "bubble.left.and.bubble.right"
             case .observers: "antenna.radiowaves.left.and.right"
             case .settings: "slider.horizontal.3"
@@ -34,6 +34,7 @@ struct RootTabView: View {
     }
 
     @State private var selectedTab: Tab = .map
+    @AppStorage("lastSelectedTab") private var lastSelectedTabRawValue = Tab.map.rawValue
     @State private var resetIDs: [Tab: UUID] = Dictionary(
         uniqueKeysWithValues: Tab.allCases.map { ($0, UUID()) }
     )
@@ -45,10 +46,15 @@ struct RootTabView: View {
                 .tabItem { Label("Map", systemImage: "map") }
                 .tag(Tab.map)
 
-            FavoritesScreen(resetID: resetIDs[.favorites] ?? UUID())
+            ExploreScreen(
+                resetID: resetIDs[.explore] ?? UUID(),
+                openMap: { selectedTab = .map },
+                openChannels: { selectedTab = .channels },
+                openObservers: { selectedTab = .observers }
+            )
                 .toolbar(.hidden, for: .tabBar)
-                .tabItem { Label("Favorites", systemImage: "star") }
-                .tag(Tab.favorites)
+                .tabItem { Label("Explore", systemImage: "safari") }
+                .tag(Tab.explore)
 
             ChannelsListScreen(resetID: resetIDs[.channels] ?? UUID())
                 .toolbar(.hidden, for: .tabBar)
@@ -80,6 +86,16 @@ struct RootTabView: View {
         }
         .onChange(of: packetReplayStore.requestID) {
             selectedTab = .map
+        }
+        .onAppear {
+            if lastSelectedTabRawValue == "favorites" {
+                selectedTab = .explore
+            } else {
+                selectedTab = Tab(rawValue: lastSelectedTabRawValue) ?? .map
+            }
+        }
+        .onChange(of: selectedTab) {
+            lastSelectedTabRawValue = selectedTab.rawValue
         }
         .task(id: "\(settings.host)|\(regionFilter.selectedRegion ?? "")") {
             await ChannelsViewModel.preload(settings: settings, region: regionFilter.selectedRegion)

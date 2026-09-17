@@ -1,19 +1,24 @@
 import SwiftUI
 
-struct FavoritesScreen: View {
+struct ExploreScreen: View {
     let resetID: UUID
+    let openMap: () -> Void
+    let openChannels: () -> Void
+    let openObservers: () -> Void
 
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(FavoritesStore.self) private var favoritesStore
+    @Environment(RecentItemsStore.self) private var recentItemsStore
     @State private var navigationPath = NavigationPath()
     @State private var visibleItems: [FavoriteItem] = []
+    @State private var visibleRecentItems: [RecentItem] = []
     @State private var nodeViewModel = MapViewModel()
     @State private var isAddFavoritePresented = false
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
             List {
-                FavoritesHeader(
+                ExploreHeader(
                     count: visibleItems.count,
                     canReorder: canReorder,
                     addFavorite: { isAddFavoritePresented = true }
@@ -24,6 +29,7 @@ struct FavoritesScreen: View {
                 favoriteSection(kind: .channel, title: "Channels")
                 favoriteSection(kind: .node, title: "Nodes")
                 favoriteSection(kind: .observer, title: "Observers")
+                recentSection
             }
             .scrollContentBackground(.hidden)
             .background(NodeScopeBackground())
@@ -40,17 +46,23 @@ struct FavoritesScreen: View {
             .navigationDestination(for: MeshChannel.self) { channel in
                 ChannelDetailScreen(channel: channel)
             }
+            .navigationDestination(for: ChannelMessage.self) { message in
+                PacketDetailScreen(message: message)
+            }
             .overlay {
-                if visibleItems.isEmpty {
+                if visibleItems.isEmpty && visibleRecentItems.isEmpty {
                     ContentUnavailableView {
-                        Label("No Favorites Yet", systemImage: "star")
+                        Label("Explore Your Mesh", systemImage: "safari")
                     } description: {
-                        Text("Favorite an item from its detail screen or find a node here.")
+                        Text("Search for nodes, observers, and channels, then save the ones you want to follow.")
                     } actions: {
-                        Button("Add Node") {
+                        Button("Search the Network") {
                             isAddFavoritePresented = true
                         }
                         .buttonStyle(.borderedProminent)
+                        Button("Open Map", action: openMap)
+                        Button("Browse Channels", action: openChannels)
+                        Button("Browse Observers", action: openObservers)
                     }
                 }
             }
@@ -69,11 +81,36 @@ struct FavoritesScreen: View {
         }
         .onChange(of: settings.host) { updateVisibleItems() }
         .onChange(of: favoritesStore.items) { updateVisibleItems() }
+        .onChange(of: recentItemsStore.items) { updateVisibleItems() }
         .task(id: settings.host) {
             updateVisibleItems()
             nodeViewModel.resetForAnalyzerSource()
             nodeViewModel.configure(settings: settings)
             await nodeViewModel.loadNodes(region: nil)
+        }
+    }
+
+    @ViewBuilder
+    private var recentSection: some View {
+        if !visibleRecentItems.isEmpty {
+            Section {
+                ForEach(visibleRecentItems) { item in
+                    recentRow(item)
+                }
+            } header: {
+                HStack {
+                    Text("Recently Viewed")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+                    Spacer()
+                    Button("Clear") {
+                        recentItemsStore.clear(source: activeSource)
+                    }
+                    .font(.caption.weight(.semibold))
+                    .textCase(nil)
+                }
+            }
         }
     }
 
@@ -120,10 +157,41 @@ struct FavoritesScreen: View {
         }
     }
 
+    @ViewBuilder
+    private func recentRow(_ item: RecentItem) -> some View {
+        if let node = item.node {
+            NavigationLink(value: node) {
+                RecentRow(item: item)
+            }
+            .recentRowStyle(remove: { recentItemsStore.remove(item) })
+        } else if let observer = item.observer {
+            NavigationLink(value: observer) {
+                RecentRow(item: item)
+            }
+            .recentRowStyle(remove: { recentItemsStore.remove(item) })
+        } else if let channel = item.channel {
+            NavigationLink(value: channel) {
+                RecentRow(item: item)
+            }
+            .recentRowStyle(remove: { recentItemsStore.remove(item) })
+        } else if let message = item.message {
+            NavigationLink(value: message) {
+                RecentRow(item: item)
+            }
+            .recentRowStyle(remove: { recentItemsStore.remove(item) })
+        }
+    }
+
     private func updateVisibleItems() {
         let source = AnalyzerSettings.normalizedHost(settings.host)
         visibleItems = favoritesStore.items
             .filter { $0.source == source }
+        visibleRecentItems = recentItemsStore.items
+            .filter { $0.source == source }
+    }
+
+    private var activeSource: String {
+        AnalyzerSettings.normalizedHost(settings.host)
     }
 
     private var canReorder: Bool {
@@ -148,7 +216,7 @@ struct FavoritesScreen: View {
     }
 }
 
-private struct FavoritesHeader: View {
+private struct ExploreHeader: View {
     let count: Int
     let canReorder: Bool
     let addFavorite: () -> Void
@@ -156,7 +224,7 @@ private struct FavoritesHeader: View {
     var body: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 5) {
-                Text("Favorites")
+                Text("Explore")
                     .font(.largeTitle.bold())
                 Text("\(count) saved item\(count == 1 ? "" : "s") on this analyzer")
                     .font(.caption.weight(.medium))
@@ -233,6 +301,69 @@ private struct FavoriteRow: View {
             return NodeRoleStyle.color(for: node.role)
         }
         return NodeScopeStyle.signal.opacity(0.13)
+    }
+}
+
+private struct RecentRow: View {
+    let item: RecentItem
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(item.node == nil ? symbolColor : .white)
+                .frame(width: 38, height: 38)
+                .background(backgroundColor, in: Circle())
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.title)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    if let subtitle = item.subtitle, !subtitle.isEmpty {
+                        Text(subtitle)
+                            .lineLimit(1)
+                        Text("·")
+                    }
+                    Text(item.viewedAt, style: .relative)
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+        }
+        .padding(12)
+        .instrumentCard()
+        .contentShape(Rectangle())
+    }
+
+    private var symbol: String {
+        if let node = item.node {
+            return NodeRoleStyle.symbolName(for: node.role)
+        }
+        return switch item.kind {
+        case .node: "point.3.connected.trianglepath.dotted"
+        case .observer: "antenna.radiowaves.left.and.right"
+        case .channel: "number"
+        case .packet: "waveform.path.ecg.rectangle.fill"
+        }
+    }
+
+    private var symbolColor: Color {
+        switch item.kind {
+        case .node: NodeScopeStyle.signal
+        case .observer: NodeScopeStyle.healthy
+        case .channel: NodeScopeStyle.signal
+        case .packet: NodeScopeStyle.activity
+        }
+    }
+
+    private var backgroundColor: Color {
+        if let node = item.node {
+            return NodeRoleStyle.color(for: node.role)
+        }
+        return symbolColor.opacity(0.13)
     }
 }
 
@@ -439,6 +570,16 @@ private extension View {
             .swipeActions {
                 Button(role: .destructive, action: remove) {
                     Label("Remove Favorite", systemImage: "star.slash")
+                }
+            }
+    }
+
+    func recentRowStyle(remove: @escaping () -> Void) -> some View {
+        buttonStyle(.plain)
+            .favoritesListRow(top: 5, bottom: 5)
+            .swipeActions {
+                Button(role: .destructive, action: remove) {
+                    Label("Remove from Recent", systemImage: "clock.badge.xmark")
                 }
             }
     }
