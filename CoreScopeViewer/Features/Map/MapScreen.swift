@@ -21,6 +21,8 @@ struct MapScreen: View {
     @State private var visibleNodesByCoordinate: [CoordinateKey: MeshNode] = [:]
     @State private var iataCoordinates: [String: CLLocationCoordinate2D] = [:]
     @State private var mapDisplayStyle = MapDisplayStyle.persisted
+    @State private var nodeFilters = MapNodeFilterSelection()
+    @State private var filteredNodeCount = 0
     @State private var locationManager = MapLocationManager()
     @State private var userLocation: CLLocationCoordinate2D?
     @Namespace private var mapScope
@@ -80,6 +82,7 @@ struct MapScreen: View {
         let nodes: [MeshNode]
         let clusters: [NodeCluster]
         let nodesByCoordinate: [CoordinateKey: MeshNode]
+        let filteredCount: Int
     }
 
     private enum MapDisplayStyle: String, CaseIterable, Identifiable {
@@ -183,7 +186,10 @@ struct MapScreen: View {
                 }
                 .overlay(alignment: .topLeading) {
                     VStack(alignment: .leading, spacing: 8) {
-                        regionScopeControl
+                        HStack(spacing: 8) {
+                            regionScopeControl
+                            MapNodeFilterMenu(filters: $nodeFilters)
+                        }
                         if !viewModel.nodes.isEmpty {
                             DataLoadStatusView(
                                 lastUpdatedAt: viewModel.lastUpdatedAt,
@@ -224,7 +230,7 @@ struct MapScreen: View {
                             }
                         }
                         if !viewModel.nodes.isEmpty {
-                            Text("\(viewModel.nodes.count) nodes")
+                            Text("\(filteredNodeCount) nodes")
                                 .font(.caption)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 4)
@@ -346,6 +352,9 @@ struct MapScreen: View {
             rebuildPathsAfterLoadingObservers()
         }
         .onChange(of: viewModel.nodes) {
+            updateDisplayedNodes()
+        }
+        .onChange(of: nodeFilters) {
             updateDisplayedNodes()
         }
         .onChange(of: mapDisplayStyle) {
@@ -577,10 +586,19 @@ struct MapScreen: View {
     private func updateDisplayedNodes(in region: MKCoordinateRegion? = nil) {
         let nodes = viewModel.nodes
         let displayRegion = (region ?? visibleRegion).map(DisplayRegion.init)
+        let selectedRoles = nodeFilters.selectedRoles
+        let activityCutoff = nodeFilters.activityFilter.maximumAge.map {
+            Date.now.addingTimeInterval(-$0)
+        }
         displayUpdateTask?.cancel()
         displayUpdateTask = Task {
             let worker = Task.detached(priority: .userInitiated) {
-                Self.makeDisplayResult(nodes: nodes, region: displayRegion)
+                Self.makeDisplayResult(
+                    nodes: nodes,
+                    region: displayRegion,
+                    selectedRoles: selectedRoles,
+                    activityCutoff: activityCutoff
+                )
             }
             let result = await withTaskCancellationHandler {
                 await worker.value
@@ -591,16 +609,21 @@ struct MapScreen: View {
             displayedNodes = result.nodes
             nodeClusters = result.clusters
             visibleNodesByCoordinate = result.nodesByCoordinate
+            filteredNodeCount = result.filteredCount
         }
     }
 
     nonisolated private static func makeDisplayResult(
         nodes: [MeshNode],
-        region: DisplayRegion?
+        region: DisplayRegion?,
+        selectedRoles: Set<String>,
+        activityCutoff: Date?
     ) -> DisplayResult? {
         let validNodes = nodes.filter { node in
             guard !Task.isCancelled, let latitude = node.lat, let longitude = node.lon else { return false }
-            return latitude != 0 || longitude != 0
+            let matchesRole = selectedRoles.isEmpty || selectedRoles.contains(node.role.lowercased())
+            let matchesActivity = activityCutoff.map { node.lastSeen >= $0 } ?? true
+            return (latitude != 0 || longitude != 0) && matchesRole && matchesActivity
         }
         guard !Task.isCancelled else { return nil }
         guard let region else {
@@ -612,7 +635,8 @@ struct MapScreen: View {
                         node.coordinate.map { (CoordinateKey($0), node) }
                     },
                     uniquingKeysWith: { first, _ in first }
-                )
+                ),
+                filteredCount: validNodes.count
             )
         }
 
@@ -640,7 +664,8 @@ struct MapScreen: View {
                         node.coordinate.map { (CoordinateKey($0), node) }
                     },
                     uniquingKeysWith: { first, _ in first }
-                )
+                ),
+                filteredCount: validNodes.count
             )
         }
 
@@ -692,7 +717,8 @@ struct MapScreen: View {
                     node.coordinate.map { (CoordinateKey($0), node) }
                 },
                 uniquingKeysWith: { first, _ in first }
-            )
+            ),
+            filteredCount: validNodes.count
         )
     }
 
@@ -1578,6 +1604,120 @@ struct MapScreen: View {
             && CLLocationCoordinate2DIsValid(to)
             && (from.latitude != 0 || from.longitude != 0)
             && (to.latitude != 0 || to.longitude != 0)
+    }
+}
+
+private struct MapNodeFilterSelection: Equatable {
+    var selectedRoles: Set<String> = []
+    var activityFilter: MapNodeActivityFilter = .all
+}
+
+private enum MapNodeActivityFilter: String, CaseIterable, Identifiable {
+    case all
+    case fifteenMinutes
+    case oneHour
+    case oneDay
+    case oneWeek
+
+    var id: String { rawValue }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .all: "Any Activity"
+        case .fifteenMinutes: "Last 15 Minutes"
+        case .oneHour: "Last Hour"
+        case .oneDay: "Last 24 Hours"
+        case .oneWeek: "Last 7 Days"
+        }
+    }
+
+    var maximumAge: TimeInterval? {
+        switch self {
+        case .all: nil
+        case .fifteenMinutes: 15 * 60
+        case .oneHour: 60 * 60
+        case .oneDay: 24 * 60 * 60
+        case .oneWeek: 7 * 24 * 60 * 60
+        }
+    }
+}
+
+private struct MapNodeFilterMenu: View {
+    @Binding var filters: MapNodeFilterSelection
+
+    private let roles = ["repeater", "room", "companion", "sensor"]
+
+    private var isFiltering: Bool {
+        !filters.selectedRoles.isEmpty || filters.activityFilter != .all
+    }
+
+    var body: some View {
+        Menu {
+            Section("Activity") {
+                ForEach(MapNodeActivityFilter.allCases) { filter in
+                    Button {
+                        filters.activityFilter = filter
+                    } label: {
+                        if filters.activityFilter == filter {
+                            Label(filter.title, systemImage: "checkmark")
+                        } else {
+                            Text(filter.title)
+                        }
+                    }
+                }
+            }
+
+            Section("Node Roles") {
+                Button {
+                    filters.selectedRoles = []
+                } label: {
+                    if filters.selectedRoles.isEmpty {
+                        Label("All Roles", systemImage: "checkmark")
+                    } else {
+                        Text("All Roles")
+                    }
+                }
+
+                ForEach(roles, id: \.self) { role in
+                    Button {
+                        toggleRole(role)
+                    } label: {
+                        if filters.selectedRoles.contains(role) {
+                            Label(role.capitalized, systemImage: "checkmark")
+                        } else {
+                            Label(role.capitalized, systemImage: NodeRoleStyle.symbolName(for: role))
+                        }
+                    }
+                }
+            }
+
+            if isFiltering {
+                Divider()
+                Button("Reset Map Filters", systemImage: "arrow.counterclockwise") {
+                    filters.selectedRoles = []
+                    filters.activityFilter = .all
+                }
+            }
+        } label: {
+            Image(systemName: isFiltering
+                ? "line.3.horizontal.decrease.circle.fill"
+                : "line.3.horizontal.decrease.circle"
+            )
+                .font(.body.weight(.semibold))
+                .foregroundStyle(isFiltering ? NodeScopeStyle.signal : Color.primary)
+                .frame(width: 34, height: 34)
+                .background(.thinMaterial, in: Circle())
+        }
+        .accessibilityLabel("Map filters")
+        .accessibilityValue(isFiltering ? "Active" : "None")
+    }
+
+    private func toggleRole(_ role: String) {
+        if filters.selectedRoles.contains(role) {
+            filters.selectedRoles.remove(role)
+        } else {
+            filters.selectedRoles.insert(role)
+        }
     }
 }
 
