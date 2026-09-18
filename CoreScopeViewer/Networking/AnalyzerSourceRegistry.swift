@@ -14,13 +14,16 @@ private struct AnalyzerSourceRegistryDocument: Codable {
     let sources: [AnalyzerSource]
 }
 
-/// Loads the community-maintained analyzer list. The bundled document keeps
-/// first launch and offline use functional; once the GitHub repository is
-/// published, its raw JSON URL can be added as `NodeScopeSourceRegistryURL`.
+/// Loads the community-maintained analyzer list from GitHub. The bundled
+/// document keeps first launch and offline use functional, while an optional
+/// `NodeScopeSourceRegistryURL` bundle value can override the default endpoint.
 @Observable
 @MainActor
 final class AnalyzerSourceRegistry {
     private static let cachedDocumentDefaultsKey = "cachedAnalyzerSourceRegistry"
+    private static let defaultRemoteRegistryURL = URL(
+        string: "https://raw.githubusercontent.com/anieto/corescope-mobile/main/CommunitySources/us-sources.json"
+    )
 
     private(set) var sources: [AnalyzerSource]
     private(set) var isRefreshing = false
@@ -69,9 +72,9 @@ final class AnalyzerSourceRegistry {
             forInfoDictionaryKey: "NodeScopeSourceRegistryURL"
         ) as? String,
         !rawURL.isEmpty else {
-            return nil
+            return Self.defaultRemoteRegistryURL
         }
-        return URL(string: rawURL)
+        return URL(string: rawURL) ?? Self.defaultRemoteRegistryURL
     }
 
     private static var cachedSources: [AnalyzerSource]? {
