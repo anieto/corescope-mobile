@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 struct ExploreScreen: View {
     let resetID: UUID
@@ -340,6 +341,10 @@ private struct NetworkAtAGlanceCard: View {
     @State private var metricOrder = GlanceMetricKind.allCases
     @State private var hiddenMetrics: Set<GlanceMetricKind> = []
     @State private var isCustomizationPresented = false
+    @State private var isExporting = false
+    @State private var exportDocument = TextExportDocument()
+    @State private var exportContentType = UTType.json
+    @State private var exportFilename = "network-summary"
 
     private let activeInterval: TimeInterval = 15 * 60
     private let recentPacketInterval: TimeInterval = 60 * 60
@@ -363,14 +368,27 @@ private struct NetworkAtAGlanceCard: View {
                         .controlSize(.small)
                         .accessibilityLabel("Updating network summary")
                 }
-                Button {
-                    isCustomizationPresented = true
+                Menu {
+                    Button {
+                        isCustomizationPresented = true
+                    } label: {
+                        Label("Customize Dashboard", systemImage: "slider.horizontal.3")
+                    }
+                    Button {
+                        prepareExport(.csv)
+                    } label: {
+                        Label("Export CSV", systemImage: "tablecells")
+                    }
+                    Button {
+                        prepareExport(.json)
+                    } label: {
+                        Label("Export JSON", systemImage: "curlybraces")
+                    }
                 } label: {
-                    Image(systemName: "slider.horizontal.3")
+                    Image(systemName: "ellipsis.circle")
                 }
-                .buttonStyle(.plain)
                 .foregroundStyle(NodeScopeStyle.signal)
-                .accessibilityLabel("Customize network summary")
+                .accessibilityLabel("Network summary actions")
             }
 
             LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
@@ -423,6 +441,12 @@ private struct NetworkAtAGlanceCard: View {
                 save: savePreferences
             )
         }
+        .fileExporter(
+            isPresented: $isExporting,
+            document: exportDocument,
+            contentType: exportContentType,
+            defaultFilename: exportFilename
+        ) { _ in }
     }
 
     private var columns: [GridItem] {
@@ -441,6 +465,54 @@ private struct NetworkAtAGlanceCard: View {
 
     private func savePreferences() {
         GlancePreferences(order: metricOrder, hidden: hiddenMetrics).save(for: analyzerHost)
+    }
+
+    private func prepareExport(_ format: StatisticsExportFormat) {
+        let data: Data
+        switch format {
+        case .csv:
+            var rows = [["metric", "value", "detail"]]
+            rows += visibleMetrics.map { [$0.rawValue, metricValue(for: $0), metricDetail(for: $0)] }
+            rows.append(["favorites", "\(activeFavoriteCount)", favoriteBreakdown])
+            data = StatisticsExportBuilder.csv(rows: rows)
+        case .json:
+            let metrics = visibleMetrics.map {
+                GlanceMetricExport(id: $0.rawValue, value: metricValue(for: $0), detail: metricDetail(for: $0))
+            }
+            data = StatisticsExportBuilder.jsonData(
+                NetworkGlanceExport(
+                    analyzer: AnalyzerSettings.normalizedHost(analyzerHost),
+                    exportedAt: .now,
+                    scope: "entire_network",
+                    metrics: metrics,
+                    activeFavorites: activeFavoriteCount,
+                    favoriteCount: favorites.count
+                )
+            )
+        }
+
+        exportDocument = TextExportDocument(data: data)
+        exportContentType = format.contentType
+        exportFilename = "network-summary"
+        isExporting = true
+    }
+
+    private func metricValue(for metric: GlanceMetricKind) -> String {
+        switch metric {
+        case .activeNodes: "\(activeNodeCount)"
+        case .observersOnline: "\(activeObserverCount)"
+        case .packets: recentPacketValue
+        case .averageSNR: averageSNR.map { $0.formatted(.number.precision(.fractionLength(1))) } ?? ""
+        }
+    }
+
+    private func metricDetail(for metric: GlanceMetricKind) -> String {
+        switch metric {
+        case .activeNodes: "of \(nodes.count) seen"
+        case .observersOnline: "of \(observers.count) known"
+        case .packets: "in the last hour"
+        case .averageSNR: averageSNR == nil ? "no recent samples" : "dB in the last hour"
+        }
     }
 
     private var activeNodeCount: Int {
@@ -500,6 +572,21 @@ private struct NetworkAtAGlanceCard: View {
     private func isActive(_ date: Date) -> Bool {
         date.timeIntervalSinceNow > -activeInterval
     }
+}
+
+private struct NetworkGlanceExport: Encodable {
+    let analyzer: String
+    let exportedAt: Date
+    let scope: String
+    let metrics: [GlanceMetricExport]
+    let activeFavorites: Int
+    let favoriteCount: Int
+}
+
+private struct GlanceMetricExport: Encodable {
+    let id: String
+    let value: String
+    let detail: String
 }
 
 private enum GlanceMetricKind: String, Codable, CaseIterable, Identifiable {

@@ -26,6 +26,7 @@
 		316FDFFD305C4DDE00FBA3B4 /* RecentItemsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FDFFC305C4DDE00FBA3B4 /* RecentItemsStore.swift */; };
 		316FDFFF305C6CB100FBA3B4 /* SearchHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FDFFE305C6CB100FBA3B4 /* SearchHistoryStore.swift */; };
 		316FE001305C6EA300FBA3B4 /* AppNavigationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FE000305C6EA300FBA3B4 /* AppNavigationStore.swift */; };
+		316FE006305D930300FBA3B4 /* StatisticsExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FE005305D930300FBA3B4 /* StatisticsExport.swift */; };
 		31C733CCC554E34636022A89 /* OnboardingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9AFF0E38F9E8C2C60829E93 /* OnboardingScreen.swift */; };
 		37EEBAD9BA7B400246063847 /* NodeDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75CDCA22232763038FF030C6 /* NodeDetailViewModel.swift */; };
 		3BE961FDCF2336382895F4C3 /* ModelDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C78C1620C6A3A352DD6B687 /* ModelDecodingTests.swift */; };
@@ -96,6 +97,8 @@
 		316FDFFC305C4DDE00FBA3B4 /* RecentItemsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentItemsStore.swift; sourceTree = "<group>"; };
 		316FDFFE305C6CB100FBA3B4 /* SearchHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchHistoryStore.swift; sourceTree = "<group>"; };
 		316FE000305C6EA300FBA3B4 /* AppNavigationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNavigationStore.swift; sourceTree = "<group>"; };
+		316FE003305D92B200FBA3B4 /* StatisticsExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticsExport.swift; sourceTree = "<group>"; };
+		316FE005305D930300FBA3B4 /* StatisticsExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticsExport.swift; sourceTree = "<group>"; };
 		33B9A5F539B49B860F434D81 /* Channel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Channel.swift; sourceTree = "<group>"; };
 		36B0A5E6DC5812474734F2C7 /* SenderColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SenderColor.swift; sourceTree = "<group>"; };
 		37795BF9DC79999D3E6DE8A3 /* AboutScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutScreen.swift; sourceTree = "<group>"; };
@@ -167,6 +170,7 @@
 				98513FB82352F666556D2473 /* Models */,
 				E7B16BFA479D5C9A9CB0C62A /* Networking */,
 				A82C0A1F37D0CAD5AEB38BF5 /* Resources */,
+				316FE004305D930300FBA3B4 /* Utilities */,
 			);
 			path = CoreScopeViewer;
 			sourceTree = "<group>";
@@ -177,6 +181,22 @@
 				316FDFFA305C490A00FBA3B4 /* ExploreScreen.swift */,
 			);
 			path = Explore;
+			sourceTree = "<group>";
+		};
+		316FE002305D92B200FBA3B4 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				316FE003305D92B200FBA3B4 /* StatisticsExport.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		316FE004305D930300FBA3B4 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				316FE005305D930300FBA3B4 /* StatisticsExport.swift */,
+			);
+			path = Utilities;
 			sourceTree = "<group>";
 		};
 		34F851437983B18C6D3E010B /* Onboarding */ = {
@@ -309,6 +329,7 @@
 				2498CA4BA277AAB21F0D0508 /* CoreScopeViewer */,
 				EB5C43253531FEC14730F117 /* CoreScopeViewerTests */,
 				002B449ACE62846A6E279DD7 /* Products */,
+				316FE002305D92B200FBA3B4 /* Utilities */,
 			);
 			sourceTree = "<group>";
 		};
@@ -481,6 +502,7 @@
 				6444F2623473A5D38104F233 /* MapLocationManager.swift in Sources */,
 				A062762334B67CCF1DBD2BF2 /* MapScreen.swift in Sources */,
 				BE866EEEF408BDB6C8E103D8 /* MapViewModel.swift in Sources */,
+				316FE006305D930300FBA3B4 /* StatisticsExport.swift in Sources */,
 				524F4D5E1EF00C2775837C6C /* MonitorChannelSheet.swift in Sources */,
 				EF6E45CEC2D585AC27B07648 /* MonitoredChannel.swift in Sources */,
 				14BBB677BE2C96A01E15E7D3 /* Node.swift in Sources */,

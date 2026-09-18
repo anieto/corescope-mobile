@@ -1,6 +1,7 @@
 import Charts
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 struct ObserverDetailScreen: View {
     let observer: MeshObserver
@@ -8,6 +9,10 @@ struct ObserverDetailScreen: View {
     @Environment(FavoritesStore.self) private var favoritesStore
     @Environment(RecentItemsStore.self) private var recentItemsStore
     @State private var viewModel = ObserversViewModel()
+    @State private var isExporting = false
+    @State private var exportDocument = TextExportDocument()
+    @State private var exportContentType = UTType.json
+    @State private var exportFilename = "observer-statistics"
 
     var body: some View {
         ScrollView {
@@ -65,6 +70,17 @@ struct ObserverDetailScreen: View {
                     } label: {
                         Label("Copy Observer ID", systemImage: "doc.on.doc")
                     }
+                    Divider()
+                    Button {
+                        prepareExport(.csv)
+                    } label: {
+                        Label("Export CSV", systemImage: "tablecells")
+                    }
+                    Button {
+                        prepareExport(.json)
+                    } label: {
+                        Label("Export JSON", systemImage: "curlybraces")
+                    }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
@@ -75,6 +91,12 @@ struct ObserverDetailScreen: View {
             viewModel.configure(settings: settings)
             await viewModel.loadAnalytics(id: observer.id)
         }
+        .fileExporter(
+            isPresented: $isExporting,
+            document: exportDocument,
+            contentType: exportContentType,
+            defaultFilename: exportFilename
+        ) { _ in }
     }
 
     private var favoriteButton: some View {
@@ -101,6 +123,63 @@ struct ObserverDetailScreen: View {
             await viewModel.loadAnalytics(id: observer.id)
         }
     }
+
+    private func prepareExport(_ format: StatisticsExportFormat) {
+        let data: Data
+        switch format {
+        case .csv:
+            data = StatisticsExportBuilder.csv(rows: observerCSVRows)
+        case .json:
+            data = StatisticsExportBuilder.jsonData(
+                ObserverStatisticsExport(
+                    analyzer: AnalyzerSettings.normalizedHost(settings.host),
+                    exportedAt: .now,
+                    observer: observer,
+                    analytics: viewModel.analytics
+                )
+            )
+        }
+
+        let observerName = StatisticsExportBuilder.safeFilenameComponent(observer.name ?? observer.id)
+        exportDocument = TextExportDocument(data: data)
+        exportContentType = format.contentType
+        exportFilename = "observer-\(observerName)"
+        isExporting = true
+    }
+
+    private var observerCSVRows: [[String]] {
+        var rows = [["section", "label", "value"]]
+        rows += [
+            ["observer", "id", observer.id],
+            ["observer", "name", observer.name ?? ""],
+            ["observer", "region", observer.iata ?? ""],
+            ["observer", "first_seen", observer.firstSeen.ISO8601Format()],
+            ["observer", "last_seen", observer.lastSeen.ISO8601Format()],
+            ["observer", "packet_count", "\(observer.packetCount)"],
+            ["observer", "packets_last_hour", "\(observer.packetsLastHour)"],
+            ["observer", "model", observer.model ?? ""],
+            ["observer", "firmware", observer.firmware ?? ""],
+            ["observer", "battery_mv", observer.batteryMv.map { String($0) } ?? ""],
+            ["observer", "noise_floor", observer.noiseFloor.map { String($0) } ?? ""]
+        ]
+
+        if let analytics = viewModel.analytics {
+            rows += analytics.timeline.map { ["packet_timeline", $0.label, "\($0.count)"] }
+            rows += analytics.nodesTimeline.map { ["nodes_timeline", $0.label, "\($0.count)"] }
+            rows += analytics.snrDistribution.map { ["snr_distribution", $0.range, "\($0.count)"] }
+            rows += analytics.packetTypes.sorted { $0.key < $1.key }.map {
+                ["packet_types", PayloadType.name(for: Int($0.key) ?? -1), "\($0.value)"]
+            }
+        }
+        return rows
+    }
+}
+
+private struct ObserverStatisticsExport: Encodable {
+    let analyzer: String
+    let exportedAt: Date
+    let observer: MeshObserver
+    let analytics: ObserverAnalyticsResponse?
 }
 
 private struct ObserverIdentityCard: View {
