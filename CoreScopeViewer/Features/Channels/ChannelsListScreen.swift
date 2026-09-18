@@ -14,6 +14,7 @@ struct ChannelsListScreen: View {
     @State private var liveRefreshTask: Task<Void, Never>?
     @State private var searchText = ""
     @State private var isSearchPresented = false
+    @State private var isFiltersPresented = false
     @State private var visibleServerChannels: [MeshChannel] = []
     @State private var visibleMonitoredChannels: [MeshChannel] = []
     @State private var sourceFilter = ChannelSourceFilter.all
@@ -25,12 +26,11 @@ struct ChannelsListScreen: View {
             List {
                 ChannelsHeader(
                     isConnected: liveFeed.isConnected,
-                    regionName: regionFilter.selectedRegion.map(regionFilter.label(for:)),
                     isSearchPresented: isSearchPresented,
                     toggleSearch: toggleSearch,
-                    sourceFilter: $sourceFilter,
-                    activityFilter: $activityFilter,
-                    sortOption: $sortOption,
+                    filterCount: activeFilterCount,
+                    filterSummary: filterSummary,
+                    showFilters: { isFiltersPresented = true },
                     addChannel: { isShowingAddChannel = true }
                 )
                 .iPadWindowControlsClearance()
@@ -156,6 +156,15 @@ struct ChannelsListScreen: View {
         .sheet(isPresented: $isShowingAddChannel) {
             MonitorChannelSheet()
         }
+        .sheet(isPresented: $isFiltersPresented) {
+            ChannelFiltersSheet(
+                sourceFilter: $sourceFilter,
+                activityFilter: $activityFilter,
+                sortOption: $sortOption
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
     }
 
     /// Mirrors ChannelDetailScreen's live-refresh: a burst of GRP_TXT events
@@ -270,6 +279,27 @@ struct ChannelsListScreen: View {
         }
     }
 
+    private var activeFilterCount: Int {
+        (regionFilter.selectedRegion == nil ? 0 : 1)
+            + (sourceFilter == .all ? 0 : 1)
+            + (activityFilter == .all ? 0 : 1)
+            + (sortOption == .recent ? 0 : 1)
+    }
+
+    private var filterSummary: String {
+        var values = [regionFilter.selectedRegion.map(regionFilter.label(for:)) ?? String(localized: "Entire network")]
+        if sourceFilter != .all {
+            values.append(String(localized: sourceFilter.title))
+        }
+        if activityFilter != .all {
+            values.append(String(localized: activityFilter.title))
+        }
+        if sortOption != .recent {
+            values.append(String(localized: sortOption.title))
+        }
+        return values.formatted(.list(type: .and, width: .narrow))
+    }
+
     private func channelRow(_ channel: MeshChannel) -> some View {
         NavigationLink(value: channel) {
             ChannelCard(
@@ -342,12 +372,11 @@ private enum ChannelSortOption: String, CaseIterable, Identifiable {
 
 private struct ChannelsHeader: View {
     let isConnected: Bool
-    let regionName: String?
     let isSearchPresented: Bool
     let toggleSearch: () -> Void
-    @Binding var sourceFilter: ChannelSourceFilter
-    @Binding var activityFilter: ChannelActivityFilter
-    @Binding var sortOption: ChannelSortOption
+    let filterCount: Int
+    let filterSummary: String
+    let showFilters: () -> Void
     let addChannel: () -> Void
 
     var body: some View {
@@ -362,22 +391,37 @@ private struct ChannelsHeader: View {
                         .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
                         .frame(width: 7, height: 7)
                     Text(isConnected ? "Live mesh traffic" : "Reconnecting")
-                    if let regionName {
-                        Text("· \(regionName)")
-                    }
                 }
                 .font(.caption.weight(.medium))
                 .foregroundStyle(.secondary)
+                Text(filterSummary)
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
 
             Spacer()
 
             HStack(spacing: 10) {
-                ChannelFilterMenu(
-                    sourceFilter: $sourceFilter,
-                    activityFilter: $activityFilter,
-                    sortOption: $sortOption
-                )
+                Button(action: showFilters) {
+                    HStack(spacing: 4) {
+                        Image(systemName: filterCount == 0
+                            ? "line.3.horizontal.decrease.circle"
+                            : "line.3.horizontal.decrease.circle.fill")
+                        if filterCount > 0 {
+                            Text("\(filterCount)")
+                                .font(.caption.weight(.bold))
+                        }
+                    }
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(NodeScopeStyle.signal)
+                    .padding(.horizontal, filterCount > 0 ? 10 : 0)
+                    .frame(minWidth: 40, minHeight: 40)
+                    .background(.thinMaterial, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Filter and sort channels")
+                .accessibilityValue(filterCount == 0 ? "No filters active" : "\(filterCount) active")
 
                 Button(action: toggleSearch) {
                     Image(systemName: isSearchPresented ? "xmark" : "magnifyingglass")
@@ -388,13 +432,6 @@ private struct ChannelsHeader: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(isSearchPresented ? "Close channel search" : "Search channels")
-
-                RegionFilterMenu()
-                    .foregroundStyle(NodeScopeStyle.signal)
-                    .padding(.horizontal, 10)
-                    .frame(minWidth: 40, minHeight: 40)
-                    .background(.thinMaterial, in: Capsule())
-                    .accessibilityLabel("Filter channels by region")
 
                 Button(action: addChannel) {
                     Image(systemName: "plus")
@@ -410,17 +447,23 @@ private struct ChannelsHeader: View {
     }
 }
 
-private struct ChannelFilterMenu: View {
+private struct ChannelFiltersSheet: View {
+    @Environment(RegionFilterStore.self) private var regionFilter
+    @Environment(\.dismiss) private var dismiss
     @Binding var sourceFilter: ChannelSourceFilter
     @Binding var activityFilter: ChannelActivityFilter
     @Binding var sortOption: ChannelSortOption
 
-    private var hasActiveFilter: Bool {
-        sourceFilter != .all || activityFilter != .all || sortOption != .recent
-    }
-
     var body: some View {
-        Menu {
+        NavigationStack {
+            Form {
+                Section("Region") {
+                    regionButton(code: nil, title: "Entire Network")
+                    ForEach(regionFilter.options, id: \.self) { code in
+                        regionButton(code: code, title: regionFilter.label(for: code))
+                    }
+                }
+
             Section("Source") {
                 ForEach(ChannelSourceFilter.allCases) { option in
                     Button {
@@ -450,14 +493,39 @@ private struct ChannelFilterMenu: View {
                     }
                 }
             }
-        } label: {
-            Image(systemName: hasActiveFilter ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
-                .font(.body.weight(.semibold))
-                .foregroundStyle(NodeScopeStyle.signal)
-                .frame(width: 40, height: 40)
-                .background(.thinMaterial, in: Circle())
+            }
+            .navigationTitle("Channel Filters")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Reset") {
+                        regionFilter.selectedRegion = nil
+                        sourceFilter = .all
+                        activityFilter = .all
+                        sortOption = .recent
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                        .fontWeight(.semibold)
+                }
+            }
         }
-        .accessibilityLabel("Filter and sort channels")
+    }
+
+    private func regionButton(code: String?, title: String) -> some View {
+        Button {
+            regionFilter.selectedRegion = code
+        } label: {
+            HStack {
+                Text(title)
+                Spacer()
+                if regionFilter.selectedRegion == code {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(NodeScopeStyle.signal)
+                }
+            }
+        }
     }
 }
 

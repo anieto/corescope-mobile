@@ -3,7 +3,9 @@ import Observation
 
 enum AppNavigationDestination: Sendable {
     case mapNode(MeshNode)
+    case activeNodes
     case observer(String)
+    case activeObservers
 }
 
 @Observable
@@ -19,6 +21,16 @@ final class AppNavigationStore {
 
     func openObserver(id: String) {
         destination = .observer(id)
+        requestID = UUID()
+    }
+
+    func showActiveNodes() {
+        destination = .activeNodes
+        requestID = UUID()
+    }
+
+    func showActiveObservers() {
+        destination = .activeObservers
         requestID = UUID()
     }
 }

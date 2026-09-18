@@ -40,6 +40,8 @@ struct MapScreen: View {
     @State private var pendingReplayRequestID: UUID?
     @State private var loadedAnalyzerHost = ""
     @State private var displayUpdateTask: Task<Void, Never>?
+    @State private var displayUpdateID = UUID()
+    @State private var isUpdatingDisplayedNodes = false
     @State private var isSearchPresented = false
     @State private var isMapFiltersPresented = false
     @State private var selectedRouteDetails: MapRouteDetails?
@@ -255,7 +257,10 @@ struct MapScreen: View {
                     }
                 }
                 .overlay(alignment: .topTrailing) {
-                    if (viewModel.isLoading && !isReplayMode) || (isChangingRegion && !isReplayMode) || isLocatingUser {
+                    if (viewModel.isLoading && !isReplayMode)
+                        || (isChangingRegion && !isReplayMode)
+                        || isUpdatingDisplayedNodes
+                        || isLocatingUser {
                         LoadingIndicator(title: mapLoadingTitle)
                             .padding(.top, 12)
                             .padding(.trailing, 12)
@@ -294,6 +299,7 @@ struct MapScreen: View {
         }
         .onDisappear {
             displayUpdateTask?.cancel()
+            isUpdatingDisplayedNodes = false
         }
         .task {
             processedEventIds = Set(liveFeed.recentEvents.map { liveEventKey(for: $0) })
@@ -453,8 +459,15 @@ struct MapScreen: View {
     }
 
     private func handleNavigationRequest() {
-        guard lastHandledNavigationRequestID != appNavigationStore.requestID,
-              case .mapNode(let node) = appNavigationStore.destination else { return }
+        guard lastHandledNavigationRequestID != appNavigationStore.requestID else { return }
+        if case .activeNodes = appNavigationStore.destination {
+            lastHandledNavigationRequestID = appNavigationStore.requestID
+            nodeFilters.activityFilter = .fifteenMinutes
+            nodeFilters.selectedRoles = []
+            nodeFilters.selectedObserverID = nil
+            return
+        }
+        guard case .mapNode(let node) = appNavigationStore.destination else { return }
         if regionFilter.selectedRegion != nil,
            !viewModel.nodes.contains(where: { $0.id == node.id }) {
             regionFilter.selectedRegion = nil
@@ -647,6 +660,9 @@ struct MapScreen: View {
         let activityCutoff = nodeFilters.activityFilter.maximumAge.map {
             Date.now.addingTimeInterval(-$0)
         }
+        let updateID = UUID()
+        displayUpdateID = updateID
+        isUpdatingDisplayedNodes = true
         displayUpdateTask?.cancel()
         displayUpdateTask = Task {
             let worker = Task.detached(priority: .userInitiated) {
@@ -662,11 +678,16 @@ struct MapScreen: View {
             } onCancel: {
                 worker.cancel()
             }
-            guard !Task.isCancelled, let result else { return }
+            guard !Task.isCancelled, displayUpdateID == updateID else { return }
+            guard let result else {
+                isUpdatingDisplayedNodes = false
+                return
+            }
             displayedNodes = result.nodes
             nodeClusters = result.clusters
             visibleNodesByCoordinate = result.nodesByCoordinate
             filteredNodeCount = result.filteredCount
+            isUpdatingDisplayedNodes = false
         }
     }
 
@@ -848,6 +869,9 @@ struct MapScreen: View {
     private var mapLoadingTitle: String {
         if isLocatingUser {
             return "Locating you…"
+        }
+        if isUpdatingDisplayedNodes && !viewModel.isLoading && !isChangingRegion {
+            return "Updating node markers…"
         }
         if let selectedRegion = regionFilter.selectedRegion {
             return "Loading \(selectedRegion)…"

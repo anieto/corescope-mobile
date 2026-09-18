@@ -10,6 +10,7 @@ import Observation
 @MainActor
 final class LiveFeedService: NSObject, URLSessionWebSocketDelegate {
     private(set) var recentEvents: [LiveEnvelope] = []
+    private(set) var eventSequence = 0
     private(set) var isConnected = false
     private(set) var lastError: String?
 
@@ -86,6 +87,7 @@ final class LiveFeedService: NSObject, URLSessionWebSocketDelegate {
             // alive. Nothing else currently depends on receiving them.
             guard envelope.data != nil else { return }
             recentEvents.insert(envelope, at: 0)
+            eventSequence &+= 1
             if recentEvents.count > maxEvents {
                 recentEvents.removeLast(recentEvents.count - maxEvents)
             }

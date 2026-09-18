@@ -90,9 +90,9 @@ struct RootTabView: View {
         }
         .onChange(of: appNavigationStore.requestID) {
             switch appNavigationStore.destination {
-            case .mapNode:
+            case .mapNode, .activeNodes:
                 selectedTab = .map
-            case .observer:
+            case .observer, .activeObservers:
                 selectedTab = .observers
             case nil:
                 break

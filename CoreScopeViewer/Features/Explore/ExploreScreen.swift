@@ -10,6 +10,7 @@ struct ExploreScreen: View {
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(FavoritesStore.self) private var favoritesStore
     @Environment(RecentItemsStore.self) private var recentItemsStore
+    @Environment(AppNavigationStore.self) private var appNavigationStore
     @State private var navigationPath = NavigationPath()
     @State private var visibleItems: [FavoriteItem] = []
     @State private var visibleRecentItems: [RecentItem] = []
@@ -22,7 +23,8 @@ struct ExploreScreen: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            List {
+            ScrollViewReader { proxy in
+                List {
                 ExploreHeader(
                     count: visibleItems.count,
                     canReorder: canReorder,
@@ -31,6 +33,23 @@ struct ExploreScreen: View {
                 )
                     .iPadWindowControlsClearance()
                     .favoritesListRow(top: 18, bottom: 10)
+
+                NetworkAtAGlanceCard(
+                    nodes: nodeViewModel.nodes,
+                    observers: observerViewModel.observers,
+                    packets: searchPackets,
+                    favorites: visibleItems,
+                    isLoading: searchIsLoading,
+                    showActiveNodes: appNavigationStore.showActiveNodes,
+                    showActiveObservers: appNavigationStore.showActiveObservers,
+                    showLivePackets: { navigationPath.append(ExploreDestination.livePackets) },
+                    showFavorites: {
+                        withAnimation {
+                            proxy.scrollTo(ExploreScrollTarget.favorites, anchor: .top)
+                        }
+                    }
+                )
+                .favoritesListRow(top: 0, bottom: 14)
 
                 favoriteSection(kind: .channel, title: "Channels")
                 favoriteSection(kind: .node, title: "Nodes")
@@ -55,6 +74,12 @@ struct ExploreScreen: View {
             .navigationDestination(for: ChannelMessage.self) { message in
                 PacketDetailScreen(message: message)
             }
+            .navigationDestination(for: ExploreDestination.self) { destination in
+                switch destination {
+                case .livePackets:
+                    PacketFeedScreen()
+                }
+            }
             .overlay {
                 if visibleItems.isEmpty && visibleRecentItems.isEmpty {
                     ContentUnavailableView {
@@ -71,6 +96,7 @@ struct ExploreScreen: View {
                         Button("Browse Observers", action: openObservers)
                     }
                 }
+            }
             }
         }
         .sheet(isPresented: $isAddFavoritePresented) {
@@ -149,6 +175,7 @@ struct ExploreScreen: View {
             Section {
                 ForEach(items) { item in
                     favoriteRow(item)
+                        .id(scrollTarget(for: item))
                 }
                 .onMove { source, destination in
                     moveFavorites(items, kind: kind, from: source, to: destination)
@@ -216,8 +243,25 @@ struct ExploreScreen: View {
         let source = AnalyzerSettings.normalizedHost(settings.host)
         visibleItems = favoritesStore.items
             .filter { $0.source == source }
-        visibleRecentItems = recentItemsStore.items
-            .filter { $0.source == source }
+        visibleRecentItems = Array(
+            recentItemsStore.items
+                .lazy
+                .filter { $0.source == source }
+                .prefix(10)
+        )
+    }
+
+    private var firstFavoriteID: String? {
+        for kind in [FavoriteKind.channel, .node, .observer] {
+            if let item = visibleItems.first(where: { $0.kind == kind }) {
+                return item.id
+            }
+        }
+        return nil
+    }
+
+    private func scrollTarget(for item: FavoriteItem) -> ExploreScrollTarget {
+        item.id == firstFavoriteID ? .favorites : .favorite(item.id)
     }
 
     private var activeSource: String {
@@ -269,6 +313,229 @@ struct ExploreScreen: View {
             kind: kind,
             source: AnalyzerSettings.normalizedHost(settings.host)
         )
+    }
+}
+
+private enum ExploreDestination: Hashable {
+    case livePackets
+}
+
+private enum ExploreScrollTarget: Hashable {
+    case favorites
+    case favorite(String)
+}
+
+private struct NetworkAtAGlanceCard: View {
+    let nodes: [MeshNode]
+    let observers: [MeshObserver]
+    let packets: [Packet]
+    let favorites: [FavoriteItem]
+    let isLoading: Bool
+    let showActiveNodes: () -> Void
+    let showActiveObservers: () -> Void
+    let showLivePackets: () -> Void
+    let showFavorites: () -> Void
+
+    private let activeInterval: TimeInterval = 15 * 60
+    private let recentPacketInterval: TimeInterval = 60 * 60
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 5) {
+                    Label("Network at a Glance", systemImage: "gauge.with.dots.needle.50percent")
+                        .font(.headline)
+                    Label("Entire network", systemImage: "globe.americas.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.thinMaterial, in: Capsule())
+                }
+                Spacer()
+                if isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                        .accessibilityLabel("Updating network summary")
+                }
+            }
+
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
+                GlanceMetric(
+                    value: "\(activeNodeCount)",
+                    label: "Active nodes",
+                    detail: "of \(nodes.count) seen",
+                    color: .green,
+                    action: showActiveNodes
+                )
+                GlanceMetric(
+                    value: "\(activeObserverCount)",
+                    label: "Observers online",
+                    detail: "of \(observers.count) known",
+                    color: NodeScopeStyle.signal,
+                    action: showActiveObservers
+                )
+                GlanceMetric(
+                    value: recentPacketValue,
+                    label: "Packets",
+                    detail: "in the last hour",
+                    color: .orange,
+                    action: showLivePackets
+                )
+                GlanceMetric(
+                    value: averageSNR.map { String(format: "%.1f", $0) } ?? "—",
+                    label: "Average SNR",
+                    detail: averageSNR == nil ? "no recent samples" : "dB in the last hour",
+                    color: .purple,
+                    action: nil
+                )
+            }
+
+            Divider()
+
+            Button(action: showFavorites) {
+                HStack(spacing: 10) {
+                    Image(systemName: "star.fill")
+                        .foregroundStyle(.yellow)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(favoriteSummary)
+                            .font(.subheadline.weight(.semibold))
+                        Text(favoriteBreakdown)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Scrolls to your saved items")
+        }
+        .padding(16)
+        .instrumentCard()
+        .accessibilityElement(children: .contain)
+    }
+
+    private var columns: [GridItem] {
+        [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+    }
+
+    private var activeNodeCount: Int {
+        nodes.count { isActive($0.lastSeen) }
+    }
+
+    private var activeObserverCount: Int {
+        observers.count { isActive($0.lastSeen) }
+    }
+
+    private var recentPackets: [Packet] {
+        packets.filter { $0.timestamp.timeIntervalSinceNow > -recentPacketInterval }
+    }
+
+    private var recentPacketValue: String {
+        let count = recentPackets.count
+        return count == packets.count && packets.count == 1_000 ? "\(count)+" : "\(count)"
+    }
+
+    private var averageSNR: Double? {
+        let samples = recentPackets.compactMap(\.snr)
+        guard !samples.isEmpty else { return nil }
+        return samples.reduce(0, +) / Double(samples.count)
+    }
+
+    private var activeFavoriteCount: Int {
+        let activeNodeKeys = Set(nodes.filter { isActive($0.lastSeen) }.map(\.publicKey))
+        let activeObserverIDs = Set(observers.filter { isActive($0.lastSeen) }.map(\.id))
+        return favorites.count { item in
+            if let node = item.node {
+                return activeNodeKeys.contains(node.publicKey)
+            }
+            if let observer = item.observer {
+                return activeObserverIDs.contains(observer.id)
+            }
+            return false
+        }
+    }
+
+    private var favoriteSummary: String {
+        if favorites.isEmpty {
+            return "No favorites saved yet"
+        }
+        return "\(activeFavoriteCount) active favorite\(activeFavoriteCount == 1 ? "" : "s")"
+    }
+
+    private var favoriteBreakdown: String {
+        let channels = favorites.count { $0.kind == .channel }
+        let nodes = favorites.count { $0.kind == .node }
+        let observers = favorites.count { $0.kind == .observer }
+        let channelLabel = channels == 1 ? String(localized: "channel") : String(localized: "channels")
+        let nodeLabel = nodes == 1 ? String(localized: "node") : String(localized: "nodes")
+        let observerLabel = observers == 1 ? String(localized: "observer") : String(localized: "observers")
+        return "\(channels) \(channelLabel) · \(nodes) \(nodeLabel) · \(observers) \(observerLabel)"
+    }
+
+    private func isActive(_ date: Date) -> Bool {
+        date.timeIntervalSinceNow > -activeInterval
+    }
+}
+
+private struct GlanceMetric: View {
+    let value: String
+    let label: LocalizedStringKey
+    let detail: String
+    let color: Color
+    let action: (() -> Void)?
+
+    var body: some View {
+        if let action {
+            Button(action: action) { content }
+                .buttonStyle(GlanceMetricButtonStyle())
+                .accessibilityHint("Opens related details")
+        } else {
+            content
+        }
+    }
+
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(value)
+                .font(.title2.bold())
+                .foregroundStyle(color)
+                .contentTransition(.numericText())
+            HStack(spacing: 4) {
+                Text(label)
+                    .font(.caption.weight(.semibold))
+                if action != nil {
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            Text(detail)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            action == nil ? Color.clear : color.opacity(0.07),
+            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+        )
+        .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct GlanceMetricButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.72 : 1)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 

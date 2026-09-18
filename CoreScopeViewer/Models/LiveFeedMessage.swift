@@ -17,8 +17,26 @@ import Foundation
 struct LiveEnvelope: Codable, Sendable, Identifiable {
     let type: String
     let data: LivePacketData?
+    let receivedAt: Date
 
     var id: Int { data?.id ?? -1 }
+
+    enum CodingKeys: String, CodingKey {
+        case type, data
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        type = try container.decode(String.self, forKey: .type)
+        data = try container.decodeIfPresent(LivePacketData.self, forKey: .data)
+        receivedAt = .now
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(type, forKey: .type)
+        try container.encodeIfPresent(data, forKey: .data)
+    }
 }
 
 struct LivePacketData: Codable, Sendable {
@@ -55,6 +73,19 @@ struct LivePacketData: Codable, Sendable {
 struct LiveDecoded: Codable, Sendable {
     let header: LiveHeader?
     let path: LivePath?
+    let payload: LivePayload?
+}
+
+struct LivePayload: Codable, Sendable {
+    let text: String?
+    let name: String?
+    let channel: String?
+    let publicKey: String?
+
+    enum CodingKeys: String, CodingKey {
+        case text, name, channel
+        case publicKey = "pubKey"
+    }
 }
 
 struct LiveHeader: Codable, Sendable {

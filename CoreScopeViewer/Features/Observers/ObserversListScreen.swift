@@ -143,8 +143,14 @@ struct ObserversListScreen: View {
     }
 
     private func openRequestedObserverIfAvailable() {
-        guard lastHandledNavigationRequestID != appNavigationStore.requestID,
-              case .observer(let observerID) = appNavigationStore.destination,
+        guard lastHandledNavigationRequestID != appNavigationStore.requestID else { return }
+        if case .activeObservers = appNavigationStore.destination {
+            lastHandledNavigationRequestID = appNavigationStore.requestID
+            activityFilter = .recent
+            updateVisibleObservers()
+            return
+        }
+        guard case .observer(let observerID) = appNavigationStore.destination,
               let observer = viewModel.observers.first(where: { $0.id == observerID }) else { return }
         lastHandledNavigationRequestID = appNavigationStore.requestID
         navigationPath = NavigationPath()
