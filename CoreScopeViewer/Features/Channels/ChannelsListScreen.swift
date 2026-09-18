@@ -457,10 +457,16 @@ private struct ChannelFiltersSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Region") {
-                    regionButton(code: nil, title: "Entire Network")
-                    ForEach(regionFilter.options, id: \.self) { code in
-                        regionButton(code: code, title: regionFilter.label(for: code))
+                Section("Scope") {
+                    NavigationLink {
+                        RegionFilterSelectionScreen()
+                    } label: {
+                        HStack {
+                            Label("Region", systemImage: "globe.americas")
+                            Spacer()
+                            Text(regionFilter.selectedRegion.map(regionFilter.label(for:)) ?? "Entire Network")
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
 
@@ -513,20 +519,6 @@ private struct ChannelFiltersSheet: View {
         }
     }
 
-    private func regionButton(code: String?, title: String) -> some View {
-        Button {
-            regionFilter.selectedRegion = code
-        } label: {
-            HStack {
-                Text(title)
-                Spacer()
-                if regionFilter.selectedRegion == code {
-                    Image(systemName: "checkmark")
-                        .foregroundStyle(NodeScopeStyle.signal)
-                }
-            }
-        }
-    }
 }
 
 private struct MonitoringSectionHeader: View {

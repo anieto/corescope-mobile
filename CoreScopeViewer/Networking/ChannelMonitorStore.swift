@@ -17,9 +17,9 @@ final class ChannelMonitorStore {
     }
 
     func monitorHashtag(_ value: String) throws -> MonitoredChannel {
-        let trimmedName = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        let channelName = trimmedName.hasPrefix("#") ? trimmedName : "#\(trimmedName)"
-        guard channelName.count > 1 else { throw ChannelMonitorError.invalidHashtag }
+        guard let channelName = Self.normalizedHashtagName(value) else {
+            throw ChannelMonitorError.invalidHashtag
+        }
 
         let channel = MonitoredChannel(
             channelName: channelName,
@@ -32,6 +32,21 @@ final class ChannelMonitorStore {
         )
         try add(channel)
         return channel
+    }
+
+    nonisolated static func normalizedHashtagName(_ value: String) -> String? {
+        let trimmedName = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else { return nil }
+
+        let nameWithoutPrefix = trimmedName.hasPrefix("#")
+            ? String(trimmedName.dropFirst())
+            : trimmedName
+        guard !nameWithoutPrefix.isEmpty else { return nil }
+
+        if nameWithoutPrefix.caseInsensitiveCompare("Public") == .orderedSame {
+            return "Public"
+        }
+        return trimmedName.hasPrefix("#") ? trimmedName : "#\(trimmedName)"
     }
 
     func monitorPSK(_ keyHex: String, displayName: String?) throws -> MonitoredChannel {
@@ -114,7 +129,25 @@ final class ChannelMonitorStore {
               let storedChannels = try? JSONDecoder().decode([MonitoredChannel].self, from: data) else {
             return
         }
-        channels = storedChannels
+        channels = storedChannels.map(Self.migratingLegacyPublicChannel)
+        if channels != storedChannels {
+            try? persist()
+        }
+    }
+
+    nonisolated static func migratingLegacyPublicChannel(_ channel: MonitoredChannel) -> MonitoredChannel {
+        guard normalizedHashtagName(channel.channelName) == "Public",
+              channel.channelName != "Public" else { return channel }
+
+        return MonitoredChannel(
+            channelName: "Public",
+            keyHex: ChannelCrypto.derivedKeyHex(for: "Public"),
+            displayName: channel.displayName,
+            createdAt: channel.createdAt,
+            messageCount: channel.messageCount,
+            lastMessage: channel.lastMessage,
+            lastActivity: channel.lastActivity
+        )
     }
 
     private func persist() throws {
@@ -143,7 +176,7 @@ enum ChannelMonitorError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidHashtag:
-            "Enter a hashtag channel name."
+            "Enter a channel name."
         case .invalidKey:
             "Enter a 32-character hexadecimal PSK."
         case .keyGenerationFailed:

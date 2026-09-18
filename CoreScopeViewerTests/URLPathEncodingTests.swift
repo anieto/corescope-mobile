@@ -32,3 +32,40 @@ struct URLPathEncodingTests {
         #expect(!encoded.contains("/"))
     }
 }
+
+struct ChannelNameNormalizationTests {
+    @Test func preservesCanonicalPublicChannelWithoutHash() {
+        #expect(ChannelMonitorStore.normalizedHashtagName("Public") == "Public")
+        #expect(ChannelMonitorStore.normalizedHashtagName("#Public") == "Public")
+        #expect(ChannelMonitorStore.normalizedHashtagName(" public ") == "Public")
+    }
+
+    @Test func addsHashToOtherChannelNamesWhenNeeded() {
+        #expect(ChannelMonitorStore.normalizedHashtagName("mesh") == "#mesh")
+        #expect(ChannelMonitorStore.normalizedHashtagName("#mesh") == "#mesh")
+    }
+
+    @Test func rejectsEmptyChannelNames() {
+        #expect(ChannelMonitorStore.normalizedHashtagName("   ") == nil)
+        #expect(ChannelMonitorStore.normalizedHashtagName("#") == nil)
+    }
+
+    @Test func migratesLegacyPublicChannel() {
+        let legacy = MonitoredChannel(
+            channelName: "#Public",
+            keyHex: ChannelCrypto.derivedKeyHex(for: "#Public"),
+            displayName: nil,
+            createdAt: .distantPast,
+            messageCount: 4,
+            lastMessage: "Hello",
+            lastActivity: .distantPast
+        )
+
+        let migrated = ChannelMonitorStore.migratingLegacyPublicChannel(legacy)
+
+        #expect(migrated.channelName == "Public")
+        #expect(migrated.keyHex == ChannelCrypto.derivedKeyHex(for: "Public"))
+        #expect(migrated.messageCount == legacy.messageCount)
+        #expect(migrated.lastMessage == legacy.lastMessage)
+    }
+}

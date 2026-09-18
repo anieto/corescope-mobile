@@ -53,6 +53,16 @@ struct ExploreScreen: View {
                 )
                 .favoritesListRow(top: 0, bottom: 14)
 
+                if visibleItems.isEmpty && visibleRecentItems.isEmpty {
+                    ExploreEmptyGuidance(
+                        search: { isSearchPresented = true },
+                        openMap: openMap,
+                        openChannels: openChannels,
+                        openObservers: openObservers
+                    )
+                    .favoritesListRow(top: 0, bottom: 14)
+                }
+
                 favoriteSection(kind: .channel, title: "Channels")
                 favoriteSection(kind: .node, title: "Nodes")
                 favoriteSection(kind: .observer, title: "Observers")
@@ -80,23 +90,6 @@ struct ExploreScreen: View {
                 switch destination {
                 case .livePackets:
                     PacketFeedScreen()
-                }
-            }
-            .overlay {
-                if visibleItems.isEmpty && visibleRecentItems.isEmpty {
-                    ContentUnavailableView {
-                        Label("Explore Your Mesh", systemImage: "safari")
-                    } description: {
-                        Text("Search for nodes, observers, and channels, then save the ones you want to follow.")
-                    } actions: {
-                        Button("Search the Network") {
-                            isSearchPresented = true
-                        }
-                        .buttonStyle(.borderedProminent)
-                        Button("Open Map", action: openMap)
-                        Button("Browse Channels", action: openChannels)
-                        Button("Browse Observers", action: openObservers)
-                    }
                 }
             }
             }
@@ -325,6 +318,28 @@ private enum ExploreDestination: Hashable {
 private enum ExploreScrollTarget: Hashable {
     case favorites
     case favorite(String)
+}
+
+private struct ExploreEmptyGuidance: View {
+    let search: () -> Void
+    let openMap: () -> Void
+    let openChannels: () -> Void
+    let openObservers: () -> Void
+
+    var body: some View {
+        ContentUnavailableView {
+            Label("Explore Your Mesh", systemImage: "safari")
+        } description: {
+            Text("Search for nodes, observers, and channels, then save the ones you want to follow.")
+        } actions: {
+            Button("Search the Network", action: search)
+                .buttonStyle(.borderedProminent)
+            Button("Open Map", action: openMap)
+            Button("Browse Channels", action: openChannels)
+            Button("Browse Observers", action: openObservers)
+        }
+        .padding(.vertical, 12)
+    }
 }
 
 private struct NetworkAtAGlanceCard: View {

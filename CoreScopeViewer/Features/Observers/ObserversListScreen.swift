@@ -11,6 +11,7 @@ struct ObserversListScreen: View {
     @State private var navigationPath = NavigationPath()
     @State private var searchText = ""
     @State private var isSearchPresented = false
+    @State private var isFiltersPresented = false
     @State private var visibleObservers: [MeshObserver] = []
     @State private var availableModels: [String] = []
     @State private var activityFilter = ObserverActivityFilter.all
@@ -23,13 +24,11 @@ struct ObserversListScreen: View {
             List {
                 ObserversHeader(
                     isConnected: liveFeed.isConnected,
-                    regionName: regionFilter.selectedRegion.map(regionFilter.label(for:)),
                     isSearchPresented: isSearchPresented,
                     toggleSearch: toggleSearch,
-                    activityFilter: $activityFilter,
-                    selectedModel: $selectedModel,
-                    sortOption: $sortOption,
-                    availableModels: availableModels
+                    filterCount: activeFilterCount,
+                    filterSummary: filterSummary,
+                    showFilters: { isFiltersPresented = true }
                 )
                 .iPadWindowControlsClearance()
                 .instrumentListRow(top: 18, bottom: 10)
@@ -110,6 +109,16 @@ struct ObserversListScreen: View {
                     ObserverEmptyState()
                 }
             }
+        }
+        .sheet(isPresented: $isFiltersPresented) {
+            ObserverFiltersSheet(
+                activityFilter: $activityFilter,
+                selectedModel: $selectedModel,
+                sortOption: $sortOption,
+                availableModels: availableModels
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
         .onChange(of: resetID) {
             navigationPath = NavigationPath()
@@ -199,6 +208,27 @@ struct ObserversListScreen: View {
             }
         }
     }
+
+    private var activeFilterCount: Int {
+        (regionFilter.selectedRegion == nil ? 0 : 1)
+            + (activityFilter == .all ? 0 : 1)
+            + (selectedModel == nil ? 0 : 1)
+            + (sortOption == .recent ? 0 : 1)
+    }
+
+    private var filterSummary: String {
+        var values = [regionFilter.selectedRegion.map(regionFilter.label(for:)) ?? String(localized: "Entire network")]
+        if activityFilter != .all {
+            values.append(String(localized: activityFilter.title))
+        }
+        if let selectedModel {
+            values.append(selectedModel)
+        }
+        if sortOption != .recent {
+            values.append(String(localized: sortOption.title))
+        }
+        return values.formatted(.list(type: .and, width: .narrow))
+    }
 }
 
 private enum ObserverActivityFilter: String, CaseIterable, Identifiable {
@@ -233,13 +263,11 @@ private enum ObserverSortOption: String, CaseIterable, Identifiable {
 
 private struct ObserversHeader: View {
     let isConnected: Bool
-    let regionName: String?
     let isSearchPresented: Bool
     let toggleSearch: () -> Void
-    @Binding var activityFilter: ObserverActivityFilter
-    @Binding var selectedModel: String?
-    @Binding var sortOption: ObserverSortOption
-    let availableModels: [String]
+    let filterCount: Int
+    let filterSummary: String
+    let showFilters: () -> Void
 
     var body: some View {
         HStack(alignment: .top) {
@@ -251,23 +279,37 @@ private struct ObserversHeader: View {
                         .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
                         .frame(width: 7, height: 7)
                     Text(isConnected ? "Network telemetry live" : "Reconnecting")
-                    if let regionName {
-                        Text("· \(regionName)")
-                    }
                 }
                 .font(.caption.weight(.medium))
                 .foregroundStyle(.secondary)
+                Text(filterSummary)
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
 
             Spacer()
 
             HStack(spacing: 10) {
-                ObserverFilterMenu(
-                    activityFilter: $activityFilter,
-                    selectedModel: $selectedModel,
-                    sortOption: $sortOption,
-                    availableModels: availableModels
-                )
+                Button(action: showFilters) {
+                    HStack(spacing: 4) {
+                        Image(systemName: filterCount == 0
+                            ? "line.3.horizontal.decrease.circle"
+                            : "line.3.horizontal.decrease.circle.fill")
+                        if filterCount > 0 {
+                            Text("\(filterCount)")
+                                .font(.caption.weight(.bold))
+                        }
+                    }
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(NodeScopeStyle.signal)
+                    .padding(.horizontal, filterCount > 0 ? 10 : 0)
+                    .frame(minWidth: 40, minHeight: 40)
+                    .background(.thinMaterial, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Filter and sort observers")
+                .accessibilityValue(filterCount == 0 ? "No filters active" : "\(filterCount) active")
 
                 Button(action: toggleSearch) {
                     Image(systemName: isSearchPresented ? "xmark" : "magnifyingglass")
@@ -278,73 +320,89 @@ private struct ObserversHeader: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(isSearchPresented ? "Close observer search" : "Search observers")
-
-                RegionFilterMenu()
-                    .foregroundStyle(NodeScopeStyle.signal)
-                    .padding(.horizontal, 10)
-                    .frame(minWidth: 40, minHeight: 40)
-                    .background(.thinMaterial, in: Capsule())
-                    .accessibilityLabel("Filter observers by region")
             }
         }
     }
 }
 
-private struct ObserverFilterMenu: View {
+private struct ObserverFiltersSheet: View {
+    @Environment(RegionFilterStore.self) private var regionFilter
+    @Environment(\.dismiss) private var dismiss
     @Binding var activityFilter: ObserverActivityFilter
     @Binding var selectedModel: String?
     @Binding var sortOption: ObserverSortOption
     let availableModels: [String]
 
-    private var hasActiveFilter: Bool {
-        activityFilter != .all || selectedModel != nil || sortOption != .recent
-    }
-
     var body: some View {
-        Menu {
-            Section("Activity") {
-                ForEach(ObserverActivityFilter.allCases) { option in
-                    Button {
-                        activityFilter = option
+        NavigationStack {
+            Form {
+                Section("Scope") {
+                    NavigationLink {
+                        RegionFilterSelectionScreen()
                     } label: {
-                        Label(option.title, systemImage: activityFilter == option ? "checkmark" : "clock")
+                        HStack {
+                            Label("Region", systemImage: "globe.americas")
+                            Spacer()
+                            Text(regionFilter.selectedRegion.map(regionFilter.label(for:)) ?? "Entire Network")
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
-            }
 
-            Section("Hardware") {
-                Button {
-                    selectedModel = nil
-                } label: {
-                    Label("All Models", systemImage: selectedModel == nil ? "checkmark" : "cpu")
-                }
-                ForEach(availableModels, id: \.self) { model in
-                    Button {
-                        selectedModel = model
-                    } label: {
-                        Label(model, systemImage: selectedModel == model ? "checkmark" : "cpu")
+                Section("Activity") {
+                    ForEach(ObserverActivityFilter.allCases) { option in
+                        Button {
+                            activityFilter = option
+                        } label: {
+                            Label(option.title, systemImage: activityFilter == option ? "checkmark" : "clock")
+                        }
                     }
                 }
-            }
 
-            Section("Sort By") {
-                ForEach(ObserverSortOption.allCases) { option in
+                Section("Hardware") {
                     Button {
-                        sortOption = option
+                        selectedModel = nil
                     } label: {
-                        Label(option.title, systemImage: sortOption == option ? "checkmark" : "arrow.up.arrow.down")
+                        Label("All Models", systemImage: selectedModel == nil ? "checkmark" : "cpu")
+                    }
+                    ForEach(availableModels, id: \.self) { model in
+                        Button {
+                            selectedModel = model
+                        } label: {
+                            Label(model, systemImage: selectedModel == model ? "checkmark" : "cpu")
+                        }
+                    }
+                }
+
+                Section("Sort By") {
+                    ForEach(ObserverSortOption.allCases) { option in
+                        Button {
+                            sortOption = option
+                        } label: {
+                            Label(option.title, systemImage: sortOption == option ? "checkmark" : "arrow.up.arrow.down")
+                        }
                     }
                 }
             }
-        } label: {
-            Image(systemName: hasActiveFilter ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
-                .font(.body.weight(.semibold))
-                .foregroundStyle(NodeScopeStyle.signal)
-                .frame(width: 40, height: 40)
-                .background(.thinMaterial, in: Circle())
+            .navigationTitle("Observer Filters")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Reset") {
+                        regionFilter.selectedRegion = nil
+                        activityFilter = .all
+                        selectedModel = nil
+                        sortOption = .recent
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                        .fontWeight(.semibold)
+                }
+            }
         }
-        .accessibilityLabel("Filter and sort observers")
     }
+
 }
 
 private struct ObserverSummaryGrid: View {

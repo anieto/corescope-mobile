@@ -135,10 +135,11 @@ private struct FloatingTabDock: View {
                     .padding(.vertical, 8)
                     .background(
                         selectedTab == tab ? NodeScopeStyle.signal : Color.clear,
-                        in: Capsule()
+                        in: RoundedRectangle(cornerRadius: 16, style: .continuous)
                     )
                 }
                 .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
                 .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
             }
         }

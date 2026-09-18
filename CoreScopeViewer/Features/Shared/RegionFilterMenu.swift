@@ -41,3 +41,44 @@ struct RegionFilterMenu: View {
         }
     }
 }
+
+struct RegionFilterSelectionScreen: View {
+    @Environment(RegionFilterStore.self) private var regionFilter
+
+    var body: some View {
+        List {
+            Button {
+                regionFilter.selectedRegion = nil
+            } label: {
+                selectionLabel(title: "Entire Network", isSelected: regionFilter.selectedRegion == nil)
+            }
+
+            ForEach(regionFilter.options, id: \.self) { code in
+                Button {
+                    regionFilter.selectedRegion = code
+                } label: {
+                    selectionLabel(
+                        title: regionFilter.label(for: code),
+                        isSelected: regionFilter.selectedRegion == code
+                    )
+                }
+            }
+        }
+        .navigationTitle("Region")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func selectionLabel(title: String, isSelected: Bool) -> some View {
+        HStack {
+            Text(title)
+                .foregroundStyle(.primary)
+            Spacer()
+            if isSelected {
+                Image(systemName: "checkmark")
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Color.accentColor)
+            }
+        }
+        .contentShape(Rectangle())
+    }
+}
