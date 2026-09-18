@@ -35,6 +35,7 @@ struct ExploreScreen: View {
                     .favoritesListRow(top: 18, bottom: 10)
 
                 NetworkAtAGlanceCard(
+                    analyzerHost: settings.host,
                     nodes: nodeViewModel.nodes,
                     observers: observerViewModel.observers,
                     packets: searchPackets,
@@ -326,6 +327,7 @@ private enum ExploreScrollTarget: Hashable {
 }
 
 private struct NetworkAtAGlanceCard: View {
+    let analyzerHost: String
     let nodes: [MeshNode]
     let observers: [MeshObserver]
     let packets: [Packet]
@@ -335,6 +337,9 @@ private struct NetworkAtAGlanceCard: View {
     let showActiveObservers: () -> Void
     let showLivePackets: () -> Void
     let showFavorites: () -> Void
+    @State private var metricOrder = GlanceMetricKind.allCases
+    @State private var hiddenMetrics: Set<GlanceMetricKind> = []
+    @State private var isCustomizationPresented = false
 
     private let activeInterval: TimeInterval = 15 * 60
     private let recentPacketInterval: TimeInterval = 60 * 60
@@ -358,37 +363,31 @@ private struct NetworkAtAGlanceCard: View {
                         .controlSize(.small)
                         .accessibilityLabel("Updating network summary")
                 }
+                Button {
+                    isCustomizationPresented = true
+                } label: {
+                    Image(systemName: "slider.horizontal.3")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(NodeScopeStyle.signal)
+                .accessibilityLabel("Customize network summary")
             }
 
             LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
-                GlanceMetric(
-                    value: "\(activeNodeCount)",
-                    label: "Active nodes",
-                    detail: "of \(nodes.count) seen",
-                    color: .green,
-                    action: showActiveNodes
-                )
-                GlanceMetric(
-                    value: "\(activeObserverCount)",
-                    label: "Observers online",
-                    detail: "of \(observers.count) known",
-                    color: NodeScopeStyle.signal,
-                    action: showActiveObservers
-                )
-                GlanceMetric(
-                    value: recentPacketValue,
-                    label: "Packets",
-                    detail: "in the last hour",
-                    color: .orange,
-                    action: showLivePackets
-                )
-                GlanceMetric(
-                    value: averageSNR.map { String(format: "%.1f", $0) } ?? "—",
-                    label: "Average SNR",
-                    detail: averageSNR == nil ? "no recent samples" : "dB in the last hour",
-                    color: .purple,
-                    action: nil
-                )
+                ForEach(visibleMetrics) { metric in
+                    GlanceMetricSlot(
+                        metric: metric,
+                        activeNodeCount: activeNodeCount,
+                        nodeCount: nodes.count,
+                        activeObserverCount: activeObserverCount,
+                        observerCount: observers.count,
+                        recentPacketValue: recentPacketValue,
+                        averageSNR: averageSNR,
+                        showActiveNodes: showActiveNodes,
+                        showActiveObservers: showActiveObservers,
+                        showLivePackets: showLivePackets
+                    )
+                }
             }
 
             Divider()
@@ -416,10 +415,32 @@ private struct NetworkAtAGlanceCard: View {
         .padding(16)
         .instrumentCard()
         .accessibilityElement(children: .contain)
+        .task(id: analyzerHost) { loadPreferences() }
+        .sheet(isPresented: $isCustomizationPresented) {
+            GlanceCustomizationSheet(
+                metricOrder: $metricOrder,
+                hiddenMetrics: $hiddenMetrics,
+                save: savePreferences
+            )
+        }
     }
 
     private var columns: [GridItem] {
         [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+    }
+
+    private var visibleMetrics: [GlanceMetricKind] {
+        metricOrder.filter { !hiddenMetrics.contains($0) }
+    }
+
+    private func loadPreferences() {
+        let preferences = GlancePreferences.load(for: analyzerHost)
+        metricOrder = preferences.order
+        hiddenMetrics = preferences.hidden
+    }
+
+    private func savePreferences() {
+        GlancePreferences(order: metricOrder, hidden: hiddenMetrics).save(for: analyzerHost)
     }
 
     private var activeNodeCount: Int {
@@ -478,6 +499,172 @@ private struct NetworkAtAGlanceCard: View {
 
     private func isActive(_ date: Date) -> Bool {
         date.timeIntervalSinceNow > -activeInterval
+    }
+}
+
+private enum GlanceMetricKind: String, Codable, CaseIterable, Identifiable {
+    case activeNodes
+    case observersOnline
+    case packets
+    case averageSNR
+
+    var id: String { rawValue }
+
+    var title: LocalizedStringResource {
+        switch self {
+        case .activeNodes: "Active nodes"
+        case .observersOnline: "Observers online"
+        case .packets: "Packets"
+        case .averageSNR: "Average SNR"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .activeNodes: "point.3.connected.trianglepath.dotted"
+        case .observersOnline: "antenna.radiowaves.left.and.right"
+        case .packets: "waveform.path.ecg"
+        case .averageSNR: "waveform"
+        }
+    }
+}
+
+private struct GlancePreferences: Codable {
+    var order: [GlanceMetricKind]
+    var hidden: Set<GlanceMetricKind>
+
+    static func load(for analyzerHost: String) -> GlancePreferences {
+        guard let data = UserDefaults.standard.data(forKey: defaultsKey(for: analyzerHost)),
+              let decoded = try? JSONDecoder().decode(GlancePreferences.self, from: data) else {
+            return GlancePreferences(order: GlanceMetricKind.allCases, hidden: [])
+        }
+
+        let knownOrder = decoded.order.filter { GlanceMetricKind.allCases.contains($0) }
+        let missing = GlanceMetricKind.allCases.filter { !knownOrder.contains($0) }
+        return GlancePreferences(order: knownOrder + missing, hidden: decoded.hidden)
+    }
+
+    func save(for analyzerHost: String) {
+        guard let data = try? JSONEncoder().encode(self) else { return }
+        UserDefaults.standard.set(data, forKey: Self.defaultsKey(for: analyzerHost))
+    }
+
+    private static func defaultsKey(for analyzerHost: String) -> String {
+        "glance-preferences-\(AnalyzerSettings.normalizedHost(analyzerHost))"
+    }
+}
+
+private struct GlanceMetricSlot: View {
+    let metric: GlanceMetricKind
+    let activeNodeCount: Int
+    let nodeCount: Int
+    let activeObserverCount: Int
+    let observerCount: Int
+    let recentPacketValue: String
+    let averageSNR: Double?
+    let showActiveNodes: () -> Void
+    let showActiveObservers: () -> Void
+    let showLivePackets: () -> Void
+
+    var body: some View {
+        VStack {
+            switch metric {
+            case .activeNodes:
+                GlanceMetric(
+                    value: "\(activeNodeCount)", label: "Active nodes",
+                    detail: "of \(nodeCount) seen", color: .green, action: showActiveNodes
+                )
+            case .observersOnline:
+                GlanceMetric(
+                    value: "\(activeObserverCount)", label: "Observers online",
+                    detail: "of \(observerCount) known", color: NodeScopeStyle.signal,
+                    action: showActiveObservers
+                )
+            case .packets:
+                GlanceMetric(
+                    value: recentPacketValue, label: "Packets", detail: "in the last hour",
+                    color: .orange, action: showLivePackets
+                )
+            case .averageSNR:
+                GlanceMetric(
+                    value: averageSNR.map { $0.formatted(.number.precision(.fractionLength(1))) } ?? "—",
+                    label: "Average SNR",
+                    detail: averageSNR == nil ? "no recent samples" : "dB in the last hour",
+                    color: .purple, action: nil
+                )
+            }
+        }
+    }
+}
+
+private struct GlanceCustomizationSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var metricOrder: [GlanceMetricKind]
+    @Binding var hiddenMetrics: Set<GlanceMetricKind>
+    let save: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(metricOrder) { metric in
+                        Toggle(isOn: visibilityBinding(for: metric)) {
+                            Label(metric.title, systemImage: metric.symbol)
+                        }
+                        .disabled(!hiddenMetrics.contains(metric) && visibleCount == 1)
+                    }
+                    .onMove(perform: moveMetrics)
+                } header: {
+                    Text("Dashboard Metrics")
+                } footer: {
+                    Text("Drag metrics into your preferred order and hide the ones you don’t need.")
+                }
+            }
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle("Customize Dashboard")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Reset") {
+                        metricOrder = GlanceMetricKind.allCases
+                        hiddenMetrics = []
+                        save()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        save()
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+    }
+
+    private var visibleCount: Int {
+        metricOrder.count - hiddenMetrics.count
+    }
+
+    private func visibilityBinding(for metric: GlanceMetricKind) -> Binding<Bool> {
+        Binding(
+            get: { !hiddenMetrics.contains(metric) },
+            set: { isVisible in
+                if isVisible {
+                    hiddenMetrics.remove(metric)
+                } else if visibleCount > 1 {
+                    hiddenMetrics.insert(metric)
+                }
+                save()
+            }
+        )
+    }
+
+    private func moveMetrics(from source: IndexSet, to destination: Int) {
+        metricOrder.move(fromOffsets: source, toOffset: destination)
+        save()
     }
 }
 
