@@ -53,5 +53,5 @@ performance.
 
 ## Current priority
 
-The next major feature should be global search plus favorites. After that,
-prioritize map filters and richer route analysis.
+Versions 0.3.0 and 0.4.0 are complete. Before expanding 0.5.0, define the
+smallest useful personal dashboard around existing, dependable analyzer data.

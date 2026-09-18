@@ -1974,17 +1974,19 @@ private struct MapRouteHopRow: View {
     let hop: MapRouteHop
     let showsDisclosureIndicator: Bool
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         HStack(spacing: 12) {
             Text("\(hop.position)")
                 .font(.caption.bold())
-                .foregroundStyle(.white)
+                .foregroundStyle(.black)
                 .frame(width: 26, height: 26)
                 .background(NodeScopeStyle.signal, in: Circle())
             VStack(alignment: .leading, spacing: 2) {
                 Text(hop.title)
                     .foregroundStyle(.primary)
-                if let publicKey = hop.publicKey {
+                if let publicKey = hop.publicKey, !dynamicTypeSize.isAccessibilitySize {
                     Text(publicKey)
                         .font(.caption.monospaced())
                         .foregroundStyle(.secondary)
@@ -1999,6 +2001,8 @@ private struct MapRouteHopRow: View {
             }
         }
         .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Hop \(hop.position), \(hop.title)")
     }
 }
 

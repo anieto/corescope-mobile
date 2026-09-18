@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.4.0 - 2026-09-18
+
+Release focused on clearer map exploration and deeper packet-route inspection.
+
+### Added
+
+- Persisted, analyzer-scoped map filters for node activity, role, and receiving observer
+- Searchable observer selection with region-aware validation and filter guidance
+- Selectable live and replay routes with captured route details
+- Tappable route hops with nested node-detail navigation
+- Route metadata including age, observer, SNR, RSSI, and packet hash
+- Public-message context for readable packet replays
+- Structured route sharing through the standard iOS share sheet
+
+### Improved
+
+- Region scoping for live and recent packet routes
+- Expandable map-filter organization and compact active-filter summaries
+- Route touch targets and map-node selection behavior
+- Dynamic Type, VoiceOver labeling, and route-hop badge contrast
+
+### Deferred
+
+- Heatmaps, historical time-window controls, and node comparisons remain deferred
+  until usage needs and analyzer data support justify the added complexity
+
 ## 0.3.0 - 2026-09-17
 
 Release focused on making frequently used mesh data faster to find, save, and
