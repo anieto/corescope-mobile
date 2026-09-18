@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "id": "meshtexas",
+      "name": "MeshTexas",
+      "host": "analyzer.meshtexas.org",
+      "subtitle": "Texas, USA",
+      "isDefault": true
+    },
+    {
+      "id": "wcmesh",
+      "name": "WCMesh",
+      "host": "corescope.wcmesh.com",
+      "subtitle": "West Coast, USA",
+      "isDefault": false
+    },
+    {
+      "id": "gulf-coast-mesh",
+      "name": "Gulf Coast Mesh",
+      "host": "analyzer.gulfcoastmesh.org",
+      "subtitle": "Gulf Coast, USA",
+      "isDefault": false
+    }
+  ]
+}
