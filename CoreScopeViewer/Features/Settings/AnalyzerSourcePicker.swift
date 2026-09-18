@@ -85,6 +85,18 @@ struct AnalyzerSourcePickerScreen: View {
                 Text("Enter the hostname for a compatible public analyzer. NodeScope connects directly to it.")
                     .foregroundStyle(metadataColor)
             }
+
+            Section {
+                if let communitySourceRequestURL {
+                    Link(destination: communitySourceRequestURL) {
+                        Label("Request a Community Source", systemImage: "envelope")
+                    }
+                    .accessibilityHint("Opens a prefilled email to the NodeScope team")
+                }
+            } footer: {
+                Text("Suggest a public analyzer for the community list. Please confirm that its owner or operator permits it to be listed and used in NodeScope.")
+                    .foregroundStyle(metadataColor)
+            }
         }
         .adaptiveContentWidth()
         .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
@@ -100,6 +112,42 @@ struct AnalyzerSourcePickerScreen: View {
             return Color(red: 0.73, green: 0.82, blue: 0.95)
         }
         return Color(uiColor: .secondaryLabel)
+    }
+
+    private var communitySourceRequestURL: URL? {
+        var components = URLComponents()
+        components.scheme = "mailto"
+        components.path = "betweentheives@protonmail.com"
+        components.queryItems = [
+            URLQueryItem(name: "subject", value: "NodeScope community source request"),
+            URLQueryItem(
+                name: "body",
+                value: communitySourceRequestBody
+            )
+        ]
+        return components.url
+    }
+
+    private var communitySourceRequestBody: String {
+        [
+            "Hello NodeScope team,",
+            "",
+            "I’d like to request that the following community source be added.",
+            "",
+            "SOURCE DETAILS",
+            "Source name:",
+            "Analyzer hostname or URL:",
+            "Region or community:",
+            "Owner or operator contact:",
+            "",
+            "PERMISSION",
+            "Do you have permission from the source owner or operator for this source to be listed and used in NodeScope?",
+            "Answer: Yes / No / Not yet",
+            "",
+            "ADDITIONAL DETAILS",
+            "",
+            "Thank you."
+        ].joined(separator: "\r\n")
     }
 
     private func select(_ host: String) {

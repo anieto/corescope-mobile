@@ -199,6 +199,7 @@ private struct LiveObservationGroup: Identifiable {
 }
 
 private struct LivePacketFeedHeader: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let isConnected: Bool
     let transmissionCount: Int
     let observationCount: Int
@@ -213,16 +214,29 @@ private struct LivePacketFeedHeader: View {
                 Text(isConnected ? "Listening for live traffic" : "Reconnecting to analyzer")
                     .font(.subheadline.weight(.semibold))
             }
-            HStack(spacing: 10) {
-                Label(scope, systemImage: "globe.americas.fill")
-                Label("\(transmissionCount) transmissions", systemImage: "waveform.path.ecg")
-                Label("\(observationCount) observations", systemImage: "eye")
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 8) {
+                        feedSummary
+                    }
+                } else {
+                    HStack(spacing: 10) {
+                        feedSummary
+                    }
+                }
             }
             .font(.caption)
             .foregroundStyle(.secondary)
         }
         .padding(14)
         .instrumentCard()
+    }
+
+    @ViewBuilder
+    private var feedSummary: some View {
+        Label(scope, systemImage: "globe.americas.fill")
+        Label("\(transmissionCount) transmissions", systemImage: "waveform.path.ecg")
+        Label("\(observationCount) observations", systemImage: "eye")
     }
 }
 

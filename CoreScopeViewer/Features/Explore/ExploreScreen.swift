@@ -328,6 +328,7 @@ private enum ExploreScrollTarget: Hashable {
 }
 
 private struct NetworkAtAGlanceCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let analyzerHost: String
     let nodes: [MeshNode]
     let observers: [MeshObserver]
@@ -450,7 +451,11 @@ private struct NetworkAtAGlanceCard: View {
     }
 
     private var columns: [GridItem] {
-        [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+        if dynamicTypeSize.isAccessibilitySize {
+            [GridItem(.flexible())]
+        } else {
+            [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+        }
     }
 
     private var visibleMetrics: [GlanceMetricKind] {
@@ -790,8 +795,7 @@ private struct GlanceMetric: View {
             Text(detail)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
