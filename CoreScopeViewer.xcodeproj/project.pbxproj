@@ -27,6 +27,11 @@
 		316FDFFF305C6CB100FBA3B4 /* SearchHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FDFFE305C6CB100FBA3B4 /* SearchHistoryStore.swift */; };
 		316FE001305C6EA300FBA3B4 /* AppNavigationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FE000305C6EA300FBA3B4 /* AppNavigationStore.swift */; };
 		316FE006305D930300FBA3B4 /* StatisticsExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FE005305D930300FBA3B4 /* StatisticsExport.swift */; };
+		316FE00A305E18ED00FBA3B4 /* LiquidGlassStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FE009305E18ED00FBA3B4 /* LiquidGlassStyle.swift */; };
+		316FE00C305E1C9400FBA3B4 /* AnalyzerDiagnosticsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FE00B305E1C9400FBA3B4 /* AnalyzerDiagnosticsService.swift */; };
+		316FE00E305E1CAF00FBA3B4 /* AnalyzerDiagnosticsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FE00D305E1CAF00FBA3B4 /* AnalyzerDiagnosticsScreen.swift */; };
+		316FE010305E2B2A00FBA3B4 /* CacheStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FE00F305E2B2A00FBA3B4 /* CacheStorageService.swift */; };
+		316FE012305E2B4200FBA3B4 /* StorageSettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FE011305E2B4200FBA3B4 /* StorageSettingsScreen.swift */; };
 		31C733CCC554E34636022A89 /* OnboardingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9AFF0E38F9E8C2C60829E93 /* OnboardingScreen.swift */; };
 		37EEBAD9BA7B400246063847 /* NodeDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75CDCA22232763038FF030C6 /* NodeDetailViewModel.swift */; };
 		3BE961FDCF2336382895F4C3 /* ModelDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C78C1620C6A3A352DD6B687 /* ModelDecodingTests.swift */; };
@@ -99,6 +104,11 @@
 		316FE000305C6EA300FBA3B4 /* AppNavigationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNavigationStore.swift; sourceTree = "<group>"; };
 		316FE003305D92B200FBA3B4 /* StatisticsExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticsExport.swift; sourceTree = "<group>"; };
 		316FE005305D930300FBA3B4 /* StatisticsExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticsExport.swift; sourceTree = "<group>"; };
+		316FE009305E18ED00FBA3B4 /* LiquidGlassStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassStyle.swift; sourceTree = "<group>"; };
+		316FE00B305E1C9400FBA3B4 /* AnalyzerDiagnosticsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerDiagnosticsService.swift; sourceTree = "<group>"; };
+		316FE00D305E1CAF00FBA3B4 /* AnalyzerDiagnosticsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerDiagnosticsScreen.swift; sourceTree = "<group>"; };
+		316FE00F305E2B2A00FBA3B4 /* CacheStorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheStorageService.swift; sourceTree = "<group>"; };
+		316FE011305E2B4200FBA3B4 /* StorageSettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageSettingsScreen.swift; sourceTree = "<group>"; };
 		33B9A5F539B49B860F434D81 /* Channel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Channel.swift; sourceTree = "<group>"; };
 		36B0A5E6DC5812474734F2C7 /* SenderColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SenderColor.swift; sourceTree = "<group>"; };
 		37795BF9DC79999D3E6DE8A3 /* AboutScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutScreen.swift; sourceTree = "<group>"; };
@@ -285,6 +295,8 @@
 				4BA4982D8889A079D6CEBCB9 /* AnalyzerSourcePicker.swift */,
 				78E6E9CACE3528A4828C2A2D /* AppearanceSettings.swift */,
 				95B46AA4A5FB82FC08E16B31 /* SettingsScreen.swift */,
+				316FE00D305E1CAF00FBA3B4 /* AnalyzerDiagnosticsScreen.swift */,
+				316FE011305E2B4200FBA3B4 /* StorageSettingsScreen.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -299,6 +311,7 @@
 				E4864A74D4FA3785DE838A1B /* RelativeTime.swift */,
 				36B0A5E6DC5812474734F2C7 /* SenderColor.swift */,
 				3144E9F6305B2A4300B57F18 /* InstrumentSearchField.swift */,
+				316FE009305E18ED00FBA3B4 /* LiquidGlassStyle.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -362,6 +375,8 @@
 				316FDFFC305C4DDE00FBA3B4 /* RecentItemsStore.swift */,
 				316FDFFE305C6CB100FBA3B4 /* SearchHistoryStore.swift */,
 				316FE000305C6EA300FBA3B4 /* AppNavigationStore.swift */,
+				316FE00B305E1C9400FBA3B4 /* AnalyzerDiagnosticsService.swift */,
+				316FE00F305E2B2A00FBA3B4 /* CacheStorageService.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -478,6 +493,7 @@
 			files = (
 				67B0687608CD2E73C4D606AE /* APIClient.swift in Sources */,
 				991103E1F7308562934622AD /* AboutScreen.swift in Sources */,
+				316FE00C305E1C9400FBA3B4 /* AnalyzerDiagnosticsService.swift in Sources */,
 				B5BD63C91E6B93FAA59ED007 /* ActivePing.swift in Sources */,
 				6A8C5BB6EED7A1F412DCCA73 /* AnalyzerConfig.swift in Sources */,
 				22E6EDC06317772F4D948AC2 /* AnalyzerSettings.swift in Sources */,
@@ -510,6 +526,7 @@
 				37EEBAD9BA7B400246063847 /* NodeDetailViewModel.swift in Sources */,
 				895D2DD9450C64472E7693F6 /* NodeHealth.swift in Sources */,
 				73FBC544410EBB6331BE2670 /* NodeRoleStyle.swift in Sources */,
+				316FE010305E2B2A00FBA3B4 /* CacheStorageService.swift in Sources */,
 				24D59BC2523DFDDA78B44597 /* Observer.swift in Sources */,
 				428DFF511FD959A5CF90835A /* ObserverDetailScreen.swift in Sources */,
 				C164A5108399198FAE295FE5 /* ObserverRegionLookup.swift in Sources */,
@@ -519,17 +536,20 @@
 				316FDFFD305C4DDE00FBA3B4 /* RecentItemsStore.swift in Sources */,
 				316FDFFB305C490A00FBA3B4 /* ExploreScreen.swift in Sources */,
 				F880AFD88BBD5C97812E65C7 /* Packet.swift in Sources */,
+				316FE00E305E1CAF00FBA3B4 /* AnalyzerDiagnosticsScreen.swift in Sources */,
 				01D4A148FE7AC5A25B15E907 /* PacketDetail.swift in Sources */,
 				D0703CF5F57B875F611F2ADD /* PacketDetailScreen.swift in Sources */,
 				597B05A58DFD199CB78FAAC0 /* PacketDetailViewModel.swift in Sources */,
 				DAAB4861A12F70E15A9DBA56 /* PacketFeedCache.swift in Sources */,
 				0F0D91D6301E5CA8492D24A1 /* PacketFeedScreen.swift in Sources */,
+				316FE00A305E18ED00FBA3B4 /* LiquidGlassStyle.swift in Sources */,
 				B2894ACD708E45B661A41E4A /* PacketReplayStore.swift in Sources */,
 				9F4984DB52D93C036F83D496 /* ReadableColor.swift in Sources */,
 				9083F3FDE761C318E4470B7D /* RegionFilterMenu.swift in Sources */,
 				F2137327FBC92FE87A764EE0 /* RegionFilterStore.swift in Sources */,
 				81BAE67C29D289F43B630B40 /* RelativeTime.swift in Sources */,
 				B5E00F5D8D1377267C747B76 /* RootTabView.swift in Sources */,
+				316FE012305E2B4200FBA3B4 /* StorageSettingsScreen.swift in Sources */,
 				2D447FFABF6B77349DA614A1 /* SenderColor.swift in Sources */,
 				F7AAC2A15896BF2122A20C22 /* SettingsScreen.swift in Sources */,
 				316FDFF6305C483200FBA3B4 /* FavoritesStore.swift in Sources */,
@@ -571,7 +591,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.5.0;
+				MARKETING_VERSION = 0.6.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.btdev.nodescope;
 				PRODUCT_MODULE_NAME = CoreScopeViewer;
 				PRODUCT_NAME = NodeScope;
@@ -763,7 +783,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.5.0;
+				MARKETING_VERSION = 0.6.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.btdev.nodescope;
 				PRODUCT_MODULE_NAME = CoreScopeViewer;
 				PRODUCT_NAME = NodeScope;

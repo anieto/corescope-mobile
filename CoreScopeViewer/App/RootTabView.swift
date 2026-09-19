@@ -117,12 +117,53 @@ struct RootTabView: View {
 private struct FloatingTabDock: View {
     let selectedTab: RootTabView.Tab
     let select: (RootTabView.Tab) -> Void
+    @Namespace private var glassNamespace
+
+    @ViewBuilder
+    var body: some View {
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: 4) {
+                FloatingTabItems(
+                    selectedTab: selectedTab,
+                    glassNamespace: glassNamespace,
+                    select: select
+                )
+            }
+            .padding(5)
+            .nodeScopeFloatingGlass(cornerRadius: 24)
+            .dockOutlineAndShadow()
+        } else {
+            FloatingTabItems(
+                selectedTab: selectedTab,
+                glassNamespace: glassNamespace,
+                select: select
+            )
+            .padding(5)
+            .nodeScopeFloatingGlass(cornerRadius: 24)
+            .dockOutlineAndShadow()
+        }
+    }
+}
+
+private struct FloatingTabItems: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var usesMaterializedTransition = false
+    let selectedTab: RootTabView.Tab
+    let glassNamespace: Namespace.ID
+    let select: (RootTabView.Tab) -> Void
 
     var body: some View {
         HStack(spacing: 4) {
             ForEach(RootTabView.Tab.allCases, id: \.self) { tab in
                 Button {
-                    select(tab)
+                    usesMaterializedTransition = tabDistance(from: selectedTab, to: tab) > 1
+                    if reduceMotion {
+                        select(tab)
+                    } else {
+                        withAnimation(.snappy(duration: 0.25)) {
+                            select(tab)
+                        }
+                    }
                 } label: {
                     VStack(spacing: 3) {
                         Image(systemName: tab.symbol)
@@ -133,9 +174,12 @@ private struct FloatingTabDock: View {
                     .foregroundStyle(selectedTab == tab ? Color.white : Color.secondary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
-                    .background(
-                        selectedTab == tab ? NodeScopeStyle.signal : Color.clear,
-                        in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .nodeScopeSelectedGlass(
+                        isSelected: selectedTab == tab,
+                        cornerRadius: 16,
+                        usesMaterializedTransition: usesMaterializedTransition,
+                        id: tab,
+                        in: glassNamespace
                     )
                 }
                 .buttonStyle(.plain)
@@ -143,8 +187,18 @@ private struct FloatingTabDock: View {
                 .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
             }
         }
-        .padding(5)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    private func tabDistance(from source: RootTabView.Tab, to destination: RootTabView.Tab) -> Int {
+        guard let sourceIndex = RootTabView.Tab.allCases.firstIndex(of: source),
+              let destinationIndex = RootTabView.Tab.allCases.firstIndex(of: destination) else { return 0 }
+        return abs(sourceIndex - destinationIndex)
+    }
+}
+
+private extension View {
+    func dockOutlineAndShadow() -> some View {
+        self
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(Color.white.opacity(0.16), lineWidth: 1)

@@ -45,7 +45,7 @@ struct PacketFeedScreen: View {
         .background(NodeScopeBackground())
         .listStyle(.plain)
         .adaptiveContentWidth()
-        .contentMargins(.bottom, 104, for: .scrollContent)
+        .floatingDockScrollClearance()
         .navigationTitle("Live Packets")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
@@ -496,7 +496,7 @@ private struct LivePacketDetailScreen: View {
         }
         .navigationTitle("Packet Details")
         .navigationBarTitleDisplayMode(.inline)
-        .contentMargins(.bottom, 104, for: .scrollContent)
+        .floatingDockScrollClearance()
     }
 
     private var routeHops: [LiveRouteHop] {

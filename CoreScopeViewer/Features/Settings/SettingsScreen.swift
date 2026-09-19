@@ -65,6 +65,32 @@ struct SettingsScreen: View {
                             host: settings.host,
                             error: liveFeed.lastError
                         )
+
+                        Divider()
+
+                        NavigationLink {
+                            AnalyzerDiagnosticsScreen()
+                        } label: {
+                            SettingsNavigationRow(
+                                title: "Analyzer Diagnostics",
+                                value: "Check connection and features",
+                                symbol: "stethoscope"
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    SettingsPanel(title: "Storage", symbol: "externaldrive.fill") {
+                        NavigationLink {
+                            StorageSettingsScreen()
+                        } label: {
+                            SettingsNavigationRow(
+                                title: "Cache & Storage",
+                                value: "Review or clear downloaded data",
+                                symbol: "internaldrive.fill"
+                            )
+                        }
+                        .buttonStyle(.plain)
                     }
 
                     NavigationLink {

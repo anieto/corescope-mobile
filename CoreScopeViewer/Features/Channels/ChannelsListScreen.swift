@@ -103,7 +103,7 @@ struct ChannelsListScreen: View {
             .listStyle(.plain)
             .adaptiveContentWidth()
             .background(NodeScopeBackground())
-            .contentMargins(.bottom, 104, for: .scrollContent)
+            .floatingDockScrollClearance()
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: MeshChannel.self) { channel in
                 ChannelDetailScreen(channel: channel)
@@ -417,7 +417,7 @@ private struct ChannelsHeader: View {
                     .foregroundStyle(NodeScopeStyle.signal)
                     .padding(.horizontal, filterCount > 0 ? 10 : 0)
                     .frame(minWidth: 40, minHeight: 40)
-                    .background(.thinMaterial, in: Capsule())
+                    .nodeScopeFloatingGlass(cornerRadius: 20)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Filter and sort channels")
@@ -428,7 +428,7 @@ private struct ChannelsHeader: View {
                         .font(.body.weight(.semibold))
                         .foregroundStyle(NodeScopeStyle.signal)
                         .frame(width: 40, height: 40)
-                        .background(.thinMaterial, in: Circle())
+                        .nodeScopeFloatingGlass(cornerRadius: 20)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(isSearchPresented ? "Close channel search" : "Search channels")

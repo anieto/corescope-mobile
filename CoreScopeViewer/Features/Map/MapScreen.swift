@@ -219,7 +219,7 @@ struct MapScreen: View {
                             .frame(width: 44, height: 44)
                     }
                     .buttonStyle(.plain)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .nodeScopeFloatingGlass(cornerRadius: 10)
                     .padding(.leading, 12)
                     .padding(.bottom, floatingDockClearance)
                     .accessibilityLabel("Center on my location")
@@ -836,7 +836,7 @@ struct MapScreen: View {
             .font(.caption.weight(.semibold))
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
-            .background(.thinMaterial, in: Capsule())
+            .nodeScopeFloatingGlass(cornerRadius: 20)
         }
         .accessibilityLabel("Region scope: \(regionScopeTitle)")
     }
@@ -920,7 +920,7 @@ struct MapScreen: View {
             .padding(.vertical, 8)
         }
         .padding(4)
-        .background(.thinMaterial, in: Capsule())
+        .nodeScopeFloatingGlass(cornerRadius: 20)
         .accessibilityElement(children: .contain)
     }
 
@@ -973,7 +973,7 @@ struct MapScreen: View {
             .accessibilityValue(showsReplayRouteOnly ? "On" : "Off")
         }
         .padding(4)
-        .background(.thinMaterial, in: Capsule())
+        .nodeScopeFloatingGlass(cornerRadius: 20)
         .accessibilityElement(children: .contain)
     }
 
@@ -1001,7 +1001,7 @@ struct MapScreen: View {
                     .frame(width: 36, height: 36)
             }
         }
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .nodeScopeFloatingGlass(cornerRadius: 10)
     }
 
     private func shortKey(_ key: String) -> String {
@@ -2129,7 +2129,7 @@ private struct MapNodeFilterButton: View {
             .foregroundStyle(isFiltering ? NodeScopeStyle.signal : Color.primary)
             .frame(minWidth: 34, minHeight: 34)
             .padding(.horizontal, isFiltering ? 8 : 0)
-            .background(.thinMaterial, in: Capsule())
+            .nodeScopeFloatingGlass(cornerRadius: 20)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Map filters")

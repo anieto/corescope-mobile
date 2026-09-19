@@ -22,6 +22,12 @@ actor PacketFeedCache {
     private var entries: [Key: Entry] = [:]
     private var inFlightLoads: [Key: Task<[Packet], Error>] = [:]
 
+    func clear() {
+        inFlightLoads.values.forEach { $0.cancel() }
+        inFlightLoads.removeAll()
+        entries.removeAll()
+    }
+
     func load(
         for key: Key,
         using apiClient: APIClient,

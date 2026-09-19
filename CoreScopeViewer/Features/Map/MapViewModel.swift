@@ -29,6 +29,11 @@ private actor MapResponseCache {
         return entry.value
     }
 
+    func clear() {
+        memoryData.removeAll()
+        try? FileManager.default.removeItem(at: cacheDirectory)
+    }
+
     func store<Value: Codable>(_ value: Value, for key: String) {
         let url = fileURL(for: key)
         let entry = Entry(savedAt: .now, value: value)
@@ -47,21 +52,24 @@ private actor MapResponseCache {
         return entry.savedAt
     }
 
+    private var cacheDirectory: URL {
+        FileManager.default.urls(
+            for: .cachesDirectory,
+            in: .userDomainMask
+        )[0].appendingPathComponent("MapResponseCache", isDirectory: true)
+    }
+
     private func fileURL(for key: String) -> URL {
         let fileName = key.data(using: .utf8)?
             .base64EncodedString()
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "+", with: "-")
             ?? UUID().uuidString
-        let directory = FileManager.default.urls(
-            for: .cachesDirectory,
-            in: .userDomainMask
-        )[0].appendingPathComponent("MapResponseCache", isDirectory: true)
         try? FileManager.default.createDirectory(
-            at: directory,
+            at: cacheDirectory,
             withIntermediateDirectories: true
         )
-        return directory.appendingPathComponent(fileName).appendingPathExtension("json")
+        return cacheDirectory.appendingPathComponent(fileName).appendingPathExtension("json")
     }
 }
 
@@ -90,6 +98,10 @@ final class MapViewModel {
     private var cacheNamespace = ""
     private let automaticRefreshInterval: TimeInterval = 30
     private let staleCacheLifetime: TimeInterval = 7 * 24 * 60 * 60
+
+    static func clearCachedResponses() async {
+        await MapResponseCache.shared.clear()
+    }
 
     func configure(settings: AnalyzerSettings) {
         apiClient = APIClient(settings: settings)

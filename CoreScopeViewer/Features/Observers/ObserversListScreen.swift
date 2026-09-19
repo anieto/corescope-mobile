@@ -99,7 +99,7 @@ struct ObserversListScreen: View {
             .listStyle(.plain)
             .adaptiveContentWidth()
             .background(NodeScopeBackground())
-            .contentMargins(.bottom, 104, for: .scrollContent)
+            .floatingDockScrollClearance()
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: MeshObserver.self) { observer in
                 ObserverDetailScreen(observer: observer)
@@ -305,7 +305,7 @@ private struct ObserversHeader: View {
                     .foregroundStyle(NodeScopeStyle.signal)
                     .padding(.horizontal, filterCount > 0 ? 10 : 0)
                     .frame(minWidth: 40, minHeight: 40)
-                    .background(.thinMaterial, in: Capsule())
+                    .nodeScopeFloatingGlass(cornerRadius: 20)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Filter and sort observers")
@@ -316,7 +316,7 @@ private struct ObserversHeader: View {
                         .font(.body.weight(.semibold))
                         .foregroundStyle(NodeScopeStyle.signal)
                         .frame(width: 40, height: 40)
-                        .background(.thinMaterial, in: Circle())
+                        .nodeScopeFloatingGlass(cornerRadius: 20)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(isSearchPresented ? "Close observer search" : "Search observers")

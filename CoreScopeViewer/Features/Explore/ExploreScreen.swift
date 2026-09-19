@@ -72,7 +72,7 @@ struct ExploreScreen: View {
             .background(NodeScopeBackground())
             .listStyle(.plain)
             .adaptiveContentWidth()
-            .contentMargins(.bottom, 104, for: .scrollContent)
+            .floatingDockScrollClearance()
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: MeshNode.self) { node in
                 NodeDetailScreen(node: node)
@@ -855,7 +855,7 @@ private struct ExploreHeader: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(NodeScopeStyle.signal)
                     .frame(width: 40, height: 40)
-                    .background(.thinMaterial, in: Circle())
+                    .nodeScopeFloatingGlass(cornerRadius: 20)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Search the network")
@@ -866,7 +866,7 @@ private struct ExploreHeader: View {
                     .foregroundStyle(NodeScopeStyle.signal)
                     .padding(.horizontal, 12)
                     .frame(minHeight: 40)
-                    .background(.thinMaterial, in: Capsule())
+                    .nodeScopeFloatingGlass(cornerRadius: 20)
                     .accessibilityHint("Reorder favorites within each section")
             }
 

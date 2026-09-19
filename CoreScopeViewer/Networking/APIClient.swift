@@ -32,6 +32,13 @@ actor APIResponseCache {
         return entry.value
     }
 
+    func clear() {
+        inFlightRefreshes.values.forEach { $0.cancel() }
+        inFlightRefreshes.removeAll()
+        memoryData.removeAll()
+        try? FileManager.default.removeItem(at: cacheDirectory)
+    }
+
     func savedAt(for key: String) -> Date? {
         let data = memoryData[key] ?? (try? Data(contentsOf: fileURL(for: key)))
         guard let data,
@@ -68,16 +75,19 @@ actor APIResponseCache {
         }
     }
 
+    private var cacheDirectory: URL {
+        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("APIResponseCache", isDirectory: true)
+    }
+
     private func fileURL(for key: String) -> URL {
         let fileName = key.data(using: .utf8)?
             .base64EncodedString()
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "+", with: "-")
             ?? UUID().uuidString
-        let directory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("APIResponseCache", isDirectory: true)
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        return directory.appendingPathComponent(fileName).appendingPathExtension("json")
+        try? FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+        return cacheDirectory.appendingPathComponent(fileName).appendingPathExtension("json")
     }
 }
 

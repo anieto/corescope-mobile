@@ -117,6 +117,13 @@ extension View {
             .frame(maxWidth: .infinity)
     }
 
+    /// Keeps the final scrollable content above NodeScope's app-level
+    /// floating tab dock. Apply this to every scroll container presented
+    /// inside a root tab, including navigation destinations.
+    func floatingDockScrollClearance() -> some View {
+        contentMargins(.bottom, 104, for: .scrollContent)
+    }
+
     /// iPadOS window controls can occupy the upper-leading corner without
     /// contributing to SwiftUI's safe-area inset. Keep custom page headers
     /// below that chrome while leaving the compact iPhone layout unchanged.
