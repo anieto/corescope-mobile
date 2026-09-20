@@ -279,17 +279,15 @@ private struct LivePacketRow: View {
                     Spacer(minLength: 0)
                 }
 
-                HStack(spacing: 8) {
-                    Text(group.preview)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    Text(group.latestReceivedAt, style: .relative)
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        packetPreview
+                        packetTime
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        packetPreview
+                        packetTime
+                    }
                 }
             }
         }
@@ -304,6 +302,21 @@ private struct LivePacketRow: View {
         }
         .instrumentCard()
         .accessibilityElement(children: .combine)
+    }
+
+    private var packetPreview: some View {
+        Text(group.preview)
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .lineLimit(2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var packetTime: some View {
+        Text(group.latestReceivedAt, style: .relative)
+            .font(.caption.monospacedDigit())
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var symbol: String {

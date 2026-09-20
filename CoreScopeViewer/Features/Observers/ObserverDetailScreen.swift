@@ -250,8 +250,6 @@ private struct ObserverDetailMetric: View {
                 .foregroundStyle(.secondary)
             Text(value)
                 .font(.subheadline.weight(.semibold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

@@ -553,7 +553,7 @@ private struct ChannelCard: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: isMonitored ? "lock.bubble.fill" : "number")
-                .font(.system(size: 15, weight: .bold))
+                .font(.callout.weight(.bold))
                 .foregroundStyle(isMonitored ? NodeScopeStyle.activity : NodeScopeStyle.signal)
                 .frame(width: 38, height: 38)
                 .background(
@@ -639,12 +639,22 @@ private struct ChannelSkeletonRow: View {
 }
 
 private struct SkeletonPulseModifier: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isDimmed = false
 
     func body(content: Content) -> some View {
         content
-            .opacity(isDimmed ? 0.58 : 1)
-            .onAppear { isDimmed = true }
-            .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: isDimmed)
+            .opacity(isDimmed && !reduceMotion ? 0.58 : 1)
+            .onAppear {
+                guard !reduceMotion else { return }
+                isDimmed = true
+            }
+            .onChange(of: reduceMotion) {
+                isDimmed = !reduceMotion
+            }
+            .animation(
+                reduceMotion ? nil : .easeInOut(duration: 0.9).repeatForever(autoreverses: true),
+                value: isDimmed
+            )
     }
 }

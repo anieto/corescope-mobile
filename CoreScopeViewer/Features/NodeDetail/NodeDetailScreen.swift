@@ -293,11 +293,9 @@ private struct NodeMetricTile: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(value)
                 .font(.headline.monospacedDigit())
-                .minimumScaleFactor(0.75)
             Text(label)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
