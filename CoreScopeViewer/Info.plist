@@ -4,5 +4,18 @@
 <dict>
 	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLName</key>
+			<string>com.nodescope.deeplink</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>nodescope</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

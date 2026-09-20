@@ -70,6 +70,11 @@ struct ObserverDetailScreen: View {
                     } label: {
                         Label("Copy Observer ID", systemImage: "doc.on.doc")
                     }
+                    if let url = NodeScopeDeepLink.observer(observer.id).url {
+                        ShareLink(item: url) {
+                            Label("Share Observer Link", systemImage: "square.and.arrow.up")
+                        }
+                    }
                     Divider()
                     Button {
                         prepareExport(.csv)

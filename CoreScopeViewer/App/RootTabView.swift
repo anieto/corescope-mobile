@@ -95,6 +95,8 @@ struct RootTabView: View {
                 selectedTab = .map
             case .observer, .activeObservers:
                 selectedTab = .observers
+            case .node, .channel, .packet:
+                selectedTab = .explore
             case nil:
                 break
             }

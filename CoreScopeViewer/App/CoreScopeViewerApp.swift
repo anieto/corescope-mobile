@@ -46,6 +46,10 @@ struct NodeScopeApp: App {
             .environment(searchHistoryStore)
             .environment(appNavigationStore)
             .preferredColorScheme(appearanceSettings.mode.colorScheme)
+            .onOpenURL { url in
+                guard let deepLink = NodeScopeDeepLink(url: url) else { return }
+                appNavigationStore.open(deepLink)
+            }
             .task {
                 await analyzerSourceRegistry.refresh()
             }

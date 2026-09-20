@@ -64,6 +64,11 @@ struct ChannelDetailScreen: View {
                     } label: {
                         Label("Copy Channel Name", systemImage: "doc.on.doc")
                     }
+                    if let url = NodeScopeDeepLink.channel(channel.hash).url {
+                        ShareLink(item: url) {
+                            Label("Share Channel Link", systemImage: "square.and.arrow.up")
+                        }
+                    }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }

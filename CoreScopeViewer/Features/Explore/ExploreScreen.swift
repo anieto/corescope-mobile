@@ -22,6 +22,7 @@ struct ExploreScreen: View {
     @State private var searchPackets: [Packet] = []
     @State private var isAddFavoritePresented = false
     @State private var isSearchPresented = false
+    @State private var lastHandledNavigationRequestID: UUID?
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -136,6 +137,9 @@ struct ExploreScreen: View {
         .onChange(of: settings.host) { updateVisibleItems() }
         .onChange(of: favoritesStore.items) { updateVisibleItems() }
         .onChange(of: recentItemsStore.items) { updateVisibleItems() }
+        .onChange(of: appNavigationStore.requestID) {
+            openRequestedDeepLinkIfAvailable()
+        }
         .task(id: settings.host) {
             updateVisibleItems()
             nodeViewModel.resetForAnalyzerSource()
@@ -149,6 +153,7 @@ struct ExploreScreen: View {
             async let packets: Void = loadSearchPackets()
             _ = await (nodes, observers, channels, packets)
             refreshFavoriteNodeSnapshots()
+            openRequestedDeepLinkIfAvailable()
         }
         .task(id: "\(settings.host)|\(isTabActive)") {
             guard isTabActive else { return }
@@ -258,6 +263,50 @@ struct ExploreScreen: View {
             }
             .recentRowStyle(remove: { recentItemsStore.remove(item) })
         }
+    }
+
+    private func openRequestedDeepLinkIfAvailable() {
+        guard lastHandledNavigationRequestID != appNavigationStore.requestID else { return }
+
+        switch appNavigationStore.destination {
+        case .node(let publicKey):
+            guard let node = nodeViewModel.nodes.first(where: {
+                $0.publicKey.caseInsensitiveCompare(publicKey) == .orderedSame
+            }) else { return }
+            navigationPath = NavigationPath()
+            navigationPath.append(node)
+        case .channel(let hash):
+            guard let channel = channelViewModel.channels.first(where: {
+                $0.hash.caseInsensitiveCompare(hash) == .orderedSame
+            }) else { return }
+            navigationPath = NavigationPath()
+            navigationPath.append(channel)
+        case .packet(let hash):
+            guard let packet = searchPackets.first(where: {
+                $0.hash.caseInsensitiveCompare(hash) == .orderedSame
+            }) else { return }
+            navigationPath = NavigationPath()
+            navigationPath.append(deepLinkMessage(for: packet))
+        default:
+            return
+        }
+
+        lastHandledNavigationRequestID = appNavigationStore.requestID
+    }
+
+    private func deepLinkMessage(for packet: Packet) -> ChannelMessage {
+        ChannelMessage(
+            sender: packet.observerName ?? "Unknown",
+            text: "",
+            timestamp: packet.firstSeen,
+            senderTimestamp: nil,
+            packetId: packet.id,
+            packetHash: packet.hash,
+            repeats: packet.observationCount,
+            observers: packet.observerName.map { [$0] } ?? [],
+            hops: 0,
+            snr: packet.snr
+        )
     }
 
     private func refreshExploreData() async {

@@ -107,6 +107,12 @@ struct NodeDetailScreen: View {
             } label: {
                 Label("Copy Public Key", systemImage: "doc.on.doc")
             }
+
+            if let url = NodeScopeDeepLink.node(displayedNode.publicKey).url {
+                ShareLink(item: url) {
+                    Label("Share Node Link", systemImage: "square.and.arrow.up")
+                }
+            }
         } label: {
             Image(systemName: "ellipsis.circle")
         }

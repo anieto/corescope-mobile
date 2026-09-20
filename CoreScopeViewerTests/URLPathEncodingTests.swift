@@ -33,6 +33,28 @@ struct URLPathEncodingTests {
     }
 }
 
+struct NodeScopeDeepLinkTests {
+    @Test func roundTripsEverySupportedDestination() {
+        let links: [NodeScopeDeepLink] = [
+            .node("abc123"),
+            .observer("SAT/Observer 1"),
+            .channel("#Public"),
+            .packet("packet-hash")
+        ]
+
+        for link in links {
+            let url = try! #require(link.url)
+            #expect(NodeScopeDeepLink(url: url) == link)
+        }
+    }
+
+    @Test func rejectsUnsupportedLinks() {
+        #expect(NodeScopeDeepLink(url: URL(string: "https://example.com/node/abc")!) == nil)
+        #expect(NodeScopeDeepLink(url: URL(string: "nodescope://unknown/abc")!) == nil)
+        #expect(NodeScopeDeepLink(url: URL(string: "nodescope://node")!) == nil)
+    }
+}
+
 struct ChannelNameNormalizationTests {
     @Test func preservesCanonicalPublicChannelWithoutHash() {
         #expect(ChannelMonitorStore.normalizedHashtagName("Public") == "Public")

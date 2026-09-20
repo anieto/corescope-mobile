@@ -74,6 +74,11 @@ struct PacketDetailScreen: View {
                     } label: {
                         Label("Copy Packet Hash", systemImage: "doc.on.doc")
                     }
+                    if let url = NodeScopeDeepLink.packet(message.packetHash).url {
+                        ShareLink(item: url) {
+                            Label("Share Packet Link", systemImage: "square.and.arrow.up")
+                        }
+                    }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }

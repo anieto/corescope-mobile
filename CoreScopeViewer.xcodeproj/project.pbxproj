@@ -32,6 +32,7 @@
 		316FE00E305E1CAF00FBA3B4 /* AnalyzerDiagnosticsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FE00D305E1CAF00FBA3B4 /* AnalyzerDiagnosticsScreen.swift */; };
 		316FE010305E2B2A00FBA3B4 /* CacheStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FE00F305E2B2A00FBA3B4 /* CacheStorageService.swift */; };
 		316FE012305E2B4200FBA3B4 /* StorageSettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FE011305E2B4200FBA3B4 /* StorageSettingsScreen.swift */; };
+		316FE014306070A900FBA3B4 /* NodeScopeDeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FE013306070A900FBA3B4 /* NodeScopeDeepLink.swift */; };
 		31C733CCC554E34636022A89 /* OnboardingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9AFF0E38F9E8C2C60829E93 /* OnboardingScreen.swift */; };
 		37EEBAD9BA7B400246063847 /* NodeDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75CDCA22232763038FF030C6 /* NodeDetailViewModel.swift */; };
 		3BE961FDCF2336382895F4C3 /* ModelDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C78C1620C6A3A352DD6B687 /* ModelDecodingTests.swift */; };
@@ -109,6 +110,7 @@
 		316FE00D305E1CAF00FBA3B4 /* AnalyzerDiagnosticsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerDiagnosticsScreen.swift; sourceTree = "<group>"; };
 		316FE00F305E2B2A00FBA3B4 /* CacheStorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheStorageService.swift; sourceTree = "<group>"; };
 		316FE011305E2B4200FBA3B4 /* StorageSettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageSettingsScreen.swift; sourceTree = "<group>"; };
+		316FE013306070A900FBA3B4 /* NodeScopeDeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeScopeDeepLink.swift; sourceTree = "<group>"; };
 		33B9A5F539B49B860F434D81 /* Channel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Channel.swift; sourceTree = "<group>"; };
 		36B0A5E6DC5812474734F2C7 /* SenderColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SenderColor.swift; sourceTree = "<group>"; };
 		37795BF9DC79999D3E6DE8A3 /* AboutScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutScreen.swift; sourceTree = "<group>"; };
@@ -377,6 +379,7 @@
 				316FE000305C6EA300FBA3B4 /* AppNavigationStore.swift */,
 				316FE00B305E1C9400FBA3B4 /* AnalyzerDiagnosticsService.swift */,
 				316FE00F305E2B2A00FBA3B4 /* CacheStorageService.swift */,
+				316FE013306070A900FBA3B4 /* NodeScopeDeepLink.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -540,6 +543,7 @@
 				01D4A148FE7AC5A25B15E907 /* PacketDetail.swift in Sources */,
 				D0703CF5F57B875F611F2ADD /* PacketDetailScreen.swift in Sources */,
 				597B05A58DFD199CB78FAAC0 /* PacketDetailViewModel.swift in Sources */,
+				316FE014306070A900FBA3B4 /* NodeScopeDeepLink.swift in Sources */,
 				DAAB4861A12F70E15A9DBA56 /* PacketFeedCache.swift in Sources */,
 				0F0D91D6301E5CA8492D24A1 /* PacketFeedScreen.swift in Sources */,
 				316FE00A305E18ED00FBA3B4 /* LiquidGlassStyle.swift in Sources */,
