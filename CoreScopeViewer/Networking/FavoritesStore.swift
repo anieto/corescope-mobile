@@ -78,6 +78,42 @@ final class FavoritesStore {
         persist()
     }
 
+    /// Replaces saved node snapshots with the analyzer's latest values while
+    /// preserving favorite order and the original date each node was saved.
+    func refreshNodes(_ nodes: [MeshNode], source: String) {
+        let nodesByPublicKey = Dictionary(
+            nodes.map { ($0.publicKey.lowercased(), $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        var didChange = false
+
+        let refreshedItems = items.map { item in
+            guard item.kind == .node,
+                  item.source == source,
+                  let node = nodesByPublicKey[item.entityID.lowercased()],
+                  item.node != node else {
+                return item
+            }
+
+            didChange = true
+            return FavoriteItem(
+                source: item.source,
+                kind: item.kind,
+                entityID: item.entityID,
+                title: node.name ?? "Unnamed Node",
+                subtitle: node.publicKey,
+                favoritedAt: item.favoritedAt,
+                node: node,
+                observer: nil,
+                channel: nil
+            )
+        }
+
+        guard didChange else { return }
+        items = refreshedItems
+        persist()
+    }
+
     private func toggle(
         kind: FavoriteKind,
         entityID: String,

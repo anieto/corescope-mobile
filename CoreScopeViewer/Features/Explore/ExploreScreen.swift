@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 struct ExploreScreen: View {
     let resetID: UUID
+    let isTabActive: Bool
     let openMap: () -> Void
     let openChannels: () -> Void
     let openObservers: () -> Void
@@ -51,6 +52,14 @@ struct ExploreScreen: View {
                         }
                     }
                 )
+                .favoritesListRow(top: 0, bottom: 8)
+
+                DataLoadStatusView(
+                    lastUpdatedAt: nodeViewModel.lastUpdatedAt,
+                    errorMessage: nodeViewModel.errorMessage,
+                    hasContent: !nodeViewModel.nodes.isEmpty,
+                    retry: { Task { await refreshFavoriteNodes() } }
+                )
                 .favoritesListRow(top: 0, bottom: 14)
 
                 if visibleItems.isEmpty && visibleRecentItems.isEmpty {
@@ -73,6 +82,9 @@ struct ExploreScreen: View {
             .listStyle(.plain)
             .adaptiveContentWidth()
             .floatingDockScrollClearance()
+            .refreshable {
+                await refreshExploreData()
+            }
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: MeshNode.self) { node in
                 NodeDetailScreen(node: node)
@@ -136,6 +148,20 @@ struct ExploreScreen: View {
             async let channels: Void = channelViewModel.loadChannels(region: nil)
             async let packets: Void = loadSearchPackets()
             _ = await (nodes, observers, channels, packets)
+            refreshFavoriteNodeSnapshots()
+        }
+        .task(id: "\(settings.host)|\(isTabActive)") {
+            guard isTabActive else { return }
+
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(for: .seconds(60))
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled else { return }
+                await refreshFavoriteNodes()
+            }
         }
     }
 
@@ -232,6 +258,24 @@ struct ExploreScreen: View {
             }
             .recentRowStyle(remove: { recentItemsStore.remove(item) })
         }
+    }
+
+    private func refreshExploreData() async {
+        async let nodes: Void = nodeViewModel.loadNodes(region: nil, forceRefresh: true)
+        async let observers: Void = observerViewModel.loadObservers()
+        async let channels: Void = channelViewModel.loadChannels(region: nil, forceRefresh: true)
+        async let packets: Void = loadSearchPackets()
+        _ = await (nodes, observers, channels, packets)
+        refreshFavoriteNodeSnapshots()
+    }
+
+    private func refreshFavoriteNodes() async {
+        await nodeViewModel.loadNodes(region: nil, forceRefresh: true)
+        refreshFavoriteNodeSnapshots()
+    }
+
+    private func refreshFavoriteNodeSnapshots() {
+        favoritesStore.refreshNodes(nodeViewModel.nodes, source: activeSource)
     }
 
     private func updateVisibleItems() {

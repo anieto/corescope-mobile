@@ -49,6 +49,7 @@ struct RootTabView: View {
 
             ExploreScreen(
                 resetID: resetIDs[.explore] ?? UUID(),
+                isTabActive: selectedTab == .explore,
                 openMap: { selectedTab = .map },
                 openChannels: { selectedTab = .channels },
                 openObservers: { selectedTab = .observers }

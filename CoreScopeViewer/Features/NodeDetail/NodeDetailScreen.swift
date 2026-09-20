@@ -8,6 +8,9 @@ struct NodeDetailScreen: View {
     @Environment(RecentItemsStore.self) private var recentItemsStore
     @Environment(AppNavigationStore.self) private var appNavigationStore
     @State private var viewModel = NodeDetailViewModel()
+    @State private var nodeCatalogViewModel = MapViewModel()
+    @State private var linkedNodesByPublicKey: [String: MeshNode] = [:]
+    @State private var selectedLinkedNode: MeshNode?
 
     var body: some View {
         ScrollView {
@@ -24,7 +27,7 @@ struct NodeDetailScreen: View {
                     retry: retryNodeData
                 )
 
-                NodeIdentityCard(node: node)
+                NodeIdentityCard(node: displayedNode)
 
                 if let reach = viewModel.reach {
                     NodeReachCard(reach: reach)
@@ -44,7 +47,11 @@ struct NodeDetailScreen: View {
 
                 if let reach = viewModel.reach {
                     if !reach.links.isEmpty {
-                        NodeLinksCard(links: reach.links)
+                        NodeLinksCard(
+                            links: reach.links,
+                            nodesByPublicKey: linkedNodesByPublicKey,
+                            openNode: { selectedLinkedNode = $0 }
+                        )
                     }
                 }
 
@@ -57,7 +64,10 @@ struct NodeDetailScreen: View {
             .adaptiveContentWidth()
         }
         .background(NodeScopeBackground())
-        .navigationTitle(node.name ?? "Node")
+        .refreshable {
+            await refreshNodeData(forceCatalogRefresh: true)
+        }
+        .navigationTitle(displayedNode.name ?? "Node")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             recentItemsStore.record(node: node, source: favoriteSource)
@@ -70,23 +80,30 @@ struct NodeDetailScreen: View {
                 quickActionsMenu
             }
         }
+        .navigationDestination(item: $selectedLinkedNode) { linkedNode in
+            NodeDetailScreen(node: linkedNode)
+        }
+        .onChange(of: nodeCatalogViewModel.nodes) {
+            linkedNodesByPublicKey = nodeCatalogViewModel.nodesByPubkey
+        }
         .task {
             viewModel.configure(settings: settings)
-            await viewModel.load(pubkey: node.publicKey)
+            nodeCatalogViewModel.configure(settings: settings)
+            await refreshNodeData(forceCatalogRefresh: false)
         }
     }
 
     private var quickActionsMenu: some View {
         Menu {
             Button {
-                appNavigationStore.showOnMap(node)
+                appNavigationStore.showOnMap(displayedNode)
             } label: {
                 Label("Show on Map", systemImage: "map")
             }
             .disabled(!canShowOnMap)
 
             Button {
-                UIPasteboard.general.string = node.publicKey
+                UIPasteboard.general.string = displayedNode.publicKey
             } label: {
                 Label("Copy Public Key", systemImage: "doc.on.doc")
             }
@@ -97,23 +114,27 @@ struct NodeDetailScreen: View {
     }
 
     private var canShowOnMap: Bool {
-        guard let coordinate = node.coordinate else { return false }
+        guard let coordinate = displayedNode.coordinate else { return false }
         return coordinate.latitude != 0 || coordinate.longitude != 0
     }
 
     private var favoriteButton: some View {
         let isFavorite = favoritesStore.contains(
             kind: .node,
-            entityID: node.publicKey,
+            entityID: displayedNode.publicKey,
             source: favoriteSource
         )
         return Button {
-            favoritesStore.toggle(node: node, source: favoriteSource)
+            favoritesStore.toggle(node: displayedNode, source: favoriteSource)
         } label: {
             Image(systemName: isFavorite ? "star.fill" : "star")
         }
         .tint(NodeScopeStyle.signal)
         .accessibilityLabel(isFavorite ? "Remove node from favorites" : "Add node to favorites")
+    }
+
+    private var displayedNode: MeshNode {
+        viewModel.health?.node ?? node
     }
 
     private var favoriteSource: String {
@@ -122,8 +143,18 @@ struct NodeDetailScreen: View {
 
     private func retryNodeData() {
         Task {
-            await viewModel.load(pubkey: node.publicKey)
+            await refreshNodeData(forceCatalogRefresh: true)
         }
+    }
+
+    private func refreshNodeData(forceCatalogRefresh: Bool) async {
+        async let details: Void = viewModel.load(pubkey: node.publicKey)
+        async let catalog: Void = nodeCatalogViewModel.loadNodes(
+            region: nil,
+            forceRefresh: forceCatalogRefresh
+        )
+        _ = await (details, catalog)
+        linkedNodesByPublicKey = nodeCatalogViewModel.nodesByPubkey
     }
 }
 
@@ -347,6 +378,8 @@ private struct NodeReachCard: View {
 
 private struct NodeLinksCard: View {
     let links: [ReachLink]
+    let nodesByPublicKey: [String: MeshNode]
+    let openNode: (MeshNode) -> Void
     @State private var isExpanded = false
 
     private var visibleLinks: ArraySlice<ReachLink> {
@@ -357,33 +390,81 @@ private struct NodeLinksCard: View {
         NodeDetailCard(title: "Links", symbol: "link") {
             VStack(spacing: 0) {
                 ForEach(visibleLinks) { link in
-                    HStack(spacing: 10) {
-                        Image(systemName: link.bidir ? "arrow.left.arrow.right.circle.fill" : "arrow.right.circle.fill")
-                            .foregroundStyle(link.bidir ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(link.name)
-                                .font(.subheadline.weight(.semibold))
-                                .lineLimit(2)
-                                .layoutPriority(1)
-                            Text(link.bidir ? "Bidirectional" : "One way")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                    if let linkedNode = nodesByPublicKey[link.pubkey.lowercased()] {
+                        Button {
+                            openNode(linkedNode)
+                        } label: {
+                            NodeLinkRow(link: link, showsDisclosure: true)
                         }
-                        Spacer()
-                        if let distanceKm = link.distanceKm {
-                            Text("\(distanceKm, specifier: "%.1f") km")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Opens node details")
+                        .contextMenu {
+                            copyPublicKeyButton(for: link)
                         }
+                    } else {
+                        NodeLinkRow(link: link, showsDisclosure: false)
+                            .contextMenu {
+                                copyPublicKeyButton(for: link)
+                            }
+                            .accessibilityHint("Touch and hold to copy the public key")
                     }
-                    .padding(.vertical, 9)
-                    if link.id != visibleLinks.last?.id { Divider().opacity(0.3) }
+
+                    if link.id != visibleLinks.last?.id {
+                        Divider().opacity(0.3)
+                    }
                 }
             }
             if links.count > 3 {
                 ExpandSectionButton(isExpanded: $isExpanded, totalCount: links.count, noun: "links")
             }
         }
+    }
+
+    private func copyPublicKeyButton(for link: ReachLink) -> some View {
+        Button {
+            UIPasteboard.general.string = link.pubkey
+        } label: {
+            Label("Copy Public Key", systemImage: "doc.on.doc")
+        }
+    }
+}
+
+private struct NodeLinkRow: View {
+    let link: ReachLink
+    let showsDisclosure: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: link.bidir ? "arrow.left.arrow.right.circle.fill" : "arrow.right.circle.fill")
+                .foregroundStyle(link.bidir ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(link.name)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(2)
+                    .layoutPriority(1)
+                Text(link.bidir ? "Bidirectional" : "One way")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            if let distanceKm = link.distanceKm {
+                Text("\(distanceKm, specifier: "%.1f") km")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            if showsDisclosure {
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
+            }
+        }
+        .padding(.vertical, 9)
+        .contentShape(Rectangle())
     }
 }
 
