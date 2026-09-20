@@ -147,18 +147,18 @@ struct APIClient: Sendable {
         baseURL.absoluteString
     }
 
-    private static func makeDecoder() -> JSONDecoder {
-        let fractional = ISO8601DateFormatter()
-        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
-        let whole = ISO8601DateFormatter()
-        whole.formatOptions = [.withInternetDateTime]
+    static func makeDecoder() -> JSONDecoder {
+        let fractional = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
+        let whole = Date.ISO8601FormatStyle(includingFractionalSeconds: false)
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoderInner in
             let container = try decoderInner.singleValueContainer()
             let string = try container.decode(String.self)
-            if let date = fractional.date(from: string) ?? whole.date(from: string) {
+            if let date = try? fractional.parse(string) {
+                return date
+            }
+            if let date = try? whole.parse(string) {
                 return date
             }
             throw DecodingError.dataCorruptedError(

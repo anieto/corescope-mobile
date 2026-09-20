@@ -3,24 +3,6 @@ import Testing
 @testable import CoreScopeViewer
 
 struct ModelDecodingTests {
-    private static func makeDecoder() -> JSONDecoder {
-        let fractional = ISO8601DateFormatter()
-        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        let whole = ISO8601DateFormatter()
-        whole.formatOptions = [.withInternetDateTime]
-
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .custom { decoderInner in
-            let container = try decoderInner.singleValueContainer()
-            let string = try container.decode(String.self)
-            guard let date = fractional.date(from: string) ?? whole.date(from: string) else {
-                throw DecodingError.dataCorruptedError(in: container, debugDescription: "bad date: \(string)")
-            }
-            return date
-        }
-        return decoder
-    }
-
     @Test func decodesNodesResponse() throws {
         let json = """
         {
@@ -43,7 +25,7 @@ struct ModelDecodingTests {
         }
         """.data(using: .utf8)!
 
-        let response = try Self.makeDecoder().decode(NodesResponse.self, from: json)
+        let response = try APIClient.makeDecoder().decode(NodesResponse.self, from: json)
 
         #expect(response.nodes.count == 1)
         #expect(response.nodes[0].role == "repeater")
@@ -63,13 +45,13 @@ struct ModelDecodingTests {
           "role": "sensor",
           "lat": null,
           "lon": null,
-          "last_seen": "2026-09-01T12:00:00.000Z",
-          "first_seen": "2026-01-01T00:00:00.000Z",
+          "last_seen": "2026-09-01T12:00:00Z",
+          "first_seen": "2026-01-01T00:00:00Z",
           "advert_count": 3
         }
         """.data(using: .utf8)!
 
-        let node = try Self.makeDecoder().decode(MeshNode.self, from: json)
+        let node = try APIClient.makeDecoder().decode(MeshNode.self, from: json)
 
         #expect(node.name == nil)
         #expect(node.coordinate == nil)
