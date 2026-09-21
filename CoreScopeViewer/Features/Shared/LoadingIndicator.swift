@@ -105,6 +105,20 @@ struct InstrumentCardModifier: ViewModifier {
     }
 }
 
+private struct AdaptiveScrollContentWidthModifier: ViewModifier {
+    let maxWidth: CGFloat
+
+    func body(content: Content) -> some View {
+        GeometryReader { proxy in
+            content.contentMargins(
+                .horizontal,
+                max(0, (proxy.size.width - maxWidth) / 2),
+                for: .scrollContent
+            )
+        }
+    }
+}
+
 extension View {
     func instrumentCard() -> some View {
         modifier(InstrumentCardModifier())
@@ -115,6 +129,12 @@ extension View {
     func adaptiveContentWidth(_ maxWidth: CGFloat = 840) -> some View {
         frame(maxWidth: maxWidth)
             .frame(maxWidth: .infinity)
+    }
+
+    /// Keeps a List or ScrollView full-width so its scroll indicator remains
+    /// at the window edge while centering only the scrollable content.
+    func adaptiveScrollContentWidth(_ maxWidth: CGFloat = 840) -> some View {
+        modifier(AdaptiveScrollContentWidthModifier(maxWidth: maxWidth))
     }
 
     /// Keeps the final scrollable content above NodeScope's app-level

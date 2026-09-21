@@ -26,8 +26,11 @@ struct ExploreScreen: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            ScrollViewReader { proxy in
-                List {
+            ZStack {
+                NodeScopeBackground()
+
+                ScrollViewReader { proxy in
+                    List {
                 ExploreHeader(
                     count: visibleItems.count,
                     canReorder: canReorder,
@@ -79,9 +82,8 @@ struct ExploreScreen: View {
                 recentSection
             }
             .scrollContentBackground(.hidden)
-            .background(NodeScopeBackground())
             .listStyle(.plain)
-            .adaptiveContentWidth()
+            .adaptiveScrollContentWidth()
             .floatingDockScrollClearance()
             .refreshable {
                 await refreshExploreData()
@@ -105,6 +107,7 @@ struct ExploreScreen: View {
                     PacketFeedScreen()
                 }
             }
+                }
             }
         }
         .sheet(isPresented: $isAddFavoritePresented) {

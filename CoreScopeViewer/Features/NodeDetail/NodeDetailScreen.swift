@@ -29,6 +29,13 @@ struct NodeDetailScreen: View {
 
                 NodeIdentityCard(node: displayedNode)
 
+                NavigationLink {
+                    NodeAnalyticsScreen(node: displayedNode)
+                } label: {
+                    NodeAnalyticsLinkCard()
+                }
+                .buttonStyle(.plain)
+
                 if let reach = viewModel.reach {
                     NodeReachCard(reach: reach)
                 } else if viewModel.isLoading {
@@ -161,6 +168,38 @@ struct NodeDetailScreen: View {
         )
         _ = await (details, catalog)
         linkedNodesByPublicKey = nodeCatalogViewModel.nodesByPubkey
+    }
+}
+
+private struct NodeAnalyticsLinkCard: View {
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "chart.xyaxis.line")
+                .font(.title2)
+                .foregroundStyle(NodeScopeStyle.signal)
+                .frame(width: 48, height: 48)
+                .background(NodeScopeStyle.signal.opacity(0.13), in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Node Analytics")
+                    .font(.headline)
+                Text("Activity, signal, coverage, and peer trends")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+            }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "chevron.right")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(16)
+        .instrumentCard()
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Opens historical analytics for this node")
     }
 }
 

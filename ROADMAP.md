@@ -4,6 +4,10 @@ NodeScope should remain a fast, native, read-only mesh observability tool. New
 features should make live and historical network behavior easier to understand
 without reproducing every desktop or operator control from CoreScope.
 
+Every feature and release closeout must be verified on both iPhone and iPad,
+including navigation, safe areas, adaptive layout, popovers/sheets, and toolbar
+content in portrait and landscape where applicable.
+
 ## Completed foundation — 0.2.0 through 0.6.0
 
 - Native live map, animated packet routes, route details, and packet replay.

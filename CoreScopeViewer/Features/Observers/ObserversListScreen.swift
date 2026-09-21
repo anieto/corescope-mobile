@@ -97,7 +97,7 @@ struct ObserversListScreen: View {
             .scrollContentBackground(.hidden)
             .background(NodeScopeBackground())
             .listStyle(.plain)
-            .adaptiveContentWidth()
+            .adaptiveScrollContentWidth()
             .background(NodeScopeBackground())
             .floatingDockScrollClearance()
             .toolbar(.hidden, for: .navigationBar)
