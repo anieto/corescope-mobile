@@ -21,6 +21,13 @@
       "host": "analyzer.gulfcoastmesh.org",
       "subtitle": "Gulf Coast, USA",
       "isDefault": false
+    },
+    {
+      "id": "comchan",
+      "name": "ComChan",
+      "host": "analyzer.comchan.net",
+      "subtitle": "Central Texas Meshcore",
+      "isDefault": false
     }
   ]
 }
