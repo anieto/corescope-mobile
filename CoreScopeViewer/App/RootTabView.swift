@@ -69,6 +69,7 @@ struct RootTabView: View {
                 .tag(Tab.observers)
 
             SettingsScreen(resetID: resetIDs[.settings] ?? UUID())
+                .id(resetIDs[.settings])
                 .toolbar(.hidden, for: .tabBar)
                 .tabItem { Label("Settings", systemImage: "gearshape") }
                 .tag(Tab.settings)

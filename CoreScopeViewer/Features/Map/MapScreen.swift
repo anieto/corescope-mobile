@@ -153,6 +153,8 @@ struct MapScreen: View {
                                 .font(.headline)
                                 .fixedSize()
                         }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel(liveFeed.isConnected ? "Live Map, connected" : "Live Map, reconnecting")
                     }
@@ -198,7 +200,11 @@ struct MapScreen: View {
                                 action: { isMapFiltersPresented = true }
                             )
                         }
-                        if !viewModel.nodes.isEmpty {
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        if isShowingMapLoadingIndicator {
+                            LoadingIndicator(title: mapLoadingTitle)
+                                .allowsHitTesting(false)
+                        } else if !viewModel.nodes.isEmpty {
                             DataLoadStatusView(
                                 lastUpdatedAt: viewModel.lastUpdatedAt,
                                 errorMessage: viewModel.errorMessage,
@@ -208,6 +214,7 @@ struct MapScreen: View {
                             .frame(maxWidth: 300, alignment: .leading)
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.leading, 12)
                     .padding(.top, 12)
                 }
@@ -215,7 +222,7 @@ struct MapScreen: View {
                     Button(action: centerOnUserLocation) {
                         Image(systemName: "location.fill")
                             .font(.title3.weight(.semibold))
-                            .foregroundStyle(Color.accentColor)
+                            .foregroundStyle(colorScheme == .dark ? Color.white : Color.accentColor)
                             .frame(width: 44, height: 44)
                     }
                     .buttonStyle(.plain)
@@ -254,17 +261,6 @@ struct MapScreen: View {
                             systemImage: "wifi.slash",
                             description: Text(errorMessage)
                         )
-                    }
-                }
-                .overlay(alignment: .topTrailing) {
-                    if (viewModel.isLoading && !isReplayMode)
-                        || (isChangingRegion && !isReplayMode)
-                        || isUpdatingDisplayedNodes
-                        || isLocatingUser {
-                        LoadingIndicator(title: mapLoadingTitle)
-                            .padding(.top, 12)
-                            .padding(.trailing, 12)
-                            .allowsHitTesting(false)
                     }
                 }
         }
@@ -635,7 +631,6 @@ struct MapScreen: View {
             .mapStyle(mapDisplayStyle.style)
             .mapControls {
                 MapCompass()
-                MapScaleView()
             }
             .onMapCameraChange(frequency: .onEnd) { context in
                 visibleRegion = context.region
@@ -830,10 +825,15 @@ struct MapScreen: View {
             HStack(spacing: 5) {
                 Image(systemName: "line.3.horizontal.decrease.circle.fill")
                 Text(regionScopeTitle)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer(minLength: 4)
                 Image(systemName: "chevron.down")
                     .font(.caption2.weight(.semibold))
             }
             .font(.caption.weight(.semibold))
+            .foregroundStyle(colorScheme == .dark ? Color.white : Color.accentColor)
+            .frame(width: 150, alignment: .leading)
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
             .nodeScopeFloatingGlass(cornerRadius: 20)
@@ -864,6 +864,13 @@ struct MapScreen: View {
             .sorted { lhs, rhs in
                 lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
             }
+    }
+
+    private var isShowingMapLoadingIndicator: Bool {
+        (viewModel.isLoading && !isReplayMode)
+            || (isChangingRegion && !isReplayMode)
+            || isUpdatingDisplayedNodes
+            || isLocatingUser
     }
 
     private var mapLoadingTitle: String {
@@ -1001,6 +1008,7 @@ struct MapScreen: View {
                     .frame(width: 36, height: 36)
             }
         }
+        .foregroundStyle(colorScheme == .dark ? Color.white : Color.accentColor)
         .nodeScopeFloatingGlass(cornerRadius: 10)
     }
 
@@ -1167,6 +1175,7 @@ struct MapScreen: View {
     }
 
     private func queuePacketReplay() {
+        selectedNode = nil
         pendingReplayRequestID = packetReplayStore.requestID
         guard !isChangingRegion else { return }
         replayPendingPacketIfNeeded()
@@ -2141,6 +2150,7 @@ private struct MapNodeFilterSheet: View {
     @Binding var filters: MapNodeFilterSelection
     let observers: [MapObserverOption]
 
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
     @State private var isObserverPickerPresented = false
 
@@ -2185,6 +2195,7 @@ private struct MapNodeFilterSheet: View {
                 .presentationDragIndicator(.visible)
             }
         }
+        .tint(colorScheme == .dark ? Color.white : Color.accentColor)
     }
 }
 
@@ -2203,7 +2214,7 @@ private struct MapActivityFilterSection: View {
                         Spacer()
                         if selection == filter {
                             Image(systemName: "checkmark")
-                                .foregroundStyle(NodeScopeStyle.signal)
+                                .foregroundStyle(.primary)
                         }
                     }
                 }
@@ -2246,7 +2257,7 @@ private struct MapRoleFilterSection: View {
             Spacer()
             if isSelected {
                 Image(systemName: "checkmark")
-                    .foregroundStyle(NodeScopeStyle.signal)
+                    .foregroundStyle(.primary)
             }
         }
     }
@@ -2359,7 +2370,7 @@ private struct MapObserverPickerSheet: View {
             Spacer()
             if isSelected {
                 Image(systemName: "checkmark")
-                    .foregroundStyle(NodeScopeStyle.signal)
+                    .foregroundStyle(.primary)
             }
         }
         .contentShape(Rectangle())
