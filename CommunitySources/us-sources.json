@@ -19,8 +19,7 @@
       "id": "gulf-coast-mesh",
       "name": "Gulf Coast Mesh",
       "host": "analyzer.gulfcoastmesh.org",
-      "subtitle": "Comms that hold
-when the coast does not.",
+      "subtitle": "Comms that hold when the coast does not.",
       "isDefault": false,
       "mapCenter": [30.2, -90.5],
       "mapRadiusKm": 300
