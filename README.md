@@ -58,6 +58,14 @@ NodeScope has no analytics service or application backend of its own. See
 [PRIVACY.md](PRIVACY.md) for what is stored locally and what is sent to the
 analyzer you select.
 
+## AI disclosure
+
+It's mixed. I use AI a lot at work. Side projects are a way for me to keep my
+programming skills alive. This project contains a mix of manually written and
+AI generated (but manually reviewed) code. I used it more heavily in
+brainstorming ideas and for managing the GitHub deployment. Feel free to not use this if
+you're a purist.
+
 ## Related project
 
 [CoreScope](https://github.com/Kpa-clawbot/CoreScope) is a separate GPL-3.0
