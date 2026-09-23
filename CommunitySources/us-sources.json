@@ -30,6 +30,13 @@
       "host": "analyzer.comchan.net",
       "subtitle": "Central Texas Meshcore",
       "isDefault": false
+    },
+    {
+      "id": "colorado-mesh",
+      "name": "Colorado Mesh",
+      "host": "analyzer.meshcore.coloradomesh.org",
+      "subtitle": "Colorado's Mesh Network Community",
+      "isDefault": false
     }
   ]
 }
