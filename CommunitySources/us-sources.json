@@ -20,7 +20,9 @@
       "name": "Gulf Coast Mesh",
       "host": "analyzer.gulfcoastmesh.org",
       "subtitle": "Gulf Coast, USA",
-      "isDefault": false
+      "isDefault": false,
+      "mapCenter": [30.2, -90.5],
+      "mapRadiusKm": 300
     },
     {
       "id": "comchan",

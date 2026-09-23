@@ -7,6 +7,14 @@ struct AnalyzerSource: Codable, Hashable, Identifiable {
     let host: String
     let subtitle: String
     let isDefault: Bool
+    let mapCenter: [Double]?
+    let mapRadiusKm: Double?
+
+    var mapLatitude: Double? { mapCenter?.first }
+    var mapLongitude: Double? {
+        guard let mapCenter, mapCenter.count > 1 else { return nil }
+        return mapCenter[1]
+    }
 }
 
 private struct AnalyzerSourceRegistryDocument: Codable {
@@ -94,4 +102,5 @@ final class AnalyzerSourceRegistry {
         }
         return document.sources
     }
+
 }

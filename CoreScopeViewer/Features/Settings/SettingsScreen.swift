@@ -105,6 +105,19 @@ struct SettingsScreen: View {
                         .instrumentCard()
                     }
                     .buttonStyle(.plain)
+
+                    NavigationLink {
+                        SupportDevelopmentScreen()
+                    } label: {
+                        SettingsNavigationRow(
+                            title: "Support Development",
+                            value: "Leave an optional one-time tip",
+                            symbol: "heart.fill"
+                        )
+                        .padding(16)
+                        .instrumentCard()
+                    }
+                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 18)

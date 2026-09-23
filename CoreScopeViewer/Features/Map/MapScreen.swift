@@ -12,6 +12,7 @@ struct MapScreen: View {
     @Environment(ObserverRegionLookup.self) private var observerRegionLookup
     @Environment(PacketReplayStore.self) private var packetReplayStore
     @Environment(AppNavigationStore.self) private var appNavigationStore
+    @Environment(AnalyzerSourceRegistry.self) private var analyzerSourceRegistry
     @Environment(\.colorScheme) private var colorScheme
     @State private var viewModel = MapViewModel()
     @State private var cameraPosition: MapCameraPosition = .automatic
@@ -194,7 +195,7 @@ struct MapScreen: View {
                 .overlay(alignment: .topLeading) {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 8) {
-                            regionScopeControl
+                            MapRegionScopeControl()
                             MapNodeFilterButton(
                                 activeFilterCount: nodeFilters.activeFilterCount,
                                 action: { isMapFiltersPresented = true }
@@ -364,6 +365,17 @@ struct MapScreen: View {
             _ = await (regionZoom, minimumLoaderDuration)
             isChangingRegion = false
             _ = await (nodes, packets)
+
+            // Loading a new analyzer can replace the map's annotations after
+            // the first camera move. Reapply the analyzer/region camera once
+            // that data settles so MapKit's automatic content fit cannot use
+            // distant observed traffic as the final landing viewport.
+            guard !Task.isCancelled,
+                  sourceHost == settings.host,
+                  selectedRegion == regionFilter.selectedRegion else {
+                return
+            }
+            await zoomToRegionSelection()
 
             processHistoricalPackets()
             processIncomingEvents()
@@ -795,59 +807,6 @@ struct MapScreen: View {
         )
     }
 
-    private var regionScopeControl: some View {
-        Menu {
-            Button {
-                regionFilter.selectedRegion = nil
-            } label: {
-                if regionFilter.selectedRegion == nil {
-                    Label("All Regions", systemImage: "checkmark")
-                } else {
-                    Text("All Regions")
-                }
-            }
-
-            if !regionFilter.options.isEmpty {
-                Divider()
-                ForEach(regionFilter.options, id: \.self) { code in
-                    Button {
-                        regionFilter.selectedRegion = code
-                    } label: {
-                        if regionFilter.selectedRegion == code {
-                            Label(regionFilter.label(for: code), systemImage: "checkmark")
-                        } else {
-                            Text(regionFilter.label(for: code))
-                        }
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: 5) {
-                Image(systemName: "line.3.horizontal.decrease.circle.fill")
-                Text(regionScopeTitle)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                Spacer(minLength: 4)
-                Image(systemName: "chevron.down")
-                    .font(.caption2.weight(.semibold))
-            }
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(colorScheme == .dark ? Color.white : Color.accentColor)
-            .frame(width: 150, alignment: .leading)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .nodeScopeFloatingGlass(cornerRadius: 20)
-        }
-        .accessibilityLabel("Region scope: \(regionScopeTitle)")
-    }
-
-    private var regionScopeTitle: String {
-        guard let selectedRegion = regionFilter.selectedRegion else {
-            return "All Regions"
-        }
-        return "\(selectedRegion) · \(regionFilter.label(for: selectedRegion))"
-    }
-
     private var mapObserverOptions: [MapObserverOption] {
         let selectedRegion = regionFilter.selectedRegion?.uppercased()
         return observerRegionLookup.observers
@@ -923,6 +882,7 @@ struct MapScreen: View {
                 replayPings = []
             }
             .font(.caption.weight(.semibold))
+            .foregroundStyle(mapControlAccentColor)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
         }
@@ -971,7 +931,7 @@ struct MapScreen: View {
             } label: {
                 Label("Route Only", systemImage: showsReplayRouteOnly ? "checkmark.circle.fill" : "circle")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(showsReplayRouteOnly ? Color.accentColor : .primary)
+                    .foregroundStyle(showsReplayRouteOnly ? mapControlAccentColor : .primary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)
             }
@@ -982,6 +942,10 @@ struct MapScreen: View {
         .padding(4)
         .nodeScopeFloatingGlass(cornerRadius: 20)
         .accessibilityElement(children: .contain)
+    }
+
+    private var mapControlAccentColor: Color {
+        Color.accentColor.readableForeground(for: colorScheme)
     }
 
     private var mapUpdateInterval: TimeInterval {
@@ -1329,6 +1293,10 @@ struct MapScreen: View {
     private func zoomToRegionSelection() async {
         guard !isReplayMode else { return }
         guard let selectedRegion = regionFilter.selectedRegion else {
+            if let viewport = communitySourceViewport {
+                moveCamera(to: viewport.center, radiusKm: viewport.radiusKm)
+                return
+            }
             if let defaults = viewModel.mapDefaults {
                 moveCamera(
                     to: CLLocationCoordinate2D(latitude: defaults.latitude, longitude: defaults.longitude),
@@ -1358,6 +1326,20 @@ struct MapScreen: View {
 
         iataCoordinates[code] = coordinate
         moveCamera(to: coordinate)
+    }
+
+    private var communitySourceViewport: (center: CLLocationCoordinate2D, radiusKm: Double)? {
+        guard let source = analyzerSourceRegistry.sources.first(where: {
+            $0.host.caseInsensitiveCompare(settings.host) == .orderedSame
+        }),
+        let latitude = source.mapLatitude,
+        let longitude = source.mapLongitude else {
+            return nil
+        }
+
+        let center = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+        guard CLLocationCoordinate2DIsValid(center) else { return nil }
+        return (center, source.mapRadiusKm ?? 250)
     }
 
     private func moveCamera(
@@ -1888,6 +1870,64 @@ private struct MapRouteDetails: Identifiable {
             lines.append("\(hop.position). \(hop.title)\(key)")
         }
         return lines.joined(separator: "\n")
+    }
+}
+
+private struct MapRegionScopeControl: View {
+    @Environment(RegionFilterStore.self) private var regionFilter
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        Menu {
+            Button {
+                regionFilter.selectedRegion = nil
+            } label: {
+                if regionFilter.selectedRegion == nil {
+                    Label("All Regions", systemImage: "checkmark")
+                } else {
+                    Text("All Regions")
+                }
+            }
+
+            if !regionFilter.options.isEmpty {
+                Divider()
+                ForEach(regionFilter.options, id: \.self) { code in
+                    Button {
+                        regionFilter.selectedRegion = code
+                    } label: {
+                        if regionFilter.selectedRegion == code {
+                            Label(regionFilter.label(for: code), systemImage: "checkmark")
+                        } else {
+                            Text(regionFilter.label(for: code))
+                        }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "line.3.horizontal.decrease.circle.fill")
+                Text(title)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.semibold))
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(colorScheme == .dark ? Color.white : Color.accentColor)
+            .frame(width: 150, alignment: .leading)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .nodeScopeFloatingGlass(cornerRadius: 20)
+        }
+        .accessibilityLabel("Region scope: \(title)")
+    }
+
+    private var title: String {
+        guard let selectedRegion = regionFilter.selectedRegion else {
+            return "All Regions"
+        }
+        return "\(selectedRegion) · \(regionFilter.label(for: selectedRegion))"
     }
 }
 
