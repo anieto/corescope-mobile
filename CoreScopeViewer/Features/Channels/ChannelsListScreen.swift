@@ -122,6 +122,7 @@ struct ChannelsListScreen: View {
             isShowingAddChannel = false
             searchText = ""
             isSearchPresented = false
+            isFiltersPresented = false
         }
         .task(id: "\(settings.host)|\(regionFilter.selectedRegion ?? "")") {
             viewModel.configure(settings: settings)

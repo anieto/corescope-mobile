@@ -124,8 +124,9 @@ struct ObserversListScreen: View {
             navigationPath = NavigationPath()
             searchText = ""
             isSearchPresented = false
+            isFiltersPresented = false
         }
-        .task {
+        .task(id: settings.host) {
             viewModel.configure(settings: settings)
             await viewModel.loadObservers()
             updateVisibleObservers()

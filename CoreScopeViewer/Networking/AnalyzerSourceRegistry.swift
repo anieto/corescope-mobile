@@ -46,16 +46,19 @@ final class AnalyzerSourceRegistry {
     }
 
     func refresh() async {
-        guard let remoteRegistryURL else { return }
+        guard let remoteRegistryURL, !isRefreshing else { return }
         isRefreshing = true
         defer { isRefreshing = false }
 
         do {
+            let requestURL = cacheBustingURL(for: remoteRegistryURL)
             var request = URLRequest(
-                url: remoteRegistryURL,
+                url: requestURL,
                 cachePolicy: .reloadIgnoringLocalAndRemoteCacheData
             )
             request.setValue("application/vnd.github.raw+json", forHTTPHeaderField: "Accept")
+            request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
+            request.setValue("no-cache", forHTTPHeaderField: "Pragma")
             request.setValue("NodeScope", forHTTPHeaderField: "User-Agent")
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let response = response as? HTTPURLResponse,
@@ -89,6 +92,17 @@ final class AnalyzerSourceRegistry {
             return Self.defaultRemoteRegistryURL
         }
         return URL(string: rawURL) ?? Self.defaultRemoteRegistryURL
+    }
+
+    private func cacheBustingURL(for url: URL) -> URL {
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            return url
+        }
+        var queryItems = components.queryItems ?? []
+        queryItems.removeAll { $0.name == "cache_bust" }
+        queryItems.append(URLQueryItem(name: "cache_bust", value: UUID().uuidString))
+        components.queryItems = queryItems
+        return components.url ?? url
     }
 
     private static var cachedSources: [AnalyzerSource]? {

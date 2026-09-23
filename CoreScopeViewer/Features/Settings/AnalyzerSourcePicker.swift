@@ -99,6 +99,10 @@ struct AnalyzerSourcePickerScreen: View {
             }
         }
         .adaptiveContentWidth()
+        .floatingDockScrollClearance()
+        .refreshable {
+            await sourceRegistry.refresh()
+        }
         .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
         .navigationTitle("Analyzer Source")
         .navigationBarTitleDisplayMode(.inline)

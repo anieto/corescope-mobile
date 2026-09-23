@@ -112,8 +112,20 @@ struct RootTabView: View {
         .onChange(of: selectedTab) {
             lastSelectedTabRawValue = selectedTab.rawValue
         }
+        .onChange(of: settings.host) {
+            resetAllTabs()
+        }
         .task(id: "\(settings.host)|\(regionFilter.selectedRegion ?? "")") {
             await ChannelsViewModel.preload(settings: settings, region: regionFilter.selectedRegion)
+        }
+    }
+
+    private func resetAllTabs() {
+        // Keep Settings alive while it reports the connection result for the
+        // newly selected analyzer. The picker dismisses itself, while every
+        // data-bearing tab still receives a fresh navigation/data reset.
+        for tab in Tab.allCases where tab != .settings {
+            resetIDs[tab] = UUID()
         }
     }
 }

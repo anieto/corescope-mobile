@@ -41,6 +41,7 @@ struct MapScreen: View {
     @State private var pendingReplayRequestID: UUID?
     @State private var loadedAnalyzerHost = ""
     @State private var displayUpdateTask: Task<Void, Never>?
+    @State private var incomingEventTask: Task<Void, Never>?
     @State private var displayUpdateID = UUID()
     @State private var isUpdatingDisplayedNodes = false
     @State private var isSearchPresented = false
@@ -48,6 +49,7 @@ struct MapScreen: View {
     @State private var selectedRouteDetails: MapRouteDetails?
     @State private var highlightedNodeID: String?
     @State private var lastHandledNavigationRequestID: UUID?
+    @State private var isMapCameraMoving = false
 
     // The map remains edge-to-edge, while interactive controls sit above the
     // app-level floating dock rendered by RootTabView.
@@ -138,7 +140,7 @@ struct MapScreen: View {
             TimelineView(
                 .animation(
                     minimumInterval: mapUpdateInterval,
-                    paused: pingsForDisplay.isEmpty || !isTabActive
+                    paused: !isTabActive || !pingsForDisplay.contains { !$0.isExpired() }
                 )
             ) { context in
                 mapContent(at: context.date)
@@ -284,6 +286,8 @@ struct MapScreen: View {
             .presentationDragIndicator(.visible)
         }
         .onChange(of: resetID) {
+            incomingEventTask?.cancel()
+            incomingEventTask = nil
             selectedNode = nil
             pendingReplayRequestID = nil
             replayPings = []
@@ -296,6 +300,8 @@ struct MapScreen: View {
         }
         .onDisappear {
             displayUpdateTask?.cancel()
+            incomingEventTask?.cancel()
+            incomingEventTask = nil
             isUpdatingDisplayedNodes = false
         }
         .task {
@@ -383,12 +389,7 @@ struct MapScreen: View {
         }
         .onChange(of: liveFeed.recentEvents.first?.id) {
             if isInitialLoadComplete {
-                processIncomingEvents()
-            }
-        }
-        .onChange(of: liveFeed.recentEvents.count) {
-            if isInitialLoadComplete {
-                processIncomingEvents()
+                scheduleIncomingEventProcessing()
             }
         }
         .onChange(of: observerRegionLookup.isLoaded) { _, isLoaded in
@@ -491,6 +492,12 @@ struct MapScreen: View {
         let currentPings = pingsForDisplay.filter {
             $0.hasStarted(at: date) && !$0.isExpired(at: date)
         }
+        let completedPings = currentPings.filter {
+            !$0.isPulse && $0.hasCompletedTravel(at: date)
+        }
+        let anchoredPings = isReplayMode
+            ? completedPings
+            : Array(completedPings.suffix(40))
         let routeCoordinates = Set(currentPings.flatMap {
             [CoordinateKey($0.start), CoordinateKey($0.end)]
         })
@@ -503,12 +510,31 @@ struct MapScreen: View {
         let mapClusters = isReplayMode && showsReplayRouteOnly
             ? []
             : nodeClusters.filter { $0.memberCoordinates.isDisjoint(with: routeCoordinates) }
+        // MapKit's built-in annotation titles become expensive when hundreds
+        // appear at once. Only render our lightweight labels when the map is
+        // genuinely close and the visible marker count is bounded.
+        let showsNodeNames = (visibleRegion?.span.latitudeDelta ?? .infinity) <= 0.08
+            && mapNodes.count <= 60
 
         MapReader { proxy in
             Map(position: $cameraPosition, scope: mapScope) {
+                ForEach(anchoredPings) { ping in
+                    let opacity = ping.completedPathOpacity(at: date)
+                    MapPolyline(coordinates: [ping.start, ping.end])
+                        .stroke(
+                            ping.pathColor.opacity(opacity * 0.18),
+                            style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round)
+                        )
+                    MapPolyline(coordinates: [ping.start, ping.end])
+                        .stroke(
+                            ping.pathColor.opacity(opacity * 0.85),
+                            style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
+                        )
+                }
+
                 ForEach(mapNodes) { node in
                     if let coordinate = node.coordinate {
-                        Annotation(node.name ?? shortKey(node.publicKey), coordinate: coordinate, anchor: .center) {
+                        Annotation("", coordinate: coordinate, anchor: .center) {
                             let isHighlighted = node.id == highlightedNodeID
                             let isRouteHop = routeCoordinates.contains(CoordinateKey(coordinate))
                             Button {
@@ -518,8 +544,8 @@ struct MapScreen: View {
                                     .font(.caption2.weight(.semibold))
                                     .foregroundStyle(.white)
                                     .frame(
-                                        width: isHighlighted ? 26 : 16,
-                                        height: isHighlighted ? 26 : 16
+                                        width: isHighlighted ? 24 : 14,
+                                        height: isHighlighted ? 24 : 14
                                     )
                                     .background(NodeRoleStyle.color(for: node.role), in: Circle())
                                     .overlay {
@@ -535,6 +561,25 @@ struct MapScreen: View {
                                     )
                                     .frame(width: 32, height: 32)
                                     .contentShape(Circle())
+                                    .overlay(alignment: .top) {
+                                        if showsNodeNames {
+                                            Text(node.name ?? shortKey(node.publicKey))
+                                                .font(.caption2.weight(.semibold))
+                                                .foregroundStyle(.primary)
+                                                .lineLimit(1)
+                                                .fixedSize(horizontal: true, vertical: false)
+                                                .padding(.horizontal, 4)
+                                                .padding(.vertical, 2)
+                                                .background(
+                                                    colorScheme == .dark
+                                                        ? Color.black.opacity(0.72)
+                                                        : Color.white.opacity(0.82),
+                                                    in: Capsule()
+                                                )
+                                                .offset(y: 25)
+                                                .allowsHitTesting(false)
+                                        }
+                                    }
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(node.name ?? shortKey(node.publicKey))
@@ -544,67 +589,19 @@ struct MapScreen: View {
                 }
 
                 ForEach(mapClusters) { cluster in
-                    Annotation("\(cluster.count) nodes", coordinate: cluster.coordinate, anchor: .center) {
+                    Annotation("", coordinate: cluster.coordinate, anchor: .center) {
                         Text("\(cluster.count)")
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(.white)
-                            .frame(minWidth: 28, minHeight: 28)
+                            .frame(width: 26, height: 26)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.65)
                             .background(.blue, in: Circle())
                             .overlay {
                                 Circle()
                                     .stroke(.white.opacity(0.8), lineWidth: 1)
                             }
                             .accessibilityLabel("\(cluster.count) nearby nodes")
-                    }
-                }
-
-                // Keep the route visible while its packet signal travels across it.
-                ForEach(currentPings.filter { !$0.isPulse }) { ping in
-                    let progress = ping.progress(at: date)
-                    let fadeOpacity = max(0.15, (1.0 - progress) * 0.85)
-                    MapPolyline(coordinates: [ping.start, ping.end])
-                        .stroke(
-                            ping.pathColor.opacity(fadeOpacity),
-                            style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round)
-                        )
-                }
-
-                // Stationary Breadcrumbs along active routes during travel phase
-                ForEach(trailDots(at: date)) { dot in
-                    Annotation("", coordinate: dot.coordinate) {
-                        Circle()
-                            .fill(dot.color.opacity(dot.opacity))
-                            .frame(width: 6, height: 6)
-                    }
-                }
-
-                // Traveling Packet Signal Dots & Single-Node Pulse Rings
-                ForEach(currentPings) { ping in
-                    let travelProgress = ping.travelProgress(at: date)
-                    if ping.isPulse {
-                        let progress = ping.progress(at: date)
-                        Annotation("", coordinate: ping.start) {
-                            Circle()
-                                .stroke(ping.pathColor, lineWidth: 2.5)
-                                .frame(width: 12 + progress * 32, height: 12 + progress * 32)
-                                .opacity(1.0 - progress)
-                        }
-                    } else if travelProgress < 1.0 {
-                        Annotation("", coordinate: ping.currentCoordinate(at: date)) {
-                            ZStack {
-                                Circle()
-                                    .fill(ping.signalColor.opacity(0.35))
-                                    .frame(width: 30, height: 30)
-                                Circle()
-                                    .fill(ping.signalColor)
-                                    .frame(width: 16, height: 16)
-                                    .shadow(color: ping.signalColor.opacity(0.95), radius: 8)
-                                Circle()
-                                    .fill(.white)
-                                    .frame(width: 5, height: 5)
-                            }
-                            .opacity(1.0 - travelProgress * 0.5)
-                        }
                     }
                 }
 
@@ -644,7 +641,11 @@ struct MapScreen: View {
             .mapControls {
                 MapCompass()
             }
+            .onMapCameraChange(frequency: .continuous) { _ in
+                noteCameraMovement()
+            }
             .onMapCameraChange(frequency: .onEnd) { context in
+                isMapCameraMoving = false
                 visibleRegion = context.region
                 updateDisplayedNodes(in: context.region)
             }
@@ -655,6 +656,16 @@ struct MapScreen: View {
                     selectedRouteDetails = route
                 } else if let node = nearestNode(to: screenPoint, using: proxy) {
                     selectedNode = node
+                }
+            }
+            .overlay {
+                if !isMapCameraMoving {
+                    MapTrafficCanvas(
+                        pings: transientPings(from: currentPings, at: date),
+                        date: date,
+                        proxy: proxy
+                    )
+                    .allowsHitTesting(false)
                 }
             }
         }
@@ -696,6 +707,22 @@ struct MapScreen: View {
             filteredNodeCount = result.filteredCount
             isUpdatingDisplayedNodes = false
         }
+    }
+
+    private func noteCameraMovement() {
+        if !isMapCameraMoving {
+            isMapCameraMoving = true
+        }
+    }
+
+    private func transientPings(from pings: [ActivePing], at date: Date) -> [ActivePing] {
+        let transient = pings.filter {
+            $0.isPulse
+                || !$0.hasCompletedTravel(at: date)
+                || $0.arrivalPulseProgress(at: date) != nil
+        }
+        guard !isReplayMode, transient.count > 20 else { return transient }
+        return Array(transient.suffix(20))
     }
 
     nonisolated private static func makeDisplayResult(
@@ -754,8 +781,10 @@ struct MapScreen: View {
             )
         }
 
-        let latitudeCellSize = region.latitudeDelta / 12
-        let longitudeCellSize = region.longitudeDelta / 12
+        // Slightly smaller grid cells keep nearby nodes separate for
+        // longer now that individual markers occupy less visual space.
+        let latitudeCellSize = region.latitudeDelta / 14
+        let longitudeCellSize = region.longitudeDelta / 14
         var nodesByCell: [String: [MeshNode]] = [:]
         for node in visibleNodes {
             guard !Task.isCancelled, let latitude = node.lat, let longitude = node.lon else { return nil }
@@ -950,11 +979,23 @@ struct MapScreen: View {
     }
 
     private var mapUpdateInterval: TimeInterval {
-        // Only redraw rapidly while a packet marker or pulse is moving. Once
-        // routes are static, a one-second refresh is enough for their fade-out.
-        pingsForDisplay.contains { $0.isPulse || $0.travelProgress() < 1.0 }
-            ? 1.0 / 12.0
-            : 1.0
+        // Replays stay especially fluid, while dense live traffic uses a
+        // slightly lower cadence to leave MapKit enough time to render its map.
+        let now = Date.now
+        let hasActiveMotion = pingsForDisplay.contains {
+            guard !$0.isExpired(at: now) else { return false }
+            return $0.isPulse
+                || !$0.hasCompletedTravel(at: now)
+                || $0.arrivalPulseProgress(at: now) != nil
+                || $0.progress(at: now) > 0
+        }
+        guard hasActiveMotion else {
+            return 1.0
+        }
+        if isReplayMode {
+            return 1.0 / 30.0
+        }
+        return pingsForDisplay.count > 40 ? 1.0 / 15.0 : 1.0 / 24.0
     }
 
     private var zoomControl: some View {
@@ -979,32 +1020,6 @@ struct MapScreen: View {
 
     private func shortKey(_ key: String) -> String {
         String(key.prefix(8)).uppercased()
-    }
-
-    private struct TrailDot: Identifiable {
-        let id: String
-        let coordinate: CLLocationCoordinate2D
-        let opacity: Double
-        let color: Color
-    }
-
-    private func trailDots(at date: Date) -> [TrailDot] {
-        pingsForDisplay
-            .filter { !$0.isExpired(at: date) && !$0.isPulse && $0.travelProgress(at: date) < 1.0 }
-            .flatMap { ping in
-                let travelProgress = ping.travelProgress(at: date)
-                let dotOpacity = (1.0 - travelProgress) * 0.75
-                return ActivePing.trailFractions
-                    .filter { $0 <= travelProgress }
-                    .map { fraction in
-                        TrailDot(
-                            id: "\(ping.id)-\(fraction)",
-                            coordinate: ping.coordinate(atFraction: fraction),
-                            opacity: dotOpacity,
-                            color: ping.pathColor
-                        )
-                    }
-            }
     }
 
     private func nearestNode(to screenPoint: CGPoint, using proxy: MapProxy) -> MeshNode? {
@@ -1191,32 +1206,24 @@ struct MapScreen: View {
             : .orange
         let signalColor: Color = colorScheme == .dark ? .orange : .blue
 
-        // Travel: each hop's signal dot starts moving `travelStagger` after
-        // the previous one, so the dot visibly hops down the route in order.
-        let travelStagger = 0.30
-        let travelDuration = 1.35
+        // Only one replay hop moves at a time. The slightly slower replay pace
+        // makes the route readable while retaining CoreScope's linear motion.
+        let travelDuration = 0.85
         let replayStart = Date.now.addingTimeInterval(0.25)
         let hopCount = coordinates.count - 1
 
-        // Fade: rather than every segment decaying on the same clock (which
-        // reads as the whole route dissolving at once regardless of how the
-        // travel was staggered), each hop's fade only begins once the
-        // previous hop has fully dissolved — so the route disappears in the
-        // same first-hop-to-last-hop order it was drawn in. `holdAfterTravel`
-        // keeps the completed route fully visible briefly once the signal
-        // reaches the end, before the sequential dissolve starts.
-        let holdAfterTravel = 1.5
-        let fadeDurationPerSegment = 1.0
-        let lastTravelEnd = replayStart.addingTimeInterval(Double(max(hopCount - 1, 0)) * travelStagger + travelDuration)
-        let fadeSequenceStart = lastTravelEnd.addingTimeInterval(holdAfterTravel)
+        // Keep the completed route visible briefly, then fade it as one path.
+        let lastTravelEnd = replayStart.addingTimeInterval(Double(hopCount) * travelDuration)
+        let fadeStart = lastTravelEnd.addingTimeInterval(0.75)
+        let fadeDuration = 0.65
 
         let segments = zip(coordinates, coordinates.dropFirst()).enumerated().map { index, pair in
             ActivePing(
                 from: pair.0,
                 to: pair.1,
-                createdAt: replayStart.addingTimeInterval(Double(index) * travelStagger),
-                fadeStartsAt: fadeSequenceStart.addingTimeInterval(Double(index) * fadeDurationPerSegment),
-                duration: fadeDurationPerSegment,
+                createdAt: replayStart.addingTimeInterval(Double(index) * travelDuration),
+                fadeStartsAt: fadeStart,
+                duration: fadeDuration,
                 travelDuration: travelDuration,
                 color: routeColor,
                 signalColor: signalColor,
@@ -1428,8 +1435,11 @@ struct MapScreen: View {
                                 ActivePing(
                                     from: p1,
                                     to: p2,
-                                    createdAt: packet.timestamp,
+                                    // Historical packets have already arrived;
+                                    // show their paths anchored without replaying them.
+                                    createdAt: packet.timestamp.addingTimeInterval(-0.66),
                                     duration: 12.0,
+                                    travelDuration: 0.66,
                                     color: pathColor,
                                     routeID: "historical-\(packet.hash)-\(packet.observerId ?? "")-\(subchainIndex)",
                                     segmentIndex: index,
@@ -1473,6 +1483,16 @@ struct MapScreen: View {
         processIncomingEvents()
     }
 
+    private func scheduleIncomingEventProcessing() {
+        guard incomingEventTask == nil else { return }
+        incomingEventTask = Task { @MainActor in
+            defer { incomingEventTask = nil }
+            try? await Task.sleep(for: .milliseconds(100))
+            guard !Task.isCancelled else { return }
+            processIncomingEvents()
+        }
+    }
+
     private func processIncomingEvents() {
         activePings.removeAll { $0.isExpired(at: .now) }
 
@@ -1500,15 +1520,16 @@ struct MapScreen: View {
                         let p1 = subchain[index]
                         let p2 = subchain[index + 1]
                         if isValidHopDistance(from: p1, to: p2) {
-                            // Stagger each segment so a live route unfolds hop
-                            // by hop instead of every line appearing at once.
-                            let hopStart = Date.now.addingTimeInterval(Double(index) * 0.45)
+                            let travelDuration = 0.66
+                            let hopStart = observedAt.addingTimeInterval(Double(index) * travelDuration)
                             newPings.append(
                                 ActivePing(
                                     from: p1,
                                     to: p2,
                                     createdAt: hopStart,
-                                    duration: 12.0,
+                                    fadeStartsAt: hopStart.addingTimeInterval(travelDuration + 0.45),
+                                    duration: 0.55,
+                                    travelDuration: travelDuration,
                                     color: pathColor,
                                     routeID: "live-\(eventKey)-\(subchainIndex)",
                                     segmentIndex: index,
@@ -1839,6 +1860,105 @@ struct MapScreen: View {
             && CLLocationCoordinate2DIsValid(to)
             && (from.latitude != 0 || from.longitude != 0)
             && (to.latitude != 0 || to.longitude != 0)
+    }
+}
+
+private struct MapTrafficCanvas: View {
+    let pings: [ActivePing]
+    let date: Date
+    let proxy: MapProxy
+
+    var body: some View {
+        Canvas { context, _ in
+            for ping in pings where ping.hasStarted(at: date) && !ping.isExpired(at: date) {
+                guard let start = proxy.convert(ping.start, to: .local) else { continue }
+
+                if ping.isPulse {
+                    drawPulse(ping, at: start, in: &context)
+                    continue
+                }
+
+                if !ping.hasCompletedTravel(at: date) {
+                    drawActiveHop(ping, from: start, in: &context)
+                }
+                if let pulseProgress = ping.arrivalPulseProgress(at: date),
+                   let end = proxy.convert(ping.end, to: .local) {
+                    drawArrivalPulse(ping, progress: pulseProgress, at: end, in: &context)
+                }
+            }
+        }
+    }
+
+    private func drawActiveHop(
+        _ ping: ActivePing,
+        from start: CGPoint,
+        in context: inout GraphicsContext
+    ) {
+        let progress = ping.travelProgress(at: date)
+        guard let current = proxy.convert(ping.coordinate(atFraction: progress), to: .local) else { return }
+        var path = Path()
+        path.move(to: start)
+        path.addLine(to: current)
+
+        context.stroke(
+            path,
+            with: .color(ping.pathColor.opacity(0.18)),
+            style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round)
+        )
+        context.stroke(
+            path,
+            with: .color(ping.pathColor.opacity(0.85)),
+            style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
+        )
+        context.fill(
+            Path(ellipseIn: circleRect(center: current, diameter: 7)),
+            with: .color(.white)
+        )
+        context.stroke(
+            Path(ellipseIn: circleRect(center: current, diameter: 7)),
+            with: .color(ping.pathColor),
+            lineWidth: 1.5
+        )
+    }
+
+    private func drawArrivalPulse(
+        _ ping: ActivePing,
+        progress: Double,
+        at point: CGPoint,
+        in context: inout GraphicsContext
+    ) {
+        context.stroke(
+            Path(ellipseIn: circleRect(center: point, diameter: 8 + progress * 42)),
+            with: .color(ping.pathColor.opacity((1 - progress) * 0.9)),
+            lineWidth: max(0.5, 2.5 - progress * 1.5)
+        )
+    }
+
+    private func drawPulse(_ ping: ActivePing, at point: CGPoint, in context: inout GraphicsContext) {
+        let progress = ping.progress(at: date)
+        let opacity = 1 - progress
+        let outerDiameter = 14 + progress * 42
+        let innerDiameter = 10 + progress * 20
+
+        context.stroke(
+            Path(ellipseIn: circleRect(center: point, diameter: outerDiameter)),
+            with: .color(ping.pathColor.opacity(opacity * 0.8)),
+            lineWidth: 2.5
+        )
+        context.stroke(
+            Path(ellipseIn: circleRect(center: point, diameter: innerDiameter)),
+            with: .color(ping.pathColor.opacity(opacity * 0.45)),
+            lineWidth: 1.5
+        )
+    }
+
+    private func circleRect(center: CGPoint, diameter: CGFloat) -> CGRect {
+        CGRect(
+            x: center.x - diameter / 2,
+            y: center.y - diameter / 2,
+            width: diameter,
+            height: diameter
+        )
     }
 }
 

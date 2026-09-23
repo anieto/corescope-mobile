@@ -136,6 +136,8 @@ struct ExploreScreen: View {
         }
         .onChange(of: resetID) {
             navigationPath = NavigationPath()
+            isAddFavoritePresented = false
+            isSearchPresented = false
         }
         .onChange(of: settings.host) { updateVisibleItems() }
         .onChange(of: favoritesStore.items) { updateVisibleItems() }
