@@ -921,6 +921,7 @@ struct MapScreen: View {
                     .padding(.vertical, 8)
                 }
                 .accessibilityLabel("Choose route")
+                .tint(mapControlAccentColor)
 
                 Divider()
                     .frame(height: 16)
@@ -945,7 +946,7 @@ struct MapScreen: View {
     }
 
     private var mapControlAccentColor: Color {
-        Color.accentColor.readableForeground(for: colorScheme)
+        colorScheme == .dark ? .white : .accentColor
     }
 
     private var mapUpdateInterval: TimeInterval {
