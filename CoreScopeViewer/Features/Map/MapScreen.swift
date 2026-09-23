@@ -19,6 +19,7 @@ struct MapScreen: View {
     @State private var visibleRegion: MKCoordinateRegion?
     @State private var selectedNode: MeshNode?
     @State private var displayedNodes: [MeshNode] = []
+    @State private var displayCoordinatesByNodeID: [String: CLLocationCoordinate2D] = [:]
     @State private var nodeClusters: [NodeCluster] = []
     @State private var visibleNodesByCoordinate: [CoordinateKey: MeshNode] = [:]
     @State private var iataCoordinates: [String: CLLocationCoordinate2D] = [:]
@@ -90,6 +91,7 @@ struct MapScreen: View {
         let nodes: [MeshNode]
         let clusters: [NodeCluster]
         let nodesByCoordinate: [CoordinateKey: MeshNode]
+        let displayCoordinatesByNodeID: [String: CLLocationCoordinate2D]
         let filteredCount: Int
     }
 
@@ -534,7 +536,8 @@ struct MapScreen: View {
 
                 ForEach(mapNodes) { node in
                     if let coordinate = node.coordinate {
-                        Annotation("", coordinate: coordinate, anchor: .center) {
+                        let displayCoordinate = displayCoordinatesByNodeID[node.id] ?? coordinate
+                        Annotation("", coordinate: displayCoordinate, anchor: .center) {
                             let isHighlighted = node.id == highlightedNodeID
                             let isRouteHop = routeCoordinates.contains(CoordinateKey(coordinate))
                             Button {
@@ -704,6 +707,7 @@ struct MapScreen: View {
             displayedNodes = result.nodes
             nodeClusters = result.clusters
             visibleNodesByCoordinate = result.nodesByCoordinate
+            displayCoordinatesByNodeID = result.displayCoordinatesByNodeID
             filteredNodeCount = result.filteredCount
             isUpdatingDisplayedNodes = false
         }
@@ -748,6 +752,11 @@ struct MapScreen: View {
                     },
                     uniquingKeysWith: { first, _ in first }
                 ),
+                displayCoordinatesByNodeID: Dictionary(
+                    uniqueKeysWithValues: validNodes.compactMap { node in
+                        node.coordinate.map { (node.id, $0) }
+                    }
+                ),
                 filteredCount: validNodes.count
             )
         }
@@ -777,6 +786,10 @@ struct MapScreen: View {
                     },
                     uniquingKeysWith: { first, _ in first }
                 ),
+                displayCoordinatesByNodeID: spreadCoincidentCoordinates(
+                    for: visibleNodes,
+                    region: region
+                ),
                 filteredCount: validNodes.count
             )
         }
@@ -797,7 +810,18 @@ struct MapScreen: View {
         var clusters: [NodeCluster] = []
         for (key, cellNodes) in nodesByCell {
             guard !Task.isCancelled else { return nil }
-            guard cellNodes.count >= 3 else {
+            let containsCoincidentNodes = Dictionary(
+                grouping: cellNodes,
+                by: { node in
+                    CoordinateKey(
+                        CLLocationCoordinate2D(
+                            latitude: node.lat ?? 0,
+                            longitude: node.lon ?? 0
+                        )
+                    )
+                }
+            ).values.contains { $0.count > 1 }
+            guard cellNodes.count >= 3 || containsCoincidentNodes else {
                 individualNodes.append(contentsOf: cellNodes)
                 continue
             }
@@ -832,8 +856,55 @@ struct MapScreen: View {
                 },
                 uniquingKeysWith: { first, _ in first }
             ),
+            displayCoordinatesByNodeID: Dictionary(
+                uniqueKeysWithValues: individualNodes.compactMap { node in
+                    node.coordinate.map { (node.id, $0) }
+                }
+            ),
             filteredCount: validNodes.count
         )
+    }
+
+    nonisolated private static func spreadCoincidentCoordinates(
+        for nodes: [MeshNode],
+        region: DisplayRegion
+    ) -> [String: CLLocationCoordinate2D] {
+        let groupedNodes = Dictionary(grouping: nodes) { node in
+            CoordinateKey(
+                CLLocationCoordinate2D(
+                    latitude: node.lat ?? 0,
+                    longitude: node.lon ?? 0
+                )
+            )
+        }
+        var coordinates: [String: CLLocationCoordinate2D] = [:]
+        coordinates.reserveCapacity(nodes.count)
+
+        for group in groupedNodes.values {
+            guard let origin = group.first?.coordinate else { continue }
+            let sortedGroup = group.sorted { $0.publicKey < $1.publicKey }
+            guard sortedGroup.count > 1 else {
+                coordinates[sortedGroup[0].id] = origin
+                continue
+            }
+
+            // Scale from the current span so the separation remains roughly
+            // constant in screen points as the person zooms further in.
+            let radiusMultiplier = max(1, Double(sortedGroup.count) / 6)
+            // About 4.5% of the viewport radius keeps both the 32-point hit
+            // areas and short labels distinct, including a two-node pair.
+            let latitudeRadius = region.latitudeDelta * 0.045 * radiusMultiplier
+            let longitudeRadius = region.longitudeDelta * 0.045 * radiusMultiplier
+            for (index, node) in sortedGroup.enumerated() {
+                let angle = (Double(index) / Double(sortedGroup.count)) * 2 * Double.pi - Double.pi / 2
+                coordinates[node.id] = CLLocationCoordinate2D(
+                    latitude: origin.latitude + cos(angle) * latitudeRadius,
+                    longitude: origin.longitude + sin(angle) * longitudeRadius
+                )
+            }
+        }
+
+        return coordinates
     }
 
     private var mapObserverOptions: [MapObserverOption] {
