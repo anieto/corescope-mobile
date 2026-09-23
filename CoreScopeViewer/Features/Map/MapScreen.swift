@@ -302,7 +302,7 @@ struct MapScreen: View {
             processedEventIds = Set(liveFeed.recentEvents.map { liveEventKey(for: $0) })
             isInitialLoadComplete = true
         }
-        .task(id: "\(settings.host.lowercased())-\(regionFilter.selectedRegion ?? "all")") {
+        .task(id: mapLoadTaskID) {
             let sourceHost = settings.host
             let selectedRegion = regionFilter.selectedRegion
             isChangingRegion = true
@@ -1340,6 +1340,19 @@ struct MapScreen: View {
         let center = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
         guard CLLocationCoordinate2DIsValid(center) else { return nil }
         return (center, source.mapRadiusKm ?? 250)
+    }
+
+    private var communitySourceViewportSignature: String? {
+        guard let viewport = communitySourceViewport else { return nil }
+        return "\(settings.host.lowercased())|\(viewport.center.latitude)|\(viewport.center.longitude)|\(viewport.radiusKm)"
+    }
+
+    private var mapLoadTaskID: String {
+        [
+            settings.host.lowercased(),
+            regionFilter.selectedRegion ?? "all",
+            communitySourceViewportSignature ?? "server-default"
+        ].joined(separator: "|")
     }
 
     private func moveCamera(

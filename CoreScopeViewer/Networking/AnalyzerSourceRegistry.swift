@@ -30,7 +30,7 @@ private struct AnalyzerSourceRegistryDocument: Codable {
 final class AnalyzerSourceRegistry {
     private static let cachedDocumentDefaultsKey = "cachedAnalyzerSourceRegistry"
     private static let defaultRemoteRegistryURL = URL(
-        string: "https://raw.githubusercontent.com/anieto/corescope-mobile/main/CommunitySources/us-sources.json"
+        string: "https://api.github.com/repos/anieto/corescope-mobile/contents/CommunitySources/us-sources.json?ref=main"
     )
 
     private(set) var sources: [AnalyzerSource]
@@ -51,7 +51,13 @@ final class AnalyzerSourceRegistry {
         defer { isRefreshing = false }
 
         do {
-            let (data, response) = try await URLSession.shared.data(from: remoteRegistryURL)
+            var request = URLRequest(
+                url: remoteRegistryURL,
+                cachePolicy: .reloadIgnoringLocalAndRemoteCacheData
+            )
+            request.setValue("application/vnd.github.raw+json", forHTTPHeaderField: "Accept")
+            request.setValue("NodeScope", forHTTPHeaderField: "User-Agent")
+            let (data, response) = try await URLSession.shared.data(for: request)
             guard let response = response as? HTTPURLResponse,
                   200..<300 ~= response.statusCode else {
                 throw URLError(.badServerResponse)
