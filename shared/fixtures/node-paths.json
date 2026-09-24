@@ -1,0 +1,33 @@
+{
+  "node": {
+    "public_key": "aa11000000000000000000000000000000000000000000000000000000000000",
+    "name": "Hilltop",
+    "lat": 30.1,
+    "lon": -97.9
+  },
+  "paths": [
+    {
+      "hops": [
+        {
+          "prefix": "AA11",
+          "name": "Hilltop",
+          "pubkey": "aa11000000000000000000000000000000000000000000000000000000000000",
+          "lat": 30.1,
+          "lon": -97.9
+        },
+        {
+          "prefix": "BB22",
+          "name": null,
+          "pubkey": null,
+          "lat": null,
+          "lon": null
+        }
+      ],
+      "count": 4,
+      "lastSeen": "2026-09-23T11:00:00Z",
+      "sampleHash": "ee01"
+    }
+  ],
+  "totalPaths": 1,
+  "totalTransmissions": 4
+}

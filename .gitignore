@@ -5,3 +5,14 @@ xcuserdata/
 DerivedData/
 build/
 *.xcuserstate
+
+# Android / Gradle local state
+.gradle/
+.kotlin/
+.idea/
+local.properties
+*.iml
+*.jks
+*.keystore
+*.apk
+*.aab

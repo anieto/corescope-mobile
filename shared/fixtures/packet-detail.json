@@ -1,0 +1,64 @@
+{
+  "packet": {
+    "id": 501,
+    "hash": "bb01",
+    "payload_type": 5,
+    "decoded_json": "{\"type\":\"CHAN\",\"channel\":\"#nodescope-test\",\"text\":\"Test Node: hi\"}",
+    "raw_hex": "15aabb",
+    "snr": 7.5,
+    "rssi": -90,
+    "timestamp": "2026-09-23T12:00:00Z",
+    "observation_count": 3,
+    "_parsedPath": [
+      "AA11",
+      "BB22"
+    ],
+    "scope_name": null
+  },
+  "path": [
+    "AA11",
+    "BB22",
+    "CC33"
+  ],
+  "observation_count": 3,
+  "observations": [
+    {
+      "id": 1,
+      "observer_name": "North Observer",
+      "observer_iata": "DFW",
+      "snr": 7.5,
+      "rssi": -90,
+      "timestamp": "2026-09-23T12:00:00.000Z",
+      "resolved_path": [
+        "aa11",
+        "bb22",
+        "cc33"
+      ],
+      "direction": "rx"
+    },
+    {
+      "id": 2,
+      "observer_name": null,
+      "observer_iata": null,
+      "snr": null,
+      "rssi": null,
+      "timestamp": "2026-09-23T12:00:01.000Z",
+      "resolved_path": [
+        "BB22",
+        "CC33"
+      ]
+    },
+    {
+      "id": 3,
+      "observer_name": "South Observer",
+      "observer_iata": "AUS",
+      "snr": -3,
+      "timestamp": "2026-09-23T12:00:02.000Z",
+      "resolved_path": [
+        "dd44",
+        null,
+        "ee55"
+      ]
+    }
+  ]
+}

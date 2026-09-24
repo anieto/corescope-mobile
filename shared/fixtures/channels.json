@@ -1,0 +1,27 @@
+{
+  "channels": [
+    {
+      "hash": "Public",
+      "name": "Public",
+      "lastMessage": "Morning, mesh",
+      "lastSender": "Relay 7",
+      "messageCount": 120,
+      "lastActivity": "2026-09-23T12:00:00Z"
+    },
+    {
+      "hash": "#test/one",
+      "name": "#test/one",
+      "lastMessage": null,
+      "lastSender": null,
+      "messageCount": 3,
+      "lastActivity": "2026-09-23T11:30:00Z",
+      "futureField": true
+    },
+    {
+      "hash": "#nodescope-test",
+      "name": "#nodescope-test",
+      "messageCount": 9,
+      "lastActivity": "2026-09-23T11:59:00Z"
+    }
+  ]
+}

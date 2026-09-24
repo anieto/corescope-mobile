@@ -1,0 +1,27 @@
+name: Android
+on:
+  pull_request:
+    paths: ['android/**', 'CommunitySources/**', 'shared/fixtures/**', '.github/workflows/android.yml']
+  push:
+    paths: ['android/**', 'CommunitySources/**', 'shared/fixtures/**', '.github/workflows/android.yml']
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug :app:assembleDebugAndroidTest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nodescope-android-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk

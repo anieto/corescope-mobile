@@ -9,105 +9,131 @@ struct AnalyzerSourcePickerScreen: View {
     let onSelection: ((String) -> Void)?
 
     @State private var customHost = ""
+    @FocusState private var isCustomHostFocused: Bool
+
+    private enum ScrollTarget: Hashable {
+        case customAnalyzer
+    }
 
     var body: some View {
-        List {
-            Section {
-                ForEach(sourceRegistry.sources) { source in
-                    Button {
-                        select(source.host)
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: source.isDefault ? "star.circle.fill" : "antenna.radiowaves.left.and.right.circle.fill")
-                                .font(.title3)
-                                .foregroundStyle(source.isDefault ? .yellow : Color.accentColor)
-                                .frame(width: 30)
+        ScrollViewReader { proxy in
+            List {
+                Section {
+                    ForEach(sourceRegistry.sources) { source in
+                        Button {
+                            select(source.host)
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: source.isDefault ? "star.circle.fill" : "antenna.radiowaves.left.and.right.circle.fill")
+                                    .font(.title3)
+                                    .foregroundStyle(source.isDefault ? .yellow : Color.accentColor)
+                                    .frame(width: 30)
 
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(source.name)
-                                    .foregroundStyle(Color.primary)
-                                Text(source.subtitle)
-                                    .font(.caption)
-                                    .foregroundStyle(metadataColor)
-                                Text(source.host)
-                                    .font(.caption2)
-                                    .foregroundStyle(metadataColor)
-                            }
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(source.name)
+                                        .foregroundStyle(Color.primary)
+                                    Text(source.subtitle)
+                                        .font(.caption)
+                                        .foregroundStyle(metadataColor)
+                                    Text(source.host)
+                                        .font(.caption2)
+                                        .foregroundStyle(metadataColor)
+                                }
 
-                            Spacer()
-                            if source.host.caseInsensitiveCompare(selectedHost) == .orderedSame {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(Color.accentColor)
+                                Spacer()
+                                if source.host.caseInsensitiveCompare(selectedHost) == .orderedSame {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(Color.accentColor)
+                                }
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
+                        .accessibilityLabel("Use \(source.name), \(source.subtitle)")
+                        .accessibilityValue(
+                            source.host.caseInsensitiveCompare(selectedHost) == .orderedSame ? "Selected" : ""
+                        )
+                        .buttonStyle(.plain)
                     }
-                    .accessibilityLabel("Use \(source.name), \(source.subtitle)")
-                    .accessibilityValue(
-                        source.host.caseInsensitiveCompare(selectedHost) == .orderedSame ? "Selected" : ""
-                    )
+                } header: {
+                    Text("US Community Sources")
+                } footer: {
+                    Text("Community sources are fetched from NodeScope’s source registry when available.")
+                        .foregroundStyle(metadataColor)
+                }
+
+                Section {
+                    TextField(
+                        text: $customHost,
+                        prompt: Text("analyzer.example.org").foregroundStyle(metadataColor)
+                    ) {
+                        Text("Analyzer hostname")
+                            .foregroundStyle(Color.primary)
+                    }
+                    .foregroundStyle(Color.primary)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                    .submitLabel(.go)
+                    .focused($isCustomHostFocused)
+                    .onSubmit {
+                        select(customHost)
+                    }
+
+                    Button("Use Custom Analyzer") {
+                        select(customHost)
+                    }
                     .buttonStyle(.plain)
+                    .foregroundStyle(
+                        customHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? metadataColor
+                            : Color.accentColor
+                    )
+                    .disabled(customHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .id(ScrollTarget.customAnalyzer)
+                } header: {
+                    Text("Custom Analyzer")
+                } footer: {
+                    Text("Enter the hostname for a compatible public analyzer. NodeScope connects directly to it.")
+                        .foregroundStyle(metadataColor)
                 }
-            } header: {
-                Text("US Community Sources")
-            } footer: {
-                Text("Community sources are fetched from NodeScope’s source registry when available.")
-                    .foregroundStyle(metadataColor)
-            }
 
-            Section {
-                TextField(
-                    text: $customHost,
-                    prompt: Text("analyzer.example.org").foregroundStyle(metadataColor)
-                ) {
-                    Text("Analyzer hostname")
-                        .foregroundStyle(Color.primary)
-                }
-                .foregroundStyle(Color.primary)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.URL)
-
-                Button("Use Custom Analyzer") {
-                    select(customHost)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(
-                    customHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? metadataColor
-                        : Color.accentColor
-                )
-                .disabled(customHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            } header: {
-                Text("Custom Analyzer")
-            } footer: {
-                Text("Enter the hostname for a compatible public analyzer. NodeScope connects directly to it.")
-                    .foregroundStyle(metadataColor)
-            }
-
-            Section {
-                if let communitySourceRequestURL {
-                    Link(destination: communitySourceRequestURL) {
-                        Label("Request a Community Source", systemImage: "envelope")
+                Section {
+                    if let communitySourceRequestURL {
+                        Link(destination: communitySourceRequestURL) {
+                            Label("Request a Community Source", systemImage: "envelope")
+                        }
+                        .accessibilityHint("Opens a prefilled email to the NodeScope team")
                     }
-                    .accessibilityHint("Opens a prefilled email to the NodeScope team")
+                } footer: {
+                    Text("Suggest a public analyzer for the community list. Please confirm that its owner or operator permits it to be listed and used in NodeScope.")
+                        .foregroundStyle(metadataColor)
                 }
-            } footer: {
-                Text("Suggest a public analyzer for the community list. Please confirm that its owner or operator permits it to be listed and used in NodeScope.")
-                    .foregroundStyle(metadataColor)
             }
-        }
-        .adaptiveContentWidth()
-        .floatingDockScrollClearance()
-        .refreshable {
-            await sourceRegistry.refresh()
-        }
-        .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
-        .navigationTitle("Analyzer Source")
-        .navigationBarTitleDisplayMode(.inline)
-        .task {
-            await sourceRegistry.refresh()
+            .scrollDismissesKeyboard(.interactively)
+            .onChange(of: isCustomHostFocused) { _, isFocused in
+                guard isFocused else { return }
+                Task { @MainActor in
+                    // Wait for the keyboard-adjusted viewport before bringing
+                    // the field's action row above the floating app dock.
+                    try? await Task.sleep(for: .milliseconds(250))
+                    guard isCustomHostFocused else { return }
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        proxy.scrollTo(ScrollTarget.customAnalyzer, anchor: .center)
+                    }
+                }
+            }
+            .adaptiveContentWidth()
+            .floatingDockScrollClearance()
+            .refreshable {
+                await sourceRegistry.refresh()
+            }
+            .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
+            .navigationTitle("Analyzer Source")
+            .navigationBarTitleDisplayMode(.inline)
+            .task {
+                await sourceRegistry.refresh()
+            }
         }
     }
 

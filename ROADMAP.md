@@ -94,7 +94,6 @@ These may be revisited after 1.0 if user demand justifies them.
 - Favorite-node activity or stale-state notifications.
 - Saved network-view presets.
 - Route image generation.
-- Android client.
 
 ## Out of scope
 
@@ -105,6 +104,13 @@ These CoreScope features do not fit NodeScope's focused, read-only mobile role.
 - Theme designers, Matrix mode, and other desktop visual-effect modes.
 - Desktop-style resizable packet tables.
 - Uploading mobile RF telemetry or location tracks.
+
+## Android implementation
+
+Android development is active alongside iOS. The initial prototype was replaced
+with a native Kotlin/Compose foundation following the [Android parity plan](docs/android/README.md).
+See [implementation progress](docs/android/progress.md) for completed work and
+remaining map, lifecycle, feature-parity and device-validation gates.
 
 ## Current priority
 

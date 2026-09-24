@@ -1,0 +1,55 @@
+{
+  "timeline": [
+    {
+      "label": "Wed 00:00",
+      "count": 10
+    },
+    {
+      "label": "Wed 04:00",
+      "count": 25
+    }
+  ],
+  "packetTypes": {
+    "4": 7,
+    "5": 12,
+    "13": 1
+  },
+  "nodesTimeline": [
+    {
+      "label": "Wed 00:00",
+      "count": 3
+    },
+    {
+      "label": "Wed 04:00",
+      "count": 5
+    }
+  ],
+  "snrDistribution": [
+    {
+      "range": "-2 to 0",
+      "count": 4
+    },
+    {
+      "range": "0 to 2",
+      "count": 9
+    }
+  ],
+  "recentPackets": [
+    {
+      "id": 1,
+      "hash": "cc01",
+      "timestamp": "2026-09-23T12:00:00Z",
+      "payload_type": 9,
+      "snr": 5.5,
+      "rssi": -90,
+      "direction": "rx",
+      "decoded_json": "{}"
+    },
+    {
+      "id": 2,
+      "hash": "cc02",
+      "timestamp": "2026-09-23T11:59:00Z",
+      "payload_type": 5
+    }
+  ]
+}

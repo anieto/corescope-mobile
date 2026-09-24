@@ -1,0 +1,43 @@
+{
+  "packets": [
+    {
+      "id": 501,
+      "hash": "bb01",
+      "first_seen": "2026-09-23T12:01:00Z",
+      "observation_count": 6,
+      "observer_name": "North Observer",
+      "snr": 9.5,
+      "payload_type": 5,
+      "decoded_json": "{\"type\": \"GRP_TXT\", \"mac\": \"1cc9\", \"encryptedData\": \"93c1403f55706140e39e49dd68d2327c6e2db4bb898d393dbf8675f0b505d25eccd005ce29e0aae82c7d54bfe083277b\", \"channelHash\": 105, \"decryptionStatus\": \"decryption_failed\"}"
+    },
+    {
+      "id": 502,
+      "hash": "bb02",
+      "first_seen": "2026-09-23T12:02:00Z",
+      "observation_count": 2,
+      "observer_name": "South Observer",
+      "snr": null,
+      "payload_type": 5,
+      "decoded_json": "{\"type\": \"CHAN\", \"channel\": \"#nodescope-test\", \"channelHash\": \"69\", \"sender\": \"Test Node\", \"text\": \"Test Node: decrypted by analyzer\", \"path_len\": 3}"
+    },
+    {
+      "id": 503,
+      "hash": "bb03",
+      "first_seen": "2026-09-23T12:03:00Z",
+      "payload_type": 5,
+      "decoded_json": "{\"type\": \"GRP_TXT\", \"mac\": \"0000\", \"encryptedData\": \"93c1403f55706140e39e49dd68d2327c6e2db4bb898d393dbf8675f0b505d25eccd005ce29e0aae82c7d54bfe083277b\", \"channelHash\": 105}"
+    },
+    {
+      "id": 504,
+      "hash": "bb04",
+      "payload_type": 4,
+      "decoded_json": "{\"type\": \"ADVERT\"}"
+    },
+    {
+      "id": 505,
+      "hash": "bb05",
+      "payload_type": 5,
+      "decoded_json": "not json"
+    }
+  ]
+}

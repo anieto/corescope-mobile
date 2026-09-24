@@ -1,0 +1,30 @@
+{
+  "messages": [
+    {
+      "sender": "Relay 7",
+      "text": "see https://example.org/map.",
+      "timestamp": "2026-09-23T11:00:00Z",
+      "sender_timestamp": 1790000000,
+      "packetId": 10,
+      "packetHash": "aa01",
+      "repeats": 4,
+      "observers": [
+        "North Observer"
+      ],
+      "hops": 2,
+      "snr": 7.25,
+      "scope_name": null
+    },
+    {
+      "sender": "Test Node",
+      "text": "no telemetry",
+      "timestamp": "2026-09-23T10:00:00Z",
+      "packetId": 9,
+      "packetHash": "aa00",
+      "observers": [
+        "South Observer"
+      ]
+    }
+  ],
+  "total": 2
+}

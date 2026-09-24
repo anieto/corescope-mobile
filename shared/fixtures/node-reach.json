@@ -1,0 +1,60 @@
+{
+  "node": {
+    "pubkey": "aa11000000000000000000000000000000000000000000000000000000000000",
+    "name": "Hilltop",
+    "role": "repeater",
+    "lat": 30.1,
+    "lon": -97.9,
+    "first_seen": "2026-08-01T00:00:00Z"
+  },
+  "window": {
+    "days": 7,
+    "since": "2026-09-16T12:00:00Z"
+  },
+  "reliable_tokens": [
+    "AA11"
+  ],
+  "importance": {
+    "neighbor_degree": 5,
+    "degree_rank": 12,
+    "nodes_with_edges": 700,
+    "relay_observations": 90,
+    "bidirectional_links": 2,
+    "direct_observers": 3
+  },
+  "direct_observers": [
+    {
+      "pubkey": "obs1",
+      "name": "North Observer",
+      "count": 9,
+      "avg_snr": 4.5,
+      "lat": 30.3,
+      "lon": -97.7,
+      "distance_km": 24.1
+    }
+  ],
+  "links": [
+    {
+      "pubkey": "cc33000000000000000000000000000000000000000000000000000000000000",
+      "name": "Ridge",
+      "role": "repeater",
+      "lat": 30.2,
+      "lon": -97.8,
+      "we_hear": 10,
+      "they_hear": 8,
+      "bottleneck": 8,
+      "bidir": true,
+      "distance_km": 12.34
+    },
+    {
+      "pubkey": "dd44000000000000000000000000000000000000000000000000000000000000",
+      "name": null,
+      "role": null,
+      "we_hear": 0,
+      "they_hear": 3,
+      "bottleneck": 0,
+      "bidir": false,
+      "distance_km": null
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "description": "Synthetic MeshCore GRP_TXT known-answer vectors. Algorithm independently verified against live analyzer-decrypted traffic on 2026-09-23; no captured messages are stored.",
+  "vectors": [
+    {
+      "channel": "#nodescope-test",
+      "keyHex": "ddf7fcfeee4258923c966389b90689c8",
+      "channelHash": 105,
+      "macHex": "1cc9",
+      "encryptedHex": "93c1403f55706140e39e49dd68d2327c6e2db4bb898d393dbf8675f0b505d25eccd005ce29e0aae82c7d54bfe083277b",
+      "senderTimestamp": 1790000000,
+      "sender": "Test Node",
+      "text": "Hello from a fixture"
+    },
+    {
+      "channel": "Public",
+      "keyHex": "8b3387e9c5cdea6ac9e5edbaa115cd72",
+      "channelHash": 17,
+      "macHex": "6c18",
+      "encryptedHex": "30e49c1a3e6d5d3bbab8852dab51482f0eac1654fe0cb2c4fcff28cfde38f5445905f0c8b51c8964711637d81562a956",
+      "senderTimestamp": 1790000123,
+      "sender": "Relay 7",
+      "text": "ratio 3:2 holds 🤖"
+    },
+    {
+      "channel": "psk:00112233",
+      "keyHex": "00112233445566778899aabbccddeeff",
+      "channelHash": 168,
+      "macHex": "284f",
+      "encryptedHex": "ea874135d99750265fc1409c7614e8da51d55a42a4c7bf9d3b834d264816f092",
+      "senderTimestamp": 1790000456,
+      "sender": "Unknown",
+      "text": "no sender separator here"
+    }
+  ]
+}

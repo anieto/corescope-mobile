@@ -1,0 +1,37 @@
+{
+  "observers": [
+    {
+      "id": "OBS-NORTH",
+      "name": "North Observer",
+      "iata": "DFW",
+      "last_seen": "2026-09-23T12:00:00Z",
+      "first_seen": "2026-08-01T00:00:00Z",
+      "packet_count": 250000,
+      "packetsLastHour": 800,
+      "model": "Heltec V4",
+      "firmware": "1.16.0",
+      "battery_mv": 4100,
+      "uptime_secs": 90061,
+      "noise_floor": -112,
+      "lat": 32.9,
+      "lon": -97.0,
+      "nodeRole": "repeater",
+      "clock_naive": false
+    },
+    {
+      "id": "OBS-SOUTH",
+      "name": "South Observer",
+      "iata": "AUS",
+      "last_seen": "2026-09-23T10:00:00Z",
+      "first_seen": "2026-08-02T00:00:00Z",
+      "packet_count": 5000,
+      "packetsLastHour": 20,
+      "model": "RAK 4631"
+    },
+    {
+      "id": "OBS-BARE",
+      "last_seen": "2026-09-23T11:55:00Z"
+    }
+  ],
+  "server_time": "2026-09-23T12:05:00Z"
+}

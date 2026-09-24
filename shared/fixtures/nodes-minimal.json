@@ -1,0 +1,9 @@
+{
+  "nodes": [
+    {"public_key":"fixture-a","name":"Fixture Repeater","role":"repeater","lat":30.2672,"lon":-97.7431,"first_seen":"2026-01-01T00:00:00Z","last_seen":"2026-01-02T12:00:00.123Z","future_field":true},
+    {"public_key":"fixture-b","role":"future-role","last_seen":"2026-01-02T12:00:00Z"},
+    {"public_key":"fixture-c","name":"Invalid location","role":"sensor","lat":999,"lon":0,"last_seen":"2026-01-02T12:00:00Z"}
+  ],
+  "total":3,
+  "counts":{"repeaters":1,"rooms":0,"companions":0,"sensors":1}
+}

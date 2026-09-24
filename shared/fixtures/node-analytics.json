@@ -1,0 +1,109 @@
+{
+  "node": {
+    "public_key": "aa11000000000000000000000000000000000000000000000000000000000000",
+    "name": "Hilltop",
+    "role": "repeater",
+    "last_seen": "2026-09-23T12:00:00Z",
+    "first_seen": "2026-08-01T00:00:00Z"
+  },
+  "timeRange": {
+    "from": "2026-09-16T07:00:00-05:00",
+    "to": "2026-09-23T07:00:00-05:00",
+    "days": 7
+  },
+  "activityTimeline": [
+    {
+      "bucket": "2026-09-22T00:00:00Z",
+      "count": 10
+    },
+    {
+      "bucket": "2026-09-23T00:00:00Z",
+      "count": 4
+    }
+  ],
+  "snrTrend": [
+    {
+      "timestamp": "2026-09-23T10:00:00Z",
+      "snr": 6.5,
+      "rssi": -80,
+      "observer_id": "OBS-NORTH",
+      "observer_name": "North Observer"
+    },
+    {
+      "timestamp": "2026-09-23T09:00:00Z",
+      "snr": 5.0,
+      "rssi": null,
+      "observer_id": "OBS-NORTH",
+      "observer_name": "North Observer"
+    },
+    {
+      "timestamp": "2026-09-23T11:00:00Z",
+      "snr": -2.0,
+      "observer_id": "OBS-SOUTH"
+    }
+  ],
+  "packetTypeBreakdown": [
+    {
+      "payload_type": 4,
+      "count": 7
+    },
+    {
+      "payload_type": 13,
+      "count": 1
+    }
+  ],
+  "observerCoverage": [
+    {
+      "observer_id": "OBS-NORTH",
+      "observer_name": "North Observer",
+      "packetCount": 12,
+      "avgSnr": 5.75,
+      "avgRssi": -80,
+      "firstSeen": "2026-09-22T00:00:00Z",
+      "lastSeen": "2026-09-23T10:00:00Z"
+    }
+  ],
+  "hopDistribution": [
+    {
+      "hops": "1",
+      "count": 3
+    },
+    {
+      "hops": "4+",
+      "count": 2
+    }
+  ],
+  "uptimeHeatmap": [
+    {
+      "dayOfWeek": 3,
+      "hour": 10,
+      "count": 4
+    },
+    {
+      "dayOfWeek": 3,
+      "hour": 10,
+      "count": 1
+    },
+    {
+      "dayOfWeek": 9,
+      "hour": 2,
+      "count": 5
+    }
+  ],
+  "computedStats": {
+    "availabilityPct": 62.5,
+    "longestSilenceMs": 5400000,
+    "longestSilenceStart": null,
+    "signalGrade": "B",
+    "snrMean": 4.1,
+    "snrStdDev": 1.2,
+    "relayPct": 40,
+    "totalPackets": 14,
+    "uniqueObservers": 2,
+    "uniquePeers": 0,
+    "avgPacketsPerDay": 2
+  },
+  "clockSkew": {
+    "severity": "ok"
+  }
+}

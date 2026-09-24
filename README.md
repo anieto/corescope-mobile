@@ -12,7 +12,7 @@ observer telemetry in an adaptive interface designed for iPhone and iPad.
 ## Status
 
 NodeScope is currently prerelease software. The iOS app is under active testing;
-an Android client is planned for this repository.
+an initial native Android client is now available in [`android/`](android/).
 
 ## Features
 
@@ -48,9 +48,22 @@ Settings.
 
 ## Repository layout
 
-The current source tree contains the native iOS client. When Android development
-begins, platform code will be separated into `ios/` and `android/` directories in
-a dedicated migration checkpoint.
+- `CoreScopeViewer/`, `CoreScopeViewerTests/`, and `CoreScopeViewer.xcodeproj`: native iOS client.
+- `android/`: native Kotlin / Jetpack Compose Android client.
+- `CommunitySources/`: community analyzer source data.
+
+The iOS project stays at its existing path so existing Xcode workflows continue
+to work. Android builds independently from its own directory.
+
+## Building the Android app
+
+Open `android/` in Android Studio, sync Gradle, and run the `app` configuration on
+an Android 8.0+ emulator or device. See [Android setup and roadmap](android/README.md)
+for build commands and current scope. The new foundation includes onboarding,
+native navigation, analyzer/region settings, node browsing and a MapLibre/CARTO
+integration awaiting key-based device validation. Channels, observers, live
+packets and the remaining iOS workflows are tracked in the
+[Android parity plan](docs/android/README.md).
 
 ## Privacy
 
