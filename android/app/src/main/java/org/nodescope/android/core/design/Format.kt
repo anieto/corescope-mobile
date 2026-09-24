@@ -4,6 +4,9 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import androidx.compose.runtime.staticCompositionLocalOf
+import kotlin.math.roundToLong
+import org.nodescope.android.core.storage.DistanceUnit
 
 fun relativeTime(instant: Instant?, now: Long = System.currentTimeMillis()): String {
     instant ?: return "Unknown"
@@ -39,3 +42,18 @@ fun formatDuration(seconds: Long): String {
 fun shortDateTime(instant: Instant?): String = instant?.let {
     DateTimeFormatter.ofPattern("MMM d, HH:mm").withZone(ZoneId.systemDefault()).format(it)
 } ?: "Unknown time"
+
+/** The distance unit chosen in Settings, available to every screen. */
+val LocalDistanceUnit = staticCompositionLocalOf { DistanceUnit.IMPERIAL }
+
+/**
+ * Same rule as iOS `DistanceFormat`: miles or kilometers to one decimal place, and short
+ * distances in feet (under 0.1 mi) or meters (under 1 km), rounded to 10.
+ */
+fun formatDistance(km: Double, unit: DistanceUnit): String = when (unit) {
+    DistanceUnit.IMPERIAL -> {
+        val miles = km * 0.621371
+        if (miles < 0.1) "${(km * 3280.84 / 10).roundToLong() * 10} ft" else String.format(Locale.US, "%.1f mi", miles)
+    }
+    DistanceUnit.METRIC -> if (km < 1) "${(km * 100).roundToLong() * 10} m" else String.format(Locale.US, "%.1f km", km)
+}

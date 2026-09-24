@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -39,6 +40,7 @@ fun SettingsScreen(
     preferences: AppPreferences, connection: LiveConnection, sessionError: String?, sourceChangedAt: Long?,
     onAppearance: (Appearance) -> Unit, onSource: () -> Unit, onDiagnostics: () -> Unit, onStorage: () -> Unit,
     onAbout: () -> Unit, onMapLab: () -> Unit, onSupport: (() -> Unit)? = null,
+    onDistanceUnit: (DistanceUnit) -> Unit = {},
 ) {
     // After an analyzer change, report whether the new source connects (as iOS does).
     var status by remember { mutableStateOf<SourceStatus?>(null) }
@@ -83,6 +85,18 @@ fun SettingsScreen(
                 }
             }
             item {
+                Panel("Units", Icons.Outlined.Straighten) {
+                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                        DistanceUnit.entries.forEachIndexed { index, unit ->
+                            SegmentedButton(selected = unit == preferences.distanceUnit, onClick = { onDistanceUnit(unit) },
+                                shape = SegmentedButtonDefaults.itemShape(index, DistanceUnit.entries.size)) {
+                                Text(when (unit) { DistanceUnit.IMPERIAL -> "Imperial (mi)"; DistanceUnit.METRIC -> "Metric (km)" })
+                            }
+                        }
+                    }
+                }
+            }
+            item {
                 Panel("Analyzer source", Icons.Outlined.Dns) {
                     NavigationRow("Choose source", preferences.host, Icons.Outlined.Hub, onSource)
                     Text("Every screen reads regions, areas, and map defaults from this CoreScope analyzer.", style = MaterialTheme.typography.bodySmall,
@@ -117,7 +131,7 @@ fun SettingsScreen(
                 }
             }
             item { CardRow { NavigationRow("About & how to use", "NodeScope field guide", Icons.Outlined.Info, onAbout) } }
-            onSupport?.let { open -> item { CardRow { NavigationRow("Support development", "Leave an optional one-time tip", Icons.Outlined.Favorite, open) } } }
+            onSupport?.let { open -> item { CardRow { NavigationRow("Support development", "Buy me a coffee", Icons.Outlined.Favorite, open, external = true) } } }
             if (BuildConfig.DEBUG) item {
                 TextButton(onClick = onMapLab) { Icon(Icons.Outlined.Science, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.map_lab)) }
             }
@@ -159,7 +173,7 @@ private fun CardRow(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-fun NavigationRow(title: String, value: String, icon: ImageVector, onClick: () -> Unit) {
+fun NavigationRow(title: String, value: String, icon: ImageVector, onClick: () -> Unit, external: Boolean = false) {
     Row(Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small).clickable(onClick = onClick).heightIn(min = 56.dp).padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(Modifier.size(32.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.11f), MaterialTheme.shapes.small), contentAlignment = Alignment.Center) {
@@ -169,7 +183,9 @@ fun NavigationRow(title: String, value: String, icon: ImageVector, onClick: () -
             Text(title, style = MaterialTheme.typography.titleSmall)
             Text(value, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Icon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        // A link that leaves the app says so instead of implying another screen.
+        Icon(if (external) Icons.AutoMirrored.Outlined.OpenInNew else Icons.Outlined.ChevronRight, if (external) "Opens in your browser" else null,
+            Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

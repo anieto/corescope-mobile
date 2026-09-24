@@ -1,5 +1,10 @@
 package org.nodescope.android.feature.onboarding
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import org.nodescope.android.core.storage.SourceIcons
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -32,7 +37,7 @@ import org.nodescope.android.core.network.normalizeHost
 @Composable
 fun SourceScreen(
     sources: List<AnalyzerSource>, currentHost: String, onboarding: Boolean,
-    saving: Boolean, error: String?, onSave: (String) -> Unit,
+    saving: Boolean, error: String?, onSave: (String) -> Unit, icons: SourceIcons? = null,
 ) {
     var host by rememberSaveable(currentHost) { mutableStateOf(currentHost) }
     var custom by rememberSaveable(currentHost) {
@@ -55,8 +60,7 @@ fun SourceScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier.fillMaxWidth().semantics { selected = current }) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Icon(if (source.isDefault) Icons.Outlined.Stars else Icons.Outlined.SettingsInputAntenna, null,
-                        tint = if (source.isDefault) Color(0xFFE0A100) else MaterialTheme.colorScheme.primary)
+                    SourceLogo(source, icons)
                     Column(Modifier.weight(1f)) {
                         Text(source.name, style = MaterialTheme.typography.titleMedium)
                         Text(source.subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -92,5 +96,16 @@ fun SourceScreen(
             Text(stringResource(R.string.source_privacy), Modifier.padding(horizontal = 4.dp), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+    }
+}
+
+/** The community's logo from the registry; the generic symbol when it has none or it can't load. */
+@Composable
+private fun SourceLogo(source: AnalyzerSource, icons: SourceIcons?) {
+    val logo by produceState<ImageBitmap?>(null, source.icon, icons) { value = icons?.load(source.icon) }
+    Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+        logo?.let { Image(it, null, Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp))) }
+            ?: Icon(if (source.isDefault) Icons.Outlined.Stars else Icons.Outlined.SettingsInputAntenna, null,
+                tint = if (source.isDefault) Color(0xFFE0A100) else MaterialTheme.colorScheme.primary)
     }
 }

@@ -1089,31 +1089,30 @@ private struct SignalQualityLegend: View {
 private struct NodePacketTypesChart: View {
     let counts: [NodePacketTypeCount]
 
-    private var sortedCounts: [NodePacketTypeCount] {
-        counts.sorted { $0.count > $1.count }
+    /// Same data, names and order as an observer's packet types donut.
+    private var data: [PacketTypeDatum] {
+        counts.map { PacketTypeDatum(code: $0.payloadType, count: $0.count) }
+            .sorted { $0.count > $1.count }
     }
 
     var body: some View {
         NodeAnalyticsChartCard(
             title: "Packet Types",
             subtitle: "Traffic reported by payload",
-            symbol: "shippingbox"
+            symbol: "chart.pie.fill"
         ) {
-            Chart(sortedCounts) { item in
-                BarMark(
-                    x: .value("Packets", item.count),
-                    y: .value("Type", item.name)
+            Chart(data) { item in
+                SectorMark(
+                    angle: .value("Packets", item.count),
+                    innerRadius: .ratio(0.58),
+                    angularInset: 1.5
                 )
-                .foregroundStyle(Color.blue.gradient)
-                .annotation(position: .trailing) {
-                    Text(item.count.formatted())
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
+                .cornerRadius(3)
+                .foregroundStyle(by: .value("Type", item.name))
             }
-            .chartXAxis(.hidden)
-            .frame(height: max(150, CGFloat(sortedCounts.count) * 34))
-            .accessibilityLabel("Packet type distribution chart")
+            .chartLegend(position: .bottom, alignment: .leading, spacing: 8)
+            .frame(height: 270)
+            .accessibilityLabel("Packet type distribution")
         }
     }
 }

@@ -15,6 +15,8 @@ data class AnalyzerSource(
     /** Optional community viewport for "All regions", shared with iOS (`mapCenter` is [lat, lon]). */
     val mapCenter: List<Double>? = null,
     val mapRadiusKm: Double? = null,
+    /** Optional square logo, as a path inside the registry folder (`icons/<name>.png`), shared with iOS. */
+    val icon: String? = null,
 ) {
     val viewport: RegionCoordinate? get() = Coordinate.valid(mapCenter?.getOrNull(0), mapCenter?.getOrNull(1))
         ?.let { RegionCoordinate(it.latitude, it.longitude, mapRadiusKm ?: 250.0) }

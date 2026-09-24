@@ -2,9 +2,6 @@ package org.nodescope.android.feature.settings
 
 import android.text.format.Formatter
 import androidx.compose.foundation.Image
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.foundation.clickable
-import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -291,63 +288,3 @@ private fun Section(title: String?, footer: String? = null, content: @Composable
         footer?.let { Text(it, Modifier.padding(horizontal = 4.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
-
-// region Support development
-
-private fun Tip.icon(): ImageVector = when (this) {
-    Tip.COFFEE -> Icons.Outlined.LocalCafe
-    Tip.LUNCH -> Icons.Outlined.LunchDining
-    Tip.DINNER -> Icons.Outlined.Restaurant
-}
-
-/** iOS `SupportDevelopmentScreen`: optional one-time tips, through Google Play Billing. */
-@Composable
-fun SupportDevelopmentScreen(model: TipViewModel) {
-    val state by model.state.collectAsStateWithLifecycle()
-    val activity = LocalActivity.current
-    LaunchedEffect(Unit) { model.load() }
-    if (state.thankYou) AlertDialog(onDismissRequest = model::dismissThankYou, title = { Text("Thank you!") },
-        text = { Text("Thank you for supporting NodeScope!") }, confirmButton = { TextButton(onClick = model::dismissThankYou) { Text("Done") } })
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item {
-            Column(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Icon(Icons.Outlined.Favorite, null, Modifier.size(48.dp), tint = ActivityAmber)
-                Text("Enjoying NodeScope?", style = MaterialTheme.typography.titleLarge)
-                Text("If NodeScope has been useful, you can leave an optional tip to support its continued development.", textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        item {
-            Section("Leave a tip", footer = "Tips are one-time purchases. They don't unlock features or include goods, services, or membership benefits.") {
-                if (state.loading && state.products.isEmpty()) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp); Spacer(Modifier.width(10.dp)); Text("Loading tips…")
-                }
-                state.products.forEach { product ->
-                    val purchasing = state.purchasing == product.tip
-                    Row(Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small)
-                        .clickable(enabled = state.purchasing == null && activity != null, onClickLabel = "Make a one-time tip purchase") {
-                            activity?.let { model.purchase(it, product) }
-                        }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Icon(product.tip.icon(), null, tint = MaterialTheme.colorScheme.primary)
-                        Text(product.title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                        if (purchasing) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                        else Text(product.price, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-                    }
-                }
-            }
-        }
-        state.error?.let { message ->
-            item {
-                Section(null) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Icon(Icons.Outlined.Warning, null, tint = ActivityAmber); Text(message)
-                    }
-                    if (state.products.isEmpty() && !state.loading) TextButton(onClick = { model.load(force = true) }) { Text("Try again") }
-                }
-            }
-        }
-    }
-}
-
-// endregion

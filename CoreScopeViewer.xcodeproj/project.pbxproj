@@ -39,6 +39,7 @@
 		316FE01A3060988F00FBA3B4 /* NodeAnalyticsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FE0193060988F00FBA3B4 /* NodeAnalyticsScreen.swift */; };
 		31C733CCC554E34636022A89 /* OnboardingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9AFF0E38F9E8C2C60829E93 /* OnboardingScreen.swift */; };
 		31DC215B3064091D00F0E9C5 /* SupportDevelopmentScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DC215A3064091D00F0E9C5 /* SupportDevelopmentScreen.swift */; };
+		367D92626A31391FE48F86D8 /* DistanceFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235873A5D91CB7811DDE491B /* DistanceFormat.swift */; };
 		37EEBAD9BA7B400246063847 /* NodeDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75CDCA22232763038FF030C6 /* NodeDetailViewModel.swift */; };
 		3BE961FDCF2336382895F4C3 /* ModelDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C78C1620C6A3A352DD6B687 /* ModelDecodingTests.swift */; };
 		3D366579F73DA99203CE929F /* ChannelDetailScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B3BFBBCF86390A7CA4DC384 /* ChannelDetailScreen.swift */; };
@@ -53,6 +54,8 @@
 		720AC3BF3F9FAFDCD5C48C40 /* LoadingIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D52E290B7121585A1C7A0699 /* LoadingIndicator.swift */; };
 		73FBC544410EBB6331BE2670 /* NodeRoleStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73004474B78DC6135A5F3FD4 /* NodeRoleStyle.swift */; };
 		748C3658362BEB182690BA21 /* us-sources.json in Resources */ = {isa = PBXBuildFile; fileRef = C779CBD001144856373F59F6 /* us-sources.json */; };
+		78DCE8CBA4FAD67D00DCCD48 /* DistanceFormatTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 202646976494B608BAFA8995 /* DistanceFormatTests.swift */; };
+		C9442265B47B2D20E681223B /* AnalyzerSourceLogoTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87221E748C0B435ADB9F016B /* AnalyzerSourceLogoTests.swift */; };
 		81BAE67C29D289F43B630B40 /* RelativeTime.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4864A74D4FA3785DE838A1B /* RelativeTime.swift */; };
 		895D2DD9450C64472E7693F6 /* NodeHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2267353D97D345808DF80E40 /* NodeHealth.swift */; };
 		9083F3FDE761C318E4470B7D /* RegionFilterMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BE824AF6B92A1D9B2F38BFD /* RegionFilterMenu.swift */; };
@@ -71,6 +74,7 @@
 		D10FFE35F47798056E28EB1C /* DataLoadStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29E28B950F28EA62CB22D383 /* DataLoadStatusView.swift */; };
 		D5F127286F43177CB8B17400 /* SignalQualityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4803E09AA9A3CD1D7EF773B /* SignalQualityTests.swift */; };
 		D79DF7E587202E277463644A /* AnalyzerSourcePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BA4982D8889A079D6CEBCB9 /* AnalyzerSourcePicker.swift */; };
+		DD6C9F810E54AD2B21E18201 /* AnalyzerSourceLogo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32A0B4E835C764626FE71370 /* AnalyzerSourceLogo.swift */; };
 		D86C8FE8DEB5CE51B1FFC834 /* CoreScopeViewerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AD4E0C32DC0423479F83C43 /* CoreScopeViewerApp.swift */; };
 		DAAB4861A12F70E15A9DBA56 /* PacketFeedCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB52868AE176502884D9781C /* PacketFeedCache.swift */; };
 		DB22D3F08439100648510953 /* NodeDetailScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CE357DF8B6328C61A2E23E4 /* NodeDetailScreen.swift */; };
@@ -98,7 +102,10 @@
 		177311C96A5748EDEC17934A /* NodeSignalQuality.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeSignalQuality.swift; sourceTree = "<group>"; };
 		1995A14EECD0A20DEE44C713 /* PacketDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketDetailViewModel.swift; sourceTree = "<group>"; };
 		1B8EBAA696FEC61136DADD69 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		202646976494B608BAFA8995 /* DistanceFormatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DistanceFormatTests.swift; sourceTree = "<group>"; };
+		87221E748C0B435ADB9F016B /* AnalyzerSourceLogoTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerSourceLogoTests.swift; sourceTree = "<group>"; };
 		2267353D97D345808DF80E40 /* NodeHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeHealth.swift; sourceTree = "<group>"; };
+		235873A5D91CB7811DDE491B /* DistanceFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DistanceFormat.swift; sourceTree = "<group>"; };
 		29E28B950F28EA62CB22D383 /* DataLoadStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataLoadStatusView.swift; sourceTree = "<group>"; };
 		2B296BB4A0028909CEC54B69 /* ReadableColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadableColor.swift; sourceTree = "<group>"; };
 		2CE357DF8B6328C61A2E23E4 /* NodeDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeDetailScreen.swift; sourceTree = "<group>"; };
@@ -131,6 +138,7 @@
 		3EA14BD4E3A32FA9B63B54B0 /* PacketReplayStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketReplayStore.swift; sourceTree = "<group>"; };
 		4B3BFBBCF86390A7CA4DC384 /* ChannelDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelDetailScreen.swift; sourceTree = "<group>"; };
 		4BA4982D8889A079D6CEBCB9 /* AnalyzerSourcePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerSourcePicker.swift; sourceTree = "<group>"; };
+		32A0B4E835C764626FE71370 /* AnalyzerSourceLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerSourceLogo.swift; sourceTree = "<group>"; };
 		4E7320B1D9D6A2930636717B /* ObserverDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObserverDetailScreen.swift; sourceTree = "<group>"; };
 		5394A1ABEC13641DD68ADB69 /* Node.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Node.swift; sourceTree = "<group>"; };
 		676EB2594CA764CE13BDDE59 /* Observer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Observer.swift; sourceTree = "<group>"; };
@@ -308,6 +316,7 @@
 			isa = PBXGroup;
 			children = (
 				37795BF9DC79999D3E6DE8A3 /* AboutScreen.swift */,
+				32A0B4E835C764626FE71370 /* AnalyzerSourceLogo.swift */,
 				4BA4982D8889A079D6CEBCB9 /* AnalyzerSourcePicker.swift */,
 				78E6E9CACE3528A4828C2A2D /* AppearanceSettings.swift */,
 				95B46AA4A5FB82FC08E16B31 /* SettingsScreen.swift */,
@@ -325,6 +334,7 @@
 				D52E290B7121585A1C7A0699 /* LoadingIndicator.swift */,
 				2B296BB4A0028909CEC54B69 /* ReadableColor.swift */,
 				6BE824AF6B92A1D9B2F38BFD /* RegionFilterMenu.swift */,
+				235873A5D91CB7811DDE491B /* DistanceFormat.swift */,
 				E4864A74D4FA3785DE838A1B /* RelativeTime.swift */,
 				36B0A5E6DC5812474734F2C7 /* SenderColor.swift */,
 				3144E9F6305B2A4300B57F18 /* InstrumentSearchField.swift */,
@@ -408,6 +418,8 @@
 			children = (
 				3C78C1620C6A3A352DD6B687 /* ModelDecodingTests.swift */,
 				B302D4D26193BFC6975CDF82 /* URLPathEncodingTests.swift */,
+				87221E748C0B435ADB9F016B /* AnalyzerSourceLogoTests.swift */,
+				202646976494B608BAFA8995 /* DistanceFormatTests.swift */,
 				F4803E09AA9A3CD1D7EF773B /* SignalQualityTests.swift */,
 			);
 			path = CoreScopeViewerTests;
@@ -507,6 +519,8 @@
 			files = (
 				3BE961FDCF2336382895F4C3 /* ModelDecodingTests.swift in Sources */,
 				036ACF59063991FAB8B4D9A0 /* URLPathEncodingTests.swift in Sources */,
+				C9442265B47B2D20E681223B /* AnalyzerSourceLogoTests.swift in Sources */,
+				78DCE8CBA4FAD67D00DCCD48 /* DistanceFormatTests.swift in Sources */,
 				D5F127286F43177CB8B17400 /* SignalQualityTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -521,6 +535,7 @@
 				B5BD63C91E6B93FAA59ED007 /* ActivePing.swift in Sources */,
 				6A8C5BB6EED7A1F412DCCA73 /* AnalyzerConfig.swift in Sources */,
 				22E6EDC06317772F4D948AC2 /* AnalyzerSettings.swift in Sources */,
+				DD6C9F810E54AD2B21E18201 /* AnalyzerSourceLogo.swift in Sources */,
 				D79DF7E587202E277463644A /* AnalyzerSourcePicker.swift in Sources */,
 				316FDFFF305C6CB100FBA3B4 /* SearchHistoryStore.swift in Sources */,
 				2CB0E2884918B39C50850A22 /* AnalyzerSourceRegistry.swift in Sources */,
@@ -577,6 +592,7 @@
 				9F4984DB52D93C036F83D496 /* ReadableColor.swift in Sources */,
 				9083F3FDE761C318E4470B7D /* RegionFilterMenu.swift in Sources */,
 				F2137327FBC92FE87A764EE0 /* RegionFilterStore.swift in Sources */,
+				367D92626A31391FE48F86D8 /* DistanceFormat.swift in Sources */,
 				81BAE67C29D289F43B630B40 /* RelativeTime.swift in Sources */,
 				B5E00F5D8D1377267C747B76 /* RootTabView.swift in Sources */,
 				316FE012305E2B4200FBA3B4 /* StorageSettingsScreen.swift in Sources */,
@@ -603,7 +619,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = CW335GEDYX;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CoreScopeViewer/Info.plist;
@@ -795,7 +811,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = CW335GEDYX;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CoreScopeViewer/Info.plist;

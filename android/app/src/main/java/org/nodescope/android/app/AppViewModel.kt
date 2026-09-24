@@ -25,6 +25,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     val monitoredChannels: MonitoredChannelStore get() = container.monitoredChannels
     val diagnostics: AnalyzerDiagnostics get() = container.diagnostics
     val cacheStorage: CacheStorage get() = container.cacheStorage
+    val sourceIcons: org.nodescope.android.core.storage.SourceIcons get() = container.sourceIcons
     private val linkState = MutableStateFlow<PendingLink?>(null)
     /** A `nodescope://` link waiting to be opened; kept until the app shell is ready (after onboarding). */
     val pendingLink = linkState.asStateFlow()
@@ -80,6 +81,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
     fun setAppearance(mode: Appearance) = persist { container.preferences.setAppearance(mode) }
+    fun setDistanceUnit(unit: org.nodescope.android.core.storage.DistanceUnit) = persist { container.preferences.setDistanceUnit(unit) }
     fun setRegion(region: String?) = persist { container.preferences.setRegion(region) }
     fun selectDestination(destination: String) = persist { container.preferences.setDestination(destination) }
     fun refresh() = session.refresh()

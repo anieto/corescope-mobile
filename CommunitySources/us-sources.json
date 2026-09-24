@@ -3,6 +3,7 @@
   "sources": [
     {
       "id": "meshtexas",
+      "icon": "icons/meshtexas.png",
       "name": "MeshTexas",
       "host": "analyzer.meshtexas.org",
       "subtitle": "Connecting the Lone Star State",
@@ -10,6 +11,7 @@
     },
     {
       "id": "wcmesh",
+      "icon": "icons/wcmesh.png",
       "name": "WCMesh",
       "host": "corescope.wcmesh.com",
       "subtitle": "West Coast, USA",
@@ -17,6 +19,7 @@
     },
     {
       "id": "gulf-coast-mesh",
+      "icon": "icons/gulf-coast-mesh.png",
       "name": "Gulf Coast Mesh",
       "host": "analyzer.gulfcoastmesh.org",
       "subtitle": "Comms that hold when the coast does not.",
@@ -26,6 +29,7 @@
     },
     {
       "id": "comchan",
+      "icon": "icons/comchan.png",
       "name": "ComChan",
       "host": "analyzer.comchan.net",
       "subtitle": "Central Texas Meshcore",
@@ -33,6 +37,7 @@
     },
     {
       "id": "colorado-mesh",
+      "icon": "icons/colorado-mesh.png",
       "name": "Colorado Mesh",
       "host": "analyzer.meshcore.coloradomesh.org",
       "subtitle": "Colorado's Mesh Network Community",

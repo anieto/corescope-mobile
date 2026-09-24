@@ -11,6 +11,9 @@ val localProperties = Properties().apply {
 }
 val cartoKey = providers.environmentVariable("CARTO_API_KEY")
     .orElse(localProperties.getProperty("CARTO_API_KEY", "")).get()
+/** Release signing comes only from the git-ignored local.properties; without it, release builds are unsigned. */
+fun signingValue(name: String): String? = localProperties.getProperty(name)?.takeIf { it.isNotBlank() }
+val releaseStore = signingValue("RELEASE_STORE_FILE")?.let(::file)?.takeIf { it.exists() }
 
 android {
     namespace = "org.nodescope.android"
@@ -25,13 +28,24 @@ android {
         buildConfigField("boolean", "MAPS_CONFIGURED", cartoKey.isNotBlank().toString())
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
+    signingConfigs {
+        if (releaseStore != null) create("release") {
+            storeFile = releaseStore
+            storePassword = signingValue("RELEASE_STORE_PASSWORD")
+            keyAlias = signingValue("RELEASE_KEY_ALIAS")
+            keyPassword = signingValue("RELEASE_KEY_PASSWORD")
+        }
+    }
+    buildTypes {
+        release { signingConfigs.findByName("release")?.let { signingConfig = it } }
+    }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    // One source of truth for the community registry and offline contract fixtures.
-    sourceSets["main"].assets.srcDir("../../CommunitySources")
+    // The bundled registry holds only the default source (as on iOS), so any other source can be
+    // delisted from the live registry without an app update; its icon ships in assets/icons.
     sourceSets["test"].resources.srcDir("../../shared/fixtures")
 }
 kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
@@ -49,8 +63,6 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.1.7")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    // Google Play Billing for optional one-time tips (Settings → Support development).
-    implementation("com.android.billingclient:billing-ktx:9.1.0")
     // OpenGL supports the full API 26+ device range, including non-Vulkan GPUs.
     implementation("org.maplibre.gl:android-sdk-opengl:13.6.1")
     testImplementation("junit:junit:4.13.2")

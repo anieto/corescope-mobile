@@ -9,6 +9,9 @@ struct AnalyzerSource: Codable, Hashable, Identifiable {
     let isDefault: Bool
     let mapCenter: [Double]?
     let mapRadiusKm: Double?
+    /// Optional square logo, as a path inside the registry folder
+    /// (`icons/<name>.png`), shared with Android.
+    let icon: String?
 
     var mapLatitude: Double? { mapCenter?.first }
     var mapLongitude: Double? {

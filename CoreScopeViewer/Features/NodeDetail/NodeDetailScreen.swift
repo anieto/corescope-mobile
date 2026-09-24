@@ -473,6 +473,7 @@ private struct NodeLinksCard: View {
 }
 
 private struct NodeLinkRow: View {
+    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
     let link: ReachLink
     let showsDisclosure: Bool
 
@@ -494,7 +495,7 @@ private struct NodeLinkRow: View {
             Spacer()
 
             if let distanceKm = link.distanceKm {
-                Text("\(distanceKm, specifier: "%.1f") km")
+                Text(distanceUnit.format(kilometers: distanceKm))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
             }

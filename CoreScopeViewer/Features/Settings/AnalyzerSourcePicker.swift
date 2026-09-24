@@ -24,10 +24,7 @@ struct AnalyzerSourcePickerScreen: View {
                             select(source.host)
                         } label: {
                             HStack(spacing: 12) {
-                                Image(systemName: source.isDefault ? "star.circle.fill" : "antenna.radiowaves.left.and.right.circle.fill")
-                                    .font(.title3)
-                                    .foregroundStyle(source.isDefault ? .yellow : Color.accentColor)
-                                    .frame(width: 30)
+                                AnalyzerSourceLogo(source: source)
 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(source.name)

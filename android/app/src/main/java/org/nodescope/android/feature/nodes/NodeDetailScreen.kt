@@ -248,7 +248,7 @@ private fun LinksCard(links: List<ReachLink>, onNode: (String) -> Unit) {
                         Text(if (link.bidir) "Bidirectional" else if (link.theyHear > 0) "Heard by this node's neighbor" else "Heard by this node",
                             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    link.distanceKm?.let { Text("%.1f km".format(it), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    link.distanceKm?.let { Text(org.nodescope.android.core.design.formatDistance(it, org.nodescope.android.core.design.LocalDistanceUnit.current), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     Icon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }

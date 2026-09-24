@@ -84,27 +84,6 @@ fun LineChart(title: String, points: List<ChartPoint>, color: Color, modifier: M
     }
 }
 
-/** Ranked horizontal bars with the exact count as text. */
-@Composable
-fun RankedBars(rows: List<ChartPoint>, color: Color) {
-    val max = rows.maxOfOrNull { it.value }?.coerceAtLeast(1) ?: 1
-    val total = rows.sumOf { it.value }.coerceAtLeast(1)
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        rows.forEach { row ->
-            Column(Modifier.semantics(mergeDescendants = true) {}) {
-                Row {
-                    Text(row.label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                    Text("${compactCount(row.value)} · ${row.value * 100 / total}%", style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Box(Modifier.padding(top = 4.dp).fillMaxWidth().height(6.dp).background(MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.small)) {
-                    Box(Modifier.fillMaxWidth(row.value.toFloat() / max).fillMaxHeight().background(color, MaterialTheme.shapes.small))
-                }
-            }
-        }
-    }
-}
-
 @Composable
 private fun AxisLabels(max: Long) {
     Column(Modifier.fillMaxHeight().padding(end = 6.dp), verticalArrangement = Arrangement.SpaceBetween, horizontalAlignment = Alignment.End) {

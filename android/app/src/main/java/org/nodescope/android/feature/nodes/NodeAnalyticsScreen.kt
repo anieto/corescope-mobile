@@ -81,9 +81,11 @@ fun NodeAnalyticsScreen(model: NodeAnalyticsViewModel, host: String, publicKey: 
             if (analytics.uptimeHeatmap.isNotEmpty()) item { HeatmapCard(heatmapGrid(analytics.uptimeHeatmap)) }
             if (analytics.snrTrend.isNotEmpty()) item { SignalCard(analytics.snrTrend, observerList, now) }
             if (analytics.packetTypeBreakdown.isNotEmpty()) item {
-                ChartCard("Packet types", "Traffic reported by payload", Icons.Outlined.Inventory2) {
-                    RankedBars(analytics.packetTypeBreakdown.sortedByDescending { it.count }.map { ChartPoint(payloadTypeLabel(it.payloadType), it.count) },
-                        MaterialTheme.colorScheme.primary)
+                // Same donut as an observer's packet types, so the two pages read alike.
+                ChartCard("Packet types", "Traffic reported by payload", Icons.Outlined.DonutLarge) {
+                    val slices = analytics.packetTypeBreakdown.sortedByDescending { it.count }.map { ChartPoint(payloadTypeLabel(it.payloadType), it.count) }
+                    val total = slices.sumOf { it.value }
+                    DonutChart("Packet types: " + slices.take(3).joinToString(", ") { "${it.label} ${percentOf(it.value, total)}" }, slices)
                 }
             }
             if (analytics.hopDistribution.isNotEmpty()) item {

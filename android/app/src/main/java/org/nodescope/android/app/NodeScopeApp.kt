@@ -68,7 +68,6 @@ enum class Destination(val title: Int, val icon: ImageVector, val route: TopLeve
 @Serializable data object DiagnosticsRoute
 @Serializable data object StorageRoute
 @Serializable data object AboutRoute
-@Serializable data object SupportRoute
 @Serializable data class MessagePacketRoute(val hash: String, val sender: String = "", val text: String = "")
 @Serializable data object MapLabRoute
 @Serializable data class ChannelRoute(val id: String, val name: String)
@@ -83,7 +82,7 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
     if (!preferences.onboarded) {
         Surface(Modifier.fillMaxSize()) {
             Box(Modifier.safeDrawingPadding()) {
-                SourceScreen(sources, preferences.host, true, saving, error, { model.selectSource(it) })
+                SourceScreen(sources, preferences.host, true, saving, error, { model.selectSource(it) }, model.sourceIcons)
             }
         }
     } else {
@@ -97,10 +96,10 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
             val sourceChangedAt by model.sourceChangedAt.collectAsStateWithLifecycle()
             val pendingLink by model.pendingLink.collectAsStateWithLifecycle()
             AppShell(preferences, state, model::setRegion, { model.refresh(); model.reconnectLive() }, model::setAppearance, model::selectDestination,
-                sourceScreen = { onDone -> SourceScreen(sources, preferences.host, false, saving, error, { host -> model.selectSource(host, onDone) }) },
+                sourceScreen = { onDone -> SourceScreen(sources, preferences.host, false, saving, error, { host -> model.selectSource(host, onDone) }, model.sourceIcons) },
                 feed = live, onReconnect = model::reconnectLive, browse = model.browse, monitoredChannels = { model.monitoredChannels },
                 diagnostics = model.diagnostics, cacheStorage = model.cacheStorage, sourceChangedAt = sourceChangedAt,
-                pendingLink = pendingLink, onLinkHandled = model::linkHandled,
+                pendingLink = pendingLink, onLinkHandled = model::linkHandled, onDistanceUnit = model::setDistanceUnit,
                 sourceViewport = sources.firstOrNull { source ->
                     runCatching { org.nodescope.android.core.network.normalizeHost(source.host) }.getOrNull().equals(preferences.host, true)
                 }?.viewport)
@@ -108,6 +107,9 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
         }
     }
 }
+
+/** Settings → Support development opens this page in the browser. */
+const val SUPPORT_URL = "https://buymeacoffee.com/anieto"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -123,8 +125,10 @@ internal fun AppShell(
     diagnostics: org.nodescope.android.core.network.AnalyzerDiagnostics? = null,
     cacheStorage: org.nodescope.android.core.storage.CacheStorage? = null, sourceChangedAt: Long? = null,
     pendingLink: PendingLink? = null, onLinkHandled: (Long) -> Unit = {},
+    onDistanceUnit: (org.nodescope.android.core.storage.DistanceUnit) -> Unit = {},
 ) {
     val context = LocalContext.current
+    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
     val library = nodeLibrary ?: remember(preferences.host) { NodeLibrary.forAnalyzer(context, preferences.host) }
     val nav = rememberNavController()
     fun openNode(key: String) {
@@ -209,7 +213,6 @@ internal fun AppShell(
                                 destination?.hasRoute<DiagnosticsRoute>() == true -> R.string.analyzer_diagnostics
                                 destination?.hasRoute<StorageRoute>() == true -> R.string.storage
                                 destination?.hasRoute<AboutRoute>() == true -> R.string.about_title
-                                destination?.hasRoute<SupportRoute>() == true -> R.string.support_development
                                 destination?.hasRoute<AddChannelRoute>() == true -> R.string.add_channel
                                 destination?.hasRoute<NodeAnalyticsRoute>() == true -> R.string.node_analytics
                                 else -> R.string.node_details
@@ -333,12 +336,11 @@ internal fun AppShell(
                                 onDiagnostics = { if (diagnostics != null) nav.navigate(DiagnosticsRoute) },
                                 onStorage = { if (cacheStorage != null) nav.navigate(StorageRoute) },
                                 onAbout = { nav.navigate(AboutRoute) }, onMapLab = { nav.navigate(MapLabRoute) },
-                                onSupport = { nav.navigate(SupportRoute) }.takeIf { browse != null })
+                                onSupport = { runCatching { uriHandler.openUri(SUPPORT_URL) } }, onDistanceUnit = onDistanceUnit)
                         }
                         composable<DiagnosticsRoute> { diagnostics?.let { DiagnosticsScreen(it, preferences.host, feed.connection) } }
                         composable<StorageRoute> { cacheStorage?.let { StorageScreen(it) { onRefresh() } } }
                         composable<AboutRoute> { AboutScreen() }
-                        composable<SupportRoute> { SupportDevelopmentScreen(viewModel()) }
                         composable<NodeRoute> { backStack ->
                             val publicKey = backStack.toRoute<NodeRoute>().publicKey
                             val node = state.snapshot?.nodes?.firstOrNull { it.publicKey == publicKey } ?: library.node(publicKey)

@@ -56,6 +56,7 @@ class AppContainer(application: Application) {
     val browse = HttpBrowseRepository(client, responses)
     val diagnostics = AnalyzerDiagnostics(client)
     val cacheStorage = org.nodescope.android.core.storage.CacheStorage(application)
+    val sourceIcons = org.nodescope.android.core.storage.SourceIcons(application, client)
     /** Opened on first use: reading sealed channel keys touches the Android Keystore. */
     val monitoredChannels by lazy { MonitoredChannelStore.forDevice(application) }
     val bundledSources: SourceDocument = application.assets.open("us-sources.json").bufferedReader().use {

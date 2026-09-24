@@ -566,3 +566,51 @@ how to use.
   250 km radius; a region → analyzer IATA center, else an MKLocalSearch airport lookup.
 - Checked against live configs for all five registry analyzers (TX, SoCal, Gulf, Comchan,
   Colorado): each frames its own area; outliers dropped: RDU (Gulf, Comchan), RNB/YQB (CO).
+
+## Support link replaces tips — 2026-09-24
+
+- Settings → Support development ("Buy me a coffee") now opens
+  https://buymeacoffee.com/anieto in the browser (open-in-new icon instead of a chevron).
+- Removed Google Play Billing: `TipStore.kt`, the tip screen and route, `TipOutcomeTest`,
+  the `billing-ktx` dependency and the unused title string. The Play Console tip products
+  (`com.btdev.nodescope.tip.*`) are no longer used by the app.
+- iOS is unchanged (still StoreKit tips).
+
+## Units setting (Android + iOS) — 2026-09-24
+
+- Settings → Units: Imperial (mi) / Metric (km), default Imperial, on both platforms
+  (Android DataStore `distance_unit`, provided as `LocalDistanceUnit`; iOS
+  `@AppStorage("distanceUnit")`).
+- Shared rule (`formatDistance` / `DistanceUnit.format`): one decimal mi or km; under
+  0.1 mi shows feet, under 1 km shows meters, rounded to 10. The only distance either app
+  shows today is the neighbor link distance on Node Details, which now uses it.
+- Tests: `DistanceFormatTest` (Android) and `DistanceFormatTests` (iOS, same cases).
+  iOS built with build-for-testing only; the pbxproj entries were added by hand.
+
+## Node analytics packet types as a donut (Android + iOS) — 2026-09-24
+
+- Node Analytics → Packet types now uses the same donut as an observer's packet types on
+  both platforms (was ranked bars). Android reuses `DonutChart` with the same ordering,
+  labels and description; the now-unused `RankedBars` was removed. iOS reuses the
+  observer's `PacketTypeDatum` (made internal), so types read "Channel Msg"/"Direct Msg"
+  instead of raw `GRP_TXT`/`TXT_MSG`, and uses the same `SectorMark` styling.
+
+## Community source logos (Android + iOS) — 2026-09-24
+
+- Registry entries gain an optional `icon`: a path inside `CommunitySources/`
+  (`icons/<id>.png`, 256×256 PNG). Both apps accept only `icons/<name>.png`, so the registry
+  can't point phones at other servers. The source pickers show the logo (rounded square),
+  falling back to the previous star/antenna symbol.
+- Sources: MeshTexas (user-supplied art, cropped to the Texas mark), WCMesh (crop of
+  wcmesh.com's social image; no square asset exists), Gulf Coast (analyzer branding logo,
+  same art as their site), Comchan (comchan.net icon, 400 px analyzer copy), Colorado
+  (coloradomesh.org icon; their analyzer uses a different generic logo).
+- Android: the whole registry folder is bundled as assets, so all icons work offline; new
+  ones download once from raw.githubusercontent and are kept in the cache directory
+  (`SourceIcons`). iOS: MeshTexas is bundled (`SourceIcon-meshtexas` asset); others load via
+  `AsyncImage` from the registry. Tests: path rule on both, registry icons exist (Android).
+- Follow-up: Android now bundles only the default source, matching iOS
+  (`app/src/main/assets/us-sources.json` = iOS `Resources/us-sources.json`, plus
+  `assets/icons/meshtexas.png`); the `CommunitySources` asset srcDir was removed, so delisted
+  sources never appear from the bundle. `meshtexas.png` quantized to a 256-colour palette
+  (96 KB → 32 KB, visually identical). Test: the two bundled registries and icons match.

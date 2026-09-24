@@ -8,6 +8,7 @@ struct SettingsScreen: View {
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(ObserverRegionLookup.self) private var observerRegionLookup
     @Environment(AppearanceSettings.self) private var appearanceSettings
+    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
     @State private var hostInput = ""
     @State private var sourceSaveStatus: SourceSaveStatus?
     @State private var sourceSaveID = UUID()
@@ -32,6 +33,16 @@ struct SettingsScreen: View {
                         Picker("Appearance", selection: $appearanceSettings.mode) {
                             ForEach(AppearanceSettings.Mode.allCases) { mode in
                                 Text(mode.label).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                    }
+
+                    SettingsPanel(title: "Units", symbol: "ruler") {
+                        Picker("Units", selection: $distanceUnit) {
+                            ForEach(DistanceUnit.allCases) { unit in
+                                Text(unit.label).tag(unit)
                             }
                         }
                         .pickerStyle(.segmented)

@@ -312,7 +312,9 @@ private struct PacketTypesCard: View {
     }
 }
 
-private struct PacketTypeDatum: Identifiable {
+/// A packet type with its friendly name; shared with Node Analytics so both
+/// packet-type donuts label and order types the same way.
+struct PacketTypeDatum: Identifiable {
     let code: Int
     let count: Int
     var id: Int { code }

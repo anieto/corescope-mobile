@@ -10,6 +10,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.CompositionLocalProvider
+import org.nodescope.android.core.design.LocalDistanceUnit
+import org.nodescope.android.core.storage.DistanceUnit
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.graphics.luminance
 import androidx.core.view.WindowCompat
@@ -49,9 +52,12 @@ class MainActivity : ComponentActivity() {
                         isAppearanceLightNavigationBars = lightBars
                     }
                 }
-                Surface(Modifier.fillMaxSize()) {
-                    preferences?.let { NodeScopeApp(model, it) } ?: Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                // Settings → Units, read by every screen that shows a distance.
+                CompositionLocalProvider(LocalDistanceUnit provides (preferences?.distanceUnit ?: DistanceUnit.IMPERIAL)) {
+                    Surface(Modifier.fillMaxSize()) {
+                        preferences?.let { NodeScopeApp(model, it) } ?: Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
                     }
                 }
             }
