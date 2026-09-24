@@ -2,6 +2,16 @@
 
 Reviewed September 23, 2026. This is a design recommendation, not an implementation change.
 
+## Resume checkpoint — September 24, 2026
+
+The user has put tablet list-detail work on hold. Do not start it until asked to resume. The phone UI polish, adaptive launcher icon, analytics interactions, and large-text/short-landscape fixes described in the progress entries below are implemented. Last validation: build and 134 unit tests passed, along with targeted large-text navigation/Units and short-wide navigation-rail tests.
+
+When resumed, the proposed next work is Observer list-detail panes, followed by Channels. Preserve selection and scroll position during resizing/rotation and retain phone navigation. Then perform an overall visual consistency review. Full tablet/foldable and TalkBack audits are not complete.
+
+Persistent requirements: channel messages alternate left/right when the sender changes; consecutive messages from the same sender stay together; keep an explicit visible “View packet” action and all packet inspection functionality; keep the live packet feed off the main map. Preserve the newer units, source-logo, analyzer-framing, and signing work already in the repository.
+
+Testing note: the connected test runner reset emulator app data. Use an isolated test emulator for future instrumentation when possible, target a specific device for installation, and restore any changed font/rotation settings afterward. The display settings used during this pass were restored to font scale 1.0, user rotation 0, and automatic rotation enabled.
+
 ## Scope and direction
 
 Inspected the current Compose implementation and the running Android app: Map, Explore, Channels, Observers, Settings, node and observer details, a channel conversation, message packet details, and node analytics. Checked analytics in light and dark themes and restored the system theme afterward. This was not a complete TalkBack, large-font, tablet, foldable, or performance audit.
