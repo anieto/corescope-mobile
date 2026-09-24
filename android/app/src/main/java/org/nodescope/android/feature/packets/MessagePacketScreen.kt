@@ -124,7 +124,7 @@ fun MessagePacketScreen(model: PacketDetailViewModel, host: String, hash: String
                         if (!playable) Text("This route's nodes aren't on the current map region, so it can't be replayed.",
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Button(onClick = { onReplay(routes, index) }, Modifier.fillMaxWidth(), enabled = playable,
-                            colors = ButtonDefaults.buttonColors(containerColor = ActivityAmber, contentColor = MaterialTheme.colorScheme.surface)) {
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)) {
                             Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text("Replay on map")
                         }
                     }

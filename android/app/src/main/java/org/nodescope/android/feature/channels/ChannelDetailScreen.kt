@@ -125,15 +125,18 @@ private fun ChatBubble(message: ConversationMessage, trailing: Boolean, onPacket
                 Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     SelectionContainer { Text(linkified(message.text, MaterialTheme.colorScheme.primary), style = MaterialTheme.typography.bodyLarge) }
                     Text(shortDateTime(message.timestamp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        if (message.repeats > 1) MetricChip("Heard ${message.repeats}×", Icons.Outlined.Hearing, MaterialTheme.colorScheme.primary)
-                        message.hops?.let { MetricChip("$it hop${if (it == 1) "" else "s"}", Icons.Outlined.Route) }
-                        message.snr?.let { MetricChip("%.1f dB".format(it), Icons.Outlined.GraphicEq) }
-                    }
+                    val metadata = listOfNotNull(
+                        if (message.repeats > 1) "Heard ${message.repeats}×" else null,
+                        message.hops?.let { "$it hop${if (it == 1) "" else "s"}" },
+                        message.snr?.let { "%.1f dB".format(it) },
+                    )
+                    if (metadata.isNotEmpty()) Text(metadata.joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     onPacket?.let { open ->
                         TextButton(onClick = open, contentPadding = PaddingValues(horizontal = 0.dp)) {
                             Icon(Icons.Outlined.Route, null, Modifier.size(16.dp)); Spacer(Modifier.width(4.dp))
                             Text("View packet", style = MaterialTheme.typography.labelMedium)
+                            Icon(Icons.Outlined.ChevronRight, null, Modifier.size(16.dp))
                         }
                     }
                 }

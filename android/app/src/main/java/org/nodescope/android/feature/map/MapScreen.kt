@@ -123,6 +123,8 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     var cameraValues by rememberSaveable { mutableStateOf(listOf(0.0, 0.0, 1.0, 0.0, 0.0)) }
     var initialized by rememberSaveable { mutableStateOf(false) }
     var lastRegion by rememberSaveable { mutableStateOf(selectedRegion) }
+    // The analyzer the camera was last framed for; a different one frames afresh.
+    var framedHost by rememberSaveable { mutableStateOf(host) }
     var lastFocus by rememberSaveable { mutableStateOf<String?>(null) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val view = remember(context) { MapView(context).apply { onCreate(null) } }
@@ -232,14 +234,15 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     }
     // Region centers and names stay valid for the analyzer while a new region's nodes load,
     // so a region change can frame immediately instead of waiting (never with stale nodes).
-    var framingSnapshot by remember { mutableStateOf<AnalyzerSnapshot?>(null) }
+    var framingSnapshot by remember(host) { mutableStateOf<AnalyzerSnapshot?>(null) }
     LaunchedEffect(snapshot) { snapshot?.let { framingSnapshot = it } }
-    LaunchedEffect(map, snapshot, focusedKey, focusedCoordinate, selectedRegion, sourceViewport) {
+    LaunchedEffect(map, snapshot, focusedKey, focusedCoordinate, selectedRegion, sourceViewport, host) {
         val ready = map ?: return@LaunchedEffect
         val data = snapshot ?: framingSnapshot?.takeIf { lastRegion != selectedRegion }?.copy(nodes = emptyList()) ?: return@LaunchedEffect
         val selected = data.nodes.firstOrNull { it.publicKey == focusedKey }?.coordinate ?: focusedCoordinate
         val regionChanged = lastRegion != selectedRegion
-        if (!initialized || regionChanged || (selected != null && focusedKey != lastFocus)) {
+        val fresh = !initialized || framedHost != host
+        if (fresh || regionChanged || (selected != null && focusedKey != lastFocus)) {
             val update = if (selected != null && !regionChanged) CameraUpdateFactory.newLatLngZoom(LatLng(selected.latitude, selected.longitude), 13.0)
             else when (val target = cameraTarget(data, selectedRegion, sourceViewport)) {
                 null -> null
@@ -251,9 +254,10 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                 }
             }
             if (update != null) {
-                // Animate moves within the map; the very first framing is instant.
-                if (initialized) ready.animateCamera(update, 600) else ready.moveCamera(update)
+                // Animate moves within an analyzer; the first framing of each analyzer is instant.
+                if (fresh) ready.moveCamera(update) else ready.animateCamera(update, 600)
                 initialized = true
+                framedHost = host
                 lastRegion = selectedRegion
             }
         }
@@ -411,7 +415,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         }
         if (!failed && style == null) CircularProgressIndicator(Modifier.align(Alignment.Center))
         // Zoom sits just above the attribution line at the right edge.
-        Surface(Modifier.align(Alignment.BottomEnd).padding(end = 12.dp, bottom = 56.dp), shape = MaterialTheme.shapes.medium, shadowElevation = 4.dp) {
+        Surface(Modifier.align(Alignment.BottomEnd).padding(end = 12.dp, bottom = 56.dp), shape = MaterialTheme.shapes.medium, shadowElevation = 2.dp) {
             Column {
                 IconButton(onClick = { map?.animateCamera(CameraUpdateFactory.zoomIn()) }) { Icon(Icons.Outlined.Add, stringResource(R.string.zoom_in)) }
                 HorizontalDivider(Modifier.width(32.dp).align(Alignment.CenterHorizontally))
@@ -490,7 +494,7 @@ private fun ReplayControls(playing: Boolean, routes: List<ReplayRoute>, selected
     onPlay: () -> Unit, onLive: () -> Unit, onRoute: (Int) -> Unit, onRouteOnly: () -> Unit, modifier: Modifier = Modifier) {
     val pill = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Surface(shape = MaterialTheme.shapes.extraLarge, color = pill, shadowElevation = 4.dp) {
+        Surface(shape = MaterialTheme.shapes.medium, color = pill, shadowElevation = 2.dp) {
             Row(Modifier.padding(4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Button(onClick = onPlay, contentPadding = PaddingValues(horizontal = 14.dp)) {
                     Icon(if (playing) Icons.Outlined.PlayArrow else Icons.Outlined.Replay, null, Modifier.size(18.dp))
@@ -504,7 +508,7 @@ private fun ReplayControls(playing: Boolean, routes: List<ReplayRoute>, selected
                 }
             }
         }
-        Surface(shape = MaterialTheme.shapes.extraLarge, color = pill, shadowElevation = 4.dp) {
+        Surface(shape = MaterialTheme.shapes.medium, color = pill, shadowElevation = 2.dp) {
             Row(Modifier.padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (routes.size > 1) {
                     var open by remember { mutableStateOf(false) }

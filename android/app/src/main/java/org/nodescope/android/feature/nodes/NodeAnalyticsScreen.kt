@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
@@ -45,23 +46,12 @@ fun NodeAnalyticsScreen(model: NodeAnalyticsViewModel, host: String, publicKey: 
     val analytics = (result as? AnalyticsResult.Available)?.analytics
     val node = analytics?.node ?: initial
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Time range", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    AnalyticsRange.entries.forEachIndexed { index, option ->
-                        SegmentedButton(selected = range == option, onClick = { range = option },
-                            shape = SegmentedButtonDefaults.itemShape(index, AnalyticsRange.entries.size)) { Text(option.title) }
-                    }
-                }
-            }
-        }
+    AnalyticsLayout(range, onRange = { range = it }) {
         item {
             AnalyticsCard {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Box(Modifier.size(44.dp).background(roleColor(node?.role), CircleShape), contentAlignment = Alignment.Center) {
-                        Icon(roleIcon(node?.role), null, tint = Color.White)
+                        Icon(roleIcon(node?.role), null, tint = Color(0xFF14243A))
                     }
                     Column(Modifier.weight(1f)) {
                         Text(node?.name?.takeIf(String::isNotBlank) ?: "Unnamed node", style = MaterialTheme.typography.titleMedium)
@@ -118,8 +108,32 @@ fun NodeAnalyticsScreen(model: NodeAnalyticsViewModel, host: String, publicKey: 
     }
 }
 
+/** Keep range selection available while the analytics content scrolls. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun AnalyticsLayout(range: AnalyticsRange, onRange: (AnalyticsRange) -> Unit, content: LazyListScope.() -> Unit) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        Column(Modifier.widthIn(max = 840.dp).fillMaxSize()) {
+            Surface(color = MaterialTheme.colorScheme.background) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Time range", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                        AnalyticsRange.entries.forEachIndexed { index, option ->
+                            SegmentedButton(selected = range == option, onClick = { onRange(option) },
+                                shape = SegmentedButtonDefaults.itemShape(index, AnalyticsRange.entries.size)) { Text(option.title) }
+                        }
+                    }
+                }
+            }
+            LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+        }
+    }
+}
+
 @Composable
 private fun SummaryCard(stats: ComputedStats) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
     fun percent(value: Double?) = value?.let { String.format(Locale.US, "%.0f%%", it) } ?: "—"
     val metrics = listOf(
         Triple(percent(stats.availabilityPct), "Availability", HealthyGreen),
@@ -134,7 +148,7 @@ private fun SummaryCard(stats: ComputedStats) {
             Icon(Icons.Outlined.Speed, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
             Text("At a glance", style = MaterialTheme.typography.titleMedium)
         }
-        metrics.chunked(2).forEach { row ->
+        (if (expanded) metrics else metrics.take(2)).chunked(2).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 row.forEach { (value, label, tint) ->
                     Column(Modifier.weight(1f).semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -146,6 +160,10 @@ private fun SummaryCard(stats: ComputedStats) {
                     }
                 }
             }
+        }
+        TextButton(onClick = { expanded = !expanded }) {
+            Text(if (expanded) "Show fewer metrics" else "All six metrics")
+            Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null)
         }
     }
 }

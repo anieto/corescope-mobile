@@ -41,14 +41,14 @@ fun BrowseHeader(
             Text(title, style = MaterialTheme.typography.headlineLarge)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Box(Modifier.size(7.dp).background(if (connection == LiveConnection.LIVE) HealthyGreen else ActivityAmber, CircleShape))
-                Text(if (connection == LiveConnection.LIVE) liveLabel else "Reconnecting", style = MaterialTheme.typography.labelMedium,
+                Text(connectionLabel(connection, liveLabel), style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(summary, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         IconButton(onClick = onFilters) {
-            BadgedBox(badge = { if (filterCount > 0) Badge { Text(filterCount.toString()) } }) {
+            BadgedBox(badge = { if (filterCount > 0) Badge(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) { Text(filterCount.toString()) } }) {
                 Icon(Icons.Outlined.FilterList, "Filter and sort, $filterCount active")
             }
         }
@@ -147,4 +147,12 @@ fun MetricChip(text: String, icon: ImageVector, color: Color = MaterialTheme.col
             Text(text, style = MaterialTheme.typography.labelSmall, color = color, maxLines = 1)
         }
     }
+}
+
+/** Connection state is independent of data freshness and individual node activity. */
+fun connectionLabel(connection: LiveConnection, liveLabel: String = "Live"): String = when (connection) {
+    LiveConnection.LIVE -> liveLabel
+    LiveConnection.CONNECTING -> "Connecting"
+    LiveConnection.RECONNECTING -> "Reconnecting"
+    LiveConnection.PAUSED -> "Paused"
 }

@@ -16,7 +16,7 @@ Recommended direction: a calm, precise network-monitoring tool. Keep the blue id
 | --- | --- | --- |
 | First | Detail headers and metadata displace useful information | Compact identity headers; move keys and secondary actions into disclosures and menus |
 | First | Different screens independently style headers, metrics, cards, and status | Establish shared tokens and components, then migrate the existing screens |
-| First | Channel message alignment implies sent/received messages | Use consistent alignment and sender grouping for this monitoring feed |
+| First | Channel metadata and actions compete with message content | Preserve alternating alignment when the sender changes; simplify metadata and retain an explicit compact “View packet” action |
 | First | Some foreground/background combinations have poor contrast | Introduce accessible semantic color pairs for both themes |
 | Next | Browsing screens spend too much space on repeated containers | Use grouped list surfaces, compact metadata, and consistent row anatomy |
 | Next | Live state and freshness are inconsistently explained | Separate connection state, cached-data freshness, and node activity |
@@ -56,7 +56,9 @@ Keep the distinction between the global network summary and region-filtered scre
 
 Use compact rows with channel name, last activity, a useful preview, and one secondary metadata line. Keep monitored channels distinct from discoverable channels without oversized section headings. A floating add action is worth considering only if starting monitoring is a frequent primary task.
 
-For conversations, use one alignment and clear sender grouping. `ChannelLogic.kt` currently toggles sides whenever the sender changes; that resembles sent/received chat even though these are observed messages. Let message text dominate. Put timestamp and essential radio information in a quiet line, and open packet details by tapping the message or a compact affordance. Remove the repeated large “View packet” action from every bubble. Add day separators where useful.
+For conversations, preserve the existing alternating left/right alignment when the sender changes. This is an intentional design choice that helps distinguish speakers; consecutive messages from the same sender should remain grouped on the same side.
+
+Let message text dominate and put timestamp and essential radio information in a quiet line. Retain an explicit, visible “View packet ›” text action at the bottom of every message that currently supports packet inspection. Reduce its surrounding padding and visual weight while preserving a generous touch target and the existing packet-detail functionality. Tapping the message may be an additional shortcut, but must not replace the labeled action. Add day separators where useful.
 
 Preserve scroll position when reading older messages and provide a visible “new messages” control. Do not add a composer unless sending is actually supported.
 
@@ -112,9 +114,21 @@ The current Compose BOM is 2025.09.01. Treat dependency updates as a deliberate 
 
 ## Suggested delivery sequence
 
+### Implementation progress — September 24, 2026
+
+Fourth pass: time-range controls stay outside the scrolling analytics content; analytics has a centered maximum width of 840 dp; activity plots support tap and horizontal-drag inspection with a cursor and exact timestamp/value readout. The text-value dialog remains available. Build and 127 unit tests passed. Two targeted emulator UI tests passed for exact point selection/dialog dismissal and range controls remaining visible and selectable after scrolling. Full tablet list-detail panes and large-font/landscape validation remain pending.
+
+Third pass: analytics initially shows availability and signal grade, with an explicit expansion for all six metrics; role-icon contrast improved; activity time charts now offer a scrollable native dialog containing exact values and UTC timestamps. Map replay surfaces use the same corner treatment and restrained elevation as zoom controls. Debug build and 127 unit tests passed; a targeted emulator test verified exact chart counts, timestamps, and dialog dismissal. Interactive chart scrubbing, pinned range controls, and adaptive panes remain pending.
+
+Second pass: simplified Observer summaries and rows, with battery/noise still available in details; shared readable active/inactive accents; removed nested colored metric tiles from Explore while retaining dashboard actions and customization; improved saved-item icon contrast; neutral active-filter badges; larger Settings navigation targets with wrapping subtitles; stacked packet-detail labels and values. Debug build and 127 unit tests passed. Visually inspected Explore and Settings in light mode and Observers in light/dark mode on the emulator; restored System appearance. Large-font and tablet checks remain pending.
+
+First pass implemented: shared heading/metadata typography; accurate browse/feed connection labels; theme-paired replay button colors; compact channel metadata with alternating speakers and explicit packet actions preserved; node favorite and overflow actions, expandable technical identity, and health/reach ahead of analytics. This is the initial Channels/Node Details pass, not completion of the broader review. Adaptive layouts, chart inspection, and the remaining screen refinements are still pending.
+
+Validation: debug build and 127 unit tests passed. Eight of nine foundation UI tests passed initially; the deep-link test exposed an existing cold-start wait on a non-observable navigation property. Switching to the navigation destination flow fixed that issue, and the targeted deep-link rerun passed with its original timeout. Existing identity/favorite UI assertions now account for the disclosure and icon action. Full visual, accessibility, and adaptive-device acceptance checks remain pending.
+
 1. Establish shared typography, spacing, semantic colors, row anatomy, metrics, headers, and feedback. Fix contrast and misleading connection labels immediately.
 2. Pilot the visual direction on Channels and Node Details. These expose both browsing and detail patterns and offer the largest visible improvement.
 3. Apply the proven components to Observers, Explore, Packets, and Settings; refine map controls and selection sheets.
 4. Add chart inspection, adaptive content panes, and restrained motion. Avoid repeatedly rebuilding the same screens before the shared patterns are settled.
 
-Acceptance checks: light and dark themes; narrow phone widths and enlarged fonts; tablet/window resizing; TalkBack order and labels; touch targets; cached/offline/loading/error states; long names and keys; and stable reading position during live updates. Measure route animation performance separately from visual redesign.
+Acceptance checks: light and dark themes; narrow phone widths and enlarged fonts; tablet/window resizing; TalkBack order and labels; touch targets; cached/offline/loading/error states; long names and keys; and stable reading position during live updates. For channels, verify that alignment alternates on sender changes, consecutive messages from one sender stay on the same side, and every previously inspectable message retains a visible, accessible “View packet” action. Measure route animation performance separately from visual redesign.

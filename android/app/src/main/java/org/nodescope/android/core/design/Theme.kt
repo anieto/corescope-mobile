@@ -5,6 +5,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,12 +41,24 @@ fun NodeScopeTheme(appearance: Appearance, content: @Composable () -> Unit) {
     )
     val typography = Typography().let { base -> base.copy(
         displaySmall = base.displaySmall.copy(fontWeight = FontWeight.Medium, letterSpacing = (-1.2).sp),
+        headlineLarge = base.headlineLarge.copy(fontWeight = FontWeight.SemiBold, letterSpacing = (-0.5).sp),
         headlineMedium = base.headlineMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp),
         titleLarge = base.titleLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.4).sp),
         titleMedium = base.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-        labelSmall = base.labelSmall.copy(letterSpacing = 0.6.sp),
+        labelSmall = base.labelSmall.copy(letterSpacing = 0.1.sp),
     ) }
     MaterialTheme(colorScheme = colors, typography = typography, shapes = Shapes(
         small = RoundedCornerShape(12.dp), medium = RoundedCornerShape(16.dp), large = RoundedCornerShape(20.dp), extraLarge = RoundedCornerShape(28.dp)
     ), content = content)
+}
+
+/** Readable status accents; map marker colors retain their separate domain palette. */
+@Composable
+fun statusAccent(active: Boolean): Color {
+    val dark = MaterialTheme.colorScheme.surface.luminance() < 0.3f
+    return if (active) {
+        if (dark) Color(0xFF6FD69B) else Color(0xFF1B743F)
+    } else {
+        if (dark) Color(0xFFFFB866) else Color(0xFF895000)
+    }
 }

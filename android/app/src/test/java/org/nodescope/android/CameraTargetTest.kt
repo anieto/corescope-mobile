@@ -58,4 +58,32 @@ class CameraTargetTest {
         assertEquals(CameraTarget.Center(Coordinate(30.2672, -97.7431), 8.0), cameraTarget(single, null))
         assertNull(AnalyzerSource("x", "X", "example.org", "").viewport)
     }
+
+    // Colorado's analyzer publishes a center only for DEN; unlabeled RNB and YQB match
+    // airports in Sweden and Quebec.
+    private val colorado = listOf("ALS", "ASE", "CEZ", "COS", "DEN", "DRO", "EGE", "FNL", "GJT", "GUC", "HDN", "LAA", "MTJ",
+        "PUB", "RNB", "STK", "TEX", "YQB").associateWith { it }
+    private fun coloradoSnapshot(nodes: List<MeshNode> = emptyList()) = AnalyzerSnapshot(nodes, nodes.size, colorado,
+        MapDefaults(listOf(39.103563, -105.6686709), 9.0),
+        regionCoordinates = regionCoordinatesFor(colorado, mapOf("DEN" to RegionCoordinate(39.8561, -104.6737)), airports))
+
+    @Test fun distantRegionCodesDoNotStretchAllRegions() {
+        assertEquals(setOf("RNB", "YQB"), regionCenters(coloradoSnapshot()).second)
+        val target = cameraTarget(coloradoSnapshot(), null) as CameraTarget.Bounds
+        assertTrue(target.west > -110 && target.east < -101) // Colorado, not Europe
+        assertTrue(target.south > 36 && target.north < 42)
+    }
+
+    @Test fun anOutlierRegionFramesItsNodesInstead() {
+        val heard = listOf(MeshNode("n1", "a", "repeater", 40.0, -106.0, ""), MeshNode("n2", "b", "repeater", 40.5, -106.5, ""))
+        val target = cameraTarget(coloradoSnapshot(heard), "RNB") as CameraTarget.Bounds
+        assertEquals(40.5, target.north, 0.001)
+        assertEquals(-106.5, target.west, 0.001)
+    }
+
+    @Test fun regionsThatMissTheAnalyzerCenterFallBackToIt() {
+        // Two trusted regions far from the analyzer's own map center: trust the analyzer.
+        val elsewhere = snapshot().copy(regions = mapOf("AUS" to "Austin", "DFW" to "Dallas"), mapDefaults = MapDefaults(listOf(39.1, -105.7), 9.0))
+        assertEquals(CameraTarget.Center(Coordinate(39.1, -105.7), 9.0), cameraTarget(elsewhere, null))
+    }
 }

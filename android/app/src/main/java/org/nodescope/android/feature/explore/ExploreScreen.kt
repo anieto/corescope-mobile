@@ -221,8 +221,8 @@ private fun open(item: SavedItem, actions: ExploreActions) = when (item.kind) {
 @Composable
 private fun GlanceCard(metrics: List<Pair<GlanceMetric, GlanceValue>>, loading: Boolean, activeFavorites: Int, favorites: List<SavedItem>,
     actions: ExploreActions, onCustomize: () -> Unit, onExportCsv: () -> Unit, onExportJson: () -> Unit, onFavorites: () -> Unit) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("Network at a Glance", style = MaterialTheme.typography.titleMedium)
@@ -275,9 +275,9 @@ private fun GlanceCard(metrics: List<Pair<GlanceMetric, GlanceValue>>, loading: 
 private fun MetricTile(label: String, value: GlanceValue, tone: GlanceTone, modifier: Modifier, onClick: (() -> Unit)?) {
     val color = if (MaterialTheme.colorScheme.surface.luminance() < 0.3f) tone.dark else tone.light
     val shape = MaterialTheme.shapes.medium
-    Column(modifier.clip(shape).background(if (onClick != null) color.copy(alpha = 0.08f) else Color.Transparent, shape)
+    Column(modifier.clip(shape)
         .let { if (onClick != null) it.clickable(onClickLabel = "Open $label", onClick = onClick) else it }
-        .padding(12.dp).semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        .padding(horizontal = 8.dp, vertical = 6.dp).semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text(value.value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = color, maxLines = 1)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
@@ -291,10 +291,10 @@ private fun MetricTile(label: String, value: GlanceValue, tone: GlanceTone, modi
 @Composable
 private fun KindIcon(kind: SavedKind, node: MeshNode?) {
     val (icon, tint, fill) = when {
-        node != null -> Triple(roleIcon(node.role), Color.White, roleColor(node.role))
-        kind == SavedKind.OBSERVER -> Triple(Icons.Outlined.Sensors, HealthyGreen, HealthyGreen.copy(alpha = 0.14f))
-        kind == SavedKind.CHANNEL -> Triple(Icons.Outlined.Tag, SignalBlue, SignalBlue.copy(alpha = 0.14f))
-        kind == SavedKind.PACKET -> Triple(Icons.Outlined.MonitorHeart, ActivityAmber, ActivityAmber.copy(alpha = 0.14f))
+        node != null -> Triple(roleIcon(node.role), Color(0xFF14243A), roleColor(node.role))
+        kind == SavedKind.OBSERVER -> Triple(Icons.Outlined.Sensors, statusAccent(true), statusAccent(true).copy(alpha = 0.14f))
+        kind == SavedKind.CHANNEL -> Triple(Icons.Outlined.Tag, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primaryContainer)
+        kind == SavedKind.PACKET -> Triple(Icons.Outlined.MonitorHeart, statusAccent(false), statusAccent(false).copy(alpha = 0.14f))
         else -> Triple(Icons.Outlined.Hub, SignalBlue, SignalBlue.copy(alpha = 0.14f))
     }
     Box(Modifier.size(40.dp).background(fill, CircleShape), contentAlignment = Alignment.Center) { Icon(icon, null, Modifier.size(20.dp), tint = tint) }

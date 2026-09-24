@@ -549,3 +549,20 @@ how to use.
   is last. Share sends the iOS share text. Tap order: a marker directly under the finger,
   then a cluster, then a route, then the nearest marker. Replay routes have no details.
 - Tests: filter matching, count, observer options, route stops and share text.
+
+## Map framing for other analyzers — 2026-09-24
+
+- Bug: switching analyzer never reframed (only first load / region / focus did), and
+  "All regions" unioned every region center. Colorado's analyzer publishes a center only for
+  DEN; unlabeled `RNB`/`YQB` resolved via the bundled airport table to Sweden and Quebec, so
+  the union spanned the Atlantic (a world view). Selecting `RNB` framed Sweden.
+- `regionCenters` sets aside region centers far from the analyzer's other regions (same
+  median/MAD test as node framing). A selected outlier region frames its nodes instead.
+  The all-regions union is used only if it contains the analyzer's `/api/config/map`
+  center; otherwise that center (and zoom) is used — the center iOS relies on.
+- The map reframes (instantly) whenever the analyzer changes; region snapshots kept for
+  framing are per analyzer, and the map only receives a snapshot for the selected host.
+- iOS for comparison: all regions → registry viewport, else `/api/config/map` center with a
+  250 km radius; a region → analyzer IATA center, else an MKLocalSearch airport lookup.
+- Checked against live configs for all five registry analyzers (TX, SoCal, Gulf, Comchan,
+  Colorado): each frames its own area; outliers dropped: RDU (Gulf, Comchan), RNB/YQB (CO).

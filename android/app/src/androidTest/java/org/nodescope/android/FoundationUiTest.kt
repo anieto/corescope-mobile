@@ -21,6 +21,36 @@ import org.nodescope.android.feature.settings.SettingsScreen
 class FoundationUiTest {
     @get:Rule val compose = createAndroidComposeRule<UiTestActivity>()
 
+    @Test fun chartValuesExposeExactCountsAndCanBeDismissed() {
+        compose.setContent { NodeScopeTheme(Appearance.LIGHT) {
+            org.nodescope.android.core.design.TimeChart("Packet activity",
+                listOf(org.nodescope.android.core.design.TimeSeries(androidx.compose.ui.graphics.Color.Blue,
+                    listOf(0L to 1234.0, 1000L to 5.0))), 0L, 1000L, true, true,
+                formatValue = { "rounded" }, formatTime = { "time" })
+        } }
+        compose.onNodeWithContentDescription("Interactive plot: Packet activity", useUnmergedTree = true)
+            .performTouchInput { click(androidx.compose.ui.geometry.Offset(1f, 1f)) }
+        compose.onNodeWithText("1970-01-01T00:00:00Z · 1234").assertIsDisplayed()
+        compose.onNodeWithText("View chart values").performClick()
+        compose.onNodeWithText("1234").assertIsDisplayed()
+        compose.onNodeWithText("1970-01-01T00:00:00Z").assertIsDisplayed()
+        compose.onNodeWithText("Done").performClick()
+        compose.onNodeWithText("Chart values").assertDoesNotExist()
+    }
+
+    @Test fun analyticsRangeRemainsAvailableAfterScrolling() {
+        compose.setContent { NodeScopeTheme(Appearance.DARK) {
+            var range by remember { mutableStateOf(org.nodescope.android.feature.nodes.AnalyticsRange.WEEK) }
+            org.nodescope.android.feature.nodes.AnalyticsLayout(range, { range = it }) {
+                items(80) { index -> androidx.compose.material3.Text("Analytics row $index") }
+            }
+        } }
+        compose.onNode(hasScrollToIndexAction()).performScrollToIndex(79)
+        compose.onNodeWithText("Time range").assertIsDisplayed()
+        compose.onNodeWithText("24h").performClick()
+        compose.onNodeWithText("24h").assertIsSelected()
+    }
+
     @Test fun tabsAndDetailBackStackRemainIndependent() {
         val preferences = AppPreferences(onboarded = true)
         val snapshot = AnalyzerSnapshot(listOf(MeshNode("test", "Test node", "repeater", lastSeen = "2026-01-01")), 1, emptyMap(), null)
@@ -34,6 +64,7 @@ class FoundationUiTest {
         compose.onNodeWithContentDescription("Search the network").performClick()
         compose.onNode(hasSetTextAction()).performTextInput("Test")
         compose.onNodeWithText("Test node").performClick()
+        compose.onNodeWithText("Technical identity").performClick()
         compose.onNodeWithText("TEST").assertIsDisplayed()
         compose.onNodeWithText("Settings").performClick()
         compose.onNodeWithText("APPEARANCE").assertIsDisplayed()
@@ -54,6 +85,7 @@ class FoundationUiTest {
                 pendingLink = PendingLink(7, NodeScopeLink.node("linked")), onLinkHandled = { handled = it })
         } }
         compose.waitUntil(5_000) { handled == 7L }
+        compose.onNodeWithText("Technical identity").performClick()
         compose.onNodeWithText("LINKED").assertIsDisplayed() // node detail shows the public key
     }
 
@@ -67,7 +99,7 @@ class FoundationUiTest {
         compose.onNodeWithText("Saved node").performClick()
         compose.onNodeWithText("FAVORITE NODES").assertIsDisplayed()
         compose.onNodeWithText("Saved node").performClick()
-        compose.onNodeWithText("Remove favorite").performClick()
+        compose.onNodeWithContentDescription("Remove favorite").performClick()
         compose.onNodeWithContentDescription("Back").performClick()
         compose.onNodeWithText("FAVORITE NODES").assertDoesNotExist()
         compose.onNodeWithText("Recently Viewed").assertIsDisplayed()

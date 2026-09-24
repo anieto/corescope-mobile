@@ -82,7 +82,7 @@ private fun IdentityCard(observer: MeshObserver, now: Long, favorite: Boolean, o
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                val tone = if (observer.isActive(now)) HealthyGreen else ActivityAmber
+                val tone = statusAccent(observer.isActive(now))
                 Box(Modifier.size(48.dp).background(tone.copy(alpha = 0.13f), CircleShape), contentAlignment = Alignment.Center) {
                     Icon(Icons.Outlined.Sensors, null, tint = tone)
                 }

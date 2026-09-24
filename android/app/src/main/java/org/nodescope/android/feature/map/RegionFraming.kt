@@ -44,15 +44,33 @@ internal fun regionBounds(region: RegionCoordinate): CameraTarget.Bounds {
 }
 
 /**
+ * The analyzer's regions placed on the map, without any that sit far from the rest. Most
+ * analyzers publish centers for only some regions, so the others come from the bundled
+ * airport table; an unlabeled or custom code (Colorado's `RNB`, `YQB`) can match a real
+ * airport on another continent. Returns the trusted centers and the codes set aside.
+ */
+internal fun regionCenters(snapshot: org.nodescope.android.core.model.AnalyzerSnapshot): Pair<Map<String, RegionCoordinate>, Set<String>> {
+    val placed = snapshot.regions.keys.mapNotNull { code ->
+        snapshot.regionCoordinates.entries.firstOrNull { it.key.equals(code, true) }?.value?.takeIf { it.coordinate != null }?.let { code to it }
+    }
+    val kept = regionFramingPositions(placed.map { it.second.coordinate!! }).toSet()
+    val (trusted, outliers) = placed.partition { it.second.coordinate in kept }
+    return trusted.toMap() to outliers.map { it.first.uppercase() }.toSet()
+}
+
+/**
  * A selected region frames its center; its node list is not used first because a region's
- * nodes are the ones its observers *heard*, which can lie far outside it.
+ * nodes are the ones its observers *heard*, which can lie far outside it. A center set aside
+ * as an outlier is not trusted, so that region frames its nodes instead.
  * "All regions" frames, in order: the community viewport from the source registry, every
- * region the analyzer defines, the analyzer's map default, then any known node.
+ * trusted region (when that area includes the analyzer's own map center), the analyzer's
+ * map default, then any known node.
  */
 internal fun cameraTarget(snapshot: org.nodescope.android.core.model.AnalyzerSnapshot, selectedRegion: String?,
     sourceViewport: RegionCoordinate? = null): CameraTarget? {
+    val (trusted, outliers) = regionCenters(snapshot)
     if (selectedRegion != null) {
-        snapshot.regionCoordinates.entries.firstOrNull { it.key.equals(selectedRegion, true) }?.value
+        if (selectedRegion.uppercase() !in outliers) snapshot.regionCoordinates.entries.firstOrNull { it.key.equals(selectedRegion, true) }?.value
             ?.takeIf { it.coordinate != null }?.let { return regionBounds(it) }
         val positions = regionFramingPositions(snapshot.nodes.mapNotNull { it.coordinate })
         return when (positions.size) {
@@ -63,10 +81,13 @@ internal fun cameraTarget(snapshot: org.nodescope.android.core.model.AnalyzerSna
         }
     }
     sourceViewport?.takeIf { it.coordinate != null }?.let { return regionBounds(it) }
-    val regions = snapshot.regions.keys.mapNotNull { code ->
-        snapshot.regionCoordinates.entries.firstOrNull { it.key.equals(code, true) }?.value?.takeIf { it.coordinate != null }
+    val defaultCenter = snapshot.mapDefaults?.coordinate
+    if (trusted.size >= 2) {
+        val union = trusted.values.map(::regionBounds).union()
+        if (defaultCenter == null || union.contains(defaultCenter)) return union
     }
-    if (regions.size >= 2) return regions.map(::regionBounds).union()
-    snapshot.mapDefaults?.coordinate?.let { return CameraTarget.Center(it, snapshot.mapDefaults.zoom.coerceIn(1.0, 20.0)) }
+    defaultCenter?.let { return CameraTarget.Center(it, snapshot.mapDefaults.zoom.coerceIn(1.0, 20.0)) }
     return snapshot.nodes.firstNotNullOfOrNull { it.coordinate }?.let { CameraTarget.Center(it, 7.0) }
 }
+
+private fun CameraTarget.Bounds.contains(point: Coordinate) = point.latitude in south..north && point.longitude in west..east

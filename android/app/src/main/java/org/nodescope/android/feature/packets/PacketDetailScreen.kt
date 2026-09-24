@@ -101,7 +101,7 @@ fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNod
                 if (routes.isNotEmpty() && !playable) Text("This route's nodes aren't on the current map region, so it can't be replayed.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (routes.isNotEmpty()) Button(onClick = { onReplay(routes, selectedRoute.coerceIn(routes.indices)) }, Modifier.fillMaxWidth(), enabled = playable,
-                    colors = ButtonDefaults.buttonColors(containerColor = ActivityAmber, contentColor = MaterialTheme.colorScheme.surface)) {
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)) {
                     Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text("Replay on map")
                 }
             }
@@ -124,10 +124,10 @@ private fun DetailSection(title: String, content: @Composable ColumnScope.() -> 
 
 @Composable
 private fun DetailRow(label: String, value: String, monospace: Boolean = false) {
-    Row(Modifier.semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.Top) {
-        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Column(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         SelectionContainer {
-            Text(value, style = MaterialTheme.typography.bodyMedium, fontFamily = if (monospace) FontFamily.Monospace else null, textAlign = TextAlign.End)
+            Text(value, style = MaterialTheme.typography.bodyMedium, fontFamily = if (monospace) FontFamily.Monospace else null, textAlign = TextAlign.Start)
         }
     }
 }

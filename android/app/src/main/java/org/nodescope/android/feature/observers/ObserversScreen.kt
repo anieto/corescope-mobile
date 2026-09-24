@@ -13,7 +13,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -69,9 +68,9 @@ fun ObserversScreen(
             item { LoadStatus(state, all.isNotEmpty(), now, ::refresh) }
             if (visible.isNotEmpty()) item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SummaryMetric("Observers", visible.size.toString(), Icons.Outlined.Sensors, Modifier.weight(1f))
-                    SummaryMetric("Packets / hr", compactCount(visible.sumOf { it.packetsLastHour ?: 0 }), Icons.Outlined.MonitorHeart, Modifier.weight(1f))
-                    SummaryMetric("Packets", compactCount(visible.sumOf { it.packetCount ?: 0 }), Icons.Outlined.Inventory2, Modifier.weight(1f))
+                    SummaryMetric("Observers", visible.size.toString(), Modifier.weight(1f))
+                    SummaryMetric("Packets / hr", compactCount(visible.sumOf { it.packetsLastHour ?: 0 }), Modifier.weight(1f))
+                    SummaryMetric("Packets", compactCount(visible.sumOf { it.packetCount ?: 0 }), Modifier.weight(1f))
                 }
             }
             if (visible.isNotEmpty()) item { SectionLabel("Observer nodes") }
@@ -85,12 +84,11 @@ fun ObserversScreen(
 }
 
 @Composable
-private fun SummaryMetric(label: String, value: String, icon: ImageVector, modifier: Modifier) {
+private fun SummaryMetric(label: String, value: String, modifier: Modifier) {
     Card(modifier.semantics(mergeDescendants = true) {}, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Icon(icon, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
             Text(value, style = MaterialTheme.typography.titleMedium)
-            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -98,26 +96,22 @@ private fun SummaryMetric(label: String, value: String, icon: ImageVector, modif
 @Composable
 private fun ObserverCard(observer: MeshObserver, now: Long, onClick: () -> Unit) {
     val active = observer.isActive(now)
-    val tone = if (active) HealthyGreen else ActivityAmber
+    val tone = statusAccent(active)
     Card(onClick = onClick, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.size(42.dp).background(tone.copy(alpha = 0.14f), CircleShape), contentAlignment = Alignment.Center) {
                 Icon(Icons.Outlined.Sensors, if (active) "Active" else "Inactive", tint = tone)
             }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(observer.displayName, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(relativeTime(parseInstant(observer.lastSeen), now), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    observer.iata?.let { MetricChip(it, Icons.Outlined.Place, MaterialTheme.colorScheme.primary) }
-                    observer.model?.let { MetricChip(it, Icons.Outlined.Memory) }
-                }
+                Text(listOfNotNull(if (active) "Active" else "Inactive", observer.iata, observer.model).joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(listOfNotNull(
                     observer.packetsLastHour?.let { "${compactCount(it)}/hr" },
                     observer.packetCount?.let { "${compactCount(it)} packets" },
-                    observer.batteryMv?.let { "$it mV" },
-                    observer.noiseFloor?.let { "%.0f dB noise".format(it) },
                 ).joinToString("  ·  "), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

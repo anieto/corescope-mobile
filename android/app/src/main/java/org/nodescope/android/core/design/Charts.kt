@@ -1,13 +1,20 @@
 package org.nodescope.android.core.design
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -127,6 +134,29 @@ data class TimeSeries(val color: Color, val points: List<Pair<Long, Double>>)
 @Composable
 fun TimeChart(description: String, series: List<TimeSeries>, from: Long, to: Long, area: Boolean, zeroBased: Boolean,
     formatValue: (Double) -> String, formatTime: (Long) -> String, modifier: Modifier = Modifier) {
+    var showValues by remember { mutableStateOf(false) }
+    if (showValues) AlertDialog(
+        onDismissRequest = { showValues = false },
+        title = { Text("Chart values") },
+        text = {
+            LazyColumn(Modifier.heightIn(max = 400.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                item { Text("$description · timestamps in UTC", style = MaterialTheme.typography.bodyMedium) }
+                series.forEachIndexed { index, data ->
+                    if (series.size > 1) item { Text("Series ${index + 1}", style = MaterialTheme.typography.titleSmall) }
+                    items(data.points.sortedBy { it.first }) { point ->
+                        Column(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}) {
+                            Text(java.time.Instant.ofEpochMilli(point.first).toString(), style = MaterialTheme.typography.bodySmall)
+                            Text(point.second.toBigDecimal().stripTrailingZeros().toPlainString(), style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { showValues = false }) { Text("Done") } },
+    )
+    var selectedPoint by remember(series, from, to) { mutableStateOf<Pair<Long, Double>?>(null) }
+    val points = remember(series) { series.flatMap { it.points }.sortedBy { it.first } }
+    val cursorColor = MaterialTheme.colorScheme.onSurface
     val values = series.flatMap { s -> s.points.map { it.second } }
     if (values.isEmpty() || to <= from) return
     val low = if (zeroBased) 0.0 else values.min()
@@ -137,7 +167,21 @@ fun TimeChart(description: String, series: List<TimeSeries>, from: Long, to: Lon
                 Text(formatValue(high), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(formatValue(low), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Canvas(Modifier.weight(1f).fillMaxHeight().padding(vertical = 4.dp)) {
+            Canvas(Modifier.weight(1f).fillMaxHeight().padding(vertical = 4.dp)
+                .semantics { contentDescription = "Interactive plot: $description" }
+                .pointerInput(points, from, to) {
+                    detectTapGestures { position ->
+                        val time = from + ((to - from) * (position.x / size.width.coerceAtLeast(1)).coerceIn(0f, 1f)).toLong()
+                        selectedPoint = points.minByOrNull { kotlin.math.abs(it.first - time) }
+                    }
+                }
+                .pointerInput(points, from, to) {
+                    detectHorizontalDragGestures { change, _ ->
+                        change.consume()
+                        val time = from + ((to - from) * (change.position.x / size.width.coerceAtLeast(1)).coerceIn(0f, 1f)).toLong()
+                        selectedPoint = points.minByOrNull { kotlin.math.abs(it.first - time) }
+                    }
+                }) {
                 fun place(point: Pair<Long, Double>) = Offset(
                     size.width * ((point.first - from).toFloat() / (to - from)).coerceIn(0f, 1f),
                     size.height - size.height * ((point.second - low) / (high - low)).toFloat())
@@ -152,12 +196,22 @@ fun TimeChart(description: String, series: List<TimeSeries>, from: Long, to: Lon
                     }
                     positions.forEach { drawCircle(s.color, 2.5.dp.toPx(), it) }
                 }
+                selectedPoint?.let { point ->
+                    val position = place(point)
+                    drawLine(cursorColor.copy(alpha = 0.5f), Offset(position.x, 0f), Offset(position.x, size.height), 1.dp.toPx())
+                    drawCircle(cursorColor, 5.dp.toPx(), position)
+                }
             }
         }
         Row(Modifier.fillMaxWidth().padding(start = 28.dp, top = 4.dp)) {
             Text(formatTime(from), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(formatTime(to), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.End)
         }
+        selectedPoint?.let { point ->
+            Text("${java.time.Instant.ofEpochMilli(point.first)} · ${point.second.toBigDecimal().stripTrailingZeros().toPlainString()}",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
+        }
+        TextButton(onClick = { showValues = true }) { Text("View chart values") }
     }
 }
 

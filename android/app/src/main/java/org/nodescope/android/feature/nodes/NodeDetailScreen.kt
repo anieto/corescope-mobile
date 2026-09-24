@@ -83,9 +83,9 @@ fun NodeDetailScreen(
             else if (sections[0].loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             else Text("This node is not in the loaded results for $host.", style = MaterialTheme.typography.bodyMedium)
         }
-        onAnalytics?.let { open -> item { AnalyticsLinkCard(open) } }
         reachValue?.let { value -> item { ReachCard(value) } }
         healthValue?.stats?.let { stats -> item { HealthCard(stats) } }
+        onAnalytics?.let { open -> item { AnalyticsLinkCard(open) } }
         healthValue?.observers?.takeIf { it.isNotEmpty() }?.let { observers ->
             item { ObserversCard(observers.sortedByDescending { it.packetCount }, onObserver) }
         }
@@ -98,46 +98,52 @@ fun NodeDetailScreen(
 private fun IdentityCard(node: MeshNode, publicKey: String, favorite: Boolean, now: Long, onFavorite: (MeshNode) -> Unit, onMap: (MeshNode) -> Unit) {
     val copy = rememberCopyAction()
     val context = LocalContext.current
+    var menuOpen by remember { mutableStateOf(false) }
+    var identityExpanded by rememberSaveable(publicKey) { mutableStateOf(false) }
     DetailCard {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(50.dp).background(roleColor(node.role), CircleShape), contentAlignment = Alignment.Center) {
-                Icon(roleIcon(node.role), null, tint = Color.White)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.size(44.dp).background(roleColor(node.role), CircleShape), contentAlignment = Alignment.Center) {
+                Icon(roleIcon(node.role), null, tint = Color(0xFF14243A))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(node.name?.takeIf(String::isNotBlank) ?: "Unnamed node", style = MaterialTheme.typography.titleLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(node.role.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.labelMedium, color = roleColor(node.role))
-                    Text("· Seen ${relativeTime(parseInstant(node.lastSeen), now)}", style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(node.role.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Seen ${relativeTime(parseInstant(node.lastSeen), now)}", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            IconToggleButton(checked = favorite, onCheckedChange = { onFavorite(node) }) {
+                Icon(if (favorite) Icons.Outlined.Star else Icons.Outlined.StarBorder,
+                    if (favorite) "Remove favorite" else "Save node")
+            }
+            Box {
+                IconButton(onClick = { menuOpen = true }) { Icon(Icons.Outlined.MoreVert, "Node actions") }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(text = { Text("Copy key") }, leadingIcon = { Icon(Icons.Outlined.ContentCopy, null) },
+                        onClick = { menuOpen = false; copy("Public key", publicKey, false) })
+                    DropdownMenuItem(text = { Text("Share") }, leadingIcon = { Icon(Icons.Outlined.Share, null) }, onClick = {
+                        menuOpen = false
+                        context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
+                            .putExtra(Intent.EXTRA_TEXT, NodeScopeLink.node(publicKey).url), "Share node link"))
+                    })
                 }
             }
         }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Public key", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (node.coordinate != null) Button(onClick = { onMap(node) }) {
+            Icon(Icons.Outlined.Map, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Show on map")
+        }
+        TextButton(onClick = { identityExpanded = !identityExpanded }) {
+            Text(if (identityExpanded) "Hide technical identity" else "Technical identity")
+            Spacer(Modifier.width(4.dp))
+            Icon(if (identityExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null)
+        }
+        if (identityExpanded) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Text("Public key", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             SelectionContainer { Text(publicKey.uppercase(), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall) }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-            DateMetric("First seen", node.firstSeen, Modifier.weight(1f))
-            DateMetric("Last seen", node.lastSeen, Modifier.weight(1f))
-        }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilledTonalButton(onClick = { onFavorite(node) }) {
-                Icon(if (favorite) Icons.Outlined.Star else Icons.Outlined.StarBorder, null, Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp)); Text(if (favorite) "Remove favorite" else "Save node")
-            }
-            if (node.coordinate != null) OutlinedButton(onClick = { onMap(node) }) {
-                Icon(Icons.Outlined.Map, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Show on map")
-            }
-            OutlinedButton(onClick = { copy("Public key", publicKey, false) }) {
-                Icon(Icons.Outlined.ContentCopy, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Copy key")
-            }
-            OutlinedButton(onClick = {
-                // Same link format as iOS (`nodescope://node/<key>`).
-                context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
-                    .putExtra(Intent.EXTRA_TEXT, NodeScopeLink.node(publicKey).url), "Share node link"))
-            }) {
-                Icon(Icons.Outlined.Share, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Share")
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                DateMetric("First seen", node.firstSeen, Modifier.weight(1f))
+                DateMetric("Last seen", node.lastSeen, Modifier.weight(1f))
             }
         }
     }

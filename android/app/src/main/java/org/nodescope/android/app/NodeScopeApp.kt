@@ -171,7 +171,7 @@ internal fun AppShell(
     LaunchedEffect(pendingLink?.id) {
         val pending = pendingLink ?: return@LaunchedEffect
         // On a cold start, wait until navigation has its first destination.
-        snapshotFlow { nav.currentBackStackEntry }.first { it != null }
+        nav.currentBackStackEntryFlow.first()
         val id = pending.link.identifier
         when (pending.link.kind) {
             NodeScopeLink.Kind.NODE -> { selectTab(Destination.EXPLORE); openNode(id) }
@@ -260,7 +260,7 @@ internal fun AppShell(
                     NavHost(navController = nav, startDestination = initialTab.route, modifier = Modifier.weight(1f)) {
                         composable<MapRoute> {
                             // One map for all regions: it re-frames itself and keeps the chosen map style.
-                            MapScreen(state.snapshot, focusedNode, ::openNode, feed = feed, onRefresh = onRefresh, regionControl = { RegionMenu(preferences, state) { focusedNode = null; focusedPosition = null; onRegion(it) } }, focusedCoordinate = focusedPosition?.let { org.nodescope.android.core.model.Coordinate.gps(it[0], it[1]) }, selectedRegion = preferences.region, sourceViewport = sourceViewport, routeReplay = replay, onExitReplay = { replay = null },
+                            MapScreen(state.snapshot?.takeIf { state.selection?.host == preferences.host }, focusedNode, ::openNode, feed = feed, onRefresh = onRefresh, regionControl = { RegionMenu(preferences, state) { focusedNode = null; focusedPosition = null; onRegion(it) } }, focusedCoordinate = focusedPosition?.let { org.nodescope.android.core.model.Coordinate.gps(it[0], it[1]) }, selectedRegion = preferences.region, sourceViewport = sourceViewport, routeReplay = replay, onExitReplay = { replay = null },
                                 host = preferences.host, showActiveNodes = showActiveNodes, onActiveNodesShown = { showActiveNodes = false })
                         }
                         composable<ExploreRoute> { backStack ->

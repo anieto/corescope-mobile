@@ -91,7 +91,7 @@ fun PacketScreen(feed: LiveFeedState, onReconnect: () -> Unit, regionControl: @C
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                             Box(Modifier.size(8.dp).background(if (feed.connection == LiveConnection.LIVE) HealthyGreen else ActivityAmber, CircleShape))
-                            Text(if (feed.connection == LiveConnection.LIVE) "Listening for live traffic" else "Reconnecting to analyzer",
+                            Text(connectionLabel(feed.connection, "Listening for live traffic"),
                                 style = MaterialTheme.typography.titleSmall)
                         }
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {

@@ -129,10 +129,11 @@ private fun ChannelCard(row: ChannelRow, now: Long, onClick: () -> Unit) {
                     Text(listOfNotNull(row.lastSender, message).joinToString(": "), style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    MetricChip("${row.messageCount} message${if (row.messageCount == 1) "" else "s"}", Icons.Outlined.ChatBubbleOutline)
-                    if (row.monitored) MetricChip("On this device", Icons.Outlined.Key, MaterialTheme.colorScheme.primary)
-                }
+                Text(listOfNotNull(
+                    "${row.messageCount} message${if (row.messageCount == 1) "" else "s"}",
+                    if (row.monitored) "On this device" else null,
+                ).joinToString(" · "), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

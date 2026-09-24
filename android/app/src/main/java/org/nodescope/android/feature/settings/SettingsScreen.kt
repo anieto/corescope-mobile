@@ -160,14 +160,14 @@ private fun CardRow(content: @Composable ColumnScope.() -> Unit) {
 
 @Composable
 fun NavigationRow(title: String, value: String, icon: ImageVector, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small).clickable(onClick = onClick).padding(vertical = 2.dp),
+    Row(Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small).clickable(onClick = onClick).heightIn(min = 56.dp).padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(Modifier.size(32.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.11f), MaterialTheme.shapes.small), contentAlignment = Alignment.Center) {
             Icon(icon, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
         }
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleSmall)
-            Text(value, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(value, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Icon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
