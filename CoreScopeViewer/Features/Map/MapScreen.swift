@@ -666,7 +666,8 @@ struct MapScreen: View {
                     MapTrafficCanvas(
                         pings: transientPings(from: currentPings, at: date),
                         date: date,
-                        proxy: proxy
+                        proxy: proxy,
+                        retainsCompletedPaths: isReplayMode
                     )
                     .allowsHitTesting(false)
                 }
@@ -720,6 +721,15 @@ struct MapScreen: View {
     }
 
     private func transientPings(from pings: [ActivePing], at date: Date) -> [ActivePing] {
+        // Keep every started replay segment in the canvas until its fade ends.
+        // MapKit also owns an anchored copy after travel completes so the route
+        // remains attached to the map during camera movement. Drawing the same
+        // completed segment in the canvas avoids a visible canvas-to-MapKit
+        // handoff when switching between alternate routes.
+        if isReplayMode {
+            return pings
+        }
+
         let transient = pings.filter {
             $0.isPulse
                 || !$0.hasCompletedTravel(at: date)
@@ -1938,6 +1948,7 @@ private struct MapTrafficCanvas: View {
     let pings: [ActivePing]
     let date: Date
     let proxy: MapProxy
+    let retainsCompletedPaths: Bool
 
     var body: some View {
         Canvas { context, _ in
@@ -1951,6 +1962,9 @@ private struct MapTrafficCanvas: View {
 
                 if !ping.hasCompletedTravel(at: date) {
                     drawActiveHop(ping, from: start, in: &context)
+                } else if retainsCompletedPaths,
+                          let end = proxy.convert(ping.end, to: .local) {
+                    drawCompletedHop(ping, from: start, to: end, in: &context)
                 }
                 if let pulseProgress = ping.arrivalPulseProgress(at: date),
                    let end = proxy.convert(ping.end, to: .local) {
@@ -1958,6 +1972,30 @@ private struct MapTrafficCanvas: View {
                 }
             }
         }
+    }
+
+    private func drawCompletedHop(
+        _ ping: ActivePing,
+        from start: CGPoint,
+        to end: CGPoint,
+        in context: inout GraphicsContext
+    ) {
+        let opacity = ping.completedPathOpacity(at: date)
+        guard opacity > 0 else { return }
+
+        var path = Path()
+        path.move(to: start)
+        path.addLine(to: end)
+        context.stroke(
+            path,
+            with: .color(ping.pathColor.opacity(opacity * 0.18)),
+            style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round)
+        )
+        context.stroke(
+            path,
+            with: .color(ping.pathColor.opacity(opacity * 0.85)),
+            style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
+        )
     }
 
     private func drawActiveHop(
