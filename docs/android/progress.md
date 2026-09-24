@@ -614,3 +614,12 @@ how to use.
   `assets/icons/meshtexas.png`); the `CommunitySources` asset srcDir was removed, so delisted
   sources never appear from the bundle. `meshtexas.png` quantized to a 256-colour palette
   (96 KB → 32 KB, visually identical). Test: the two bundled registries and icons match.
+
+## iOS region framing fix — 2026-09-24
+
+- iOS never used the analyzer's `/api/iata-coords` for map framing (loaded, unread) and
+  went straight to `MKLocalSearch("<code> airport")`, which sends SJT and ACT to San
+  Antonio International. Now: analyzer center (and radius) → bundled
+  `iata-airports.csv` (same OurAirports file as Android, 9,054 codes) → Apple search last.
+- Tests: iOS `AirportCoordinatesTests` (SJT/ACT/GGG land in their own cities, parser rules;
+  built, not run); Android asserts the two CSV copies are identical.

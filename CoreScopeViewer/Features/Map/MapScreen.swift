@@ -23,6 +23,7 @@ struct MapScreen: View {
     @State private var nodeClusters: [NodeCluster] = []
     @State private var visibleNodesByCoordinate: [CoordinateKey: MeshNode] = [:]
     @State private var iataCoordinates: [String: CLLocationCoordinate2D] = [:]
+    @State private var iataRadiusKm: [String: Double] = [:]
     @State private var mapDisplayStyle = MapDisplayStyle.persisted
     @State private var nodeFilters = MapNodeFilterSelection()
     @State private var filteredNodeCount = 0
@@ -340,6 +341,7 @@ struct MapScreen: View {
                 loadedAnalyzerHost = sourceHost
                 viewModel.resetForAnalyzerSource()
                 iataCoordinates = [:]
+                iataRadiusKm = [:]
                 activePings = []
                 replayPings = []
                 isReplayMode = false
@@ -1397,7 +1399,28 @@ struct MapScreen: View {
 
         let code = selectedRegion.uppercased()
         if let coordinate = iataCoordinates[code], !isReplayMode {
-            moveCamera(to: coordinate)
+            moveCamera(to: coordinate, radiusKm: iataRadiusKm[code] ?? 45)
+            return
+        }
+
+        // The analyzer's own center (and radius) first, then the bundled
+        // airport table, as on Android. Apple's airport search is only a
+        // last resort: for some codes it returns the wrong city (SJT and
+        // ACT both resolve to San Antonio International).
+        if let published = regionFilter.iataCoords.first(where: { $0.key.uppercased() == code })?.value {
+            let coordinate = CLLocationCoordinate2D(latitude: published.lat, longitude: published.lon)
+            if CLLocationCoordinate2DIsValid(coordinate) {
+                iataCoordinates[code] = coordinate
+                if let radiusKm = published.radiusKm, radiusKm.isFinite, radiusKm > 0 {
+                    iataRadiusKm[code] = min(radiusKm, 2000)
+                }
+                moveCamera(to: coordinate, radiusKm: iataRadiusKm[code] ?? 45)
+                return
+            }
+        }
+        if let airport = AirportCoordinates.coordinate(for: code) {
+            iataCoordinates[code] = airport
+            moveCamera(to: airport)
             return
         }
 

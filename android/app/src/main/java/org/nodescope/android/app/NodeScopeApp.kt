@@ -8,6 +8,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import org.nodescope.android.core.storage.NodeLibrary
 import org.nodescope.android.core.storage.SavedKind
 import org.nodescope.android.core.model.MeshChannel
@@ -194,6 +197,7 @@ internal fun AppShell(
     val headerlessTabs = listOf(Destination.MAP.name, Destination.EXPLORE.name, Destination.CHANNELS.name, Destination.OBSERVERS.name, Destination.SETTINGS.name)
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val expanded = maxWidth >= 600.dp
+        val largeText = LocalDensity.current.fontScale >= 1.5f
         Scaffold(
             topBar = {
                 if (!isRoot || currentTab !in headerlessTabs) TopAppBar(title = {
@@ -234,7 +238,27 @@ internal fun AppShell(
                 })
             },
             bottomBar = {
-                if (!expanded) NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
+                if (!expanded && largeText) {
+                    var navigationOpen by remember { mutableStateOf(false) }
+                    Surface(color = MaterialTheme.colorScheme.surface) {
+                        Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                            FilledTonalButton(onClick = { navigationOpen = true }, modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Outlined.Menu, null)
+                                Spacer(Modifier.width(12.dp))
+                                Text("Navigate: ${stringResource(Destination.valueOf(currentTab).title)}", Modifier.weight(1f))
+                                Icon(Icons.Outlined.ExpandMore, null)
+                            }
+                            DropdownMenu(expanded = navigationOpen, onDismissRequest = { navigationOpen = false }) {
+                                Destination.entries.forEach { destination ->
+                                    DropdownMenuItem(text = { Text(stringResource(destination.title)) },
+                                        leadingIcon = { Icon(destination.icon, null) },
+                                        trailingIcon = { if (currentTab == destination.name) Icon(Icons.Outlined.Check, "Selected") },
+                                        onClick = { navigationOpen = false; selectTab(destination) })
+                                }
+                            }
+                        }
+                    }
+                } else if (!expanded) NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
                     Destination.entries.forEach { destination ->
                         NavigationBarItem(selected = currentTab == destination.name, onClick = { selectTab(destination) },
                             icon = { Icon(destination.icon, null) }, label = { Text(stringResource(destination.title)) })
@@ -243,10 +267,12 @@ internal fun AppShell(
             },
         ) { padding ->
             Row(Modifier.padding(padding).fillMaxSize()) {
-                if (expanded) NavigationRail {
-                    Destination.entries.forEach { destination ->
-                        NavigationRailItem(selected = currentTab == destination.name, onClick = { selectTab(destination) },
-                            icon = { Icon(destination.icon, null) }, label = { Text(stringResource(destination.title)) })
+                if (expanded) NavigationRail(windowInsets = WindowInsets(0, 0, 0, 0)) {
+                    Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                        Destination.entries.forEach { destination ->
+                            NavigationRailItem(selected = currentTab == destination.name, onClick = { selectTab(destination) },
+                                icon = { Icon(destination.icon, null) }, label = { Text(stringResource(destination.title)) })
+                        }
                     }
                 }
                 Column(Modifier.weight(1f)) {

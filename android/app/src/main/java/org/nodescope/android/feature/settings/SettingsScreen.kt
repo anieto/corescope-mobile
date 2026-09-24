@@ -74,26 +74,16 @@ fun SettingsScreen(
             }
             item {
                 Panel(stringResource(R.string.appearance), Icons.Outlined.Contrast) {
-                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                        Appearance.entries.forEachIndexed { index, mode ->
-                            SegmentedButton(selected = mode == preferences.appearance, onClick = { onAppearance(mode) },
-                                shape = SegmentedButtonDefaults.itemShape(index, Appearance.entries.size)) {
-                                Text(stringResource(when (mode) { Appearance.SYSTEM -> R.string.system; Appearance.LIGHT -> R.string.light; Appearance.DARK -> R.string.dark }))
-                            }
-                        }
-                    }
+                    AdaptiveChoiceRow(Appearance.entries, preferences.appearance, label = { mode ->
+                        stringResource(when (mode) { Appearance.SYSTEM -> R.string.system; Appearance.LIGHT -> R.string.light; Appearance.DARK -> R.string.dark })
+                    }, onSelect = onAppearance)
                 }
             }
             item {
                 Panel("Units", Icons.Outlined.Straighten) {
-                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                        DistanceUnit.entries.forEachIndexed { index, unit ->
-                            SegmentedButton(selected = unit == preferences.distanceUnit, onClick = { onDistanceUnit(unit) },
-                                shape = SegmentedButtonDefaults.itemShape(index, DistanceUnit.entries.size)) {
-                                Text(when (unit) { DistanceUnit.IMPERIAL -> "Imperial (mi)"; DistanceUnit.METRIC -> "Metric (km)" })
-                            }
-                        }
-                    }
+                    AdaptiveChoiceRow(DistanceUnit.entries, preferences.distanceUnit, label = { unit ->
+                        when (unit) { DistanceUnit.IMPERIAL -> "Imperial (mi)"; DistanceUnit.METRIC -> "Metric (km)" }
+                    }, onSelect = onDistanceUnit)
                 }
             }
             item {

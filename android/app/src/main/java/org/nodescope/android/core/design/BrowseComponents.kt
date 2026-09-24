@@ -12,6 +12,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -36,19 +38,11 @@ fun BrowseHeader(
     filterCount: Int, searching: Boolean, onFilters: () -> Unit, onSearch: () -> Unit,
     addAction: (@Composable () -> Unit)? = null,
 ) {
-    Row(verticalAlignment = Alignment.Top) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = MaterialTheme.typography.headlineLarge)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Box(Modifier.size(7.dp).background(if (connection == LiveConnection.LIVE) HealthyGreen else ActivityAmber, CircleShape))
-                Text(connectionLabel(connection, liveLabel), style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Text(summary, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
+    val largeText = LocalDensity.current.fontScale >= 1.5f
+    val actions: @Composable RowScope.() -> Unit = {
         IconButton(onClick = onFilters) {
-            BadgedBox(badge = { if (filterCount > 0) Badge(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) { Text(filterCount.toString()) } }) {
+            BadgedBox(badge = { if (filterCount > 0) Badge(containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer) { Text(filterCount.toString()) } }) {
                 Icon(Icons.Outlined.FilterList, "Filter and sort, $filterCount active")
             }
         }
@@ -56,6 +50,19 @@ fun BrowseHeader(
             Icon(if (searching) Icons.Outlined.Close else Icons.Outlined.Search, if (searching) "Close search" else "Search $title")
         }
         addAction?.invoke()
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(title, Modifier.weight(1f), style = MaterialTheme.typography.headlineLarge)
+            if (!largeText) actions()
+        }
+        if (largeText) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, content = actions)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(Modifier.size(7.dp).background(statusAccent(connection == LiveConnection.LIVE), CircleShape))
+            Text(connectionLabel(connection, liveLabel), style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -155,4 +162,28 @@ fun connectionLabel(connection: LiveConnection, liveLabel: String = "Live"): Str
     LiveConnection.CONNECTING -> "Connecting"
     LiveConnection.RECONNECTING -> "Reconnecting"
     LiveConnection.PAUSED -> "Paused"
+}
+
+/** Full-width radio rows preserve readable labels when segmented controls become cramped. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun <T> AdaptiveChoiceRow(options: List<T>, selected: T, label: @Composable (T) -> String, onSelect: (T) -> Unit) {
+    if (LocalDensity.current.fontScale >= 1.5f) {
+        Column(Modifier.fillMaxWidth().selectableGroup()) {
+            options.forEach { option ->
+                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .selectable(selected = option == selected, role = Role.RadioButton, onClick = { onSelect(option) })
+                    .padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    RadioButton(selected = option == selected, onClick = null)
+                    Text(label(option), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+        }
+    } else SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+        options.forEachIndexed { index, option ->
+            SegmentedButton(selected = option == selected, onClick = { onSelect(option) },
+                shape = SegmentedButtonDefaults.itemShape(index, options.size)) { Text(label(option)) }
+        }
+    }
 }

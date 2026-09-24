@@ -36,5 +36,10 @@ class SourceIconsTest {
         }
     }
 
+    @Test fun airportTableMatchesIos() {
+        assertArrayEquals(File("../../CoreScopeViewer/Resources/iata-airports.csv").readBytes(),
+            File("src/main/assets/iata-airports.csv").readBytes())
+    }
+
     private fun assertNotNull(message: String, value: String?) = value.also { assertTrue(message, it != null) }
 }

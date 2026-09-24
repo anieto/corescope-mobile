@@ -1,6 +1,8 @@
 package org.nodescope.android
 
 import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import org.junit.Assert.assertEquals
@@ -20,6 +22,43 @@ import org.nodescope.android.feature.settings.SettingsScreen
 
 class FoundationUiTest {
     @get:Rule val compose = createAndroidComposeRule<UiTestActivity>()
+
+    @Test fun shortWideNavigationRailCanReachSettings() {
+        compose.setContent {
+            CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(1f, 1f)) {
+                NodeScopeTheme(Appearance.LIGHT) {
+                    androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.size(900.dp, 300.dp)) {
+                        AppShell(AppPreferences(onboarded = true, destination = "EXPLORE"), SessionState(), {}, {}, {}, {}, {}, nodeLibrary = NodeLibrary())
+                    }
+                }
+            }
+        }
+        compose.onNode(hasText("Settings") and hasClickAction()).performScrollTo()
+        compose.onNode(hasText("Settings") and hasClickAction()).performClick()
+        compose.onNode(hasText("Settings") and hasClickAction()).assertIsSelected()
+        compose.onNode(hasText("Settings") and hasClickAction()).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test fun largeTextNavigationAndUnitsRemainUsable() {
+        var chosenUnit: DistanceUnit? = null
+        compose.setContent {
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, 2f)) {
+                NodeScopeTheme(Appearance.LIGHT) {
+                    AppShell(AppPreferences(onboarded = true, destination = "EXPLORE"), SessionState(), {}, {}, {}, {}, {},
+                        nodeLibrary = NodeLibrary(), onDistanceUnit = { chosenUnit = it })
+                }
+            }
+        }
+        compose.onNodeWithText("Navigate: Explore").performClick()
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Navigate: Settings").assertIsDisplayed()
+        compose.onNodeWithText("Metric (km)").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(DistanceUnit.METRIC, chosenUnit) }
+        compose.onNodeWithText("Navigate: Settings").performClick()
+        compose.onNodeWithText("Channels").performClick()
+        compose.onNodeWithText("Navigate: Channels").assertIsDisplayed()
+    }
 
     @Test fun chartValuesExposeExactCountsAndCanBeDismissed() {
         compose.setContent { NodeScopeTheme(Appearance.LIGHT) {
