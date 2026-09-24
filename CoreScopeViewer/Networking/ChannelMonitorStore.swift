@@ -136,12 +136,13 @@ final class ChannelMonitorStore {
     }
 
     nonisolated static func migratingLegacyPublicChannel(_ channel: MonitoredChannel) -> MonitoredChannel {
-        guard normalizedHashtagName(channel.channelName) == "Public",
-              channel.channelName != "Public" else { return channel }
+        guard normalizedHashtagName(channel.channelName) == "Public" else { return channel }
+        let publicKeyHex = ChannelCrypto.derivedKeyHex(for: "Public")
+        guard channel.channelName != "Public" || channel.keyHex != publicKeyHex else { return channel }
 
         return MonitoredChannel(
             channelName: "Public",
-            keyHex: ChannelCrypto.derivedKeyHex(for: "Public"),
+            keyHex: publicKeyHex,
             displayName: channel.displayName,
             createdAt: channel.createdAt,
             messageCount: channel.messageCount,
@@ -188,11 +189,17 @@ enum ChannelMonitorError: LocalizedError {
 }
 
 enum ChannelCrypto {
+    static let publicKeyHex = "8b3387e9c5cdea6ac9e5edbaa115cd72"
+
     static func isValidKey(_ key: String) -> Bool {
         key.count == 32 && key.allSatisfy { $0.isHexDigit }
     }
 
     static func derivedKeyHex(for channelName: String) -> String {
+        let bareName = channelName.hasPrefix("#") ? String(channelName.dropFirst()) : channelName
+        if bareName.caseInsensitiveCompare("Public") == .orderedSame {
+            return publicKeyHex
+        }
         let digest = SHA256.hash(data: Data(channelName.utf8))
         return digest.prefix(16).map { String(format: "%02x", $0) }.joined()
     }

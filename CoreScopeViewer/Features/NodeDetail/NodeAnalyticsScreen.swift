@@ -6,6 +6,7 @@ struct NodeAnalyticsScreen: View {
     let node: MeshNode
 
     @Environment(AnalyzerSettings.self) private var settings
+    @Environment(ObserverRegionLookup.self) private var observerRegionLookup
     @State private var viewModel = NodeAnalyticsViewModel()
     @State private var isExporting = false
     @State private var exportDocument = TextExportDocument()
@@ -57,7 +58,7 @@ struct NodeAnalyticsScreen: View {
                     }
 
                     if !analytics.snrTrend.isEmpty {
-                        NodeSignalChart(points: analytics.snrTrend)
+                        NodeSignalCard(points: analytics.snrTrend, observers: observerRegionLookup.observers)
                     }
 
                     if !analytics.packetTypeBreakdown.isEmpty {
@@ -708,124 +709,380 @@ private struct NodeUptimeHeatmapLegend: View {
     }
 }
 
-private enum NodeSignalMetric: String, CaseIterable, Identifiable {
-    case snr
-    case rssi
-
-    var id: Self { self }
-
-    var title: LocalizedStringResource {
+extension SignalQuality {
+    var color: Color {
         switch self {
-        case .snr: "SNR"
-        case .rssi: "RSSI"
-        }
-    }
-
-    var subtitle: String {
-        switch self {
-        case .snr: "Signal-to-noise ratio over time"
-        case .rssi: "Received signal strength over time"
-        }
-    }
-
-    var valueLabel: String {
-        switch self {
-        case .snr: "SNR"
-        case .rssi: "RSSI"
-        }
-    }
-
-    var unit: String {
-        switch self {
-        case .snr: "dB"
-        case .rssi: "dBm"
-        }
-    }
-
-    var accessibilityLabel: LocalizedStringResource {
-        switch self {
-        case .snr: "Signal-to-noise ratio chart"
-        case .rssi: "Received signal strength chart"
-        }
-    }
-
-    func value(for point: NodeSignalPoint) -> Double? {
-        switch self {
-        case .snr: point.snr
-        case .rssi: point.rssi
+        case .strong: NodeScopeStyle.healthy
+        case .good: Color(red: 0.49, green: 0.77, blue: 0.46)
+        case .weak: NodeScopeStyle.activity
+        case .nearLimit: Color(red: 0.90, green: 0.28, blue: 0.30)
         }
     }
 }
 
-private struct NodeSignalChart: View {
+private func formattedDB(_ value: Double) -> String {
+    value.formatted(.number.precision(.fractionLength(1))) + " dB"
+}
+
+/// Plain-language link quality first, with measured numbers always beside it and
+/// full statistics plus each observer's readings on tap. A trend mixed across
+/// observers is deliberately not shown: the set of listeners changes over time.
+private struct NodeSignalCard: View {
     let points: [NodeSignalPoint]
+    let observers: [MeshObserver]
 
-    @State private var selectedMetric = NodeSignalMetric.snr
+    @State private var showsAllObservers = false
+    @State private var expandedObserverID: String?
 
-    private var hasRSSI: Bool {
-        points.contains { $0.rssi != nil }
+    private var summaries: [ObserverSignalSummary] {
+        ObserverSignalSummary.summaries(points: points, observers: observers)
     }
 
     var body: some View {
-        NodeAnalyticsChartCard(
-            title: "Signal",
-            subtitle: selectedMetric.subtitle,
-            symbol: "wave.3.right"
-        ) {
-            VStack(alignment: .leading, spacing: 12) {
-                if hasRSSI {
-                    NodeSignalMetricPicker(selection: $selectedMetric)
+        let summaries = summaries
+        if let best = summaries.first {
+            let scale = Self.scale(for: summaries)
+            NodeAnalyticsChartCard(
+                title: "Signal",
+                subtitle: String(localized: "How well observers hear this node (SNR)"),
+                symbol: "wave.3.right"
+            ) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(headline(for: summaries))
+                        .font(.subheadline.weight(.semibold))
+                    Text(bestLine(for: best))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
-                Chart(points) { point in
-                    if let value = selectedMetric.value(for: point) {
-                        LineMark(
-                            x: .value("Time", point.timestamp),
-                            y: .value(selectedMetric.valueLabel, value),
-                            series: .value("Observer", point.observerName ?? point.observerID ?? "Unknown")
-                        )
-                        .foregroundStyle(by: .value("Observer", point.observerName ?? point.observerID ?? "Unknown"))
-                        .interpolationMethod(.catmullRom)
+                VStack(spacing: 0) {
+                    ForEach(summaries.prefix(showsAllObservers ? summaries.count : 5)) { summary in
+                        ObserverSignalRow(
+                            summary: summary,
+                            readings: summary.readings(in: points),
+                            scale: scale,
+                            isExpanded: expandedObserverID == summary.id
+                        ) {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                expandedObserverID = expandedObserverID == summary.id ? nil : summary.id
+                            }
+                        }
+                        if summary.id != summaries.prefix(showsAllObservers ? summaries.count : 5).last?.id {
+                            Divider().opacity(0.3)
+                        }
                     }
                 }
-                .chartYAxisLabel(selectedMetric.unit)
-                .chartLegend(.hidden)
-                .frame(height: 190)
-                .accessibilityLabel(Text(selectedMetric.accessibilityLabel))
+
+                if summaries.count > 5 {
+                    Button(showsAllObservers ? "Show less" : "Show all \(summaries.count) observers") {
+                        withAnimation(.easeInOut(duration: 0.2)) { showsAllObservers.toggle() }
+                    }
+                    .font(.caption.weight(.bold))
+                }
+
+                SignalQualityLegend()
+
+                Text(explanation(for: summaries))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .onChange(of: hasRSSI) { _, hasRSSI in
-            if !hasRSSI {
-                selectedMetric = .snr
-            }
+    }
+
+    /// One scale for every row, always including the decode limit so each link's
+    /// margin is visible.
+    static func scale(for summaries: [ObserverSignalSummary]) -> ClosedRange<Double> {
+        let floor = summaries.compactMap(\.floor).max()
+        let low = min(summaries.map(\.low).min() ?? 0, floor ?? .greatestFiniteMagnitude) - 2
+        let high = max(summaries.map(\.high).max() ?? 0, (floor ?? 0) + 16) + 2
+        return low...max(high, low + 1)
+    }
+
+    private func headline(for summaries: [ObserverSignalSummary]) -> String {
+        let counts = Dictionary(grouping: summaries.compactMap(\.quality), by: { $0 }).mapValues(\.count)
+        let parts = SignalQuality.allCases.compactMap { quality in
+            counts[quality].map { "\($0) \(quality.label.lowercased())" }
         }
+        let heard = summaries.count == 1
+            ? String(localized: "Heard by 1 observer")
+            : String(localized: "Heard by \(summaries.count) observers")
+        return ([heard] + parts).joined(separator: " · ")
+    }
+
+    private func bestLine(for best: ObserverSignalSummary) -> String {
+        var line = String(localized: "Best: \(best.observer), \(formattedDB(best.median))")
+        if let margin = best.margin {
+            line += String(localized: " (\(formattedDB(margin)) above the decode limit)")
+        }
+        return line
+    }
+
+    private func explanation(for summaries: [ObserverSignalSummary]) -> String {
+        let factors = Set(summaries.compactMap(\.spreadingFactor))
+        if factors.count == 1, let factor = factors.first {
+            let floor = formattedDB(SignalQualityMath.snrFloor(spreadingFactor: factor))
+            return String(localized: "Quality is the margin above the SF\(factor) decode limit (\(floor)): near limit under 5 dB, weak 5–10, good 10–15, strong 15+. Bars show each observer's typical range; the tick is its median.")
+        }
+        if factors.isEmpty {
+            return String(localized: "Radio settings are unavailable, so only measured values are shown. Bars show each observer's typical range; the tick is its median.")
+        }
+        return String(localized: "Quality is the margin above each observer's own decode limit, which depends on its spreading factor. Bars show typical range; the tick is the median.")
     }
 }
 
-private struct NodeSignalMetricPicker: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Binding var selection: NodeSignalMetric
+private struct ObserverSignalRow: View {
+    let summary: ObserverSignalSummary
+    let readings: [NodeSignalPoint]
+    let scale: ClosedRange<Double>
+    let isExpanded: Bool
+    let toggle: () -> Void
 
     var body: some View {
-        if dynamicTypeSize.isAccessibilitySize {
-            Picker("Signal measurement", selection: $selection) {
-                metricOptions
+        VStack(alignment: .leading, spacing: 6) {
+            Button(action: toggle) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(summary.observer)
+                                .font(.subheadline.weight(.semibold))
+                                .lineLimit(1)
+                            Text(typicalLine)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 6)
+                        if let quality = summary.quality {
+                            Text(quality.label)
+                                .font(.caption2.weight(.semibold))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(quality.color.opacity(0.18), in: Capsule())
+                        }
+                        Text(formattedDB(summary.median))
+                            .font(.subheadline.weight(.semibold).monospacedDigit())
+                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    SignalRangeBar(summary: summary, scale: scale)
+                        .frame(height: 8)
+                }
+                .contentShape(Rectangle())
             }
-            .pickerStyle(.menu)
-        } else {
-            Picker("Signal measurement", selection: $selection) {
-                metricOptions
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(summary.observer)
+            .accessibilityValue(accessibilitySummary)
+            .accessibilityHint(isExpanded ? "Hides details" : "Shows details")
+
+            if isExpanded {
+                SignalDetailGrid(summary: summary)
+                if !readings.isEmpty {
+                    ObserverReadingsChart(summary: summary, readings: readings, scale: scale)
+                    Text("Each dot is one reading, on the same scale as the bars. Shading marks the quality zones; the red line is the decode limit.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
-            .pickerStyle(.segmented)
+        }
+        .padding(.vertical, 9)
+    }
+
+    private var typicalLine: String {
+        let range = String(localized: "typical \(summary.low.formatted(.number.precision(.fractionLength(1)))) to \(formattedDB(summary.high))")
+        let readings = summary.count == 1
+            ? String(localized: "1 reading")
+            : String(localized: "\(summary.count) readings")
+        var line = "\(range) · \(readings)"
+        if summary.hasFewReadings {
+            line += " · " + String(localized: "few readings")
+        }
+        return line
+    }
+
+    private var accessibilitySummary: String {
+        let quality = summary.quality?.label ?? String(localized: "quality unknown")
+        return String(localized: "\(quality), median \(formattedDB(summary.median)), typically \(formattedDB(summary.low)) to \(formattedDB(summary.high)), \(summary.count) readings")
+    }
+}
+
+/// Typical range (10th–90th percentile) on the shared scale, with a median tick
+/// and the decode limit marked.
+private struct SignalRangeBar: View {
+    let summary: ObserverSignalSummary
+    let scale: ClosedRange<Double>
+
+    var body: some View {
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            let height = geometry.size.height
+            let tone = summary.quality?.color ?? NodeScopeStyle.signal
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.secondary.opacity(0.14))
+                if let floor = summary.floor {
+                    Rectangle()
+                        .fill(SignalQuality.nearLimit.color.opacity(0.45))
+                        .frame(width: 2, height: height)
+                        .offset(x: x(floor, width) - 1)
+                }
+                Capsule()
+                    .fill(tone.opacity(0.7))
+                    .frame(width: max(x(summary.high, width) - x(summary.low, width), height), height: height)
+                    .offset(x: x(summary.low, width))
+                Rectangle()
+                    .fill(Color.primary)
+                    .frame(width: 2, height: height)
+                    .offset(x: x(summary.median, width) - 1)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func x(_ value: Double, _ width: CGFloat) -> CGFloat {
+        let fraction = (value - scale.lowerBound) / (scale.upperBound - scale.lowerBound)
+        return width * CGFloat(min(max(fraction, 0), 1))
+    }
+}
+
+private struct SignalDetailGrid: View {
+    let summary: ObserverSignalSummary
+
+    private var items: [(label: LocalizedStringKey, value: String)] {
+        var items: [(LocalizedStringKey, String)] = [
+            ("Median SNR", formattedDB(summary.median)),
+            ("Typical range", "\(summary.low.formatted(.number.precision(.fractionLength(1)))) to \(formattedDB(summary.high))"),
+            ("Min / max", "\(summary.minimum.formatted(.number.precision(.fractionLength(1)))) / \(formattedDB(summary.maximum))")
+        ]
+        if let margin = summary.margin, let floor = summary.floor, let factor = summary.spreadingFactor {
+            items.append(("Above decode limit", "\(formattedDB(margin)) (SF\(factor) limit \(formattedDB(floor)))"))
+        }
+        if let rssi = summary.medianRSSI {
+            items.append(("Median RSSI", rssi.formatted(.number.precision(.fractionLength(0))) + " dBm"))
+        }
+        items.append(("Readings", summary.count.formatted()))
+        if let lastHeard = summary.lastHeard {
+            items.append(("Last heard", RelativeTime.string(from: lastHeard)))
+        }
+        return items
+    }
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.flexible(), alignment: .leading), GridItem(.flexible(), alignment: .leading)],
+                  alignment: .leading, spacing: 8) {
+            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.label)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text(item.value)
+                        .font(.caption)
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
+        .padding(.top, 4)
+    }
+}
+
+/// Every reading as a dot on the card's shared scale, over quality zones and the
+/// decode limit, so a steady link reads as steady and its distance from failure
+/// stays visible.
+private struct ObserverReadingsChart: View {
+    let summary: ObserverSignalSummary
+    let readings: [NodeSignalPoint]
+    let scale: ClosedRange<Double>
+
+    private struct Zone: Identifiable {
+        let quality: SignalQuality
+        let low: Double
+        let high: Double
+        var id: SignalQuality { quality }
+    }
+
+    private var zones: [Zone] {
+        guard let floor = summary.floor else { return [] }
+        let edges: [(SignalQuality, Double, Double)] = [
+            (.nearLimit, scale.lowerBound, floor + 5),
+            (.weak, floor + 5, floor + 10),
+            (.good, floor + 10, floor + 15),
+            (.strong, floor + 15, scale.upperBound)
+        ]
+        return edges.compactMap { quality, low, high in
+            let clampedLow = max(low, scale.lowerBound)
+            let clampedHigh = min(high, scale.upperBound)
+            return clampedHigh > clampedLow ? Zone(quality: quality, low: clampedLow, high: clampedHigh) : nil
         }
     }
 
-    @ViewBuilder
-    private var metricOptions: some View {
-        ForEach(NodeSignalMetric.allCases) { metric in
-            Text(metric.title)
-                .tag(metric)
+    var body: some View {
+        Chart {
+            ForEach(zones) { zone in
+                RectangleMark(yStart: .value("Zone start", zone.low), yEnd: .value("Zone end", zone.high))
+                    .foregroundStyle(zone.quality.color.opacity(0.10))
+            }
+            if let floor = summary.floor {
+                RuleMark(y: .value("Decode limit", floor))
+                    .foregroundStyle(SignalQuality.nearLimit.color)
+                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+            }
+            ForEach(Array(readings.enumerated()), id: \.offset) { _, reading in
+                PointMark(x: .value("Time", reading.timestamp), y: .value("SNR", reading.snr))
+                    .symbolSize(readings.count > 150 ? 12 : 24)
+                    .foregroundStyle(color(for: reading.snr))
+            }
         }
+        .chartYScale(domain: scale)
+        .chartYAxis {
+            AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { value in
+                AxisGridLine().foregroundStyle(.clear)
+                AxisValueLabel {
+                    if let db = value.as(Double.self) {
+                        Text(db.formatted(.number.precision(.fractionLength(0))) + " dB")
+                    }
+                }
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: .automatic(desiredCount: 3)) {
+                AxisGridLine().foregroundStyle(.clear)
+                AxisValueLabel()
+            }
+        }
+        .frame(height: 140)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(summary.observer) readings")
+        .accessibilityValue(accessibilityValue)
+    }
+
+    private func color(for snr: Double) -> Color {
+        guard let floor = summary.floor else { return NodeScopeStyle.signal }
+        return SignalQuality(margin: snr - floor).color
+    }
+
+    private var accessibilityValue: String {
+        var value = String(localized: "\(readings.count) readings from \(formattedDB(summary.minimum)) to \(formattedDB(summary.maximum))")
+        if let floor = summary.floor {
+            value += String(localized: ", decode limit \(formattedDB(floor))")
+        }
+        return value
+    }
+}
+
+private struct SignalQualityLegend: View {
+    var body: some View {
+        HStack(spacing: 10) {
+            ForEach(SignalQuality.allCases, id: \.self) { quality in
+                HStack(spacing: 4) {
+                    Circle().fill(quality.color).frame(width: 8, height: 8)
+                    Text(quality.label)
+                }
+            }
+        }
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+        .accessibilityElement(children: .combine)
     }
 }
 

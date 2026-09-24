@@ -44,13 +44,7 @@ actor PacketFeedCache {
         }
 
         let load = Task { [apiClient] in
-            var query = [
-                URLQueryItem(name: "limit", value: "1000"),
-                URLQueryItem(name: "payloadType", value: "5")
-            ]
-            if let region = key.region {
-                query.append(URLQueryItem(name: "region", value: region))
-            }
+            let query = Self.channelPacketQuery(region: key.region)
             let response: PacketsResponse = try await apiClient.get("/api/packets", query: query)
             return response.packets
         }
@@ -65,5 +59,16 @@ actor PacketFeedCache {
             inFlightLoads[key] = nil
             throw error
         }
+    }
+
+    nonisolated static func channelPacketQuery(region: String?) -> [URLQueryItem] {
+        var query = [
+            URLQueryItem(name: "limit", value: "1000"),
+            URLQueryItem(name: "type", value: "5")
+        ]
+        if let region {
+            query.append(URLQueryItem(name: "region", value: region))
+        }
+        return query
     }
 }

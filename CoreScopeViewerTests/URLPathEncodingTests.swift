@@ -56,6 +56,11 @@ struct NodeScopeDeepLinkTests {
 }
 
 struct ChannelNameNormalizationTests {
+    @Test func usesMeshCoreWellKnownPublicChannelKey() {
+        #expect(ChannelCrypto.derivedKeyHex(for: "Public") == ChannelCrypto.publicKeyHex)
+        #expect(ChannelCrypto.derivedKeyHex(for: "#public") == ChannelCrypto.publicKeyHex)
+    }
+
     @Test func preservesCanonicalPublicChannelWithoutHash() {
         #expect(ChannelMonitorStore.normalizedHashtagName("Public") == "Public")
         #expect(ChannelMonitorStore.normalizedHashtagName("#Public") == "Public")
@@ -75,7 +80,7 @@ struct ChannelNameNormalizationTests {
     @Test func migratesLegacyPublicChannel() {
         let legacy = MonitoredChannel(
             channelName: "#Public",
-            keyHex: ChannelCrypto.derivedKeyHex(for: "#Public"),
+            keyHex: "591935b15b1c88e2d5f6be0a054604fc",
             displayName: nil,
             createdAt: .distantPast,
             messageCount: 4,
@@ -89,5 +94,33 @@ struct ChannelNameNormalizationTests {
         #expect(migrated.keyHex == ChannelCrypto.derivedKeyHex(for: "Public"))
         #expect(migrated.messageCount == legacy.messageCount)
         #expect(migrated.lastMessage == legacy.lastMessage)
+    }
+
+    @Test func repairsCanonicalPublicChannelSavedWithDerivedKey() {
+        let legacy = MonitoredChannel(
+            channelName: "Public",
+            keyHex: "591935b15b1c88e2d5f6be0a054604fc",
+            displayName: nil,
+            createdAt: .distantPast,
+            messageCount: nil,
+            lastMessage: nil,
+            lastActivity: nil
+        )
+
+        let migrated = ChannelMonitorStore.migratingLegacyPublicChannel(legacy)
+
+        #expect(migrated.channelName == "Public")
+        #expect(migrated.keyHex == ChannelCrypto.publicKeyHex)
+    }
+}
+
+struct PacketFeedCacheTests {
+    @Test func requestsOnlyGroupTextPacketsUsingServerParameter() {
+        let query = PacketFeedCache.channelPacketQuery(region: "AUS")
+
+        #expect(query.contains(URLQueryItem(name: "limit", value: "1000")))
+        #expect(query.contains(URLQueryItem(name: "type", value: "5")))
+        #expect(query.contains(URLQueryItem(name: "region", value: "AUS")))
+        #expect(!query.contains { $0.name == "payloadType" })
     }
 }

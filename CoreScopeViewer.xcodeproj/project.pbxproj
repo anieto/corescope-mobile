@@ -17,6 +17,7 @@
 		16CC334CE0E2AE894A6E2811 /* ChannelMessagesCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80B09AB0177A96E48CCDEC88 /* ChannelMessagesCache.swift */; };
 		22E6EDC06317772F4D948AC2 /* AnalyzerSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E45D252950987721EF3D106 /* AnalyzerSettings.swift */; };
 		24D59BC2523DFDDA78B44597 /* Observer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 676EB2594CA764CE13BDDE59 /* Observer.swift */; };
+		266438D9E68678257DCDA523 /* NodeSignalQuality.swift in Sources */ = {isa = PBXBuildFile; fileRef = 177311C96A5748EDEC17934A /* NodeSignalQuality.swift */; };
 		2C1CCC5A4340804F13F8D110 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6EDB07FE4BF732F4BA52606B /* Assets.xcassets */; };
 		2CB0E2884918B39C50850A22 /* AnalyzerSourceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4ABA4E1CD390396A7DC9A33 /* AnalyzerSourceRegistry.swift */; };
 		2D447FFABF6B77349DA614A1 /* SenderColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36B0A5E6DC5812474734F2C7 /* SenderColor.swift */; };
@@ -68,6 +69,7 @@
 		C164A5108399198FAE295FE5 /* ObserverRegionLookup.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADCAFF1DCB55B911F5AFFC20 /* ObserverRegionLookup.swift */; };
 		D0703CF5F57B875F611F2ADD /* PacketDetailScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD5219A5DB2C5DFB2F49A982 /* PacketDetailScreen.swift */; };
 		D10FFE35F47798056E28EB1C /* DataLoadStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29E28B950F28EA62CB22D383 /* DataLoadStatusView.swift */; };
+		D5F127286F43177CB8B17400 /* SignalQualityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4803E09AA9A3CD1D7EF773B /* SignalQualityTests.swift */; };
 		D79DF7E587202E277463644A /* AnalyzerSourcePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BA4982D8889A079D6CEBCB9 /* AnalyzerSourcePicker.swift */; };
 		D86C8FE8DEB5CE51B1FFC834 /* CoreScopeViewerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AD4E0C32DC0423479F83C43 /* CoreScopeViewerApp.swift */; };
 		DAAB4861A12F70E15A9DBA56 /* PacketFeedCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB52868AE176502884D9781C /* PacketFeedCache.swift */; };
@@ -93,6 +95,7 @@
 
 /* Begin PBXFileReference section */
 		156F101DF4008880E14D2E48 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		177311C96A5748EDEC17934A /* NodeSignalQuality.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeSignalQuality.swift; sourceTree = "<group>"; };
 		1995A14EECD0A20DEE44C713 /* PacketDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketDetailViewModel.swift; sourceTree = "<group>"; };
 		1B8EBAA696FEC61136DADD69 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		2267353D97D345808DF80E40 /* NodeHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeHealth.swift; sourceTree = "<group>"; };
@@ -168,6 +171,7 @@
 		E4ABA4E1CD390396A7DC9A33 /* AnalyzerSourceRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerSourceRegistry.swift; sourceTree = "<group>"; };
 		E60D53B8493F9BAD7C5BAD05 /* PacketFeedScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketFeedScreen.swift; sourceTree = "<group>"; };
 		EA006DDF6B3AF7AC55C16467 /* Packet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Packet.swift; sourceTree = "<group>"; };
+		F4803E09AA9A3CD1D7EF773B /* SignalQualityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalQualityTests.swift; sourceTree = "<group>"; };
 		FEE734231B3A2D9FDE62ADB6 /* MapViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapViewModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -365,6 +369,7 @@
 			children = (
 				2CE357DF8B6328C61A2E23E4 /* NodeDetailScreen.swift */,
 				75CDCA22232763038FF030C6 /* NodeDetailViewModel.swift */,
+				177311C96A5748EDEC17934A /* NodeSignalQuality.swift */,
 				CD5219A5DB2C5DFB2F49A982 /* PacketDetailScreen.swift */,
 				1995A14EECD0A20DEE44C713 /* PacketDetailViewModel.swift */,
 				316FE0173060985200FBA3B4 /* NodeAnalyticsViewModel.swift */,
@@ -403,6 +408,7 @@
 			children = (
 				3C78C1620C6A3A352DD6B687 /* ModelDecodingTests.swift */,
 				B302D4D26193BFC6975CDF82 /* URLPathEncodingTests.swift */,
+				F4803E09AA9A3CD1D7EF773B /* SignalQualityTests.swift */,
 			);
 			path = CoreScopeViewerTests;
 			sourceTree = "<group>";
@@ -501,6 +507,7 @@
 			files = (
 				3BE961FDCF2336382895F4C3 /* ModelDecodingTests.swift in Sources */,
 				036ACF59063991FAB8B4D9A0 /* URLPathEncodingTests.swift in Sources */,
+				D5F127286F43177CB8B17400 /* SignalQualityTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -543,6 +550,7 @@
 				14BBB677BE2C96A01E15E7D3 /* Node.swift in Sources */,
 				DB22D3F08439100648510953 /* NodeDetailScreen.swift in Sources */,
 				37EEBAD9BA7B400246063847 /* NodeDetailViewModel.swift in Sources */,
+				266438D9E68678257DCDA523 /* NodeSignalQuality.swift in Sources */,
 				895D2DD9450C64472E7693F6 /* NodeHealth.swift in Sources */,
 				73FBC544410EBB6331BE2670 /* NodeRoleStyle.swift in Sources */,
 				316FE010305E2B2A00FBA3B4 /* CacheStorageService.swift in Sources */,
