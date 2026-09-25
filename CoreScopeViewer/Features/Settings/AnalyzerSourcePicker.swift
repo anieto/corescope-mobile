@@ -144,7 +144,7 @@ struct AnalyzerSourcePickerScreen: View {
     private var communitySourceRequestURL: URL? {
         var components = URLComponents()
         components.scheme = "mailto"
-        components.path = "betweentheives@protonmail.com"
+        components.path = "betweenthieves@protonmail.com"
         components.queryItems = [
             URLQueryItem(name: "subject", value: "NodeScope community source request"),
             URLQueryItem(

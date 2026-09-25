@@ -623,3 +623,30 @@ how to use.
   `iata-airports.csv` (same OurAirports file as Android, 9,054 codes) → Apple search last.
 - Tests: iOS `AirportCoordinatesTests` (SJT/ACT/GGG land in their own cities, parser rules;
   built, not run); Android asserts the two CSV copies are identical.
+
+## Onboarding flow (A01) — 2026-09-24
+
+- `OnboardingScreen` replaces the first-launch source list with iOS's two steps: "Welcome to
+  NodeScope" with an analyzer card (logo, name, host) that opens the shared source picker,
+  then "Follow the mesh" (explore nodes / watch routes / focus your view) with Back and
+  "Start exploring", which saves the source. Content centers and scrolls at large text sizes;
+  system back returns from the picker and from step 2.
+- `SourceScreen` lost its onboarding mode (one picker for Settings and onboarding); an
+  invalid custom host is rejected inside the picker with the error shown.
+- Deferred until the map has a location button: iOS's "Location is optional…" line.
+- Device tests rewritten for the new flow (compiled, not run).
+
+## Remaining parity gaps closed — 2026-09-24
+
+- M02 current location: a "Center on my location" button above zoom. Location permission
+  (coarse/fine) is requested only on first tap; one fix (recent last-known, else
+  fused → network → GPS, 15 s timeout), framed at a 10 km radius as on iOS, drawn as a blue
+  dot; nothing stored. Messages for services off / permission denied / no fix. Onboarding
+  now carries iOS's "Location is optional…" line.
+- In-app browser: `InAppUriHandler` provided app-wide opens http(s) links in a Custom Tab
+  (androidx.browser 1.10.0), falling back to a normal browser; other schemes (mailto:) go to
+  the system. Covers channel message links, map attribution, About links and Support.
+- Node search (map and Explore) gains iOS's role chips: All + repeater/room/companion/sensor,
+  multi-select, map marker colours.
+- Source picker: "Request a community source" opens the iOS email template (same address and
+  body) in the mail app, with a toast when none is installed.

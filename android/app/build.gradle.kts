@@ -57,6 +57,8 @@ dependencies {
     // Keep app and instrumentation classpaths aligned with AndroidX Test.
     implementation("androidx.concurrent:concurrent-futures:1.2.0")
     implementation("androidx.activity:activity-compose:1.10.1")
+    // Web links open in a Custom Tab inside the app (iOS uses SFSafariViewController).
+    implementation("androidx.browser:browser:1.10.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
     implementation("androidx.navigation:navigation-compose:2.9.4")

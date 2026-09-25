@@ -1,5 +1,8 @@
 package org.nodescope.android
 
+import org.nodescope.android.core.design.InAppUriHandler
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalUriHandler
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -53,7 +56,8 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 // Settings → Units, read by every screen that shows a distance.
-                CompositionLocalProvider(LocalDistanceUnit provides (preferences?.distanceUnit ?: DistanceUnit.IMPERIAL)) {
+                CompositionLocalProvider(LocalDistanceUnit provides (preferences?.distanceUnit ?: DistanceUnit.IMPERIAL),
+                    LocalUriHandler provides remember { InAppUriHandler(this@MainActivity) }) {
                     Surface(Modifier.fillMaxSize()) {
                         preferences?.let { NodeScopeApp(model, it) } ?: Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator()

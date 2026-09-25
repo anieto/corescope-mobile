@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import org.nodescope.android.core.storage.AppPreferences
 import org.nodescope.android.feature.explore.*
 import org.nodescope.android.feature.map.*
+import org.nodescope.android.feature.onboarding.OnboardingScreen
 import org.nodescope.android.feature.onboarding.SourceScreen
 import org.nodescope.android.feature.settings.*
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -85,7 +86,7 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
     if (!preferences.onboarded) {
         Surface(Modifier.fillMaxSize()) {
             Box(Modifier.safeDrawingPadding()) {
-                SourceScreen(sources, preferences.host, true, saving, error, { model.selectSource(it) }, model.sourceIcons)
+                OnboardingScreen(sources, preferences.host, saving, error, { model.selectSource(it) }, model.sourceIcons)
             }
         }
     } else {
@@ -99,7 +100,7 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
             val sourceChangedAt by model.sourceChangedAt.collectAsStateWithLifecycle()
             val pendingLink by model.pendingLink.collectAsStateWithLifecycle()
             AppShell(preferences, state, model::setRegion, { model.refresh(); model.reconnectLive() }, model::setAppearance, model::selectDestination,
-                sourceScreen = { onDone -> SourceScreen(sources, preferences.host, false, saving, error, { host -> model.selectSource(host, onDone) }, model.sourceIcons) },
+                sourceScreen = { onDone -> SourceScreen(sources, preferences.host, saving, error, { host -> model.selectSource(host, onDone) }, model.sourceIcons) },
                 feed = live, onReconnect = model::reconnectLive, browse = model.browse, monitoredChannels = { model.monitoredChannels },
                 diagnostics = model.diagnostics, cacheStorage = model.cacheStorage, sourceChangedAt = sourceChangedAt,
                 pendingLink = pendingLink, onLinkHandled = model::linkHandled, onDistanceUnit = model::setDistanceUnit,

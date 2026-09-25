@@ -1,5 +1,8 @@
 package org.nodescope.android.feature.map
 
+import kotlinx.coroutines.launch
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
 import android.animation.ValueAnimator
 import android.graphics.RectF
 import android.view.Choreographer
@@ -66,6 +69,7 @@ private const val ROUTE_NODES = "nodescope-route-nodes"
 private const val ROUTE_NODE_POINTS = "nodescope-route-node-points"
 private const val ROUTE = "nodescope-route"
 private const val PACKET = "nodescope-packet"
+private const val USER_LOCATION = "nodescope-user-location"
 private val emptyFeatures get() = FeatureCollection.fromFeatures(emptyList<Feature>())
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -135,6 +139,35 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     val currentOnNode by rememberUpdatedState(onNode)
     val currentDisplayedNodes by rememberUpdatedState(mapNodes)
     val density = androidx.compose.ui.platform.LocalDensity.current.density
+    // "Center on my location" (iOS): permission is asked on the first tap, one fix is taken,
+    // and the position is only kept in memory to draw the dot.
+    val locationScope = rememberCoroutineScope()
+    var userLocation by remember { mutableStateOf<Coordinate?>(null) }
+    var locating by remember { mutableStateOf(false) }
+    var locationMessage by remember { mutableStateOf<String?>(null) }
+    fun centerOnUser() {
+        if (locating) return
+        locating = true
+        locationScope.launch {
+            val result = currentLocation(context)
+            locating = false
+            when (result) {
+                is LocationResult.Found -> {
+                    userLocation = result.coordinate
+                    val box = regionBounds(RegionCoordinate(result.coordinate.latitude, result.coordinate.longitude, 10.0))
+                    map?.animateCamera(CameraUpdateFactory.newLatLngBounds(LatLngBounds.from(box.north, box.east, box.south, box.west),
+                        (24 * density).toInt(), (72 * density).toInt(), (24 * density).toInt(), (104 * density).toInt()), 600)
+                }
+                LocationResult.ServicesOff -> locationMessage = "Turn on location services to center the map on yourself."
+                LocationResult.Unavailable -> locationMessage = "Couldn't find your location. Try again in a moment."
+            }
+        }
+    }
+    val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+        if (grants.values.any { it }) centerOnUser()
+        else locationMessage = "Location permission is off. You can allow it in the app's settings."
+    }
+    LaunchedEffect(locationMessage) { if (locationMessage != null) { delay(5_000); locationMessage = null } }
     // Co-located markers fan out by a fixed screen distance; recompute when zoom settles.
     val spreadZoom = kotlin.math.round(cameraValues[2] * 4) / 4
     val nodes = remember(mapNodes, spreadZoom) { nodeFeatures(mapNodes, spreadCoincidentNodes(mapNodes, spreadZoom)) }
@@ -262,6 +295,11 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             }
         }
         lastFocus = focusedKey
+    }
+    LaunchedEffect(style, userLocation) {
+        style?.getSourceAs<GeoJsonSource>(USER_LOCATION)?.setGeoJson(userLocation?.let {
+            FeatureCollection.fromFeatures(listOf(Feature.fromGeometry(Point.fromLngLat(it.longitude, it.latitude))))
+        } ?: emptyFeatures)
     }
     LaunchedEffect(style, sampleRoute) {
         style?.getSourceAs<GeoJsonSource>(ROUTE)?.setGeoJson(if (sampleRoute.size > 1)
@@ -400,6 +438,14 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                     }
                 }
             }
+            locationMessage?.let { message ->
+                Surface(shape = MaterialTheme.shapes.medium, tonalElevation = 4.dp) {
+                    Row(Modifier.padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(message, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                        IconButton(onClick = { locationMessage = null }) { Icon(Icons.Outlined.Close, "Dismiss") }
+                    }
+                }
+            }
             if (failed) Surface(shape = MaterialTheme.shapes.medium, tonalElevation = 4.dp) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.map_load_failed), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
@@ -414,12 +460,20 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             }
         }
         if (!failed && style == null) CircularProgressIndicator(Modifier.align(Alignment.Center))
-        // Zoom sits just above the attribution line at the right edge.
-        Surface(Modifier.align(Alignment.BottomEnd).padding(end = 12.dp, bottom = 56.dp), shape = MaterialTheme.shapes.medium, shadowElevation = 2.dp) {
-            Column {
-                IconButton(onClick = { map?.animateCamera(CameraUpdateFactory.zoomIn()) }) { Icon(Icons.Outlined.Add, stringResource(R.string.zoom_in)) }
-                HorizontalDivider(Modifier.width(32.dp).align(Alignment.CenterHorizontally))
-                IconButton(onClick = { map?.animateCamera(CameraUpdateFactory.zoomOut()) }) { Icon(Icons.Outlined.Remove, stringResource(R.string.zoom_out)) }
+        // Location sits above zoom, which sits just above the attribution line at the right edge.
+        Column(Modifier.align(Alignment.BottomEnd).padding(end = 12.dp, bottom = 56.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Surface(shape = MaterialTheme.shapes.medium, shadowElevation = 2.dp) {
+                IconButton(onClick = { if (hasLocationPermission(context)) centerOnUser() else locationPermission.launch(LOCATION_PERMISSIONS) }, enabled = !locating) {
+                    if (locating) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                    else Icon(Icons.Outlined.MyLocation, "Center on my location")
+                }
+            }
+            Surface(shape = MaterialTheme.shapes.medium, shadowElevation = 2.dp) {
+                Column {
+                    IconButton(onClick = { map?.animateCamera(CameraUpdateFactory.zoomIn()) }) { Icon(Icons.Outlined.Add, stringResource(R.string.zoom_in)) }
+                    HorizontalDivider(Modifier.width(32.dp).align(Alignment.CenterHorizontally))
+                    IconButton(onClick = { map?.animateCamera(CameraUpdateFactory.zoomOut()) }) { Icon(Icons.Outlined.Remove, stringResource(R.string.zoom_out)) }
+                }
             }
         }
         // Required CARTO/OpenStreetMap attribution: one line, bottom right (MapLibre's own logo is bottom left).
@@ -586,6 +640,11 @@ private fun addOverlays(style: Style, dark: Boolean) {
     style.addSource(GeoJsonSource(PACKET, emptyFeatures))
     style.addLayer(CircleLayer("nodescope-packet-dot", PACKET).withProperties(
         circleRadius(9f), circleColor("#00BCD4"), circleStrokeWidth(1f), circleStrokeColor("#C5E4FA")))
+    // Your position: a soft halo under a blue dot with a white ring (the platform convention).
+    style.addSource(GeoJsonSource(USER_LOCATION, emptyFeatures))
+    style.addLayer(CircleLayer("nodescope-user-halo", USER_LOCATION).withProperties(circleRadius(16f), circleColor("#1A73E8"), circleOpacity(0.18f)))
+    style.addLayer(CircleLayer("nodescope-user-dot", USER_LOCATION).withProperties(
+        circleRadius(7f), circleColor("#1A73E8"), circleStrokeWidth(2.5f), circleStrokeColor("#FFFFFF")))
 }
 
 /** Explicit debug-only synthetic fixture, never mixed into analyzer data. */

@@ -1,5 +1,11 @@
 package org.nodescope.android.feature.onboarding
 
+import androidx.core.net.toUri
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
+import android.content.Intent
+import android.content.Context
+import android.content.ActivityNotFoundException
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
@@ -31,32 +37,26 @@ import org.nodescope.android.core.model.AnalyzerSource
 import org.nodescope.android.core.network.normalizeHost
 
 /**
- * First launch: choose, then Continue. From Settings (iOS `AnalyzerSourcePickerScreen`):
- * a community source applies as soon as it is tapped; a custom host has its own action.
+ * iOS `AnalyzerSourcePickerScreen`, used from Settings and from onboarding: a community
+ * source applies as soon as it is tapped; a custom host has its own action.
  */
 @Composable
 fun SourceScreen(
-    sources: List<AnalyzerSource>, currentHost: String, onboarding: Boolean,
+    sources: List<AnalyzerSource>, currentHost: String,
     saving: Boolean, error: String?, onSave: (String) -> Unit, icons: SourceIcons? = null,
 ) {
-    var host by rememberSaveable(currentHost) { mutableStateOf(currentHost) }
     var custom by rememberSaveable(currentHost) {
         mutableStateOf(currentHost.takeIf { current -> sources.none { it.host.equals(current, true) } }.orEmpty())
     }
-    fun isCurrent(source: AnalyzerSource) = runCatching { normalizeHost(source.host) }.getOrNull().equals(if (onboarding) host else currentHost, true)
+    fun isCurrent(source: AnalyzerSource) = runCatching { normalizeHost(source.host) }.getOrNull().equals(currentHost, true)
     LazyColumn(
         modifier = Modifier.fillMaxSize().imePadding(),
-        contentPadding = PaddingValues(if (onboarding) 24.dp else 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        if (onboarding) item {
-            Text(stringResource(R.string.welcome), style = MaterialTheme.typography.headlineLarge)
-            Spacer(Modifier.height(8.dp))
-            Text(stringResource(R.string.onboarding_description))
-        }
         item { SectionLabel("US community sources", Modifier.padding(horizontal = 4.dp)) }
         items(sources, key = { it.id }) { source ->
             val current = isCurrent(source)
-            Card(onClick = { if (onboarding) host = source.host else onSave(source.host) }, enabled = !saving,
+            Card(onClick = { onSave(source.host) }, enabled = !saving,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier.fillMaxWidth().semantics { selected = current }) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -76,19 +76,16 @@ fun SourceScreen(
         }
         item { SectionLabel("Custom analyzer", Modifier.padding(horizontal = 4.dp)) }
         item {
-            val value = if (onboarding) host else custom
-            OutlinedTextField(value, { if (onboarding) host = it else custom = it }, enabled = !saving,
+            OutlinedTextField(custom, { custom = it }, enabled = !saving,
                 label = { Text(stringResource(R.string.analyzer_hostname)) }, placeholder = { Text("analyzer.example.org") },
                 singleLine = true, modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false,
                     keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { if (!onboarding && custom.isNotBlank()) onSave(custom) }))
+                keyboardActions = KeyboardActions(onDone = { if (custom.isNotBlank()) onSave(custom) }))
         }
         if (error != null) item { Text(error, color = MaterialTheme.colorScheme.error) }
         item {
-            if (onboarding) Button(onClick = { onSave(host) }, enabled = !saving && host.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(if (saving) R.string.saving else R.string.continue_label))
-            } else FilledTonalButton(onClick = { onSave(custom) }, enabled = !saving && custom.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
+            FilledTonalButton(onClick = { onSave(custom) }, enabled = !saving && custom.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
                 Text(if (saving) stringResource(R.string.saving) else "Use custom analyzer")
             }
         }
@@ -96,12 +93,46 @@ fun SourceScreen(
             Text(stringResource(R.string.source_privacy), Modifier.padding(horizontal = 4.dp), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        item {
+            val context = LocalContext.current
+            TextButton(onClick = { requestCommunitySource(context) }) {
+                Icon(Icons.Outlined.Email, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Request a community source")
+            }
+            Text("Suggest a public analyzer for the community list. Please confirm that its owner or operator permits it to be listed and used in NodeScope.",
+                Modifier.padding(horizontal = 4.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** Where community source requests go, and the prefilled form (same as iOS). */
+internal const val SOURCE_REQUEST_EMAIL = "betweenthieves@protonmail.com"
+internal val sourceRequestBody = listOf(
+    "Hello NodeScope team,", "",
+    "I'd like to request that the following community source be added.", "",
+    "SOURCE DETAILS", "Source name:", "Analyzer hostname or URL:", "Region or community:", "Owner or operator contact:", "",
+    "PERMISSION",
+    "Do you have permission from the source owner or operator for this source to be listed and used in NodeScope?",
+    "Answer: Yes / No / Not yet", "",
+    "ADDITIONAL DETAILS", "", "Thank you.",
+).joinToString("\r\n")
+
+/** Opens the person's email app with the request prefilled; nothing happens without one. */
+private fun requestCommunitySource(context: Context) {
+    val intent = Intent(Intent.ACTION_SENDTO, "mailto:".toUri()).apply {
+        putExtra(Intent.EXTRA_EMAIL, arrayOf(SOURCE_REQUEST_EMAIL))
+        putExtra(Intent.EXTRA_SUBJECT, "NodeScope community source request")
+        putExtra(Intent.EXTRA_TEXT, sourceRequestBody)
+    }
+    try { context.startActivity(intent) } catch (_: ActivityNotFoundException) {
+        Toast.makeText(context, "No email app is set up. Write to $SOURCE_REQUEST_EMAIL.", Toast.LENGTH_LONG).show()
     }
 }
 
 /** The community's logo from the registry; the generic symbol when it has none or it can't load. */
 @Composable
-private fun SourceLogo(source: AnalyzerSource, icons: SourceIcons?) {
+internal fun SourceLogo(source: AnalyzerSource, icons: SourceIcons?) {
     val logo by produceState<ImageBitmap?>(null, source.icon, icons) { value = icons?.load(source.icon) }
     Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
         logo?.let { Image(it, null, Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp))) }

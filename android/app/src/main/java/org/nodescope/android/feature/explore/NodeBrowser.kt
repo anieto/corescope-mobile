@@ -1,5 +1,11 @@
 package org.nodescope.android.feature.explore
 
+import org.nodescope.android.feature.map.roleColor
+import org.nodescope.android.feature.map.MAP_ROLES
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
@@ -25,12 +31,25 @@ import org.nodescope.android.core.model.MeshNode
 @Composable
 fun NodeBrowser(nodes: List<MeshNode>, total: Int, onNode: (String) -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
-    val filtered = remember(nodes, query) {
-        nodes.filter { "${it.displayName} ${it.publicKey} ${it.role}".contains(query.trim(), ignoreCase = true) }
+    // iOS map search: role chips, multi-select; none selected means every role.
+    var roles by rememberSaveable { mutableStateOf(listOf<String>()) }
+    val filtered = remember(nodes, query, roles) {
+        nodes.filter {
+            (roles.isEmpty() || it.role.lowercase() in roles) &&
+                "${it.displayName} ${it.publicKey} ${it.role}".contains(query.trim(), ignoreCase = true)
+        }
     }
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         TextField(query, { query = it }, colors = TextFieldDefaults.colors(focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer, unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer), leadingIcon = { Icon(Icons.Outlined.Search, null) }, shape = MaterialTheme.shapes.large, placeholder = { Text(stringResource(R.string.search_nodes)) },
             singleLine = true, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(selected = roles.isEmpty(), onClick = { roles = emptyList() }, label = { Text("All") })
+            MAP_ROLES.forEach { role ->
+                FilterChip(selected = role in roles, onClick = { roles = if (role in roles) roles - role else roles + role },
+                    label = { Text(role.replaceFirstChar { it.uppercase() }) },
+                    leadingIcon = { Box(Modifier.size(10.dp).background(roleColor(role), CircleShape)) })
+            }
+        }
         Text(stringResource(R.string.nodes_count, nodes.size, total), style = MaterialTheme.typography.labelMedium)
         if (filtered.isEmpty()) Text(stringResource(R.string.no_nodes), modifier = Modifier.padding(vertical = 24.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(0.dp), contentPadding = PaddingValues(vertical = 12.dp)) {

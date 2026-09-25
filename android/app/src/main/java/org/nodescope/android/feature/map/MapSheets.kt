@@ -37,6 +37,9 @@ import org.nodescope.android.core.model.MeshObserver
 private val roleColors = mapOf("repeater" to Color(0xFFFFAA44), "room" to Color(0xFF299EFF),
     "companion" to Color(0xFF45C99D), "sensor" to Color(0xFFB18AFF))
 
+/** A role's map marker color (shared by the filter sheet and node search chips). */
+fun roleColor(role: String): Color = roleColors[role.lowercase()] ?: Color(0xFF299EFF)
+
 /** iOS `MapNodeFilterSheet`: activity, roles and the route observer, with the observer picker inside. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

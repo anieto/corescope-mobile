@@ -17,6 +17,7 @@ import org.nodescope.android.core.design.NodeScopeTheme
 import org.nodescope.android.core.model.*
 import org.nodescope.android.core.storage.*
 import org.nodescope.android.feature.explore.NodeBrowser
+import org.nodescope.android.feature.onboarding.OnboardingScreen
 import org.nodescope.android.feature.onboarding.SourceScreen
 import org.nodescope.android.feature.settings.SettingsScreen
 
@@ -159,7 +160,7 @@ class FoundationUiTest {
         }
     }
 
-    @Test fun onboardingCanSelectCommunityAnalyzer() {
+    @Test fun onboardingChoosesAnalyzerThenStartsFromOverview() {
         var saved: String? = null
         val sources = listOf(
             AnalyzerSource("a", "Community A", "a.example", "North"),
@@ -167,18 +168,23 @@ class FoundationUiTest {
         )
         compose.setContent {
             NodeScopeTheme(Appearance.SYSTEM) {
-                SourceScreen(sources, "a.example", true, false, null, { saved = it })
+                OnboardingScreen(sources, "a.example", false, null, { saved = it })
             }
         }
+        compose.onNodeWithText("Community A").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Choose analyzer").performClick()
         compose.onNodeWithText("Community B").performClick()
-        compose.onNodeWithText("Continue").performScrollTo().performClick()
+        compose.onNodeWithText("Community B").assertIsDisplayed() // back on the welcome step, now selected
+        compose.onNodeWithText("Continue").performClick()
+        compose.onNodeWithText("Follow the mesh").assertIsDisplayed()
+        compose.onNodeWithText("Start exploring").performClick()
         compose.runOnIdle { assertEquals("b.example", saved) }
     }
 
     @Test fun settingsSourcePickerAppliesATapImmediately() {
         var saved: String? = null
         val sources = listOf(AnalyzerSource("a", "Community A", "a.example", "North", isDefault = true), AnalyzerSource("b", "Community B", "b.example", "South"))
-        compose.setContent { NodeScopeTheme(Appearance.SYSTEM) { SourceScreen(sources, "a.example", false, false, null, { saved = it }) } }
+        compose.setContent { NodeScopeTheme(Appearance.SYSTEM) { SourceScreen(sources, "a.example", false, null, { saved = it }) } }
         compose.onNodeWithContentDescription("Selected").assertIsDisplayed()
         compose.onNodeWithText("Community B").performClick()
         compose.runOnIdle { assertEquals("b.example", saved) }
@@ -188,13 +194,23 @@ class FoundationUiTest {
         var saved: String? = null
         compose.setContent {
             NodeScopeTheme(Appearance.SYSTEM) {
-                SourceScreen(emptyList(), "a.example", true, false, "Enter a valid analyzer hostname.", { saved = it })
+                SourceScreen(emptyList(), "a.example", false, "Enter a valid analyzer hostname.", { saved = it })
             }
         }
         compose.onNodeWithText("Analyzer hostname").performTextReplacement("custom.example:8443")
         compose.onNodeWithText("Enter a valid analyzer hostname.").assertIsDisplayed()
-        compose.onNodeWithText("Continue").performScrollTo().performClick()
+        compose.onNodeWithText("Use custom analyzer").performScrollTo().performClick()
         compose.runOnIdle { assertEquals("custom.example:8443", saved) }
+    }
+
+    @Test fun onboardingRejectsAnInvalidCustomHostInThePicker() {
+        var saved: String? = null
+        compose.setContent { NodeScopeTheme(Appearance.SYSTEM) { OnboardingScreen(emptyList(), "a.example", false, null, { saved = it }) } }
+        compose.onNodeWithContentDescription("Choose analyzer").performClick()
+        compose.onNodeWithText("Analyzer hostname").performTextReplacement("http://insecure.example/path")
+        compose.onNodeWithText("Use custom analyzer").performScrollTo().performClick()
+        compose.onNodeWithText("Analyzer source").assertIsDisplayed() // still in the picker, with the error
+        compose.runOnIdle { assertEquals(null, saved) }
     }
 
     @Test fun appearanceUsesNativeSelectionAndCallback() {
