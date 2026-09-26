@@ -22,7 +22,7 @@ android {
         applicationId = "org.nodescope.android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
+        versionCode = 4
         versionName = "0.7.2"
         buildConfigField("String", "CARTO_API_KEY", "\"" + cartoKey.replace("\\", "\\\\").replace("\"", "\\\"") + "\"")
         buildConfigField("boolean", "MAPS_CONFIGURED", cartoKey.isNotBlank().toString())
@@ -37,7 +37,14 @@ android {
         }
     }
     buildTypes {
-        release { signingConfigs.findByName("release")?.let { signingConfig = it } }
+        release {
+            signingConfigs.findByName("release")?.let { signingConfig = it }
+            // R8: shrink, optimize and obfuscate (Play flags unoptimized DEX); the mapping file
+            // ships inside the bundle so crash reports stay readable in Play Console.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
     }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions {

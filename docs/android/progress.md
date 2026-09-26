@@ -650,3 +650,21 @@ how to use.
   multi-select, map marker colours.
 - Source picker: "Request a community source" opens the iOS email template (same address and
   body) in the mail app, with a toast when none is installed.
+
+## R8 enabled for release — 2026-09-26
+
+- Play flagged "DEX code optimization below threshold" (obfuscation 0%, fix by Feb 2027).
+  Release builds now use R8 with resource shrinking (`proguard-android-optimize.txt` +
+  `app/proguard-rules.pro`, which only keeps line numbers; every dependency ships its own
+  consumer rules). The mapping file is bundled so Play de-obfuscates crash reports.
+- Size: app code 13.6 MB → 2.0 MB; typical arm64 download ~18.7 MB → ~7 MB.
+- Device-tested the minified build (debug-signed for map tiles) on the Pixel 10 emulator:
+  onboarding + source picker (registry + remote icons), map + filters + observer picker +
+  node search chips + regions, Explore search, node details/analytics, live packets +
+  packet detail, channel + message packet, observer detail, settings (diagnostics,
+  storage, units/appearance persisted across force-stop), About link in a Custom Tab,
+  location permission prompt and 15 s timeout message. No app crashes. Not verifiable on
+  the emulator: a successful location fix (emulator provided none).
+- versionCode 4 (0.7.2), in case 3 was already uploaded.
+- Play's "edge-to-edge" recommendation needs no change: MainActivity already calls
+  enableEdgeToEdge() and screens handle insets.
