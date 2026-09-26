@@ -22,8 +22,8 @@ android {
         applicationId = "org.nodescope.android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.1.0-dev"
+        versionCode = 3
+        versionName = "0.7.2"
         buildConfigField("String", "CARTO_API_KEY", "\"" + cartoKey.replace("\\", "\\\\").replace("\"", "\\\"") + "\"")
         buildConfigField("boolean", "MAPS_CONFIGURED", cartoKey.isNotBlank().toString())
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
