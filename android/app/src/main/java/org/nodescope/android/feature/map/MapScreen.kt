@@ -12,6 +12,8 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import kotlinx.coroutines.isActive
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
@@ -114,6 +116,8 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         snapshot?.nodes.orEmpty().filter { it.coordinate != null && filters.shows(it, clock) }
     }
     var routeDetail by remember { mutableStateOf<RouteDetails?>(null) }
+    var selectedNode by remember(host, selectedRegion) { mutableStateOf<MeshNode?>(null) }
+    LaunchedEffect(routeReplay?.id) { selectedNode = null }
     val shownRoutes = remember { java.util.concurrent.atomic.AtomicReference<List<LiveRoute>>(emptyList()) }
     val currentAllNodes by rememberUpdatedState(snapshot?.nodes.orEmpty())
     // Replay mode (iOS): live traffic pauses; bottom controls replay the route, pick another
@@ -138,6 +142,10 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     var retry by remember { mutableIntStateOf(0) }
     val currentOnNode by rememberUpdatedState(onNode)
     val currentDisplayedNodes by rememberUpdatedState(mapNodes)
+    val selectNode by rememberUpdatedState<(String) -> Unit>({ key ->
+        val node = (currentAllNodes + currentDisplayedNodes).firstOrNull { it.publicKey == key }
+        if (node != null) { routeDetail = null; selectedNode = node } else currentOnNode(key)
+    })
     val density = androidx.compose.ui.platform.LocalDensity.current.density
     // "Center on my location" (iOS): permission is asked on the first tap, one fix is taken,
     // and the position is only kept in memory to draw the dot.
@@ -227,7 +235,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                             shownRoutes.get().firstOrNull { it.key == key && it.packet != null }
                         }
                     when {
-                        node != null && distance(node) <= radius / 2 -> { currentOnNode(node.getStringProperty("publicKey")); true }
+                        node != null && distance(node) <= radius / 2 -> { selectNode(node.getStringProperty("publicKey")); true }
                         cluster != null && node == null -> {
                             val center = cluster.geometry() as? Point
                             val source = ready.style?.getSourceAs<GeoJsonSource>(NODES)
@@ -235,8 +243,8 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                                 LatLng(center.latitude(), center.longitude()), source.getClusterExpansionZoom(cluster).toDouble()))
                             true
                         }
-                        route != null -> { routeDetail = routeDetails(route.packet!!, currentAllNodes, route.receivedAt); true }
-                        node != null -> { currentOnNode(node.getStringProperty("publicKey")); true }
+                        route != null -> { selectedNode = null; routeDetail = routeDetails(route.packet!!, currentAllNodes, route.receivedAt); true }
+                        node != null -> { selectNode(node.getStringProperty("publicKey")); true }
                         else -> false
                     }
                 }
@@ -355,8 +363,10 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         val visible = ready.projection.visibleRegion.latLngBounds
         if (points.isEmpty() || framedReplay == routeReplay?.id && points.all(visible::contains)) return@LaunchedEffect
         framedReplay = routeReplay?.id
+        val horizontalPadding = (view.width * 0.08f).toInt()
+        val verticalPadding = (view.height * 0.20f).toInt()
         if (points.size > 1) ready.animateCamera(CameraUpdateFactory.newLatLngBounds(LatLngBounds.Builder().includes(points).build(),
-            (32 * density).toInt(), (96 * density).toInt(), (32 * density).toInt(), (220 * density).toInt()), 500)
+            horizontalPadding, verticalPadding, horizontalPadding, verticalPadding), 500)
         else ready.animateCamera(CameraUpdateFactory.newLatLngZoom(points[0], 12.0), 500)
     }
     LaunchedEffect(style) {
@@ -396,14 +406,26 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             }
         }
     }
+    selectedNode?.let { node ->
+        MapNodeSelectionSheet(node, onDetails = { selectedNode = null; currentOnNode(node.publicKey) },
+            onDismiss = { selectedNode = null })
+    }
     if (filtersOpen) MapFiltersSheet(filters, observerOptions, onChange = { filters = it }, onDismiss = { filtersOpen = false })
     routeDetail?.let { details -> RouteDetailsSheet(details, onNode = { routeDetail = null; currentOnNode(it) }, onDismiss = { routeDetail = null }) }
     if (search) ModalBottomSheet(onDismissRequest = { search = false }) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.8f)) {
             Text("Search nodes", Modifier.padding(horizontal = 20.dp), style = MaterialTheme.typography.titleLarge)
-            NodeBrowser(snapshot?.nodes.orEmpty(), snapshot?.total ?: 0) { search = false; currentOnNode(it) }
+            NodeBrowser(snapshot?.nodes.orEmpty(), snapshot?.total ?: 0) { key ->
+                search = false
+                snapshot?.nodes?.firstOrNull { it.publicKey == key }?.coordinate?.let {
+                    map?.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(it.latitude, it.longitude), 13.0))
+                }
+                selectNode(key)
+            }
         }
     }
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+    val replayPanelMaxHeight = maxHeight * 0.35f
     Column(Modifier.fillMaxSize()) {
         // The app shell's Scaffold already applies the status-bar inset; don't add it twice.
         TopAppBar(windowInsets = WindowInsets(0, 0, 0, 0), title = {
@@ -498,15 +520,14 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)) {
             Text("${mapNodes.size} nodes", Modifier.padding(horizontal = 14.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium)
         }
-        // Replay controls centered near the bottom, above the count and attribution; the equal
-        // side insets keep them centered on screen and clear of the zoom column.
+    }
         if (replayActive && routeReplay != null) ReplayControls(
             playing = replayPlaying, routes = routeReplay.routes, selected = replayIndex, routeOnly = routeOnly,
             onPlay = { replayStart = System.currentTimeMillis() + 150 },
             onLive = { replayActive = false; onExitReplay() },
             onRoute = { replayIndex = it; replayStart = System.currentTimeMillis() + 150 },
             onRouteOnly = { routeOnly = !routeOnly },
-            modifier = Modifier.align(Alignment.BottomCenter).padding(start = 72.dp, end = 72.dp, bottom = 76.dp))
+            modifier = Modifier.fillMaxWidth().heightIn(max = replayPanelMaxHeight))
     }
 }
 
@@ -544,49 +565,44 @@ private fun findLogoFrame(root: android.view.ViewGroup): android.graphics.Rect? 
 
 /** iOS replay controls: Replay / Play again with Live, then route choice and Route only. */
 @Composable
-private fun ReplayControls(playing: Boolean, routes: List<ReplayRoute>, selected: Int, routeOnly: Boolean,
+internal fun ReplayControls(playing: Boolean, routes: List<ReplayRoute>, selected: Int, routeOnly: Boolean,
     onPlay: () -> Unit, onLive: () -> Unit, onRoute: (Int) -> Unit, onRouteOnly: () -> Unit, modifier: Modifier = Modifier) {
-    val pill = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Surface(shape = MaterialTheme.shapes.medium, color = pill, shadowElevation = 2.dp) {
-            Row(Modifier.padding(4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Button(onClick = onPlay, contentPadding = PaddingValues(horizontal = 14.dp)) {
-                    Icon(if (playing) Icons.Outlined.PlayArrow else Icons.Outlined.Replay, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(if (playing) "Replay" else "Play again")
+    Surface(modifier, color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Route replay", style = MaterialTheme.typography.titleSmall)
+                    Text(if (playing) "Playing · live routes paused" else "Finished · live routes paused",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                TextButton(onClick = onLive) {
-                    Icon(Icons.Outlined.Sensors, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Live")
-                }
+                IconButton(onClick = onLive) { Icon(Icons.Outlined.Close, "Exit replay and return to live") }
             }
-        }
-        Surface(shape = MaterialTheme.shapes.medium, color = pill, shadowElevation = 2.dp) {
-            Row(Modifier.padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp),
+                itemVerticalAlignment = Alignment.CenterVertically) {
+                FilledTonalButton(onClick = onPlay) {
+                    Icon(Icons.Outlined.Replay, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp)); Text(if (playing) "Restart" else "Play again")
+                }
                 if (routes.size > 1) {
                     var open by remember { mutableStateOf(false) }
                     Box {
-                        TextButton(onClick = { open = true }) {
-                            Icon(Icons.Outlined.Route, null, Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
+                        OutlinedButton(onClick = { open = true }) {
                             Text("Route ${selected + 1} of ${routes.size}")
                             Icon(Icons.Outlined.ArrowDropDown, null)
                         }
                         DropdownMenu(open, { open = false }) {
                             routes.forEachIndexed { index, route ->
-                                DropdownMenuItem(text = { Text("Route ${index + 1} · ${route.hops} hops") }, onClick = { onRoute(index); open = false },
-                                    trailingIcon = { if (index == selected) Icon(Icons.Outlined.Check, null) })
+                                DropdownMenuItem(text = { Text("Route ${index + 1} · ${route.hops} hops") },
+                                    onClick = { onRoute(index); open = false },
+                                    trailingIcon = { if (index == selected) Icon(Icons.Outlined.Check, "Selected", Modifier.size(18.dp)) })
                             }
                         }
                     }
-                    VerticalDivider(Modifier.height(20.dp))
-                }
-                TextButton(onClick = onRouteOnly, modifier = Modifier.semantics { stateDescription = if (routeOnly) "On" else "Off" }) {
-                    Icon(if (routeOnly) Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Route only")
-                }
+                } else routes.getOrNull(selected)?.let { Text("${it.hops} hops", style = MaterialTheme.typography.bodySmall) }
+                FilterChip(selected = routeOnly, onClick = onRouteOnly, label = { Text("Route nodes only") },
+                    leadingIcon = { Icon(if (routeOnly) Icons.Outlined.Check else Icons.Outlined.Hub, null, Modifier.size(18.dp)) })
+                TextButton(onClick = onLive) { Text("Return to live") }
             }
         }
     }

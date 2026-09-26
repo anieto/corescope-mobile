@@ -13,7 +13,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import org.nodescope.android.core.storage.NodeLibrary
 import org.nodescope.android.core.storage.SavedKind
-import org.nodescope.android.core.model.MeshChannel
 import org.nodescope.android.core.model.NodeScopeLink
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -196,19 +195,22 @@ internal fun AppShell(
     LaunchedEffect(preferences.region) { replay = null }
     val regionControl: @Composable () -> Unit = { RegionMenu(preferences, state) { focusedNode = null; focusedPosition = null; onRegion(it) } }
     val headerlessTabs = listOf(Destination.MAP.name, Destination.EXPLORE.name, Destination.CHANNELS.name, Destination.OBSERVERS.name, Destination.SETTINGS.name)
+    // These destinations supply a toolbar inside their detail pane on every window size.
+    val paneOwnsHeader = entry?.destination?.hasRoute<ChannelRoute>() == true ||
+        entry?.destination?.hasRoute<ObserverRoute>() == true
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val expanded = maxWidth >= 600.dp
         val largeText = LocalDensity.current.fontScale >= 1.5f
         Scaffold(
             topBar = {
-                if (!isRoot || currentTab !in headerlessTabs) TopAppBar(title = {
+                if (!paneOwnsHeader && (!isRoot || currentTab !in headerlessTabs)) TopAppBar(title = {
                     Column {
                         val destination = entry?.destination
                         Text(when {
                             isRoot && currentTab == Destination.MAP.name -> "Live Map"
                             isRoot -> stringResource(Destination.valueOf(currentTab).title)
                             destination?.hasRoute<ChannelRoute>() == true -> entry!!.toRoute<ChannelRoute>().name
-                            destination?.hasRoute<ObserverRoute>() == true -> entry!!.toRoute<ObserverRoute>().name
+                            destination?.hasRoute<ObserverRoute>() == true -> "Observer details"
                             else -> stringResource(when {
                                 destination?.hasRoute<SourceRoute>() == true -> R.string.analyzer
                                 destination?.hasRoute<MapLabRoute>() == true -> R.string.map_lab
@@ -323,39 +325,49 @@ internal fun AppShell(
                                     route.sender, route.text, state.snapshot?.nodes.orEmpty(), ::startReplay)
                             }
                         }
-                        composable<ChannelsRoute> {
-                            channelsModel(browse, monitoredChannels, it)?.let { channels ->
-                                ChannelsScreen(channels, selection, feed, regionControl, { onRegion(null) },
-                                    onChannel = { row -> nav.navigate(ChannelRoute(row.id, row.name)) }, onAdd = { nav.navigate(AddChannelRoute) })
+                        composable<ChannelsRoute> { backStack ->
+                            channelsModel(browse, monitoredChannels, backStack)?.let { channels ->
+                                ChannelsListDetailScreen(channels, selection, feed, library, regionControl, { onRegion(null) },
+                                    onAdd = { nav.navigate(AddChannelRoute) },
+                                    packetContent = { hash, sender, text ->
+                                        browse?.let { repository ->
+                                            LaunchedEffect(hash) { library.viewedMessage(hash, sender, text) }
+                                            MessagePacketScreen(viewModel(backStack) { PacketDetailViewModel(repository) },
+                                                preferences.host, hash, sender, text, state.snapshot?.nodes.orEmpty(), ::startReplay)
+                                        }
+                                    })
                             } ?: UnavailableScreen(R.string.channels, R.string.channels_unavailable)
                         }
                         composable<ChannelRoute> { backStack ->
                             val route = backStack.toRoute<ChannelRoute>()
                             channelsModel(browse, monitoredChannels, parentEntry<ChannelsRoute>(nav, backStack))?.let { channels ->
-                                val known = channels.channels.state.collectAsStateWithLifecycle().value.value?.firstOrNull { it.hash == route.id }
-                                    ?: MeshChannel(route.id, route.name)
-                                LaunchedEffect(route.id) { library.viewed(known) }
-                                ChannelDetailScreen(channels, route.id, route.name, selection, feed, onRemoved = { nav.popBackStack() },
-                                    onPacket = { hash, sender, text -> nav.navigate(MessagePacketRoute(hash, sender, text)) },
-                                    favorite = library.isFavorite(SavedKind.CHANNEL, route.id), onFavorite = { library.toggle(known) })
-                            }
+                                ChannelsListDetailScreen(channels, selection, feed, library, regionControl, { onRegion(null) },
+                                    onAdd = { nav.navigate(AddChannelRoute) },
+                                    packetContent = { hash, sender, text ->
+                                        browse?.let { repository ->
+                                            LaunchedEffect(hash) { library.viewedMessage(hash, sender, text) }
+                                            MessagePacketScreen(viewModel(backStack) { PacketDetailViewModel(repository) },
+                                                preferences.host, hash, sender, text, state.snapshot?.nodes.orEmpty(), ::startReplay)
+                                        }
+                                    },
+                                    initialId = route.id, initialName = route.name, onExit = { nav.popBackStack() })
+                            } ?: UnavailableScreen(R.string.channels, R.string.channels_unavailable)
                         }
                         composable<AddChannelRoute> {
                             monitoredChannels()?.let { store -> AddChannelScreen(store) { nav.popBackStack() } }
                         }
                         composable<ObserversRoute> {
                             observersModel(browse, it)?.let { observers ->
-                                ObserversScreen(observers, selection, feed, regionControl, { onRegion(null) },
-                                    onObserver = { observer -> nav.navigate(ObserverRoute(observer.id, observer.displayName)) },
+                                ObserversListDetailScreen(observers, selection, feed, library, regionControl, { onRegion(null) },
                                     activeOnlyRequest = observerActiveRequest)
                             } ?: UnavailableScreen(R.string.observers, R.string.observers_unavailable)
                         }
                         composable<ObserverRoute> { backStack ->
                             observersModel(browse, parentEntry<ObserversRoute>(nav, backStack))?.let { observers ->
                                 val id = backStack.toRoute<ObserverRoute>().id
-                                ObserverDetailScreen(observers, preferences.host, id, favorite = library.isFavorite(SavedKind.OBSERVER, id),
-                                    onFavorite = library::toggle, onViewed = library::viewed)
-                            }
+                                ObserversListDetailScreen(observers, selection, feed, library, regionControl, { onRegion(null) },
+                                    initialId = id, onExit = { nav.popBackStack() })
+                            } ?: UnavailableScreen(R.string.observers, R.string.observers_unavailable)
                         }
                         composable<SettingsRoute> {
                             SettingsScreen(preferences, feed.connection, state.error, sourceChangedAt, onAppearance,

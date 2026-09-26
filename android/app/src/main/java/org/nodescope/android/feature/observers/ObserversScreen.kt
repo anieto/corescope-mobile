@@ -14,6 +14,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -29,6 +30,7 @@ fun ObserversScreen(
     model: ObserversViewModel, selection: AnalyzerSelection, feed: LiveFeedState,
     regionControl: @Composable () -> Unit, onClearRegion: () -> Unit, onObserver: (MeshObserver) -> Unit,
     activeOnlyRequest: Long? = null,
+    selectedId: String? = null,
 ) {
     val state by model.observers.state.collectAsStateWithLifecycle()
     var activity by rememberSaveable { mutableStateOf(ObserverActivity.ALL) }
@@ -38,7 +40,13 @@ fun ObserversScreen(
     var searching by rememberSaveable { mutableStateOf(false) }
     var showFilters by remember { mutableStateOf(false) }
     // Explore's "Observers online" asks for recently active observers only (iOS showActiveObservers).
-    LaunchedEffect(activeOnlyRequest) { if (activeOnlyRequest != null) activity = ObserverActivity.RECENT }
+    var handledActiveRequest by rememberSaveable { mutableStateOf<Long?>(null) }
+    LaunchedEffect(activeOnlyRequest) {
+        if (activeOnlyRequest != null && activeOnlyRequest != handledActiveRequest) {
+            activity = ObserverActivity.RECENT
+            handledActiveRequest = activeOnlyRequest
+        }
+    }
     val now = rememberNow()
     LaunchedEffect(selection.host) { model.observers.load(selection.host) }
     val all = state.value.takeIf { state.key == selection.host }.orEmpty()
@@ -74,7 +82,7 @@ fun ObserversScreen(
                 }
             }
             if (visible.isNotEmpty()) item { SectionLabel("Observer nodes") }
-            items(visible, key = { it.id }) { ObserverCard(it, now) { onObserver(it) } }
+            items(visible, key = { it.id }) { ObserverCard(it, now, it.id == selectedId) { onObserver(it) } }
             if (visible.isEmpty() && !state.loading) item {
                 EmptyState(Icons.Outlined.SensorsOff, if (all.isEmpty()) "No observers" else "No matching observers",
                     if (all.isEmpty()) "This analyzer has not reported any observers." else "Try a different search, region or filter.")
@@ -94,10 +102,11 @@ private fun SummaryMetric(label: String, value: String, modifier: Modifier) {
 }
 
 @Composable
-private fun ObserverCard(observer: MeshObserver, now: Long, onClick: () -> Unit) {
+private fun ObserverCard(observer: MeshObserver, now: Long, isSelected: Boolean, onClick: () -> Unit) {
     val active = observer.isActive(now)
     val tone = statusAccent(active)
-    Card(onClick = onClick, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+    Card(onClick = onClick, modifier = Modifier.semantics { selected = isSelected },
+        colors = CardDefaults.cardColors(containerColor = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface)) {
         Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.size(42.dp).background(tone.copy(alpha = 0.14f), CircleShape), contentAlignment = Alignment.Center) {
                 Icon(Icons.Outlined.Sensors, if (active) "Active" else "Inactive", tint = tone)

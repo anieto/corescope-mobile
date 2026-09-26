@@ -41,7 +41,7 @@ fun ConnectionBadge(connection: LiveConnection, modifier: Modifier = Modifier) {
         LiveConnection.PAUSED -> "Paused"
     }
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Box(Modifier.size(7.dp).background(if (connected) HealthyGreen else ActivityAmber, CircleShape))
+        Box(Modifier.size(7.dp).background(statusAccent(connected), CircleShape))
         Text(label, style = MaterialTheme.typography.labelMedium)
     }
 }
@@ -90,7 +90,7 @@ fun PacketScreen(feed: LiveFeedState, onReconnect: () -> Unit, regionControl: @C
                 Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                            Box(Modifier.size(8.dp).background(if (feed.connection == LiveConnection.LIVE) HealthyGreen else ActivityAmber, CircleShape))
+                            Box(Modifier.size(8.dp).background(statusAccent(feed.connection == LiveConnection.LIVE), CircleShape))
                             Text(connectionLabel(feed.connection, "Listening for live traffic"),
                                 style = MaterialTheme.typography.titleSmall)
                         }
@@ -101,7 +101,7 @@ fun PacketScreen(feed: LiveFeedState, onReconnect: () -> Unit, regionControl: @C
                         }
                     }
                     IconButton(onClick = { showFilters = true }) {
-                        BadgedBox(badge = { if (filterCount > 0) Badge { Text(filterCount.toString()) } }) {
+                        BadgedBox(badge = { if (filterCount > 0) Badge(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) { Text(filterCount.toString()) } }) {
                             Icon(Icons.Outlined.FilterList, "Filter live packets, $filterCount active")
                         }
                     }

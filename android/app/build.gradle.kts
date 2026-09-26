@@ -22,8 +22,8 @@ android {
         applicationId = "org.nodescope.android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "0.7.2"
+        versionCode = 5
+        versionName = "0.7.5"
         buildConfigField("String", "CARTO_API_KEY", "\"" + cartoKey.replace("\\", "\\\\").replace("\"", "\\\"") + "\"")
         buildConfigField("boolean", "MAPS_CONFIGURED", cartoKey.isNotBlank().toString())
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -60,6 +60,9 @@ kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarg
 dependencies {
     implementation(platform("androidx.compose:compose-bom:2025.09.01"))
     implementation("androidx.compose.material3:material3")
+    // Adaptive panes and fold/hinge information; matches the existing Compose generation.
+    implementation("androidx.compose.material3.adaptive:adaptive:1.1.0")
+    implementation("androidx.compose.material3.adaptive:adaptive-layout:1.1.0")
     implementation("androidx.compose.material:material-icons-extended:1.7.8")
     // Keep app and instrumentation classpaths aligned with AndroidX Test.
     implementation("androidx.concurrent:concurrent-futures:1.2.0")

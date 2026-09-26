@@ -34,6 +34,34 @@ import java.io.File
 class CartoMapUiTest {
     @get:Rule val compose = createAndroidComposeRule<UiTestActivity>()
 
+    @Test fun replayPanelKeepsMapControlsAndAttributionVisible() {
+        assumeTrue(BuildConfig.MAPS_CONFIGURED)
+        val snapshot = mapLabSnapshot()
+        val points = snapshot.nodes.mapNotNull { it.coordinate }
+        val routes = listOf(
+            org.nodescope.android.feature.map.ReplayRoute(listOf(points), snapshot.nodes, points.size - 1),
+            org.nodescope.android.feature.map.ReplayRoute(listOf(points.reversed()), snapshot.nodes.reversed(), points.size - 1),
+        )
+        var replay by mutableStateOf<org.nodescope.android.feature.map.RouteReplay?>(org.nodescope.android.feature.map.RouteReplay(1, routes, 0))
+        compose.setContent { NodeScopeTheme(Appearance.LIGHT) {
+            MapScreen(snapshot, onNode = {}, routeReplay = replay, onExitReplay = { replay = null })
+        } }
+        val map = AtomicReference<MapLibreMap>()
+        compose.runOnIdle { findMap(compose.activity.window.decorView)!!.getMapAsync { map.set(it) } }
+        compose.waitUntil(30_000) { compose.runOnIdle { map.get()?.style?.isFullyLoaded == true } }
+        compose.onNodeWithText("Return to live").assertIsDisplayed()
+        compose.onNodeWithText("© CARTO").assertIsDisplayed()
+        compose.onNodeWithText("© OpenStreetMap").assertIsDisplayed()
+        compose.onNodeWithText("Route 1 of 2").performClick()
+        compose.onNodeWithText("Route 2 · ${points.size - 1} hops").performClick()
+        compose.onNodeWithText("Route 2 of 2").assertIsDisplayed()
+        val bitmap = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+        File(compose.activity.getExternalFilesDir(null), "replay-map.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        bitmap.recycle()
+        compose.onNodeWithText("Return to live").performClick()
+        compose.onNodeWithText("Route replay").assertDoesNotExist()
+    }
+
     @Test fun cartoStylesRenderAndKeepNodeLayersAfterSwitching() {
         assumeTrue(BuildConfig.MAPS_CONFIGURED)
         val snapshot = mapLabSnapshot()
@@ -92,6 +120,8 @@ class CartoMapUiTest {
             }
         }
         compose.runOnIdle { tap(findMap(compose.activity.window.decorView)!!, map.get(), LatLng(30.30, -97.72)) }
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("View node details").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("View node details").performClick()
         compose.waitUntil(10_000) { selected.get() == "sample-1" }
         compose.runOnIdle { map.get().moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(30.30, -97.72), 11.0)) }
         compose.waitUntil(30_000) { rendered.get() }
@@ -132,6 +162,8 @@ class CartoMapUiTest {
         // Route markers last only as long as the route (iOS timing): three hops keep them for about 3 s.
         compose.waitUntil(10_000) { markers("nodescope-route-node-points").any { it.hasProperty("publicKey") && it.getStringProperty("publicKey") == "sample-0" } }
         compose.runOnIdle { tap(findMap(compose.activity.window.decorView)!!, map.get(), LatLng(30.2672, -97.7431)) }
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("View node details").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("View node details").performClick()
         compose.waitUntil(10_000) { selected.get() == "sample-0" }
         compose.runOnIdle { feed = feed.copy(packets = listOf(packet.copy(receivedAt = System.currentTimeMillis() - 13_000))) }
         compose.waitUntil(10_000) { markers("nodescope-route-node-points").isEmpty() }

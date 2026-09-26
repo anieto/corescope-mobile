@@ -51,18 +51,22 @@ fun BrowseHeader(
         }
         addAction?.invoke()
     }
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(title, Modifier.weight(1f), style = MaterialTheme.typography.headlineLarge)
-            if (!largeText) actions()
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        // A tablet's list pane can be narrower than a phone even at normal text size.
+        val separateActions = largeText || maxWidth < 360.dp
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, Modifier.weight(1f), style = MaterialTheme.typography.headlineLarge)
+                if (!separateActions) actions()
+            }
+            if (separateActions) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, content = actions)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(Modifier.size(7.dp).background(statusAccent(connection == LiveConnection.LIVE), CircleShape))
+                Text(connectionLabel(connection, liveLabel), style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (largeText) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, content = actions)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Box(Modifier.size(7.dp).background(statusAccent(connection == LiveConnection.LIVE), CircleShape))
-            Text(connectionLabel(connection, liveLabel), style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -142,7 +146,7 @@ private fun <T> FilterGroupRows(group: FilterGroup<T>) {
 
 @Composable
 fun SectionLabel(text: String, modifier: Modifier = Modifier) {
-    Text(text.uppercase(), modifier.padding(top = 16.dp, bottom = 6.dp), style = MaterialTheme.typography.labelSmall,
+    Text(text, modifier.padding(top = 12.dp, bottom = 4.dp), style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
@@ -151,7 +155,7 @@ fun MetricChip(text: String, icon: ImageVector, color: Color = MaterialTheme.col
     Surface(color = color.copy(alpha = 0.11f), shape = CircleShape) {
         Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Icon(icon, null, Modifier.size(13.dp), tint = color)
-            Text(text, style = MaterialTheme.typography.labelSmall, color = color, maxLines = 1)
+            Text(text, style = MaterialTheme.typography.labelMedium, color = color)
         }
     }
 }

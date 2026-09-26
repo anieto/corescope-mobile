@@ -2,15 +2,31 @@
 
 Reviewed September 23, 2026. This is a design recommendation, not an implementation change.
 
-## Resume checkpoint — September 24, 2026
+## Resume checkpoint — September 26, 2026
 
-The user has put tablet list-detail work on hold. Do not start it until asked to resume. The phone UI polish, adaptive launcher icon, analytics interactions, and large-text/short-landscape fixes described in the progress entries below are implemented. Last validation: build and 134 unit tests passed, along with targeted large-text navigation/Units and short-wide navigation-rail tests.
+Map selection, replay controls, and the final phone consistency pass are implemented. Tapping a map node opens a compact native sheet with an explicit View node details action; search centers the selected node and opens the same sheet. Replay now uses a wrapping, scrollable panel below the map, preserving route selection, restart, route-only filtering, and return-to-live actions while keeping map controls and attribution unobstructed.
 
-When resumed, the proposed next work is Observer list-detail panes, followed by Channels. Preserve selection and scroll position during resizing/rotation and retain phone navigation. Then perform an overall visual consistency review. Full tablet/foldable and TalkBack audits are not complete.
+Shared section headings, metric typography, neutral filter badges, and connection colors/labels are consistent across the revised screens. Observer details prioritize traffic metrics, with hardware, radio information, timestamps, and full identity in a technical disclosure; favorite, copy, and share remain available. The observer toolbar no longer repeats the full name.
 
-Persistent requirements: channel messages alternate left/right when the sender changes; consecutive messages from the same sender stay together; keep an explicit visible “View packet” action and all packet inspection functionality; keep the live packet feed off the main map. Preserve the newer units, source-logo, analyzer-framing, and signing work already in the repository.
+Validation: debug and test APK builds, 135 unit tests, and 21 instrumentation tests passed. Coverage includes map clustering/route-revealed nodes, selection/dismissal, replay route switching and exit, attribution visibility, 200% text replay actions, navigation, observer technical/copy/share actions, and paused Settings labels. Inspected selection, replay, observer summary, and dark Settings screenshots. Instrumentation ran on a separate read-only emulator to protect the user's existing app data.
 
-Testing note: the connected test runner reset emulator app data. Use an isolated test emulator for future instrumentation when possible, target a specific device for installation, and restore any changed font/rotation settings afterward. The display settings used during this pass were restored to font scale 1.0, user rotation 0, and automatic rotation enabled.
+Tablet list-detail work resumed September 26; see the implementation and manual acceptance checklist below. Separate remaining work includes live-feed reading-position/back-to-latest behavior, consistent Undo feedback, broader chart/heatmap accessibility, and a full TalkBack audit. Tablet/foldable acceptance and route-animation performance profiling are not complete.
+
+Persistent requirements: channel messages alternate left/right when the sender changes; consecutive messages from the same sender stay together; keep an explicit visible “View packet” action and all packet inspection functionality; keep the live packet feed off the main map. Preserve units, source logos, analyzer framing/outlier handling, location controls, camera persistence, and signing work.
+
+Testing note: target a specific isolated emulator for instrumentation. Use `adb install -r` on a named user device for updates; do not clear its data or run installation/test tasks against all connected devices.
+
+## Tablet and foldable list-detail implementation — September 26, 2026
+
+Channels and Observers now share a Material 3 adaptive list-detail scaffold, including details opened through Explore favorites, node links, and shared links. A selected row is highlighted when both panes are visible. The detail pane has its own toolbar, a close/back action, and a centered maximum content width. Wide windows show an empty selection prompt before a row is selected; narrow windows show either the list or the selected detail.
+
+The layout uses available content width after navigation/insets, not device type: two panes at 720 dp of content width, or 900 dp with font scale at least 1.5. Smaller unfolded phones can therefore remain single-pane. AndroidX adaptive posture information keeps panes clear of separating vertical hinges. This is a side-by-side layout, not a dedicated stacked tabletop interface. List filters/scroll and per-item detail scroll/disclosure state are saveable; resizing or folding does not clear the selected identifier. Search/header actions move beneath the heading in narrow panes. A consumed Explore active-observer request does not reapply when a hidden list reappears.
+
+Phone Back returns to the list for normal browsing. Details entered from another screen or a shared link return to their originating navigation entry. Switching selected rows does not build a chain of detail screens. Packet inspection from a channel now stays inside the detail pane, preserving the channel list on wide windows. Its toolbar and system Back return to the saved conversation position. Narrow windows use the same nested flow at full content width; folding does not discard the open packet. Selecting another channel dismisses the previous packet. Packet links opened outside Channels retain the standalone destination.
+
+Build-only validation: `:app:assembleDebug` succeeded. No automated tests were run; no emulator was launched, changed, or installed to for this pass. Manual acceptance remains pending. The user's ongoing preference is to perform testing themselves: provide expected results and a checklist; do not run tests or operate an emulator unless asked. Compilation may be used to catch build errors.
+
+See [Tablet and foldable manual checklist](tablet-foldable-checklist.md) for the requested handoff. The implementation uses the [Android list-detail pattern](https://developer.android.com/develop/adaptive-apps/guides/list-detail) and AndroidX adaptive 1.1.0 to stay aligned with the existing Compose generation.
 
 ## Scope and direction
 

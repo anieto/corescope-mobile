@@ -11,6 +11,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -25,6 +27,7 @@ fun ChannelsScreen(
     model: ChannelsViewModel, selection: AnalyzerSelection, feed: LiveFeedState,
     regionControl: @Composable () -> Unit, onClearRegion: () -> Unit,
     onChannel: (ChannelRow) -> Unit, onAdd: () -> Unit,
+    selectedId: String? = null,
 ) {
     val channelState by model.channels.state.collectAsStateWithLifecycle()
     val packetState by model.packets.state.collectAsStateWithLifecycle()
@@ -80,11 +83,11 @@ fun ChannelsScreen(
             item { LoadStatus(channelState, server.isNotEmpty(), now, ::refresh) }
             if (sections.monitored.isNotEmpty()) {
                 item { SectionLabel("Monitoring on this device · ${sections.monitored.size}") }
-                items(sections.monitored, key = { it.id }) { ChannelCard(it, now) { onChannel(it) } }
+                items(sections.monitored, key = { it.id }) { ChannelCard(it, now, it.id == selectedId) { onChannel(it) } }
             }
             if (sections.server.isNotEmpty()) {
                 item { SectionLabel("Server monitored channels") }
-                items(sections.server, key = { it.id }) { ChannelCard(it, now) { onChannel(it) } }
+                items(sections.server, key = { it.id }) { ChannelCard(it, now, it.id == selectedId) { onChannel(it) } }
             }
             if (sections.isEmpty && !channelState.loading) item {
                 EmptyState(if (query.isBlank()) Icons.Outlined.Tag else Icons.Outlined.SearchOff,
@@ -113,8 +116,9 @@ internal fun LiveChannelRefresh(feed: LiveFeedState, refresh: () -> Unit) {
 }
 
 @Composable
-private fun ChannelCard(row: ChannelRow, now: Long, onClick: () -> Unit) {
-    Card(onClick = onClick, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+private fun ChannelCard(row: ChannelRow, now: Long, isSelected: Boolean, onClick: () -> Unit) {
+    Card(onClick = onClick, modifier = Modifier.semantics { selected = isSelected },
+        colors = CardDefaults.cardColors(containerColor = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface)) {
         Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Surface(shape = MaterialTheme.shapes.medium, color = if (row.monitored) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer) {
                 Icon(if (row.monitored) Icons.Outlined.Lock else Icons.Outlined.Tag, null, Modifier.padding(10.dp).size(20.dp),

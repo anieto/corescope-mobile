@@ -66,8 +66,8 @@ fun SettingsScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(stringResource(R.string.settings), style = MaterialTheme.typography.headlineLarge)
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Box(Modifier.size(7.dp).background(if (connection == LiveConnection.LIVE) HealthyGreen else ActivityAmber, CircleShape))
-                        Text(if (connection == LiveConnection.LIVE) "Analyzer connected" else "Analyzer offline", style = MaterialTheme.typography.labelMedium,
+                        Box(Modifier.size(7.dp).background(statusAccent(connection == LiveConnection.LIVE), CircleShape))
+                        Text(connectionLabel(connection, "Analyzer connected"), style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -89,7 +89,7 @@ fun SettingsScreen(
             item {
                 Panel("Analyzer source", Icons.Outlined.Dns) {
                     NavigationRow("Choose source", preferences.host, Icons.Outlined.Hub, onSource)
-                    Text("Every screen reads regions, areas, and map defaults from this CoreScope analyzer.", style = MaterialTheme.typography.bodySmall,
+                    Text("Choose the network you want to explore.", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -97,16 +97,21 @@ fun SettingsScreen(
                 Panel("Connection", Icons.Outlined.SettingsInputAntenna) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         val live = connection == LiveConnection.LIVE
-                        Box(Modifier.size(32.dp).background((if (live) HealthyGreen else ActivityAmber).copy(alpha = 0.14f), MaterialTheme.shapes.small),
+                        Box(Modifier.size(32.dp).background((statusAccent(live)).copy(alpha = 0.14f), MaterialTheme.shapes.small),
                             contentAlignment = Alignment.Center) {
-                            Icon(if (live) Icons.Outlined.CheckCircle else Icons.Outlined.SyncProblem, null, Modifier.size(18.dp), tint = if (live) HealthyGreen else ActivityAmber)
+                            Icon(if (live) Icons.Outlined.CheckCircle else Icons.Outlined.SyncProblem, null, Modifier.size(18.dp), tint = statusAccent(live))
                         }
                         Column(Modifier.weight(1f)) {
                             Text(when (connection) {
                                 LiveConnection.LIVE -> "Connected"; LiveConnection.CONNECTING -> "Connecting…"
                                 LiveConnection.RECONNECTING -> "Reconnecting…"; LiveConnection.PAUSED -> "Paused"
                             }, style = MaterialTheme.typography.titleSmall)
-                            Text(sessionError ?: preferences.host, style = MaterialTheme.typography.labelMedium,
+                            Text(sessionError ?: when (connection) {
+                                LiveConnection.LIVE -> "Receiving live updates"
+                                LiveConnection.CONNECTING -> "Opening the live connection"
+                                LiveConnection.RECONNECTING -> "Trying to restore live updates"
+                                LiveConnection.PAUSED -> "Live updates are paused"
+                            }, style = MaterialTheme.typography.labelMedium,
                                 color = if (sessionError != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
@@ -130,7 +135,7 @@ fun SettingsScreen(
             val shown = status
             val (icon, text, tone) = when (shown) {
                 is SourceStatus.Failed -> Triple(Icons.Outlined.ErrorOutline, shown.message, MaterialTheme.colorScheme.error)
-                SourceStatus.Connected -> Triple(Icons.Outlined.CheckCircle, "Connected to ${preferences.host}", HealthyGreen)
+                SourceStatus.Connected -> Triple(Icons.Outlined.CheckCircle, "Connected to ${preferences.host}", statusAccent(true))
                 else -> Triple(Icons.Outlined.Sync, "Connecting to ${preferences.host}…", MaterialTheme.colorScheme.primary)
             }
             Surface(shape = MaterialTheme.shapes.large, shadowElevation = 6.dp, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
@@ -149,7 +154,7 @@ private fun Panel(title: String, icon: ImageVector, content: @Composable ColumnS
     CardRow {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Icon(icon, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
-            Text(title.uppercase(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+            Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         content()
     }

@@ -184,7 +184,7 @@ internal fun RouteDetailsSheet(details: RouteDetails, onNode: (String) -> Unit, 
                             else Text("${stop.position}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                         }
                     },
-                    headlineContent = { Text(stop.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    headlineContent = { Text(stop.title) },
                     supportingContent = when {
                         stop.receiver -> ({ Text("Received by") })
                         key != null -> ({ Text(key, fontFamily = FontFamily.Monospace, maxLines = 1, overflow = TextOverflow.Ellipsis) })
@@ -199,8 +199,37 @@ internal fun RouteDetailsSheet(details: RouteDetails, onNode: (String) -> Unit, 
 
 @Composable
 private fun SummaryRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-        Text(label, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, fontWeight = FontWeight.Medium)
+    Column(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+/** A quick map selection keeps the user in context until they choose full details. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun MapNodeSelectionSheet(node: org.nodescope.android.core.model.MeshNode, onDetails: () -> Unit, onDismiss: () -> Unit) {
+    val now = rememberNow()
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
+                    Icon(org.nodescope.android.feature.nodes.roleIcon(node.role), null, Modifier.padding(12.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(node.displayName, style = MaterialTheme.typography.titleLarge)
+                    Text(node.role.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                IconButton(onClick = onDismiss) { Icon(Icons.Outlined.Close, "Dismiss node selection") }
+            }
+            Text("Last heard ${relativeTime(org.nodescope.android.core.model.parseInstant(node.lastSeen), now)}",
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Button(onClick = onDetails, modifier = Modifier.fillMaxWidth()) {
+                Text("View node details"); Spacer(Modifier.width(8.dp)); Icon(Icons.Outlined.ChevronRight, null)
+            }
+        }
     }
 }

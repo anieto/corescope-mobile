@@ -169,7 +169,7 @@ private fun AnalyticsLinkCard(onClick: () -> Unit) {
 @Composable
 private fun DateMetric(label: String, value: String?, modifier: Modifier) {
     Column(modifier.semantics(mergeDescendants = true) {}) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(parseInstant(value)?.let { DateTimeFormatter.ofPattern("MMM d, yyyy").withZone(ZoneId.systemDefault()).format(it) } ?: "Unknown",
             style = MaterialTheme.typography.titleSmall)
     }
@@ -215,8 +215,8 @@ private fun ObserversCard(observers: List<NodeObserverStat>, onObserver: (String
                 val name = observer.observerName?.takeIf(String::isNotBlank) ?: observer.observerId.take(12)
                 Row(Modifier.fillMaxWidth().clickable { onObserver(observer.observerId, name) }.padding(vertical = 9.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Box(Modifier.size(32.dp).background(HealthyGreen.copy(alpha = 0.14f), CircleShape), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.Sensors, null, Modifier.size(16.dp), tint = HealthyGreen)
+                    Box(Modifier.size(32.dp).background(statusAccent(true).copy(alpha = 0.14f), CircleShape), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Outlined.Sensors, null, Modifier.size(16.dp), tint = statusAccent(true))
                     }
                     Column(Modifier.weight(1f)) {
                         Text(name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -242,7 +242,7 @@ private fun LinksCard(links: List<ReachLink>, onNode: (String) -> Unit) {
                 Row(Modifier.fillMaxWidth().clickable { onNode(link.pubkey) }.padding(vertical = 9.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Icon(if (link.bidir) Icons.Outlined.SyncAlt else Icons.AutoMirrored.Outlined.CallMade,
-                        if (link.bidir) "Two-way" else "One way", tint = if (link.bidir) HealthyGreen else ActivityAmber)
+                        if (link.bidir) "Two-way" else "One way", tint = statusAccent(link.bidir))
                     Column(Modifier.weight(1f)) {
                         Text(link.label, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text(if (link.bidir) "Bidirectional" else if (link.theyHear > 0) "Heard by this node's neighbor" else "Heard by this node",
@@ -289,10 +289,10 @@ private fun ExpandButton(expanded: Boolean, total: Int, noun: String, onClick: (
 
 @Composable
 private fun MetricTile(value: String, label: String, modifier: Modifier) {
-    Surface(modifier.semantics(mergeDescendants = true) {}, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), shape = MaterialTheme.shapes.small) {
+    Surface(modifier.semantics(mergeDescendants = true) {}, color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.small) {
         Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(value, style = MaterialTheme.typography.titleMedium)
-            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -303,7 +303,7 @@ private fun DetailCard(title: String? = null, icon: ImageVector? = null, content
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             if (title != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 icon?.let { Icon(it, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary) }
-                Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
             }
             content()
         }

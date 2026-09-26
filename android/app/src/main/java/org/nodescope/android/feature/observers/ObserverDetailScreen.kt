@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -36,7 +37,7 @@ fun ObserverDetailScreen(model: ObserversViewModel, host: String, observerId: St
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             when {
-                observer != null -> IdentityCard(observer, now, favorite) { onFavorite(observer) }
+                observer != null -> ObserverIdentityCard(observer, now, favorite) { onFavorite(observer) }
                 listState.loading -> LinearProgressIndicator(Modifier.fillMaxWidth())
                 else -> Text("This observer is not in the current results for $host.", style = MaterialTheme.typography.bodyMedium)
             }
@@ -76,7 +77,8 @@ fun ObserverDetailScreen(model: ObserversViewModel, host: String, observerId: St
 }
 
 @Composable
-private fun IdentityCard(observer: MeshObserver, now: Long, favorite: Boolean, onFavorite: () -> Unit) {
+internal fun ObserverIdentityCard(observer: MeshObserver, now: Long, favorite: Boolean, onFavorite: () -> Unit) {
+    var technicalExpanded by rememberSaveable(observer.id) { mutableStateOf(false) }
     val copy = rememberCopyAction()
     val context = androidx.compose.ui.platform.LocalContext.current
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
@@ -111,20 +113,29 @@ private fun IdentityCard(observer: MeshObserver, now: Long, favorite: Boolean, o
                     }
                 }
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             MetricGrid(listOf(
-                "Model" to (observer.model ?: "Unknown"),
-                "Firmware" to (observer.firmware ?: "Unknown"),
                 "Packets / hr" to (observer.packetsLastHour?.let(::compactCount) ?: "Unknown"),
                 "All packets" to (observer.packetCount?.let(::compactCount) ?: "Unknown"),
-                "Battery" to (observer.batteryMv?.let { "$it mV" } ?: "Unknown"),
-                "Noise floor" to (observer.noiseFloor?.let { "%.0f dB".format(it) } ?: "Unknown"),
-                "Uptime" to (observer.uptimeSecs?.let(::formatDuration) ?: "Unknown"),
-                "First seen" to shortDateTime(parseInstant(observer.firstSeen)),
             ))
-            SelectionContainer {
-                Text(observer.id, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton(onClick = { technicalExpanded = !technicalExpanded }) {
+                Text(if (technicalExpanded) "Hide technical details" else "Technical details")
+                Icon(if (technicalExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null)
+            }
+            if (technicalExpanded) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                MetricGrid(listOf(
+                    "Model" to (observer.model ?: "Unknown"),
+                    "Firmware" to (observer.firmware ?: "Unknown"),
+                    "Battery" to (observer.batteryMv?.let { "$it mV" } ?: "Unknown"),
+                    "Noise floor" to (observer.noiseFloor?.let { "%.0f dB".format(it) } ?: "Unknown"),
+                    "Uptime" to (observer.uptimeSecs?.let(::formatDuration) ?: "Unknown"),
+                    "First seen" to shortDateTime(parseInstant(observer.firstSeen)),
+                ))
+                Text("Observer ID", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                SelectionContainer {
+                    Text(observer.id, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
     }
@@ -137,8 +148,8 @@ private fun MetricGrid(values: List<Pair<String, String>>) {
             Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                 row.forEach { (label, value) ->
                     Column(Modifier.weight(1f).semantics(mergeDescendants = true) {}) {
-                        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(value, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(value, style = MaterialTheme.typography.titleMedium)
+                        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 if (row.size == 1) Spacer(Modifier.weight(1f))
@@ -170,8 +181,8 @@ private fun RecentPacketRow(packet: ObserverRecentPacket, now: Long) {
         Column(Modifier.weight(1f)) {
             Text(packet.hash.take(16), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelMedium)
             Text(listOfNotNull(packet.snr?.let { "SNR %.1f dB".format(it) }, packet.rssi?.let { "RSSI %.0f dBm".format(it) })
-                .joinToString(" · ").ifEmpty { "No signal data" }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                .joinToString(" · ").ifEmpty { "No signal data" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Text(relativeTime(parseInstant(packet.timestamp), now), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(relativeTime(parseInstant(packet.timestamp), now), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
