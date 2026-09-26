@@ -42,6 +42,7 @@ struct MapScreen: View {
     @State private var isRefreshingMap = false
     @State private var pendingReplayRequestID: UUID?
     @State private var loadedAnalyzerHost = ""
+    @State private var lastFramedMapScopeID: String?
     @State private var displayUpdateTask: Task<Void, Never>?
     @State private var incomingEventTask: Task<Void, Never>?
     @State private var displayUpdateID = UUID()
@@ -314,6 +315,8 @@ struct MapScreen: View {
         .task(id: mapLoadTaskID) {
             let sourceHost = settings.host
             let selectedRegion = regionFilter.selectedRegion
+            let mapScopeID = mapLoadTaskID
+            let shouldFrameMapScope = lastFramedMapScopeID != mapScopeID
             isChangingRegion = true
             let analyzerChanged = loadedAnalyzerHost != sourceHost
 
@@ -367,12 +370,16 @@ struct MapScreen: View {
             // can move to their selected region.
             async let nodes: Void = viewModel.loadNodes(region: regionFilter.selectedRegion)
             async let packets: Void = viewModel.loadPackets(region: regionFilter.selectedRegion)
-            async let regionZoom: Void = zoomToRegionSelection()
 
             // Once the camera has reached the selected IATA area, cached node
             // data is ready to use. Don't hold the map behind a loader while
             // the freshness check continues in the background.
-            _ = await (regionZoom, minimumLoaderDuration)
+            if shouldFrameMapScope {
+                async let regionZoom: Void = zoomToRegionSelection()
+                _ = await (regionZoom, minimumLoaderDuration)
+            } else {
+                await minimumLoaderDuration
+            }
             isChangingRegion = false
             _ = await (nodes, packets)
 
@@ -385,7 +392,10 @@ struct MapScreen: View {
                   selectedRegion == regionFilter.selectedRegion else {
                 return
             }
-            await zoomToRegionSelection()
+            if shouldFrameMapScope {
+                await zoomToRegionSelection()
+                lastFramedMapScopeID = mapScopeID
+            }
 
             processHistoricalPackets()
             processIncomingEvents()
