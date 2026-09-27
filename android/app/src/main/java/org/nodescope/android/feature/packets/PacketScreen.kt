@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.packets
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.ui.semantics.selected
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -67,15 +69,29 @@ fun packetIcon(typeName: String): ImageVector = when (typeName) {
 
 @Composable
 fun PacketScreen(feed: LiveFeedState, onReconnect: () -> Unit, regionControl: @Composable () -> Unit = {}, onClearRegion: () -> Unit = {},
-    onGroup: (String) -> Unit = {}) {
+    onGroup: (String) -> Unit = {},
+    /** The map's packets panel marks one row selected and shows its actions under it. */
+    selectedId: String? = null, selectedActions: (@Composable (TransmissionGroup) -> Unit)? = null) {
     var filter by rememberSaveable { mutableStateOf<String?>(null) }
     var showFilters by remember { mutableStateOf(false) }
-    val groups = remember(feed.visiblePackets, feed.observers, filter) { groupTransmissions(feed.visiblePackets, filter, feed.observers) }
+    val liveGroups = remember(feed.visiblePackets, feed.observers, filter) { groupTransmissions(feed.visiblePackets, filter, feed.observers) }
+    // While a packet is selected (its route replaying on the map, where live routes pause too),
+    // the list holds its order: rows update in place, but new packets wait behind a
+    // "Show new" button instead of pushing the selected row around.
+    val paused = selectedId != null
+    var showNew by remember { mutableIntStateOf(0) }
+    val held = remember(paused, showNew, filter) { if (paused) liveGroups else null }
+    val groups = remember(held, liveGroups) {
+        held?.let { snapshot -> val latest = liveGroups.associateBy { it.id }; snapshot.map { latest[it.id] ?: it } } ?: liveGroups
+    }
+    val waiting = remember(held, liveGroups) {
+        held?.let { snapshot -> val shown = snapshot.mapTo(HashSet()) { it.id }; liveGroups.count { it.id !in shown } } ?: 0
+    }
     val scroll = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val now = rememberNow()
     var shownNewest by remember { mutableStateOf<String?>(null) }
-    val newPackets = groups.firstOrNull()?.id != shownNewest && scroll.firstVisibleItemIndex > 0
+    val newPackets = !paused && groups.firstOrNull()?.id != shownNewest && scroll.firstVisibleItemIndex > 0
     LaunchedEffect(groups.firstOrNull()?.id, scroll.firstVisibleItemIndex) {
         if (scroll.firstVisibleItemIndex == 0) shownNewest = groups.firstOrNull()?.id
     }
@@ -119,8 +135,17 @@ fun PacketScreen(feed: LiveFeedState, onReconnect: () -> Unit, regionControl: @C
                 FilledTonalButton(onClick = { scope.launch { scroll.animateScrollToItem(0) } }) { Text("New packets · back to latest") }
             }
         }
-        if (groups.isNotEmpty()) item { SectionLabel("Incoming traffic") }
-        items(groups, key = { it.id }) { group -> TransmissionRow(group, now) { onGroup(group.id) } }
+        if (waiting > 0) item {
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                FilledTonalButton(onClick = { showNew++; scope.launch { scroll.animateScrollToItem(0) } }) {
+                    Text("Show $waiting new ${if (waiting == 1) "packet" else "packets"}")
+                }
+            }
+        }
+        if (groups.isNotEmpty()) item { SectionLabel(if (paused) "Incoming traffic · paused" else "Incoming traffic") }
+        items(groups, key = { it.id }) { group ->
+            TransmissionRow(group, now, selected = group.id == selectedId, actions = selectedActions.takeIf { group.id == selectedId }) { onGroup(group.id) }
+        }
         if (groups.isEmpty()) item {
             EmptyState(Icons.Outlined.SettingsInputAntenna, if (feed.connection == LiveConnection.LIVE) "Waiting for packets" else "Not connected",
                 if (filter != null) "No traffic matches this filter yet."
@@ -141,9 +166,14 @@ private fun SummaryLabel(icon: ImageVector, text: String) {
 }
 
 @Composable
-private fun TransmissionRow(group: TransmissionGroup, now: Long, onClick: () -> Unit) {
+private fun TransmissionRow(group: TransmissionGroup, now: Long, selected: Boolean = false,
+    actions: (@Composable (TransmissionGroup) -> Unit)? = null, onClick: () -> Unit) {
     val tone = packetTone(group.typeName)
-    Card(onClick = onClick, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+    Card(onClick = onClick, modifier = Modifier.semantics { this.selected = selected },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null) {
+      // The actions under a selected row slide open instead of jolting the list.
+      Column(Modifier.animateContentSize()) {
         Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
             Box(Modifier.padding(vertical = 6.dp).width(4.dp).fillMaxHeight().background(tone, CircleShape))
             Row(Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -172,6 +202,8 @@ private fun TransmissionRow(group: TransmissionGroup, now: Long, onClick: () -> 
                 }
             }
         }
+        actions?.invoke(group)
+      }
     }
 }
 

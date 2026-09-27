@@ -1,5 +1,6 @@
 package org.nodescope.android.core.design
 
+import androidx.compose.foundation.background
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -40,12 +41,17 @@ fun AdaptiveListDetail(
 ) {
     val windowInfo = currentWindowAdaptiveInfo()
     val detailStates = rememberSaveableStateHolder()
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        // These are content widths AFTER the app rail and insets. Large text needs more room.
-        val twoPanes = maxWidth >= if (LocalDensity.current.fontScale >= 1.5f) 900.dp else 720.dp
+    val fold = rememberFoldSplit()
+    val wide = LocalWideLayout.current
+    BoxWithConstraints(Modifier.fillMaxSize().then(fold.modifier)) {
+        // An unfolded foldable splits at the crease: the list ends half the pane spacer before
+        // it, so the gap between panes sits on the fold. Otherwise these are content widths
+        // AFTER the app rail and insets, and large text needs more room.
+        val listAtFold = fold.firstPaneWidth(maxWidth, 280.dp)?.minus(PaneGap / 2)
+        val twoPanes = listAtFold != null || maxWidth >= if (LocalDensity.current.fontScale >= 1.5f) 900.dp else 720.dp
         val directive = calculatePaneScaffoldDirective(windowInfo).copy(
             maxHorizontalPartitions = if (twoPanes) 2 else 1,
-            horizontalPartitionSpacerSize = if (twoPanes) 12.dp else 0.dp,
+            horizontalPartitionSpacerSize = if (twoPanes) PaneGap else 0.dp,
         )
         val value = calculateThreePaneScaffoldValue(
             maxHorizontalPartitions = directive.maxHorizontalPartitions,
@@ -58,14 +64,19 @@ fun AdaptiveListDetail(
         // Back returns directly to the list, rather than stepping through every selected row.
         BackHandler(enabled = selectedId != null, onBack = onCloseDetail)
         ListDetailPaneScaffold(
+            modifier = if (twoPanes && wide) Modifier.background(paneCanvasColor()) else Modifier,
             directive = directive,
             value = value,
             listPane = {
-                AnimatedPane(Modifier.preferredWidth(340.dp)) { listPane(twoPanes) }
+                AnimatedPane(Modifier.preferredWidth(listAtFold ?: 340.dp)) {
+                    // Side by side, each pane is its own rounded card on the canvas.
+                    Box(if (twoPanes && wide) Modifier.fillMaxSize().paneCard() else Modifier.fillMaxSize()) { listPane(twoPanes) }
+                }
             },
             detailPane = {
                 AnimatedPane {
-                    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
+                    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface,
+                        shape = if (twoPanes && wide) PaneShape else androidx.compose.ui.graphics.RectangleShape) {
                         if (selectedId == null) {
                             Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
                                 Column(Modifier.widthIn(max = 400.dp)) {

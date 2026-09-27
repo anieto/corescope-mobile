@@ -52,9 +52,15 @@ fun groupTransmissions(packets: List<LivePacket>, typeFilter: String?, observers
             regions += region
         }
     }
+    // A hash re-flooded after the grouping window starts a second transmission. Ids must stay
+    // unique (they key the packet list, and a duplicate key crashes it), so a later
+    // transmission of the same hash gets its start time appended; the first keeps the hash.
+    val seen = mutableSetOf<String>()
     return groups.mapIndexed { index, group ->
         val first = group.first()
-        TransmissionGroup(first.hash.trim().ifEmpty { "event-${first.id}-${observedAt(first)}" }, group.toList(), regions[index])
+        val base = first.hash.trim().ifEmpty { "event-${first.id}-${observedAt(first)}" }
+        val id = if (seen.add(base)) base else "$base@${observedAt(first)}"
+        TransmissionGroup(id, group.toList(), regions[index])
     }.sortedByDescending { it.latestAt }
 }
 

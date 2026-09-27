@@ -1,5 +1,19 @@
 package org.nodescope.android.app
 
+import androidx.compose.ui.draw.clip
+import org.nodescope.android.core.design.paneCanvasColor
+import org.nodescope.android.core.design.PaneShape
+import org.nodescope.android.core.design.PaneGap
+import org.nodescope.android.core.design.LocalWideLayout
+import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedContentScope
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavBackStackEntry
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.EnterTransition
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -55,6 +69,32 @@ import org.nodescope.android.feature.nodes.*
 @Serializable data object ChannelsRoute : TopLevelRoute
 @Serializable data object ObserversRoute : TopLevelRoute
 @Serializable data object SettingsRoute : TopLevelRoute
+
+/**
+ * A destination with an opaque background. While navigating, the old and new screen are both
+ * drawn for a frame or two (longer when leaving the map); transparent screens showed each
+ * other through during that overlap ("ghosting"), so each now covers what's beneath it.
+ */
+private inline fun <reified T : Any> NavGraphBuilder.screen(noinline content: @Composable AnimatedContentScope.(NavBackStackEntry) -> Unit) {
+    composable<T> { entry ->
+        val scope = this
+        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { scope.content(entry) }
+    }
+}
+
+/**
+ * Screen transitions. Switching tabs is instant, as on iOS and in Google's apps, and so is
+ * any change to or from the map: MapLibre draws into its own surface, which can't fade, so
+ * during a cross-fade its markers stayed drawn over the next screen ("ghosting"). Other
+ * screen changes get a short fade instead of Navigation's 700 ms default.
+ */
+private fun NavBackStackEntry.isTab() = Destination.entries.any { destination.hasRoute(it.route::class) }
+private fun NavBackStackEntry.isMap() = destination.hasRoute(MapRoute::class)
+private fun instant(from: NavBackStackEntry, to: NavBackStackEntry) = (from.isTab() && to.isTab()) || from.isMap() || to.isMap()
+private fun screenEnter(from: NavBackStackEntry, to: NavBackStackEntry): EnterTransition =
+    if (instant(from, to)) EnterTransition.None else fadeIn(tween(180))
+private fun screenExit(from: NavBackStackEntry, to: NavBackStackEntry): ExitTransition =
+    if (instant(from, to)) ExitTransition.None else fadeOut(tween(180))
 
 enum class Destination(val title: Int, val icon: ImageVector, val route: TopLevelRoute) {
     MAP(R.string.map, Icons.Outlined.Map, MapRoute),
@@ -150,7 +190,10 @@ internal fun AppShell(
         }
     }
     fun selectTab(destination: Destination) {
-        if (currentTab == destination.name && !isRoot && nav.popBackStack(destination.route, false)) return
+        // Reselecting the current tab returns to its top level (as on iOS) and otherwise does
+        // nothing: re-navigating to the showing tab rebuilt the screen, and on the map that
+        // destroyed the MapView under it (blank map, then a crash).
+        if (currentTab == destination.name && (isRoot || nav.popBackStack(destination.route, false))) return
         currentTab = destination.name
         onDestination(destination.name)
         nav.navigate(destination.route) {
@@ -165,12 +208,16 @@ internal fun AppShell(
     var observerActiveRequest by remember { mutableStateOf<Long?>(null) }
     /** Explore's "Active nodes" opens the map filtered to the last 15 minutes (iOS). */
     var showActiveNodes by remember { mutableStateOf(false) }
-    fun startReplay(routes: List<List<String>>, selected: Int) {
+    // A packet picked in the map's live packets panel that has no route to replay; a packet
+    // with a route is highlighted through `replay` instead, so the panel always matches the map.
+    var panelPacket by remember { mutableStateOf<String?>(null) }
+    fun startReplay(routes: List<List<String>>, selected: Int, packetId: String? = null) {
         val nodes = state.snapshot?.nodes.orEmpty()
         val lookup = nodes.associateBy { it.publicKey.lowercase() }
         replay = RouteReplay(System.nanoTime(), routes.map { route ->
             ReplayRoute(routeSubchains(route, nodes), route.mapNotNull { lookup[it.lowercase()] }, route.size - 1)
-        }, selected)
+        }, selected, packetId)
+        panelPacket = null
         selectTab(Destination.MAP)
     }
     // Open a `nodescope://` link on the same tab iOS uses. Detail screens load their own data by
@@ -192,7 +239,7 @@ internal fun AppShell(
         onLinkHandled(pending.id)
     }
     // A replayed route belongs to the region it was chosen in.
-    LaunchedEffect(preferences.region) { replay = null }
+    LaunchedEffect(preferences.region) { replay = null; panelPacket = null }
     val regionControl: @Composable () -> Unit = { RegionMenu(preferences, state) { focusedNode = null; focusedPosition = null; onRegion(it) } }
     val headerlessTabs = listOf(Destination.MAP.name, Destination.EXPLORE.name, Destination.CHANNELS.name, Destination.OBSERVERS.name, Destination.SETTINGS.name)
     // These destinations supply a toolbar inside their detail pane on every window size.
@@ -201,9 +248,14 @@ internal fun AppShell(
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val expanded = maxWidth >= 600.dp
         val largeText = LocalDensity.current.fontScale >= 1.5f
-        Scaffold(
-            topBar = {
-                if (!paneOwnsHeader && (!isRoot || currentTab !in headerlessTabs)) TopAppBar(title = {
+        // The screen's title bar. Phones show it across the top; wide layouts put it at the top of
+        // the content card, so the navigation rail never moves when a screen gains or loses a bar.
+        val appBar: @Composable () -> Unit = {
+                if (!paneOwnsHeader && (!isRoot || currentTab !in headerlessTabs)) TopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = if (expanded) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.surface),
+                    // Inside the card the Scaffold already applied the status bar inset.
+                    windowInsets = if (expanded) WindowInsets(0, 0, 0, 0) else TopAppBarDefaults.windowInsets,
+                    title = {
                     Column {
                         val destination = entry?.destination
                         Text(when {
@@ -239,7 +291,10 @@ internal fun AppShell(
                         }
                     }
                 })
-            },
+            }
+        // Wide layouts put the rail on a tinted canvas and the content in rounded cards.
+        Scaffold(containerColor = if (expanded) paneCanvasColor() else MaterialTheme.colorScheme.background,
+            topBar = { if (!expanded) appBar() },
             bottomBar = {
                 if (!expanded && largeText) {
                     var navigationOpen by remember { mutableStateOf(false) }
@@ -270,15 +325,19 @@ internal fun AppShell(
             },
         ) { padding ->
             Row(Modifier.padding(padding).fillMaxSize()) {
-                if (expanded) NavigationRail(windowInsets = WindowInsets(0, 0, 0, 0)) {
+                if (expanded) NavigationRail(windowInsets = WindowInsets(0, 0, 0, 0), containerColor = paneCanvasColor()) {
                     Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
                         Destination.entries.forEach { destination ->
                             NavigationRailItem(selected = currentTab == destination.name, onClick = { selectTab(destination) },
-                                icon = { Icon(destination.icon, null) }, label = { Text(stringResource(destination.title)) })
+                                icon = { Icon(destination.icon, null) }, label = { Text(stringResource(destination.title)) },
+                                // The default pale-blue indicator nearly vanishes on the canvas; match the cards instead.
+                                colors = NavigationRailItemDefaults.colors(indicatorColor = MaterialTheme.colorScheme.surface))
                         }
                     }
                 }
-                Column(Modifier.weight(1f)) {
+                CompositionLocalProvider(LocalWideLayout provides expanded) {
+                Column(Modifier.weight(1f).then(if (expanded) Modifier.padding(top = PaneGap, end = PaneGap, bottom = PaneGap).clip(PaneShape) else Modifier)) {
+                    if (expanded) appBar()
                     if (isRoot && currentTab in listOf(Destination.MAP.name, Destination.EXPLORE.name)) {
                         if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                         state.error?.let {
@@ -289,13 +348,27 @@ internal fun AppShell(
                             Text(stringResource(R.string.partial_configuration), modifier = Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodySmall)
                         }
                     }
-                    NavHost(navController = nav, startDestination = initialTab.route, modifier = Modifier.weight(1f)) {
-                        composable<MapRoute> {
+                    NavHost(navController = nav, startDestination = initialTab.route, modifier = Modifier.weight(1f),
+                        enterTransition = { screenEnter(initialState, targetState) }, exitTransition = { screenExit(initialState, targetState) },
+                        popEnterTransition = { screenEnter(initialState, targetState) }, popExitTransition = { screenExit(initialState, targetState) }) {
+                        screen<MapRoute> {
                             // One map for all regions: it re-frames itself and keeps the chosen map style.
+                            // Wide screens add the live packet feed beside it; a tapped packet replays
+                            // its routes, or opens its details when none can be drawn.
+                            MapPacketsLayout(feed, onReconnect, selectedId = replay?.packetId ?: panelPacket,
+                                onSelect = { id, routes ->
+                                    when {
+                                        id == null -> { replay = null; panelPacket = null }
+                                        routes.isNotEmpty() -> startReplay(routes, 0, id)
+                                        // Nothing to draw: end any replay so the map doesn't keep an unrelated route.
+                                        else -> { replay = null; panelPacket = id }
+                                    }
+                                }, onDetails = { nav.navigate(PacketDetailRoute(it)) }) { onShowPackets ->
                             MapScreen(state.snapshot?.takeIf { state.selection?.host == preferences.host }, focusedNode, ::openNode, feed = feed, onRefresh = onRefresh, regionControl = { RegionMenu(preferences, state) { focusedNode = null; focusedPosition = null; onRegion(it) } }, focusedCoordinate = focusedPosition?.let { org.nodescope.android.core.model.Coordinate.gps(it[0], it[1]) }, selectedRegion = preferences.region, sourceViewport = sourceViewport, routeReplay = replay, onExitReplay = { replay = null },
-                                host = preferences.host, showActiveNodes = showActiveNodes, onActiveNodesShown = { showActiveNodes = false })
+                                host = preferences.host, showActiveNodes = showActiveNodes, onActiveNodesShown = { showActiveNodes = false }, onShowPackets = onShowPackets)
+                            }
                         }
-                        composable<ExploreRoute> { backStack ->
+                        screen<ExploreRoute> { backStack ->
                             val monitoredList = monitoredChannels()?.channels?.collectAsStateWithLifecycle()?.value.orEmpty()
                             ExploreScreen(browse?.let { repository -> viewModel(backStack) { ExploreViewModel(repository) } }, preferences.host,
                                 state.snapshot, feed, library, monitoredList, ExploreActions(
@@ -310,22 +383,23 @@ internal fun AppShell(
                                     onObservers = { activeOnly -> if (activeOnly) observerActiveRequest = System.nanoTime(); selectTab(Destination.OBSERVERS) },
                                 ))
                         }
-                        composable<PacketRoute> {
+                        screen<PacketRoute> {
                             PacketScreen(feed, onReconnect, regionControl, { onRegion(null) }, onGroup = { nav.navigate(PacketDetailRoute(it)) })
                         }
-                        composable<PacketDetailRoute> { backStack ->
+                        screen<PacketDetailRoute> { backStack ->
                             val nodes = state.snapshot?.nodes.orEmpty()
-                            PacketDetailScreen(feed, backStack.toRoute<PacketDetailRoute>().groupId, nodes, ::startReplay)
+                            val groupId = backStack.toRoute<PacketDetailRoute>().groupId
+                            PacketDetailScreen(feed, groupId, nodes) { routes, selected -> startReplay(routes, selected, groupId) }
                         }
-                        composable<MessagePacketRoute> { backStack ->
+                        screen<MessagePacketRoute> { backStack ->
                             val route = backStack.toRoute<MessagePacketRoute>()
                             browse?.let { repository ->
                                 LaunchedEffect(route.hash) { library.viewedMessage(route.hash, route.sender, route.text) }
                                 MessagePacketScreen(viewModel(backStack) { PacketDetailViewModel(repository) }, preferences.host, route.hash,
-                                    route.sender, route.text, state.snapshot?.nodes.orEmpty(), ::startReplay)
+                                    route.sender, route.text, state.snapshot?.nodes.orEmpty()) { routes, selected -> startReplay(routes, selected, route.hash) }
                             }
                         }
-                        composable<ChannelsRoute> { backStack ->
+                        screen<ChannelsRoute> { backStack ->
                             channelsModel(browse, monitoredChannels, backStack)?.let { channels ->
                                 ChannelsListDetailScreen(channels, selection, feed, library, regionControl, { onRegion(null) },
                                     onAdd = { nav.navigate(AddChannelRoute) },
@@ -333,12 +407,12 @@ internal fun AppShell(
                                         browse?.let { repository ->
                                             LaunchedEffect(hash) { library.viewedMessage(hash, sender, text) }
                                             MessagePacketScreen(viewModel(backStack) { PacketDetailViewModel(repository) },
-                                                preferences.host, hash, sender, text, state.snapshot?.nodes.orEmpty(), ::startReplay)
+                                                preferences.host, hash, sender, text, state.snapshot?.nodes.orEmpty()) { routes, selected -> startReplay(routes, selected, hash) }
                                         }
                                     })
                             } ?: UnavailableScreen(R.string.channels, R.string.channels_unavailable)
                         }
-                        composable<ChannelRoute> { backStack ->
+                        screen<ChannelRoute> { backStack ->
                             val route = backStack.toRoute<ChannelRoute>()
                             channelsModel(browse, monitoredChannels, parentEntry<ChannelsRoute>(nav, backStack))?.let { channels ->
                                 ChannelsListDetailScreen(channels, selection, feed, library, regionControl, { onRegion(null) },
@@ -347,29 +421,29 @@ internal fun AppShell(
                                         browse?.let { repository ->
                                             LaunchedEffect(hash) { library.viewedMessage(hash, sender, text) }
                                             MessagePacketScreen(viewModel(backStack) { PacketDetailViewModel(repository) },
-                                                preferences.host, hash, sender, text, state.snapshot?.nodes.orEmpty(), ::startReplay)
+                                                preferences.host, hash, sender, text, state.snapshot?.nodes.orEmpty()) { routes, selected -> startReplay(routes, selected, hash) }
                                         }
                                     },
                                     initialId = route.id, initialName = route.name, onExit = { nav.popBackStack() })
                             } ?: UnavailableScreen(R.string.channels, R.string.channels_unavailable)
                         }
-                        composable<AddChannelRoute> {
+                        screen<AddChannelRoute> {
                             monitoredChannels()?.let { store -> AddChannelScreen(store) { nav.popBackStack() } }
                         }
-                        composable<ObserversRoute> {
+                        screen<ObserversRoute> {
                             observersModel(browse, it)?.let { observers ->
                                 ObserversListDetailScreen(observers, selection, feed, library, regionControl, { onRegion(null) },
                                     activeOnlyRequest = observerActiveRequest)
                             } ?: UnavailableScreen(R.string.observers, R.string.observers_unavailable)
                         }
-                        composable<ObserverRoute> { backStack ->
+                        screen<ObserverRoute> { backStack ->
                             observersModel(browse, parentEntry<ObserversRoute>(nav, backStack))?.let { observers ->
                                 val id = backStack.toRoute<ObserverRoute>().id
                                 ObserversListDetailScreen(observers, selection, feed, library, regionControl, { onRegion(null) },
                                     initialId = id, onExit = { nav.popBackStack() })
                             } ?: UnavailableScreen(R.string.observers, R.string.observers_unavailable)
                         }
-                        composable<SettingsRoute> {
+                        screen<SettingsRoute> {
                             SettingsScreen(preferences, feed.connection, state.error, sourceChangedAt, onAppearance,
                                 onSource = { nav.navigate(SourceRoute) },
                                 onDiagnostics = { if (diagnostics != null) nav.navigate(DiagnosticsRoute) },
@@ -377,10 +451,10 @@ internal fun AppShell(
                                 onAbout = { nav.navigate(AboutRoute) }, onMapLab = { nav.navigate(MapLabRoute) },
                                 onSupport = { runCatching { uriHandler.openUri(SUPPORT_URL) } }, onDistanceUnit = onDistanceUnit)
                         }
-                        composable<DiagnosticsRoute> { diagnostics?.let { DiagnosticsScreen(it, preferences.host, feed.connection) } }
-                        composable<StorageRoute> { cacheStorage?.let { StorageScreen(it) { onRefresh() } } }
-                        composable<AboutRoute> { AboutScreen() }
-                        composable<NodeRoute> { backStack ->
+                        screen<DiagnosticsRoute> { diagnostics?.let { DiagnosticsScreen(it, preferences.host, feed.connection) } }
+                        screen<StorageRoute> { cacheStorage?.let { StorageScreen(it) { onRefresh() } } }
+                        screen<AboutRoute> { AboutScreen() }
+                        screen<NodeRoute> { backStack ->
                             val publicKey = backStack.toRoute<NodeRoute>().publicKey
                             val node = state.snapshot?.nodes?.firstOrNull { it.publicKey == publicKey } ?: library.node(publicKey)
                             NodeDetailScreen(browse?.let { repository -> viewModel(backStack) { NodeDetailViewModel(repository) } },
@@ -394,7 +468,7 @@ internal fun AppShell(
                                 onObserver = { id, name -> nav.navigate(ObserverRoute(id, name)) }, onNode = ::openNode,
                                 onAnalytics = browse?.let { { nav.navigate(NodeAnalyticsRoute(publicKey)) } })
                         }
-                        composable<NodeAnalyticsRoute> { backStack ->
+                        screen<NodeAnalyticsRoute> { backStack ->
                             val publicKey = backStack.toRoute<NodeAnalyticsRoute>().publicKey
                             browse?.let { repository ->
                                 NodeAnalyticsScreen(viewModel(backStack) { NodeAnalyticsViewModel(repository) }, preferences.host, publicKey,
@@ -402,12 +476,13 @@ internal fun AppShell(
                                     onObserver = { id, name -> nav.navigate(ObserverRoute(id, name)) })
                             }
                         }
-                        composable<SourceRoute> { sourceScreen { nav.popBackStack() } }
-                        composable<MapLabRoute> {
+                        screen<SourceRoute> { sourceScreen { nav.popBackStack() } }
+                        screen<MapLabRoute> {
                             val sample = remember { mapLabSnapshot() }
                             MapScreen(sample, onNode = {}, sampleRoute = sample.nodes.mapNotNull { it.coordinate })
                         }
                     }
+                }
                 }
             }
         }

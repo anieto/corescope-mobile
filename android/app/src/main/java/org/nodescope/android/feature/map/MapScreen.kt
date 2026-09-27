@@ -11,6 +11,10 @@ import kotlin.coroutines.resume
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -67,6 +71,10 @@ private const val NODES = "nodescope-nodes"
 private const val POINTS = "nodescope-points"
 private const val CLUSTERS = "nodescope-clusters"
 private const val NODE_LABELS = "nodescope-node-labels"
+/** A route-only replay's nodes: never grouped, so no count badge is left once the replay ends. */
+private const val REPLAY_NODES = "nodescope-replay-nodes"
+private const val REPLAY_POINTS = "nodescope-replay-points"
+private const val REPLAY_LABELS = "nodescope-replay-labels"
 private const val ROUTE_NODES = "nodescope-route-nodes"
 private const val ROUTE_NODE_POINTS = "nodescope-route-node-points"
 private const val ROUTE = "nodescope-route"
@@ -76,7 +84,7 @@ private val emptyFeatures get() = FeatureCollection.fromFeatures(emptyList<Featu
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (String) -> Unit, sampleRoute: List<Coordinate> = emptyList(), feed: LiveFeedState = LiveFeedState(), onRefresh: () -> Unit = {}, regionControl: @Composable () -> Unit = {}, focusedCoordinate: Coordinate? = null, selectedRegion: String? = null, sourceViewport: RegionCoordinate? = null, routeReplay: RouteReplay? = null, onExitReplay: () -> Unit = {}, host: String? = null, showActiveNodes: Boolean = false, onActiveNodesShown: () -> Unit = {}) {
+fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (String) -> Unit, sampleRoute: List<Coordinate> = emptyList(), feed: LiveFeedState = LiveFeedState(), onRefresh: () -> Unit = {}, regionControl: @Composable () -> Unit = {}, focusedCoordinate: Coordinate? = null, selectedRegion: String? = null, sourceViewport: RegionCoordinate? = null, routeReplay: RouteReplay? = null, onExitReplay: () -> Unit = {}, host: String? = null, showActiveNodes: Boolean = false, onActiveNodesShown: () -> Unit = {}, onShowPackets: (() -> Unit)? = null) {
     if (!BuildConfig.MAPS_CONFIGURED) {
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.map_unavailable), style = MaterialTheme.typography.headlineSmall)
@@ -126,7 +134,16 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     var replayIndex by remember(routeReplay?.id) { mutableIntStateOf(routeReplay?.selected ?: 0) }
     var routeOnly by remember(routeReplay?.id) { mutableStateOf(true) }
     var replayStart by remember(routeReplay?.id) { mutableLongStateOf(System.currentTimeMillis() + 700) }
+    // A replay waits until the map has framed it and finished drawing (set by the framing
+    // effect below), so it never starts while the camera is still moving or tiles are loading.
+    var replayReady by remember(routeReplay?.id) { mutableStateOf(false) }
     val replayOption = routeReplay?.routes?.getOrNull(replayIndex)?.takeIf { replayActive }
+    // The replay controls float over the bottom of the map rather than shrinking it: resizing
+    // the MapView re-centres it mid-flight, which made starting a replay jitter. Bottom controls
+    // and the framed route are kept clear of them instead.
+    val showsReplayControls = replayActive && routeReplay != null
+    var replayControlsHeight by remember { mutableIntStateOf(0) }
+    val controlsInset by animateIntAsState(if (showsReplayControls) replayControlsHeight else 0, tween(250), label = "replay-inset")
     val mapNodes = if (replayOption != null && routeOnly) replayOption.nodes else displayedNodes
     var cameraValues by rememberSaveable { mutableStateOf(listOf(0.0, 0.0, 1.0, 0.0, 0.0)) }
     var initialized by rememberSaveable { mutableStateOf(false) }
@@ -135,10 +152,13 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     var framedHost by rememberSaveable { mutableStateOf(host) }
     var lastFocus by rememberSaveable { mutableStateOf<String?>(null) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val view = remember(context) { MapView(context).apply { onCreate(null) } }
-    var map by remember { mutableStateOf<MapLibreMap?>(null) }
-    var style by remember { mutableStateOf<Style?>(null) }
-    var failed by remember { mutableStateOf(false) }
+    // A MapView is destroyed with the lifecycle it was attached to, so a new lifecycle (e.g. the
+    // navigation entry being replaced) gets a new MapView; a destroyed one is never reused,
+    // which left the map blank and crashed MapLibre ("called after the MapView was destroyed").
+    val view = remember(context, lifecycle) { MapView(context).apply { onCreate(null) } }
+    var map by remember(view) { mutableStateOf<MapLibreMap?>(null) }
+    var style by remember(view) { mutableStateOf<Style?>(null) }
+    var failed by remember(view) { mutableStateOf(false) }
     var retry by remember { mutableIntStateOf(0) }
     val currentOnNode by rememberUpdatedState(onNode)
     val currentDisplayedNodes by rememberUpdatedState(mapNodes)
@@ -190,6 +210,12 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         view.addOnLayoutChangeListener(listener)
         onDispose { view.removeOnLayoutChangeListener(listener) }
     }
+    // The logo rides up with the replay controls (the node count follows it via logoFrame).
+    val logoBase = remember(map) { map?.uiSettings?.let { intArrayOf(it.logoMarginLeft, it.logoMarginTop, it.logoMarginRight, it.logoMarginBottom) } }
+    LaunchedEffect(map, controlsInset) {
+        val base = logoBase ?: return@LaunchedEffect
+        map?.uiSettings?.setLogoMargins(base[0], base[1], base[2], base[3] + controlsInset)
+    }
     DisposableEffect(view, lifecycle) {
         var alive = true
         var started = false
@@ -219,7 +245,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                 ready.addOnMapClickListener { coordinate ->
                     val point = ready.projection.toScreenLocation(coordinate)
                     val radius = 24 * context.resources.displayMetrics.density
-                    val hits = ready.queryRenderedFeatures(RectF(point.x-radius, point.y-radius, point.x+radius, point.y+radius), ROUTE_NODE_POINTS, POINTS, CLUSTERS)
+                    val hits = ready.queryRenderedFeatures(RectF(point.x-radius, point.y-radius, point.x+radius, point.y+radius), ROUTE_NODE_POINTS, REPLAY_POINTS, POINTS, CLUSTERS)
                     // Spread co-located nodes sit close together: pick the marker nearest the tap.
                     fun distance(feature: Feature) = (feature.geometry() as? Point)?.let {
                         val screen = ready.projection.toScreenLocation(LatLng(it.latitude(), it.longitude()))
@@ -269,8 +295,13 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             if (!view.isDestroyed) { addOverlays(loaded, dark = mode == 2); style = loaded; updateNodeLabels(ready, currentDisplayedNodes) }
         }
     }
-    LaunchedEffect(style, nodes) {
-        style?.getSourceAs<GeoJsonSource>(NODES)?.setGeoJson(nodes)
+    val routeOnlyReplay = replayOption != null && routeOnly
+    LaunchedEffect(style, nodes, routeOnlyReplay) {
+        // The grouped source would bundle a route's nearby hops into a numbered badge when zoomed
+        // out, which stayed behind after the replay's own markers faded; route nodes go to an
+        // ungrouped source instead.
+        style?.getSourceAs<GeoJsonSource>(NODES)?.setGeoJson(if (routeOnlyReplay) emptyFeatures else nodes)
+        style?.getSourceAs<GeoJsonSource>(REPLAY_NODES)?.setGeoJson(if (routeOnlyReplay) nodes else emptyFeatures)
         map?.let { updateNodeLabels(it, mapNodes) }
     }
     // Region centers and names stay valid for the analyzer while a new region's nodes load,
@@ -338,8 +369,8 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                 packetRoute(packet, snapshot?.nodes.orEmpty(), feed.observers), historical = !packet.isLive, packet = packet)
         }
     }
-    val replayRoute = remember(replayOption, replayStart) {
-        replayOption?.let { option ->
+    val replayRoute = remember(replayOption, replayStart, replayReady) {
+        replayOption?.takeIf { replayReady }?.let { option ->
             val anchors = nodeFeatures(option.nodes).features().orEmpty().onEach { it.addStringProperty("anchorId", "node:" + it.getStringProperty("publicKey")) }
             LiveRoute("replay-${routeReplay?.id}-$replayIndex-$replayStart", replayStart, "#FFA833", anchors, option.subchains, replay = true)
         }
@@ -355,19 +386,35 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         delay((route.hops.maxOfOrNull { it.startsAt + it.travel } ?: 0L) - System.currentTimeMillis())
         replayPlaying = false
     }
-    // Frame each new replay; when switching routes, move only if the new one is off screen.
-    var framedReplay by remember { mutableStateOf<Long?>(null) }
+    // Move the camera only when the replayed route isn't already in the clear part of the map,
+    // so picking packets or routes that are already in view doesn't shake the map.
     LaunchedEffect(map, routeReplay?.id, replayIndex) {
         val ready = map ?: return@LaunchedEffect
+        if (routeReplay == null) return@LaunchedEffect
+        fun play() { replayStart = System.currentTimeMillis() + 150; replayReady = true }
         val points = replayOption?.subchains?.flatten().orEmpty().map { LatLng(it.latitude, it.longitude) }
-        val visible = ready.projection.visibleRegion.latLngBounds
-        if (points.isEmpty() || framedReplay == routeReplay?.id && points.all(visible::contains)) return@LaunchedEffect
-        framedReplay = routeReplay?.id
-        val horizontalPadding = (view.width * 0.08f).toInt()
-        val verticalPadding = (view.height * 0.20f).toInt()
-        if (points.size > 1) ready.animateCamera(CameraUpdateFactory.newLatLngBounds(LatLngBounds.Builder().includes(points).build(),
-            horizontalPadding, verticalPadding, horizontalPadding, verticalPadding), 500)
-        else ready.animateCamera(CameraUpdateFactory.newLatLngZoom(points[0], 12.0), 500)
+        if (points.isEmpty()) return@LaunchedEffect play()
+        // A map that was just created (e.g. arriving from Channels) needs its style first.
+        withTimeoutOrNull(3_000) { snapshotFlow { style }.first { it != null } }
+        // Judge and frame against the controls' real height (measured on their first layout),
+        // so the camera makes one move instead of correcting itself as they appear.
+        withTimeoutOrNull(300) { snapshotFlow { replayControlsHeight }.first { it > 0 } }
+        val insets = replayFramingInsets(view.width, view.height, replayControlsHeight, density)
+        val screen = points.map { ready.projection.toScreenLocation(it).let { p -> p.x to p.y } }
+        if (!replayNeedsFraming(screen, view.width, view.height, insets, ready.cameraPosition.zoom)) return@LaunchedEffect play()
+        val update = if (points.size > 1) {
+            val bounds = LatLngBounds.Builder().includes(points).build()
+            val fitted = ready.getCameraForLatLngBounds(bounds, intArrayOf(insets.left, insets.top, insets.right, insets.bottom))
+            // Nodes a few hundred metres apart would fit at building level; stop at street level.
+            if (fitted != null && fitted.zoom > REPLAY_MAX_ZOOM) CameraUpdateFactory.newLatLngZoom(bounds.center, REPLAY_MAX_ZOOM)
+            else CameraUpdateFactory.newLatLngBounds(bounds, insets.left, insets.top, insets.right, insets.bottom)
+        }
+        // A single point is centred: the controls cover at most the bottom 35%.
+        else CameraUpdateFactory.newLatLngZoom(points[0], maxOf(ready.cameraPosition.zoom, REPLAY_POINT_ZOOM))
+        withTimeoutOrNull(1_500) { ready.animateCameraAndWait(update, 500) }
+        // Then let the new area's tiles load (the map reports idle once everything is drawn).
+        withTimeoutOrNull(1_500) { view.awaitIdle() }
+        play()
     }
     LaunchedEffect(style) {
         val currentStyle = style ?: return@LaunchedEffect
@@ -434,6 +481,8 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                 ConnectionBadge(feed.connection)
             }
         }, actions = {
+            // Wide screens with the live packets panel hidden get it back from here.
+            onShowPackets?.let { IconButton(onClick = it) { Icon(Icons.Outlined.Sensors, "Show live packets") } }
             IconButton(onClick = onRefresh) { Icon(Icons.Outlined.Refresh, "Refresh map data") }
             IconButton(onClick = { search = true }) { Icon(Icons.Outlined.Search, "Search nodes") }
             Box {
@@ -446,7 +495,8 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             }
         })
     Box(Modifier.weight(1f).fillMaxWidth()) {
-        AndroidView(factory = { view }, modifier = Modifier.fillMaxSize())
+        // Keyed so a replacement MapView is attached (the factory only runs once per key).
+        key(view) { AndroidView(factory = { view }, modifier = Modifier.fillMaxSize()) }
         Column(Modifier.align(Alignment.TopStart).fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Surface(shape = MaterialTheme.shapes.medium, shadowElevation = 1.dp) { regionControl() }
@@ -483,7 +533,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         }
         if (!failed && style == null) CircularProgressIndicator(Modifier.align(Alignment.Center))
         // Location sits above zoom, which sits just above the attribution line at the right edge.
-        Column(Modifier.align(Alignment.BottomEnd).padding(end = 12.dp, bottom = 56.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.align(Alignment.BottomEnd).offset { IntOffset(0, -controlsInset) }.padding(end = 12.dp, bottom = 56.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Surface(shape = MaterialTheme.shapes.medium, shadowElevation = 2.dp) {
                 IconButton(onClick = { if (hasLocationPermission(context)) centerOnUser() else locationPermission.launch(LOCATION_PERMISSIONS) }, enabled = !locating) {
                     if (locating) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
@@ -499,7 +549,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             }
         }
         // Required CARTO/OpenStreetMap attribution: one line, bottom right (MapLibre's own logo is bottom left).
-        Surface(Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 6.dp), shape = MaterialTheme.shapes.small,
+        Surface(Modifier.align(Alignment.BottomEnd).offset { IntOffset(0, -controlsInset) }.padding(end = 8.dp, bottom = 6.dp), shape = MaterialTheme.shapes.small,
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)) {
             Row {
                 TextButton(onClick = { uriHandler.openUri("https://www.openstreetmap.org/copyright") }, contentPadding = PaddingValues(horizontal = 8.dp)) {
@@ -516,18 +566,26 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         val logo = logoFrame
         Surface((if (logo != null && countSize != IntSize.Zero) Modifier.align(Alignment.TopStart).offset {
                 IntOffset((logo.centerX() - countSize.width / 2).coerceAtLeast(gap), logo.top - gap - countSize.height)
-            } else Modifier.align(Alignment.BottomStart).padding(start = 8.dp, bottom = 34.dp)).onSizeChanged { countSize = it },
+            } else Modifier.align(Alignment.BottomStart).offset { IntOffset(0, -controlsInset) }.padding(start = 8.dp, bottom = 34.dp)).onSizeChanged { countSize = it },
             shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)) {
             Text("${mapNodes.size} nodes", Modifier.padding(horizontal = 14.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium)
         }
+        // Kept while sliding away, after the replay itself has been cleared.
+        var lastReplay by remember { mutableStateOf(routeReplay) }
+        if (routeReplay != null) lastReplay = routeReplay
+        SlideUpVisibility(showsReplayControls, Modifier.align(Alignment.BottomCenter)) {
+            lastReplay?.let { shown ->
+                ReplayControls(
+                    playing = replayPlaying || !replayReady, routes = shown.routes, selected = replayIndex, routeOnly = routeOnly,
+                    onPlay = { replayStart = System.currentTimeMillis() + 150 },
+                    onLive = { replayActive = false; onExitReplay() },
+                    // Another route waits for its own framing; the same one just restarts.
+                    onRoute = { if (it == replayIndex) replayStart = System.currentTimeMillis() + 150 else { replayReady = false; replayIndex = it } },
+                    onRouteOnly = { routeOnly = !routeOnly },
+                    modifier = Modifier.fillMaxWidth().heightIn(max = replayPanelMaxHeight).onSizeChanged { replayControlsHeight = it.height })
+            }
+        }
     }
-        if (replayActive && routeReplay != null) ReplayControls(
-            playing = replayPlaying, routes = routeReplay.routes, selected = replayIndex, routeOnly = routeOnly,
-            onPlay = { replayStart = System.currentTimeMillis() + 150 },
-            onLive = { replayActive = false; onExitReplay() },
-            onRoute = { replayIndex = it; replayStart = System.currentTimeMillis() + 150 },
-            onRouteOnly = { routeOnly = !routeOnly },
-            modifier = Modifier.fillMaxWidth().heightIn(max = replayPanelMaxHeight))
     }
 }
 
@@ -561,6 +619,54 @@ private fun findLogoFrame(root: android.view.ViewGroup): android.graphics.Rect? 
     val left = location[0] - rootLocation[0]
     val top = location[1] - rootLocation[1]
     return android.graphics.Rect(left, top, left + logo.width, top + logo.height)
+}
+
+/**
+ * The part of the map a replayed route must stay inside: clear of the region and filter
+ * buttons (top), the zoom and location buttons (right), and the node count, logo and
+ * attribution sitting on top of the replay controls (bottom). Shrunk proportionally when the
+ * map is too small for all of it (landscape phones), so the camera always has room to frame.
+ */
+internal data class FramingInsets(val left: Int, val top: Int, val right: Int, val bottom: Int)
+
+internal fun replayFramingInsets(width: Int, height: Int, controlsHeight: Int, density: Float): FramingInsets {
+    fun dp(value: Int) = (value * density).toInt()
+    var left = maxOf(dp(24), (width * 0.06f).toInt())
+    var right = dp(76)
+    var top = dp(72)
+    var bottom = controlsHeight + dp(72)
+    if (left + right > width * 0.6f) { val scale = width * 0.6f / (left + right); left = (left * scale).toInt(); right = (right * scale).toInt() }
+    if (top + bottom > height * 0.8f) { val scale = height * 0.8f / (top + bottom); top = (top * scale).toInt(); bottom = (bottom * scale).toInt() }
+    return FramingInsets(left, top, right, bottom)
+}
+
+internal const val REPLAY_MAX_ZOOM = 14.0
+internal const val REPLAY_POINT_ZOOM = 12.0
+/** A route spanning less than half the clear area, both ways, is zoomed in to. */
+private const val REPLAY_SMALL_SHARE = 0.5f
+
+/**
+ * Whether a replayed route (its points on screen, in pixels) needs the camera to move: when any
+ * point is outside the clear area, or the route is so small there that it's hard to follow
+ * (under half the area both ways, or a lone point while zoomed far out). Routes
+ * already framed at street level are left alone.
+ */
+internal fun replayNeedsFraming(points: List<Pair<Float, Float>>, width: Int, height: Int, insets: FramingInsets, zoom: Double): Boolean {
+    if (points.isEmpty()) return false
+    val left = insets.left.toFloat(); val top = insets.top.toFloat()
+    val right = (width - insets.right).toFloat(); val bottom = (height - insets.bottom).toFloat()
+    if (points.any { (x, y) -> x < left || x > right || y < top || y > bottom }) return true
+    if (points.size == 1) return zoom < REPLAY_POINT_ZOOM - 2
+    if (zoom >= REPLAY_MAX_ZOOM) return false
+    val spanX = points.maxOf { it.first } - points.minOf { it.first }
+    val spanY = points.maxOf { it.second } - points.minOf { it.second }
+    return spanX < (right - left) * REPLAY_SMALL_SHARE && spanY < (bottom - top) * REPLAY_SMALL_SHARE
+}
+
+/** Slides in from the bottom edge (outside any Row/Column scope, which have their own overloads). */
+@Composable
+private fun SlideUpVisibility(visible: Boolean, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    AnimatedVisibility(visible, modifier, enter = slideInVertically(tween(250)) { it }, exit = slideOutVertically(tween(200)) { it }) { content() }
 }
 
 /** iOS replay controls: Replay / Play again with Live, then route choice and Route only. */
@@ -612,11 +718,12 @@ internal fun ReplayControls(playing: Boolean, routes: List<ReplayRoute>, selecte
 internal fun showsNodeLabels(latitudeSpan: Double, visibleNodes: Int) = latitudeSpan <= 0.08 && visibleNodes <= 60
 
 private fun updateNodeLabels(map: MapLibreMap, nodes: List<MeshNode>) {
-    val layer = map.style?.getLayer(NODE_LABELS) ?: return
+    val style = map.style ?: return
     val bounds = map.projection.visibleRegion.latLngBounds
     val visible = if (bounds.latitudeSpan > 0.08) Int.MAX_VALUE
         else nodes.count { node -> node.coordinate?.let { bounds.contains(LatLng(it.latitude, it.longitude)) } == true }
-    layer.setProperties(visibility(if (showsNodeLabels(bounds.latitudeSpan, visible)) Property.VISIBLE else Property.NONE))
+    val shown = visibility(if (showsNodeLabels(bounds.latitudeSpan, visible)) Property.VISIBLE else Property.NONE)
+    listOf(NODE_LABELS, REPLAY_LABELS).forEach { style.getLayer(it)?.setProperties(shown) }
 }
 
 private fun addOverlays(style: Style, dark: Boolean) {
@@ -631,11 +738,16 @@ private fun addOverlays(style: Style, dark: Boolean) {
     style.addLayer(SymbolLayer("nodescope-counts", NODES).withFilter(has("point_count")).withProperties(
         textField(toString(get("point_count_abbreviated"))), textSize(11f), textColor("#FFFFFF"), textAllowOverlap(true)))
     // Font stack served by CARTO's glyph endpoint for these styles; labels that collide are hidden.
-    style.addLayer(SymbolLayer(NODE_LABELS, NODES).withFilter(not(has("point_count"))).withProperties(
+    fun labels(id: String, source: String) = SymbolLayer(id, source).withFilter(not(has("point_count"))).withProperties(
         textField(get("name")), textFont(arrayOf("Montserrat Medium", "Open Sans Bold", "Noto Sans Regular", "HanWangHeiLight Regular", "NanumBarunGothic Regular")),
         textSize(11f), textAnchor(Property.TEXT_ANCHOR_TOP), textOffset(arrayOf(0f, 0.8f)), textMaxWidth(10f),
         textColor(if (dark) "#FFFFFF" else "#14243A"), textHaloColor(if (dark) "rgba(0,0,0,0.72)" else "rgba(255,255,255,0.85)"),
-        textHaloWidth(1.6f), visibility(Property.NONE)))
+        textHaloWidth(1.6f), visibility(Property.NONE))
+    style.addLayer(labels(NODE_LABELS, NODES))
+    style.addSource(GeoJsonSource(REPLAY_NODES, emptyFeatures))
+    style.addLayer(CircleLayer(REPLAY_POINTS, REPLAY_NODES).withProperties(
+        circleRadius(5f), circleColor(match(get("role"), literal("#299EFF"), stop("repeater", "#FFAA44"), stop("room", "#299EFF"), stop("companion", "#45C99D"), stop("sensor", "#B18AFF"))), circleStrokeWidth(1f), circleStrokeColor("#C5E4FA")))
+    style.addLayer(labels(REPLAY_LABELS, REPLAY_NODES))
     // Live hops as on iOS: a soft halo under a thin core, a small white head, and arrival rings.
     style.addSource(GeoJsonSource("live-lines", emptyFeatures).apply { setOverrideSynchronousUpdate(true) })
     style.addLayer(LineLayer("live-route-halo", "live-lines").withProperties(lineColor(get("color")), lineWidth(6f),
@@ -671,6 +783,26 @@ fun mapLabSnapshot(): AnalyzerSnapshot {
     }, 3, emptyMap(), MapDefaults(listOf(30.30, -97.72), 11.0))
 }
 
+
+private suspend fun MapLibreMap.animateCameraAndWait(update: org.maplibre.android.camera.CameraUpdate, durationMs: Int) =
+    suspendCancellableCoroutine<Unit> { continuation ->
+        animateCamera(update, durationMs, object : MapLibreMap.CancelableCallback {
+            override fun onCancel() { if (continuation.isActive) continuation.resume(Unit) }
+            override fun onFinish() { if (continuation.isActive) continuation.resume(Unit) }
+        })
+    }
+
+/** Suspends until the map has finished loading and drawing what is on screen. */
+private suspend fun MapView.awaitIdle() = suspendCancellableCoroutine<Unit> { continuation ->
+    val listener = object : MapView.OnDidBecomeIdleListener {
+        override fun onDidBecomeIdle() {
+            removeOnDidBecomeIdleListener(this)
+            if (continuation.isActive) continuation.resume(Unit)
+        }
+    }
+    addOnDidBecomeIdleListener(listener)
+    continuation.invokeOnCancellation { removeOnDidBecomeIdleListener(listener) }
+}
 
 /** Native map updates use the display clock without keeping Compose's UI clock busy. */
 private suspend fun awaitMapFrame() = suspendCancellableCoroutine<Unit> { continuation ->

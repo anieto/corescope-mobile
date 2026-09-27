@@ -89,7 +89,9 @@ fun ChannelsScreen(
                 item { SectionLabel("Server monitored channels") }
                 items(sections.server, key = { it.id }) { ChannelCard(it, now, it.id == selectedId) { onChannel(it) } }
             }
-            if (sections.isEmpty && !channelState.loading) item {
+            // Only once a load has finished: before the first load starts nothing is "loading" yet,
+            // and "No channels yet" flashed on every visit.
+            if (sections.isEmpty && !channelState.loading && channelState.updatedAt != null) item {
                 EmptyState(if (query.isBlank()) Icons.Outlined.Tag else Icons.Outlined.SearchOff,
                     if (query.isBlank()) "No channels yet" else "No matching channels",
                     if (query.isBlank()) "Channels appear as your analyzer hears group messages. You can also add a hashtag or private channel." else "Try a different search or filter.")

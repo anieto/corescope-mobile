@@ -80,4 +80,13 @@ class PacketGroupsTest {
         assertEquals(1, advert.payloadVersion)
         assertEquals("GRP_DATA", parseLivePacket(protocolJson.parseToJsonElement("""{"id":11,"payload_type":6}""").jsonObject, true)!!.typeName)
     }
+
+    @Test fun aHashReFloodedAfterTheWindowGetsItsOwnUniqueId() {
+        // The same hash heard again 45 s later is a second transmission; the list keys rows by
+        // id, so two ids of "aa" would crash it (seen on a busy mesh).
+        val groups = groupTransmissions(listOf(packet(1, "aa", 0), packet(2, "aa", 45_000), packet(3, "aa", 95_000)), null, emptyList())
+        assertEquals(3, groups.size)
+        assertEquals(3, groups.map { it.id }.toSet().size)
+        assertTrue(groups.any { it.id == "aa" }) // the first transmission keeps its plain hash
+    }
 }

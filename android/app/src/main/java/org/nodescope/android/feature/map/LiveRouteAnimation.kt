@@ -67,8 +67,12 @@ internal class LiveRoute(val key: String, val receivedAt: Long, val color: Strin
 /** One resolved route of a packet, placed on the map: coordinate chains and the nodes along it. */
 data class ReplayRoute(val subchains: List<List<Coordinate>>, val nodes: List<MeshNode>, val hops: Int)
 
-/** "Replay on map" from packet details (iOS `PacketReplayStore`): every route, and the one chosen. */
-data class RouteReplay(val id: Long, val routes: List<ReplayRoute>, val selected: Int)
+/**
+ * "Replay on map" from packet details (iOS `PacketReplayStore`): every route, and the one chosen.
+ * [packetId] is the replayed packet's group id (its hash), so the live packets panel can
+ * highlight the same packet the map is showing.
+ */
+data class RouteReplay(val id: Long, val routes: List<ReplayRoute>, val selected: Int, val packetId: String? = null)
 
 internal data class RouteLine(val points: List<Coordinate>, val color: String, val opacity: Float, val route: String = "")
 internal data class RouteRing(val center: Coordinate, val color: String, val radius: Float, val width: Float, val opacity: Float)

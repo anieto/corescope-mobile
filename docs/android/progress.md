@@ -668,3 +668,81 @@ how to use.
 - versionCode 4 (0.7.2), in case 3 was already uploaded.
 - Play's "edge-to-edge" recommendation needs no change: MainActivity already calls
   enableEdgeToEdge() and screens handle insets.
+
+## Map packets panel, tablet crash fixes — 2026-09-26 (0.7.6, code 6)
+
+- Wide screens (content ≥ 840 dp: tablets, unfolded foldables in landscape) show the live packet
+  feed in a 360 dp panel beside the rail; the map keeps the right side. Tapping a packet
+  replays its routes on the map (or opens details when none can be drawn). Starts open;
+  collapses to a slim strip; the choice is remembered (`MapPacketsLayout`).
+- Crash/blank map (tester report: Settings → map, froze, crashed): the MapView was created once
+  per composition but destroyed whenever the navigation lifecycle changed, then reused.
+  It's now recreated with the lifecycle and re-attached (`key(view)`). Reselecting the current tab no longer
+  re-navigates (returns to its top level, as on iOS).
+- Crash: the packet list keyed rows by hash, and a hash re-flooded after the 30 s grouping
+  window produced a duplicate key. Later transmissions of a hash now get `hash@start` ids
+  (regression test added). Affected the phone Live Packets screen too.
+- Empty states centre their message text (tester: detail-pane text looked left-aligned).
+- Verified with an R8 build on a 2560×1600 emulator: panel replay, collapse persistence,
+  3-minute live soak, the tester's Observers→Settings taps, 18 rapid tab switches, phone
+  size hides the panel. No crashes, no "MapView destroyed" errors.
+- Tab switching (tester video, "ghosting/delay"): Navigation's default 700 ms cross-fade
+  left the map's markers drawn over the next screen. Tab switches and anything to/from the
+  map are now instant; other screen changes fade in 180 ms. Every destination has an opaque
+  background (`screen<…>`), so the frame or two where old and new screens overlap no longer
+  shows through. Verified frame by frame on a recording: Map→Explore and Explore→Channels
+  switch cleanly. (Tried MapLibre texture mode first; unnecessary once screens are opaque,
+  reverted to keep SurfaceView performance.)
+- Channels, Observers and a channel's messages no longer flash "No channels/messages yet"
+  before their first load finishes.
+- Foldables split at the crease (`FoldSplit`): the Material 3 adaptive posture reports the
+  hinge in window coordinates; the layout measures its own window position (it starts after
+  the rail) so the split lands exactly on the fold. The map's packets panel and Channels/
+  Observers list-detail both use it whenever a vertical fold crosses the layout with ≥ 280 dp
+  on each side, at any width (Pixel 10 Pro Fold's ~770 dp content now qualifies). Without a
+  fold, the width rules are unchanged (packets panel from 840 dp, list-detail from 720 dp).
+  Built, not yet verified on a fold (user testing on the Pixel 10 Pro Fold emulator and Z Fold).
+- Rounded cards on wide layouts (`PaneCards.kt`): the rail and top bar sit on a tinted
+  canvas (`surfaceContainerHigh`); content is a rounded card (20 dp corners, 8 dp margins).
+  Split screens (map + packets panel, Channels/Observers list-detail) draw each pane as its
+  own card with an 8 dp gap centred on the fold when there is one. The map's surface ignores
+  clipping, so its corners are masked with the canvas colour (`CardCornerMasks`). The rail's
+  selected indicator uses the card colour so it stays visible on the canvas. Phones are
+  unchanged (edge to edge). Built, not yet checked on a device.
+- Wide layouts: the title bar (back arrow, title, actions) moved from across the top of the
+  window into the top of the content card, so the rail no longer shifts down on detail screens.
+- Live packets panel: tapping a packet now selects it (highlighted border) and shows its route on the map for any packet type, not just adverts. The selected row offers **Replay route** (or "No route to show") and **Details**; tapping it again deselects. Collapsing the panel removes it entirely so the map fills the width, and a "Show live packets" button appears in the map header to bring it back.
+- Replay and panel in sync: the replay now carries the packet it came from, and the live
+  packets panel highlights that packet instead of keeping its own selection. Return to live
+  clears it, a replay started from Channels or packet details moves it (to the matching row if
+  that packet is in the feed), and tapping a packet with no route ends any replay. The row's
+  "Replay route" button was removed (the map's replay controls restart it); the row keeps
+  Details and expands smoothly.
+- Smoother replay start: the replay controls now float over the bottom of the map and slide
+  in, instead of shrinking the map (resizing the MapView re-centred it mid-animation, the
+  jitter). The zoom buttons, attribution, node count and MapLibre logo rise with the controls,
+  and the route is framed once, against the controls' measured height.
+- Replay framing: the camera moves only when the replayed route isn't already in the clear
+  part of the map (between the top buttons, the zoom buttons, and the count/logo above the
+  replay controls), and frames with those same insets when it does, so routes are no longer
+  cut off under the controls. Insets shrink on short maps (landscape phones); unit-tested.
+- Replay zoom: a route that is in view but tiny (under a quarter of the clear area both ways,
+  or a lone node while zoomed far out) is now zoomed in to, capped at street level (zoom 14)
+  so close nodes don't zoom to building level. Unit-tested (`replayNeedsFraming`).
+- Live packets panel: the hide button is now an ✕ (Close) instead of a left chevron, since
+  the panel closes into the map header's "Show live packets" button rather than to a strip.
+- Replay zoom threshold raised: routes under half the clear area both ways (was a quarter)
+  are zoomed in to.
+- Stale cluster badges during replay: with "Route nodes only", a route's nearby hops were
+  grouped into a numbered cluster by the clustered node source when zoomed out (zoom ≤ 8), and
+  the badge stayed after the replay's own markers faded. Route-only replays now draw their
+  nodes from a separate, unclustered source (`REPLAY_NODES`, with labels and tap support).
+- Replay start waits for the map: instead of a fixed 700 ms delay, a replay starts once its
+  framing is done — style loaded (maps just created when arriving from Channels), the camera
+  move finished, and the map idle with the new tiles drawn (each wait capped, ~4.5 s worst
+  case). Choosing another route waits for its own framing; the controls read "Playing" meanwhile.
+- Live packets panel pauses while a packet is selected (matching the map's "live routes
+  paused"): the order is held, rows still update in place, and new packets wait behind a
+  "Show N new packets" button that brings them in without ending the replay. It resumes when
+  the selection ends (tap the row again, Return to live / ✕, region change), not when the
+  replay animation finishes; the section label reads "Incoming traffic · paused" meanwhile.

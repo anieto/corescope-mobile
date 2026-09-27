@@ -99,4 +99,31 @@ class LiveRouteAnimationTest {
         assertFalse(route.isActive(route.endsAt))
         assertTrue(routeFrame(listOf(route), route.endsAt, true).lines.isEmpty())
     }
+
+    @Test
+    fun replayFramingKeepsRoutesClearOfTheMapControls() {
+        // Phone portrait at 3x: the route area sits between the top buttons and the replay controls.
+        val insets = replayFramingInsets(1080, 2000, 500, 3f)
+        assertEquals(72 * 3, insets.top)
+        assertEquals(500 + 72 * 3, insets.bottom)
+        assertEquals(76 * 3, insets.right)
+        // Landscape phone: the insets shrink to leave a fifth of the height for the route.
+        val tight = replayFramingInsets(2000, 800, 400, 3f)
+        assertTrue(tight.top + tight.bottom <= 800 * 0.8f + 1)
+        assertTrue(tight.bottom > tight.top)
+    }
+
+    @Test
+    fun replayMovesOnlyForRoutesOffScreenOrTooSmall() {
+        val insets = FramingInsets(50, 100, 100, 400) // clear area: x 50..900, y 100..1600
+        fun needs(vararg points: Pair<Float, Float>, zoom: Double = 9.0) = replayNeedsFraming(points.toList(), 1000, 2000, insets, zoom)
+        assertFalse(needs(200f to 300f, 700f to 1200f))          // in view and a good size: stay put
+        assertTrue(needs(200f to 300f, 700f to 1700f))           // under the replay controls
+        assertTrue(needs(960f to 500f, 700f to 900f))            // under the zoom buttons
+        assertTrue(needs(400f to 800f, 450f to 850f))            // a speck: zoom in
+        assertTrue(needs(300f to 600f, 600f to 1100f))           // a third of the area: zoom in
+        assertFalse(needs(400f to 800f, 450f to 850f, zoom = REPLAY_MAX_ZOOM)) // already at street level
+        assertTrue(needs(400f to 800f, zoom = 6.0))              // lone point, zoomed far out
+        assertFalse(needs(400f to 800f, zoom = 11.0))
+    }
 }

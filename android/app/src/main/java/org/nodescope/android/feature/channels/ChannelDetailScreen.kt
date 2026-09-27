@@ -78,7 +78,7 @@ fun ChannelDetailScreen(
             if (regional == null) Text("Observer regions are unavailable, so messages from every region are shown.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (conversation.isEmpty() && !loadState.loading) EmptyState(Icons.Outlined.ChatBubbleOutline,
+        if (conversation.isEmpty() && !loadState.loading && loadState.updatedAt != null) EmptyState(Icons.Outlined.ChatBubbleOutline,
             if (selection.region == null) "No messages yet" else "No messages from this region",
             if (monitored != null) "Only recent traffic can be decrypted. New messages appear as the analyzer hears them." else "New messages appear as the analyzer hears them.")
         // Newest first with a reversed layout keeps the latest message at the bottom, like a chat.

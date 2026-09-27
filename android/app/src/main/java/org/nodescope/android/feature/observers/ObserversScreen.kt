@@ -83,7 +83,7 @@ fun ObserversScreen(
             }
             if (visible.isNotEmpty()) item { SectionLabel("Observer nodes") }
             items(visible, key = { it.id }) { ObserverCard(it, now, it.id == selectedId) { onObserver(it) } }
-            if (visible.isEmpty() && !state.loading) item {
+            if (visible.isEmpty() && !state.loading && state.updatedAt != null) item {
                 EmptyState(Icons.Outlined.SensorsOff, if (all.isEmpty()) "No observers" else "No matching observers",
                     if (all.isEmpty()) "This analyzer has not reported any observers." else "Try a different search, region or filter.")
             }
