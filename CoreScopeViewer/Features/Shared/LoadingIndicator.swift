@@ -131,6 +131,28 @@ private struct AdaptiveScrollContentWidthModifier: ViewModifier {
     }
 }
 
+private struct IPadSidebarListModifier: ViewModifier {
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            content
+                .scrollContentBackground(.hidden)
+                .listStyle(.insetGrouped)
+                .contentMargins(.top, 0, for: .scrollContent)
+                .background {
+                    Rectangle()
+                        .fill(.thinMaterial)
+                        .ignoresSafeArea(.container, edges: .top)
+                }
+        } else {
+            content
+                .scrollContentBackground(.hidden)
+                .listStyle(.plain)
+                .background(NodeScopeBackground())
+        }
+    }
+}
+
 extension View {
     func instrumentCard(isSelected: Bool = false) -> some View {
         modifier(InstrumentCardModifier(isSelected: isSelected))
@@ -147,6 +169,12 @@ extension View {
     /// at the window edge while centering only the scrollable content.
     func adaptiveScrollContentWidth(_ maxWidth: CGFloat = 840) -> some View {
         modifier(AdaptiveScrollContentWidthModifier(maxWidth: maxWidth))
+    }
+
+    /// Uses native inset grouping and material on iPad while preserving the
+    /// existing edge-to-edge list presentation in compact iPhone layouts.
+    func iPadSidebarListStyle() -> some View {
+        modifier(IPadSidebarListModifier())
     }
 
     /// Keeps the final scrollable content above NodeScope's app-level

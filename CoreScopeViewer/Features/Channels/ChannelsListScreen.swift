@@ -12,6 +12,7 @@ struct ChannelsListScreen: View {
     @State private var selectedChannelID: MeshChannel.ID?
     @State private var selectedChannelSnapshot: MeshChannel?
     @State private var preferredCompactColumn = NavigationSplitViewColumn.sidebar
+    @State private var detailNavigationID = UUID()
     @State private var lastProcessedLiveEventID: Int?
     @State private var liveRefreshTask: Task<Void, Never>?
     @State private var searchText = ""
@@ -24,7 +25,10 @@ struct ChannelsListScreen: View {
     @State private var sortOption = ChannelSortOption.recent
 
     var body: some View {
-        AdaptiveListDetailNavigation(preferredCompactColumn: $preferredCompactColumn) {
+        AdaptiveListDetailNavigation(
+            preferredCompactColumn: $preferredCompactColumn,
+            detailNavigationID: detailNavigationID
+        ) {
             List {
                 ChannelsHeader(
                     isConnected: liveFeed.isConnected,
@@ -35,7 +39,6 @@ struct ChannelsListScreen: View {
                     showFilters: { isFiltersPresented = true },
                     addChannel: { isShowingAddChannel = true }
                 )
-                .iPadWindowControlsClearance()
                 .listRowInsets(EdgeInsets(top: 18, leading: 20, bottom: 8, trailing: 20))
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
@@ -100,11 +103,8 @@ struct ChannelsListScreen: View {
                     }
                 }
             }
-            .scrollContentBackground(.hidden)
-            .background(NodeScopeBackground())
-            .listStyle(.plain)
+            .iPadSidebarListStyle()
             .adaptiveScrollContentWidth()
-            .background(NodeScopeBackground())
             .floatingDockScrollClearance()
             .toolbar(.hidden, for: .navigationBar)
             .overlay {
@@ -131,6 +131,7 @@ struct ChannelsListScreen: View {
         .onChange(of: resetID) {
             selectedChannelID = nil
             selectedChannelSnapshot = nil
+            detailNavigationID = UUID()
             preferredCompactColumn = .sidebar
             isShowingAddChannel = false
             searchText = ""
@@ -338,6 +339,9 @@ struct ChannelsListScreen: View {
 
     private func channelRow(_ channel: MeshChannel) -> some View {
         Button {
+            if selectedChannelID != channel.id {
+                detailNavigationID = UUID()
+            }
             selectedChannelSnapshot = channel
             selectedChannelID = channel.id
             preferredCompactColumn = .detail

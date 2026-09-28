@@ -32,7 +32,6 @@ struct ObserversListScreen: View {
                     filterSummary: filterSummary,
                     showFilters: { isFiltersPresented = true }
                 )
-                .iPadWindowControlsClearance()
                 .instrumentListRow(top: 18, bottom: 10)
 
                 if isSearchPresented {
@@ -101,11 +100,8 @@ struct ObserversListScreen: View {
                         .textCase(.uppercase)
                 }
             }
-            .scrollContentBackground(.hidden)
-            .background(NodeScopeBackground())
-            .listStyle(.plain)
+            .iPadSidebarListStyle()
             .adaptiveScrollContentWidth()
-            .background(NodeScopeBackground())
             .floatingDockScrollClearance()
             .toolbar(.hidden, for: .navigationBar)
             .overlay {

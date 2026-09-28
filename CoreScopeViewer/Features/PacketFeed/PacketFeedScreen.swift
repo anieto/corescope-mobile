@@ -1,6 +1,189 @@
 import SwiftUI
 import Observation
 
+struct MapPacketWorkspaceScreen: View {
+    let isTabActive: Bool
+    let resetID: UUID
+
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @AppStorage("mapPacketSidebarVisible") private var prefersPacketSidebar = true
+    @State private var columnVisibility = NavigationSplitViewVisibility.detailOnly
+    @State private var preferredCompactColumn = NavigationSplitViewColumn.detail
+
+    var body: some View {
+        NavigationSplitView(
+            columnVisibility: $columnVisibility,
+            preferredCompactColumn: $preferredCompactColumn
+        ) {
+            MapLivePacketSidebar()
+                .navigationSplitViewColumnWidth(min: 320, ideal: 370, max: 440)
+        } detail: {
+            MapScreen(isTabActive: isTabActive, resetID: resetID)
+        }
+        .navigationSplitViewStyle(.balanced)
+        .ignoresSafeArea(.container, edges: .top)
+        .onAppear { updateColumns(for: horizontalSizeClass) }
+        .onChange(of: horizontalSizeClass) { _, sizeClass in
+            updateColumns(for: sizeClass)
+        }
+        .onChange(of: columnVisibility) { _, visibility in
+            guard horizontalSizeClass == .regular else { return }
+            prefersPacketSidebar = visibility != .detailOnly
+        }
+    }
+
+    private func updateColumns(for sizeClass: UserInterfaceSizeClass?) {
+        if sizeClass == .regular {
+            columnVisibility = prefersPacketSidebar ? .all : .detailOnly
+        } else {
+            preferredCompactColumn = .detail
+            columnVisibility = .detailOnly
+        }
+    }
+}
+
+private struct MapLivePacketSidebar: View {
+    @Environment(LiveFeedService.self) private var liveFeed
+    @Environment(RegionFilterStore.self) private var regionFilter
+    @Environment(ObserverRegionLookup.self) private var observerRegionLookup
+    @Environment(PacketReplayStore.self) private var replayStore
+    @State private var feedModel = LiveObservationFeedModel()
+    @State private var filterType: Int?
+    @State private var selectedGroupID: LiveObservationGroup.ID?
+    @State private var isFiltersPresented = false
+
+    var body: some View {
+        List {
+            LivePacketFeedHeader(
+                isConnected: liveFeed.isConnected,
+                isPaused: selectedGroupID != nil,
+                isCompact: true,
+                transmissionCount: feedModel.groups.count,
+                observationCount: feedModel.groups.reduce(0) { $0 + $1.observationCount },
+                scope: selectedGroupID == nil
+                    ? regionFilter.selectedRegion.map(regionFilter.label(for:)) ?? String(localized: "Entire network")
+                    : String(localized: "Replay paused")
+            )
+            .packetFeedListRow(top: 14, bottom: 10)
+
+            Section {
+                ForEach(feedModel.groups) { group in
+                    Button {
+                        select(group)
+                    } label: {
+                        LivePacketRow(group: group, isSelected: selectedGroupID == group.id)
+                    }
+                    .buttonStyle(.plain)
+                    .packetFeedListRow()
+                    .accessibilityHint(selectedGroupID == group.id
+                        ? "Returns the map to live traffic"
+                        : "Pauses the feed and replays this route on the map")
+                }
+            } header: {
+                Text(selectedGroupID == nil ? "Incoming Traffic" : "Replay Paused")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+            }
+        }
+        .iPadSidebarListStyle()
+        .floatingDockScrollClearance()
+        .navigationTitle("Live Packets")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let selectedGroup {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        LivePacketDetailScreen(group: selectedGroup)
+                    } label: {
+                        Image(systemName: "info.circle")
+                    }
+                    .accessibilityLabel("Show selected packet details")
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { isFiltersPresented = true } label: {
+                    Image(systemName: filterType == nil
+                        ? "line.3.horizontal.decrease.circle"
+                        : "line.3.horizontal.decrease.circle.fill")
+                }
+                .accessibilityLabel("Filter live packets")
+            }
+        }
+        .overlay {
+            if feedModel.groups.isEmpty && (regionFilter.selectedRegion == nil || observerRegionLookup.isLoaded) {
+                ContentUnavailableView(
+                    liveFeed.isConnected ? "Waiting for Packets" : "Not Connected",
+                    systemImage: "dot.radiowaves.left.and.right"
+                )
+            }
+        }
+        .sheet(isPresented: $isFiltersPresented) {
+            LivePacketFiltersSheet(filterType: $filterType)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+        .task { rebuildGroups() }
+        .onChange(of: liveFeed.eventSequence) { rebuildGroupsUnlessPaused() }
+        .onChange(of: regionFilter.selectedRegion) { resumeLiveFeed() }
+        .onChange(of: filterType) { resumeLiveFeed() }
+        .onChange(of: observerRegionLookup.isLoaded) { rebuildGroupsUnlessPaused() }
+        .onChange(of: replayStore.isReplayActive) { _, isActive in
+            if !isActive, selectedGroupID != nil {
+                selectedGroupID = nil
+                rebuildGroups()
+            }
+        }
+    }
+
+    private func select(_ group: LiveObservationGroup) {
+        if selectedGroupID == group.id {
+            replayStore.stopReplay()
+            selectedGroupID = nil
+            rebuildGroups()
+            return
+        }
+
+        guard !group.replayRoutes.isEmpty else { return }
+        selectedGroupID = group.id
+        let data = group.latestData
+        replayStore.replay(
+            routes: group.replayRoutes,
+            packetHash: data.hash ?? group.id,
+            observedAt: group.latestReceivedAt,
+            snr: data.snr,
+            rssi: data.rssi,
+            sender: data.decoded?.payload?.name,
+            messageText: data.decoded?.payload?.text
+        )
+    }
+
+    private func rebuildGroupsUnlessPaused() {
+        guard selectedGroupID == nil else { return }
+        rebuildGroups()
+    }
+
+    private func resumeLiveFeed() {
+        replayStore.stopReplay()
+        selectedGroupID = nil
+        rebuildGroups()
+    }
+
+    private func rebuildGroups() {
+        feedModel.rebuild(
+            events: liveFeed.recentEvents,
+            filterType: filterType,
+            selectedRegion: regionFilter.selectedRegion,
+            regionByObserverID: observerRegionLookup.iataById
+        )
+    }
+
+    private var selectedGroup: LiveObservationGroup? {
+        guard let selectedGroupID else { return nil }
+        return feedModel.groups.first { $0.id == selectedGroupID }
+    }
+}
+
 struct PacketFeedScreen: View {
     @Environment(LiveFeedService.self) private var liveFeed
     @Environment(RegionFilterStore.self) private var regionFilter
@@ -13,6 +196,8 @@ struct PacketFeedScreen: View {
         List {
             LivePacketFeedHeader(
                 isConnected: liveFeed.isConnected,
+                isPaused: false,
+                isCompact: false,
                 transmissionCount: feedModel.groups.count,
                 observationCount: feedModel.groups.reduce(0) { $0 + $1.observationCount },
                 scope: regionFilter.selectedRegion.map(regionFilter.label(for:)) ?? String(localized: "Entire network")
@@ -177,6 +362,23 @@ private struct LiveObservationGroup: Identifiable {
         observations.compactMap { $0.data }.map(Self.path).max { $0.count < $1.count } ?? []
     }
 
+    var replayRoutes: [[String]] {
+        var seen = Set<[String]>()
+        let routes = observations
+            .compactMap { $0.data?.resolvedPath?.compactMap { $0 } }
+            .filter { route in
+                guard route.count >= 2 else { return false }
+                return seen.insert(route.map { $0.lowercased() }).inserted
+            }
+            .sorted { $0.count > $1.count }
+
+        return routes.filter { candidate in
+            !routes.contains { route in
+                route.count > candidate.count && Self.routeContains(route, candidate)
+            }
+        }
+    }
+
     var hopCount: Int { longestPath.count }
 
     var preview: String {
@@ -196,11 +398,23 @@ private struct LiveObservationGroup: Identifiable {
               let hops = try? JSONDecoder().decode([String].self, from: jsonData) else { return [] }
         return hops
     }
+
+    private static func routeContains(_ route: [String], _ candidate: [String]) -> Bool {
+        guard candidate.count <= route.count else { return false }
+        let route = route.map { $0.lowercased() }
+        let candidate = candidate.map { $0.lowercased() }
+        for start in 0...(route.count - candidate.count) {
+            if Array(route[start..<(start + candidate.count)]) == candidate { return true }
+        }
+        return false
+    }
 }
 
 private struct LivePacketFeedHeader: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let isConnected: Bool
+    let isPaused: Bool
+    let isCompact: Bool
     let transmissionCount: Int
     let observationCount: Int
     let scope: String
@@ -209,24 +423,34 @@ private struct LivePacketFeedHeader: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 7) {
                 Circle()
-                    .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
+                    .fill(isPaused ? NodeScopeStyle.activity : isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
                     .frame(width: 8, height: 8)
-                Text(isConnected ? "Listening for live traffic" : "Reconnecting to analyzer")
+                Text(isPaused
+                    ? "Paused for route replay"
+                    : isConnected ? "Listening for live traffic" : "Reconnecting to analyzer")
                     .font(.subheadline.weight(.semibold))
             }
-            Group {
-                if dynamicTypeSize.isAccessibilitySize {
-                    VStack(alignment: .leading, spacing: 8) {
-                        feedSummary
-                    }
-                } else {
-                    HStack(spacing: 10) {
-                        feedSummary
+            if isCompact {
+                LivePacketCompactSummary(
+                    transmissionCount: transmissionCount,
+                    observationCount: observationCount,
+                    scope: scope
+                )
+            } else {
+                Group {
+                    if dynamicTypeSize.isAccessibilitySize {
+                        VStack(alignment: .leading, spacing: 8) {
+                            feedSummary
+                        }
+                    } else {
+                        HStack(spacing: 10) {
+                            feedSummary
+                        }
                     }
                 }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
         }
         .padding(14)
         .instrumentCard()
@@ -240,8 +464,27 @@ private struct LivePacketFeedHeader: View {
     }
 }
 
+private struct LivePacketCompactSummary: View {
+    let transmissionCount: Int
+    let observationCount: Int
+    let scope: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Label(scope, systemImage: "globe.americas.fill")
+                .lineLimit(1)
+            Spacer(minLength: 0)
+            Label("\(transmissionCount)", systemImage: "waveform.path.ecg")
+            Label("\(observationCount)", systemImage: "eye")
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    }
+}
+
 private struct LivePacketRow: View {
     let group: LiveObservationGroup
+    var isSelected = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -300,7 +543,7 @@ private struct LivePacketRow: View {
                 .frame(width: 4)
                 .padding(.vertical, 5)
         }
-        .instrumentCard()
+        .instrumentCard(isSelected: isSelected)
         .accessibilityElement(children: .combine)
     }
 
@@ -519,30 +762,7 @@ private struct LivePacketDetailScreen: View {
     }
 
     private var replayRoutes: [[String]] {
-        var seen = Set<[String]>()
-        let routes = group.observations
-            .compactMap { $0.data?.resolvedPath?.compactMap { $0 } }
-            .filter { route in
-                guard route.count >= 2 else { return false }
-                return seen.insert(route.map { $0.lowercased() }).inserted
-            }
-            .sorted { $0.count > $1.count }
-
-        return routes.filter { candidate in
-            !routes.contains { route in
-                route.count > candidate.count && routeContains(route, candidate)
-            }
-        }
-    }
-
-    private func routeContains(_ route: [String], _ candidate: [String]) -> Bool {
-        guard candidate.count <= route.count else { return false }
-        let route = route.map { $0.lowercased() }
-        let candidate = candidate.map { $0.lowercased() }
-        for start in 0...(route.count - candidate.count) {
-            if Array(route[start..<(start + candidate.count)]) == candidate { return true }
-        }
-        return false
+        group.replayRoutes
     }
 
     private func replayOnMap() {

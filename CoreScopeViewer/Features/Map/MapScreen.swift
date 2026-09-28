@@ -53,6 +53,7 @@ struct MapScreen: View {
     @State private var highlightedNodeID: String?
     @State private var lastHandledNavigationRequestID: UUID?
     @State private var isMapCameraMoving = false
+    @State private var mapViewportSize = CGSize.zero
 
     // The map remains edge-to-edge, while interactive controls sit above the
     // app-level floating dock rendered by RootTabView.
@@ -141,13 +142,19 @@ struct MapScreen: View {
 
     var body: some View {
         NavigationStack {
-            TimelineView(
-                .animation(
-                    minimumInterval: mapUpdateInterval,
-                    paused: !isTabActive || !pingsForDisplay.contains { !$0.isExpired() }
-                )
-            ) { context in
-                mapContent(at: context.date)
+            GeometryReader { geometry in
+                TimelineView(
+                    .animation(
+                        minimumInterval: mapUpdateInterval,
+                        paused: !isTabActive || !pingsForDisplay.contains { !$0.isExpired() }
+                    )
+                ) { context in
+                    mapContent(at: context.date)
+                }
+                .onAppear { mapViewportSize = geometry.size }
+                .onChange(of: geometry.size) { _, size in
+                    mapViewportSize = size
+                }
             }
                 .mapScope(mapScope)
                 .toolbar {
@@ -427,6 +434,9 @@ struct MapScreen: View {
         }
         .onChange(of: packetReplayStore.requestID) {
             queuePacketReplay()
+        }
+        .onChange(of: packetReplayStore.stopRequestID) {
+            stopPacketReplay()
         }
         .onChange(of: isTabActive) { _, isActive in
             guard isActive, !packetReplayStore.routes.isEmpty else { return }
@@ -979,8 +989,8 @@ struct MapScreen: View {
             .accessibilityLabel(isReplayPlaying ? "Replay in progress" : "Play replay again")
 
             Button("Live") {
-                isReplayMode = false
-                replayPings = []
+                packetReplayStore.stopReplay()
+                stopPacketReplay()
             }
             .font(.caption.weight(.semibold))
             .foregroundStyle(mapControlAccentColor)
@@ -1267,6 +1277,12 @@ struct MapScreen: View {
         replayPendingPacketIfNeeded()
     }
 
+    private func stopPacketReplay() {
+        pendingReplayRequestID = nil
+        replayPings = []
+        isReplayMode = false
+    }
+
     private func replayPendingPacketIfNeeded() {
         guard pendingReplayRequestID == packetReplayStore.requestID else { return }
         guard currentRouteCoordinates().count >= 2 else { return }
@@ -1366,23 +1382,30 @@ struct MapScreen: View {
         let minimumY = points.map(\.y).min() ?? firstPoint.y
         let maximumY = points.map(\.y).max() ?? firstPoint.y
 
-        // Keep short routes from being framed too tightly, then leave extra
-        // room below the route for replay controls. MapKit fits this rectangle
-        // to the actual viewport, so the result also adapts to iPad aspect ratios.
+        // Keep short routes from being framed too tightly, then derive the
+        // camera rectangle from the actual viewport. The asymmetric vertical
+        // margins reserve screen space below the route for replay controls.
         let minimumDimension = MKMapPointsPerMeterAtLatitude(firstCoordinate.latitude) * 5_000
         let routeWidth = max(maximumX - minimumX, minimumDimension)
         let routeHeight = max(maximumY - minimumY, minimumDimension)
         let centerX = (minimumX + maximumX) / 2
         let centerY = (minimumY + maximumY) / 2
-        let horizontalPadding = routeWidth * 0.18
-        let topPadding = routeHeight * 0.18
-        let bottomPadding = routeHeight * 0.42
+        let viewportWidth = max(Double(mapViewportSize.width), 1)
+        let viewportHeight = max(Double(mapViewportSize.height), 1)
+        let horizontalMarginFraction = 0.12
+        let topMarginFraction = 0.12
+        let bottomMarginFraction = 0.32
+        let availableWidth = viewportWidth * (1 - horizontalMarginFraction * 2)
+        let availableHeight = viewportHeight * (1 - topMarginFraction - bottomMarginFraction)
+        let mapPointsPerPoint = max(routeWidth / availableWidth, routeHeight / availableHeight)
+        let fittedWidth = viewportWidth * mapPointsPerPoint
+        let fittedHeight = viewportHeight * mapPointsPerPoint
 
         return MKMapRect(
-            x: centerX - routeWidth / 2 - horizontalPadding,
-            y: centerY - routeHeight / 2 - topPadding,
-            width: routeWidth + horizontalPadding * 2,
-            height: routeHeight + topPadding + bottomPadding
+            x: centerX - fittedWidth / 2,
+            y: centerY - routeHeight / 2 - fittedHeight * topMarginFraction,
+            width: fittedWidth,
+            height: fittedHeight
         )
     }
 

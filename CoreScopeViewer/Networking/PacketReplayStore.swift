@@ -5,6 +5,8 @@ import Observation
 @MainActor
 final class PacketReplayStore {
     private(set) var requestID = UUID()
+    private(set) var stopRequestID = UUID()
+    private(set) var isReplayActive = false
     private(set) var routes: [[String]] = []
     private(set) var selectedRouteIndex = 0
     private(set) var packetHash = ""
@@ -36,7 +38,14 @@ final class PacketReplayStore {
         self.rssi = rssi
         self.sender = sender
         self.messageText = messageText
+        isReplayActive = true
         requestID = UUID()
+    }
+
+    func stopReplay() {
+        guard isReplayActive else { return }
+        isReplayActive = false
+        stopRequestID = UUID()
     }
 
     func selectRoute(at index: Int) {

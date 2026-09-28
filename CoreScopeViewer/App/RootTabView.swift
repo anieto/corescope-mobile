@@ -42,7 +42,10 @@ struct RootTabView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            MapScreen(isTabActive: selectedTab == .map, resetID: resetIDs[.map] ?? UUID())
+            MapPacketWorkspaceScreen(
+                isTabActive: selectedTab == .map,
+                resetID: resetIDs[.map] ?? UUID()
+            )
                 .toolbar(.hidden, for: .tabBar)
                 .tabItem { Label("Map", systemImage: "map") }
                 .tag(Tab.map)
