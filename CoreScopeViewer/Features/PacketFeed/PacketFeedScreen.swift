@@ -51,6 +51,7 @@ private struct MapLivePacketSidebar: View {
     @State private var filterType: Int?
     @State private var selectedGroupID: LiveObservationGroup.ID?
     @State private var isFiltersPresented = false
+    @State private var keepsSelectionWhenReplayStops = false
 
     var body: some View {
         List {
@@ -62,7 +63,9 @@ private struct MapLivePacketSidebar: View {
                 observationCount: feedModel.groups.reduce(0) { $0 + $1.observationCount },
                 scope: selectedGroupID == nil
                     ? regionFilter.selectedRegion.map(regionFilter.label(for:)) ?? String(localized: "Entire network")
-                    : String(localized: "Replay paused")
+                    : selectedGroup?.replayRoutes.isEmpty == false
+                        ? String(localized: "Replay paused")
+                        : String(localized: "Packet selected")
             )
             .packetFeedListRow(top: 14, bottom: 10)
 
@@ -75,12 +78,10 @@ private struct MapLivePacketSidebar: View {
                     }
                     .buttonStyle(.plain)
                     .packetFeedListRow()
-                    .accessibilityHint(selectedGroupID == group.id
-                        ? "Returns the map to live traffic"
-                        : "Pauses the feed and replays this route on the map")
+                    .accessibilityHint(accessibilityHint(for: group))
                 }
             } header: {
-                Text(selectedGroupID == nil ? "Incoming Traffic" : "Replay Paused")
+                Text(selectedGroupID == nil ? "Incoming Traffic" : "Packet Selected")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(.secondary)
                     .textCase(.uppercase)
@@ -106,6 +107,7 @@ private struct MapLivePacketSidebar: View {
                     Image(systemName: filterType == nil
                         ? "line.3.horizontal.decrease.circle"
                         : "line.3.horizontal.decrease.circle.fill")
+                        .foregroundStyle(.primary)
                 }
                 .accessibilityLabel("Filter live packets")
             }
@@ -130,6 +132,10 @@ private struct MapLivePacketSidebar: View {
         .onChange(of: observerRegionLookup.isLoaded) { rebuildGroupsUnlessPaused() }
         .onChange(of: replayStore.isReplayActive) { _, isActive in
             if !isActive, selectedGroupID != nil {
+                if keepsSelectionWhenReplayStops {
+                    keepsSelectionWhenReplayStops = false
+                    return
+                }
                 selectedGroupID = nil
                 rebuildGroups()
             }
@@ -144,8 +150,15 @@ private struct MapLivePacketSidebar: View {
             return
         }
 
-        guard !group.replayRoutes.isEmpty else { return }
         selectedGroupID = group.id
+        guard !group.replayRoutes.isEmpty else {
+            if replayStore.isReplayActive {
+                keepsSelectionWhenReplayStops = true
+                replayStore.stopReplay()
+            }
+            return
+        }
+
         let data = group.latestData
         replayStore.replay(
             routes: group.replayRoutes,
@@ -161,6 +174,16 @@ private struct MapLivePacketSidebar: View {
     private func rebuildGroupsUnlessPaused() {
         guard selectedGroupID == nil else { return }
         rebuildGroups()
+    }
+
+    private func accessibilityHint(for group: LiveObservationGroup) -> LocalizedStringKey {
+        if selectedGroupID == group.id {
+            return "Returns to live traffic"
+        }
+        if group.replayRoutes.isEmpty {
+            return "Pauses the feed and makes packet details available"
+        }
+        return "Pauses the feed, selects this packet, and replays its route on the map"
     }
 
     private func resumeLiveFeed() {
@@ -242,6 +265,7 @@ struct PacketFeedScreen: View {
                     Image(systemName: activeFilterCount == 0
                         ? "line.3.horizontal.decrease.circle"
                         : "line.3.horizontal.decrease.circle.fill")
+                        .foregroundStyle(.primary)
                 }
                 .accessibilityLabel("Filter live packets")
                 .accessibilityValue(activeFilterCount == 0 ? "No filters active" : "\(activeFilterCount) active")
@@ -646,13 +670,16 @@ private struct LivePacketFiltersSheet: View {
         Button(action: action) {
             HStack {
                 Text(title)
+                    .foregroundStyle(.primary)
                 Spacer()
                 if isSelected {
                     Image(systemName: "checkmark")
                         .foregroundStyle(NodeScopeStyle.signal)
                 }
             }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
 }
 

@@ -38,6 +38,7 @@ struct RegionFilterMenu: View {
                         .font(.caption.weight(.semibold))
                 }
             }
+            .foregroundStyle(.primary)
         }
     }
 }

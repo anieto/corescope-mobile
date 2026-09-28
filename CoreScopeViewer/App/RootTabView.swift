@@ -193,6 +193,7 @@ private struct FloatingTabItems: View {
                     .foregroundStyle(selectedTab == tab ? Color.white : Color.secondary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
+                    .contentShape(Rectangle())
                     .nodeScopeSelectedGlass(
                         isSelected: selectedTab == tab,
                         cornerRadius: 16,

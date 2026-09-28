@@ -2504,7 +2504,7 @@ private struct MapNodeFilterButton: View {
                 }
             }
             .font(.body.weight(.semibold))
-            .foregroundStyle(isFiltering ? NodeScopeStyle.signal : Color.primary)
+            .foregroundStyle(.primary)
             .frame(minWidth: 34, minHeight: 34)
             .padding(.horizontal, isFiltering ? 8 : 0)
             .nodeScopeFloatingGlass(cornerRadius: 20)

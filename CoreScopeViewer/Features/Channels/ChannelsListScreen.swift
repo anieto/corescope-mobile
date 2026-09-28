@@ -459,7 +459,7 @@ private struct ChannelsHeader: View {
                         }
                     }
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(NodeScopeStyle.signal)
+                    .foregroundStyle(.primary)
                     .padding(.horizontal, filterCount > 0 ? 10 : 0)
                     .frame(minWidth: 40, minHeight: 40)
                     .nodeScopeFloatingGlass(cornerRadius: 20)
@@ -508,6 +508,7 @@ private struct ChannelFiltersSheet: View {
                     } label: {
                         HStack {
                             Label("Region", systemImage: "globe.americas")
+                                .foregroundStyle(.primary)
                             Spacer()
                             Text(regionFilter.selectedRegion.map(regionFilter.label(for:)) ?? "Entire Network")
                                 .foregroundStyle(.secondary)
@@ -521,7 +522,11 @@ private struct ChannelFiltersSheet: View {
                         sourceFilter = option
                     } label: {
                         Label(option.title, systemImage: sourceFilter == option ? "checkmark" : "tray.full")
+                            .foregroundStyle(.primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                 }
             }
 
@@ -531,7 +536,11 @@ private struct ChannelFiltersSheet: View {
                         activityFilter = option
                     } label: {
                         Label(option.title, systemImage: activityFilter == option ? "checkmark" : "clock")
+                            .foregroundStyle(.primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                 }
             }
 
@@ -541,7 +550,11 @@ private struct ChannelFiltersSheet: View {
                         sortOption = option
                     } label: {
                         Label(option.title, systemImage: sortOption == option ? "checkmark" : "arrow.up.arrow.down")
+                            .foregroundStyle(.primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                 }
             }
             }

@@ -106,6 +106,22 @@ On iPhone and narrow iPad windows:
 - Split sidebar, empty-detail, and detail regions into separate `View` types with narrow inputs.
 - Ensure live data updates do not reset selection, scrolling, or row state.
 
+## Mac Roadmap
+
+The app remains a Designed-for-iPad app on Apple silicon Macs. Basic window resizing is enabled by supporting iPad multitasking and not requiring full-screen presentation.
+
+Future Mac usability work:
+
+- Test wide, narrow, tall, and short Mac windows and define a practical minimum window size if needed.
+- Tune the floating tab dock for short and narrow windows.
+- Prevent map controls, replay controls, and packet controls from colliding as the window resizes.
+- Verify smooth transitions between split-view and compact navigation at intermediate widths.
+- Constrain sheets and detail content that become excessively wide on large displays.
+- Audit iPad-specific status-bar and window-control spacing when running on macOS.
+- Add keyboard shortcuts, pointer hover states, and menu commands where they improve desktop workflows.
+- Consider multiple-window support only after the single-window experience is polished.
+- Reconsider Mac Catalyst or a native macOS destination only if the Designed-for-iPad experience becomes too limiting.
+
 ## Implementation Order
 
 1. Create the shared adaptive list/detail structure.
@@ -123,6 +139,7 @@ On iPhone and narrow iPad windows:
 - iPad portrait and landscape.
 - iPad one-third, half, and two-thirds Split View widths.
 - Stage Manager window resizing.
+- Designed-for-iPad app on Apple silicon Mac at minimum, intermediate, maximized, and full-screen window sizes.
 - Rotation or resizing while a detail is selected.
 - Analyzer changes and explicit tab resets.
 - Channel and observer deep links.

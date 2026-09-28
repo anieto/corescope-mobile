@@ -338,7 +338,7 @@ private struct ObserversHeader: View {
                         }
                     }
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(NodeScopeStyle.signal)
+                    .foregroundStyle(.primary)
                     .padding(.horizontal, filterCount > 0 ? 10 : 0)
                     .frame(minWidth: 40, minHeight: 40)
                     .nodeScopeFloatingGlass(cornerRadius: 20)
@@ -378,6 +378,7 @@ private struct ObserverFiltersSheet: View {
                     } label: {
                         HStack {
                             Label("Region", systemImage: "globe.americas")
+                                .foregroundStyle(.primary)
                             Spacer()
                             Text(regionFilter.selectedRegion.map(regionFilter.label(for:)) ?? "Entire Network")
                                 .foregroundStyle(.secondary)
@@ -391,7 +392,11 @@ private struct ObserverFiltersSheet: View {
                             activityFilter = option
                         } label: {
                             Label(option.title, systemImage: activityFilter == option ? "checkmark" : "clock")
+                                .foregroundStyle(.primary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
                     }
                 }
 
@@ -400,13 +405,21 @@ private struct ObserverFiltersSheet: View {
                         selectedModel = nil
                     } label: {
                         Label("All Models", systemImage: selectedModel == nil ? "checkmark" : "cpu")
+                            .foregroundStyle(.primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                     ForEach(availableModels, id: \.self) { model in
                         Button {
                             selectedModel = model
                         } label: {
                             Label(model, systemImage: selectedModel == model ? "checkmark" : "cpu")
+                                .foregroundStyle(.primary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
                     }
                 }
 
@@ -416,7 +429,11 @@ private struct ObserverFiltersSheet: View {
                             sortOption = option
                         } label: {
                             Label(option.title, systemImage: sortOption == option ? "checkmark" : "arrow.up.arrow.down")
+                                .foregroundStyle(.primary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
                     }
                 }
             }
