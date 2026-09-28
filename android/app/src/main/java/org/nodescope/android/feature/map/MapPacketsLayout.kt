@@ -48,7 +48,9 @@ private const val PANEL_OPEN_KEY = "packets-panel-open"
 @Composable
 fun MapPacketsLayout(
     feed: LiveFeedState, onReconnect: () -> Unit,
-    selectedId: String?, onSelect: (id: String?, routes: List<List<String>>) -> Unit, onDetails: (String) -> Unit,
+    selectedId: String?, onSelect: (id: String?, hash: String?, routes: List<List<String>>) -> Unit, onDetails: (String) -> Unit,
+    /** The packet whose route is on the map, and one whose full routes are still being fetched. */
+    replayingId: String? = null, lookingUpId: String? = null,
     map: @Composable (onShowPackets: (() -> Unit)?) -> Unit,
 ) {
     val context = LocalContext.current
@@ -88,12 +90,12 @@ fun MapPacketsLayout(
                     PacketScreen(feed, onReconnect, selectedId = selectedId,
                         onGroup = { id ->
                             // Tapping the selected packet again deselects it (and ends its replay).
-                            if (selectedId == id) onSelect(null, emptyList()) else {
+                            if (selectedId == id) onSelect(null, null, emptyList()) else {
                                 val group = groupTransmissions(feed.visiblePackets, null, feed.observers).firstOrNull { it.id == id }
-                                onSelect(id, group?.let(::replayRoutes).orEmpty())
+                                onSelect(id, group?.latest?.hash?.takeIf(String::isNotBlank), group?.let(::replayRoutes).orEmpty())
                             }
                         },
-                        selectedActions = { group -> SelectedPacketActions(group, onDetails) })
+                        selectedActions = { group -> SelectedPacketActions(group, replaying = group.id == replayingId, lookingUp = group.id == lookingUpId, onDetails) })
                 }
             }
             Spacer(Modifier.width(PaneGap))
@@ -107,10 +109,9 @@ fun MapPacketsLayout(
  * left to the map's replay controls, which also restart it and choose between routes.
  */
 @Composable
-private fun SelectedPacketActions(group: TransmissionGroup, onDetails: (String) -> Unit) {
-    val hasRoute = remember(group) { replayRoutes(group).isNotEmpty() }
+private fun SelectedPacketActions(group: TransmissionGroup, replaying: Boolean, lookingUp: Boolean, onDetails: (String) -> Unit) {
     Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(if (hasRoute) "Route on the map" else "No route to show", Modifier.weight(1f),
+        Text(when { replaying -> "Route on the map"; lookingUp -> "Looking for routes…"; else -> "No route to show" }, Modifier.weight(1f),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         TextButton(onClick = { onDetails(group.id) }) { Text("Details") }
     }

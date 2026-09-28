@@ -80,6 +80,20 @@ fun distinctRoutes(paths: List<List<String?>>): List<List<String>> {
     }
 }
 
+/**
+ * Adds a packet's complete routes (from its full observation list) to the routes a replay started
+ * with. The existing routes keep their order, so the one playing stays put. Only routes that are
+ * new and not already contained in one of them are appended.
+ */
+fun mergeReplayRoutes(existing: List<List<String>>, complete: List<List<String>>): List<List<String>> {
+    val known = existing.map { route -> route.map(String::lowercase) }
+    val added = complete.filter { candidate ->
+        val lower = candidate.map(String::lowercase)
+        known.none { route -> route.size >= lower.size && route.windowed(lower.size).any { it == lower } }
+    }
+    return existing + added
+}
+
 /** Coordinates for a route of public keys; an unknown or unplaced node breaks the chain rather than bridging it. */
 fun routeSubchains(route: List<String>, nodes: List<MeshNode>): List<List<Coordinate>> {
     val lookup = nodes.associateBy { it.publicKey.lowercase() }

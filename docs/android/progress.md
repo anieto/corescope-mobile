@@ -746,3 +746,13 @@ how to use.
   "Show N new packets" button that brings them in without ending the replay. It resumes when
   the selection ends (tap the row again, Return to live / ✕, region change), not when the
   replay animation finishes; the section label reads "Incoming traffic · paused" meanwhile.
+- Replay route choice from the live packets panel: "Recent" rows come from the REST feed,
+  which is one row per packet with a single resolved path (e.g. 24 observations, 1 route),
+  so their replays never offered the route picker. iOS builds its live list from socket
+  frames only, one per observer, so it had every route. Selecting a panel packet now starts
+  the replay with the row's routes, then fetches `/api/packets/{hash}` and merges the full
+  observation routes (region-filtered) into the running replay: the playing route stays
+  first and new ones are appended (`mergeReplayRoutes`, tested). A row with no route but
+  routes in the full data starts its replay when they arrive ("Looking for routes…" meanwhile).
+- Packet details (Packets tab) load the packet's full observation routes too, so "Recent"
+  packets offer every route in the route dropdown; the feed's routes keep their numbers.

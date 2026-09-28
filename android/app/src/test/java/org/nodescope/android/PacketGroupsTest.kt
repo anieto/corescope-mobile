@@ -89,4 +89,14 @@ class PacketGroupsTest {
         assertEquals(3, groups.map { it.id }.toSet().size)
         assertTrue(groups.any { it.id == "aa" }) // the first transmission keeps its plain hash
     }
+
+    @Test
+    fun fullRoutesAreAddedAfterThePlayingOne() {
+        val playing = listOf("a", "b", "c")
+        val complete = listOf(listOf("x", "a", "b", "c"), listOf("d", "e"), listOf("A", "B"))
+        // The playing route stays first even though a longer route contains it; routes already
+        // covered by an existing one aren't added twice.
+        assertEquals(listOf(playing, listOf("x", "a", "b", "c"), listOf("d", "e")), mergeReplayRoutes(listOf(playing), complete))
+        assertEquals(listOf(playing), mergeReplayRoutes(listOf(playing), listOf(listOf("B", "c"))))
+    }
 }

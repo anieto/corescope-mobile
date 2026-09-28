@@ -27,7 +27,10 @@ import org.nodescope.android.core.network.LiveFeedState
  * (with node names where known) and a map replay of a resolved route, then the raw bytes.
  */
 @Composable
-fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNode>, onReplay: (routes: List<List<String>>, selected: Int) -> Unit) {
+fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNode>,
+    /** The packet's routes from its full observation list; "Recent" rows carry only one. */
+    loadRoutes: suspend (hash: String) -> List<List<String>> = { emptyList() },
+    onReplay: (routes: List<List<String>>, selected: Int) -> Unit) {
     // Keep the last known version if the transmission ages out of the bounded feed while open.
     var group by remember { mutableStateOf<TransmissionGroup?>(null) }
     val current = remember(feed.visiblePackets, feed.observers) { groupTransmissions(feed.visiblePackets, null, feed.observers).firstOrNull { it.id == groupId } }
@@ -36,7 +39,10 @@ fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNod
         Text("This packet is no longer in the recent feed.", style = MaterialTheme.typography.bodyMedium)
     }
     val latest = shown.latest
-    val routes = remember(shown) { replayRoutes(shown) }
+    var fullRoutes by remember { mutableStateOf<List<List<String>>>(emptyList()) }
+    LaunchedEffect(latest.hash) { if (latest.hash.isNotBlank()) fullRoutes = loadRoutes(latest.hash) }
+    // The feed's routes come first, so a route already chosen keeps its number as more load.
+    val routes = remember(shown, fullRoutes) { mergeReplayRoutes(replayRoutes(shown), fullRoutes) }
     var selectedRoute by rememberSaveable { mutableIntStateOf(0) }
     val nodesByKey = remember(nodes) { nodes.associateBy { it.publicKey.lowercase() } }
     val tone = packetTone(shown.typeName)

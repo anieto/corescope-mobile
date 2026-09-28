@@ -40,6 +40,7 @@ import androidx.navigation.compose.*
 import androidx.navigation.toRoute
 import kotlinx.serialization.Serializable
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import org.nodescope.android.R
 import org.nodescope.android.core.network.SessionState
 import org.nodescope.android.core.network.LiveFeedState
@@ -48,6 +49,8 @@ import org.nodescope.android.feature.packets.PacketDetailScreen
 import org.nodescope.android.feature.packets.MessagePacketScreen
 import org.nodescope.android.feature.packets.PacketDetailViewModel
 import org.nodescope.android.feature.packets.routeSubchains
+import org.nodescope.android.feature.packets.distinctRoutes
+import org.nodescope.android.feature.packets.mergeReplayRoutes
 import androidx.compose.ui.text.style.TextOverflow
 import org.nodescope.android.core.storage.AppPreferences
 import org.nodescope.android.feature.explore.*
@@ -211,14 +214,48 @@ internal fun AppShell(
     // A packet picked in the map's live packets panel that has no route to replay; a packet
     // with a route is highlighted through `replay` instead, so the panel always matches the map.
     var panelPacket by remember { mutableStateOf<String?>(null) }
-    fun startReplay(routes: List<List<String>>, selected: Int, packetId: String? = null) {
+    fun placedRoutes(routes: List<List<String>>): List<ReplayRoute> {
         val nodes = state.snapshot?.nodes.orEmpty()
         val lookup = nodes.associateBy { it.publicKey.lowercase() }
-        replay = RouteReplay(System.nanoTime(), routes.map { route ->
-            ReplayRoute(routeSubchains(route, nodes), route.mapNotNull { lookup[it.lowercase()] }, route.size - 1)
-        }, selected, packetId)
+        return routes.map { route -> ReplayRoute(routeSubchains(route, nodes), route.mapNotNull { lookup[it.lowercase()] }, route.size - 1) }
+    }
+    fun startReplay(routes: List<List<String>>, selected: Int, packetId: String? = null) {
+        replay = RouteReplay(System.nanoTime(), placedRoutes(routes), selected, packetId, routes)
         panelPacket = null
         selectTab(Destination.MAP)
+    }
+    // Live-list rows carry only the routes the app has seen: one per observer report on the
+    // socket, and just one for "Recent" rows loaded from history (the REST feed is one row per
+    // packet). The packet's full observation list fills in the rest, as its details screen does.
+    val routeScope = rememberCoroutineScope()
+    var routeLookup by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    var lookingUp by remember { mutableStateOf<String?>(null) }
+    /** A packet's distinct routes from its full observation list, limited to the selected region. */
+    suspend fun fullRoutes(host: String, region: String?, hash: String): List<List<String>> {
+        val detail = browse?.let { repository -> runCatching { repository.packetDetail(host, hash) }.getOrNull() } ?: return emptyList()
+        val observations = detail.observations.filter { region == null || it.observerIata.equals(region, true) }
+        return distinctRoutes(observations.map { it.resolvedPath.orEmpty() })
+    }
+    fun completeRoutes(id: String, hash: String) {
+        if (browse == null) return
+        val host = preferences.host
+        val region = preferences.region
+        routeLookup?.cancel()
+        lookingUp = id
+        routeLookup = routeScope.launch {
+            val complete = fullRoutes(host, region, hash)
+            if (lookingUp == id) lookingUp = null
+            if (complete.isEmpty() || host != preferences.host) return@launch
+            val current = replay
+            when {
+                // Same replay, same id: routes are added after the one playing, which keeps going.
+                current?.packetId == id -> mergeReplayRoutes(current.keys, complete).takeIf { it.size > current.keys.size }?.let { merged ->
+                    replay = current.copy(routes = placedRoutes(merged), keys = merged)
+                }
+                // Selected with no route in its row, but the full list has one.
+                panelPacket == id -> startReplay(complete, 0, id)
+            }
+        }
     }
     // Open a `nodescope://` link on the same tab iOS uses. Detail screens load their own data by
     // identifier and explain when it isn't on the selected analyzer (links carry no source).
@@ -239,7 +276,7 @@ internal fun AppShell(
         onLinkHandled(pending.id)
     }
     // A replayed route belongs to the region it was chosen in.
-    LaunchedEffect(preferences.region) { replay = null; panelPacket = null }
+    LaunchedEffect(preferences.region) { replay = null; panelPacket = null; routeLookup?.cancel(); lookingUp = null }
     val regionControl: @Composable () -> Unit = { RegionMenu(preferences, state) { focusedNode = null; focusedPosition = null; onRegion(it) } }
     val headerlessTabs = listOf(Destination.MAP.name, Destination.EXPLORE.name, Destination.CHANNELS.name, Destination.OBSERVERS.name, Destination.SETTINGS.name)
     // These destinations supply a toolbar inside their detail pane on every window size.
@@ -356,13 +393,16 @@ internal fun AppShell(
                             // Wide screens add the live packet feed beside it; a tapped packet replays
                             // its routes, or opens its details when none can be drawn.
                             MapPacketsLayout(feed, onReconnect, selectedId = replay?.packetId ?: panelPacket,
-                                onSelect = { id, routes ->
+                                replayingId = replay?.packetId, lookingUpId = lookingUp,
+                                onSelect = { id, hash, routes ->
+                                    routeLookup?.cancel(); lookingUp = null
                                     when {
                                         id == null -> { replay = null; panelPacket = null }
                                         routes.isNotEmpty() -> startReplay(routes, 0, id)
-                                        // Nothing to draw: end any replay so the map doesn't keep an unrelated route.
+                                        // Nothing to draw yet: end any replay so the map doesn't keep an unrelated route.
                                         else -> { replay = null; panelPacket = id }
                                     }
+                                    if (id != null && hash != null) completeRoutes(id, hash)
                                 }, onDetails = { nav.navigate(PacketDetailRoute(it)) }) { onShowPackets ->
                             MapScreen(state.snapshot?.takeIf { state.selection?.host == preferences.host }, focusedNode, ::openNode, feed = feed, onRefresh = onRefresh, regionControl = { RegionMenu(preferences, state) { focusedNode = null; focusedPosition = null; onRegion(it) } }, focusedCoordinate = focusedPosition?.let { org.nodescope.android.core.model.Coordinate.gps(it[0], it[1]) }, selectedRegion = preferences.region, sourceViewport = sourceViewport, routeReplay = replay, onExitReplay = { replay = null },
                                 host = preferences.host, showActiveNodes = showActiveNodes, onActiveNodesShown = { showActiveNodes = false }, onShowPackets = onShowPackets)
@@ -389,7 +429,7 @@ internal fun AppShell(
                         screen<PacketDetailRoute> { backStack ->
                             val nodes = state.snapshot?.nodes.orEmpty()
                             val groupId = backStack.toRoute<PacketDetailRoute>().groupId
-                            PacketDetailScreen(feed, groupId, nodes) { routes, selected -> startReplay(routes, selected, groupId) }
+                            PacketDetailScreen(feed, groupId, nodes, loadRoutes = { fullRoutes(preferences.host, preferences.region, it) }) { routes, selected -> startReplay(routes, selected, groupId) }
                         }
                         screen<MessagePacketRoute> { backStack ->
                             val route = backStack.toRoute<MessagePacketRoute>()

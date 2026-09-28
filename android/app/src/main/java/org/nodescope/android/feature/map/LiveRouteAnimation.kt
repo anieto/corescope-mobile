@@ -72,7 +72,9 @@ data class ReplayRoute(val subchains: List<List<Coordinate>>, val nodes: List<Me
  * [packetId] is the replayed packet's group id (its hash), so the live packets panel can
  * highlight the same packet the map is showing.
  */
-data class RouteReplay(val id: Long, val routes: List<ReplayRoute>, val selected: Int, val packetId: String? = null)
+data class RouteReplay(val id: Long, val routes: List<ReplayRoute>, val selected: Int, val packetId: String? = null,
+    /** The routes as node keys, so more can be merged in while the replay runs. */
+    val keys: List<List<String>> = emptyList())
 
 internal data class RouteLine(val points: List<Coordinate>, val color: String, val opacity: Float, val route: String = "")
 internal data class RouteRing(val center: Coordinate, val color: String, val radius: Float, val width: Float, val opacity: Float)
