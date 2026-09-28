@@ -45,8 +45,8 @@ struct MapScreen: View {
     @State private var lastFramedMapScopeID: String?
     @State private var displayUpdateTask: Task<Void, Never>?
     @State private var incomingEventTask: Task<Void, Never>?
+    @State private var pendingMapTapTask: Task<Void, Never>?
     @State private var displayUpdateID = UUID()
-    @State private var isUpdatingDisplayedNodes = false
     @State private var isSearchPresented = false
     @State private var isMapFiltersPresented = false
     @State private var selectedRouteDetails: MapRouteDetails?
@@ -305,8 +305,9 @@ struct MapScreen: View {
         .onDisappear {
             displayUpdateTask?.cancel()
             incomingEventTask?.cancel()
+            pendingMapTapTask?.cancel()
             incomingEventTask = nil
-            isUpdatingDisplayedNodes = false
+            pendingMapTapTask = nil
         }
         .task {
             processedEventIds = Set(liveFeed.recentEvents.map { liveEventKey(for: $0) })
@@ -552,28 +553,11 @@ struct MapScreen: View {
                         Annotation("", coordinate: displayCoordinate, anchor: .center) {
                             let isHighlighted = node.id == highlightedNodeID
                             let isRouteHop = routeCoordinates.contains(CoordinateKey(coordinate))
-                            Button {
-                                selectedNode = node
-                            } label: {
-                                Image(systemName: NodeRoleStyle.symbolName(for: node.role))
-                                    .font(.caption2.weight(.semibold))
-                                    .foregroundStyle(.white)
-                                    .frame(
-                                        width: isHighlighted ? 24 : 14,
-                                        height: isHighlighted ? 24 : 14
-                                    )
-                                    .background(NodeRoleStyle.color(for: node.role), in: Circle())
-                                    .overlay {
-                                        Circle()
-                                            .stroke(
-                                                .white.opacity(0.9),
-                                                lineWidth: isHighlighted ? 3 : (isRouteHop ? 2 : 1)
-                                            )
-                                    }
-                                    .shadow(
-                                        color: isHighlighted ? NodeScopeStyle.signal.opacity(0.65) : .clear,
-                                        radius: 8
-                                    )
+                            MapNodeIndicator(
+                                color: NodeRoleStyle.color(for: node.role),
+                                isHighlighted: isHighlighted,
+                                isRouteHop: isRouteHop
+                            )
                                     .frame(width: 32, height: 32)
                                     .contentShape(Circle())
                                     .overlay(alignment: .top) {
@@ -595,10 +579,13 @@ struct MapScreen: View {
                                                 .allowsHitTesting(false)
                                         }
                                     }
-                            }
-                            .buttonStyle(.plain)
+                            .allowsHitTesting(false)
+                            .accessibilityElement()
+                            .accessibilityAddTraits(.isButton)
                             .accessibilityLabel(node.name ?? shortKey(node.publicKey))
+                            .accessibilityValue(node.role.capitalized)
                             .accessibilityHint(isRouteHop ? "Opens details for this route hop" : "Opens node details")
+                            .accessibilityAction { selectedNode = node }
                         }
                     }
                 }
@@ -608,7 +595,7 @@ struct MapScreen: View {
                         Text("\(cluster.count)")
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(.white)
-                            .frame(width: 26, height: 26)
+                            .frame(width: 20, height: 20)
                             .lineLimit(1)
                             .minimumScaleFactor(0.65)
                             .background(.blue, in: Circle())
@@ -665,14 +652,12 @@ struct MapScreen: View {
                 updateDisplayedNodes(in: context.region)
             }
             .onTapGesture { screenPoint in
-                if let cluster = nearestCluster(to: screenPoint, using: proxy) {
-                    zoomToCluster(cluster)
-                } else if let route = nearestRoute(to: screenPoint, using: proxy, at: date) {
-                    selectedRouteDetails = route
-                } else if let node = nearestNode(to: screenPoint, using: proxy) {
-                    selectedNode = node
-                }
+                scheduleMapTap(at: screenPoint, using: proxy, date: date, nodes: mapNodes)
             }
+            .simultaneousGesture(
+                SpatialTapGesture(count: 2)
+                    .onEnded { _ in cancelPendingMapTap() }
+            )
             .overlay {
                 if !isMapCameraMoving {
                     MapTrafficCanvas(
@@ -696,7 +681,6 @@ struct MapScreen: View {
         }
         let updateID = UUID()
         displayUpdateID = updateID
-        isUpdatingDisplayedNodes = true
         displayUpdateTask?.cancel()
         displayUpdateTask = Task {
             let worker = Task.detached(priority: .userInitiated) {
@@ -713,16 +697,12 @@ struct MapScreen: View {
                 worker.cancel()
             }
             guard !Task.isCancelled, displayUpdateID == updateID else { return }
-            guard let result else {
-                isUpdatingDisplayedNodes = false
-                return
-            }
+            guard let result else { return }
             displayedNodes = result.nodes
             nodeClusters = result.clusters
             visibleNodesByCoordinate = result.nodesByCoordinate
             displayCoordinatesByNodeID = result.displayCoordinatesByNodeID
             filteredNodeCount = result.filteredCount
-            isUpdatingDisplayedNodes = false
         }
     }
 
@@ -797,8 +777,9 @@ struct MapScreen: View {
         }
         guard !Task.isCancelled else { return nil }
 
-        // At close zoom levels, every node stays individually selectable.
-        guard max(region.latitudeDelta, region.longitudeDelta) > 0.8 else {
+        // Keep dense groups clustered until the map is close enough that
+        // separating their markers doesn't misrepresent their locations.
+        guard max(region.latitudeDelta, region.longitudeDelta) > 0.25 else {
             return DisplayResult(
                 nodes: visibleNodes,
                 clusters: [],
@@ -808,7 +789,7 @@ struct MapScreen: View {
                     },
                     uniquingKeysWith: { first, _ in first }
                 ),
-                displayCoordinatesByNodeID: spreadCoincidentCoordinates(
+                displayCoordinatesByNodeID: spreadNearbyCoordinates(
                     for: visibleNodes,
                     region: region
                 ),
@@ -816,10 +797,10 @@ struct MapScreen: View {
             )
         }
 
-        // Slightly smaller grid cells keep nearby nodes separate for
-        // longer now that individual markers occupy less visual space.
-        let latitudeCellSize = region.latitudeDelta / 14
-        let longitudeCellSize = region.longitudeDelta / 14
+        // The compact 10-point markers allow a tighter grid while nearby
+        // pairs still cluster until the map reaches close range.
+        let latitudeCellSize = region.latitudeDelta / 18
+        let longitudeCellSize = region.longitudeDelta / 18
         var nodesByCell: [String: [MeshNode]] = [:]
         for node in visibleNodes {
             guard !Task.isCancelled, let latitude = node.lat, let longitude = node.lon else { return nil }
@@ -832,18 +813,7 @@ struct MapScreen: View {
         var clusters: [NodeCluster] = []
         for (key, cellNodes) in nodesByCell {
             guard !Task.isCancelled else { return nil }
-            let containsCoincidentNodes = Dictionary(
-                grouping: cellNodes,
-                by: { node in
-                    CoordinateKey(
-                        CLLocationCoordinate2D(
-                            latitude: node.lat ?? 0,
-                            longitude: node.lon ?? 0
-                        )
-                    )
-                }
-            ).values.contains { $0.count > 1 }
-            guard cellNodes.count >= 3 || containsCoincidentNodes else {
+            guard cellNodes.count >= 2 else {
                 individualNodes.append(contentsOf: cellNodes)
                 continue
             }
@@ -887,38 +857,47 @@ struct MapScreen: View {
         )
     }
 
-    nonisolated private static func spreadCoincidentCoordinates(
+    nonisolated private static func spreadNearbyCoordinates(
         for nodes: [MeshNode],
         region: DisplayRegion
     ) -> [String: CLLocationCoordinate2D] {
-        let groupedNodes = Dictionary(grouping: nodes) { node in
-            CoordinateKey(
-                CLLocationCoordinate2D(
-                    latitude: node.lat ?? 0,
-                    longitude: node.lon ?? 0
-                )
-            )
+        let latitudeThreshold = region.latitudeDelta * 0.008
+        let longitudeThreshold = region.longitudeDelta * 0.008
+        var groupedNodes: [[MeshNode]] = []
+        for node in nodes.sorted(by: { $0.publicKey < $1.publicKey }) {
+            guard let coordinate = node.coordinate else { continue }
+            if let groupIndex = groupedNodes.firstIndex(where: { group in
+                guard let anchor = group.first?.coordinate else { return false }
+                return abs(anchor.latitude - coordinate.latitude) <= latitudeThreshold
+                    && abs(anchor.longitude - coordinate.longitude) <= longitudeThreshold
+            }) {
+                groupedNodes[groupIndex].append(node)
+            } else {
+                groupedNodes.append([node])
+            }
         }
         var coordinates: [String: CLLocationCoordinate2D] = [:]
         coordinates.reserveCapacity(nodes.count)
 
-        for group in groupedNodes.values {
-            guard let origin = group.first?.coordinate else { continue }
-            let sortedGroup = group.sorted { $0.publicKey < $1.publicKey }
-            guard sortedGroup.count > 1 else {
-                coordinates[sortedGroup[0].id] = origin
+        for group in groupedNodes {
+            guard let firstCoordinate = group.first?.coordinate else { continue }
+            guard group.count > 1 else {
+                coordinates[group[0].id] = firstCoordinate
                 continue
             }
 
-            // Scale from the current span so the separation remains roughly
-            // constant in screen points as the person zooms further in.
-            let radiusMultiplier = max(1, Double(sortedGroup.count) / 6)
-            // About 4.5% of the viewport radius keeps both the 32-point hit
-            // areas and short labels distinct, including a two-node pair.
-            let latitudeRadius = region.latitudeDelta * 0.045 * radiusMultiplier
-            let longitudeRadius = region.longitudeDelta * 0.045 * radiusMultiplier
-            for (index, node) in sortedGroup.enumerated() {
-                let angle = (Double(index) / Double(sortedGroup.count)) * 2 * Double.pi - Double.pi / 2
+            let groupCoordinates = group.compactMap(\.coordinate)
+            let origin = CLLocationCoordinate2D(
+                latitude: groupCoordinates.reduce(0) { $0 + $1.latitude } / Double(groupCoordinates.count),
+                longitude: groupCoordinates.reduce(0) { $0 + $1.longitude } / Double(groupCoordinates.count)
+            )
+            // Scale with the viewport so nearby markers fan out by roughly
+            // the same number of screen points at every zoom level.
+            let radiusMultiplier = max(1, Double(group.count) / 6)
+            let latitudeRadius = region.latitudeDelta * 0.008 * radiusMultiplier
+            let longitudeRadius = region.longitudeDelta * 0.008 * radiusMultiplier
+            for (index, node) in group.enumerated() {
+                let angle = (Double(index) / Double(group.count)) * 2 * Double.pi - Double.pi / 2
                 coordinates[node.id] = CLLocationCoordinate2D(
                     latitude: origin.latitude + cos(angle) * latitudeRadius,
                     longitude: origin.longitude + sin(angle) * longitudeRadius
@@ -950,16 +929,12 @@ struct MapScreen: View {
     private var isShowingMapLoadingIndicator: Bool {
         (viewModel.isLoading && !isReplayMode)
             || (isChangingRegion && !isReplayMode)
-            || isUpdatingDisplayedNodes
             || isLocatingUser
     }
 
     private var mapLoadingTitle: String {
         if isLocatingUser {
             return "Locating you…"
-        }
-        if isUpdatingDisplayedNodes && !viewModel.isLoading && !isChangingRegion {
-            return "Updating node markers…"
         }
         if let selectedRegion = regionFilter.selectedRegion {
             return "Loading \(selectedRegion)…"
@@ -1115,12 +1090,16 @@ struct MapScreen: View {
         String(key.prefix(8)).uppercased()
     }
 
-    private func nearestNode(to screenPoint: CGPoint, using proxy: MapProxy) -> MeshNode? {
+    private func nearestNode(
+        to screenPoint: CGPoint,
+        using proxy: MapProxy,
+        nodes: [MeshNode]
+    ) -> MeshNode? {
         let maxTapDistance: CGFloat = 44
         var closestNode: MeshNode?
         var closestDistance = maxTapDistance
-        for node in viewModel.nodes {
-            guard let coordinate = node.coordinate,
+        for node in nodes {
+            guard let coordinate = displayCoordinatesByNodeID[node.id] ?? node.coordinate,
                   let nodeScreenPoint = proxy.convert(coordinate, to: .local) else { continue }
             let distance = hypot(nodeScreenPoint.x - screenPoint.x, nodeScreenPoint.y - screenPoint.y)
             if distance < closestDistance {
@@ -1129,6 +1108,36 @@ struct MapScreen: View {
             }
         }
         return closestNode
+    }
+
+    private func scheduleMapTap(
+        at screenPoint: CGPoint,
+        using proxy: MapProxy,
+        date: Date,
+        nodes: [MeshNode]
+    ) {
+        pendingMapTapTask?.cancel()
+        pendingMapTapTask = Task { @MainActor in
+            do {
+                try await Task.sleep(for: .milliseconds(250))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+            if let cluster = nearestCluster(to: screenPoint, using: proxy) {
+                zoomToCluster(cluster)
+            } else if let route = nearestRoute(to: screenPoint, using: proxy, at: date) {
+                selectedRouteDetails = route
+            } else if let node = nearestNode(to: screenPoint, using: proxy, nodes: nodes) {
+                selectedNode = node
+            }
+            pendingMapTapTask = nil
+        }
+    }
+
+    private func cancelPendingMapTap() {
+        pendingMapTapTask?.cancel()
+        pendingMapTapTask = nil
     }
 
     private func nearestRoute(to screenPoint: CGPoint, using proxy: MapProxy, at date: Date) -> MapRouteDetails? {
@@ -2545,36 +2554,32 @@ private struct MapRoleFilterSection: View {
     private let roles = ["repeater", "room", "companion", "sensor"]
 
     var body: some View {
-        Section("Node Roles") {
+        Section {
             Button {
                 selectedRoles = []
             } label: {
-                filterRow(title: "All Roles", symbol: "circle.grid.2x2", isSelected: selectedRoles.isEmpty)
+                MapRoleFilterRow(
+                    title: "All Roles",
+                    roles: roles,
+                    isSelected: selectedRoles.isEmpty
+                )
             }
 
             ForEach(roles, id: \.self) { role in
                 Button {
                     toggleRole(role)
                 } label: {
-                    filterRow(
+                    MapRoleFilterRow(
                         title: role.capitalized,
-                        symbol: NodeRoleStyle.symbolName(for: role),
+                        roles: [role],
                         isSelected: selectedRoles.contains(role)
                     )
                 }
             }
-        }
-    }
-
-    private func filterRow(title: String, symbol: String, isSelected: Bool) -> some View {
-        HStack {
-            Label(title, systemImage: symbol)
-                .foregroundStyle(.primary)
-            Spacer()
-            if isSelected {
-                Image(systemName: "checkmark")
-                    .foregroundStyle(.primary)
-            }
+        } header: {
+            Text("Node Roles")
+        } footer: {
+            Text("Marker colors identify node roles on the map.")
         }
     }
 
@@ -2584,6 +2589,71 @@ private struct MapRoleFilterSection: View {
         } else {
             selectedRoles.insert(role)
         }
+    }
+}
+
+private struct MapNodeIndicator: View {
+    let color: Color
+    let isHighlighted: Bool
+    let isRouteHop: Bool
+
+    var body: some View {
+        Circle()
+            .fill(color)
+            .frame(
+                width: isHighlighted ? 18 : (isRouteHop ? 12 : 10),
+                height: isHighlighted ? 18 : (isRouteHop ? 12 : 10)
+            )
+            .overlay {
+                Circle()
+                    .stroke(
+                        .white.opacity(0.9),
+                        lineWidth: isHighlighted ? 3 : (isRouteHop ? 2 : 1)
+                    )
+            }
+            .shadow(
+                color: isHighlighted ? NodeScopeStyle.signal.opacity(0.65) : .clear,
+                radius: 8
+            )
+    }
+}
+
+private struct MapRoleFilterRow: View {
+    let title: String
+    let roles: [String]
+    let isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            MapRoleColorSwatch(roles: roles)
+            Text(title)
+                .foregroundStyle(.primary)
+            Spacer()
+            if isSelected {
+                Image(systemName: "checkmark")
+                    .foregroundStyle(.primary)
+            }
+        }
+    }
+}
+
+private struct MapRoleColorSwatch: View {
+    let roles: [String]
+
+    var body: some View {
+        HStack(spacing: -4) {
+            ForEach(roles, id: \.self) { role in
+                Circle()
+                    .fill(NodeRoleStyle.color(for: role))
+                    .frame(width: 10, height: 10)
+                    .overlay {
+                        Circle()
+                            .stroke(.white.opacity(0.9), lineWidth: 1)
+                    }
+            }
+        }
+        .frame(width: 26, alignment: .leading)
+        .accessibilityHidden(true)
     }
 }
 

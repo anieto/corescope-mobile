@@ -1,9 +1,6 @@
 import SwiftUI
 
-/// Role-based icon/tint used for map `Marker`s. Native `Marker` (backed by
-/// MKMarkerAnnotationView) is what makes ~1,000 pins performant — it
-/// supports clustering and is far cheaper than a custom SwiftUI `Annotation`
-/// view repeated at that scale, which is what made the map sluggish.
+/// Shared role colors and symbols used across the map, filters, and supporting UI.
 enum NodeRoleStyle {
     static func color(for role: String) -> Color {
         switch role {
