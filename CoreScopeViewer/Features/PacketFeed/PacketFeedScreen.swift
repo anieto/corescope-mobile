@@ -6,52 +6,117 @@ struct MapPacketWorkspaceScreen: View {
     let resetID: UUID
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(PacketReplayStore.self) private var replayStore
     @AppStorage("mapPacketSidebarVisible") private var prefersPacketSidebar = true
     @State private var columnVisibility = NavigationSplitViewVisibility.detailOnly
     @State private var preferredCompactColumn = NavigationSplitViewColumn.detail
+    @State private var isShowingCompactPackets = false
+    @State private var compactPacketDetent: PresentationDetent = .medium
+    @State private var selectedLivePacketGroupID: LiveObservationGroup.ID?
+    @State private var replayingLivePacketGroupID: LiveObservationGroup.ID?
 
+    @ViewBuilder
     var body: some View {
-        NavigationSplitView(
-            columnVisibility: $columnVisibility,
-            preferredCompactColumn: $preferredCompactColumn
-        ) {
-            MapLivePacketSidebar()
-                .navigationSplitViewColumnWidth(min: 320, ideal: 370, max: 440)
-        } detail: {
-            MapScreen(isTabActive: isTabActive, resetID: resetID)
-        }
-        .navigationSplitViewStyle(.balanced)
-        .ignoresSafeArea(.container, edges: .top)
-        .onAppear { updateColumns(for: horizontalSizeClass) }
-        .onChange(of: horizontalSizeClass) { _, sizeClass in
-            updateColumns(for: sizeClass)
-        }
-        .onChange(of: columnVisibility) { _, visibility in
-            guard horizontalSizeClass == .regular else { return }
-            prefersPacketSidebar = visibility != .detailOnly
+        if horizontalSizeClass == .regular {
+            NavigationSplitView(
+                columnVisibility: $columnVisibility,
+                preferredCompactColumn: $preferredCompactColumn
+            ) {
+                MapLivePacketSidebar(
+                    selectedGroupID: $selectedLivePacketGroupID,
+                    toggleSidebar: toggleRegularSidebar,
+                    routeReplayStarted: { replayingLivePacketGroupID = $0 }
+                )
+                    .toolbar(removing: .sidebarToggle)
+                    .navigationSplitViewColumnWidth(min: 320, ideal: 370, max: 440)
+            } detail: {
+                MapScreen(
+                    isTabActive: isTabActive,
+                    resetID: resetID,
+                    togglePacketSidebar: columnVisibility == .detailOnly
+                        ? { toggleRegularSidebar() }
+                        : nil
+                )
+            }
+            .navigationSplitViewStyle(.balanced)
+            .ignoresSafeArea(.container, edges: .top)
+            .onAppear { updateRegularColumns() }
+            .onChange(of: columnVisibility) { _, visibility in
+                prefersPacketSidebar = visibility != .detailOnly
+            }
+        } else {
+            MapScreen(
+                isTabActive: isTabActive,
+                resetID: resetID,
+                showLivePackets: {
+                    compactPacketDetent = .medium
+                    isShowingCompactPackets = true
+                },
+                bottomObscuredFraction: isShowingCompactPackets
+                    ? (compactPacketDetent == .medium ? 0.5 : 0.85)
+                    : 0
+            )
+            .sheet(isPresented: $isShowingCompactPackets, onDismiss: compactPacketSheetDismissed) {
+                NavigationStack {
+                    MapLivePacketSidebar(
+                        selectedGroupID: $selectedLivePacketGroupID,
+                        close: { isShowingCompactPackets = false },
+                        routeReplayStarted: { groupID in
+                            replayingLivePacketGroupID = groupID
+                            isShowingCompactPackets = false
+                        }
+                    )
+                }
+                .presentationDetents([.medium, .large], selection: $compactPacketDetent)
+                .presentationDragIndicator(.visible)
+                .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+            }
+            .onChange(of: resetID) {
+                isShowingCompactPackets = false
+                selectedLivePacketGroupID = nil
+                replayingLivePacketGroupID = nil
+            }
+            .onChange(of: replayStore.isReplayActive) { _, isActive in
+                if !isActive {
+                    if selectedLivePacketGroupID == replayingLivePacketGroupID {
+                        selectedLivePacketGroupID = nil
+                    }
+                    replayingLivePacketGroupID = nil
+                }
+            }
         }
     }
 
-    private func updateColumns(for sizeClass: UserInterfaceSizeClass?) {
-        if sizeClass == .regular {
-            columnVisibility = prefersPacketSidebar ? .all : .detailOnly
-        } else {
-            preferredCompactColumn = .detail
-            columnVisibility = .detailOnly
+    private func updateRegularColumns() {
+        columnVisibility = prefersPacketSidebar ? .all : .detailOnly
+    }
+
+    private func toggleRegularSidebar() {
+        columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly
+    }
+
+    private func compactPacketSheetDismissed() {
+        if !replayStore.isReplayActive {
+            selectedLivePacketGroupID = nil
         }
     }
 }
 
 private struct MapLivePacketSidebar: View {
+    @Binding var selectedGroupID: LiveObservationGroup.ID?
+    var close: (() -> Void)?
+    var toggleSidebar: (() -> Void)?
+    var routeReplayStarted: ((LiveObservationGroup.ID) -> Void)?
+
     @Environment(LiveFeedService.self) private var liveFeed
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(ObserverRegionLookup.self) private var observerRegionLookup
     @Environment(PacketReplayStore.self) private var replayStore
     @State private var feedModel = LiveObservationFeedModel()
     @State private var filterType: Int?
-    @State private var selectedGroupID: LiveObservationGroup.ID?
     @State private var isFiltersPresented = false
     @State private var keepsSelectionWhenReplayStops = false
+    @State private var detailGroup: LiveObservationGroup?
 
     var body: some View {
         List {
@@ -63,7 +128,7 @@ private struct MapLivePacketSidebar: View {
                 observationCount: feedModel.groups.reduce(0) { $0 + $1.observationCount },
                 scope: selectedGroupID == nil
                     ? regionFilter.selectedRegion.map(regionFilter.label(for:)) ?? String(localized: "Entire network")
-                    : selectedGroup?.replayRoutes.isEmpty == false
+                    : replayStore.isReplayActive
                         ? String(localized: "Replay paused")
                         : String(localized: "Packet selected")
             )
@@ -71,12 +136,46 @@ private struct MapLivePacketSidebar: View {
 
             Section {
                 ForEach(feedModel.groups) { group in
-                    Button {
-                        select(group)
-                    } label: {
-                        LivePacketRow(group: group, isSelected: selectedGroupID == group.id)
+                    VStack(spacing: 6) {
+                        Button {
+                            select(group)
+                        } label: {
+                            LivePacketRow(group: group, isSelected: selectedGroupID == group.id)
+                        }
+                        .buttonStyle(.plain)
+
+                        if selectedGroupID == group.id {
+                            HStack(spacing: 8) {
+                                if !group.replayRoutes.isEmpty {
+                                    Button {
+                                        replay(group)
+                                    } label: {
+                                        Label("Replay", systemImage: "play.fill")
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(.primary)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 10)
+                                            .instrumentCard(isSelected: true)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+
+                                Button {
+                                    detailGroup = group
+                                } label: {
+                                    Label("Show Details", systemImage: "info.circle")
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.primary)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 10)
+                                        .instrumentCard(isSelected: true)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Show selected packet details")
+                            }
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
                     }
-                    .buttonStyle(.plain)
                     .packetFeedListRow()
                     .accessibilityHint(accessibilityHint(for: group))
                 }
@@ -91,15 +190,18 @@ private struct MapLivePacketSidebar: View {
         .floatingDockScrollClearance()
         .navigationTitle("Live Packets")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(isPresented: packetDetailsPresented) {
+            if let detailGroup {
+                LivePacketDetailScreen(group: detailGroup)
+            }
+        }
         .toolbar {
-            if let selectedGroup {
-                ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink {
-                        LivePacketDetailScreen(group: selectedGroup)
-                    } label: {
-                        Image(systemName: "info.circle")
+            if let close {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: close) {
+                        Image(systemName: "xmark")
                     }
-                    .accessibilityLabel("Show selected packet details")
+                    .accessibilityLabel("Close live packets")
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
@@ -110,6 +212,14 @@ private struct MapLivePacketSidebar: View {
                         .foregroundStyle(.primary)
                 }
                 .accessibilityLabel("Filter live packets")
+            }
+            if let toggleSidebar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: toggleSidebar) {
+                        Image(systemName: "list.bullet.rectangle")
+                    }
+                    .accessibilityLabel("Hide live packets")
+                }
             }
         }
         .overlay {
@@ -151,14 +261,15 @@ private struct MapLivePacketSidebar: View {
         }
 
         selectedGroupID = group.id
-        guard !group.replayRoutes.isEmpty else {
-            if replayStore.isReplayActive {
-                keepsSelectionWhenReplayStops = true
-                replayStore.stopReplay()
-            }
-            return
+        if replayStore.isReplayActive {
+            keepsSelectionWhenReplayStops = true
+            replayStore.stopReplay()
         }
+    }
 
+    private func replay(_ group: LiveObservationGroup) {
+        guard !group.replayRoutes.isEmpty else { return }
+        detailGroup = nil
         let data = group.latestData
         replayStore.replay(
             routes: group.replayRoutes,
@@ -168,6 +279,18 @@ private struct MapLivePacketSidebar: View {
             rssi: data.rssi,
             sender: data.decoded?.payload?.name,
             messageText: data.decoded?.payload?.text
+        )
+        routeReplayStarted?(group.id)
+    }
+
+    private var packetDetailsPresented: Binding<Bool> {
+        Binding(
+            get: { detailGroup != nil },
+            set: { isPresented in
+                if !isPresented {
+                    detailGroup = nil
+                }
+            }
         )
     }
 
@@ -183,7 +306,7 @@ private struct MapLivePacketSidebar: View {
         if group.replayRoutes.isEmpty {
             return "Pauses the feed and makes packet details available"
         }
-        return "Pauses the feed, selects this packet, and replays its route on the map"
+        return "Pauses the feed and reveals replay and packet detail actions"
     }
 
     private func resumeLiveFeed() {
@@ -450,7 +573,7 @@ private struct LivePacketFeedHeader: View {
                     .fill(isPaused ? NodeScopeStyle.activity : isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
                     .frame(width: 8, height: 8)
                 Text(isPaused
-                    ? "Paused for route replay"
+                    ? "Paused on selected packet"
                     : isConnected ? "Listening for live traffic" : "Reconnecting to analyzer")
                     .font(.subheadline.weight(.semibold))
             }
@@ -561,11 +684,14 @@ private struct LivePacketRow: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 14)
         .frame(minHeight: 82)
-        .overlay(alignment: .leading) {
-            Capsule()
+        .overlay {
+            RoundedRectangle(cornerRadius: NodeScopeStyle.cornerRadius, style: .continuous)
                 .fill(color)
-                .frame(width: 4)
-                .padding(.vertical, 5)
+                .mask(alignment: .leading) {
+                    Rectangle()
+                        .frame(width: 4)
+                }
+                .allowsHitTesting(false)
         }
         .instrumentCard(isSelected: isSelected)
         .accessibilityElement(children: .combine)
@@ -685,6 +811,8 @@ private struct LivePacketFiltersSheet: View {
 
 private struct LivePacketDetailScreen: View {
     let group: LiveObservationGroup
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(PacketReplayStore.self) private var replayStore
     @State private var selectedRouteIndex = 0
 
@@ -779,6 +907,18 @@ private struct LivePacketDetailScreen: View {
         }
         .navigationTitle("Packet Details")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if horizontalSizeClass == .regular {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .accessibilityLabel("Close packet details")
+                }
+            }
+        }
         .floatingDockScrollClearance()
     }
 

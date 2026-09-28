@@ -5,6 +5,9 @@ import UIKit
 struct MapScreen: View {
     let isTabActive: Bool
     let resetID: UUID
+    var showLivePackets: (() -> Void)? = nil
+    var togglePacketSidebar: (() -> Void)? = nil
+    var bottomObscuredFraction: Double = 0
 
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(RegionFilterStore.self) private var regionFilter
@@ -155,10 +158,20 @@ struct MapScreen: View {
                 .onChange(of: geometry.size) { _, size in
                     mapViewportSize = size
                 }
+                .onChange(of: bottomObscuredFraction) {
+                    refitReplayForVisibleMapArea()
+                }
             }
                 .mapScope(mapScope)
                 .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
+                    ToolbarItemGroup(placement: .topBarLeading) {
+                        if let togglePacketSidebar {
+                            Button(action: togglePacketSidebar) {
+                                Image(systemName: "list.bullet.rectangle")
+                            }
+                            .accessibilityLabel("Show live packets")
+                        }
+
                         HStack(spacing: 6) {
                             Circle()
                                 .fill(liveFeed.isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
@@ -233,17 +246,31 @@ struct MapScreen: View {
                     .padding(.top, 12)
                 }
                 .overlay(alignment: .bottomLeading) {
-                    Button(action: centerOnUserLocation) {
-                        Image(systemName: "location.fill")
-                            .font(.title3.weight(.semibold))
-                            .foregroundStyle(colorScheme == .dark ? Color.white : Color.accentColor)
-                            .frame(width: 44, height: 44)
+                    VStack(spacing: 10) {
+                        if let showLivePackets {
+                            Button(action: showLivePackets) {
+                                Image(systemName: "list.bullet.rectangle")
+                                    .font(.title3.weight(.semibold))
+                                    .foregroundStyle(colorScheme == .dark ? Color.white : Color.accentColor)
+                                    .frame(width: 44, height: 44)
+                            }
+                            .buttonStyle(.plain)
+                            .nodeScopeFloatingGlass(cornerRadius: 10)
+                            .accessibilityLabel("Show live packets")
+                        }
+
+                        Button(action: centerOnUserLocation) {
+                            Image(systemName: "location.fill")
+                                .font(.title3.weight(.semibold))
+                                .foregroundStyle(colorScheme == .dark ? Color.white : Color.accentColor)
+                                .frame(width: 44, height: 44)
+                        }
+                        .buttonStyle(.plain)
+                        .nodeScopeFloatingGlass(cornerRadius: 10)
+                        .accessibilityLabel("Center on my location")
                     }
-                    .buttonStyle(.plain)
-                    .nodeScopeFloatingGlass(cornerRadius: 10)
                     .padding(.leading, 12)
                     .padding(.bottom, floatingDockClearance)
-                    .accessibilityLabel("Center on my location")
                 }
                 .overlay(alignment: .bottomTrailing) {
                     zoomControl
@@ -1394,7 +1421,7 @@ struct MapScreen: View {
         let viewportHeight = max(Double(mapViewportSize.height), 1)
         let horizontalMarginFraction = 0.12
         let topMarginFraction = 0.12
-        let bottomMarginFraction = 0.32
+        let bottomMarginFraction = max(0.32, min(bottomObscuredFraction + 0.08, 0.8))
         let availableWidth = viewportWidth * (1 - horizontalMarginFraction * 2)
         let availableHeight = viewportHeight * (1 - topMarginFraction - bottomMarginFraction)
         let mapPointsPerPoint = max(routeWidth / availableWidth, routeHeight / availableHeight)
@@ -1407,6 +1434,16 @@ struct MapScreen: View {
             width: fittedWidth,
             height: fittedHeight
         )
+    }
+
+    private func refitReplayForVisibleMapArea() {
+        guard isReplayMode else { return }
+        let coordinates = currentRouteCoordinates()
+        guard coordinates.count >= 2,
+              let routeMapRect = replayRouteMapRect(for: coordinates) else { return }
+        withAnimation(.easeInOut(duration: 0.3)) {
+            cameraPosition = .rect(routeMapRect)
+        }
     }
 
     private func centerOnUserLocation() {
