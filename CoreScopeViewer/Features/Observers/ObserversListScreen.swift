@@ -8,7 +8,9 @@ struct ObserversListScreen: View {
     @Environment(LiveFeedService.self) private var liveFeed
     @Environment(AppNavigationStore.self) private var appNavigationStore
     @State private var viewModel = ObserversViewModel()
-    @State private var navigationPath = NavigationPath()
+    @State private var selectedObserverID: MeshObserver.ID?
+    @State private var selectedObserverSnapshot: MeshObserver?
+    @State private var preferredCompactColumn = NavigationSplitViewColumn.sidebar
     @State private var searchText = ""
     @State private var isSearchPresented = false
     @State private var isFiltersPresented = false
@@ -20,7 +22,7 @@ struct ObserversListScreen: View {
     @State private var lastHandledNavigationRequestID: UUID?
 
     var body: some View {
-        NavigationStack(path: $navigationPath) {
+        AdaptiveListDetailNavigation(preferredCompactColumn: $preferredCompactColumn) {
             List {
                 ObserversHeader(
                     isConnected: liveFeed.isConnected,
@@ -71,7 +73,11 @@ struct ObserversListScreen: View {
                         }
                     } else {
                         ForEach(visibleObservers) { observer in
-                            NavigationLink(value: observer) {
+                            Button {
+                                selectedObserverSnapshot = observer
+                                selectedObserverID = observer.id
+                                preferredCompactColumn = .detail
+                            } label: {
                                 ObserverStatusCard(
                                     name: observer.name ?? observer.id,
                                     iata: observer.iata,
@@ -80,7 +86,8 @@ struct ObserversListScreen: View {
                                     packetCount: observer.packetCount,
                                     packetsLastHour: observer.packetsLastHour,
                                     batteryMv: observer.batteryMv,
-                                    noiseFloor: observer.noiseFloor
+                                    noiseFloor: observer.noiseFloor,
+                                    isSelected: selectedObserverID == observer.id
                                 )
                             }
                             .buttonStyle(.plain)
@@ -101,13 +108,22 @@ struct ObserversListScreen: View {
             .background(NodeScopeBackground())
             .floatingDockScrollClearance()
             .toolbar(.hidden, for: .navigationBar)
-            .navigationDestination(for: MeshObserver.self) { observer in
-                ObserverDetailScreen(observer: observer)
-            }
             .overlay {
                 if visibleObservers.isEmpty && !viewModel.isLoading {
                     ObserverEmptyState()
                 }
+            }
+        } detail: {
+            if let selectedObserver {
+                ObserverDetailScreen(observer: selectedObserver)
+                    .id(selectedObserver.id)
+            } else {
+                ContentUnavailableView(
+                    "Select an Observer",
+                    systemImage: "antenna.radiowaves.left.and.right",
+                    description: Text("Choose an observer to see its activity and signal data.")
+                )
+                .background(NodeScopeBackground())
             }
         }
         .sheet(isPresented: $isFiltersPresented) {
@@ -121,7 +137,9 @@ struct ObserversListScreen: View {
             .presentationDragIndicator(.visible)
         }
         .onChange(of: resetID) {
-            navigationPath = NavigationPath()
+            selectedObserverID = nil
+            selectedObserverSnapshot = nil
+            preferredCompactColumn = .sidebar
             searchText = ""
             isSearchPresented = false
             isFiltersPresented = false
@@ -142,7 +160,27 @@ struct ObserversListScreen: View {
         .onChange(of: activityFilter) { updateVisibleObservers() }
         .onChange(of: selectedModel) { updateVisibleObservers() }
         .onChange(of: sortOption) { updateVisibleObservers() }
+        .onChange(of: selectedObserverID) { _, selectedID in
+            guard let selectedID else {
+                selectedObserverSnapshot = nil
+                return
+            }
+            selectedObserverSnapshot = observer(matching: selectedID) ?? selectedObserverSnapshot
+        }
         .onChange(of: appNavigationStore.requestID) { openRequestedObserverIfAvailable() }
+    }
+
+    private var selectedObserver: MeshObserver? {
+        guard let selectedObserverID else { return nil }
+        if let currentObserver = observer(matching: selectedObserverID) {
+            return currentObserver
+        }
+        guard selectedObserverSnapshot?.id == selectedObserverID else { return nil }
+        return selectedObserverSnapshot
+    }
+
+    private func observer(matching id: MeshObserver.ID) -> MeshObserver? {
+        viewModel.observers.first { $0.id == id }
     }
 
     private func retryObserverLoad() {
@@ -163,8 +201,9 @@ struct ObserversListScreen: View {
         guard case .observer(let observerID) = appNavigationStore.destination,
               let observer = viewModel.observers.first(where: { $0.id == observerID }) else { return }
         lastHandledNavigationRequestID = appNavigationStore.requestID
-        navigationPath = NavigationPath()
-        navigationPath.append(observer)
+        selectedObserverSnapshot = observer
+        selectedObserverID = observer.id
+        preferredCompactColumn = .detail
     }
 
     private func toggleSearch() {
@@ -451,6 +490,7 @@ private struct ObserverStatusCard: View {
     let packetsLastHour: Int
     let batteryMv: Int?
     let noiseFloor: Double?
+    let isSelected: Bool
 
     private var isRecent: Bool {
         lastSeen.timeIntervalSinceNow > -900
@@ -507,7 +547,7 @@ private struct ObserverStatusCard: View {
             }
         }
         .padding(14)
-        .instrumentCard()
+        .instrumentCard(isSelected: isSelected)
     }
 }
 

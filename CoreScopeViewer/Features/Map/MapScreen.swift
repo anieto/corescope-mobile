@@ -428,6 +428,10 @@ struct MapScreen: View {
         .onChange(of: packetReplayStore.requestID) {
             queuePacketReplay()
         }
+        .onChange(of: isTabActive) { _, isActive in
+            guard isActive, !packetReplayStore.routes.isEmpty else { return }
+            queuePacketReplay()
+        }
         .onChange(of: appNavigationStore.requestID) {
             handleNavigationRequest()
         }
@@ -1265,6 +1269,7 @@ struct MapScreen: View {
 
     private func replayPendingPacketIfNeeded() {
         guard pendingReplayRequestID == packetReplayStore.requestID else { return }
+        guard currentRouteCoordinates().count >= 2 else { return }
         pendingReplayRequestID = nil
         replayPacketRoute()
     }
@@ -1345,24 +1350,40 @@ struct MapScreen: View {
 
         guard recenter else { return }
 
-        let latitudeRange = coordinates.map(\.latitude)
-        let longitudeRange = coordinates.map(\.longitude)
-        guard let minimumLatitude = latitudeRange.min(),
-              let maximumLatitude = latitudeRange.max(),
-              let minimumLongitude = longitudeRange.min(),
-              let maximumLongitude = longitudeRange.max() else {
-            return
+        guard let routeMapRect = replayRouteMapRect(for: coordinates) else { return }
+        withAnimation {
+            cameraPosition = .rect(routeMapRect)
         }
+    }
 
-        let center = CLLocationCoordinate2D(
-            latitude: (minimumLatitude + maximumLatitude) / 2,
-            longitude: (minimumLongitude + maximumLongitude) / 2
+    private func replayRouteMapRect(for coordinates: [CLLocationCoordinate2D]) -> MKMapRect? {
+        guard let firstCoordinate = coordinates.first else { return nil }
+
+        let points = coordinates.map(MKMapPoint.init)
+        let firstPoint = MKMapPoint(firstCoordinate)
+        let minimumX = points.map(\.x).min() ?? firstPoint.x
+        let maximumX = points.map(\.x).max() ?? firstPoint.x
+        let minimumY = points.map(\.y).min() ?? firstPoint.y
+        let maximumY = points.map(\.y).max() ?? firstPoint.y
+
+        // Keep short routes from being framed too tightly, then leave extra
+        // room below the route for replay controls. MapKit fits this rectangle
+        // to the actual viewport, so the result also adapts to iPad aspect ratios.
+        let minimumDimension = MKMapPointsPerMeterAtLatitude(firstCoordinate.latitude) * 5_000
+        let routeWidth = max(maximumX - minimumX, minimumDimension)
+        let routeHeight = max(maximumY - minimumY, minimumDimension)
+        let centerX = (minimumX + maximumX) / 2
+        let centerY = (minimumY + maximumY) / 2
+        let horizontalPadding = routeWidth * 0.18
+        let topPadding = routeHeight * 0.18
+        let bottomPadding = routeHeight * 0.42
+
+        return MKMapRect(
+            x: centerX - routeWidth / 2 - horizontalPadding,
+            y: centerY - routeHeight / 2 - topPadding,
+            width: routeWidth + horizontalPadding * 2,
+            height: routeHeight + topPadding + bottomPadding
         )
-        let radiusKm = max(
-            max(maximumLatitude - minimumLatitude, maximumLongitude - minimumLongitude) * 42,
-            5
-        )
-        moveCamera(to: center, radiusKm: radiusKm, verticalBiasFraction: replayControlsClearanceFraction)
     }
 
     private func centerOnUserLocation() {

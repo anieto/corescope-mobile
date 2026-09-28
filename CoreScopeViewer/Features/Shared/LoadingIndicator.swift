@@ -89,17 +89,29 @@ struct MeshRouteActivityIndicator: View {
 }
 
 struct InstrumentCardModifier: ViewModifier {
+    let isSelected: Bool
     @Environment(\.colorScheme) private var colorScheme
 
     func body(content: Content) -> some View {
         content
-            .background(
-                colorScheme == .dark ? NodeScopeStyle.slate.opacity(0.94) : Color.white.opacity(0.9),
-                in: RoundedRectangle(cornerRadius: NodeScopeStyle.cornerRadius, style: .continuous)
-            )
+            .background {
+                RoundedRectangle(cornerRadius: NodeScopeStyle.cornerRadius, style: .continuous)
+                    .fill(colorScheme == .dark ? NodeScopeStyle.slate.opacity(0.94) : Color.white.opacity(0.9))
+                    .overlay {
+                        if isSelected {
+                            RoundedRectangle(cornerRadius: NodeScopeStyle.cornerRadius, style: .continuous)
+                                .fill(NodeScopeStyle.signal.opacity(colorScheme == .dark ? 0.14 : 0.08))
+                        }
+                    }
+            }
             .overlay {
                 RoundedRectangle(cornerRadius: NodeScopeStyle.cornerRadius, style: .continuous)
-                    .stroke(NodeScopeStyle.signal.opacity(colorScheme == .dark ? 0.18 : 0.1), lineWidth: 1)
+                    .stroke(
+                        NodeScopeStyle.signal.opacity(
+                            isSelected ? (colorScheme == .dark ? 0.9 : 0.75) : (colorScheme == .dark ? 0.18 : 0.1)
+                        ),
+                        lineWidth: isSelected ? 2 : 1
+                    )
             }
             .shadow(color: .black.opacity(colorScheme == .dark ? 0.22 : 0.07), radius: 14, y: 6)
     }
@@ -120,8 +132,8 @@ private struct AdaptiveScrollContentWidthModifier: ViewModifier {
 }
 
 extension View {
-    func instrumentCard() -> some View {
-        modifier(InstrumentCardModifier())
+    func instrumentCard(isSelected: Bool = false) -> some View {
+        modifier(InstrumentCardModifier(isSelected: isSelected))
     }
 
     /// Keeps information-dense phone layouts readable on iPad while naturally

@@ -9,7 +9,9 @@ struct ChannelsListScreen: View {
     @Environment(LiveFeedService.self) private var liveFeed
     @State private var viewModel = ChannelsViewModel()
     @State private var isShowingAddChannel = false
-    @State private var navigationPath = NavigationPath()
+    @State private var selectedChannelID: MeshChannel.ID?
+    @State private var selectedChannelSnapshot: MeshChannel?
+    @State private var preferredCompactColumn = NavigationSplitViewColumn.sidebar
     @State private var lastProcessedLiveEventID: Int?
     @State private var liveRefreshTask: Task<Void, Never>?
     @State private var searchText = ""
@@ -22,7 +24,7 @@ struct ChannelsListScreen: View {
     @State private var sortOption = ChannelSortOption.recent
 
     var body: some View {
-        NavigationStack(path: $navigationPath) {
+        AdaptiveListDetailNavigation(preferredCompactColumn: $preferredCompactColumn) {
             List {
                 ChannelsHeader(
                     isConnected: liveFeed.isConnected,
@@ -105,9 +107,6 @@ struct ChannelsListScreen: View {
             .background(NodeScopeBackground())
             .floatingDockScrollClearance()
             .toolbar(.hidden, for: .navigationBar)
-            .navigationDestination(for: MeshChannel.self) { channel in
-                ChannelDetailScreen(channel: channel)
-            }
             .overlay {
                 if visibleServerChannels.isEmpty && visibleMonitoredChannels.isEmpty && !viewModel.isLoading {
                     ContentUnavailableView(
@@ -116,9 +115,23 @@ struct ChannelsListScreen: View {
                     )
                 }
             }
+        } detail: {
+            if let selectedChannel {
+                ChannelDetailScreen(channel: selectedChannel)
+                    .id(selectedChannel.id)
+            } else {
+                ContentUnavailableView(
+                    "Select a Channel",
+                    systemImage: "bubble.left.and.bubble.right",
+                    description: Text("Choose a channel to read its messages.")
+                )
+                .background(NodeScopeBackground())
+            }
         }
         .onChange(of: resetID) {
-            navigationPath = NavigationPath()
+            selectedChannelID = nil
+            selectedChannelSnapshot = nil
+            preferredCompactColumn = .sidebar
             isShowingAddChannel = false
             searchText = ""
             isSearchPresented = false
@@ -148,6 +161,13 @@ struct ChannelsListScreen: View {
         .onChange(of: sourceFilter) { updateVisibleChannels() }
         .onChange(of: activityFilter) { updateVisibleChannels() }
         .onChange(of: sortOption) { updateVisibleChannels() }
+        .onChange(of: selectedChannelID) { _, selectedID in
+            guard let selectedID else {
+                selectedChannelSnapshot = nil
+                return
+            }
+            selectedChannelSnapshot = channel(matching: selectedID) ?? selectedChannelSnapshot
+        }
         .onChange(of: liveFeed.recentEvents.first?.id) {
             scheduleLiveRefreshIfNeeded()
         }
@@ -166,6 +186,21 @@ struct ChannelsListScreen: View {
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
+    }
+
+    private var selectedChannel: MeshChannel? {
+        guard let selectedChannelID else { return nil }
+        if let currentChannel = channel(matching: selectedChannelID) {
+            return currentChannel
+        }
+        guard selectedChannelSnapshot?.id == selectedChannelID else { return nil }
+        return selectedChannelSnapshot
+    }
+
+    private func channel(matching id: MeshChannel.ID) -> MeshChannel? {
+        visibleMonitoredChannels.first { $0.id == id }
+            ?? visibleServerChannels.first { $0.id == id }
+            ?? viewModel.channels.first { $0.id == id }
     }
 
     /// Mirrors ChannelDetailScreen's live-refresh: a burst of GRP_TXT events
@@ -302,14 +337,19 @@ struct ChannelsListScreen: View {
     }
 
     private func channelRow(_ channel: MeshChannel) -> some View {
-        NavigationLink(value: channel) {
+        Button {
+            selectedChannelSnapshot = channel
+            selectedChannelID = channel.id
+            preferredCompactColumn = .detail
+        } label: {
             ChannelCard(
                 name: channel.name,
                 lastMessage: channel.lastMessage,
                 lastSender: channel.lastSender,
                 messageCount: channel.messageCount,
                 lastActivity: channel.lastActivity,
-                isMonitored: monitorStore.channel(matching: channel) != nil
+                isMonitored: monitorStore.channel(matching: channel) != nil,
+                isSelected: selectedChannelID == channel.id
             )
         }
         .buttonStyle(.plain)
@@ -549,6 +589,7 @@ private struct ChannelCard: View {
     let messageCount: Int
     let lastActivity: Date
     let isMonitored: Bool
+    let isSelected: Bool
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -615,7 +656,7 @@ private struct ChannelCard: View {
             }
         }
         .padding(14)
-        .instrumentCard()
+        .instrumentCard(isSelected: isSelected)
     }
 }
 
