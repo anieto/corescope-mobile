@@ -4,7 +4,7 @@ import okhttp3.Request
 import org.junit.Assert.*
 import org.junit.Test
 import org.nodescope.android.feature.map.CartoRequests
-import org.nodescope.android.feature.map.nodeFeatures
+import org.nodescope.android.feature.map.nodeMarkers
 import org.nodescope.android.core.model.MeshNode
 
 class CartoRequestsTest {
@@ -24,13 +24,13 @@ class CartoRequestsTest {
             assertSame(request, auth.authenticate(request))
         }
     }
-    @Test fun nodeFeaturesPreserveIdentityAndOmitMissingOrInvalidCoordinates() {
-        val features = nodeFeatures(listOf(
+    @Test fun nodeMarkersPreserveIdentityAndOmitMissingOrInvalidCoordinates() {
+        val markers = nodeMarkers(listOf(
             MeshNode("valid", "North", "repeater", 30.0, -97.0, "2026-01-01"),
             MeshNode("missing", "Missing", "repeater", lastSeen = "2026-01-01"),
             MeshNode("invalid", "Invalid", "repeater", 999.0, 0.0, "2026-01-01"),
-        )).features()!!
-        assertEquals(1, features.size)
-        assertEquals("valid", features.single().getStringProperty("publicKey"))
+        ))
+        assertEquals(1, markers.size)
+        assertEquals("valid", markers.single().publicKey)
     }
 }

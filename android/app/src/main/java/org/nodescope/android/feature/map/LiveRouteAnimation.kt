@@ -1,8 +1,5 @@
 package org.nodescope.android.feature.map
 
-import org.maplibre.geojson.Feature
-import org.maplibre.geojson.LineString
-import org.maplibre.geojson.Point
 import org.nodescope.android.core.model.Coordinate
 import org.nodescope.android.core.model.MeshNode
 import kotlin.math.cos
@@ -40,7 +37,7 @@ internal class RouteHop(val start: Coordinate, val end: Coordinate, val startsAt
  * timestamp): every hop is shown complete and fades together over [RouteTiming.HISTORY_FADE],
  * without replaying travel or pulsing isolated points.
  */
-internal class LiveRoute(val key: String, val receivedAt: Long, val color: String, val anchors: List<Feature>,
+internal class LiveRoute(val key: String, val receivedAt: Long, val color: String, val anchors: List<MapMarker>,
     subchains: List<List<Coordinate>>, val historical: Boolean = false, val replay: Boolean = false,
     /** The observed packet, for route details when the route is tapped (none for a replay). */
     val packet: org.nodescope.android.core.model.LivePacket? = null) {
@@ -127,25 +124,6 @@ internal fun routeFrame(routes: List<LiveRoute>, now: Long, animate: Boolean): R
         }
     }
     return RouteFrame(lines, heads, rings)
-}
-
-internal fun RouteFrame.lineFeatures() = lines.map { line ->
-    Feature.fromGeometry(LineString.fromLngLats(line.points.map { Point.fromLngLat(it.longitude, it.latitude) })).apply {
-        addStringProperty("color", line.color)
-        addNumberProperty("opacity", line.opacity)
-        addStringProperty("route", line.route)
-    }
-}
-internal fun RouteFrame.headFeatures() = heads.map { (point, color) ->
-    Feature.fromGeometry(Point.fromLngLat(point.longitude, point.latitude)).apply { addStringProperty("color", color) }
-}
-internal fun RouteFrame.ringFeatures() = rings.map { ring ->
-    Feature.fromGeometry(Point.fromLngLat(ring.center.longitude, ring.center.latitude)).apply {
-        addStringProperty("color", ring.color)
-        addNumberProperty("radius", ring.radius)
-        addNumberProperty("width", ring.width)
-        addNumberProperty("opacity", ring.opacity)
-    }
 }
 
 /**

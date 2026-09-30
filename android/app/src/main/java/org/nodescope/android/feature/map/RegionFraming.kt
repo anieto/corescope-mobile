@@ -90,4 +90,4 @@ internal fun cameraTarget(snapshot: org.nodescope.android.core.model.AnalyzerSna
     return snapshot.nodes.firstNotNullOfOrNull { it.coordinate }?.let { CameraTarget.Center(it, 7.0) }
 }
 
-private fun CameraTarget.Bounds.contains(point: Coordinate) = point.latitude in south..north && point.longitude in west..east
+internal fun CameraTarget.Bounds.contains(point: Coordinate) = point.latitude in south..north && point.longitude in west..east

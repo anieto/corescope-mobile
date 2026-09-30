@@ -4,10 +4,6 @@ import kotlinx.coroutines.launch
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
 import android.animation.ValueAnimator
-import android.graphics.RectF
-import android.view.Choreographer
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.resume
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -38,49 +34,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.view.isVisible
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
-import org.maplibre.android.camera.CameraPosition
-import org.maplibre.android.camera.CameraUpdateFactory
-import org.maplibre.android.geometry.LatLngBounds
-import org.maplibre.android.geometry.LatLng
-import org.maplibre.android.maps.MapLibreMap
-import org.maplibre.android.maps.MapView
-import org.maplibre.android.maps.Style
-import org.maplibre.android.style.expressions.Expression.*
-import org.maplibre.android.style.layers.*
-import org.maplibre.android.style.layers.PropertyFactory.*
-import org.maplibre.android.style.sources.GeoJsonOptions
-import org.maplibre.android.style.sources.GeoJsonSource
-import org.maplibre.geojson.*
 import org.nodescope.android.BuildConfig
 import org.nodescope.android.R
 import org.nodescope.android.core.model.*
-
-private const val NODES = "nodescope-nodes"
-private const val POINTS = "nodescope-points"
-private const val CLUSTERS = "nodescope-clusters"
-private const val NODE_LABELS = "nodescope-node-labels"
-/** A route-only replay's nodes: never grouped, so no count badge is left once the replay ends. */
-private const val REPLAY_NODES = "nodescope-replay-nodes"
-private const val REPLAY_POINTS = "nodescope-replay-points"
-private const val REPLAY_LABELS = "nodescope-replay-labels"
-private const val ROUTE_NODES = "nodescope-route-nodes"
-private const val ROUTE_NODE_POINTS = "nodescope-route-node-points"
-private const val ROUTE = "nodescope-route"
-private const val PACKET = "nodescope-packet"
-private const val USER_LOCATION = "nodescope-user-location"
-private val emptyFeatures get() = FeatureCollection.fromFeatures(emptyList<Feature>())
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -152,13 +117,10 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     var framedHost by rememberSaveable { mutableStateOf(host) }
     var lastFocus by rememberSaveable { mutableStateOf<String?>(null) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    // A MapView is destroyed with the lifecycle it was attached to, so a new lifecycle (e.g. the
-    // navigation entry being replaced) gets a new MapView; a destroyed one is never reused,
-    // which left the map blank and crashed MapLibre ("called after the MapView was destroyed").
-    val view = remember(context, lifecycle) { MapView(context).apply { onCreate(null) } }
-    var map by remember(view) { mutableStateOf<MapLibreMap?>(null) }
-    var style by remember(view) { mutableStateOf<Style?>(null) }
-    var failed by remember(view) { mutableStateOf(false) }
+    val engine = rememberMapLibreEngine()
+    // Camera control once the map is ready, and overlay drawing once its base style has loaded.
+    val camera = engine.camera
+    val overlays = engine.overlays
     var retry by remember { mutableIntStateOf(0) }
     val currentOnNode by rememberUpdatedState(onNode)
     val currentDisplayedNodes by rememberUpdatedState(mapNodes)
@@ -167,6 +129,12 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         if (node != null) { routeDetail = null; selectedNode = node } else currentOnNode(key)
     })
     val density = androidx.compose.ui.platform.LocalDensity.current.density
+    // Region and location framing keep clear of the top controls and bottom count/attribution.
+    val framingInsets = FramingInsets((24 * density).toInt(), (72 * density).toInt(), (24 * density).toInt(), (104 * density).toInt())
+    fun refreshLabels(nodes: List<MeshNode>) {
+        val current = engine.camera ?: return
+        engine.overlays?.setNodeLabelsVisible(nodeLabelsVisible(current.visibleBounds(), nodes))
+    }
     // "Center on my location" (iOS): permission is asked on the first tap, one fix is taken,
     // and the position is only kept in memory to draw the dot.
     val locationScope = rememberCoroutineScope()
@@ -183,8 +151,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                 is LocationResult.Found -> {
                     userLocation = result.coordinate
                     val box = regionBounds(RegionCoordinate(result.coordinate.latitude, result.coordinate.longitude, 10.0))
-                    map?.animateCamera(CameraUpdateFactory.newLatLngBounds(LatLngBounds.from(box.north, box.east, box.south, box.west),
-                        (24 * density).toInt(), (72 * density).toInt(), (24 * density).toInt(), (104 * density).toInt()), 600)
+                    engine.camera?.animate(CameraMove.Fit(box, framingInsets), 600)
                 }
                 LocationResult.ServicesOff -> locationMessage = "Turn on location services to center the map on yourself."
                 LocationResult.Unavailable -> locationMessage = "Couldn't find your location. Try again in a moment."
@@ -198,136 +165,50 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     LaunchedEffect(locationMessage) { if (locationMessage != null) { delay(5_000); locationMessage = null } }
     // Co-located markers fan out by a fixed screen distance; recompute when zoom settles.
     val spreadZoom = kotlin.math.round(cameraValues[2] * 4) / 4
-    val nodes = remember(mapNodes, spreadZoom) { nodeFeatures(mapNodes, spreadCoincidentNodes(mapNodes, spreadZoom)) }
+    val nodes = remember(mapNodes, spreadZoom) { nodeMarkers(mapNodes, spreadCoincidentNodes(mapNodes, spreadZoom)) }
     val progress = remember { Animatable(0f) }
     var replay by remember { mutableIntStateOf(0) }
     val uriHandler = LocalUriHandler.current
 
-    // MapLibre draws its logo as an ImageView inside the MapView; track where it lands.
-    var logoFrame by remember { mutableStateOf<android.graphics.Rect?>(null) }
-    DisposableEffect(view) {
-        val listener = android.view.View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> logoFrame = findLogoFrame(view) }
-        view.addOnLayoutChangeListener(listener)
-        onDispose { view.removeOnLayoutChangeListener(listener) }
-    }
-    // The logo rides up with the replay controls (the node count follows it via logoFrame).
-    val logoBase = remember(map) { map?.uiSettings?.let { intArrayOf(it.logoMarginLeft, it.logoMarginTop, it.logoMarginRight, it.logoMarginBottom) } }
-    LaunchedEffect(map, controlsInset) {
-        val base = logoBase ?: return@LaunchedEffect
-        map?.uiSettings?.setLogoMargins(base[0], base[1], base[2], base[3] + controlsInset)
-    }
-    DisposableEffect(view, lifecycle) {
-        var alive = true
-        var started = false
-        var resumed = false
-        fun sync() {
-            val active = lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
-            val foreground = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
-            if (active && !started) { view.onStart(); started = true }
-            if (foreground && !resumed) { view.onResume(); resumed = true }
-            if (!foreground && resumed) { view.onPause(); resumed = false }
-            if (!active && started) { view.onStop(); started = false }
+    fun onTap(tap: MapTap): Boolean {
+        // A route under the finger opens its details (iOS), unless a node marker is right there.
+        val route = if (tap.nodeUnderFinger) null else tap.routeKeys().firstNotNullOfOrNull { key ->
+            shownRoutes.get().firstOrNull { it.key == key && it.packet != null }
         }
-        val observer = LifecycleEventObserver { _, _ -> sync() }
-        lifecycle.addObserver(observer)
-        sync()
-        val failure = MapView.OnDidFailLoadingMapListener { if (alive) failed = true }
-        view.addOnDidFailLoadingMapListener(failure)
-        view.getMapAsync { ready ->
-            if (alive) {
-                ready.cameraPosition = CameraPosition.Builder()
-                    .target(LatLng(cameraValues[0], cameraValues[1])).zoom(cameraValues[2])
-                    .bearing(cameraValues[3]).tilt(cameraValues[4]).build()
-                ready.addOnCameraIdleListener {
-                    ready.cameraPosition.let { c -> c.target?.let { cameraValues = listOf(it.latitude, it.longitude, c.zoom, c.bearing, c.tilt) } }
-                    updateNodeLabels(ready, currentDisplayedNodes)
-                }
-                ready.addOnMapClickListener { coordinate ->
-                    val point = ready.projection.toScreenLocation(coordinate)
-                    val radius = 24 * context.resources.displayMetrics.density
-                    val hits = ready.queryRenderedFeatures(RectF(point.x-radius, point.y-radius, point.x+radius, point.y+radius), ROUTE_NODE_POINTS, REPLAY_POINTS, POINTS, CLUSTERS)
-                    // Spread co-located nodes sit close together: pick the marker nearest the tap.
-                    fun distance(feature: Feature) = (feature.geometry() as? Point)?.let {
-                        val screen = ready.projection.toScreenLocation(LatLng(it.latitude(), it.longitude()))
-                        kotlin.math.hypot((screen.x - point.x).toDouble(), (screen.y - point.y).toDouble())
-                    } ?: Double.MAX_VALUE
-                    val node = hits.filter { it.hasProperty("publicKey") }.minByOrNull(::distance)
-                    val cluster = hits.filter { it.hasProperty("cluster_id") }.minByOrNull(::distance)
-                    // A route under the finger opens its details (iOS), unless a node marker is right there.
-                    val route = if (node != null && distance(node) <= radius / 2) null else ready.queryRenderedFeatures(
-                        RectF(point.x-radius, point.y-radius, point.x+radius, point.y+radius), "live-route-halo")
-                        .firstNotNullOfOrNull { line ->
-                            val key = if (line.hasProperty("route")) line.getStringProperty("route") else null
-                            shownRoutes.get().firstOrNull { it.key == key && it.packet != null }
-                        }
-                    when {
-                        node != null && distance(node) <= radius / 2 -> { selectNode(node.getStringProperty("publicKey")); true }
-                        cluster != null && node == null -> {
-                            val center = cluster.geometry() as? Point
-                            val source = ready.style?.getSourceAs<GeoJsonSource>(NODES)
-                            if (center != null && source != null) ready.animateCamera(CameraUpdateFactory.newLatLngZoom(
-                                LatLng(center.latitude(), center.longitude()), source.getClusterExpansionZoom(cluster).toDouble()))
-                            true
-                        }
-                        route != null -> { selectedNode = null; routeDetail = routeDetails(route.packet!!, currentAllNodes, route.receivedAt); true }
-                        node != null -> { selectNode(node.getStringProperty("publicKey")); true }
-                        else -> false
-                    }
-                }
-                map = ready
-            }
-        }
-        onDispose {
-            alive = false
-            lifecycle.removeObserver(observer)
-            view.removeOnDidFailLoadingMapListener(failure)
-            if (resumed) view.onPause()
-            if (started) view.onStop()
-            view.onDestroy()
-        }
-    }
-    LaunchedEffect(map, mode, retry) {
-        val ready = map ?: return@LaunchedEffect
-        failed = false
-        style = null
-        val name = listOf("voyager", "positron", "dark-matter")[mode]
-        ready.setStyle("https://basemaps.cartocdn.com/gl/$name-gl-style/style.json") { loaded ->
-            if (!view.isDestroyed) { addOverlays(loaded, dark = mode == 2); style = loaded; updateNodeLabels(ready, currentDisplayedNodes) }
+        return when {
+            tap.nodeUnderFinger -> { selectNode(tap.nodeKey!!); true }
+            tap.expandGroup != null && tap.nodeKey == null -> { tap.expandGroup.invoke(); true }
+            route != null -> { selectedNode = null; routeDetail = routeDetails(route.packet!!, currentAllNodes, route.receivedAt); true }
+            tap.nodeKey != null -> { selectNode(tap.nodeKey); true }
+            else -> false
         }
     }
     val routeOnlyReplay = replayOption != null && routeOnly
-    LaunchedEffect(style, nodes, routeOnlyReplay) {
-        // The grouped source would bundle a route's nearby hops into a numbered badge when zoomed
-        // out, which stayed behind after the replay's own markers faded; route nodes go to an
-        // ungrouped source instead.
-        style?.getSourceAs<GeoJsonSource>(NODES)?.setGeoJson(if (routeOnlyReplay) emptyFeatures else nodes)
-        style?.getSourceAs<GeoJsonSource>(REPLAY_NODES)?.setGeoJson(if (routeOnlyReplay) nodes else emptyFeatures)
-        map?.let { updateNodeLabels(it, mapNodes) }
+    LaunchedEffect(overlays, nodes, routeOnlyReplay) {
+        // A route-only replay's nodes are never grouped, so no count badge outlives the replay.
+        overlays?.setNodes(nodes, grouped = !routeOnlyReplay)
+        refreshLabels(mapNodes)
     }
     // Region centers and names stay valid for the analyzer while a new region's nodes load,
     // so a region change can frame immediately instead of waiting (never with stale nodes).
     var framingSnapshot by remember(host) { mutableStateOf<AnalyzerSnapshot?>(null) }
     LaunchedEffect(snapshot) { snapshot?.let { framingSnapshot = it } }
-    LaunchedEffect(map, snapshot, focusedKey, focusedCoordinate, selectedRegion, sourceViewport, host) {
-        val ready = map ?: return@LaunchedEffect
+    LaunchedEffect(camera, snapshot, focusedKey, focusedCoordinate, selectedRegion, sourceViewport, host) {
+        val ready = camera ?: return@LaunchedEffect
         val data = snapshot ?: framingSnapshot?.takeIf { lastRegion != selectedRegion }?.copy(nodes = emptyList()) ?: return@LaunchedEffect
         val selected = data.nodes.firstOrNull { it.publicKey == focusedKey }?.coordinate ?: focusedCoordinate
         val regionChanged = lastRegion != selectedRegion
         val fresh = !initialized || framedHost != host
         if (fresh || regionChanged || (selected != null && focusedKey != lastFocus)) {
-            val update = if (selected != null && !regionChanged) CameraUpdateFactory.newLatLngZoom(LatLng(selected.latitude, selected.longitude), 13.0)
+            val update = if (selected != null && !regionChanged) CameraMove.Center(selected, 13.0)
             else when (val target = cameraTarget(data, selectedRegion, sourceViewport)) {
                 null -> null
-                is CameraTarget.Center -> CameraUpdateFactory.newLatLngZoom(LatLng(target.coordinate.latitude, target.coordinate.longitude), target.zoom)
-                is CameraTarget.Bounds -> {
-                    // Keep the framed area clear of the top controls and bottom count/attribution.
-                    CameraUpdateFactory.newLatLngBounds(LatLngBounds.from(target.north, target.east, target.south, target.west),
-                        (24 * density).toInt(), (72 * density).toInt(), (24 * density).toInt(), (104 * density).toInt())
-                }
+                is CameraTarget.Center -> CameraMove.Center(target.coordinate, target.zoom)
+                is CameraTarget.Bounds -> CameraMove.Fit(target, framingInsets)
             }
             if (update != null) {
                 // Animate moves within an analyzer; the first framing of each analyzer is instant.
-                if (fresh) ready.moveCamera(update) else ready.animateCamera(update, 600)
+                if (fresh) ready.jump(update) else ready.animate(update, 600)
                 initialized = true
                 framedHost = host
                 lastRegion = selectedRegion
@@ -335,21 +216,9 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         }
         lastFocus = focusedKey
     }
-    LaunchedEffect(style, userLocation) {
-        style?.getSourceAs<GeoJsonSource>(USER_LOCATION)?.setGeoJson(userLocation?.let {
-            FeatureCollection.fromFeatures(listOf(Feature.fromGeometry(Point.fromLngLat(it.longitude, it.latitude))))
-        } ?: emptyFeatures)
-    }
-    LaunchedEffect(style, sampleRoute) {
-        style?.getSourceAs<GeoJsonSource>(ROUTE)?.setGeoJson(if (sampleRoute.size > 1)
-            FeatureCollection.fromFeatures(listOf(Feature.fromGeometry(LineString.fromLngLats(sampleRoute.map { Point.fromLngLat(it.longitude, it.latitude) })) ))
-            else emptyFeatures)
-    }
-    LaunchedEffect(style, sampleRoute, progress.value) {
-        val point = routePosition(sampleRoute, progress.value)
-        style?.getSourceAs<GeoJsonSource>(PACKET)?.setGeoJson(if (point == null) emptyFeatures
-            else FeatureCollection.fromFeatures(listOf(Feature.fromGeometry(Point.fromLngLat(point.longitude, point.latitude)))))
-    }
+    LaunchedEffect(overlays, userLocation) { overlays?.setUserLocation(userLocation) }
+    LaunchedEffect(overlays, sampleRoute) { overlays?.setSampleRoute(sampleRoute) }
+    LaunchedEffect(overlays, sampleRoute, progress.value) { overlays?.setSamplePacket(routePosition(sampleRoute, progress.value)) }
     LaunchedEffect(replay, sampleRoute) {
         if (replay == 0 || sampleRoute.isEmpty()) return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -365,14 +234,13 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         livePackets.filter { (it.isLive || packetEpoch(it) > historyCutoff) && filters.showsRoute(it) }.take(40).map { packet ->
             val color = listOf("#66B9FF", "#FFC27A", "#65DDB4", "#BEA1FF")[(packet.hash.hashCode() and Int.MAX_VALUE) % 4]
             LiveRoute(packet.key, if (packet.isLive) packet.receivedAt else packetEpoch(packet), color,
-                routeAnchorFeatures(packet, snapshot?.nodes.orEmpty(), feed.observers),
+                routeAnchors(packet, snapshot?.nodes.orEmpty(), feed.observers),
                 packetRoute(packet, snapshot?.nodes.orEmpty(), feed.observers), historical = !packet.isLive, packet = packet)
         }
     }
     val replayRoute = remember(replayOption, replayStart, replayReady) {
         replayOption?.takeIf { replayReady }?.let { option ->
-            val anchors = nodeFeatures(option.nodes).features().orEmpty().onEach { it.addStringProperty("anchorId", "node:" + it.getStringProperty("publicKey")) }
-            LiveRoute("replay-${routeReplay?.id}-$replayIndex-$replayStart", replayStart, "#FFA833", anchors, option.subchains, replay = true)
+            LiveRoute("replay-${routeReplay?.id}-$replayIndex-$replayStart", replayStart, "#FFA833", nodeMarkers(option.nodes), option.subchains, replay = true)
         }
     }
     // While replaying, only the replayed route animates (live traffic resumes on "Live").
@@ -388,44 +256,41 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     }
     // Move the camera only when the replayed route isn't already in the clear part of the map,
     // so picking packets or routes that are already in view doesn't shake the map.
-    LaunchedEffect(map, routeReplay?.id, replayIndex) {
-        val ready = map ?: return@LaunchedEffect
+    LaunchedEffect(camera, routeReplay?.id, replayIndex) {
+        val ready = camera ?: return@LaunchedEffect
         if (routeReplay == null) return@LaunchedEffect
         fun play() { replayStart = System.currentTimeMillis() + 150; replayReady = true }
-        val points = replayOption?.subchains?.flatten().orEmpty().map { LatLng(it.latitude, it.longitude) }
+        val points = replayOption?.subchains?.flatten().orEmpty()
         if (points.isEmpty()) return@LaunchedEffect play()
         // A map that was just created (e.g. arriving from Channels) needs its style first.
-        withTimeoutOrNull(3_000) { snapshotFlow { style }.first { it != null } }
+        withTimeoutOrNull(3_000) { snapshotFlow { engine.overlays }.first { it != null } }
         // Judge and frame against the controls' real height (measured on their first layout),
         // so the camera makes one move instead of correcting itself as they appear.
         withTimeoutOrNull(300) { snapshotFlow { replayControlsHeight }.first { it > 0 } }
-        val insets = replayFramingInsets(view.width, view.height, replayControlsHeight, density)
-        val screen = points.map { ready.projection.toScreenLocation(it).let { p -> p.x to p.y } }
-        if (!replayNeedsFraming(screen, view.width, view.height, insets, ready.cameraPosition.zoom)) return@LaunchedEffect play()
+        val insets = replayFramingInsets(ready.width, ready.height, replayControlsHeight, density)
+        val screen = points.map(ready::toScreen)
+        if (!replayNeedsFraming(screen, ready.width, ready.height, insets, ready.zoom)) return@LaunchedEffect play()
         val update = if (points.size > 1) {
-            val bounds = LatLngBounds.Builder().includes(points).build()
-            val fitted = ready.getCameraForLatLngBounds(bounds, intArrayOf(insets.left, insets.top, insets.right, insets.bottom))
+            val bounds = boundsOf(points)
+            val fitted = ready.fittedZoom(bounds, insets)
             // Nodes a few hundred metres apart would fit at building level; stop at street level.
-            if (fitted != null && fitted.zoom > REPLAY_MAX_ZOOM) CameraUpdateFactory.newLatLngZoom(bounds.center, REPLAY_MAX_ZOOM)
-            else CameraUpdateFactory.newLatLngBounds(bounds, insets.left, insets.top, insets.right, insets.bottom)
+            if (fitted != null && fitted > REPLAY_MAX_ZOOM) CameraMove.Center(bounds.center, REPLAY_MAX_ZOOM)
+            else CameraMove.Fit(bounds, insets)
         }
         // A single point is centred: the controls cover at most the bottom 35%.
-        else CameraUpdateFactory.newLatLngZoom(points[0], maxOf(ready.cameraPosition.zoom, REPLAY_POINT_ZOOM))
-        withTimeoutOrNull(1_500) { ready.animateCameraAndWait(update, 500) }
+        else CameraMove.Center(points[0], maxOf(ready.zoom, REPLAY_POINT_ZOOM))
+        withTimeoutOrNull(1_500) { ready.animateAndWait(update, 500) }
         // Then let the new area's tiles load (the map reports idle once everything is drawn).
-        withTimeoutOrNull(1_500) { view.awaitIdle() }
+        withTimeoutOrNull(1_500) { ready.awaitIdle() }
         play()
     }
-    LaunchedEffect(style) {
-        val currentStyle = style ?: return@LaunchedEffect
+    LaunchedEffect(overlays) {
+        val drawing = overlays ?: return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             // Anchor wall-clock receipt timestamps once; clock corrections cannot jump particles.
             val epoch = System.currentTimeMillis()
             val start = android.os.SystemClock.elapsedRealtime()
             var previousRoutes: List<LiveRoute>? = null
-            val lineSource = currentStyle.getSourceAs<GeoJsonSource>("live-lines")
-            val dotSource = currentStyle.getSourceAs<GeoJsonSource>("live-dots")
-            val ringSource = currentStyle.getSourceAs<GeoJsonSource>("live-rings")
             while (isActive) {
                 awaitMapFrame()
                 val now = epoch + android.os.SystemClock.elapsedRealtime() - start
@@ -433,14 +298,10 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                 val active = latestPaths.filter { it.isActive(now) }
                 // Temporary route markers only change when routes enter or leave.
                 if (active != previousRoutes) {
-                    currentStyle.getSourceAs<GeoJsonSource>(ROUTE_NODES)?.setGeoJson(FeatureCollection.fromFeatures(
-                        active.flatMap { it.anchors }.distinctBy { it.getStringProperty("anchorId") }))
+                    drawing.setRouteAnchors(active.flatMap { it.anchors }.distinctBy { it.anchorId })
                     previousRoutes = active
                 }
-                val frame = routeFrame(active, now, animate)
-                lineSource?.setGeoJson(FeatureCollection.fromFeatures(frame.lineFeatures()))
-                dotSource?.setGeoJson(FeatureCollection.fromFeatures(frame.headFeatures()))
-                ringSource?.setGeoJson(FeatureCollection.fromFeatures(frame.ringFeatures()))
+                drawing.setRouteFrame(routeFrame(active, now, animate))
                 val observedPaths = latestPaths
                 // A replay is scheduled slightly ahead so the camera can frame it first.
                 val nextStart = observedPaths.filter { it.receivedAt > now }.minOfOrNull { it.receivedAt }
@@ -465,7 +326,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             NodeBrowser(snapshot?.nodes.orEmpty(), snapshot?.total ?: 0) { key ->
                 search = false
                 snapshot?.nodes?.firstOrNull { it.publicKey == key }?.coordinate?.let {
-                    map?.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(it.latitude, it.longitude), 13.0))
+                    engine.camera?.animate(CameraMove.Center(it, 13.0))
                 }
                 selectNode(key)
             }
@@ -495,8 +356,8 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             }
         })
     Box(Modifier.weight(1f).fillMaxWidth()) {
-        // Keyed so a replacement MapView is attached (the factory only runs once per key).
-        key(view) { AndroidView(factory = { view }, modifier = Modifier.fillMaxSize()) }
+        MapLibreEngineHost(engine, styleMode = mode, retry = retry, bottomInset = controlsInset, savedCamera = cameraValues,
+            onCameraIdle = { cameraValues = it; refreshLabels(currentDisplayedNodes) }, onTap = ::onTap, modifier = Modifier.fillMaxSize())
         Column(Modifier.align(Alignment.TopStart).fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Surface(shape = MaterialTheme.shapes.medium, shadowElevation = 1.dp) { regionControl() }
@@ -518,7 +379,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                     }
                 }
             }
-            if (failed) Surface(shape = MaterialTheme.shapes.medium, tonalElevation = 4.dp) {
+            if (engine.failed) Surface(shape = MaterialTheme.shapes.medium, tonalElevation = 4.dp) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.map_load_failed), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
                     TextButton(onClick = { retry++ }) { Text(stringResource(R.string.retry)) }
@@ -531,7 +392,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                 }
             }
         }
-        if (!failed && style == null) CircularProgressIndicator(Modifier.align(Alignment.Center))
+        if (engine.loading) CircularProgressIndicator(Modifier.align(Alignment.Center))
         // Location sits above zoom, which sits just above the attribution line at the right edge.
         Column(Modifier.align(Alignment.BottomEnd).offset { IntOffset(0, -controlsInset) }.padding(end = 12.dp, bottom = 56.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Surface(shape = MaterialTheme.shapes.medium, shadowElevation = 2.dp) {
@@ -542,9 +403,9 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             }
             Surface(shape = MaterialTheme.shapes.medium, shadowElevation = 2.dp) {
                 Column {
-                    IconButton(onClick = { map?.animateCamera(CameraUpdateFactory.zoomIn()) }) { Icon(Icons.Outlined.Add, stringResource(R.string.zoom_in)) }
+                    IconButton(onClick = { engine.camera?.animate(CameraMove.ZoomIn) }) { Icon(Icons.Outlined.Add, stringResource(R.string.zoom_in)) }
                     HorizontalDivider(Modifier.width(32.dp).align(Alignment.CenterHorizontally))
-                    IconButton(onClick = { map?.animateCamera(CameraUpdateFactory.zoomOut()) }) { Icon(Icons.Outlined.Remove, stringResource(R.string.zoom_out)) }
+                    IconButton(onClick = { engine.camera?.animate(CameraMove.ZoomOut) }) { Icon(Icons.Outlined.Remove, stringResource(R.string.zoom_out)) }
                 }
             }
         }
@@ -563,7 +424,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         // Node count centered just above the MapLibre logo (measured; falls back to bottom left).
         var countSize by remember { mutableStateOf(IntSize.Zero) }
         val gap = with(LocalDensity.current) { 4.dp.roundToPx() }
-        val logo = logoFrame
+        val logo = engine.logoFrame
         Surface((if (logo != null && countSize != IntSize.Zero) Modifier.align(Alignment.TopStart).offset {
                 IntOffset((logo.centerX() - countSize.width / 2).coerceAtLeast(gap), logo.top - gap - countSize.height)
             } else Modifier.align(Alignment.BottomStart).offset { IntOffset(0, -controlsInset) }.padding(start = 8.dp, bottom = 34.dp)).onSizeChanged { countSize = it },
@@ -589,36 +450,6 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     }
 }
 
-}
-
-internal fun nodeFeatures(nodes: List<MeshNode>, positions: Map<String, Coordinate> = emptyMap()): FeatureCollection = FeatureCollection.fromFeatures(nodes.mapNotNull { node ->
-    (positions[node.publicKey] ?: node.coordinate)?.let { point -> Feature.fromGeometry(Point.fromLngLat(point.longitude, point.latitude)).apply {
-        addStringProperty("publicKey", node.publicKey)
-        addStringProperty("name", node.displayName)
-        addStringProperty("role", node.role)
-    } }
-})
-
-/**
- * The MapLibre logo has no public view reference: it is the one visible, wide ImageView in the
- * MapView (the attribution button is square). Returns its bounds relative to the MapView.
- */
-private fun findLogoFrame(root: android.view.ViewGroup): android.graphics.Rect? {
-    val rootLocation = IntArray(2).also(root::getLocationInWindow)
-    fun search(group: android.view.ViewGroup): android.widget.ImageView? {
-        for (index in 0 until group.childCount) {
-            when (val child = group.getChildAt(index)) {
-                is android.widget.ImageView -> if (child.isVisible && child.height > 0 && child.width > child.height * 2) return child
-                is android.view.ViewGroup -> search(child)?.let { return it }
-            }
-        }
-        return null
-    }
-    val logo = search(root) ?: return null
-    val location = IntArray(2).also(logo::getLocationInWindow)
-    val left = location[0] - rootLocation[0]
-    val top = location[1] - rootLocation[1]
-    return android.graphics.Rect(left, top, left + logo.width, top + logo.height)
 }
 
 /**
@@ -714,116 +545,12 @@ internal fun ReplayControls(playing: Boolean, routes: List<ReplayRoute>, selecte
     }
 }
 
-/** iOS parity: names appear only when the view is close (≤ 0.08° tall) and shows at most 60 nodes. */
-internal fun showsNodeLabels(latitudeSpan: Double, visibleNodes: Int) = latitudeSpan <= 0.08 && visibleNodes <= 60
-
-private fun updateNodeLabels(map: MapLibreMap, nodes: List<MeshNode>) {
-    val style = map.style ?: return
-    val bounds = map.projection.visibleRegion.latLngBounds
-    val visible = if (bounds.latitudeSpan > 0.08) Int.MAX_VALUE
-        else nodes.count { node -> node.coordinate?.let { bounds.contains(LatLng(it.latitude, it.longitude)) } == true }
-    val shown = visibility(if (showsNodeLabels(bounds.latitudeSpan, visible)) Property.VISIBLE else Property.NONE)
-    listOf(NODE_LABELS, REPLAY_LABELS).forEach { style.getLayer(it)?.setProperties(shown) }
-}
-
-private fun addOverlays(style: Style, dark: Boolean) {
-    // Group only 3+ nodes that nearly touch, and show every node individually from
-    // regional zoom (zoom 9, e.g. a whole metro area) inward.
-    style.addSource(GeoJsonSource(NODES, emptyFeatures, GeoJsonOptions().withCluster(true)
-        .withClusterMaxZoom(8).withClusterRadius(24).withClusterMinPoints(3)))
-    style.addLayer(CircleLayer(POINTS, NODES).withFilter(not(has("point_count"))).withProperties(
-        circleRadius(5f), circleColor(match(get("role"), literal("#299EFF"), stop("repeater", "#FFAA44"), stop("room", "#299EFF"), stop("companion", "#45C99D"), stop("sensor", "#B18AFF"))), circleStrokeWidth(1f), circleStrokeColor("#C5E4FA")))
-    style.addLayer(CircleLayer(CLUSTERS, NODES).withFilter(has("point_count")).withProperties(
-        circleRadius(12f), circleColor("#21465E"), circleStrokeWidth(1f), circleStrokeColor("#6994AF")))
-    style.addLayer(SymbolLayer("nodescope-counts", NODES).withFilter(has("point_count")).withProperties(
-        textField(toString(get("point_count_abbreviated"))), textSize(11f), textColor("#FFFFFF"), textAllowOverlap(true)))
-    // Font stack served by CARTO's glyph endpoint for these styles; labels that collide are hidden.
-    fun labels(id: String, source: String) = SymbolLayer(id, source).withFilter(not(has("point_count"))).withProperties(
-        textField(get("name")), textFont(arrayOf("Montserrat Medium", "Open Sans Bold", "Noto Sans Regular", "HanWangHeiLight Regular", "NanumBarunGothic Regular")),
-        textSize(11f), textAnchor(Property.TEXT_ANCHOR_TOP), textOffset(arrayOf(0f, 0.8f)), textMaxWidth(10f),
-        textColor(if (dark) "#FFFFFF" else "#14243A"), textHaloColor(if (dark) "rgba(0,0,0,0.72)" else "rgba(255,255,255,0.85)"),
-        textHaloWidth(1.6f), visibility(Property.NONE))
-    style.addLayer(labels(NODE_LABELS, NODES))
-    style.addSource(GeoJsonSource(REPLAY_NODES, emptyFeatures))
-    style.addLayer(CircleLayer(REPLAY_POINTS, REPLAY_NODES).withProperties(
-        circleRadius(5f), circleColor(match(get("role"), literal("#299EFF"), stop("repeater", "#FFAA44"), stop("room", "#299EFF"), stop("companion", "#45C99D"), stop("sensor", "#B18AFF"))), circleStrokeWidth(1f), circleStrokeColor("#C5E4FA")))
-    style.addLayer(labels(REPLAY_LABELS, REPLAY_NODES))
-    // Live hops as on iOS: a soft halo under a thin core, a small white head, and arrival rings.
-    style.addSource(GeoJsonSource("live-lines", emptyFeatures).apply { setOverrideSynchronousUpdate(true) })
-    style.addLayer(LineLayer("live-route-halo", "live-lines").withProperties(lineColor(get("color")), lineWidth(6f),
-        lineOpacity(product(get("opacity"), literal(0.18f))), lineCap(Property.LINE_CAP_ROUND), lineJoin(Property.LINE_JOIN_ROUND)))
-    style.addLayer(LineLayer("live-route-lines", "live-lines").withProperties(lineColor(get("color")), lineWidth(2f),
-        lineOpacity(product(get("opacity"), literal(0.85f))), lineCap(Property.LINE_CAP_ROUND), lineJoin(Property.LINE_JOIN_ROUND)))
-    style.addSource(GeoJsonSource("live-rings", emptyFeatures).apply { setOverrideSynchronousUpdate(true) })
-    style.addLayer(CircleLayer("live-route-rings", "live-rings").withProperties(circleOpacity(0f), circleRadius(get("radius")),
-        circleStrokeColor(get("color")), circleStrokeWidth(get("width")), circleStrokeOpacity(get("opacity"))))
-    style.addSource(GeoJsonSource("live-dots", emptyFeatures).apply { setOverrideSynchronousUpdate(true) })
-    style.addLayer(CircleLayer("live-route-dots", "live-dots").withProperties(circleColor("#FFFFFF"), circleRadius(3.5f), circleStrokeColor(get("color")), circleStrokeWidth(1.5f)))
-    style.addSource(GeoJsonSource(ROUTE_NODES, emptyFeatures))
-    style.addLayer(CircleLayer(ROUTE_NODE_POINTS, ROUTE_NODES).withProperties(
-        circleRadius(6f), circleColor(match(get("role"), literal("#65DDB4"), stop("repeater", "#FFAA44"), stop("room", "#299EFF"), stop("companion", "#45C99D"), stop("sensor", "#B18AFF"))),
-        circleStrokeWidth(2f), circleStrokeColor("#FFFFFF")))
-    style.addSource(GeoJsonSource(ROUTE, emptyFeatures))
-    style.addLayer(LineLayer("nodescope-route-line", ROUTE).withProperties(lineColor("#299EFF"), lineWidth(4f)))
-    style.addSource(GeoJsonSource(PACKET, emptyFeatures))
-    style.addLayer(CircleLayer("nodescope-packet-dot", PACKET).withProperties(
-        circleRadius(9f), circleColor("#00BCD4"), circleStrokeWidth(1f), circleStrokeColor("#C5E4FA")))
-    // Your position: a soft halo under a blue dot with a white ring (the platform convention).
-    style.addSource(GeoJsonSource(USER_LOCATION, emptyFeatures))
-    style.addLayer(CircleLayer("nodescope-user-halo", USER_LOCATION).withProperties(circleRadius(16f), circleColor("#1A73E8"), circleOpacity(0.18f)))
-    style.addLayer(CircleLayer("nodescope-user-dot", USER_LOCATION).withProperties(
-        circleRadius(7f), circleColor("#1A73E8"), circleStrokeWidth(2.5f), circleStrokeColor("#FFFFFF")))
-}
-
 /** Explicit debug-only synthetic fixture, never mixed into analyzer data. */
 fun mapLabSnapshot(): AnalyzerSnapshot {
     val points = listOf(Coordinate(30.2672, -97.7431), Coordinate(30.30, -97.72), Coordinate(30.33, -97.68))
     return AnalyzerSnapshot(points.mapIndexed { index, point ->
         MeshNode("sample-$index", "Sample node ${index + 1}", "repeater", point.latitude, point.longitude, "2026-01-01T00:00:00Z")
     }, 3, emptyMap(), MapDefaults(listOf(30.30, -97.72), 11.0))
-}
-
-
-private suspend fun MapLibreMap.animateCameraAndWait(update: org.maplibre.android.camera.CameraUpdate, durationMs: Int) =
-    suspendCancellableCoroutine<Unit> { continuation ->
-        animateCamera(update, durationMs, object : MapLibreMap.CancelableCallback {
-            override fun onCancel() { if (continuation.isActive) continuation.resume(Unit) }
-            override fun onFinish() { if (continuation.isActive) continuation.resume(Unit) }
-        })
-    }
-
-/** Suspends until the map has finished loading and drawing what is on screen. */
-private suspend fun MapView.awaitIdle() = suspendCancellableCoroutine<Unit> { continuation ->
-    val listener = object : MapView.OnDidBecomeIdleListener {
-        override fun onDidBecomeIdle() {
-            removeOnDidBecomeIdleListener(this)
-            if (continuation.isActive) continuation.resume(Unit)
-        }
-    }
-    addOnDidBecomeIdleListener(listener)
-    continuation.invokeOnCancellation { removeOnDidBecomeIdleListener(listener) }
-}
-
-/** Native map updates use the display clock without keeping Compose's UI clock busy. */
-private suspend fun awaitMapFrame() = suspendCancellableCoroutine<Unit> { continuation ->
-    val choreographer = Choreographer.getInstance()
-    val callback = Choreographer.FrameCallback { if (continuation.isActive) continuation.resume(Unit) }
-    choreographer.postFrameCallback(callback)
-    continuation.invokeOnCancellation { choreographer.removeFrameCallback(callback) }
-}
-
-/** Endpoints stay visible while the clustered source continues its normal layout. */
-internal fun routeAnchorFeatures(packet: LivePacket, nodes: List<MeshNode>, observers: List<MeshObserver>): List<Feature> {
-    val resolved = resolvedRouteNodes(packet, nodes).filterNotNull().distinctBy { it.publicKey }
-    val anchors = nodeFeatures(resolved).features().orEmpty().onEach { it.addStringProperty("anchorId", "node:" + it.getStringProperty("publicKey")) }
-    val nodeCoordinates = resolved.mapNotNull { it.coordinate }.toSet()
-    val endpoints = packetRoute(packet, nodes, observers).flatten().distinct().filterNot { it in nodeCoordinates }.map { point ->
-        Feature.fromGeometry(Point.fromLngLat(point.longitude, point.latitude)).apply {
-            addStringProperty("anchorId", "observer:${point.latitude},${point.longitude}")
-            addStringProperty("role", "observer")
-        }
-    }
-    return anchors + endpoints
 }
 
 internal fun regionSpan(region: RegionCoordinate): Pair<Double, Double> {

@@ -756,3 +756,21 @@ how to use.
   routes in the full data starts its replay when they arrive ("Looking for routes…" meanwhile).
 - Packet details (Packets tab) load the packet's full observation routes too, so "Recent"
   packets offer every route in the route dropdown; the feed's routes keep their numbers.
+
+## Google Maps option, phase 1: map engine split — 2026-09-30 (branch `android-google-maps`)
+
+First step of `google-maps-option.md` (Option B). No visible change: CARTO/MapLibre should
+behave exactly as in 0.7.6.
+- Pricing rechecked 2026-09-30: the Maps SDK SKU (Android map loads without a map ID) is still
+  listed as unlimited and free; loads with a map ID bill as Dynamic Maps (10k free, then $7/1k).
+- `MapEngine.kt` (engine-neutral): `MapMarker` (nodes and route endpoints, replacing GeoJSON
+  features in `LiveRoute.anchors`), `CameraMove`, `MapCamera` (camera moves, projection,
+  fitting, wait-for-idle), `MapOverlays` (nodes grouped or not, labels, route anchors, route
+  frames, user location, sample route), `MapTap` (what a tap touched), label rule, bounds.
+- `MapLibreEngine.kt`: everything MapLibre-specific moved out of `MapScreen` unchanged: the
+  MapView and its lifecycle, CARTO styles, layers and source IDs, tap hit-testing, cluster
+  expansion, logo tracking, `awaitIdle`.
+- `MapScreen` keeps the shared behaviour: filters, selection, the tap decision, region/search/
+  location framing, replay framing and timing, the live route animation loop, all the chrome.
+- Instrumented tests still find the MapView and the same layer IDs. JVM tests updated to the
+  neutral helpers, plus `MapEngineTest`. Built and unit-tested; not yet run on a device.

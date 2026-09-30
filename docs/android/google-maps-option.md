@@ -50,6 +50,13 @@ Phases:
 
 Before starting, ask testers what they want most from Google Maps (satellite? places near nodes? just the familiar map?) to set phase 2 priorities. Work can be split with Codex (map work has been Codex's area).
 
+## Status
+
+- 2026-09-30: work started on branch `android-google-maps`. Phase 1 (engine split) is done
+  and waiting for a "nothing changed" check on CARTO; see `progress.md`. Pricing rechecked
+  the same day with no change. Phase 2 needs a billing-enabled Cloud project and an Android
+  API key restricted to the package and the upload and Play app-signing SHA-1s.
+
 ## Sources to recheck
 
 - [Google pricing](https://developers.google.com/maps/billing-and-pricing/pricing)

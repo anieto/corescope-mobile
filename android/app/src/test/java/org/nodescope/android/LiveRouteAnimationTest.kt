@@ -75,9 +75,7 @@ class LiveRouteAnimationTest {
         }
         assertEquals(36.0, separationDp(near, 12.0), 0.01)
         assertEquals(36.0, separationDp(spreadCoincidentNodes(nodes, 15.0), 15.0), 0.01)
-        assertEquals(near.getValue("a"), nodeFeatures(nodes, near).features()!!
-            .first { it.getStringProperty("publicKey") == "a" }.geometry().let { it as org.maplibre.geojson.Point }
-            .let { Coordinate(it.latitude(), it.longitude()) })
+        assertEquals(near.getValue("a"), nodeMarkers(nodes, near).first { it.publicKey == "a" }.coordinate)
     }
 
     @Test fun nodeNamesShowOnlyWhenCloseAndSparse() {
