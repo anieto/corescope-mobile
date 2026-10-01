@@ -1,7 +1,10 @@
 package org.nodescope.android.feature.map
 
 import org.nodescope.android.core.model.Coordinate
+import org.nodescope.android.core.model.LivePacket
 import org.nodescope.android.core.model.MeshNode
+import org.nodescope.android.core.model.MeshObserver
+import org.nodescope.android.core.model.packetEpoch
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.sin
@@ -149,4 +152,46 @@ internal fun spreadCoincidentNodes(nodes: List<MeshNode>, zoom: Double, radiusDp
         }
     }
     return spread
+}
+
+/**
+ * Live routes for the newest packets. Each packet's route is worked out once and reused, with
+ * one node lookup shared by all packets, instead of rebuilding every route on each new packet.
+ */
+internal class LiveRouteBuilder {
+    private var nodes: List<MeshNode>? = null
+    private var observers: List<MeshObserver>? = null
+    private var lookup: Map<String, MeshNode> = emptyMap()
+    private val routes = HashMap<LivePacket, LiveRoute>()
+    /**
+     * A live route starts animating when it is first ready to draw, not when its packet arrived:
+     * the time spent getting it to the map would otherwise be skipped, a jump at the start. Kept
+     * per packet, so an update to the packet (more observations) never restarts its route.
+     */
+    private val starts = HashMap<String, Long>()
+
+    fun build(packets: List<LivePacket>, nodes: List<MeshNode>, observers: List<MeshObserver>, filters: MapFilters): List<LiveRoute> = traced("NodeScope:routes") {
+        if (nodes !== this.nodes) { this.nodes = nodes; lookup = nodeLookup(nodes); routes.clear() }
+        if (observers !== this.observers) { this.observers = observers; routes.clear() }
+        // Recent history appears as already-arrived routes while it is under 12 s old, as on iOS.
+        val historyCutoff = System.currentTimeMillis() - RouteTiming.HISTORY_FADE
+        val shown = packets.filter { (it.isLive || packetEpoch(it) > historyCutoff) && filters.showsRoute(it) }.take(40)
+        val result = shown.map { packet ->
+            routes.getOrPut(packet) {
+                val color = listOf("#66B9FF", "#FFC27A", "#65DDB4", "#BEA1FF")[(packet.hash.hashCode() and Int.MAX_VALUE) % 4]
+                val observed = if (packet.isLive) packet.receivedAt else packetEpoch(packet)
+                // Only for packets that just arrived: older ones (back after a filter change) keep
+                // their own timing rather than replaying.
+                val start = if (packet.isLive) starts.getOrPut(packet.key) {
+                    val now = System.currentTimeMillis()
+                    if (now - observed < 2_000) maxOf(observed, now) else observed
+                } else observed
+                LiveRoute(packet.key, start, color, routeAnchors(packet, nodes, observers, lookup),
+                    packetRoute(packet, nodes, observers, lookup), historical = !packet.isLive, packet = packet, observedAt = observed)
+            }
+        }
+        routes.keys.retainAll(shown.toSet())
+        starts.keys.retainAll(shown.mapTo(HashSet()) { it.key })
+        result
+    }
 }

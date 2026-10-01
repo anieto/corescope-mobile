@@ -138,7 +138,8 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
             val state = rawState.takeIf { it.selection?.host == preferences.host && it.selection.region == preferences.region }
                 ?: SessionState(loading = true)
             val rawLive by model.live.collectAsStateWithLifecycle()
-            val live = rawLive.takeIf { it.selection?.host == preferences.host && it.selection.region == preferences.region } ?: LiveFeedState()
+            // Read only inside the provider, so each packet doesn't recompose the whole app shell.
+            val live = { rawLive.takeIf { it.selection?.host == preferences.host && it.selection.region == preferences.region } ?: LiveFeedState() }
             val sourceChangedAt by model.sourceChangedAt.collectAsStateWithLifecycle()
             val pendingLink by model.pendingLink.collectAsStateWithLifecycle()
             AppShell(preferences, state, model::setRegion, { model.refresh(); model.reconnectLive() }, model::setAppearance, model::selectDestination,
@@ -165,7 +166,7 @@ internal fun AppShell(
     onAppearance: (org.nodescope.android.core.storage.Appearance) -> Unit,
     onDestination: (String) -> Unit,
     sourceScreen: @Composable (() -> Unit) -> Unit,
-    feed: LiveFeedState = LiveFeedState(), onReconnect: () -> Unit = {}, nodeLibrary: NodeLibrary? = null,
+    feed: () -> LiveFeedState = { LiveFeedState() }, onReconnect: () -> Unit = {}, nodeLibrary: NodeLibrary? = null,
     browse: BrowseRepository? = null, monitoredChannels: () -> MonitoredChannelStore? = { null },
     sourceViewport: org.nodescope.android.core.model.RegionCoordinate? = null,
     diagnostics: org.nodescope.android.core.network.AnalyzerDiagnostics? = null,
@@ -175,6 +176,11 @@ internal fun AppShell(
 ) {
     val context = LocalContext.current
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+    // The live feed changes several times a second. The shell reads it through this State, so a new
+    // packet recomposes only the screens that show packets: rebuilding the shell (and with it the
+    // navigation graph, which is keyed on its builder) on every packet made the map's animation hitch.
+    val feedProvider by rememberUpdatedState(feed)
+    val liveFeed = remember { derivedStateOf { feedProvider() } }
     val library = nodeLibrary ?: remember(preferences.host) { NodeLibrary.forAnalyzer(context, preferences.host) }
     val nav = rememberNavController()
     fun openNode(key: String) {
@@ -268,7 +274,7 @@ internal fun AppShell(
             NodeScopeLink.Kind.NODE -> { selectTab(Destination.EXPLORE); openNode(id) }
             NodeScopeLink.Kind.OBSERVER -> {
                 selectTab(Destination.OBSERVERS)
-                nav.navigate(ObserverRoute(id, feed.observers.firstOrNull { it.id.equals(id, true) }?.displayName ?: id.take(12)))
+                nav.navigate(ObserverRoute(id, liveFeed.value.observers.firstOrNull { it.id.equals(id, true) }?.displayName ?: id.take(12)))
             }
             NodeScopeLink.Kind.CHANNEL -> { selectTab(Destination.CHANNELS); nav.navigate(ChannelRoute(id, id.removePrefix("user:"))) }
             NodeScopeLink.Kind.PACKET -> { selectTab(Destination.EXPLORE); nav.navigate(MessagePacketRoute(id)) }
@@ -388,11 +394,13 @@ internal fun AppShell(
                     NavHost(navController = nav, startDestination = initialTab.route, modifier = Modifier.weight(1f),
                         enterTransition = { screenEnter(initialState, targetState) }, exitTransition = { screenExit(initialState, targetState) },
                         popEnterTransition = { screenEnter(initialState, targetState) }, popExitTransition = { screenExit(initialState, targetState) }) {
+                        // Read when composing a screen, not when building the graph (see liveFeed).
+                        val currentFeed by liveFeed
                         screen<MapRoute> {
                             // One map for all regions: it re-frames itself and keeps the chosen map style.
                             // Wide screens add the live packet feed beside it; a tapped packet replays
                             // its routes, or opens its details when none can be drawn.
-                            MapPacketsLayout(feed, onReconnect, selectedId = replay?.packetId ?: panelPacket,
+                            MapPacketsLayout(currentFeed, onReconnect, selectedId = replay?.packetId ?: panelPacket,
                                 replayingId = replay?.packetId, lookingUpId = lookingUp,
                                 onSelect = { id, hash, routes ->
                                     routeLookup?.cancel(); lookingUp = null
@@ -404,14 +412,14 @@ internal fun AppShell(
                                     }
                                     if (id != null && hash != null) completeRoutes(id, hash)
                                 }, onDetails = { nav.navigate(PacketDetailRoute(it)) }) { onShowPackets ->
-                            MapScreen(state.snapshot?.takeIf { state.selection?.host == preferences.host }, focusedNode, ::openNode, feed = feed, onRefresh = onRefresh, regionControl = { RegionMenu(preferences, state) { focusedNode = null; focusedPosition = null; onRegion(it) } }, focusedCoordinate = focusedPosition?.let { org.nodescope.android.core.model.Coordinate.gps(it[0], it[1]) }, selectedRegion = preferences.region, sourceViewport = sourceViewport, routeReplay = replay, onExitReplay = { replay = null },
+                            MapScreen(state.snapshot?.takeIf { state.selection?.host == preferences.host }, focusedNode, ::openNode, feed = { currentFeed }, onRefresh = onRefresh, regionControl = { RegionMenu(preferences, state) { focusedNode = null; focusedPosition = null; onRegion(it) } }, focusedCoordinate = focusedPosition?.let { org.nodescope.android.core.model.Coordinate.gps(it[0], it[1]) }, selectedRegion = preferences.region, sourceViewport = sourceViewport, routeReplay = replay, onExitReplay = { replay = null },
                                 host = preferences.host, showActiveNodes = showActiveNodes, onActiveNodesShown = { showActiveNodes = false }, onShowPackets = onShowPackets)
                             }
                         }
                         screen<ExploreRoute> { backStack ->
                             val monitoredList = monitoredChannels()?.channels?.collectAsStateWithLifecycle()?.value.orEmpty()
                             ExploreScreen(browse?.let { repository -> viewModel(backStack) { ExploreViewModel(repository) } }, preferences.host,
-                                state.snapshot, feed, library, monitoredList, ExploreActions(
+                                state.snapshot, currentFeed, library, monitoredList, ExploreActions(
                                     onNode = ::openNode,
                                     onObserver = { id, name -> nav.navigate(ObserverRoute(id, name)) },
                                     onChannel = { id, name -> nav.navigate(ChannelRoute(id, name)) },
@@ -424,12 +432,12 @@ internal fun AppShell(
                                 ))
                         }
                         screen<PacketRoute> {
-                            PacketScreen(feed, onReconnect, regionControl, { onRegion(null) }, onGroup = { nav.navigate(PacketDetailRoute(it)) })
+                            PacketScreen(currentFeed, onReconnect, regionControl, { onRegion(null) }, onGroup = { nav.navigate(PacketDetailRoute(it)) })
                         }
                         screen<PacketDetailRoute> { backStack ->
                             val nodes = state.snapshot?.nodes.orEmpty()
                             val groupId = backStack.toRoute<PacketDetailRoute>().groupId
-                            PacketDetailScreen(feed, groupId, nodes, loadRoutes = { fullRoutes(preferences.host, preferences.region, it) }) { routes, selected -> startReplay(routes, selected, groupId) }
+                            PacketDetailScreen(currentFeed, groupId, nodes, loadRoutes = { fullRoutes(preferences.host, preferences.region, it) }) { routes, selected -> startReplay(routes, selected, groupId) }
                         }
                         screen<MessagePacketRoute> { backStack ->
                             val route = backStack.toRoute<MessagePacketRoute>()
@@ -441,7 +449,7 @@ internal fun AppShell(
                         }
                         screen<ChannelsRoute> { backStack ->
                             channelsModel(browse, monitoredChannels, backStack)?.let { channels ->
-                                ChannelsListDetailScreen(channels, selection, feed, library, regionControl, { onRegion(null) },
+                                ChannelsListDetailScreen(channels, selection, currentFeed, library, regionControl, { onRegion(null) },
                                     onAdd = { nav.navigate(AddChannelRoute) },
                                     packetContent = { hash, sender, text ->
                                         browse?.let { repository ->
@@ -455,7 +463,7 @@ internal fun AppShell(
                         screen<ChannelRoute> { backStack ->
                             val route = backStack.toRoute<ChannelRoute>()
                             channelsModel(browse, monitoredChannels, parentEntry<ChannelsRoute>(nav, backStack))?.let { channels ->
-                                ChannelsListDetailScreen(channels, selection, feed, library, regionControl, { onRegion(null) },
+                                ChannelsListDetailScreen(channels, selection, currentFeed, library, regionControl, { onRegion(null) },
                                     onAdd = { nav.navigate(AddChannelRoute) },
                                     packetContent = { hash, sender, text ->
                                         browse?.let { repository ->
@@ -472,26 +480,26 @@ internal fun AppShell(
                         }
                         screen<ObserversRoute> {
                             observersModel(browse, it)?.let { observers ->
-                                ObserversListDetailScreen(observers, selection, feed, library, regionControl, { onRegion(null) },
+                                ObserversListDetailScreen(observers, selection, currentFeed, library, regionControl, { onRegion(null) },
                                     activeOnlyRequest = observerActiveRequest)
                             } ?: UnavailableScreen(R.string.observers, R.string.observers_unavailable)
                         }
                         screen<ObserverRoute> { backStack ->
                             observersModel(browse, parentEntry<ObserversRoute>(nav, backStack))?.let { observers ->
                                 val id = backStack.toRoute<ObserverRoute>().id
-                                ObserversListDetailScreen(observers, selection, feed, library, regionControl, { onRegion(null) },
+                                ObserversListDetailScreen(observers, selection, currentFeed, library, regionControl, { onRegion(null) },
                                     initialId = id, onExit = { nav.popBackStack() })
                             } ?: UnavailableScreen(R.string.observers, R.string.observers_unavailable)
                         }
                         screen<SettingsRoute> {
-                            SettingsScreen(preferences, feed.connection, state.error, sourceChangedAt, onAppearance,
+                            SettingsScreen(preferences, currentFeed.connection, state.error, sourceChangedAt, onAppearance,
                                 onSource = { nav.navigate(SourceRoute) },
                                 onDiagnostics = { if (diagnostics != null) nav.navigate(DiagnosticsRoute) },
                                 onStorage = { if (cacheStorage != null) nav.navigate(StorageRoute) },
                                 onAbout = { nav.navigate(AboutRoute) }, onMapLab = { nav.navigate(MapLabRoute) },
                                 onSupport = { runCatching { uriHandler.openUri(SUPPORT_URL) } }, onDistanceUnit = onDistanceUnit)
                         }
-                        screen<DiagnosticsRoute> { diagnostics?.let { DiagnosticsScreen(it, preferences.host, feed.connection) } }
+                        screen<DiagnosticsRoute> { diagnostics?.let { DiagnosticsScreen(it, preferences.host, currentFeed.connection) } }
                         screen<StorageRoute> { cacheStorage?.let { StorageScreen(it) { onRefresh() } } }
                         screen<AboutRoute> { AboutScreen() }
                         screen<NodeRoute> { backStack ->

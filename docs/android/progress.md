@@ -836,3 +836,11 @@ Manual checks (Google Maps · Beta):
   look and layer order as CARTO; route taps and route-node taps are hit-tested on screen. Profiled
   after: route drawing 20 → 0.18 ms/frame, main-thread frame 31 → 6.5 ms, stalls >15 ms 140 → 12
   per 15 s, 0% janky frames. The earlier 30 fps cap and per-object diffing are gone.
+- Per-packet recomposition trimmed (profiled again on the tablet): the app shell received the
+  live feed as a value, so every packet re-ran `AppShell` and rebuilt the navigation graph (keyed
+  on its builder lambda), and handed `MapScreen` new callbacks. Now `AppShell` and `MapScreen` take
+  `() -> LiveFeedState`; the graph reads the feed through one derived State; `MapScreen` reads only
+  derived values (observers, connection) and builds live routes outside composition
+  (`LiveRouteBuilder`, read by the animation loop and taps). Packet-panel row click handlers no
+  longer change every packet. Recomposition per 15 s: 301 → 155 ms (avg 13.1 → 7.4 ms, max
+  28.6 → 20 ms); `AppShell` no longer recomposes per packet. Trace sections use a local `traced()`.

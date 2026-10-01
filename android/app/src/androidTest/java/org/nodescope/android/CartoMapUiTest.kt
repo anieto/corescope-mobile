@@ -146,7 +146,7 @@ class CartoMapUiTest {
         var feed by mutableStateOf(LiveFeedState())
         val selected = AtomicReference<String>()
         compose.setContent { NodeScopeTheme(Appearance.DARK) {
-            MapScreen(snapshot, onNode = { selected.set(it) }, feed = feed, selectedRegion = region)
+            MapScreen(snapshot, onNode = { selected.set(it) }, feed = { feed }, selectedRegion = region)
         } }
         val map = AtomicReference<MapLibreMap>()
         compose.runOnIdle { findMap(compose.activity.window.decorView)!!.getMapAsync { map.set(it) } }

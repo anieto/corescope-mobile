@@ -49,7 +49,7 @@ class LiveNetworkUiTest {
             }
             NodeScopeTheme(appearance) {
                 Surface(Modifier.fillMaxSize()) { Box(Modifier.fillMaxSize().safeDrawingPadding()) {
-                    AppShell(preferences.copy(appearance = appearance), SessionState(snapshot = snapshot), {}, {}, { appearance = it }, {}, {}, feed)
+                    AppShell(preferences.copy(appearance = appearance), SessionState(snapshot = snapshot), {}, {}, { appearance = it }, {}, {}, { feed })
                 } }
             }
         }

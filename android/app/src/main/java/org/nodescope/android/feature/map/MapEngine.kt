@@ -187,3 +187,9 @@ internal fun fitCamera(bounds: CameraTarget.Bounds, width: Int, height: Int, ins
     val y = (north + south) / 2 - (insets.top - insets.bottom) / 2.0 / world
     return CameraMove.Center(Coordinate(Mercator.latitude(y), Mercator.longitude(x)), zoom)
 }
+
+/** A named section in system traces (Perfetto), costing nothing when no trace is recording. */
+internal inline fun <T> traced(name: String, block: () -> T): T {
+    android.os.Trace.beginSection(name)
+    try { return block() } finally { android.os.Trace.endSection() }
+}

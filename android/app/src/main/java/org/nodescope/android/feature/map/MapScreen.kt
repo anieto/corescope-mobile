@@ -34,7 +34,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.os.trace
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalDensity
@@ -51,7 +50,7 @@ import org.nodescope.android.core.model.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (String) -> Unit, sampleRoute: List<Coordinate> = emptyList(), feed: LiveFeedState = LiveFeedState(), onRefresh: () -> Unit = {}, regionControl: @Composable () -> Unit = {}, focusedCoordinate: Coordinate? = null, selectedRegion: String? = null, sourceViewport: RegionCoordinate? = null, routeReplay: RouteReplay? = null, onExitReplay: () -> Unit = {}, host: String? = null, showActiveNodes: Boolean = false, onActiveNodesShown: () -> Unit = {}, onShowPackets: (() -> Unit)? = null) {
+fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (String) -> Unit, sampleRoute: List<Coordinate> = emptyList(), feed: () -> LiveFeedState = { LiveFeedState() }, onRefresh: () -> Unit = {}, regionControl: @Composable () -> Unit = {}, focusedCoordinate: Coordinate? = null, selectedRegion: String? = null, sourceViewport: RegionCoordinate? = null, routeReplay: RouteReplay? = null, onExitReplay: () -> Unit = {}, host: String? = null, showActiveNodes: Boolean = false, onActiveNodesShown: () -> Unit = {}, onShowPackets: (() -> Unit)? = null) {
     if (!BuildConfig.MAPS_CONFIGURED) {
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.map_unavailable), style = MaterialTheme.typography.headlineSmall)
@@ -79,10 +78,16 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     LaunchedEffect(selectedRegion) {
         if (filterRegion != selectedRegion) { filterRegion = selectedRegion; filters = filters.copy(observerId = null) }
     }
-    val observerOptions = remember(feed.observers, selectedRegion) { mapObserverOptions(feed.observers, selectedRegion) }
-    LaunchedEffect(feed.observersLoaded, observerOptions) {
+    // The feed is read only through these (and the live routes below), so a new packet doesn't
+    // recompose this screen: each notifies only when its own value changes.
+    val currentFeed by rememberUpdatedState(feed)
+    val feedObservers by remember { derivedStateOf(structuralEqualityPolicy()) { currentFeed().observers } }
+    val observersLoaded by remember { derivedStateOf(structuralEqualityPolicy()) { currentFeed().observersLoaded } }
+    val connection by remember { derivedStateOf(structuralEqualityPolicy()) { currentFeed().connection } }
+    val observerOptions = remember(feedObservers, selectedRegion) { mapObserverOptions(feedObservers, selectedRegion) }
+    LaunchedEffect(observersLoaded, observerOptions) {
         val chosen = filters.observerId ?: return@LaunchedEffect
-        if (feed.observersLoaded && observerOptions.none { it.id.equals(chosen, true) }) filters = filters.copy(observerId = null)
+        if (observersLoaded && observerOptions.none { it.id.equals(chosen, true) }) filters = filters.copy(observerId = null)
     }
     // Activity windows move with time; re-check every minute while one is set.
     var clock by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -96,7 +101,6 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     var routeDetail by remember { mutableStateOf<RouteDetails?>(null) }
     var selectedNode by remember(host, selectedRegion) { mutableStateOf<MeshNode?>(null) }
     LaunchedEffect(routeReplay?.id) { selectedNode = null }
-    val shownRoutes = remember { java.util.concurrent.atomic.AtomicReference<List<LiveRoute>>(emptyList()) }
     val currentAllNodes by rememberUpdatedState(snapshot?.nodes.orEmpty())
     // Replay mode (iOS): live traffic pauses; bottom controls replay the route, pick another
     // route, show only its nodes, or return to live.
@@ -176,19 +180,6 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     var replay by remember { mutableIntStateOf(0) }
     val uriHandler = LocalUriHandler.current
 
-    fun onTap(tap: MapTap): Boolean {
-        // A route under the finger opens its details (iOS), unless a node marker is right there.
-        val route = if (tap.nodeUnderFinger) null else tap.routeKeys().firstNotNullOfOrNull { key ->
-            shownRoutes.get().firstOrNull { it.key == key && it.packet != null }
-        }
-        return when {
-            tap.nodeUnderFinger -> { selectNode(tap.nodeKey!!); true }
-            tap.expandGroup != null && tap.nodeKey == null -> { tap.expandGroup.invoke(); true }
-            route != null -> { selectedNode = null; routeDetail = routeDetails(route.packet!!, currentAllNodes, route.observedAt); true }
-            tap.nodeKey != null -> { selectNode(tap.nodeKey); true }
-            else -> false
-        }
-    }
     val routeOnlyReplay = replayOption != null && routeOnly
     LaunchedEffect(overlays, nodes, routeOnlyReplay) {
         // A route-only replay's nodes are never grouped, so no count badge outlives the replay.
@@ -233,47 +224,35 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             else progress.snapTo(1f)
         }
     }
-    val livePackets = feed.visiblePackets
-    // Each packet's route is worked out once, with one node lookup shared by all packets, rather
-    // than rebuilt for all 40 on every new packet (that main-thread work hitched the animation).
-    val nodeIndex = remember(snapshot?.nodes) { nodeLookup(snapshot?.nodes.orEmpty()) }
-    val routeCache = remember(snapshot?.nodes, feed.observers) { HashMap<LivePacket, LiveRoute>() }
-    // A live route starts animating when it is first ready to draw, not when its packet arrived:
-    // the time spent getting it to the map would otherwise be skipped, a jump at the start. Kept
-    // per packet, so an update to the packet (more observations) never restarts its route.
-    val routeStarts = remember { HashMap<String, Long>() }
-    val paths = remember(livePackets, snapshot?.nodes, feed.observers, filters.observerId) {
-        // Recent history appears as already-arrived routes while it is under 12 s old, as on iOS.
-        val historyCutoff = System.currentTimeMillis() - RouteTiming.HISTORY_FADE
-        val shown = livePackets.filter { (it.isLive || packetEpoch(it) > historyCutoff) && filters.showsRoute(it) }.take(40)
-        val nodes = snapshot?.nodes.orEmpty()
-        val routes = trace("NodeScope:routes") { shown.map { packet ->
-            routeCache.getOrPut(packet) {
-                val color = listOf("#66B9FF", "#FFC27A", "#65DDB4", "#BEA1FF")[(packet.hash.hashCode() and Int.MAX_VALUE) % 4]
-                val observed = if (packet.isLive) packet.receivedAt else packetEpoch(packet)
-                // Only for packets that just arrived: older ones (back after a filter change) keep
-                // their own timing rather than replaying.
-                val start = if (packet.isLive) routeStarts.getOrPut(packet.key) {
-                    val now = System.currentTimeMillis()
-                    if (now - observed < 2_000) maxOf(observed, now) else observed
-                } else observed
-                LiveRoute(packet.key, start, color,
-                    routeAnchors(packet, nodes, feed.observers, nodeIndex),
-                    packetRoute(packet, nodes, feed.observers, nodeIndex), historical = !packet.isLive, packet = packet, observedAt = observed)
-            }
-        } }
-        routeCache.keys.retainAll(shown.toSet())
-        routeStarts.keys.retainAll(shown.mapTo(HashSet()) { it.key })
-        routes
-    }
+    // Live routes are built outside composition, from the feed, for the animation loop and taps
+    // only: a new packet must not recompose this whole screen, since the map around them is unchanged.
+    val currentNodes by rememberUpdatedState(snapshot?.nodes.orEmpty())
+    val currentFilters by rememberUpdatedState(filters)
+    val routeBuilder = remember { LiveRouteBuilder() }
+    val paths = remember { derivedStateOf { currentFeed().let { routeBuilder.build(it.visiblePackets, currentNodes, it.observers, currentFilters) } } }
     val replayRoute = remember(replayOption, replayStart, replayReady) {
         replayOption?.takeIf { replayReady }?.let { option ->
             LiveRoute("replay-${routeReplay?.id}-$replayIndex-$replayStart", replayStart, "#FFA833", nodeMarkers(option.nodes), option.subchains, replay = true)
         }
     }
     // While replaying, only the replayed route animates (live traffic resumes on "Live").
-    val latestPaths by rememberUpdatedState(if (replayActive && routeReplay != null) listOfNotNull(replayRoute) else paths)
-    SideEffect { shownRoutes.set(latestPaths) }
+    val currentReplayRoute by rememberUpdatedState(replayRoute)
+    val replaying by rememberUpdatedState(replayActive && routeReplay != null)
+    val latestPathsState = remember { derivedStateOf { if (replaying) listOfNotNull(currentReplayRoute) else paths.value } }
+    val latestPaths by latestPathsState
+    fun onTap(tap: MapTap): Boolean {
+        // A route under the finger opens its details (iOS), unless a node marker is right there.
+        val route = if (tap.nodeUnderFinger) null else tap.routeKeys().firstNotNullOfOrNull { key ->
+            latestPaths.firstOrNull { it.key == key && it.packet != null }
+        }
+        return when {
+            tap.nodeUnderFinger -> { selectNode(tap.nodeKey!!); true }
+            tap.expandGroup != null && tap.nodeKey == null -> { tap.expandGroup.invoke(); true }
+            route != null -> { selectedNode = null; routeDetail = routeDetails(route.packet!!, currentAllNodes, route.observedAt); true }
+            tap.nodeKey != null -> { selectNode(tap.nodeKey); true }
+            else -> false
+        }
+    }
     var replayPlaying by remember { mutableStateOf(false) }
     LaunchedEffect(replayRoute) {
         val route = replayRoute ?: return@LaunchedEffect run { replayPlaying = false }
@@ -330,12 +309,12 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                     val active = observedPaths.filter { it.isActive(now) }
                     // Temporary route markers only change when routes enter or leave.
                     if (active != previousRoutes) {
-                        trace("NodeScope:anchors") { drawing.setRouteAnchors(active.flatMap { it.anchors }.distinctBy { it.anchorId }) }
+                        traced("NodeScope:anchors") { drawing.setRouteAnchors(active.flatMap { it.anchors }.distinctBy { it.anchorId }) }
                         previousRoutes = active
                     }
                     // Named sections show the route work in system traces (no cost when not tracing).
-                    val frame = trace("NodeScope:frame") { routeFrame(active, now, animate) }
-                    trace("NodeScope:draw") { drawing.setRouteFrame(frame) }
+                    val frame = traced("NodeScope:frame") { routeFrame(active, now, animate) }
+                    traced("NodeScope:draw") { drawing.setRouteFrame(frame) }
                     anyActive = active.isNotEmpty()
                     // Keep drawing every frame while something is moving.
                     anyActive && animate
@@ -378,7 +357,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         TopAppBar(windowInsets = WindowInsets(0, 0, 0, 0), title = {
             Column {
                 Text("Live Map", style = MaterialTheme.typography.titleLarge)
-                ConnectionBadge(feed.connection)
+                ConnectionBadge(connection)
             }
         }, actions = {
             // Wide screens with the live packets panel hidden get it back from here.
