@@ -860,3 +860,8 @@ Acceptance checks before merging (both providers, phone + tablet/fold):
 4. Groups split on tap; nodes (and route nodes during a route) open their sheet; route taps open details.
 5. Live traffic smooth on both; replay frames clear of controls; Google logo stays visible.
 6. Wide/fold layout: packets panel, selection ↔ replay sync, Return to live.
+
+## 0.7.7 (code 7) — 2026-09-30
+
+Version bump for the Google Maps (beta) provider, Google node labels, and the live animation
+performance work (above). Before uploading: Play Data safety form updated for the Maps SDK.
