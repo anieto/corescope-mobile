@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.lifecycle.Lifecycle
@@ -64,6 +65,9 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     var search by remember { mutableStateOf(false) }
     var layersOpen by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    // CARTO, or Google Maps (beta) when this build has a key; remembered across launches.
+    var providerChoice by remember { mutableStateOf(loadMapProvider(context)) }
+    fun choose(choice: MapProviderChoice) { providerChoice = choice; saveMapProvider(context, choice) }
     var filtersOpen by remember { mutableStateOf(false) }
     // Saved per analyzer, as on iOS.
     var filters by remember(host) { mutableStateOf(host?.let { loadMapFilters(context, it) } ?: MapFilters()) }
@@ -117,7 +121,8 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     var framedHost by rememberSaveable { mutableStateOf(host) }
     var lastFocus by rememberSaveable { mutableStateOf<String?>(null) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val engine = rememberMapLibreEngine()
+    // Switching provider replaces the engine; the new map opens where the old one was looking.
+    val engine: MapEngineState = if (providerChoice.provider == MapProvider.GOOGLE) rememberGoogleMapEngine() else rememberMapLibreEngine()
     // Camera control once the map is ready, and overlay drawing once its base style has loaded.
     val camera = engine.camera
     val overlays = engine.overlays
@@ -349,15 +354,37 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             Box {
                 IconButton(onClick = { layersOpen = true }) { Icon(Icons.Outlined.Layers, "Map layers") }
                 DropdownMenu(layersOpen, { layersOpen = false }) {
+                    val google = BuildConfig.GOOGLE_MAPS_CONFIGURED
+                    // Grouped by provider when there is more than one.
+                    if (google) MenuSectionHeader(stringResource(R.string.map_provider_carto))
                     listOf(R.string.standard, R.string.light, R.string.dark).forEachIndexed { index, label ->
-                        DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = { mode = index; customStyle = true; layersOpen = false }, trailingIcon = { if (mode == index) Icon(Icons.Outlined.Check, null) })
+                        val chosen = providerChoice.provider == MapProvider.CARTO && mode == index
+                        DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = {
+                            mode = index; customStyle = true; choose(providerChoice.copy(provider = MapProvider.CARTO)); layersOpen = false
+                        }, trailingIcon = { if (chosen) Icon(Icons.Outlined.Check, null) })
+                    }
+                    if (google) {
+                        HorizontalDivider()
+                        MenuSectionHeader(stringResource(R.string.map_provider_google))
+                        listOf(GoogleMapType.MAP to R.string.google_map, GoogleMapType.SATELLITE to R.string.google_satellite,
+                            GoogleMapType.TERRAIN to R.string.google_terrain, GoogleMapType.HYBRID to R.string.google_hybrid).forEach { (type, label) ->
+                            val chosen = providerChoice.provider == MapProvider.GOOGLE && providerChoice.googleType == type
+                            DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = {
+                                choose(MapProviderChoice(MapProvider.GOOGLE, type)); layersOpen = false
+                            }, trailingIcon = { if (chosen) Icon(Icons.Outlined.Check, null) })
+                        }
                     }
                 }
             }
         })
     Box(Modifier.weight(1f).fillMaxWidth()) {
-        MapLibreEngineHost(engine, styleMode = mode, retry = retry, bottomInset = controlsInset, savedCamera = cameraValues,
-            onCameraIdle = { cameraValues = it; refreshLabels(currentDisplayedNodes) }, onTap = ::onTap, modifier = Modifier.fillMaxSize())
+        val onCameraIdle: (SavedCamera) -> Unit = { cameraValues = it; refreshLabels(currentDisplayedNodes) }
+        when (engine) {
+            is MapLibreEngine -> MapLibreEngineHost(engine, styleMode = mode, retry = retry, bottomInset = controlsInset, savedCamera = cameraValues,
+                onCameraIdle = onCameraIdle, onTap = ::onTap, modifier = Modifier.fillMaxSize())
+            is GoogleMapEngine -> GoogleMapEngineHost(engine, mapType = providerChoice.googleType, dark = darkTheme, bottomInset = controlsInset,
+                savedCamera = cameraValues, onCameraIdle = onCameraIdle, onTap = ::onTap, modifier = Modifier.fillMaxSize())
+        }
         Column(Modifier.align(Alignment.TopStart).fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Surface(shape = MaterialTheme.shapes.medium, shadowElevation = 1.dp) { regionControl() }
@@ -381,8 +408,9 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             }
             if (engine.failed) Surface(shape = MaterialTheme.shapes.medium, tonalElevation = 4.dp) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.map_load_failed), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-                    TextButton(onClick = { retry++ }) { Text(stringResource(R.string.retry)) }
+                    val google = engine is GoogleMapEngine
+                    Text(stringResource(if (google) R.string.google_maps_unavailable else R.string.map_load_failed), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                    if (!google) TextButton(onClick = { retry++ }) { Text(stringResource(R.string.retry)) }
                 }
             }
             if (sampleRoute.isNotEmpty()) Surface(shape = MaterialTheme.shapes.medium) {
@@ -410,7 +438,8 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             }
         }
         // Required CARTO/OpenStreetMap attribution: one line, bottom right (MapLibre's own logo is bottom left).
-        Surface(Modifier.align(Alignment.BottomEnd).offset { IntOffset(0, -controlsInset) }.padding(end = 8.dp, bottom = 6.dp), shape = MaterialTheme.shapes.small,
+        // Google Maps draws its own logo and attribution.
+        if (engine is MapLibreEngine) Surface(Modifier.align(Alignment.BottomEnd).offset { IntOffset(0, -controlsInset) }.padding(end = 8.dp, bottom = 6.dp), shape = MaterialTheme.shapes.small,
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)) {
             Row {
                 TextButton(onClick = { uriHandler.openUri("https://www.openstreetmap.org/copyright") }, contentPadding = PaddingValues(horizontal = 8.dp)) {
@@ -492,6 +521,13 @@ internal fun replayNeedsFraming(points: List<Pair<Float, Float>>, width: Int, he
     val spanX = points.maxOf { it.first } - points.minOf { it.first }
     val spanY = points.maxOf { it.second } - points.minOf { it.second }
     return spanX < (right - left) * REPLAY_SMALL_SHARE && spanY < (bottom - top) * REPLAY_SMALL_SHARE
+}
+
+/** A non-interactive group title inside a dropdown menu. */
+@Composable
+private fun MenuSectionHeader(title: String) {
+    Text(title, Modifier.padding(horizontal = 16.dp, vertical = 8.dp).semantics { heading() },
+        style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 /** Slides in from the bottom edge (outside any Row/Column scope, which have their own overloads). */

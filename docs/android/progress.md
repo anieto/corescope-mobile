@@ -774,3 +774,38 @@ behave exactly as in 0.7.6.
   location framing, replay framing and timing, the live route animation loop, all the chrome.
 - Instrumented tests still find the MapView and the same layer IDs. JVM tests updated to the
   neutral helpers, plus `MapEngineTest`. Built and unit-tested; not yet run on a device.
+
+## Google Maps option, phase 2: Google renderer (beta) — 2026-09-30 (branch `android-google-maps`)
+
+- Map layers menu is grouped by provider when the build has a Google key: **CARTO** (Standard,
+  Light, Dark) and **Google Maps · Beta** (Map, Satellite, Terrain, Hybrid). The choice is
+  remembered (`MapProvider.kt`, prefs `map-provider`); a build without a key offers CARTO only
+  and falls back to it. Switching opens the new map where the old one was looking.
+- `GoogleMapEngine.kt`: native Maps SDK (`play-services-maps` 20.0.0), ordinary markers and
+  **no map ID** (free Maps SDK SKU). Node dots, route-only replay nodes, route markers, live and
+  replayed routes (pooled polylines, head markers, arrival rings sized from screen to ground at
+  the current zoom), your location, sample route. Dark app theme uses Google's dark scheme.
+- Grouping uses `android-maps-utils` 4.0.0 (5.x needs compileSdk 37): 3+ nearby nodes, only
+  below MapLibre zoom 9, like CARTO. Tapping a group zooms in until it comes apart.
+- Taps follow CARTO: nearest node within 24 dp (under the finger within 12 dp), groups expand,
+  a route opens its details.
+- Zoom is kept in MapLibre's scale everywhere; Google's is one higher. Bounds fitting with
+  insets is our own (`fitCamera`, unit-tested), since Google only offers equal padding.
+- Google's logo stays above the replay controls via map padding; the camera is moved to keep
+  the view still, and that waits for any camera animation so replay framing isn't interrupted.
+- Not yet (phase 3): node name labels, smoother live animation if needed, polish.
+- Key: `GOOGLE_MAPS_API_KEY` in git-ignored `local.properties` (or env), restricted to the
+  package plus the upload and Play app-signing SHA-1s. Built (debug + R8 release), 145 JVM
+  tests pass, lint unchanged apart from the maps-utils version notice. Not yet run on a device.
+
+Manual checks (Google Maps · Beta):
+1. Layers menu shows both groups; pick Google Map → the map stays on the same area.
+2. Satellite / Terrain / Hybrid switch in place; relaunch keeps the last choice.
+3. Dark app theme → dark Google map (Map and Terrain).
+4. Zoomed out, nearby nodes show as numbered groups; tap one → zooms in and they split.
+5. Tap a node (or just next to it) → node sheet. Tap a live route line → route details.
+6. Live traffic animates: lines draw, white heads travel, rings pulse at arrivals.
+7. Replay from Channels / panel: framing clears the controls, the route plays after the map
+   settles, "Route nodes only" shows only route nodes, Google logo stays visible above controls.
+8. Region switch, Search, My location and +/- all move the Google camera as on CARTO.
+9. Switch back to CARTO → same area; everything as in phase 1.

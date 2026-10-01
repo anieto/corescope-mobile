@@ -56,6 +56,8 @@ Before starting, ask testers what they want most from Google Maps (satellite? pl
   and waiting for a "nothing changed" check on CARTO; see `progress.md`. Pricing rechecked
   the same day with no change. Phase 2 needs a billing-enabled Cloud project and an Android
   API key restricted to the package and the upload and Play app-signing SHA-1s.
+- 2026-09-30: phase 2 built (Google renderer as "Google Maps · Beta" in the layers menu); test
+  APK `~/Desktop/NodeScope-0.7.6-gmaps-beta-test.apk`. Node labels left for phase 3.
 
 ## Sources to recheck
 

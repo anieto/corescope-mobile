@@ -7,6 +7,13 @@ import org.nodescope.android.core.model.LivePacket
 import org.nodescope.android.core.model.MeshNode
 import org.nodescope.android.core.model.MeshObserver
 import kotlin.coroutines.resume
+import kotlin.math.PI
+import kotlin.math.atan
+import kotlin.math.ln
+import kotlin.math.log2
+import kotlin.math.pow
+import kotlin.math.sinh
+import kotlin.math.tan
 
 /*
  * The map screen's view of whichever engine draws the map (MapLibre with CARTO today; the
@@ -46,7 +53,22 @@ internal sealed interface CameraMove {
 /** Camera position as saved across configuration changes: latitude, longitude, zoom, bearing, tilt. */
 internal typealias SavedCamera = List<Double>
 
-/** Camera control, available once an engine's map is ready. Screen positions are in pixels. */
+/** Everything the map screen needs from an engine, whichever one draws the map. */
+internal interface MapEngineState {
+    /** Camera control once the map is ready (null before). */
+    val camera: MapCamera?
+    /** Drawing once the base map has loaded (null while it loads). */
+    val overlays: MapOverlays?
+    val failed: Boolean
+    val loading: Boolean
+    /** The engine's logo, relative to the map, when it can be found (the node count sits above it). */
+    val logoFrame: android.graphics.Rect?
+}
+
+/**
+ * Camera control, available once an engine's map is ready. Screen positions are in pixels.
+ * Zoom levels are always MapLibre's (512-pixel tiles); engines with another scale convert.
+ */
 internal interface MapCamera {
     val zoom: Double
     val width: Int
@@ -113,4 +135,42 @@ internal suspend fun awaitMapFrame() = suspendCancellableCoroutine<Unit> { conti
     val callback = Choreographer.FrameCallback { if (continuation.isActive) continuation.resume(Unit) }
     choreographer.postFrameCallback(callback)
     continuation.invokeOnCancellation { choreographer.removeFrameCallback(callback) }
+}
+
+/** Web Mercator in MapLibre's zoom scale: the world is 512 × 2^zoom dp wide. x and y run 0…1. */
+internal object Mercator {
+    private const val MAX_LATITUDE = 85.05112878
+    fun x(longitude: Double) = (longitude + 180) / 360
+    fun y(latitude: Double): Double {
+        val radians = Math.toRadians(latitude.coerceIn(-MAX_LATITUDE, MAX_LATITUDE))
+        return (1 - ln(tan(PI / 4 + radians / 2)) / PI) / 2
+    }
+    fun longitude(x: Double) = x * 360 - 180
+    fun latitude(y: Double) = Math.toDegrees(atan(sinh(PI * (1 - 2 * y))))
+    fun worldPixels(zoom: Double, density: Float) = 512.0 * 2.0.pow(zoom) * density
+    /** [point] moved by a screen offset in pixels (+y is south) at [zoom]. */
+    fun offset(point: Coordinate, zoom: Double, dx: Double, dy: Double, density: Float): Coordinate {
+        val world = worldPixels(zoom, density)
+        return Coordinate(latitude(y(point.latitude) + dy / world), longitude(x(point.longitude) + dx / world))
+    }
+}
+
+/**
+ * The camera that fits [bounds] inside a [width] × [height] pixel map, clear of [insets]: the
+ * centre of the whole map and the zoom (MapLibre scale), as MapLibre's own bounds fitting does.
+ */
+internal fun fitCamera(bounds: CameraTarget.Bounds, width: Int, height: Int, insets: FramingInsets, density: Float, maxZoom: Double = 21.0): CameraMove.Center {
+    val west = Mercator.x(bounds.west); val east = Mercator.x(bounds.east)
+    val north = Mercator.y(bounds.north); val south = Mercator.y(bounds.south)
+    val clearWidth = (width - insets.left - insets.right).coerceAtLeast(1)
+    val clearHeight = (height - insets.top - insets.bottom).coerceAtLeast(1)
+    val base = Mercator.worldPixels(0.0, density)
+    val zoomX = if (east > west) log2(clearWidth / ((east - west) * base)) else maxZoom
+    val zoomY = if (south > north) log2(clearHeight / ((south - north) * base)) else maxZoom
+    val zoom = minOf(zoomX, zoomY, maxZoom).coerceAtLeast(0.0)
+    // The bounds' centre sits in the middle of the clear area, off the map's centre by half the inset difference.
+    val world = Mercator.worldPixels(zoom, density)
+    val x = (west + east) / 2 - (insets.left - insets.right) / 2.0 / world
+    val y = (north + south) / 2 - (insets.top - insets.bottom) / 2.0 / world
+    return CameraMove.Center(Coordinate(Mercator.latitude(y), Mercator.longitude(x)), zoom)
 }

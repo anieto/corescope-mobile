@@ -47,20 +47,20 @@ private val cartoStyles = listOf("voyager", "positron", "dark-matter")
 
 /** The MapLibre engine: a MapView drawing CARTO's vector basemaps. */
 @Stable
-internal class MapLibreEngine(val view: MapView) {
+internal class MapLibreEngine(val view: MapView) : MapEngineState {
     var map by mutableStateOf<MapLibreMap?>(null)
         private set
     internal var style by mutableStateOf<Style?>(null)
-    var failed by mutableStateOf(false)
+    override var failed by mutableStateOf(false)
         internal set
     /** MapLibre's logo, relative to the map, so the node count can sit above it. */
-    var logoFrame by mutableStateOf<android.graphics.Rect?>(null)
+    override var logoFrame by mutableStateOf<android.graphics.Rect?>(null)
         internal set
     /** Equal for the same map, so effects keyed on it restart only when the map changes. */
-    val camera: MapCamera? get() = map?.let { MapLibreCamera(it, view) }
+    override val camera: MapCamera? get() = map?.let { MapLibreCamera(it, view) }
     /** Equal for the same loaded style; a new style (or a retry) gets fresh overlays. */
-    val overlays: MapOverlays? get() = style?.let(::MapLibreOverlays)
-    val loading get() = !failed && style == null
+    override val overlays: MapOverlays? get() = style?.let(::MapLibreOverlays)
+    override val loading get() = !failed && style == null
     internal fun attach(ready: MapLibreMap) { map = ready }
 }
 

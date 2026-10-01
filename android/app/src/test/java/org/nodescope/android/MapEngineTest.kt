@@ -29,4 +29,36 @@ class MapEngineTest {
         assertEquals(CameraTarget.Bounds(31.0, -96.0, 30.0, -98.0), bounds)
         assertEquals(Coordinate(30.5, -97.0), bounds.center)
     }
+
+    @Test fun mercatorRoundTripsAndOffsetsByScreenPixels() {
+        val austin = Coordinate(30.2672, -97.7431)
+        assertEquals(austin.latitude, Mercator.latitude(Mercator.y(austin.latitude)), 1e-9)
+        assertEquals(austin.longitude, Mercator.longitude(Mercator.x(austin.longitude)), 1e-9)
+        // At zoom 0 the world is 512 dp wide: 128 dp east is a quarter turn.
+        assertEquals(Coordinate(0.0, 90.0).longitude, Mercator.offset(Coordinate(0.0, 0.0), 0.0, 256.0, 0.0, 2f).longitude, 1e-9)
+        assertTrue(Mercator.offset(austin, 10.0, 0.0, -50.0, 2f).latitude > austin.latitude) // up the screen is north
+    }
+
+    @Test fun fittingMatchesTheClearAreaAndCentresTheBoundsInIt() {
+        val density = 2f
+        // 90° of longitude is a quarter of the world: it fills 1024 px at density 2 at zoom 2.
+        val bounds = CameraTarget.Bounds(10.0, 45.0, -10.0, -45.0)
+        val even = fitCamera(bounds, 1024, 4000, FramingInsets(0, 0, 0, 0), density)
+        assertEquals(2.0, even.zoom, 1e-9)
+        assertEquals(0.0, even.coordinate.longitude, 1e-9)
+        assertEquals(0.0, even.coordinate.latitude, 1e-9)
+        // Insets on one side move the map's centre so the bounds sit in the middle of what is left.
+        val inset = fitCamera(bounds, 1024 + 200, 4000, FramingInsets(200, 0, 0, 0), density)
+        assertEquals(2.0, inset.zoom, 1e-9)
+        val world = Mercator.worldPixels(2.0, density)
+        assertEquals(-100.0 / world * 360, inset.coordinate.longitude, 1e-9)
+        // A single point can't be fitted by size, so it gets the maximum zoom.
+        assertEquals(21.0, fitCamera(CameraTarget.Bounds(30.0, -97.0, 30.0, -97.0), 500, 500, FramingInsets(0, 0, 0, 0), density).zoom, 1e-9)
+    }
+
+    @Test fun savedGoogleChoiceFallsBackToCartoWithoutAKey() {
+        val google = MapProviderChoice(MapProvider.GOOGLE, GoogleMapType.SATELLITE)
+        assertEquals(MapProvider.CARTO, google.available(false).provider)
+        assertEquals(google, google.available(true))
+    }
 }

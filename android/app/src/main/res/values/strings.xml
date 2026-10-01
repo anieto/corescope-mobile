@@ -26,6 +26,13 @@
     <string name="map_unavailable">Map unavailable in this build</string>
     <string name="map_unavailable_description">You can still browse nodes in Explore and choose your analyzer in Settings.</string>
     <string name="standard">Standard</string>
+    <string name="map_provider_carto">CARTO</string>
+    <string name="map_provider_google">Google Maps · Beta</string>
+    <string name="google_map">Map</string>
+    <string name="google_satellite">Satellite</string>
+    <string name="google_terrain">Terrain</string>
+    <string name="google_hybrid">Hybrid</string>
+    <string name="google_maps_unavailable">Google Maps needs Google Play services on this device. Choose a CARTO map from Map layers.</string>
     <string name="map_load_failed">Could not load the map. Check your connection and try again.</string>
     <string name="retry">Retry</string>
     <string name="zoom_in">Zoom in</string>
