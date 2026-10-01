@@ -830,3 +830,9 @@ Manual checks (Google Maps · Beta):
   runs off the main thread (`flowOn(Default)`); unchanged packet-panel rows keep their instance so
   they skip recomposition. Worst stall 102 → 36 ms, total stall time 1,062 → 447 ms per 15 s,
   before the row fix. Trace sections `NodeScope:routes/frame/draw/anchors` mark the route work.
+- Google Maps: live/replayed routes are now drawn on an overlay view (`RouteLayer`) above the
+  map using its projection, instead of as Google polylines/markers/circles, which Google
+  re-processes on every change (profiled: ~20 ms main thread per frame, map at ~12 fps). Same
+  look and layer order as CARTO; route taps and route-node taps are hit-tested on screen. Profiled
+  after: route drawing 20 → 0.18 ms/frame, main-thread frame 31 → 6.5 ms, stalls >15 ms 140 → 12
+  per 15 s, 0% janky frames. The earlier 30 fps cap and per-object diffing are gone.

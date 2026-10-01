@@ -6,6 +6,9 @@ import androidx.core.graphics.toColorInt
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Typeface
+import android.graphics.Path
+import android.view.View
+import android.widget.FrameLayout
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -30,10 +33,7 @@ import com.google.maps.android.collections.MarkerManager
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.nodescope.android.core.model.Coordinate
 import kotlin.coroutines.resume
-import kotlin.math.cos
 import kotlin.math.hypot
-import kotlin.math.pow
-import kotlin.math.roundToInt
 
 /*
  * Google Maps (beta), the native Maps SDK: ordinary markers and no map ID, so map loads stay in
@@ -50,7 +50,9 @@ enum class GoogleMapType(val mapType: Int) {
 }
 
 @Stable
-internal class GoogleMapEngine(val view: MapView) : MapEngineState {
+internal class GoogleMapEngine(val view: MapView, val routeLayer: RouteLayer) : MapEngineState {
+    /** The map with the route layer over it, attached as one view. */
+    val container = FrameLayout(view.context).apply { addView(view); addView(routeLayer) }
     private var ready by mutableStateOf<Pair<GoogleCamera, GoogleOverlays>?>(null)
     override val camera: MapCamera? get() = ready?.first
     override val overlays: MapOverlays? get() = ready?.second
@@ -68,7 +70,7 @@ internal fun rememberGoogleMapEngine(): GoogleMapEngine {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     // As with MapLibre, a MapView is destroyed with its lifecycle and never reused after that.
-    return remember(context, lifecycle) { GoogleMapEngine(MapView(context).apply { onCreate(null) }) }
+    return remember(context, lifecycle) { GoogleMapEngine(MapView(context).apply { onCreate(null) }, RouteLayer(context)) }
 }
 
 /**
@@ -110,8 +112,12 @@ internal fun GoogleMapEngineHost(engine: GoogleMapEngine, mapType: GoogleMapType
             val saved = currentSavedCamera
             map.moveCamera(CameraUpdateFactory.newCameraPosition(CameraPosition(LatLng(saved[0], saved[1]),
                 (saved[2] + GOOGLE_ZOOM_OFFSET).toFloat(), saved[4].toFloat(), saved[3].toFloat())))
-            val overlays = GoogleOverlays(context, map, camera) { currentOnTap(it) }
+            val overlays = GoogleOverlays(context, map, camera, engine.routeLayer) { currentOnTap(it) }
+            engine.routeLayer.map = map
+            // The route layer follows every camera change, including gestures between route frames.
+            map.setOnCameraMoveListener { engine.routeLayer.invalidate() }
             map.setOnCameraIdleListener {
+                engine.routeLayer.invalidate()
                 overlays.onCameraIdle()
                 camera.saved()?.let { currentOnCameraIdle(it) }
             }
@@ -132,7 +138,7 @@ internal fun GoogleMapEngineHost(engine: GoogleMapEngine, mapType: GoogleMapType
         map.setMapColorScheme(if (dark) MapColorScheme.DARK else MapColorScheme.LIGHT)
     }
     LaunchedEffect(engine.camera, bottomInset) { (engine.camera as? GoogleCamera)?.setBottomInset(bottomInset) }
-    key(view) { AndroidView(factory = { view }, modifier = modifier) }
+    key(view) { AndroidView(factory = { engine.container }, modifier = modifier) }
 }
 
 internal class GoogleCamera(val map: GoogleMap, private val view: MapView) : MapCamera {
@@ -212,20 +218,6 @@ internal class GoogleCamera(val map: GoogleMap, private val view: MapView) : Map
     }
 }
 
-/** A hop's soft halo (tappable) and thin core, with what was last sent to Google for them. */
-private class HopLines(val halo: Polyline, val core: Polyline) {
-    var points: List<Coordinate>? = null
-    var haloColor = 0
-    var coreColor = 0
-    var route: String? = null
-    var visible = true
-}
-
-/** Route frames sent to Google at most ~30 times a second. */
-private const val FRAME_INTERVAL_MS = 33L
-/** Fades change a line's colour in 1/32 steps rather than on every frame. */
-private const val OPACITY_STEPS = 32f
-
 private data class NodeItem(val marker: MapMarker) : ClusterItem {
     private val latLng = LatLng(marker.coordinate.latitude, marker.coordinate.longitude)
     override fun getPosition() = latLng
@@ -244,25 +236,15 @@ private class NodeGrouping : NonHierarchicalDistanceBasedAlgorithm<NodeItem>() {
 private val roleColors = mapOf("repeater" to 0xFFFFAA44.toInt(), "room" to 0xFF299EFF.toInt(), "companion" to 0xFF45C99D.toInt(), "sensor" to 0xFFB18AFF.toInt())
 
 internal class GoogleOverlays(private val context: Context, private val map: GoogleMap, private val camera: GoogleCamera,
-    private val onTap: (MapTap) -> Boolean) : MapOverlays {
+    private val routeLayer: RouteLayer, private val onTap: (MapTap) -> Boolean) : MapOverlays {
     private val screenDensity = context.resources.displayMetrics.density
     private val icons = mutableMapOf<String, BitmapDescriptor>()
     private val markers = MarkerManager(map)
     private val nodes = ClusterManager<NodeItem>(context, map, markers)
     private val renderer = NodeRenderer()
     private val replayNodes = markers.newCollection()
-    private val anchors = markers.newCollection()
     private val decorations = markers.newCollection()
     private var items: List<NodeItem> = emptyList()
-    private val anchorMarkers = mutableMapOf<String, Marker>()
-    /** Drawn route hops by route and hop, and hidden ones kept for reuse. */
-    private val hopLines = mutableMapOf<String, HopLines>()
-    private val spareLines = ArrayDeque<HopLines>()
-    private val heads = mutableListOf<Marker>()
-    private val rings = mutableListOf<Circle>()
-    private var headsShown = 0
-    private var ringsShown = 0
-    private var lastFrameAt = 0L
     private var userMarker: Marker? = null
     private var sampleRoute: Polyline? = null
     private var samplePacket: Marker? = null
@@ -276,9 +258,7 @@ internal class GoogleOverlays(private val context: Context, private val map: Goo
             true
         }
         replayNodes.setOnMarkerClickListener { marker -> tapNode(marker.tag as? String); true }
-        anchors.setOnMarkerClickListener { marker -> tapNode(marker.tag as? String); true }
         decorations.setOnMarkerClickListener { true }
-        map.setOnPolylineClickListener { line -> (line.tag as? String)?.let { key -> onTap(MapTap(null, false, null, { listOf(key) })) } }
         map.setOnMapClickListener { point -> tapNear(point) }
     }
 
@@ -286,17 +266,22 @@ internal class GoogleOverlays(private val context: Context, private val map: Goo
 
     private fun tapNode(key: String?) { if (key != null) onTap(MapTap(key, true, null, { emptyList() })) }
 
-    /** Small markers are hard to hit exactly: a tap near one (24 dp) picks the nearest, as on CARTO. */
+    /**
+     * Small markers are hard to hit exactly: a tap near one (24 dp) picks the nearest, as on CARTO,
+     * including a route's node markers; otherwise a route under the finger opens its details.
+     */
     private fun tapNear(point: LatLng) {
         val tap = map.projection.toScreenLocation(point)
         val shown = items.mapNotNull { item -> renderer.getMarker(item)?.let { item.marker.publicKey to it.position } } +
-            replayNodes.markers.map { (it.tag as? String) to it.position }
+            replayNodes.markers.map { (it.tag as? String) to it.position } +
+            routeLayer.anchors.map { it.publicKey to LatLng(it.coordinate.latitude, it.coordinate.longitude) }
         val nearest = shown.mapNotNull { (key, position) ->
             key ?: return@mapNotNull null
             val screen = map.projection.toScreenLocation(position)
             key to hypot((screen.x - tap.x).toDouble(), (screen.y - tap.y).toDouble())
         }.minByOrNull { it.second }?.takeIf { it.second <= 24 * screenDensity }
-        onTap(MapTap(nearest?.first, nearest != null && nearest.second <= 12 * screenDensity, null, { emptyList() }))
+        onTap(MapTap(nearest?.first, nearest != null && nearest.second <= 12 * screenDensity, null,
+            { routeLayer.routesNear(tap.x.toFloat(), tap.y.toFloat(), 24 * screenDensity) }))
     }
 
     /** Zooms into a group far enough for it to come apart (groups end at MapLibre zoom 9). */
@@ -321,75 +306,9 @@ internal class GoogleOverlays(private val context: Context, private val map: Goo
     /** Node names come in a later step (Google markers have no text labels of their own). */
     override fun setNodeLabelsVisible(visible: Boolean) = Unit
 
-    override fun setRouteAnchors(markers: List<MapMarker>) {
-        val wanted = markers.associateBy { it.anchorId }
-        anchorMarkers.keys.filter { it !in wanted }.forEach { anchors.remove(anchorMarkers.remove(it)) }
-        wanted.forEach { (id, marker) ->
-            if (id !in anchorMarkers) anchorMarkers[id] = anchors.addMarker(markerOptions(marker.coordinate,
-                dot("anchor:${marker.role}", 6f, roleColors[marker.role.lowercase()] ?: 0xFF65DDB4.toInt(), 2f, 0xFFFFFFFF.toInt())).zIndex(1f)).apply { tag = marker.publicKey }
-        }
-    }
+    override fun setRouteAnchors(markers: List<MapMarker>) { routeLayer.anchors = markers }
 
-    /**
-     * Google keeps every line, marker and circle as its own object and queues each change, so a
-     * frame only sends what changed: lines keep their identity (route and hop), fades move in
-     * small steps, and frames are capped at ~30 a second. Sending every object on every display
-     * frame grew Google's queue until the app ran out of memory. The final, empty frame always
-     * goes through so nothing is left on the map.
-     */
-    override fun setRouteFrame(frame: RouteFrame) {
-        val now = android.os.SystemClock.uptimeMillis()
-        val empty = frame.lines.isEmpty() && frame.heads.isEmpty() && frame.rings.isEmpty()
-        if (!empty && now - lastFrameAt < FRAME_INTERVAL_MS) return
-        lastFrameAt = now
-        val drawn = HashSet<String>(frame.lines.size)
-        for (line in frame.lines) {
-            val key = "${line.route}#${line.hop}"
-            if (!drawn.add(key)) continue
-            val hop = hopLines.getOrPut(key) { spareLines.removeFirstOrNull() ?: HopLines(map.addPolyline(lineOptions(6f).clickable(true)), map.addPolyline(lineOptions(2f))) }
-            if (hop.points != line.points) {
-                val points = line.points.map { LatLng(it.latitude, it.longitude) }
-                hop.halo.points = points; hop.core.points = points; hop.points = line.points
-            }
-            val color = parseColor(line.color)
-            val opacity = (line.opacity * OPACITY_STEPS).roundToInt() / OPACITY_STEPS
-            val halo = withAlpha(color, opacity * 0.18f)
-            val core = withAlpha(color, opacity * 0.85f)
-            if (hop.haloColor != halo) { hop.halo.color = halo; hop.haloColor = halo }
-            if (hop.coreColor != core) { hop.core.color = core; hop.coreColor = core }
-            if (hop.route != line.route) { hop.halo.tag = line.route; hop.route = line.route }
-            if (!hop.visible) { hop.halo.isVisible = true; hop.core.isVisible = true; hop.visible = true }
-        }
-        hopLines.keys.filter { it !in drawn }.forEach { key ->
-            val hop = hopLines.remove(key)!!
-            hop.halo.isVisible = false; hop.core.isVisible = false; hop.visible = false
-            spareLines.addLast(hop)
-        }
-        frame.heads.forEachIndexed { index, (point, color) ->
-            val icon = "head:$color"
-            heads.pooled(index) { decorations.addMarker(markerOptions(point, headIcon(color)).zIndex(2f)).apply { tag = icon } }.apply {
-                position = LatLng(point.latitude, point.longitude)
-                if (tag != icon) { setIcon(headIcon(color)); tag = icon }
-                if (index >= headsShown) isVisible = true
-            }
-        }
-        (frame.heads.size until headsShown).forEach { heads[it].isVisible = false }
-        headsShown = frame.heads.size
-        // Rings are sized on screen; circles are sized on the ground, so convert at the current zoom.
-        val zoom = if (frame.rings.isEmpty()) 0f else map.cameraPosition.zoom
-        frame.rings.forEachIndexed { index, ring ->
-            val metresPerDp = 40_075_016.686 * cos(Math.toRadians(ring.center.latitude)) / (256 * 2.0.pow(zoom.toDouble()))
-            rings.pooled(index) { map.addCircle(CircleOptions().center(LatLng(0.0, 0.0)).radius(1.0).fillColor(0).zIndex(1f)) }.apply {
-                center = LatLng(ring.center.latitude, ring.center.longitude)
-                radius = ring.radius * metresPerDp
-                strokeWidth = ring.width * screenDensity
-                strokeColor = withAlpha(parseColor(ring.color), ring.opacity)
-                if (index >= ringsShown) isVisible = true
-            }
-        }
-        (frame.rings.size until ringsShown).forEach { rings[it].isVisible = false }
-        ringsShown = frame.rings.size
-    }
+    override fun setRouteFrame(frame: RouteFrame) { routeLayer.frame = frame }
 
     override fun setUserLocation(point: Coordinate?) {
         userMarker?.let { decorations.remove(it) }
@@ -410,16 +329,10 @@ internal class GoogleOverlays(private val context: Context, private val map: Goo
         }
     }
 
-    private fun <T> MutableList<T>.pooled(index: Int, create: () -> T): T = getOrNull(index) ?: create().also { add(it) }
-
-    private fun lineOptions(widthDp: Float) = PolylineOptions().width(widthDp * screenDensity)
-        .startCap(RoundCap()).endCap(RoundCap()).jointType(JointType.ROUND).zIndex(1f)
-
     private fun markerOptions(point: Coordinate, icon: BitmapDescriptor) = MarkerOptions()
         .position(LatLng(point.latitude, point.longitude)).icon(icon).anchor(0.5f, 0.5f)
 
     private fun nodeIcon(role: String) = dot("node:$role", 5f, roleColors[role.lowercase()] ?: 0xFF299EFF.toInt(), 1f, 0xFFC5E4FA.toInt())
-    private fun headIcon(color: String) = dot("head:$color", 3.5f, 0xFFFFFFFF.toInt(), 1.5f, parseColor(color))
 
     /** A filled circle with a ring, radius and ring width in dp, as the CARTO layers draw them. */
     private fun dot(key: String, radiusDp: Float, fill: Int, strokeDp: Float, stroke: Int) = icons.getOrPut(key) {
@@ -485,6 +398,81 @@ internal class GoogleOverlays(private val context: Context, private val map: Goo
             marker.setIcon(groupIcon(cluster.size)); marker.setAnchor(0.5f, 0.5f)
         }
     }
+}
+
+/**
+ * Live and replayed routes, drawn over the Google map instead of as Google map objects. Google
+ * re-processes a polyline on every change, which cost ~20 ms of main thread per frame when
+ * profiled; drawing the same lines here takes well under a millisecond. Points are placed with
+ * the map's projection on each draw, so the layer follows pans and zooms. Matches the CARTO
+ * layers: halo and core lines, arrival rings, travelling heads, then route node markers on top.
+ * It never takes touches; taps reach the map, which asks [routesNear].
+ */
+internal class RouteLayer(context: Context) : View(context) {
+    var map: GoogleMap? = null
+    var frame = RouteFrame(emptyList(), emptyList(), emptyList())
+        set(value) { if (value.isEmpty && field.isEmpty) return; field = value; invalidate() }
+    var anchors: List<MapMarker> = emptyList()
+        set(value) { field = value; invalidate() }
+    private val density = resources.displayMetrics.density
+    private val path = Path()
+    private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND }
+    private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    init { isClickable = false; isFocusable = false; importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO }
+
+    private val RouteFrame.isEmpty get() = lines.isEmpty() && heads.isEmpty() && rings.isEmpty()
+
+    // Google's projection takes a LatLng and returns a new Point; there is no allocation-free form.
+    @android.annotation.SuppressLint("DrawAllocation")
+    override fun onDraw(canvas: Canvas) {
+        val map = map ?: return
+        if (frame.isEmpty && anchors.isEmpty()) return
+        val projection = map.projection
+        fun screen(point: Coordinate) = projection.toScreenLocation(LatLng(point.latitude, point.longitude))
+        for (line in frame.lines) {
+            path.reset()
+            line.points.forEachIndexed { index, point ->
+                val p = screen(point)
+                if (index == 0) path.moveTo(p.x.toFloat(), p.y.toFloat()) else path.lineTo(p.x.toFloat(), p.y.toFloat())
+            }
+            val color = parseColor(line.color)
+            stroke.strokeWidth = 6 * density; stroke.color = withAlpha(color, line.opacity * 0.18f); canvas.drawPath(path, stroke)
+            stroke.strokeWidth = 2 * density; stroke.color = withAlpha(color, line.opacity * 0.85f); canvas.drawPath(path, stroke)
+        }
+        for (ring in frame.rings) {
+            val p = screen(ring.center)
+            stroke.strokeWidth = ring.width * density; stroke.color = withAlpha(parseColor(ring.color), ring.opacity)
+            canvas.drawCircle(p.x.toFloat(), p.y.toFloat(), ring.radius * density, stroke)
+        }
+        for ((point, color) in frame.heads) dot(canvas, screen(point), 3.5f, 0xFFFFFFFF.toInt(), 1.5f, parseColor(color))
+        for (anchor in anchors) dot(canvas, screen(anchor.coordinate), 6f, roleColors[anchor.role.lowercase()] ?: 0xFF65DDB4.toInt(), 2f, 0xFFFFFFFF.toInt())
+    }
+
+    private fun dot(canvas: Canvas, at: android.graphics.Point, radiusDp: Float, color: Int, ringDp: Float, ringColor: Int) {
+        fill.color = color
+        canvas.drawCircle(at.x.toFloat(), at.y.toFloat(), radiusDp * density, fill)
+        stroke.strokeWidth = ringDp * density; stroke.color = ringColor
+        canvas.drawCircle(at.x.toFloat(), at.y.toFloat(), radiusDp * density, stroke)
+    }
+
+    /** Keys of the routes drawn within [radius] pixels of a screen point, nearest first. */
+    fun routesNear(x: Float, y: Float, radius: Float): List<String> {
+        val projection = map?.projection ?: return emptyList()
+        return frame.lines.mapNotNull { line ->
+            val points = line.points.map { projection.toScreenLocation(LatLng(it.latitude, it.longitude)) }
+            val distance = points.zipWithNext { a, b -> segmentDistance(x, y, a, b) }.minOrNull() ?: return@mapNotNull null
+            if (distance <= radius) line.route to distance else null
+        }.sortedBy { it.second }.map { it.first }.distinct()
+    }
+}
+
+/** Distance in pixels from a point to the segment [a]–[b]. */
+private fun segmentDistance(x: Float, y: Float, a: android.graphics.Point, b: android.graphics.Point): Float {
+    val dx = (b.x - a.x).toFloat(); val dy = (b.y - a.y).toFloat()
+    val length = dx * dx + dy * dy
+    val t = if (length == 0f) 0f else (((x - a.x) * dx + (y - a.y) * dy) / length).coerceIn(0f, 1f)
+    return hypot(x - (a.x + t * dx), y - (a.y + t * dy))
 }
 
 private val parsedColors = mutableMapOf<String, Int>()
