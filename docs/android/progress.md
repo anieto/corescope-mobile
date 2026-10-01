@@ -844,3 +844,19 @@ Manual checks (Google Maps · Beta):
   (`LiveRouteBuilder`, read by the animation loop and taps). Packet-panel row click handlers no
   longer change every packet. Recomposition per 15 s: 301 → 155 ms (avg 13.1 → 7.4 ms, max
   28.6 → 20 ms); `AppShell` no longer recomposes per packet. Trace sections use a local `traced()`.
+
+## Google Maps option, phase 3: parity — 2026-09-30 (branch `android-google-maps`)
+
+- Node names on Google: drawn on the route layer like CARTO's label layers (same rule: lat span
+  ≤ 0.08° and ≤ 60 nodes in view; 11 dp medium text 0.8 em under the dot, wrapped at 10 em,
+  1.6 dp halo, colliding labels left out). White on dark/satellite/hybrid maps, dark otherwise.
+- Already in place from phases 1–2 and the performance pass: co-located nodes spread by the
+  shared screen; camera hand-off when switching providers; smooth live/replay animation on both.
+
+Acceptance checks before merging (both providers, phone + tablet/fold):
+1. CARTO behaves as in 0.7.6: nodes, groups, labels, taps, region/search/location, replay.
+2. Google Map/Satellite/Terrain/Hybrid: same area on switching, choice remembered on relaunch.
+3. Zoom close on Google: names appear under nodes, readable on every map type; zoom out → hidden.
+4. Groups split on tap; nodes (and route nodes during a route) open their sheet; route taps open details.
+5. Live traffic smooth on both; replay frames clear of controls; Google logo stays visible.
+6. Wide/fold layout: packets panel, selection ↔ replay sync, Return to live.

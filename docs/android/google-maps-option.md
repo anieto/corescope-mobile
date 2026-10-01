@@ -58,6 +58,8 @@ Before starting, ask testers what they want most from Google Maps (satellite? pl
   API key restricted to the package and the upload and Play app-signing SHA-1s.
 - 2026-09-30: phase 2 built (Google renderer as "Google Maps · Beta" in the layers menu); test
   APK `~/Desktop/NodeScope-0.7.6-gmaps-beta-test.apk`. Node labels left for phase 3.
+- 2026-09-30: smoothness pass (both providers; profiled on device, see `progress.md`) and
+  phase 3 (Google node labels). Ready for acceptance checks, then merge to `main`.
 
 ## Sources to recheck
 

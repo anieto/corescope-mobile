@@ -3,10 +3,15 @@ package org.nodescope.android.feature.map
 import android.content.Context
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.toColorInt
+import androidx.core.graphics.withTranslation
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.Path
+import android.graphics.RectF
+import android.text.Layout
+import android.text.StaticLayout
+import android.text.TextPaint
 import android.view.View
 import android.widget.FrameLayout
 import androidx.compose.runtime.*
@@ -132,6 +137,8 @@ internal fun GoogleMapEngineHost(engine: GoogleMapEngine, mapType: GoogleMapType
         }
     }
     val map = engine.map
+    // Satellite and hybrid imagery is dark whatever the theme, so their labels are light too.
+    LaunchedEffect(mapType, dark) { engine.routeLayer.lightLabels = dark || mapType == GoogleMapType.SATELLITE || mapType == GoogleMapType.HYBRID }
     LaunchedEffect(map, mapType, dark) {
         map ?: return@LaunchedEffect
         map.mapType = mapType.mapType
@@ -297,14 +304,15 @@ internal class GoogleOverlays(private val context: Context, private val map: Goo
         this.nodes.addItems(items)
         this.nodes.cluster()
         // A route-only replay's nodes are never grouped.
+        routeLayer.labelNodes = nodes
         replayNodes.clear()
         if (!grouped) nodes.forEach { node ->
             replayNodes.addMarker(markerOptions(node.coordinate, nodeIcon(node.role))).apply { tag = node.publicKey }
         }
     }
 
-    /** Node names come in a later step (Google markers have no text labels of their own). */
-    override fun setNodeLabelsVisible(visible: Boolean) = Unit
+    /** Google markers have no text of their own, so names are drawn on the route layer. */
+    override fun setNodeLabelsVisible(visible: Boolean) { routeLayer.labelsVisible = visible }
 
     override fun setRouteAnchors(markers: List<MapMarker>) { routeLayer.anchors = markers }
 
@@ -414,10 +422,26 @@ internal class RouteLayer(context: Context) : View(context) {
         set(value) { if (value.isEmpty && field.isEmpty) return; field = value; invalidate() }
     var anchors: List<MapMarker> = emptyList()
         set(value) { field = value; invalidate() }
+    /** Node names, shown under their dots while [labelsVisible] (close in, few nodes), as on CARTO. */
+    var labelNodes: List<MapMarker> = emptyList()
+        set(value) { field = value; if (labelsVisible) invalidate() }
+    var labelsVisible = false
+        set(value) { if (field != value) { field = value; invalidate() } }
+    /** White names with a dark halo (dark, satellite and hybrid maps), else dark with a light halo. */
+    var lightLabels = false
+        set(value) { if (field != value) { field = value; invalidate() } }
     private val density = resources.displayMetrics.density
     private val path = Path()
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND }
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
+    // CARTO's label layers: 11 dp medium text, top-anchored 0.8 em under the point, wrapped at
+    // 10 em, with a 1.6 dp halo; colliding labels are left out.
+    private val labelPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = 11 * density; typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        strokeJoin = Paint.Join.ROUND; strokeWidth = 3.2f * density
+    }
+    private val labelLayouts = HashMap<String, StaticLayout>()
+    private val placedLabels = ArrayList<RectF>()
 
     init { isClickable = false; isFocusable = false; importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO }
 
@@ -427,9 +451,12 @@ internal class RouteLayer(context: Context) : View(context) {
     @android.annotation.SuppressLint("DrawAllocation")
     override fun onDraw(canvas: Canvas) {
         val map = map ?: return
-        if (frame.isEmpty && anchors.isEmpty()) return
+        val labels = labelsVisible && labelNodes.isNotEmpty()
+        if (frame.isEmpty && anchors.isEmpty() && !labels) return
         val projection = map.projection
         fun screen(point: Coordinate) = projection.toScreenLocation(LatLng(point.latitude, point.longitude))
+        // Names first, under the routes, as the CARTO layers stack.
+        if (labels) drawLabels(canvas, ::screen)
         for (line in frame.lines) {
             path.reset()
             line.points.forEachIndexed { index, point ->
@@ -447,6 +474,33 @@ internal class RouteLayer(context: Context) : View(context) {
         }
         for ((point, color) in frame.heads) dot(canvas, screen(point), 3.5f, 0xFFFFFFFF.toInt(), 1.5f, parseColor(color))
         for (anchor in anchors) dot(canvas, screen(anchor.coordinate), 6f, roleColors[anchor.role.lowercase()] ?: 0xFF65DDB4.toInt(), 2f, 0xFFFFFFFF.toInt())
+    }
+
+    private fun drawLabels(canvas: Canvas, screen: (Coordinate) -> android.graphics.Point) {
+        placedLabels.clear()
+        val textColor = if (lightLabels) 0xFFFFFFFF.toInt() else 0xFF14243A.toInt()
+        val haloColor = if (lightLabels) 0xB8000000.toInt() else 0xD9FFFFFF.toInt()
+        for (node in labelNodes) {
+            val name = node.name?.takeIf(String::isNotBlank) ?: continue
+            val at = screen(node.coordinate)
+            if (at.x < 0 || at.y < 0 || at.x > width || at.y > height) continue
+            val layout = labelLayouts.getOrPut(name) {
+                StaticLayout.Builder.obtain(name, 0, name.length, labelPaint, (10 * labelPaint.textSize).toInt())
+                    .setAlignment(Layout.Alignment.ALIGN_CENTER).setIncludePad(false).build()
+            }
+            val textWidth = (0 until layout.lineCount).maxOf { layout.getLineWidth(it) }
+            val left = at.x - layout.width / 2f
+            val top = at.y + 0.8f * labelPaint.textSize
+            val bounds = RectF(at.x - textWidth / 2, top, at.x + textWidth / 2, top + layout.height)
+            if (placedLabels.any { RectF.intersects(it, bounds) }) continue
+            placedLabels += bounds
+            canvas.withTranslation(left, top) {
+                labelPaint.style = Paint.Style.STROKE; labelPaint.color = haloColor; layout.draw(this)
+                labelPaint.style = Paint.Style.FILL; labelPaint.color = textColor; layout.draw(this)
+            }
+        }
+        // Layouts for names no longer on the map aren't kept.
+        if (labelLayouts.size > 400) labelLayouts.clear()
     }
 
     private fun dot(canvas: Canvas, at: android.graphics.Point, radiusDp: Float, color: Int, ringDp: Float, ringColor: Int) {
