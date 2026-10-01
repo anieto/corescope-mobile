@@ -813,3 +813,8 @@ Manual checks (Google Maps · Beta):
   polyline, head and ring was updated on every display frame, and Google queues each object
   change separately. Route frames now send only changes (lines keyed by route + hop, fades in
   1/32 steps) at most ~30 times a second, with the final empty frame always applied.
+- Smoother route animation (both maps): frames are now drawn inside the display's frame
+  callbacks and timed by vsync (`runMapFrames`), instead of resuming a coroutine per frame and
+  reading the clock whenever it ran (uneven steps, occasional late frames). Each packet's route is
+  built once and cached, with one node lookup shared by all packets, instead of rebuilding all 40
+  routes, and a lookup of every node twice per route, on every incoming packet.

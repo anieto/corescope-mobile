@@ -33,10 +33,11 @@ internal fun nodeMarkers(nodes: List<MeshNode>, positions: Map<String, Coordinat
 }
 
 /** Endpoints stay visible while the grouped node markers continue their normal layout. */
-internal fun routeAnchors(packet: LivePacket, nodes: List<MeshNode>, observers: List<MeshObserver>): List<MapMarker> {
-    val resolved = resolvedRouteNodes(packet, nodes).filterNotNull().distinctBy { it.publicKey }
+internal fun routeAnchors(packet: LivePacket, nodes: List<MeshNode>, observers: List<MeshObserver>,
+    lookup: Map<String, MeshNode> = nodeLookup(nodes)): List<MapMarker> {
+    val resolved = resolvedRouteNodes(packet, nodes, lookup).filterNotNull().distinctBy { it.publicKey }
     val nodeCoordinates = resolved.mapNotNull { it.coordinate }.toSet()
-    val endpoints = packetRoute(packet, nodes, observers).flatten().distinct().filterNot { it in nodeCoordinates }
+    val endpoints = packetRoute(packet, nodes, observers, lookup).flatten().distinct().filterNot { it in nodeCoordinates }
         .map { MapMarker(it, "observer") }
     return nodeMarkers(resolved) + endpoints
 }
@@ -129,10 +130,22 @@ internal fun boundsOf(points: List<Coordinate>) = CameraTarget.Bounds(points.max
 
 internal val CameraTarget.Bounds.center get() = Coordinate((north + south) / 2, (east + west) / 2)
 
-/** Native map updates use the display clock without keeping Compose's UI clock busy. */
-internal suspend fun awaitMapFrame() = suspendCancellableCoroutine<Unit> { continuation ->
+/**
+ * Calls [frame] from the display's own frame callbacks, with each frame's vsync time in
+ * nanoseconds, until it returns false. Drawing inside the callback, timed by vsync, moves things
+ * by even steps; resuming a coroutine per frame instead added a variable delay and sometimes
+ * slipped an update into the next frame, which made moving routes twitch. It also leaves
+ * Compose's UI clock idle.
+ */
+internal suspend fun runMapFrames(frame: (vsyncNanos: Long) -> Boolean) = suspendCancellableCoroutine<Unit> { continuation ->
     val choreographer = Choreographer.getInstance()
-    val callback = Choreographer.FrameCallback { if (continuation.isActive) continuation.resume(Unit) }
+    val callback = object : Choreographer.FrameCallback {
+        override fun doFrame(frameTimeNanos: Long) {
+            if (!continuation.isActive) return
+            val more = try { frame(frameTimeNanos) } catch (error: Throwable) { continuation.resumeWith(Result.failure(error)); return }
+            if (more) choreographer.postFrameCallback(this) else continuation.resume(Unit)
+        }
+    }
     choreographer.postFrameCallback(callback)
     continuation.invokeOnCancellation { choreographer.removeFrameCallback(callback) }
 }

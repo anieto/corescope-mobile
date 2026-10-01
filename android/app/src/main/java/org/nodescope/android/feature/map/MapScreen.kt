@@ -233,15 +233,25 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         }
     }
     val livePackets = feed.visiblePackets
+    // Each packet's route is worked out once, with one node lookup shared by all packets, rather
+    // than rebuilt for all 40 on every new packet (that main-thread work hitched the animation).
+    val nodeIndex = remember(snapshot?.nodes) { nodeLookup(snapshot?.nodes.orEmpty()) }
+    val routeCache = remember(snapshot?.nodes, feed.observers) { HashMap<LivePacket, LiveRoute>() }
     val paths = remember(livePackets, snapshot?.nodes, feed.observers, filters.observerId) {
         // Recent history appears as already-arrived routes while it is under 12 s old, as on iOS.
         val historyCutoff = System.currentTimeMillis() - RouteTiming.HISTORY_FADE
-        livePackets.filter { (it.isLive || packetEpoch(it) > historyCutoff) && filters.showsRoute(it) }.take(40).map { packet ->
-            val color = listOf("#66B9FF", "#FFC27A", "#65DDB4", "#BEA1FF")[(packet.hash.hashCode() and Int.MAX_VALUE) % 4]
-            LiveRoute(packet.key, if (packet.isLive) packet.receivedAt else packetEpoch(packet), color,
-                routeAnchors(packet, snapshot?.nodes.orEmpty(), feed.observers),
-                packetRoute(packet, snapshot?.nodes.orEmpty(), feed.observers), historical = !packet.isLive, packet = packet)
+        val shown = livePackets.filter { (it.isLive || packetEpoch(it) > historyCutoff) && filters.showsRoute(it) }.take(40)
+        val nodes = snapshot?.nodes.orEmpty()
+        val routes = shown.map { packet ->
+            routeCache.getOrPut(packet) {
+                val color = listOf("#66B9FF", "#FFC27A", "#65DDB4", "#BEA1FF")[(packet.hash.hashCode() and Int.MAX_VALUE) % 4]
+                LiveRoute(packet.key, if (packet.isLive) packet.receivedAt else packetEpoch(packet), color,
+                    routeAnchors(packet, nodes, feed.observers, nodeIndex),
+                    packetRoute(packet, nodes, feed.observers, nodeIndex), historical = !packet.isLive, packet = packet)
+            }
         }
+        routeCache.keys.retainAll(shown.toSet())
+        routes
     }
     val replayRoute = remember(replayOption, replayStart, replayReady) {
         replayOption?.takeIf { replayReady }?.let { option ->
@@ -292,30 +302,39 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     LaunchedEffect(overlays) {
         val drawing = overlays ?: return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            // Anchor wall-clock receipt timestamps once; clock corrections cannot jump particles.
-            val epoch = System.currentTimeMillis()
-            val start = android.os.SystemClock.elapsedRealtime()
+            // Anchor wall-clock receipt timestamps to the frame clock once; clock corrections
+            // cannot jump particles.
+            val clockOffset = System.currentTimeMillis() - System.nanoTime() / 1_000_000
             var previousRoutes: List<LiveRoute>? = null
             while (isActive) {
-                awaitMapFrame()
-                val now = epoch + android.os.SystemClock.elapsedRealtime() - start
-                val animate = ValueAnimator.areAnimatorsEnabled()
-                val active = latestPaths.filter { it.isActive(now) }
-                // Temporary route markers only change when routes enter or leave.
-                if (active != previousRoutes) {
-                    drawing.setRouteAnchors(active.flatMap { it.anchors }.distinctBy { it.anchorId })
-                    previousRoutes = active
+                var observedPaths = latestPaths
+                var now = 0L
+                var anyActive = false
+                runMapFrames { vsyncNanos ->
+                    now = clockOffset + vsyncNanos / 1_000_000
+                    val animate = ValueAnimator.areAnimatorsEnabled()
+                    observedPaths = latestPaths
+                    val active = observedPaths.filter { it.isActive(now) }
+                    // Temporary route markers only change when routes enter or leave.
+                    if (active != previousRoutes) {
+                        drawing.setRouteAnchors(active.flatMap { it.anchors }.distinctBy { it.anchorId })
+                        previousRoutes = active
+                    }
+                    drawing.setRouteFrame(routeFrame(active, now, animate))
+                    anyActive = active.isNotEmpty()
+                    // Keep drawing every frame while something is moving.
+                    anyActive && animate
                 }
-                drawing.setRouteFrame(routeFrame(active, now, animate))
-                val observedPaths = latestPaths
+                // With animations off, routes appear complete and are redrawn every 100 ms.
+                if (anyActive) { delay(100); continue }
                 // A replay is scheduled slightly ahead so the camera can frame it first.
                 val nextStart = observedPaths.filter { it.receivedAt > now }.minOfOrNull { it.receivedAt }
-                if (active.isEmpty() && nextStart != null) {
+                if (nextStart != null) {
                     withTimeoutOrNull(nextStart - now) { snapshotFlow { latestPaths }.first { it !== observedPaths } }
-                } else if (active.isEmpty()) {
+                } else {
                     // No display callbacks or source updates while the map is idle.
                     snapshotFlow { latestPaths }.first { it !== observedPaths }
-                } else if (!animate) delay(100)
+                }
             }
         }
     }
