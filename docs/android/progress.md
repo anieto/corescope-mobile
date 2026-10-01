@@ -809,3 +809,7 @@ Manual checks (Google Maps · Beta):
    settles, "Route nodes only" shows only route nodes, Google logo stays visible above controls.
 8. Region switch, Search, My location and +/- all move the Google camera as on CARTO.
 9. Switch back to CARTO → same area; everything as in phase 1.
+- Fix (same day): Google map ran out of memory within seconds of live traffic. Every route
+  polyline, head and ring was updated on every display frame, and Google queues each object
+  change separately. Route frames now send only changes (lines keyed by route + hop, fades in
+  1/32 steps) at most ~30 times a second, with the final empty frame always applied.

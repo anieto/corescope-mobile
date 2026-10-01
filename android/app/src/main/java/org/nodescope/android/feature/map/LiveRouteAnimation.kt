@@ -73,7 +73,8 @@ data class RouteReplay(val id: Long, val routes: List<ReplayRoute>, val selected
     /** The routes as node keys, so more can be merged in while the replay runs. */
     val keys: List<List<String>> = emptyList())
 
-internal data class RouteLine(val points: List<Coordinate>, val color: String, val opacity: Float, val route: String = "")
+/** One hop's line; [route] and [hop] identify it from frame to frame. */
+internal data class RouteLine(val points: List<Coordinate>, val color: String, val opacity: Float, val route: String = "", val hop: Int = 0)
 internal data class RouteRing(val center: Coordinate, val color: String, val radius: Float, val width: Float, val opacity: Float)
 internal data class RouteFrame(val lines: List<RouteLine>, val heads: List<Pair<Coordinate, String>>, val rings: List<RouteRing>)
 
@@ -96,18 +97,18 @@ internal fun routeFrame(routes: List<LiveRoute>, now: Long, animate: Boolean): R
     val rings = mutableListOf<RouteRing>()
     val transient = routes.sortedByDescending { it.receivedAt }.take(RouteTiming.MAX_TRANSIENT_ROUTES).toSet()
     for (route in routes) {
-        for (hop in route.hops) {
+        for ((index, hop) in route.hops.withIndex()) {
             val elapsed = now - hop.startsAt
             if (elapsed < 0) continue
             if (animate && elapsed < hop.travel) {
                 if (route !in transient) continue
                 val current = hop.position(elapsed.toFloat() / hop.travel)
-                lines += RouteLine(listOf(hop.start, current), route.color, 1f, route.key)
+                lines += RouteLine(listOf(hop.start, current), route.color, 1f, route.key, index)
                 heads += current to route.color
                 continue
             }
             val fade = ((now - hop.fadeStartsAt).toFloat() / hop.fadeDuration).coerceIn(0f, 1f)
-            if (fade < 1f) lines += RouteLine(listOf(hop.start, hop.end), route.color, 1f - fade, route.key)
+            if (fade < 1f) lines += RouteLine(listOf(hop.start, hop.end), route.color, 1f - fade, route.key, index)
             val arrival = elapsed - hop.travel
             if (animate && route in transient && arrival < RouteTiming.ARRIVAL_PULSE) {
                 val p = arrival.toFloat() / RouteTiming.ARRIVAL_PULSE

@@ -33,6 +33,7 @@ import kotlin.coroutines.resume
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.pow
+import kotlin.math.roundToInt
 
 /*
  * Google Maps (beta), the native Maps SDK: ordinary markers and no map ID, so map loads stay in
@@ -211,6 +212,20 @@ internal class GoogleCamera(val map: GoogleMap, private val view: MapView) : Map
     }
 }
 
+/** A hop's soft halo (tappable) and thin core, with what was last sent to Google for them. */
+private class HopLines(val halo: Polyline, val core: Polyline) {
+    var points: List<Coordinate>? = null
+    var haloColor = 0
+    var coreColor = 0
+    var route: String? = null
+    var visible = true
+}
+
+/** Route frames sent to Google at most ~30 times a second. */
+private const val FRAME_INTERVAL_MS = 33L
+/** Fades change a line's colour in 1/32 steps rather than on every frame. */
+private const val OPACITY_STEPS = 32f
+
 private data class NodeItem(val marker: MapMarker) : ClusterItem {
     private val latLng = LatLng(marker.coordinate.latitude, marker.coordinate.longitude)
     override fun getPosition() = latLng
@@ -240,10 +255,14 @@ internal class GoogleOverlays(private val context: Context, private val map: Goo
     private val decorations = markers.newCollection()
     private var items: List<NodeItem> = emptyList()
     private val anchorMarkers = mutableMapOf<String, Marker>()
-    private val halos = mutableListOf<Polyline>()
-    private val cores = mutableListOf<Polyline>()
+    /** Drawn route hops by route and hop, and hidden ones kept for reuse. */
+    private val hopLines = mutableMapOf<String, HopLines>()
+    private val spareLines = ArrayDeque<HopLines>()
     private val heads = mutableListOf<Marker>()
     private val rings = mutableListOf<Circle>()
+    private var headsShown = 0
+    private var ringsShown = 0
+    private var lastFrameAt = 0L
     private var userMarker: Marker? = null
     private var sampleRoute: Polyline? = null
     private var samplePacket: Marker? = null
@@ -311,30 +330,53 @@ internal class GoogleOverlays(private val context: Context, private val map: Goo
         }
     }
 
+    /**
+     * Google keeps every line, marker and circle as its own object and queues each change, so a
+     * frame only sends what changed: lines keep their identity (route and hop), fades move in
+     * small steps, and frames are capped at ~30 a second. Sending every object on every display
+     * frame grew Google's queue until the app ran out of memory. The final, empty frame always
+     * goes through so nothing is left on the map.
+     */
     override fun setRouteFrame(frame: RouteFrame) {
-        // Objects are reused from frame to frame; spares are hidden rather than removed.
-        frame.lines.forEachIndexed { index, line ->
-            val points = line.points.map { LatLng(it.latitude, it.longitude) }
+        val now = android.os.SystemClock.uptimeMillis()
+        val empty = frame.lines.isEmpty() && frame.heads.isEmpty() && frame.rings.isEmpty()
+        if (!empty && now - lastFrameAt < FRAME_INTERVAL_MS) return
+        lastFrameAt = now
+        val drawn = HashSet<String>(frame.lines.size)
+        for (line in frame.lines) {
+            val key = "${line.route}#${line.hop}"
+            if (!drawn.add(key)) continue
+            val hop = hopLines.getOrPut(key) { spareLines.removeFirstOrNull() ?: HopLines(map.addPolyline(lineOptions(6f).clickable(true)), map.addPolyline(lineOptions(2f))) }
+            if (hop.points != line.points) {
+                val points = line.points.map { LatLng(it.latitude, it.longitude) }
+                hop.halo.points = points; hop.core.points = points; hop.points = line.points
+            }
             val color = parseColor(line.color)
-            halos.pooled(index) { map.addPolyline(lineOptions(6f).clickable(true)) }.apply {
-                this.points = points; this.color = withAlpha(color, line.opacity * 0.18f); tag = line.route; isVisible = true
-            }
-            cores.pooled(index) { map.addPolyline(lineOptions(2f)) }.apply {
-                this.points = points; this.color = withAlpha(color, line.opacity * 0.85f); isVisible = true
-            }
+            val opacity = (line.opacity * OPACITY_STEPS).roundToInt() / OPACITY_STEPS
+            val halo = withAlpha(color, opacity * 0.18f)
+            val core = withAlpha(color, opacity * 0.85f)
+            if (hop.haloColor != halo) { hop.halo.color = halo; hop.haloColor = halo }
+            if (hop.coreColor != core) { hop.core.color = core; hop.coreColor = core }
+            if (hop.route != line.route) { hop.halo.tag = line.route; hop.route = line.route }
+            if (!hop.visible) { hop.halo.isVisible = true; hop.core.isVisible = true; hop.visible = true }
         }
-        (frame.lines.size until halos.size).forEach { halos[it].isVisible = false; cores[it].isVisible = false }
+        hopLines.keys.filter { it !in drawn }.forEach { key ->
+            val hop = hopLines.remove(key)!!
+            hop.halo.isVisible = false; hop.core.isVisible = false; hop.visible = false
+            spareLines.addLast(hop)
+        }
         frame.heads.forEachIndexed { index, (point, color) ->
             val icon = "head:$color"
             heads.pooled(index) { decorations.addMarker(markerOptions(point, headIcon(color)).zIndex(2f)).apply { tag = icon } }.apply {
                 position = LatLng(point.latitude, point.longitude)
                 if (tag != icon) { setIcon(headIcon(color)); tag = icon }
-                isVisible = true
+                if (index >= headsShown) isVisible = true
             }
         }
-        (frame.heads.size until heads.size).forEach { heads[it].isVisible = false }
+        (frame.heads.size until headsShown).forEach { heads[it].isVisible = false }
+        headsShown = frame.heads.size
         // Rings are sized on screen; circles are sized on the ground, so convert at the current zoom.
-        val zoom = map.cameraPosition.zoom
+        val zoom = if (frame.rings.isEmpty()) 0f else map.cameraPosition.zoom
         frame.rings.forEachIndexed { index, ring ->
             val metresPerDp = 40_075_016.686 * cos(Math.toRadians(ring.center.latitude)) / (256 * 2.0.pow(zoom.toDouble()))
             rings.pooled(index) { map.addCircle(CircleOptions().center(LatLng(0.0, 0.0)).radius(1.0).fillColor(0).zIndex(1f)) }.apply {
@@ -342,10 +384,11 @@ internal class GoogleOverlays(private val context: Context, private val map: Goo
                 radius = ring.radius * metresPerDp
                 strokeWidth = ring.width * screenDensity
                 strokeColor = withAlpha(parseColor(ring.color), ring.opacity)
-                isVisible = true
+                if (index >= ringsShown) isVisible = true
             }
         }
-        (frame.rings.size until rings.size).forEach { rings[it].isVisible = false }
+        (frame.rings.size until ringsShown).forEach { rings[it].isVisible = false }
+        ringsShown = frame.rings.size
     }
 
     override fun setUserLocation(point: Coordinate?) {
