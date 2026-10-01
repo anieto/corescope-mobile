@@ -818,3 +818,6 @@ Manual checks (Google Maps · Beta):
   reading the clock whenever it ran (uneven steps, occasional late frames). Each packet's route is
   built once and cached, with one node lookup shared by all packets, instead of rebuilding all 40
   routes, and a lookup of every node twice per route, on every incoming packet.
+- Live routes start animating when they are first ready to draw (within 2 s of arrival), not
+  at the packet's arrival time, so the time spent getting a new packet to the map is no longer
+  skipped as a jump at the start. Kept per packet; the details sheet still shows the observed time.

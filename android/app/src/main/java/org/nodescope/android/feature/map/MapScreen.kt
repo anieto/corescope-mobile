@@ -183,7 +183,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         return when {
             tap.nodeUnderFinger -> { selectNode(tap.nodeKey!!); true }
             tap.expandGroup != null && tap.nodeKey == null -> { tap.expandGroup.invoke(); true }
-            route != null -> { selectedNode = null; routeDetail = routeDetails(route.packet!!, currentAllNodes, route.receivedAt); true }
+            route != null -> { selectedNode = null; routeDetail = routeDetails(route.packet!!, currentAllNodes, route.observedAt); true }
             tap.nodeKey != null -> { selectNode(tap.nodeKey); true }
             else -> false
         }
@@ -237,6 +237,10 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     // than rebuilt for all 40 on every new packet (that main-thread work hitched the animation).
     val nodeIndex = remember(snapshot?.nodes) { nodeLookup(snapshot?.nodes.orEmpty()) }
     val routeCache = remember(snapshot?.nodes, feed.observers) { HashMap<LivePacket, LiveRoute>() }
+    // A live route starts animating when it is first ready to draw, not when its packet arrived:
+    // the time spent getting it to the map would otherwise be skipped, a jump at the start. Kept
+    // per packet, so an update to the packet (more observations) never restarts its route.
+    val routeStarts = remember { HashMap<String, Long>() }
     val paths = remember(livePackets, snapshot?.nodes, feed.observers, filters.observerId) {
         // Recent history appears as already-arrived routes while it is under 12 s old, as on iOS.
         val historyCutoff = System.currentTimeMillis() - RouteTiming.HISTORY_FADE
@@ -245,12 +249,20 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         val routes = shown.map { packet ->
             routeCache.getOrPut(packet) {
                 val color = listOf("#66B9FF", "#FFC27A", "#65DDB4", "#BEA1FF")[(packet.hash.hashCode() and Int.MAX_VALUE) % 4]
-                LiveRoute(packet.key, if (packet.isLive) packet.receivedAt else packetEpoch(packet), color,
+                val observed = if (packet.isLive) packet.receivedAt else packetEpoch(packet)
+                // Only for packets that just arrived: older ones (back after a filter change) keep
+                // their own timing rather than replaying.
+                val start = if (packet.isLive) routeStarts.getOrPut(packet.key) {
+                    val now = System.currentTimeMillis()
+                    if (now - observed < 2_000) maxOf(observed, now) else observed
+                } else observed
+                LiveRoute(packet.key, start, color,
                     routeAnchors(packet, nodes, feed.observers, nodeIndex),
-                    packetRoute(packet, nodes, feed.observers, nodeIndex), historical = !packet.isLive, packet = packet)
+                    packetRoute(packet, nodes, feed.observers, nodeIndex), historical = !packet.isLive, packet = packet, observedAt = observed)
             }
         }
         routeCache.keys.retainAll(shown.toSet())
+        routeStarts.keys.retainAll(shown.mapTo(HashSet()) { it.key })
         routes
     }
     val replayRoute = remember(replayOption, replayStart, replayReady) {

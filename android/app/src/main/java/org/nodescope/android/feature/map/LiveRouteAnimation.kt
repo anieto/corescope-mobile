@@ -40,7 +40,9 @@ internal class RouteHop(val start: Coordinate, val end: Coordinate, val startsAt
 internal class LiveRoute(val key: String, val receivedAt: Long, val color: String, val anchors: List<MapMarker>,
     subchains: List<List<Coordinate>>, val historical: Boolean = false, val replay: Boolean = false,
     /** The observed packet, for route details when the route is tapped (none for a replay). */
-    val packet: org.nodescope.android.core.model.LivePacket? = null) {
+    val packet: org.nodescope.android.core.model.LivePacket? = null,
+    /** When the packet was observed, for route details; [receivedAt] is when the animation starts. */
+    val observedAt: Long = receivedAt) {
     val hops: List<RouteHop> = if (replay) replayHops(subchains, receivedAt) else subchains.filter { it.size > 1 }.flatMap { chain ->
         chain.zipWithNext().mapIndexed { index, (a, b) ->
             if (historical) {
