@@ -74,7 +74,13 @@ fun PacketScreen(feed: LiveFeedState, onReconnect: () -> Unit, regionControl: @C
     selectedId: String? = null, selectedActions: (@Composable (TransmissionGroup) -> Unit)? = null) {
     var filter by rememberSaveable { mutableStateOf<String?>(null) }
     var showFilters by remember { mutableStateOf(false) }
-    val liveGroups = remember(feed.visiblePackets, feed.observers, filter) { groupTransmissions(feed.visiblePackets, filter, feed.observers) }
+    // Unchanged transmissions keep their previous instance, so their rows skip recomposition when
+    // a new packet arrives (rows are only skipped for the same instance); otherwise every visible
+    // row redrew on every packet, stealing frames from the map's animation.
+    val groupCache = remember { HashMap<String, TransmissionGroup>() }
+    val liveGroups = remember(feed.visiblePackets, feed.observers, filter) {
+        reuseUnchanged(groupTransmissions(feed.visiblePackets, filter, feed.observers), groupCache)
+    }
     // While a packet is selected (its route replaying on the map, where live routes pause too),
     // the list holds its order: rows update in place, but new packets wait behind a
     // "Show new" button instead of pushing the selected row around.

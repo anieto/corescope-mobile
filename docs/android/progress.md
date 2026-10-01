@@ -821,3 +821,12 @@ Manual checks (Google Maps · Beta):
 - Live routes start animating when they are first ready to draw (within 2 s of arrival), not
   at the packet's arrival time, so the time spent getting a new packet to the map is no longer
   skipped as a jump at the start. Kept per packet; the details sheet still shows the observed time.
+- Profiled on a Lenovo tablet (Dimensity 6100+, 90 Hz) with Perfetto. CARTO: route drawing was
+  cheap (0.35 ms/frame) but each incoming packet stalled the main thread 20–100 ms, about once a
+  second. Causes and fixes: `LivePacket.key` rebuilt its string on every read (~400 per packet as
+  the feed de-duplicates) → built once; `packetEpoch` re-parsed the timestamp and
+  `TransmissionGroup.latestAt` was recomputed on every sort comparison → both computed once;
+  `visiblePackets` re-filtered on every read → once per state; the live feed's bookkeeping now
+  runs off the main thread (`flowOn(Default)`); unchanged packet-panel rows keep their instance so
+  they skip recomposition. Worst stall 102 → 36 ms, total stall time 1,062 → 447 ms per 15 s,
+  before the row fix. Trace sections `NodeScope:routes/frame/draw/anchors` mark the route work.

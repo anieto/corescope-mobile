@@ -17,7 +17,8 @@ const val GROUP_WINDOW_MILLIS = 30_000L
 data class TransmissionGroup(val id: String, val observations: List<LivePacket>, val region: String?) {
     val latest: LivePacket get() = observations.last()
     val firstAt: Long get() = observedAt(observations.first())
-    val latestAt: Long get() = observations.maxOf(::observedAt)
+    /** Computed once: sorting reads it on every comparison. */
+    val latestAt: Long = observations.maxOf(::observedAt)
     val isLive: Boolean get() = observations.any { it.isLive }
     /** The analyzer's own count can exceed what this device received. */
     val observationCount: Int get() = maxOf(observations.size, observations.maxOf { it.observations })
@@ -104,4 +105,12 @@ fun routeSubchains(route: List<String>, nodes: List<MeshNode>): List<List<Coordi
         else if (chains.last().lastOrNull() != point) chains.last() += point
     }
     return chains.filter { it.isNotEmpty() }
+}
+
+/** [groups] with each unchanged group replaced by its instance in [previous], which then holds this list. */
+internal fun reuseUnchanged(groups: List<TransmissionGroup>, previous: MutableMap<String, TransmissionGroup>): List<TransmissionGroup> {
+    val result = groups.map { group -> previous[group.id]?.takeIf { it == group } ?: group }
+    previous.clear()
+    result.forEach { previous[it.id] = it }
+    return result
 }

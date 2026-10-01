@@ -27,6 +27,15 @@ class PacketGroupsTest {
         assertEquals(listOf("bb"), groupTransmissions(packets, "ACK", emptyList()).map { it.id })
     }
 
+    @Test fun unchangedTransmissionsKeepTheirInstanceWhenPacketsArrive() {
+        val cache = HashMap<String, TransmissionGroup>()
+        val first = reuseUnchanged(groupTransmissions(listOf(packet(1, "aa", 1_000), packet(2, "bb", 2_000)), null, emptyList()), cache)
+        val next = reuseUnchanged(groupTransmissions(listOf(packet(1, "aa", 1_000), packet(2, "bb", 2_000), packet(3, "bb", 3_000)), null, emptyList()), cache)
+        assertSame(first.single { it.id == "aa" }, next.single { it.id == "aa" })
+        assertNotSame(first.single { it.id == "bb" }, next.single { it.id == "bb" }) // a new observation changes it
+        assertEquals(2, next.single { it.id == "bb" }.observations.size)
+    }
+
     @Test fun regionPreviewAndCountsFollowIos() {
         val observers = listOf(MeshObserver("OBS2", iata = "SAT"))
         val group = groupTransmissions(listOf(packet(1, "aa", 0, observer = "obs1", count = 7), packet(2, "aa", 1_000, observer = "OBS2")), null, observers).single()

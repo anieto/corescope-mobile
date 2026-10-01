@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.os.trace
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalDensity
@@ -246,7 +247,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         val historyCutoff = System.currentTimeMillis() - RouteTiming.HISTORY_FADE
         val shown = livePackets.filter { (it.isLive || packetEpoch(it) > historyCutoff) && filters.showsRoute(it) }.take(40)
         val nodes = snapshot?.nodes.orEmpty()
-        val routes = shown.map { packet ->
+        val routes = trace("NodeScope:routes") { shown.map { packet ->
             routeCache.getOrPut(packet) {
                 val color = listOf("#66B9FF", "#FFC27A", "#65DDB4", "#BEA1FF")[(packet.hash.hashCode() and Int.MAX_VALUE) % 4]
                 val observed = if (packet.isLive) packet.receivedAt else packetEpoch(packet)
@@ -260,7 +261,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                     routeAnchors(packet, nodes, feed.observers, nodeIndex),
                     packetRoute(packet, nodes, feed.observers, nodeIndex), historical = !packet.isLive, packet = packet, observedAt = observed)
             }
-        }
+        } }
         routeCache.keys.retainAll(shown.toSet())
         routeStarts.keys.retainAll(shown.mapTo(HashSet()) { it.key })
         routes
@@ -329,10 +330,12 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                     val active = observedPaths.filter { it.isActive(now) }
                     // Temporary route markers only change when routes enter or leave.
                     if (active != previousRoutes) {
-                        drawing.setRouteAnchors(active.flatMap { it.anchors }.distinctBy { it.anchorId })
+                        trace("NodeScope:anchors") { drawing.setRouteAnchors(active.flatMap { it.anchors }.distinctBy { it.anchorId }) }
                         previousRoutes = active
                     }
-                    drawing.setRouteFrame(routeFrame(active, now, animate))
+                    // Named sections show the route work in system traces (no cost when not tracing).
+                    val frame = trace("NodeScope:frame") { routeFrame(active, now, animate) }
+                    trace("NodeScope:draw") { drawing.setRouteFrame(frame) }
                     anyActive = active.isNotEmpty()
                     // Keep drawing every frame while something is moving.
                     anyActive && animate
