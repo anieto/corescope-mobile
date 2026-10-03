@@ -876,7 +876,9 @@ performance work (above). Before uploading: Play Data safety form updated for th
   certificate isn't on the CARTO key: two Play users failed while the developer's devices passed,
   and disabling CARTO's mobile-apps restriction made their maps load.
 
-## 0.7.8 (code 9) — 2026-10-03: routes named by who heard them
+## 0.7.7 (code 9) — 2026-10-03: routes named by who heard them
+
+Folded into 0.7.7 (not yet live), as build 9 after the build 8 diagnostic.
 
 Suggested by a tester (CoderNemesis): say which observer recorded each route.
 - `RouteOption` (PacketGroups.kt): each distinct route keeps the observers that heard exactly that
