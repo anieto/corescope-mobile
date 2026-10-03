@@ -8,7 +8,7 @@ Every feature and release closeout must be verified on both iPhone and iPad,
 including navigation, safe areas, adaptive layout, popovers/sheets, and toolbar
 content in portrait and landscape where applicable.
 
-## Completed foundation — 0.2.0 through 0.6.0
+## Completed foundation — 0.2.0 through 0.7.0
 
 - Native live map, animated packet routes, route details, and packet replay.
 - Channels, locally monitored channel keys, observers, and observer analytics.
@@ -19,55 +19,51 @@ content in portrait and landscape where applicable.
 - Analyzer diagnostics, capability checks, cache controls, and storage reporting.
 - Shareable deep links for nodes, observers, channels, and packets.
 - Liquid Glass interface updates, accessibility improvements, and reliability work.
+- Node Analytics with selectable time ranges, health and signal metrics, charts,
+  observer coverage, peer interactions, exports, and graceful capability checks.
 
-The completed 0.6.0 work will ship as part of 0.7.0 rather than as a separate
-App Store release.
+## 0.8.0 — My Nodes and network awareness
 
-## 0.7.0 — Node intelligence
+Turn favorites and Node Analytics into a useful daily health view without
+requiring users to inspect every node individually.
 
-Make individual nodes substantially easier to evaluate over time.
+- Add a My Nodes dashboard for favorite nodes with last-heard state,
+  availability, signal trend, observer coverage, and available telemetry.
+- Summarize meaningful changes since the previous visit, including nodes newly
+  active or silent, observer availability changes, and significant signal shifts.
+- Add direct drill-down from health and change summaries into analytics, packets,
+  routes, observers, and the map.
+- Surface analyzer health, live-feed state, capability support, and data freshness
+  so network changes are not confused with stale or unavailable analyzer data.
+- Keep alerts in-app for this release; defer background notifications until user
+  demand justifies their lifecycle and delivery complexity.
+- Preserve analyzer scoping, cached-first loading, exports, Dynamic Type, and
+  VoiceOver throughout the experience.
 
-- Add a native Node Analytics screen from Node Details.
-- Support 24-hour, 7-day, 30-day, and all-time ranges where the analyzer permits.
-- Show availability, signal grade, packets per day, relay percentage, observer
-  count, and longest silence.
-- Add activity, SNR/RSSI, packet-type, and hop-count charts.
-- Add an observer-coverage ranking and peer-interaction summary.
-- Handle older analyzers with clear capability detection and an informative
-  unavailable state.
-- Preserve pull-to-refresh, cached-data indicators, exports, Dynamic Type, and
-  VoiceOver support throughout the new experience.
+## 0.9.0 — Field investigation
 
-## 0.8.0 — Historical map playback
+Make NodeScope useful while deploying, locating, or troubleshooting physical
+mesh equipment without turning the phone into a source of RF telemetry.
 
-Extend the live map from individual packet replay into historical exploration.
+- Add an optional Field Mode from the map and node details rather than another
+  permanent primary tab.
+- Show nearby nodes and observers relative to the current location or a manually
+  selected reference point.
+- Show distance, bearing, last-heard state, recent signal quality, observer
+  coverage, coordinate age, GPS accuracy, and network-data freshness.
+- Allow one node or observer to be pinned as the active target with compact
+  compass-style guidance and direct access to its analytics, packets, and routes.
+- Add investigation snapshots that package the relevant packet, route, nodes,
+  observers, timestamps, and analyzer source for sharing or export.
+- Support public-key QR scanning and presentation for quick node lookup and
+  favoriting in the field.
+- Keep location use foreground-only, on-device, and optional. Do not upload or
+  persist the user's location history, and clearly distinguish stale reported
+  coordinates from a device's current physical location.
+- Treat lightweight historical context around a selected incident as optional;
+  do not require continuous map playback for the initial Field Mode.
 
-- Add a map time-window selector for recent historical traffic.
-- Add VCR-style play, pause, scrub, restart, and playback-speed controls.
-- Replay a continuous sequence of transmissions rather than only one packet.
-- Clearly distinguish Live, Paused, Replaying, and Historical states.
-- Preserve region, node-role, activity-age, and observer filters during playback.
-- Suspend expensive animation work when the app is backgrounded or Reduce Motion
-  is enabled.
-- Keep controls compact on iPhone and out of the way of the floating tab dock.
-
-## 0.9.0 — Network analysis and comparison
-
-Add a curated subset of CoreScope's network-wide analytics instead of copying
-its full desktop analytics workspace.
-
-- Add observer comparison for coverage, packet rate, unique nodes, signal
-  quality, and recent availability.
-- Add focused network views for topology, common relays, route patterns, and
-  distance/range.
-- Add time-range and region controls shared by these analyses.
-- Add drill-down links from charts and rankings into nodes, observers, routes,
-  and the map.
-- Add hash-collision information to Analyzer Diagnostics for operators, without
-  making it a primary consumer-facing screen.
-- Export useful comparisons and summaries as CSV or JSON.
-
-## 1.0.0 — Investigation tools and product maturity
+## 1.0.0 — Investigation depth and product maturity
 
 Complete the core read-only investigation workflow and prepare NodeScope for a
 stable long-term public release.
@@ -77,7 +73,9 @@ stable long-term public release.
 - Add grouped and observation-level packet views where they improve diagnosis.
 - Add useful packet filters such as time range, multiple observers, packet type,
   and favorites/My Nodes.
-- Add a node advert timeline and optional public-key QR presentation.
+- Add a node advert timeline where analyzer data supports it.
+- Make cached nodes, packets, routes, and analytics deliberately browsable as an
+  offline investigation workflow with clear snapshot timestamps.
 - Complete analyzer-version compatibility testing and graceful degradation for
   unsupported endpoints.
 - Complete large-network, long-running live-feed, offline-cache, accessibility,
@@ -90,9 +88,14 @@ stable long-term public release.
 
 These may be revisited after 1.0 if user demand justifies them.
 
+- Full historical map playback with continuous VCR-style controls and multiple
+  playback speeds.
+- Network-wide observer comparison, topology, common-relay, route-pattern, and
+  distance/range workspaces.
 - Spotlight indexing and App Shortcuts.
-- Favorite-node activity or stale-state notifications.
+- Favorite-node activity or stale-state background notifications.
 - Saved network-view presets.
+- Field survey breadcrumb recording and coverage heatmaps.
 - Route image generation.
 
 ## Out of scope
@@ -114,6 +117,6 @@ remaining map, lifecycle, feature-parity and device-validation gates.
 
 ## Current priority
 
-Build 0.7.0 Node Analytics first. Treat `/api/nodes/:pubkey/analytics` as an
-optional analyzer capability and design the screen to remain useful when only a
-subset of analytics fields is available.
+Build 0.8.0 My Nodes and network awareness on the completed Node Analytics
+foundation. Prioritize a concise answer to what changed, whether favorite nodes
+are healthy, and whether the configured analyzer data is current and complete.
