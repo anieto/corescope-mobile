@@ -27,6 +27,60 @@ class PacketGroupsTest {
         assertEquals(listOf("bb"), groupTransmissions(packets, "ACK", emptyList()).map { it.id })
     }
 
+    @Test fun unchangedTransmissionsKeepTheirInstanceWhenPacketsArrive() {
+        val cache = HashMap<String, TransmissionGroup>()
+        val first = reuseUnchanged(groupTransmissions(listOf(packet(1, "aa", 1_000), packet(2, "bb", 2_000)), null, emptyList()), cache)
+        val next = reuseUnchanged(groupTransmissions(listOf(packet(1, "aa", 1_000), packet(2, "bb", 2_000), packet(3, "bb", 3_000)), null, emptyList()), cache)
+        assertSame(first.single { it.id == "aa" }, next.single { it.id == "aa" })
+        assertNotSame(first.single { it.id == "bb" }, next.single { it.id == "bb" }) // a new observation changes it
+        assertEquals(2, next.single { it.id == "bb" }.observations.size)
+    }
+
+    @Test fun routesKeepTheObserversThatHeardThem() {
+        val heard = { name: String, rssi: Double? -> RouteHearing(name, "AUS", null, rssi) }
+        val options = routeOptions(listOf(
+            HeardPath(listOf("a", "b", "c", "d"), heard("Volente", -114.0)),
+            HeardPath(listOf("A", "B", "C", "D"), heard("Silverado", -98.0)), // same path, stronger
+            HeardPath(listOf("a", "b"), heard("HAL9000", -90.0)),            // part of the longer route
+            HeardPath(listOf("x", null, "y"), heard("ASL239", -101.0)),
+            HeardPath(listOf("solo"), heard("Direct", -80.0)),               // not a route
+        ))
+        assertEquals(listOf(listOf("a", "b", "c", "d"), listOf("x", "y")), options.map { it.keys })
+        assertEquals(listOf("Silverado", "Volente"), options[0].heardBy.map { it.observer })
+        assertEquals(listOf("HAL9000"), options[0].alongTheWay.map { it.observer })
+        assertEquals(2, options[0].alongTheWay.single().hops)
+        assertEquals(4, options[0].heardBy.first().hops)
+        assertEquals("4 hops · AUS · -98 dBm", options[0].summary())
+    }
+
+    @Test fun fullRoutesAddTheirObserversWithoutRenumbering() {
+        val playing = RouteOption(listOf("a", "b", "c"), listOf(RouteHearing("Volente", rssi = -110.0)))
+        val merged = mergeRouteOptions(listOf(playing), listOf(
+            RouteOption(listOf("A", "B", "C"), listOf(RouteHearing("Silverado", rssi = -95.0), RouteHearing("volente", rssi = -110.0))),
+            RouteOption(listOf("b", "c"), listOf(RouteHearing("HAL9000", rssi = -90.0))),
+            RouteOption(listOf("d", "e"), listOf(RouteHearing("ASL239")))))
+        assertEquals(listOf(listOf("a", "b", "c"), listOf("d", "e")), merged.map { it.keys })
+        assertEquals(listOf("Silverado", "Volente"), merged[0].heardBy.map { it.observer }) // one Volente, strongest first
+        assertEquals(listOf("HAL9000"), merged[0].alongTheWay.map { it.observer })
+    }
+
+    @Test fun anObserversPathPointsAtItsRoute() {
+        val options = listOf(RouteOption(listOf("a", "b", "c", "d")), RouteOption(listOf("x", "y")))
+        assertEquals(0, routeIndexFor(listOf("A", "B", "C", "D"), options))
+        assertEquals(0, routeIndexFor(listOf("b", "c"), options)) // heard along the way
+        assertEquals(1, routeIndexFor(listOf("x", null, "y"), options))
+        assertNull(routeIndexFor(listOf("q", "r"), options))
+        assertNull(routeIndexFor(listOf("a"), options))
+    }
+
+    @Test fun aRouteEndsAtTheObserversThatHeardIt() {
+        val observers = listOf(MeshObserver("obs-1", name = "Volente", lat = 30.4, lon = -97.9),
+            MeshObserver("obs-2", name = "Silverado", lat = 30.2, lon = -97.6), MeshObserver("obs-3", name = "Nowhere"))
+        val option = RouteOption(listOf("a", "b"), listOf(RouteHearing("Volente (renamed)", observerId = "OBS-1"),
+            RouteHearing("silverado"), RouteHearing("Nowhere"), RouteHearing("Unknown")))
+        assertEquals(listOf("Volente (renamed)" to Coordinate(30.4, -97.9), "silverado" to Coordinate(30.2, -97.6)), option.receivers(observers))
+    }
+
     @Test fun regionPreviewAndCountsFollowIos() {
         val observers = listOf(MeshObserver("OBS2", iata = "SAT"))
         val group = groupTransmissions(listOf(packet(1, "aa", 0, observer = "obs1", count = 7), packet(2, "aa", 1_000, observer = "OBS2")), null, observers).single()

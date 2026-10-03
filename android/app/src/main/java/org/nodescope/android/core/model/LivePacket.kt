@@ -38,7 +38,12 @@ data class LivePacket(
     val payloadVersion: Int? = null, val rawHex: String? = null,
 ) {
     // Same transmission can have different observers and routes; retain those observations.
-    val key: String get() = "$id|$hash|$observerId|${hops.joinToString(",")}|${resolvedPath.joinToString(",")}"
+    // Built once per packet: the feed compares keys against every stored packet on each arrival.
+    val key: String by lazy(LazyThreadSafetyMode.PUBLICATION) { "$id|$hash|$observerId|${hops.joinToString(",")}|${resolvedPath.joinToString(",")}" }
+    /** [timestamp] parsed once (sorting and grouping read it many times). */
+    internal val timestampMillis: Long? by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        timestamp?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
+    }
     val title: String get() = observerName?.takeIf { it.isNotBlank() } ?: observerId?.take(12) ?: "Unknown observer"
 }
 
@@ -73,6 +78,4 @@ fun parseLivePacket(data: JsonObject, live: Boolean, now: Long = System.currentT
 private fun JsonObject.text(key: String) = (this[key] as? JsonPrimitive)?.contentOrNull
 private fun JsonObject.number(key: String) = (this[key] as? JsonPrimitive)?.doubleOrNull
 
-fun packetEpoch(packet: LivePacket): Long = packet.timestamp?.let {
-    runCatching { Instant.parse(it).toEpochMilli() }.getOrNull()
-} ?: packet.receivedAt
+fun packetEpoch(packet: LivePacket): Long = packet.timestampMillis ?: packet.receivedAt

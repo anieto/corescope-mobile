@@ -27,6 +27,16 @@ class LiveRouteAnimationTest {
         assertEquals(b, second.rings.single().center)
     }
 
+    @Test fun linesKeepTheirHopWhileEarlierHopsFadeAway() {
+        // Google Maps reuses a line object per route and hop; the hop must not shift as others leave.
+        val route = route(listOf(a, b, c))
+        assertEquals(listOf(0, 1), routeFrame(listOf(route), 1_700, animate = true).lines.map { it.hop })
+        val firstGone = route.hops[0].fadeStartsAt + route.hops[0].fadeDuration
+        val late = routeFrame(listOf(route), firstGone + 1, animate = true)
+        assertEquals(listOf(1), late.lines.map { it.hop })
+        assertEquals(listOf("r"), late.lines.map { it.route })
+    }
+
     @Test fun completedHopsHoldThenFade() {
         val route = route(listOf(a, b))
         assertEquals(1f, routeFrame(listOf(route), 1_000 + 660 + 450, true).lines.single().opacity, 0.001f)
@@ -75,9 +85,7 @@ class LiveRouteAnimationTest {
         }
         assertEquals(36.0, separationDp(near, 12.0), 0.01)
         assertEquals(36.0, separationDp(spreadCoincidentNodes(nodes, 15.0), 15.0), 0.01)
-        assertEquals(near.getValue("a"), nodeFeatures(nodes, near).features()!!
-            .first { it.getStringProperty("publicKey") == "a" }.geometry().let { it as org.maplibre.geojson.Point }
-            .let { Coordinate(it.latitude(), it.longitude()) })
+        assertEquals(near.getValue("a"), nodeMarkers(nodes, near).first { it.publicKey == "a" }.coordinate)
     }
 
     @Test fun nodeNamesShowOnlyWhenCloseAndSparse() {

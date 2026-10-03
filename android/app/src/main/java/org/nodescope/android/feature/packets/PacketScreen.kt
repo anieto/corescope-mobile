@@ -74,7 +74,16 @@ fun PacketScreen(feed: LiveFeedState, onReconnect: () -> Unit, regionControl: @C
     selectedId: String? = null, selectedActions: (@Composable (TransmissionGroup) -> Unit)? = null) {
     var filter by rememberSaveable { mutableStateOf<String?>(null) }
     var showFilters by remember { mutableStateOf(false) }
-    val liveGroups = remember(feed.visiblePackets, feed.observers, filter) { groupTransmissions(feed.visiblePackets, filter, feed.observers) }
+    // Unchanged transmissions keep their previous instance, so their rows skip recomposition when
+    // a new packet arrives (rows are only skipped for the same instance); otherwise every visible
+    // row redrew on every packet, stealing frames from the map's animation.
+    val groupCache = remember { HashMap<String, TransmissionGroup>() }
+    // Rows' click handlers go through this, so a new onGroup from the caller (every packet) doesn't
+    // count as a changed row and redraw every row.
+    val currentOnGroup by rememberUpdatedState(onGroup)
+    val liveGroups = remember(feed.visiblePackets, feed.observers, filter) {
+        reuseUnchanged(groupTransmissions(feed.visiblePackets, filter, feed.observers), groupCache)
+    }
     // While a packet is selected (its route replaying on the map, where live routes pause too),
     // the list holds its order: rows update in place, but new packets wait behind a
     // "Show new" button instead of pushing the selected row around.
@@ -144,7 +153,7 @@ fun PacketScreen(feed: LiveFeedState, onReconnect: () -> Unit, regionControl: @C
         }
         if (groups.isNotEmpty()) item { SectionLabel(if (paused) "Incoming traffic · paused" else "Incoming traffic") }
         items(groups, key = { it.id }) { group ->
-            TransmissionRow(group, now, selected = group.id == selectedId, actions = selectedActions.takeIf { group.id == selectedId }) { onGroup(group.id) }
+            TransmissionRow(group, now, selected = group.id == selectedId, actions = selectedActions.takeIf { group.id == selectedId }) { currentOnGroup(group.id) }
         }
         if (groups.isEmpty()) item {
             EmptyState(Icons.Outlined.SettingsInputAntenna, if (feed.connection == LiveConnection.LIVE) "Waiting for packets" else "Not connected",

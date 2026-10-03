@@ -1,9 +1,6 @@
 package org.nodescope.android.app
 
 import android.app.Application
-import android.content.pm.PackageManager
-import android.os.Build
-import java.security.MessageDigest
 import org.maplibre.android.MapLibre
 import org.maplibre.android.module.http.HttpRequestUtil
 import org.nodescope.android.BuildConfig
@@ -22,19 +19,8 @@ class NodeScopeApplication : Application() {
         // Do not log authenticated tile URLs. This client is separate from analyzer requests.
         HttpRequestUtil.setLogEnabled(false)
         HttpRequestUtil.setOkHttpClient(OkHttpClient.Builder()
-            .addNetworkInterceptor(CartoRequests(BuildConfig.CARTO_API_KEY, packageName, signingSha1()))
+            .addNetworkInterceptor(CartoRequests(BuildConfig.CARTO_API_KEY, packageName, AppIdentity.signingSha1(this)))
             .build())
-    }
-
-    @Suppress("DEPRECATION")
-    private fun signingSha1(): String {
-        val signatures = if (Build.VERSION.SDK_INT >= 28) {
-            packageManager.getPackageInfo(packageName, PackageManager.GET_SIGNING_CERTIFICATES)
-                .signingInfo?.apkContentsSigners
-        } else packageManager.getPackageInfo(packageName, PackageManager.GET_SIGNATURES).signatures
-        val signature = requireNotNull(signatures?.firstOrNull()) { "App signing certificate unavailable" }
-        return MessageDigest.getInstance("SHA-1").digest(signature.toByteArray())
-            .joinToString("") { "%02X".format(it) }
     }
 
     val container: AppContainer by lazy { AppContainer(this) }

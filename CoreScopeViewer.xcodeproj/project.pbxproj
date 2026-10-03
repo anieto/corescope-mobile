@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		01D4A148FE7AC5A25B15E907 /* PacketDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5A6EF6652A955D16C20CA75 /* PacketDetail.swift */; };
+		31A2B0023070000100FBA3B4 /* RouteOption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A2B0013070000100FBA3B4 /* RouteOption.swift */; };
 		036ACF59063991FAB8B4D9A0 /* URLPathEncodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B302D4D26193BFC6975CDF82 /* URLPathEncodingTests.swift */; };
 		0C8DD2E83491E4744AEA1380 /* ChannelsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B90D68BBC5B7652894943018 /* ChannelsViewModel.swift */; };
 		0F0D91D6301E5CA8492D24A1 /* PacketFeedScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = E60D53B8493F9BAD7C5BAD05 /* PacketFeedScreen.swift */; };
@@ -23,6 +24,7 @@
 		2D447FFABF6B77349DA614A1 /* SenderColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36B0A5E6DC5812474734F2C7 /* SenderColor.swift */; };
 		31152DE03069FCCF00146B37 /* AdaptiveListDetailNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31152DDF3069FCCF00146B37 /* AdaptiveListDetailNavigation.swift */; };
 		3144E9F7305B2A4300B57F18 /* InstrumentSearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3144E9F6305B2A4300B57F18 /* InstrumentSearchField.swift */; };
+		31A2B0043070000100FBA3B4 /* RoutePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A2B0033070000100FBA3B4 /* RoutePicker.swift */; };
 		316FDFF6305C483200FBA3B4 /* FavoritesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FDFF5305C483200FBA3B4 /* FavoritesStore.swift */; };
 		316FDFFB305C490A00FBA3B4 /* ExploreScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FDFFA305C490A00FBA3B4 /* ExploreScreen.swift */; };
 		316FDFFD305C4DDE00FBA3B4 /* RecentItemsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FDFFC305C4DDE00FBA3B4 /* RecentItemsStore.swift */; };
@@ -58,6 +60,7 @@
 		73FBC544410EBB6331BE2670 /* NodeRoleStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73004474B78DC6135A5F3FD4 /* NodeRoleStyle.swift */; };
 		748C3658362BEB182690BA21 /* us-sources.json in Resources */ = {isa = PBXBuildFile; fileRef = C779CBD001144856373F59F6 /* us-sources.json */; };
 		78DCE8CBA4FAD67D00DCCD48 /* DistanceFormatTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 202646976494B608BAFA8995 /* DistanceFormatTests.swift */; };
+		31A2B0063070000100FBA3B4 /* RouteOptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A2B0053070000100FBA3B4 /* RouteOptionTests.swift */; };
 		7A58A4866E9870D60395F551 /* iata-airports.csv in Resources */ = {isa = PBXBuildFile; fileRef = 56D774144710835E31B1A30E /* iata-airports.csv */; };
 		81BAE67C29D289F43B630B40 /* RelativeTime.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4864A74D4FA3785DE838A1B /* RelativeTime.swift */; };
 		895D2DD9450C64472E7693F6 /* NodeHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2267353D97D345808DF80E40 /* NodeHealth.swift */; };
@@ -109,6 +112,7 @@
 		1995A14EECD0A20DEE44C713 /* PacketDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketDetailViewModel.swift; sourceTree = "<group>"; };
 		1B8EBAA696FEC61136DADD69 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		202646976494B608BAFA8995 /* DistanceFormatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DistanceFormatTests.swift; sourceTree = "<group>"; };
+		31A2B0053070000100FBA3B4 /* RouteOptionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteOptionTests.swift; sourceTree = "<group>"; };
 		2267353D97D345808DF80E40 /* NodeHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeHealth.swift; sourceTree = "<group>"; };
 		235873A5D91CB7811DDE491B /* DistanceFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DistanceFormat.swift; sourceTree = "<group>"; };
 		29E28B950F28EA62CB22D383 /* DataLoadStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataLoadStatusView.swift; sourceTree = "<group>"; };
@@ -118,6 +122,7 @@
 		2FB247C32E6BA4792D18D413 /* RegionFilterStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionFilterStore.swift; sourceTree = "<group>"; };
 		31152DDF3069FCCF00146B37 /* AdaptiveListDetailNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveListDetailNavigation.swift; sourceTree = "<group>"; };
 		3144E9F6305B2A4300B57F18 /* InstrumentSearchField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstrumentSearchField.swift; sourceTree = "<group>"; };
+		31A2B0033070000100FBA3B4 /* RoutePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePicker.swift; sourceTree = "<group>"; };
 		316FDFF5305C483200FBA3B4 /* FavoritesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesStore.swift; sourceTree = "<group>"; };
 		316FDFFA305C490A00FBA3B4 /* ExploreScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExploreScreen.swift; sourceTree = "<group>"; };
 		316FDFFC305C4DDE00FBA3B4 /* RecentItemsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentItemsStore.swift; sourceTree = "<group>"; };
@@ -178,6 +183,7 @@
 		B06635B0C942C4C8FAA66B61 /* MonitorChannelSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorChannelSheet.swift; sourceTree = "<group>"; };
 		B302D4D26193BFC6975CDF82 /* URLPathEncodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLPathEncodingTests.swift; sourceTree = "<group>"; };
 		B5A6EF6652A955D16C20CA75 /* PacketDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketDetail.swift; sourceTree = "<group>"; };
+		31A2B0013070000100FBA3B4 /* RouteOption.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteOption.swift; sourceTree = "<group>"; };
 		B6A10E44528CF92E7266D645 /* ObserversViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObserversViewModel.swift; sourceTree = "<group>"; };
 		B90D68BBC5B7652894943018 /* ChannelsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelsViewModel.swift; sourceTree = "<group>"; };
 		B9E15F4B47442CF9835AEE3F /* AirportCoordinatesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirportCoordinatesTests.swift; sourceTree = "<group>"; };
@@ -310,6 +316,7 @@
 				676EB2594CA764CE13BDDE59 /* Observer.swift */,
 				EA006DDF6B3AF7AC55C16467 /* Packet.swift */,
 				B5A6EF6652A955D16C20CA75 /* PacketDetail.swift */,
+				31A2B0013070000100FBA3B4 /* RouteOption.swift */,
 				316FE0153060985200FBA3B4 /* NodeAnalytics.swift */,
 			);
 			path = Models;
@@ -352,6 +359,7 @@
 				E4864A74D4FA3785DE838A1B /* RelativeTime.swift */,
 				36B0A5E6DC5812474734F2C7 /* SenderColor.swift */,
 				3144E9F6305B2A4300B57F18 /* InstrumentSearchField.swift */,
+				31A2B0033070000100FBA3B4 /* RoutePicker.swift */,
 				316FE009305E18ED00FBA3B4 /* LiquidGlassStyle.swift */,
 				31152DDF3069FCCF00146B37 /* AdaptiveListDetailNavigation.swift */,
 				31CCA84C306D984400D01155 /* DuoLayoutContext.swift */,
@@ -438,6 +446,7 @@
 				87221E748C0B435ADB9F016B /* AnalyzerSourceLogoTests.swift */,
 				B9E15F4B47442CF9835AEE3F /* AirportCoordinatesTests.swift */,
 				202646976494B608BAFA8995 /* DistanceFormatTests.swift */,
+				31A2B0053070000100FBA3B4 /* RouteOptionTests.swift */,
 				F4803E09AA9A3CD1D7EF773B /* SignalQualityTests.swift */,
 			);
 			path = CoreScopeViewerTests;
@@ -542,6 +551,7 @@
 				C9442265B47B2D20E681223B /* AnalyzerSourceLogoTests.swift in Sources */,
 				A742196194F327F868B0E61C /* AirportCoordinatesTests.swift in Sources */,
 				78DCE8CBA4FAD67D00DCCD48 /* DistanceFormatTests.swift in Sources */,
+				31A2B0063070000100FBA3B4 /* RouteOptionTests.swift in Sources */,
 				D5F127286F43177CB8B17400 /* SignalQualityTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -567,6 +577,7 @@
 				3D366579F73DA99203CE929F /* ChannelDetailScreen.swift in Sources */,
 				90D4CE6F2C401B52C0B93D79 /* ChannelListCache.swift in Sources */,
 				3144E9F7305B2A4300B57F18 /* InstrumentSearchField.swift in Sources */,
+				31A2B0043070000100FBA3B4 /* RoutePicker.swift in Sources */,
 				16CC334CE0E2AE894A6E2811 /* ChannelMessagesCache.swift in Sources */,
 				F82F20C851C52EAC49BC3931 /* ChannelMonitorStore.swift in Sources */,
 				DE7EBA2547154396308F7F57 /* ChannelsListScreen.swift in Sources */,
@@ -606,6 +617,7 @@
 				F880AFD88BBD5C97812E65C7 /* Packet.swift in Sources */,
 				316FE00E305E1CAF00FBA3B4 /* AnalyzerDiagnosticsScreen.swift in Sources */,
 				01D4A148FE7AC5A25B15E907 /* PacketDetail.swift in Sources */,
+				31A2B0023070000100FBA3B4 /* RouteOption.swift in Sources */,
 				D0703CF5F57B875F611F2ADD /* PacketDetailScreen.swift in Sources */,
 				597B05A58DFD199CB78FAAC0 /* PacketDetailViewModel.swift in Sources */,
 				316FE014306070A900FBA3B4 /* NodeScopeDeepLink.swift in Sources */,
@@ -662,7 +674,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.7.6;
+				MARKETING_VERSION = 0.7.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.btdev.nodescope;
 				PRODUCT_MODULE_NAME = CoreScopeViewer;
 				PRODUCT_NAME = NodeScope;
@@ -855,7 +867,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.7.6;
+				MARKETING_VERSION = 0.7.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.btdev.nodescope;
 				PRODUCT_MODULE_NAME = CoreScopeViewer;
 				PRODUCT_NAME = NodeScope;

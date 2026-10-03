@@ -21,10 +21,11 @@ data class LiveFeedState(
     val observersLoaded: Boolean = false,
     val historyError: Boolean = false,
 ) {
-    val visiblePackets: List<LivePacket> get() {
-        val region = selection?.region ?: return packets
+    /** Worked out once per state; screens read it on every recomposition. */
+    val visiblePackets: List<LivePacket> by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        val region = selection?.region ?: return@lazy packets
         val ids = observers.filter { it.iata.equals(region, true) }.map { it.id.lowercase() }.toSet()
-        return packets.filter { it.region.equals(region, true) || it.observerId?.lowercase() in ids }
+        packets.filter { it.region.equals(region, true) || it.observerId?.lowercase() in ids }
     }
 }
 sealed interface LiveSignal {

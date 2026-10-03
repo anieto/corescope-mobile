@@ -41,13 +41,15 @@ class PacketDetailViewModel(repository: BrowseRepository) : ViewModel() {
  */
 @Composable
 fun MessagePacketScreen(model: PacketDetailViewModel, host: String, hash: String, sender: String, text: String,
-    nodes: List<MeshNode>, onReplay: (routes: List<List<String>>, selected: Int) -> Unit) {
+    nodes: List<MeshNode>, onReplay: (routes: List<RouteOption>, selected: Int) -> Unit) {
     val state by model.detail.state.collectAsStateWithLifecycle()
     val key = host to hash
     LaunchedEffect(key) { model.detail.load(key) }
     val now = rememberNow()
     val detail = state.value.takeIf { state.key == key }
-    val routes = remember(detail) { distinctRoutes(detail?.observations.orEmpty().map { it.resolvedPath.orEmpty() }) }
+    val routes = remember(detail) { routeOptions(detail?.observations.orEmpty().map {
+        HeardPath(it.resolvedPath.orEmpty(), RouteHearing(it.observerName?.takeIf(String::isNotBlank) ?: "Observer ${it.id}", it.observerIata, it.snr, it.rssi))
+    }) }
     var selectedRoute by rememberSaveable { mutableIntStateOf(0) }
     val copy = rememberCopyAction()
     val context = LocalContext.current
@@ -103,24 +105,16 @@ fun MessagePacketScreen(model: PacketDetailViewModel, host: String, hash: String
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     else {
                         val index = selectedRoute.coerceIn(routes.indices)
-                        if (routes.size > 1) {
-                            var open by remember { mutableStateOf(false) }
-                            Box {
-                                OutlinedButton(onClick = { open = true }) { Text("Route ${index + 1} · ${routes[index].size} hops"); Icon(Icons.Outlined.ArrowDropDown, null) }
-                                DropdownMenu(open, { open = false }) {
-                                    routes.forEachIndexed { i, route ->
-                                        DropdownMenuItem(text = { Text("Route ${i + 1} · ${route.size} hops") }, onClick = { selectedRoute = i; open = false })
-                                    }
-                                }
-                            }
-                        } else Row {
+                        if (routes.size > 1) RoutePicker(routes, index, { selectedRoute = it })
+                        else Row {
                             Text("Resolved path", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                            Text("${routes[0].size} hops", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("${routes[0].hops} hops", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         val lookup = remember(nodes) { nodes.associateBy { it.publicKey.lowercase() } }
-                        Text(routes[index].joinToString(" → ") { lookup[it.lowercase()]?.displayName ?: it.take(8).uppercase() },
+                        Text(routes[index].keys.joinToString(" → ") { lookup[it.lowercase()]?.displayName ?: it.take(8).uppercase() },
                             style = MaterialTheme.typography.bodyMedium)
-                        val playable = routeSubchains(routes[index], nodes).any { it.size > 1 }
+                        RouteHearers(routes[index])
+                        val playable = routeSubchains(routes[index].keys, nodes).any { it.size > 1 }
                         if (!playable) Text("This route's nodes aren't on the current map region, so it can't be replayed.",
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Button(onClick = { onReplay(routes, index) }, Modifier.fillMaxWidth(), enabled = playable,

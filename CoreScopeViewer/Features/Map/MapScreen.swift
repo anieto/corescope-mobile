@@ -38,6 +38,8 @@ struct MapScreen: View {
     @State private var hasCenteredCamera = false
     @State private var activePings: [ActivePing] = []
     @State private var replayPings: [ActivePing] = []
+    /// Observers that heard the replayed route, labelled where the replay ends.
+    @State private var replayReceivers: [ReplayReceiver] = []
     @State private var isReplayMode = false
     @State private var showsReplayRouteOnly = true
     @State private var processedEventIds: Set<String> = []
@@ -303,6 +305,8 @@ struct MapScreen: View {
                                 replayControl
                                 routeOptionsControl
                             }
+                            // Stay between the locate and zoom controls on narrow phones.
+                            .padding(.horizontal, 64)
                             .frame(maxWidth: .infinity)
 
                             if centersBottomControlsInLeadingPane {
@@ -496,7 +500,7 @@ struct MapScreen: View {
             stopPacketReplay()
         }
         .onChange(of: isTabActive) { _, isActive in
-            guard isActive, !packetReplayStore.routes.isEmpty else { return }
+            guard isActive, packetReplayStore.isReplayActive else { return }
             queuePacketReplay()
         }
         .onChange(of: appNavigationStore.requestID) {
@@ -675,6 +679,14 @@ struct MapScreen: View {
                                     .stroke(.white.opacity(0.8), lineWidth: 1)
                             }
                             .accessibilityLabel("\(cluster.count) nearby nodes")
+                    }
+                }
+
+                if isReplayMode {
+                    ForEach(replayReceivers) { receiver in
+                        Annotation("", coordinate: receiver.coordinate, anchor: .center) {
+                            ReplayReceiverMarker(name: receiver.name, colorScheme: colorScheme)
+                        }
                     }
                 }
 
@@ -1062,33 +1074,17 @@ struct MapScreen: View {
     private var routeOptionsControl: some View {
         HStack(spacing: 4) {
             if packetReplayStore.routes.count > 1 {
-                Menu {
-                    ForEach(packetReplayStore.routes.indices, id: \.self) { index in
-                        Button {
-                            packetReplayStore.selectRoute(at: index)
-                        } label: {
-                            let hopCount = packetReplayStore.routes[index].count
-                            let title = "Route \(index + 1) · \(hopCount) hops"
-                            if index == packetReplayStore.selectedRouteIndex {
-                                Label(title, systemImage: "checkmark")
-                            } else {
-                                Text(title)
-                            }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "point.topleft.down.curvedto.point.bottomright.up")
-                        Text("Route \(packetReplayStore.selectedRouteIndex + 1) of \(packetReplayStore.routes.count)")
-                        Image(systemName: "chevron.down")
-                            .font(.caption2.weight(.semibold))
-                    }
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                }
-                .accessibilityLabel("Choose route")
+                RoutePicker(
+                    options: packetReplayStore.routes,
+                    selection: Binding(
+                        get: { packetReplayStore.selectedRouteIndex },
+                        set: { packetReplayStore.selectRoute(at: $0) }
+                    ),
+                    compact: true
+                )
+                .layoutPriority(-1)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
                 .tint(mapControlAccentColor)
 
                 Divider()
@@ -1101,6 +1097,7 @@ struct MapScreen: View {
                 Label("Route Only", systemImage: showsReplayRouteOnly ? "checkmark.circle.fill" : "circle")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(showsReplayRouteOnly ? mapControlAccentColor : .primary)
+                    .fixedSize()
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)
             }
@@ -1328,6 +1325,10 @@ struct MapScreen: View {
     }
 
     private func queuePacketReplay() {
+        guard packetReplayStore.isReplayActive else {
+            pendingReplayRequestID = nil
+            return
+        }
         selectedNode = nil
         pendingReplayRequestID = packetReplayStore.requestID
         guard !isChangingRegion else { return }
@@ -1337,10 +1338,15 @@ struct MapScreen: View {
     private func stopPacketReplay() {
         pendingReplayRequestID = nil
         replayPings = []
+        replayReceivers = []
         isReplayMode = false
     }
 
     private func replayPendingPacketIfNeeded() {
+        guard packetReplayStore.isReplayActive else {
+            pendingReplayRequestID = nil
+            return
+        }
         guard pendingReplayRequestID == packetReplayStore.requestID else { return }
         guard currentRouteCoordinates().count >= 2 else { return }
         pendingReplayRequestID = nil
@@ -1350,6 +1356,21 @@ struct MapScreen: View {
     private func currentRouteCoordinates() -> [CLLocationCoordinate2D] {
         packetReplayStore.resolvedPath.compactMap { publicKey in
             validCoordinate(viewModel.nodesByPubkey[publicKey.lowercased()]?.coordinate)
+        } + currentReceivers().map(\.coordinate)
+    }
+
+    /// Where the replayed route ends: the observers that heard exactly this path, at their
+    /// positions (skipping one that sits on the route's last node).
+    private func currentReceivers() -> [ReplayReceiver] {
+        guard let route = packetReplayStore.selectedRoute else { return [] }
+        let last = route.keys.last.flatMap { validCoordinate(viewModel.nodesByPubkey[$0.lowercased()]?.coordinate) }
+        return route.receivers(
+            coordinateById: observerRegionLookup.coordinateById,
+            coordinateByName: observerRegionLookup.coordinateByName
+        ).compactMap { receiver in
+            guard let coordinate = validCoordinate(receiver.coordinate),
+                  last.map({ CoordinateKey($0) != CoordinateKey(coordinate) }) ?? true else { return nil }
+            return ReplayReceiver(name: receiver.name, coordinate: coordinate)
         }
     }
 
@@ -1378,8 +1399,12 @@ struct MapScreen: View {
     }
 
     private func replayPacketRoute(recenter: Bool = true) {
-        let coordinates = currentRouteCoordinates()
-        guard coordinates.count >= 2 else { return }
+        let receivers = currentReceivers()
+        let routeCoordinates = packetReplayStore.resolvedPath.compactMap { publicKey in
+            validCoordinate(viewModel.nodesByPubkey[publicKey.lowercased()]?.coordinate)
+        }
+        let coordinates = routeCoordinates + receivers.map(\.coordinate)
+        guard routeCoordinates.count >= 2 else { return }
 
         let routeColor: Color = colorScheme == .dark
             ? Color(red: 0.35, green: 0.78, blue: 1.0)
@@ -1390,14 +1415,16 @@ struct MapScreen: View {
         // makes the route readable while retaining CoreScope's linear motion.
         let travelDuration = 0.85
         let replayStart = Date.now.addingTimeInterval(0.25)
-        let hopCount = coordinates.count - 1
+        let hopCount = routeCoordinates.count - 1
+        // The final hops, from the route's last node to each observer, travel together.
+        let finalHopCount = receivers.isEmpty ? 0 : 1
 
         // Keep the completed route visible briefly, then fade it as one path.
-        let lastTravelEnd = replayStart.addingTimeInterval(Double(hopCount) * travelDuration)
+        let lastTravelEnd = replayStart.addingTimeInterval(Double(hopCount + finalHopCount) * travelDuration)
         let fadeStart = lastTravelEnd.addingTimeInterval(0.75)
         let fadeDuration = 0.65
 
-        let segments = zip(coordinates, coordinates.dropFirst()).enumerated().map { index, pair in
+        let segments = zip(routeCoordinates, routeCoordinates.dropFirst()).enumerated().map { index, pair in
             ActivePing(
                 from: pair.0,
                 to: pair.1,
@@ -1417,7 +1444,28 @@ struct MapScreen: View {
                 messageText: packetReplayStore.messageText
             )
         }
-        replayPings = segments
+        let finalHops = receivers.enumerated().map { index, receiver in
+            ActivePing(
+                from: routeCoordinates[routeCoordinates.count - 1],
+                to: receiver.coordinate,
+                createdAt: replayStart.addingTimeInterval(Double(hopCount) * travelDuration),
+                fadeStartsAt: fadeStart,
+                duration: fadeDuration,
+                travelDuration: travelDuration,
+                color: routeColor,
+                signalColor: signalColor,
+                routeID: "replay-\(packetReplayStore.packetHash)-\(packetReplayStore.selectedRouteIndex)-observer-\(index)",
+                packetHash: packetReplayStore.packetHash,
+                observerName: receiver.name,
+                observedAt: packetReplayStore.observedAt,
+                snr: packetReplayStore.snr,
+                rssi: packetReplayStore.rssi,
+                sender: packetReplayStore.sender,
+                messageText: packetReplayStore.messageText
+            )
+        }
+        replayPings = segments + finalHops
+        replayReceivers = receivers
         isReplayMode = true
         hasCenteredCamera = true
 
@@ -3050,5 +3098,47 @@ private struct MapNodeSearchRow: View {
         }
         .contentShape(Rectangle())
         .padding(.vertical, 4)
+    }
+}
+
+/// An observer that heard a replayed route, where the replay ends.
+private struct ReplayReceiver: Identifiable {
+    let name: String
+    let coordinate: CLLocationCoordinate2D
+
+    var id: String { "\(name)|\(coordinate.latitude)|\(coordinate.longitude)" }
+}
+
+/// The labelled endpoint of a replay: an observer marker with its name always shown.
+private struct ReplayReceiverMarker: View {
+    let name: String
+    let colorScheme: ColorScheme
+
+    var body: some View {
+        Image(systemName: "antenna.radiowaves.left.and.right")
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(width: 24, height: 24)
+            .background(NodeScopeStyle.healthy, in: Circle())
+            .overlay {
+                Circle().stroke(.white.opacity(0.9), lineWidth: 1.5)
+            }
+            .overlay(alignment: .top) {
+                Text(name)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(
+                        colorScheme == .dark ? Color.black.opacity(0.72) : Color.white.opacity(0.85),
+                        in: Capsule()
+                    )
+                    .offset(y: 27)
+            }
+            .allowsHitTesting(false)
+            .accessibilityElement()
+            .accessibilityLabel("Heard by \(name)")
     }
 }

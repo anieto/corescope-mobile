@@ -756,3 +756,142 @@ how to use.
   routes in the full data starts its replay when they arrive ("Looking for routes…" meanwhile).
 - Packet details (Packets tab) load the packet's full observation routes too, so "Recent"
   packets offer every route in the route dropdown; the feed's routes keep their numbers.
+
+## Google Maps option, phase 1: map engine split — 2026-09-30 (branch `android-google-maps`)
+
+First step of `google-maps-option.md` (Option B). No visible change: CARTO/MapLibre should
+behave exactly as in 0.7.6.
+- Pricing rechecked 2026-09-30: the Maps SDK SKU (Android map loads without a map ID) is still
+  listed as unlimited and free; loads with a map ID bill as Dynamic Maps (10k free, then $7/1k).
+- `MapEngine.kt` (engine-neutral): `MapMarker` (nodes and route endpoints, replacing GeoJSON
+  features in `LiveRoute.anchors`), `CameraMove`, `MapCamera` (camera moves, projection,
+  fitting, wait-for-idle), `MapOverlays` (nodes grouped or not, labels, route anchors, route
+  frames, user location, sample route), `MapTap` (what a tap touched), label rule, bounds.
+- `MapLibreEngine.kt`: everything MapLibre-specific moved out of `MapScreen` unchanged: the
+  MapView and its lifecycle, CARTO styles, layers and source IDs, tap hit-testing, cluster
+  expansion, logo tracking, `awaitIdle`.
+- `MapScreen` keeps the shared behaviour: filters, selection, the tap decision, region/search/
+  location framing, replay framing and timing, the live route animation loop, all the chrome.
+- Instrumented tests still find the MapView and the same layer IDs. JVM tests updated to the
+  neutral helpers, plus `MapEngineTest`. Built and unit-tested; not yet run on a device.
+
+## Google Maps option, phase 2: Google renderer (beta) — 2026-09-30 (branch `android-google-maps`)
+
+- Map layers menu is grouped by provider when the build has a Google key: **CARTO** (Standard,
+  Light, Dark) and **Google Maps · Beta** (Map, Satellite, Terrain, Hybrid). The choice is
+  remembered (`MapProvider.kt`, prefs `map-provider`); a build without a key offers CARTO only
+  and falls back to it. Switching opens the new map where the old one was looking.
+- `GoogleMapEngine.kt`: native Maps SDK (`play-services-maps` 20.0.0), ordinary markers and
+  **no map ID** (free Maps SDK SKU). Node dots, route-only replay nodes, route markers, live and
+  replayed routes (pooled polylines, head markers, arrival rings sized from screen to ground at
+  the current zoom), your location, sample route. Dark app theme uses Google's dark scheme.
+- Grouping uses `android-maps-utils` 4.0.0 (5.x needs compileSdk 37): 3+ nearby nodes, only
+  below MapLibre zoom 9, like CARTO. Tapping a group zooms in until it comes apart.
+- Taps follow CARTO: nearest node within 24 dp (under the finger within 12 dp), groups expand,
+  a route opens its details.
+- Zoom is kept in MapLibre's scale everywhere; Google's is one higher. Bounds fitting with
+  insets is our own (`fitCamera`, unit-tested), since Google only offers equal padding.
+- Google's logo stays above the replay controls via map padding; the camera is moved to keep
+  the view still, and that waits for any camera animation so replay framing isn't interrupted.
+- Not yet (phase 3): node name labels, smoother live animation if needed, polish.
+- Key: `GOOGLE_MAPS_API_KEY` in git-ignored `local.properties` (or env), restricted to the
+  package plus the upload and Play app-signing SHA-1s. Built (debug + R8 release), 145 JVM
+  tests pass, lint unchanged apart from the maps-utils version notice. Not yet run on a device.
+
+Manual checks (Google Maps · Beta):
+1. Layers menu shows both groups; pick Google Map → the map stays on the same area.
+2. Satellite / Terrain / Hybrid switch in place; relaunch keeps the last choice.
+3. Dark app theme → dark Google map (Map and Terrain).
+4. Zoomed out, nearby nodes show as numbered groups; tap one → zooms in and they split.
+5. Tap a node (or just next to it) → node sheet. Tap a live route line → route details.
+6. Live traffic animates: lines draw, white heads travel, rings pulse at arrivals.
+7. Replay from Channels / panel: framing clears the controls, the route plays after the map
+   settles, "Route nodes only" shows only route nodes, Google logo stays visible above controls.
+8. Region switch, Search, My location and +/- all move the Google camera as on CARTO.
+9. Switch back to CARTO → same area; everything as in phase 1.
+- Fix (same day): Google map ran out of memory within seconds of live traffic. Every route
+  polyline, head and ring was updated on every display frame, and Google queues each object
+  change separately. Route frames now send only changes (lines keyed by route + hop, fades in
+  1/32 steps) at most ~30 times a second, with the final empty frame always applied.
+- Smoother route animation (both maps): frames are now drawn inside the display's frame
+  callbacks and timed by vsync (`runMapFrames`), instead of resuming a coroutine per frame and
+  reading the clock whenever it ran (uneven steps, occasional late frames). Each packet's route is
+  built once and cached, with one node lookup shared by all packets, instead of rebuilding all 40
+  routes, and a lookup of every node twice per route, on every incoming packet.
+- Live routes start animating when they are first ready to draw (within 2 s of arrival), not
+  at the packet's arrival time, so the time spent getting a new packet to the map is no longer
+  skipped as a jump at the start. Kept per packet; the details sheet still shows the observed time.
+- Profiled on a Lenovo tablet (Dimensity 6100+, 90 Hz) with Perfetto. CARTO: route drawing was
+  cheap (0.35 ms/frame) but each incoming packet stalled the main thread 20–100 ms, about once a
+  second. Causes and fixes: `LivePacket.key` rebuilt its string on every read (~400 per packet as
+  the feed de-duplicates) → built once; `packetEpoch` re-parsed the timestamp and
+  `TransmissionGroup.latestAt` was recomputed on every sort comparison → both computed once;
+  `visiblePackets` re-filtered on every read → once per state; the live feed's bookkeeping now
+  runs off the main thread (`flowOn(Default)`); unchanged packet-panel rows keep their instance so
+  they skip recomposition. Worst stall 102 → 36 ms, total stall time 1,062 → 447 ms per 15 s,
+  before the row fix. Trace sections `NodeScope:routes/frame/draw/anchors` mark the route work.
+- Google Maps: live/replayed routes are now drawn on an overlay view (`RouteLayer`) above the
+  map using its projection, instead of as Google polylines/markers/circles, which Google
+  re-processes on every change (profiled: ~20 ms main thread per frame, map at ~12 fps). Same
+  look and layer order as CARTO; route taps and route-node taps are hit-tested on screen. Profiled
+  after: route drawing 20 → 0.18 ms/frame, main-thread frame 31 → 6.5 ms, stalls >15 ms 140 → 12
+  per 15 s, 0% janky frames. The earlier 30 fps cap and per-object diffing are gone.
+- Per-packet recomposition trimmed (profiled again on the tablet): the app shell received the
+  live feed as a value, so every packet re-ran `AppShell` and rebuilt the navigation graph (keyed
+  on its builder lambda), and handed `MapScreen` new callbacks. Now `AppShell` and `MapScreen` take
+  `() -> LiveFeedState`; the graph reads the feed through one derived State; `MapScreen` reads only
+  derived values (observers, connection) and builds live routes outside composition
+  (`LiveRouteBuilder`, read by the animation loop and taps). Packet-panel row click handlers no
+  longer change every packet. Recomposition per 15 s: 301 → 155 ms (avg 13.1 → 7.4 ms, max
+  28.6 → 20 ms); `AppShell` no longer recomposes per packet. Trace sections use a local `traced()`.
+
+## Google Maps option, phase 3: parity — 2026-09-30 (branch `android-google-maps`)
+
+- Node names on Google: drawn on the route layer like CARTO's label layers (same rule: lat span
+  ≤ 0.08° and ≤ 60 nodes in view; 11 dp medium text 0.8 em under the dot, wrapped at 10 em,
+  1.6 dp halo, colliding labels left out). White on dark/satellite/hybrid maps, dark otherwise.
+- Already in place from phases 1–2 and the performance pass: co-located nodes spread by the
+  shared screen; camera hand-off when switching providers; smooth live/replay animation on both.
+
+Acceptance checks before merging (both providers, phone + tablet/fold):
+1. CARTO behaves as in 0.7.6: nodes, groups, labels, taps, region/search/location, replay.
+2. Google Map/Satellite/Terrain/Hybrid: same area on switching, choice remembered on relaunch.
+3. Zoom close on Google: names appear under nodes, readable on every map type; zoom out → hidden.
+4. Groups split on tap; nodes (and route nodes during a route) open their sheet; route taps open details.
+5. Live traffic smooth on both; replay frames clear of controls; Google logo stays visible.
+6. Wide/fold layout: packets panel, selection ↔ replay sync, Return to live.
+
+## 0.7.7 (code 7) — 2026-09-30
+
+Version bump for the Google Maps (beta) provider, Google node labels, and the live animation
+performance work (above). Before uploading: Play Data safety form updated for the Maps SDK.
+- 0.7.7 also: when the CARTO map's style fails to load it is retried after 1.5 s and 4 s before
+  the error shows, and the error now says why (`MapLoadError`): refused (HTTP 401/403), server
+  problem (5xx), other HTTP status, can't reach the server (offline/VPN/Private DNS), timeout, or a
+  failed secure connection. The raw message is logged (`NodeScope` tag). Prompted by a Play user
+  whose map wouldn't load after the signing-certificate fix (see the CARTO notes above).
+- 0.7.7 build 8: Settings → About & how to use → **App identity** shows the package and the
+  signing-certificate SHA-1 the app sends to CARTO (tap to copy), and the map's "refused" error
+  includes it (`AppIdentity`, shared with the CARTO header). For diagnosing installs whose
+  certificate isn't on the CARTO key: two Play users failed while the developer's devices passed,
+  and disabling CARTO's mobile-apps restriction made their maps load.
+
+## 0.7.7 (code 9) — 2026-10-03: routes named by who heard them
+
+Folded into 0.7.7 (not yet live), as build 9 after the build 8 diagnostic.
+
+Suggested by a tester (CoderNemesis): say which observer recorded each route.
+- `RouteOption` (PacketGroups.kt): each distinct route keeps the observers that heard exactly that
+  path (strongest signal first) and those that heard a shorter part of it, i.e. earlier along the
+  way, which were previously dropped silently. Full routes from `/api/packets/{hash}` merge in
+  without renumbering. One "hops" count everywhere (the path's node count; the replay controls
+  used to show one fewer).
+- `RoutePicker`: the route dropdown in packet details, message packets and the map's replay
+  controls leads with the observer ("Volente HeltecV4 Observer +2"), then hops · region · signal.
+  Under the route, "Heard by" lists those observers and "Also heard along the way by …".
+- Packet details: each observer row whose path is a route gets "Show route" / "Shown below";
+  tapping selects its route and scrolls to it.
+- Map replay ends at the observers: a final hop from the last node to each observer that heard
+  the path (when its position is known), with the observer as a labelled endpoint on CARTO and
+  Google (`ReplayRoute.receivers`, `RouteOption.receivers`). Framing includes them.
+- Not yet on iOS.

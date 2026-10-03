@@ -562,17 +562,21 @@ private struct LiveObservationGroup: Identifiable {
     private(set) var latestReceivedAt: Date
     private(set) var observations: [LiveEnvelope]
     private(set) var region: String?
+    /// Each observation's observer region, aligned with `observations`.
+    private(set) var observationRegions: [String?]
 
     init(id: String, event: LiveEnvelope, region: String?) {
         self.id = id
         firstReceivedAt = event.receivedAt
         latestReceivedAt = event.receivedAt
         observations = [event]
+        observationRegions = [region]
         self.region = region
     }
 
     mutating func append(_ event: LiveEnvelope, region: String?) {
         observations.append(event)
+        observationRegions.append(region)
         latestReceivedAt = max(latestReceivedAt, event.receivedAt)
         self.region = region ?? self.region
     }
@@ -593,21 +597,18 @@ private struct LiveObservationGroup: Identifiable {
         observations.compactMap { $0.data }.map(Self.path).max { $0.count < $1.count } ?? []
     }
 
-    var replayRoutes: [[String]] {
-        var seen = Set<[String]>()
-        let routes = observations
-            .compactMap { $0.data?.resolvedPath?.compactMap { $0 } }
-            .filter { route in
-                guard route.count >= 2 else { return false }
-                return seen.insert(route.map { $0.lowercased() }).inserted
-            }
-            .sorted { $0.count > $1.count }
-
-        return routes.filter { candidate in
-            !routes.contains { route in
-                route.count > candidate.count && Self.routeContains(route, candidate)
-            }
-        }
+    /// The packet's distinct routes, each named by the observers that heard it.
+    var replayRoutes: [RouteOption] {
+        RouteOptions.make(from: zip(observations, observationRegions).compactMap { event, region in
+            guard let data = event.data else { return nil }
+            let name = data.observerName ?? data.observerId
+            return HeardPath(
+                path: data.resolvedPath ?? [],
+                hearing: name.map {
+                    RouteHearing(observer: $0, region: region, snr: data.snr, rssi: data.rssi, observerId: data.observerId)
+                }
+            )
+        })
     }
 
     var hopCount: Int { longestPath.count }
@@ -630,15 +631,6 @@ private struct LiveObservationGroup: Identifiable {
         return hops
     }
 
-    private static func routeContains(_ route: [String], _ candidate: [String]) -> Bool {
-        guard candidate.count <= route.count else { return false }
-        let route = route.map { $0.lowercased() }
-        let candidate = candidate.map { $0.lowercased() }
-        for start in 0...(route.count - candidate.count) {
-            if Array(route[start..<(start + candidate.count)]) == candidate { return true }
-        }
-        return false
-    }
 }
 
 private struct LivePacketFeedHeader: View {
@@ -905,6 +897,7 @@ private struct LivePacketDetailScreen: View {
     private var data: LivePacketData { group.latestData }
 
     var body: some View {
+        ScrollViewReader { scroller in
         List {
             Section("Packet") {
                 detailRow("Type", value: data.decoded?.header?.payloadTypeName ?? "Unknown")
@@ -927,8 +920,19 @@ private struct LivePacketDetailScreen: View {
                 ForEach(Array(group.observations.enumerated()), id: \.offset) { _, event in
                     if let observation = event.data {
                         VStack(alignment: .leading, spacing: 5) {
-                            Text(observation.observerName ?? observation.observerId ?? "Unknown observer")
-                                .font(.body.weight(.semibold))
+                            HStack(alignment: .firstTextBaseline) {
+                                Text(observation.observerName ?? observation.observerId ?? "Unknown observer")
+                                    .font(.body.weight(.semibold))
+                                Spacer(minLength: 8)
+                                if let index = RouteOptions.index(for: observation.resolvedPath ?? [], in: replayRoutes) {
+                                    RouteTag(isShown: index == selectedRouteIndex, shownText: "Shown below") {
+                                        selectedRouteIndex = index
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            scroller.scrollTo(routeSectionID, anchor: .top)
+                                        }
+                                    }
+                                }
+                            }
                             HStack(spacing: 12) {
                                 if let snr = observation.snr {
                                     Label("\(snr.formatted(.number.precision(.fractionLength(1)))) dB", systemImage: "waveform")
@@ -951,14 +955,11 @@ private struct LivePacketDetailScreen: View {
             if !routeHops.isEmpty {
                 Section("Route") {
                     if replayRoutes.count > 1 {
-                        Picker("Selected Route", selection: $selectedRouteIndex) {
-                            ForEach(replayRoutes.indices, id: \.self) { index in
-                                Text("Route \(index + 1) · \(replayRoutes[index].count) hops")
-                                    .tag(index)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .tint(NodeScopeStyle.signal)
+                        RoutePicker(options: replayRoutes, selection: $selectedRouteIndex)
+                            .tint(NodeScopeStyle.signal)
+                    }
+                    if replayRoutes.indices.contains(selectedRouteIndex) {
+                        RouteHearersView(option: replayRoutes[selectedRouteIndex])
                     }
 
                     ForEach(routeHops) { hop in
@@ -981,6 +982,7 @@ private struct LivePacketDetailScreen: View {
                         .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
                     }
                 }
+                .id(routeSectionID)
             }
 
             if let raw = data.raw, !raw.isEmpty {
@@ -990,6 +992,7 @@ private struct LivePacketDetailScreen: View {
                         .textSelection(.enabled)
                 }
             }
+        }
         }
         .navigationTitle("Packet Details")
         .navigationBarTitleDisplayMode(.inline)
@@ -1013,7 +1016,9 @@ private struct LivePacketDetailScreen: View {
         }
     }
 
-    private var replayRoutes: [[String]] {
+    private let routeSectionID = "live-packet-route"
+
+    private var replayRoutes: [RouteOption] {
         group.replayRoutes
     }
 

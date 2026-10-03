@@ -47,8 +47,9 @@ fun routePosition(route: List<Coordinate>, progress: Float): Coordinate? = Route
 /** Never guess among colliding prefixes or draw a line over an unresolved hop. */
 fun packetRoute(packet: org.nodescope.android.core.model.LivePacket,
     nodes: List<org.nodescope.android.core.model.MeshNode>,
-    observers: List<org.nodescope.android.core.model.MeshObserver>): List<List<Coordinate>> {
-    val chain = resolvedRouteNodes(packet, nodes).map { it?.coordinate }.toMutableList()
+    observers: List<org.nodescope.android.core.model.MeshObserver>,
+    lookup: Map<String, org.nodescope.android.core.model.MeshNode> = nodeLookup(nodes)): List<List<Coordinate>> {
+    val chain = resolvedRouteNodes(packet, nodes, lookup).map { it?.coordinate }.toMutableList()
     val observer = observers.firstOrNull { it.id.equals(packet.observerId, true) }
         ?: observers.filter { packet.observerName != null && it.name.equals(packet.observerName, true) }.singleOrNull()
     observer?.coordinate?.let { if (chain.lastOrNull() != it) chain.add(it) }
@@ -63,10 +64,13 @@ fun packetRoute(packet: org.nodescope.android.core.model.LivePacket,
     return result
 }
 
+/** Nodes by lowercased public key. Build it once per node list when resolving many packets. */
+internal fun nodeLookup(nodes: List<org.nodescope.android.core.model.MeshNode>) = nodes.associateBy { it.publicKey.lowercase() }
+
 /** Shared identity resolution for lines and temporary route markers; never guess a prefix. */
 internal fun resolvedRouteNodes(packet: org.nodescope.android.core.model.LivePacket,
-    nodes: List<org.nodescope.android.core.model.MeshNode>): List<org.nodescope.android.core.model.MeshNode?> {
-    val lookup = nodes.associateBy { it.publicKey.lowercase() }
+    nodes: List<org.nodescope.android.core.model.MeshNode>,
+    lookup: Map<String, org.nodescope.android.core.model.MeshNode> = nodeLookup(nodes)): List<org.nodescope.android.core.model.MeshNode?> {
     return (0 until maxOf(packet.hops.size, packet.resolvedPath.size)).map { index ->
         val resolved = packet.resolvedPath.getOrNull(index)
         if (!resolved.isNullOrBlank()) lookup[resolved.lowercase()]

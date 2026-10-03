@@ -15,8 +15,8 @@ class RouteRegionTest {
     @Test fun routeMarkersPreserveIdentityAndDoNotInventAmbiguousHops() {
         val nodes = listOf("aa01", "aa02", "bb01").mapIndexed { i, key -> MeshNode(key, key, "repeater", 30.0 + i, -97.0, "2026-09-22") }
         val packet = parseLivePacket(protocolJson.parseToJsonElement("""{"id":1,"hash":"route","path_json":["aa","bb"],"observer_id":"obs"}""").jsonObject, true)!!
-        val markers = routeAnchorFeatures(packet, nodes, listOf(MeshObserver("obs", lat = 34.0, lon = -97.0)))
-        assertEquals(listOf("bb01"), markers.filter { it.hasProperty("publicKey") }.map { it.getStringProperty("publicKey") })
+        val markers = routeAnchors(packet, nodes, listOf(MeshObserver("obs", lat = 34.0, lon = -97.0)))
+        assertEquals(listOf("bb01"), markers.mapNotNull { it.publicKey })
         assertEquals(2, markers.size) // One resolved node plus the real observer endpoint.
     }
     @Test fun unsetGpsBreaksRoutesAndNeverCreatesMarkersOrObserverEndpoints() {
@@ -30,8 +30,8 @@ class RouteRegionTest {
         assertNull(nodes[1].coordinate)
         assertNull(observers.single().coordinate)
         assertEquals(listOf(listOf(Coordinate(30.0, -97.0)), listOf(Coordinate(31.0, -97.0))), packetRoute(packet, nodes, observers))
-        assertEquals(listOf("aa", "cc"), routeAnchorFeatures(packet, nodes, observers).map { it.getStringProperty("publicKey") })
-        assertEquals(2, nodeFeatures(nodes).features()!!.size)
+        assertEquals(listOf("aa", "cc"), routeAnchors(packet, nodes, observers).map { it.publicKey })
+        assertEquals(2, nodeMarkers(nodes).size)
     }
     @Test fun gpsAllowsEquatorAndPrimeMeridianExceptTheirUnsetIntersection() {
         assertNull(Coordinate.gps(-0.0, 0.0))
