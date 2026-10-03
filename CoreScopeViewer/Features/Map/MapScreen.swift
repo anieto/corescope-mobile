@@ -466,7 +466,7 @@ struct MapScreen: View {
             stopPacketReplay()
         }
         .onChange(of: isTabActive) { _, isActive in
-            guard isActive, !packetReplayStore.routes.isEmpty else { return }
+            guard isActive, packetReplayStore.isReplayActive else { return }
             queuePacketReplay()
         }
         .onChange(of: appNavigationStore.requestID) {
@@ -1298,6 +1298,10 @@ struct MapScreen: View {
     }
 
     private func queuePacketReplay() {
+        guard packetReplayStore.isReplayActive else {
+            pendingReplayRequestID = nil
+            return
+        }
         selectedNode = nil
         pendingReplayRequestID = packetReplayStore.requestID
         guard !isChangingRegion else { return }
@@ -1311,6 +1315,10 @@ struct MapScreen: View {
     }
 
     private func replayPendingPacketIfNeeded() {
+        guard packetReplayStore.isReplayActive else {
+            pendingReplayRequestID = nil
+            return
+        }
         guard pendingReplayRequestID == packetReplayStore.requestID else { return }
         guard currentRouteCoordinates().count >= 2 else { return }
         pendingReplayRequestID = nil
