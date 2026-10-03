@@ -61,4 +61,22 @@ class MapEngineTest {
         assertEquals(MapProvider.CARTO, google.available(false).provider)
         assertEquals(google, google.available(true))
     }
+
+    @Test fun mapLoadErrorsSayWhyTheMapFailed() {
+        assertEquals(MapLoadError.Refused(403), mapLoadError("HTTP status code 403"))
+        assertEquals(MapLoadError.Refused(401), mapLoadError("loading style failed: HTTP status code 401"))
+        assertEquals(MapLoadError.ServerProblem(503), mapLoadError("HTTP status code 503"))
+        assertEquals(MapLoadError.Http(404), mapLoadError("HTTP status code 404"))
+        assertEquals(MapLoadError.Unreachable, mapLoadError("Unable to resolve host \"basemaps.cartocdn.com\": No address associated with hostname"))
+        assertEquals(MapLoadError.Unreachable, mapLoadError("Failed to connect to basemaps.cartocdn.com/151.101.1.91:443"))
+        assertEquals(MapLoadError.TimedOut, mapLoadError("timeout"))
+        assertEquals(MapLoadError.SecureConnection, mapLoadError("javax.net.ssl.SSLHandshakeException: Trust anchor for certification path not found."))
+        assertEquals(MapLoadError.Other("Something odd"), mapLoadError("  Something odd "))
+        assertEquals(MapLoadError.Other("unknown error"), mapLoadError(null))
+    }
+
+    @Test fun aFailedMapIsRetriedTwiceBeforeTheErrorShows() {
+        assertEquals(2, MAP_RETRY_DELAYS_MS.size)
+        assertTrue(MAP_RETRY_DELAYS_MS.zipWithNext().all { (a, b) -> b > a })
+    }
 }

@@ -61,6 +61,8 @@ internal interface MapEngineState {
     /** Drawing once the base map has loaded (null while it loads). */
     val overlays: MapOverlays?
     val failed: Boolean
+    /** Why the base map failed to load, when the engine knows. */
+    val failure: MapLoadError? get() = null
     val loading: Boolean
     /** The engine's logo, relative to the map, when it can be found (the node count sits above it). */
     val logoFrame: android.graphics.Rect?
@@ -193,3 +195,40 @@ internal inline fun <T> traced(name: String, block: () -> T): T {
     android.os.Trace.beginSection(name)
     try { return block() } finally { android.os.Trace.endSection() }
 }
+
+/**
+ * Why the base map failed to load, from the map engine's error message, in terms a user can pass
+ * on: a refusal (key or app identity), a server problem, a network that can't reach the map
+ * server (offline, VPN, Private DNS or ad blocking), a timeout or a failed secure connection.
+ */
+internal sealed interface MapLoadError {
+    data class Refused(val status: Int) : MapLoadError
+    data class ServerProblem(val status: Int) : MapLoadError
+    data class Http(val status: Int) : MapLoadError
+    data object Unreachable : MapLoadError
+    data object TimedOut : MapLoadError
+    data object SecureConnection : MapLoadError
+    data class Other(val message: String) : MapLoadError
+}
+
+internal fun mapLoadError(message: String?): MapLoadError {
+    val text = message.orEmpty().trim()
+    Regex("""HTTP status code (\d{3})""").find(text)?.groupValues?.get(1)?.toInt()?.let { status ->
+        return when (status) {
+            401, 403 -> MapLoadError.Refused(status)
+            in 500..599 -> MapLoadError.ServerProblem(status)
+            else -> MapLoadError.Http(status)
+        }
+    }
+    val lower = text.lowercase()
+    return when {
+        listOf("ssl", "certificate", "handshake", "trust anchor").any { it in lower } -> MapLoadError.SecureConnection
+        listOf("timeout", "timed out").any { it in lower } -> MapLoadError.TimedOut
+        listOf("unable to resolve host", "unknownhost", "no address associated", "connect", "network is unreachable", "no route to host")
+            .any { it in lower } -> MapLoadError.Unreachable
+        else -> MapLoadError.Other(text.take(120).ifBlank { "unknown error" })
+    }
+}
+
+/** A base map that fails to load is tried again after these delays before the error is shown. */
+internal val MAP_RETRY_DELAYS_MS = listOf(1_500L, 4_000L)

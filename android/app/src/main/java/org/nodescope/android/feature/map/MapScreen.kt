@@ -422,7 +422,12 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             if (engine.failed) Surface(shape = MaterialTheme.shapes.medium, tonalElevation = 4.dp) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     val google = engine is GoogleMapEngine
-                    Text(stringResource(if (google) R.string.google_maps_unavailable else R.string.map_load_failed), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                    // The reason is worded so a user can pass it on when reporting a map that won't load.
+                    val message = when {
+                        google -> stringResource(R.string.google_maps_unavailable)
+                        else -> engine.failure?.let { stringResource(R.string.map_load_failed_because, it.describe()) } ?: stringResource(R.string.map_load_failed)
+                    }
+                    Text(message, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
                     if (!google) TextButton(onClick = { retry++ }) { Text(stringResource(R.string.retry)) }
                 }
             }
@@ -534,6 +539,17 @@ internal fun replayNeedsFraming(points: List<Pair<Float, Float>>, width: Int, he
     val spanX = points.maxOf { it.first } - points.minOf { it.first }
     val spanY = points.maxOf { it.second } - points.minOf { it.second }
     return spanX < (right - left) * REPLAY_SMALL_SHARE && spanY < (bottom - top) * REPLAY_SMALL_SHARE
+}
+
+@Composable
+private fun MapLoadError.describe(): String = when (this) {
+    is MapLoadError.Refused -> stringResource(R.string.map_error_refused, status)
+    is MapLoadError.ServerProblem -> stringResource(R.string.map_error_server, status)
+    is MapLoadError.Http -> stringResource(R.string.map_error_http, status)
+    MapLoadError.Unreachable -> stringResource(R.string.map_error_unreachable)
+    MapLoadError.TimedOut -> stringResource(R.string.map_error_timeout)
+    MapLoadError.SecureConnection -> stringResource(R.string.map_error_secure)
+    is MapLoadError.Other -> message
 }
 
 /** A non-interactive group title inside a dropdown menu. */

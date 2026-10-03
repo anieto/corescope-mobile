@@ -35,6 +35,13 @@
     <string name="google_maps_unavailable">Google Maps needs Google Play services on this device. Choose a CARTO map from Map layers.</string>
     <string name="map_load_failed">Could not load the map. Check your connection and try again.</string>
     <string name="retry">Retry</string>
+    <string name="map_load_failed_because">Couldn\'t load the map: %1$s.</string>
+    <string name="map_error_refused">the map server refused the request (HTTP %1$d)</string>
+    <string name="map_error_server">the map server is having problems (HTTP %1$d)</string>
+    <string name="map_error_http">the map server answered HTTP %1$d</string>
+    <string name="map_error_unreachable">couldn\'t reach the map server. Check your connection, VPN or Private DNS</string>
+    <string name="map_error_timeout">the map server took too long to answer</string>
+    <string name="map_error_secure">a secure connection to the map server failed. Check the date and time, VPN or network</string>
     <string name="zoom_in">Zoom in</string>
     <string name="zoom_out">Zoom out</string>
     <string name="sample_route">Synthetic route — not live analyzer traffic</string>

@@ -1,6 +1,7 @@
 package org.nodescope.android.feature.map
 
 import android.graphics.RectF
+import android.util.Log
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -9,6 +10,8 @@ import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdate
@@ -53,6 +56,8 @@ internal class MapLibreEngine(val view: MapView) : MapEngineState {
     internal var style by mutableStateOf<Style?>(null)
     override var failed by mutableStateOf(false)
         internal set
+    override var failure by mutableStateOf<MapLoadError?>(null)
+        internal set
     /** MapLibre's logo, relative to the map, so the node count can sit above it. */
     override var logoFrame by mutableStateOf<android.graphics.Rect?>(null)
         internal set
@@ -78,6 +83,9 @@ internal fun rememberMapLibreEngine(): MapLibreEngine {
  * Hosts [engine]'s MapView: its lifecycle, CARTO style ([styleMode] indexes the layers menu),
  * taps and camera reports. [bottomInset] lifts the MapLibre logo above the replay controls.
  */
+// Map load failures are logged with android.util.Log: Timber only arrives through MapLibre, with no
+// tree planted, so it would log nothing in release builds.
+@android.annotation.SuppressLint("LogNotTimber")
 @Composable
 internal fun MapLibreEngineHost(engine: MapLibreEngine, styleMode: Int, retry: Int, bottomInset: Int, savedCamera: SavedCamera,
     onCameraIdle: (SavedCamera) -> Unit, onTap: (MapTap) -> Boolean, modifier: Modifier = Modifier) {
@@ -87,6 +95,12 @@ internal fun MapLibreEngineHost(engine: MapLibreEngine, styleMode: Int, retry: I
     val currentSavedCamera by rememberUpdatedState(savedCamera)
     val currentOnCameraIdle by rememberUpdatedState(onCameraIdle)
     val currentOnTap by rememberUpdatedState(onTap)
+    // A style that fails to load (often a brief CARTO or network hiccup) is tried again after
+    // MAP_RETRY_DELAYS_MS before the error is shown; a manual retry or another style starts over.
+    val scope = rememberCoroutineScope()
+    var reload by remember(engine) { mutableIntStateOf(0) }
+    val autoRetries = remember(engine) { intArrayOf(0) }
+    LaunchedEffect(styleMode, retry) { autoRetries[0] = 0 }
     // MapLibre draws its logo as an ImageView inside the MapView; track where it lands.
     DisposableEffect(view) {
         val listener = android.view.View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> engine.logoFrame = findLogoFrame(view) }
@@ -115,7 +129,19 @@ internal fun MapLibreEngineHost(engine: MapLibreEngine, styleMode: Int, retry: I
         val observer = LifecycleEventObserver { _, _ -> sync() }
         lifecycle.addObserver(observer)
         sync()
-        val failure = MapView.OnDidFailLoadingMapListener { if (alive) engine.failed = true }
+        val failure = MapView.OnDidFailLoadingMapListener { message ->
+            // Only the style itself: once it has loaded, a missing tile isn't a failed map.
+            if (!alive || engine.style != null) return@OnDidFailLoadingMapListener
+            Log.w("NodeScope", "Map style failed to load (attempt ${autoRetries[0] + 1}): $message")
+            val attempt = autoRetries[0]
+            if (attempt < MAP_RETRY_DELAYS_MS.size) {
+                autoRetries[0] = attempt + 1
+                scope.launch { delay(MAP_RETRY_DELAYS_MS[attempt]); reload++ }
+            } else {
+                engine.failure = mapLoadError(message)
+                engine.failed = true
+            }
+        }
         view.addOnDidFailLoadingMapListener(failure)
         view.getMapAsync { ready ->
             if (alive) {
@@ -164,13 +190,14 @@ internal fun MapLibreEngineHost(engine: MapLibreEngine, styleMode: Int, retry: I
             view.onDestroy()
         }
     }
-    LaunchedEffect(map, styleMode, retry) {
+    LaunchedEffect(map, styleMode, retry, reload) {
         val ready = map ?: return@LaunchedEffect
         engine.failed = false
+        engine.failure = null
         engine.style = null
         val name = cartoStyles[styleMode]
         ready.setStyle("https://basemaps.cartocdn.com/gl/$name-gl-style/style.json") { loaded ->
-            if (!view.isDestroyed) { addOverlays(loaded, dark = name == "dark-matter"); engine.style = loaded }
+            if (!view.isDestroyed) { addOverlays(loaded, dark = name == "dark-matter"); autoRetries[0] = 0; engine.style = loaded }
         }
     }
     // Keyed so a replacement MapView is attached (the factory only runs once per key).

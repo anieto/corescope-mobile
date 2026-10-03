@@ -865,3 +865,8 @@ Acceptance checks before merging (both providers, phone + tablet/fold):
 
 Version bump for the Google Maps (beta) provider, Google node labels, and the live animation
 performance work (above). Before uploading: Play Data safety form updated for the Maps SDK.
+- 0.7.7 also: when the CARTO map's style fails to load it is retried after 1.5 s and 4 s before
+  the error shows, and the error now says why (`MapLoadError`): refused (HTTP 401/403), server
+  problem (5xx), other HTTP status, can't reach the server (offline/VPN/Private DNS), timeout, or a
+  failed secure connection. The raw message is logged (`NodeScope` tag). Prompted by a Play user
+  whose map wouldn't load after the signing-certificate fix (see the CARTO notes above).
