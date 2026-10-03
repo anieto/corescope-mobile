@@ -7,7 +7,7 @@ final class PacketReplayStore {
     private(set) var requestID = UUID()
     private(set) var stopRequestID = UUID()
     private(set) var isReplayActive = false
-    private(set) var routes: [[String]] = []
+    private(set) var routes: [RouteOption] = []
     private(set) var selectedRouteIndex = 0
     private(set) var packetHash = ""
     private(set) var observedAt = Date.now
@@ -17,11 +17,15 @@ final class PacketReplayStore {
     private(set) var messageText: String?
 
     var resolvedPath: [String] {
-        routes.indices.contains(selectedRouteIndex) ? routes[selectedRouteIndex] : []
+        routes.indices.contains(selectedRouteIndex) ? routes[selectedRouteIndex].keys : []
+    }
+
+    var selectedRoute: RouteOption? {
+        routes.indices.contains(selectedRouteIndex) ? routes[selectedRouteIndex] : nil
     }
 
     func replay(
-        routes: [[String]],
+        routes: [RouteOption],
         selectedIndex: Int = 0,
         packetHash: String,
         observedAt: Date,

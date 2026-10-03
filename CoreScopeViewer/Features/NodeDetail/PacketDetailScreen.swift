@@ -10,6 +10,7 @@ struct PacketDetailScreen: View {
     @State private var selectedRouteIndex = 0
 
     var body: some View {
+        ScrollViewReader { scroller in
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 if viewModel.isLoading {
@@ -37,7 +38,7 @@ struct PacketDetailScreen: View {
                 )
 
                 if let detail = viewModel.detail {
-                    let routes = distinctRoutes(from: detail)
+                    let routes = routeOptions(from: detail)
                     PacketRouteCard(
                         routes: routes,
                         selection: $selectedRouteIndex,
@@ -54,14 +55,26 @@ struct PacketDetailScreen: View {
                             )
                         }
                     )
+                    .id(routeCardID)
 
-                    PacketObserversCard(observations: detail.observations)
+                    PacketObserversCard(
+                        observations: detail.observations,
+                        routeIndex: { RouteOptions.index(for: $0.resolvedPath ?? [], in: routes) },
+                        selectedRouteIndex: selectedRouteIndex,
+                        showRoute: { index in
+                            selectedRouteIndex = index
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                scroller.scrollTo(routeCardID, anchor: .top)
+                            }
+                        }
+                    )
                     PacketTechnicalCard(packet: detail.packet)
                 }
             }
             .padding(16)
             .padding(.bottom, 104)
             .adaptiveContentWidth()
+        }
         }
         .background(NodeScopeBackground())
         .navigationTitle("Packet")
@@ -105,34 +118,18 @@ struct PacketDetailScreen: View {
         }
     }
 
-    private func distinctRoutes(from detail: PacketDetailResponse) -> [[String]] {
-        var seen = Set<[String]>()
-        var routes: [[String]] = []
-        for observation in detail.observations {
-            let path = observation.resolvedPath?.compactMap { $0 } ?? []
-            let normalizedPath = path.map { $0.lowercased() }
-            guard path.count >= 2, seen.insert(normalizedPath).inserted else { continue }
-            routes.append(path)
-        }
+    private let routeCardID = "packet-route"
 
-        let longestFirst = routes.sorted { $0.count > $1.count }
-        return longestFirst.filter { candidate in
-            !longestFirst.contains { route in
-                route.count > candidate.count && routeContains(route, candidate)
-            }
-        }
-    }
-
-    private func routeContains(_ route: [String], _ candidate: [String]) -> Bool {
-        guard candidate.count <= route.count else { return false }
-        let normalizedRoute = route.map { $0.lowercased() }
-        let normalizedCandidate = candidate.map { $0.lowercased() }
-        let lastStartIndex = normalizedRoute.count - normalizedCandidate.count
-
-        return (0...lastStartIndex).contains { startIndex in
-            normalizedRoute[startIndex..<(startIndex + normalizedCandidate.count)]
-                .elementsEqual(normalizedCandidate)
-        }
+    /// The packet's distinct routes, each named by the observers that heard it.
+    private func routeOptions(from detail: PacketDetailResponse) -> [RouteOption] {
+        RouteOptions.make(from: detail.observations.map { observation in
+            HeardPath(
+                path: observation.resolvedPath ?? [],
+                hearing: observation.observerName.map {
+                    RouteHearing(observer: $0, region: observation.observerIata, snr: observation.snr, rssi: observation.rssi)
+                }
+            )
+        })
     }
 }
 
@@ -233,7 +230,7 @@ private struct PacketMetricTile: View {
 }
 
 private struct PacketRouteCard: View {
-    let routes: [[String]]
+    let routes: [RouteOption]
     @Binding var selection: Int
     let replay: () -> Void
 
@@ -245,25 +242,21 @@ private struct PacketRouteCard: View {
                     .foregroundStyle(.secondary)
             } else {
                 if routes.count > 1 {
-                    Picker("Selected Route", selection: $selection) {
-                        ForEach(routes.indices, id: \.self) { index in
-                            Text("Route \(index + 1) · \(routes[index].count) hops").tag(index)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .tint(NodeScopeStyle.signal)
+                    RoutePicker(options: routes, selection: $selection)
+                        .tint(NodeScopeStyle.signal)
                 } else {
                     HStack {
-                        Text("Resolved Path")
+                        Text(routes[0].heardBy.isEmpty ? "Resolved Path" : "Route")
                         Spacer()
-                        Text("\(routes[0].count) hops")
+                        Text("\(routes[0].hops) hops")
                             .foregroundStyle(.secondary)
                     }
                     .font(.subheadline.weight(.semibold))
                 }
 
                 if routes.indices.contains(selection) {
-                    RouteHopPreview(hopCount: routes[selection].count)
+                    RouteHopPreview(hopCount: routes[selection].hops)
+                    RouteHearersView(option: routes[selection])
                 }
 
                 Button(action: replay) {
@@ -300,6 +293,10 @@ private struct RouteHopPreview: View {
 
 private struct PacketObserversCard: View {
     let observations: [PacketObservation]
+    /// Which route an observation's path belongs to, if any.
+    let routeIndex: (PacketObservation) -> Int?
+    let selectedRouteIndex: Int
+    let showRoute: (Int) -> Void
     @State private var isExpanded = false
 
     private var visibleObservations: ArraySlice<PacketObservation> {
@@ -330,10 +327,17 @@ private struct PacketObserversCard: View {
                             .foregroundStyle(.secondary)
                         }
                         Spacer()
-                        if let snr = observation.snr {
-                            Text("\(snr, specifier: "%.1f") dB")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(NodeScopeStyle.signal)
+                        VStack(alignment: .trailing, spacing: 3) {
+                            if let snr = observation.snr {
+                                Text("\(snr, specifier: "%.1f") dB")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(NodeScopeStyle.signal)
+                            }
+                            if let index = routeIndex(observation) {
+                                RouteTag(isShown: index == selectedRouteIndex, shownText: "Shown above") {
+                                    showRoute(index)
+                                }
+                            }
                         }
                     }
                     .padding(.vertical, 9)
