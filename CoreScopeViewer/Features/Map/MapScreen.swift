@@ -286,6 +286,8 @@ struct MapScreen: View {
                                 replayControl
                                 routeOptionsControl
                             }
+                            // Stay between the locate and zoom controls on narrow phones.
+                            .padding(.horizontal, 64)
                         }
                         if !viewModel.nodes.isEmpty {
                             Text("\(filteredNodeCount) nodes")
@@ -1050,7 +1052,7 @@ struct MapScreen: View {
                     ),
                     compact: true
                 )
-                .frame(maxWidth: 220)
+                .layoutPriority(-1)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
                 .tint(mapControlAccentColor)
@@ -1065,6 +1067,7 @@ struct MapScreen: View {
                 Label("Route Only", systemImage: showsReplayRouteOnly ? "checkmark.circle.fill" : "circle")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(showsReplayRouteOnly ? mapControlAccentColor : .primary)
+                    .fixedSize()
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)
             }

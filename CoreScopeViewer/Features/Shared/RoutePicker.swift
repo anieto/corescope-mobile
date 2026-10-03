@@ -57,9 +57,12 @@ private struct RouteName: View {
                     .foregroundStyle(.secondary)
                     .fixedSize()
             }
-            Text("· \(option.hops) hops")
-                .foregroundStyle(.secondary)
-                .fixedSize()
+            // The map's compact pill leaves hops to the menu's subtitles to fit narrow phones.
+            if !compact {
+                Text("· \(option.hops) hops")
+                    .foregroundStyle(.secondary)
+                    .fixedSize()
+            }
             Image(systemName: "chevron.down")
                 .font(.caption2.weight(.semibold))
         }
