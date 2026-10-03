@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 enum NodeScopeStyle {
     static let signal = Color(red: 0.16, green: 0.62, blue: 1.0)
@@ -131,10 +130,12 @@ private struct AdaptiveScrollContentWidthModifier: ViewModifier {
     }
 }
 
-private struct IPadSidebarListModifier: ViewModifier {
+private struct AdaptiveSidebarListModifier: ViewModifier {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
     @ViewBuilder
     func body(content: Content) -> some View {
-        if UIDevice.current.userInterfaceIdiom == .pad {
+        if horizontalSizeClass == .regular {
             content
                 .scrollContentBackground(.hidden)
                 .listStyle(.insetGrouped)
@@ -171,25 +172,13 @@ extension View {
         modifier(AdaptiveScrollContentWidthModifier(maxWidth: maxWidth))
     }
 
-    /// Uses native inset grouping and material on iPad while preserving the
-    /// existing edge-to-edge list presentation in compact iPhone layouts.
-    func iPadSidebarListStyle() -> some View {
-        modifier(IPadSidebarListModifier())
+    /// Uses native inset grouping and material when horizontal space is regular,
+    /// while preserving the edge-to-edge presentation in compact layouts.
+    func adaptiveSidebarListStyle() -> some View {
+        modifier(AdaptiveSidebarListModifier())
     }
 
-    /// Keeps the final scrollable content above NodeScope's app-level
-    /// floating tab dock. Apply this to every scroll container presented
-    /// inside a root tab, including navigation destinations.
-    func floatingDockScrollClearance() -> some View {
-        contentMargins(.bottom, 104, for: .scrollContent)
-    }
 
-    /// iPadOS window controls can occupy the upper-leading corner without
-    /// contributing to SwiftUI's safe-area inset. Keep custom page headers
-    /// below that chrome while leaving the compact iPhone layout unchanged.
-    func iPadWindowControlsClearance() -> some View {
-        padding(.top, UIDevice.current.userInterfaceIdiom == .pad ? 34 : 0)
-    }
 }
 
 /// A small centered "loading" card, shown while a screen is fetching or

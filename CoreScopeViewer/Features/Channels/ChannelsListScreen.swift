@@ -103,9 +103,8 @@ struct ChannelsListScreen: View {
                     }
                 }
             }
-            .iPadSidebarListStyle()
+            .adaptiveSidebarListStyle()
             .adaptiveScrollContentWidth()
-            .floatingDockScrollClearance()
             .toolbar(.hidden, for: .navigationBar)
             .overlay {
                 if visibleServerChannels.isEmpty && visibleMonitoredChannels.isEmpty && !viewModel.isLoading {
@@ -425,69 +424,80 @@ private struct ChannelsHeader: View {
     let addChannel: () -> Void
 
     var body: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 8) {
-                    Text("Channels")
-                        .font(.largeTitle.bold())
-                }
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
-                        .frame(width: 7, height: 7)
-                    Text(isConnected ? "Live mesh traffic" : "Reconnecting")
-                }
-                .font(.caption.weight(.medium))
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top) {
+                heading
+                    .fixedSize(horizontal: true, vertical: false)
+                Spacer()
+                actions
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                heading
+                actions
+            }
+        }
+    }
+
+    private var heading: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text("Channels")
+                .font(.largeTitle.bold())
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
+                    .frame(width: 7, height: 7)
+                Text(isConnected ? "Live mesh traffic" : "Reconnecting")
+            }
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.secondary)
+            Text(filterSummary)
+                .font(.caption2.weight(.medium))
                 .foregroundStyle(.secondary)
-                Text(filterSummary)
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+        }
+    }
 
-            Spacer()
-
-            HStack(spacing: 10) {
-                Button(action: showFilters) {
-                    HStack(spacing: 4) {
-                        Image(systemName: filterCount == 0
-                            ? "line.3.horizontal.decrease.circle"
-                            : "line.3.horizontal.decrease.circle.fill")
-                        if filterCount > 0 {
-                            Text("\(filterCount)")
-                                .font(.caption.weight(.bold))
-                        }
+    private var actions: some View {
+        HStack(spacing: 10) {
+            Button(action: showFilters) {
+                HStack(spacing: 4) {
+                    Image(systemName: filterCount == 0
+                        ? "line.3.horizontal.decrease.circle"
+                        : "line.3.horizontal.decrease.circle.fill")
+                    if filterCount > 0 {
+                        Text("\(filterCount)")
+                            .font(.caption.weight(.bold))
                     }
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .padding(.horizontal, filterCount > 0 ? 10 : 0)
-                    .frame(minWidth: 40, minHeight: 40)
-                    .nodeScopeFloatingGlass(cornerRadius: 20)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Filter and sort channels")
-                .accessibilityValue(filterCount == 0 ? "No filters active" : "\(filterCount) active")
-
-                Button(action: toggleSearch) {
-                    Image(systemName: isSearchPresented ? "xmark" : "magnifyingglass")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(NodeScopeStyle.signal)
-                        .frame(width: 40, height: 40)
-                        .nodeScopeFloatingGlass(cornerRadius: 20)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(isSearchPresented ? "Close channel search" : "Search channels")
-
-                Button(action: addChannel) {
-                    Image(systemName: "plus")
-                        .font(.body.weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 40, height: 40)
-                        .background(NodeScopeStyle.signal, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Add Channel")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.primary)
+                .padding(.horizontal, filterCount > 0 ? 10 : 0)
+                .frame(minWidth: 40, minHeight: 40)
+                .nodeScopeFloatingGlass(cornerRadius: 20)
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Filter and sort channels")
+            .accessibilityValue(filterCount == 0 ? "No filters active" : "\(filterCount) active")
+
+            Button(action: toggleSearch) {
+                Image(systemName: isSearchPresented ? "xmark" : "magnifyingglass")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(NodeScopeStyle.signal)
+                    .frame(width: 40, height: 40)
+                    .nodeScopeFloatingGlass(cornerRadius: 20)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isSearchPresented ? "Close channel search" : "Search channels")
+
+            Button(action: addChannel) {
+                Image(systemName: "plus")
+                    .font(.body.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 40, height: 40)
+                    .background(NodeScopeStyle.signal, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Add Channel")
         }
     }
 }

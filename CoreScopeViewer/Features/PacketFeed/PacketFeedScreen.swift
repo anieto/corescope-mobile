@@ -1,11 +1,23 @@
 import SwiftUI
 import Observation
 
+private extension View {
+    @ViewBuilder
+    func workspaceBackgroundExtensionEffect() -> some View {
+        if #available(iOS 26.0, *) {
+            backgroundExtensionEffect()
+        } else {
+            self
+        }
+    }
+}
+
 struct MapPacketWorkspaceScreen: View {
     let isTabActive: Bool
     let resetID: UUID
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Environment(PacketReplayStore.self) private var replayStore
     @AppStorage("mapPacketSidebarVisible") private var prefersPacketSidebar = true
     @State private var columnVisibility = NavigationSplitViewVisibility.detailOnly
@@ -14,75 +26,146 @@ struct MapPacketWorkspaceScreen: View {
     @State private var compactPacketDetent: PresentationDetent = .medium
     @State private var selectedLivePacketGroupID: LiveObservationGroup.ID?
     @State private var replayingLivePacketGroupID: LiveObservationGroup.ID?
+    @State private var isHingedDevice: Bool?
+    @State private var isDuoPacketSidebarVisible = false
+    @State private var isDuoPacketDetailsPresented = false
 
-    @ViewBuilder
     var body: some View {
-        if horizontalSizeClass == .regular {
-            NavigationSplitView(
-                columnVisibility: $columnVisibility,
-                preferredCompactColumn: $preferredCompactColumn
-            ) {
-                MapLivePacketSidebar(
-                    selectedGroupID: $selectedLivePacketGroupID,
-                    toggleSidebar: toggleRegularSidebar,
-                    routeReplayStarted: { replayingLivePacketGroupID = $0 }
-                )
-                    .toolbar(removing: .sidebarToggle)
-                    .navigationSplitViewColumnWidth(min: 320, ideal: 370, max: 440)
-            } detail: {
+        Group {
+            if horizontalSizeClass == .regular {
+                switch isHingedDevice {
+                case true:
+                    duoWorkspace
+                        .transition(.opacity)
+                case false, nil:
+                    regularWorkspace
+                        .opacity(isHingedDevice == nil ? 0 : 1)
+                        .accessibilityHidden(isHingedDevice == nil)
+                        .transition(.opacity)
+                }
+            } else {
                 MapScreen(
                     isTabActive: isTabActive,
                     resetID: resetID,
-                    togglePacketSidebar: columnVisibility == .detailOnly
-                        ? { toggleRegularSidebar() }
-                        : nil
+                    showLivePackets: {
+                        compactPacketDetent = .medium
+                        isShowingCompactPackets = true
+                    },
+                    bottomObscuredFraction: isShowingCompactPackets
+                        ? (compactPacketDetent == .medium ? 0.5 : 0.85)
+                        : 0
                 )
+                .sheet(isPresented: $isShowingCompactPackets, onDismiss: compactPacketSheetDismissed) {
+                    NavigationStack {
+                        MapLivePacketSidebar(
+                            selectedGroupID: $selectedLivePacketGroupID,
+                            close: { isShowingCompactPackets = false },
+                            routeReplayStarted: { groupID in
+                                replayingLivePacketGroupID = groupID
+                                isShowingCompactPackets = false
+                            }
+                        )
+                    }
+                    .presentationDetents([.medium, .large], selection: $compactPacketDetent)
+                    .presentationDragIndicator(.visible)
+                    .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+                }
             }
-            .navigationSplitViewStyle(.balanced)
-            .ignoresSafeArea(.container, edges: .top)
-            .onAppear { updateRegularColumns() }
-            .onChange(of: columnVisibility) { _, visibility in
-                prefersPacketSidebar = visibility != .detailOnly
+        }
+        .observesDuoHinge($isHingedDevice)
+        .onChange(of: horizontalSizeClass) { _, sizeClass in
+            guard sizeClass == .regular else { return }
+            isShowingCompactPackets = false
+            updateRegularColumns()
+        }
+        .onChange(of: resetID) {
+            isShowingCompactPackets = false
+            selectedLivePacketGroupID = nil
+            replayingLivePacketGroupID = nil
+            updateRegularColumns()
+        }
+        .onChange(of: replayStore.isReplayActive) { _, isActive in
+            if !isActive {
+                if selectedLivePacketGroupID == replayingLivePacketGroupID {
+                    selectedLivePacketGroupID = nil
+                }
+                replayingLivePacketGroupID = nil
             }
-        } else {
+        }
+    }
+
+    private var duoWorkspace: some View {
+        Group {
+            if isDuoPacketSidebarVisible {
+                DuoTwoPaneLayout {
+                    MapScreen(
+                        isTabActive: isTabActive && !isDuoPacketDetailsPresented,
+                        resetID: resetID,
+                        togglePacketSidebar: { setDuoPacketSidebarVisible(false) },
+                        pinsPacketSidebarToggle: true
+                    )
+                } secondary: {
+                    NavigationStack {
+                        MapLivePacketSidebar(
+                            selectedGroupID: $selectedLivePacketGroupID,
+                            routeReplayStarted: { replayingLivePacketGroupID = $0 },
+                            detailPresentationChanged: { isDuoPacketDetailsPresented = $0 }
+                        )
+                        .toolbar(removing: .sidebarToggle)
+                    }
+                }
+                .transition(
+                    .move(edge: .trailing)
+                        .combined(with: .opacity)
+                )
+            } else {
+                MapScreen(
+                    isTabActive: isTabActive,
+                    resetID: resetID,
+                    togglePacketSidebar: { setDuoPacketSidebarVisible(true) },
+                    pinsPacketSidebarToggle: true,
+                    centersBottomControlsInLeadingPane: true
+                )
+                .transition(.opacity)
+            }
+        }
+    }
+
+    private var regularWorkspace: some View {
+        NavigationSplitView(
+            columnVisibility: $columnVisibility,
+            preferredCompactColumn: $preferredCompactColumn
+        ) {
+            MapLivePacketSidebar(
+                selectedGroupID: $selectedLivePacketGroupID,
+                toggleSidebar: toggleRegularSidebar,
+                routeReplayStarted: { replayingLivePacketGroupID = $0 }
+            )
+            .toolbar(removing: .sidebarToggle)
+            .navigationSplitViewColumnWidth(min: 280, ideal: 340, max: 420)
+        } detail: {
             MapScreen(
                 isTabActive: isTabActive,
                 resetID: resetID,
-                showLivePackets: {
-                    compactPacketDetent = .medium
-                    isShowingCompactPackets = true
-                },
-                bottomObscuredFraction: isShowingCompactPackets
-                    ? (compactPacketDetent == .medium ? 0.5 : 0.85)
-                    : 0
+                togglePacketSidebar: columnVisibility == .detailOnly
+                    ? { toggleRegularSidebar() }
+                    : nil
             )
-            .sheet(isPresented: $isShowingCompactPackets, onDismiss: compactPacketSheetDismissed) {
-                NavigationStack {
-                    MapLivePacketSidebar(
-                        selectedGroupID: $selectedLivePacketGroupID,
-                        close: { isShowingCompactPackets = false },
-                        routeReplayStarted: { groupID in
-                            replayingLivePacketGroupID = groupID
-                            isShowingCompactPackets = false
-                        }
-                    )
-                }
-                .presentationDetents([.medium, .large], selection: $compactPacketDetent)
-                .presentationDragIndicator(.visible)
-                .presentationBackgroundInteraction(.enabled(upThrough: .medium))
-            }
-            .onChange(of: resetID) {
-                isShowingCompactPackets = false
-                selectedLivePacketGroupID = nil
-                replayingLivePacketGroupID = nil
-            }
-            .onChange(of: replayStore.isReplayActive) { _, isActive in
-                if !isActive {
-                    if selectedLivePacketGroupID == replayingLivePacketGroupID {
-                        selectedLivePacketGroupID = nil
-                    }
-                    replayingLivePacketGroupID = nil
-                }
+        }
+        .navigationSplitViewStyle(.balanced)
+        .workspaceBackgroundExtensionEffect()
+        .onAppear { updateRegularColumns() }
+        .onChange(of: columnVisibility) { _, visibility in
+            prefersPacketSidebar = visibility != .detailOnly
+        }
+    }
+
+    private func setDuoPacketSidebarVisible(_ isVisible: Bool) {
+        if accessibilityReduceMotion {
+            isDuoPacketSidebarVisible = isVisible
+        } else {
+            withAnimation(.smooth(duration: 0.38)) {
+                isDuoPacketSidebarVisible = isVisible
             }
         }
     }
@@ -107,6 +190,7 @@ private struct MapLivePacketSidebar: View {
     var close: (() -> Void)?
     var toggleSidebar: (() -> Void)?
     var routeReplayStarted: ((LiveObservationGroup.ID) -> Void)?
+    var detailPresentationChanged: ((Bool) -> Void)?
 
     @Environment(LiveFeedService.self) private var liveFeed
     @Environment(RegionFilterStore.self) private var regionFilter
@@ -162,6 +246,7 @@ private struct MapLivePacketSidebar: View {
 
                                 Button {
                                     detailGroup = group
+                                    detailPresentationChanged?(true)
                                 } label: {
                                     Label("Show Details", systemImage: "info.circle")
                                         .font(.subheadline.weight(.semibold))
@@ -186,8 +271,7 @@ private struct MapLivePacketSidebar: View {
                     .textCase(.uppercase)
             }
         }
-        .iPadSidebarListStyle()
-        .floatingDockScrollClearance()
+        .adaptiveSidebarListStyle()
         .navigationTitle("Live Packets")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: packetDetailsPresented) {
@@ -289,6 +373,7 @@ private struct MapLivePacketSidebar: View {
             set: { isPresented in
                 if !isPresented {
                     detailGroup = nil
+                    detailPresentationChanged?(false)
                 }
             }
         )
@@ -376,7 +461,6 @@ struct PacketFeedScreen: View {
         .background(NodeScopeBackground())
         .listStyle(.plain)
         .adaptiveContentWidth()
-        .floatingDockScrollClearance()
         .navigationTitle("Live Packets")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
@@ -599,7 +683,7 @@ private struct LivePacketFeedHeader: View {
                 .foregroundStyle(.secondary)
             }
         }
-        .padding(14)
+        .padding(isCompact ? 10 : 14)
         .instrumentCard()
     }
 
@@ -617,12 +701,14 @@ private struct LivePacketCompactSummary: View {
     let scope: String
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             Label(scope, systemImage: "globe.americas.fill")
                 .lineLimit(1)
             Spacer(minLength: 0)
-            Label("\(transmissionCount)", systemImage: "waveform.path.ecg")
-            Label("\(observationCount)", systemImage: "eye")
+            Label("\(transmissionCount) TX", systemImage: "waveform.path.ecg")
+                .accessibilityLabel("\(transmissionCount) transmissions")
+            Label("\(observationCount) OBS", systemImage: "eye")
+                .accessibilityLabel("\(observationCount) observations")
         }
         .font(.caption)
         .foregroundStyle(.secondary)
@@ -919,7 +1005,6 @@ private struct LivePacketDetailScreen: View {
                 }
             }
         }
-        .floatingDockScrollClearance()
     }
 
     private var routeHops: [LiveRouteHop] {

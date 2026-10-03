@@ -50,7 +50,6 @@ struct ObserverDetailScreen: View {
                 }
             }
             .padding(16)
-            .padding(.bottom, 96)
             .adaptiveContentWidth()
         }
         .background(NodeScopeBackground())
@@ -256,6 +255,7 @@ private struct ObserverDetailMetric: View {
 }
 
 private struct PacketsTimelineCard: View {
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     let points: [LabeledCount]
 
     var body: some View {
@@ -277,13 +277,14 @@ private struct PacketsTimelineCard: View {
             .chartYAxis {
                 AxisMarks(position: .leading)
             }
-            .frame(height: 190)
+            .frame(height: verticalSizeClass == .compact ? 140 : 190)
             .accessibilityLabel("Packets received over time")
         }
     }
 }
 
 private struct PacketTypesCard: View {
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     let counts: [String: Int]
 
     private var data: [PacketTypeDatum] {
@@ -306,7 +307,7 @@ private struct PacketTypesCard: View {
                 .foregroundStyle(by: .value("Type", item.name))
             }
             .chartLegend(position: .bottom, alignment: .leading, spacing: 8)
-            .frame(height: 270)
+            .frame(height: verticalSizeClass == .compact ? 210 : 270)
             .accessibilityLabel("Packet type distribution")
         }
     }
@@ -337,6 +338,7 @@ struct PacketTypeDatum: Identifiable {
 }
 
 private struct NodesTimelineCard: View {
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     let points: [LabeledCount]
 
     var body: some View {
@@ -367,13 +369,14 @@ private struct NodesTimelineCard: View {
                 }
             }
             .chartYAxis { AxisMarks(position: .leading) }
-            .frame(height: 190)
+            .frame(height: verticalSizeClass == .compact ? 140 : 190)
             .accessibilityLabel("Unique nodes heard over time")
         }
     }
 }
 
 private struct SNRDistributionCard: View {
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     let buckets: [SnrBucket]
 
     var body: some View {
@@ -399,7 +402,7 @@ private struct SNRDistributionCard: View {
                 }
             }
             .chartYAxis { AxisMarks(position: .leading) }
-            .frame(height: 210)
+            .frame(height: verticalSizeClass == .compact ? 150 : 210)
             .accessibilityLabel("Signal-to-noise ratio distribution")
         }
     }

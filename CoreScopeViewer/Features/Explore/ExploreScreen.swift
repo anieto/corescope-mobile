@@ -37,7 +37,6 @@ struct ExploreScreen: View {
                     search: { isSearchPresented = true },
                     addFavorite: { isAddFavoritePresented = true }
                 )
-                    .iPadWindowControlsClearance()
                     .favoritesListRow(top: 18, bottom: 10)
 
                 NetworkAtAGlanceCard(
@@ -84,7 +83,6 @@ struct ExploreScreen: View {
             .scrollContentBackground(.hidden)
             .listStyle(.plain)
             .adaptiveScrollContentWidth()
-            .floatingDockScrollClearance()
             .refreshable {
                 await refreshExploreData()
             }
@@ -937,17 +935,34 @@ private struct ExploreHeader: View {
     let addFavorite: () -> Void
 
     var body: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 5) {
-                Text("Explore")
-                    .font(.largeTitle.bold())
-                Text("\(count) saved item\(count == 1 ? "" : "s") on this analyzer")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top) {
+                heading
+                    .fixedSize(horizontal: true, vertical: false)
+                Spacer()
+                actions
             }
 
-            Spacer()
+            VStack(alignment: .leading, spacing: 12) {
+                heading
+                actions
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 
+    private var heading: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text("Explore")
+                .font(.largeTitle.bold())
+            Text("\(count) saved item\(count == 1 ? "" : "s") on this analyzer")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var actions: some View {
+        HStack(spacing: 10) {
             Button(action: search) {
                 Image(systemName: "magnifyingglass")
                     .font(.body.weight(.semibold))
@@ -978,7 +993,6 @@ private struct ExploreHeader: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Add favorite node")
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

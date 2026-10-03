@@ -7,6 +7,8 @@ struct MapScreen: View {
     let resetID: UUID
     var showLivePackets: (() -> Void)? = nil
     var togglePacketSidebar: (() -> Void)? = nil
+    var pinsPacketSidebarToggle = false
+    var centersBottomControlsInLeadingPane = false
     var bottomObscuredFraction: Double = 0
 
     @Environment(AnalyzerSettings.self) private var settings
@@ -49,6 +51,7 @@ struct MapScreen: View {
     @State private var displayUpdateTask: Task<Void, Never>?
     @State private var incomingEventTask: Task<Void, Never>?
     @State private var pendingMapTapTask: Task<Void, Never>?
+    @State private var viewportResizeTask: Task<Void, Never>?
     @State private var displayUpdateID = UUID()
     @State private var isSearchPresented = false
     @State private var isMapFiltersPresented = false
@@ -57,10 +60,6 @@ struct MapScreen: View {
     @State private var lastHandledNavigationRequestID: UUID?
     @State private var isMapCameraMoving = false
     @State private var mapViewportSize = CGSize.zero
-
-    // The map remains edge-to-edge, while interactive controls sit above the
-    // app-level floating dock rendered by RootTabView.
-    private let floatingDockClearance: CGFloat = 96
 
     private struct NodeCluster: Identifiable, Sendable {
         let id: String
@@ -157,19 +156,38 @@ struct MapScreen: View {
                 .onAppear { mapViewportSize = geometry.size }
                 .onChange(of: geometry.size) { _, size in
                     mapViewportSize = size
+                    viewportResizeTask?.cancel()
+                    viewportResizeTask = Task {
+                        try? await Task.sleep(for: .milliseconds(150))
+                        guard !Task.isCancelled else { return }
+                        refitReplayForVisibleMapArea()
+                    }
                 }
                 .onChange(of: bottomObscuredFraction) {
                     refitReplayForVisibleMapArea()
                 }
             }
                 .mapScope(mapScope)
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItemGroup(placement: .topBarLeading) {
-                        if let togglePacketSidebar {
+                    if isTabActive {
+                        if #available(iOS 27.0, *), pinsPacketSidebarToggle,
+                       let togglePacketSidebar {
+                        ToolbarItem(placement: .topBarPinnedTrailing) {
                             Button(action: togglePacketSidebar) {
                                 Image(systemName: "list.bullet.rectangle")
                             }
-                            .accessibilityLabel("Show live packets")
+                            .accessibilityLabel("Toggle live packets")
+                        }
+                        .visibilityPriority(.high)
+                    }
+
+                    ToolbarItemGroup(placement: .topBarLeading) {
+                        if !pinsPacketSidebarToggle, let togglePacketSidebar {
+                            Button(action: togglePacketSidebar) {
+                                Image(systemName: "list.bullet.rectangle")
+                            }
+                            .accessibilityLabel("Toggle live packets")
                         }
 
                         HStack(spacing: 6) {
@@ -213,6 +231,7 @@ struct MapScreen: View {
                             Image(systemName: "map")
                         }
 
+                    }
                     }
                 }
                 .navigationDestination(item: $selectedNode) { node in
@@ -270,30 +289,39 @@ struct MapScreen: View {
                         .accessibilityLabel("Center on my location")
                     }
                     .padding(.leading, 12)
-                    .padding(.bottom, floatingDockClearance)
+                    .padding(.bottom, 12)
                 }
                 .overlay(alignment: .bottomTrailing) {
                     zoomControl
                         .padding(.trailing, 12)
-                        .padding(.bottom, floatingDockClearance)
+                        .padding(.bottom, 12)
                 }
                 .overlay(alignment: .bottom) {
-                    VStack(spacing: 8) {
-                        if isReplayMode {
+                    if isReplayMode {
+                        HStack(spacing: 0) {
                             VStack(spacing: 8) {
                                 replayControl
                                 routeOptionsControl
                             }
+                            .frame(maxWidth: .infinity)
+
+                            if centersBottomControlsInLeadingPane {
+                                Color.clear
+                                    .frame(maxWidth: .infinity)
+                            }
                         }
-                        if !viewModel.nodes.isEmpty {
-                            Text("\(filteredNodeCount) nodes")
-                                .font(.caption)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
-                                .background(.thinMaterial, in: Capsule())
-                        }
+                        .padding(.bottom, viewModel.nodes.isEmpty ? 12 : 44)
                     }
-                    .padding(.bottom, floatingDockClearance)
+                }
+                .overlay(alignment: .bottom) {
+                    if !viewModel.nodes.isEmpty {
+                        Text("\(filteredNodeCount) nodes")
+                            .font(.caption)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(.thinMaterial, in: Capsule())
+                            .padding(.bottom, 12)
+                    }
                 }
                 .overlay {
                     if let errorMessage = viewModel.errorMessage, viewModel.nodes.isEmpty {
@@ -340,8 +368,10 @@ struct MapScreen: View {
             displayUpdateTask?.cancel()
             incomingEventTask?.cancel()
             pendingMapTapTask?.cancel()
+            viewportResizeTask?.cancel()
             incomingEventTask = nil
             pendingMapTapTask = nil
+            viewportResizeTask = nil
         }
         .task {
             processedEventIds = Set(liveFeed.recentEvents.map { liveEventKey(for: $0) })
@@ -1422,8 +1452,8 @@ struct MapScreen: View {
         let horizontalMarginFraction = 0.12
         let topMarginFraction = 0.12
         let bottomMarginFraction = max(0.32, min(bottomObscuredFraction + 0.08, 0.8))
-        let availableWidth = viewportWidth * (1 - horizontalMarginFraction * 2)
-        let availableHeight = viewportHeight * (1 - topMarginFraction - bottomMarginFraction)
+        let availableWidth = max(viewportWidth * (1 - horizontalMarginFraction * 2), 1)
+        let availableHeight = max(viewportHeight * (1 - topMarginFraction - bottomMarginFraction), 1)
         let mapPointsPerPoint = max(routeWidth / availableWidth, routeHeight / availableHeight)
         let fittedWidth = viewportWidth * mapPointsPerPoint
         let fittedHeight = viewportHeight * mapPointsPerPoint

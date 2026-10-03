@@ -41,55 +41,41 @@ struct RootTabView: View {
     )
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            MapPacketWorkspaceScreen(
-                isTabActive: selectedTab == .map,
-                resetID: resetIDs[.map] ?? UUID()
-            )
-                .toolbar(.hidden, for: .tabBar)
-                .tabItem { Label("Map", systemImage: "map") }
-                .tag(Tab.map)
-
-            ExploreScreen(
-                resetID: resetIDs[.explore] ?? UUID(),
-                isTabActive: selectedTab == .explore,
-                openMap: { selectedTab = .map },
-                openChannels: { selectedTab = .channels },
-                openObservers: { selectedTab = .observers }
-            )
-                .toolbar(.hidden, for: .tabBar)
-                .tabItem { Label("Explore", systemImage: "safari") }
-                .tag(Tab.explore)
-
-            ChannelsListScreen(resetID: resetIDs[.channels] ?? UUID())
-                .toolbar(.hidden, for: .tabBar)
-                .tabItem { Label("Channels", systemImage: "number") }
-                .tag(Tab.channels)
-
-            ObserversListScreen(resetID: resetIDs[.observers] ?? UUID())
-                .toolbar(.hidden, for: .tabBar)
-                .tabItem { Label("Observers", systemImage: "antenna.radiowaves.left.and.right") }
-                .tag(Tab.observers)
-
-            SettingsScreen(resetID: resetIDs[.settings] ?? UUID())
-                .id(resetIDs[.settings])
-                .toolbar(.hidden, for: .tabBar)
-                .tabItem { Label("Settings", systemImage: "gearshape") }
-                .tag(Tab.settings)
-        }
-        .toolbar(.hidden, for: .tabBar)
-        .overlay(alignment: .bottom) {
-            FloatingTabDock(selectedTab: selectedTab) { tab in
-                if selectedTab == tab {
-                    resetIDs[tab] = UUID()
-                } else {
-                    selectedTab = tab
-                }
+        TabView(selection: tabSelection) {
+            SwiftUI.Tab("Map", systemImage: "map", value: Tab.map) {
+                MapPacketWorkspaceScreen(
+                    isTabActive: selectedTab == .map,
+                    resetID: resetIDs[.map] ?? UUID()
+                )
             }
-                .frame(maxWidth: 680)
-                .padding(.horizontal, 18)
-                .padding(.bottom, 8)
+
+            SwiftUI.Tab("Explore", systemImage: "safari", value: Tab.explore) {
+                ExploreScreen(
+                    resetID: resetIDs[.explore] ?? UUID(),
+                    isTabActive: selectedTab == .explore,
+                    openMap: { selectedTab = .map },
+                    openChannels: { selectedTab = .channels },
+                    openObservers: { selectedTab = .observers }
+                )
+            }
+
+            SwiftUI.Tab("Channels", systemImage: "bubble.left.and.bubble.right", value: Tab.channels) {
+                ChannelsListScreen(resetID: resetIDs[.channels] ?? UUID())
+            }
+
+            SwiftUI.Tab("Observers", systemImage: "antenna.radiowaves.left.and.right", value: Tab.observers) {
+                ObserversListScreen(resetID: resetIDs[.observers] ?? UUID())
+            }
+
+            SwiftUI.Tab("Settings", systemImage: "slider.horizontal.3", value: Tab.settings) {
+                SettingsScreen(resetID: resetIDs[.settings] ?? UUID())
+                    .id(resetIDs[.settings])
+            }
         }
+        .background {
+            NodeScopeBackground()
+        }
+        .tabViewStyle(.tabBarOnly)
         .onChange(of: packetReplayStore.requestID) {
             selectedTab = .map
         }
@@ -123,6 +109,19 @@ struct RootTabView: View {
         }
     }
 
+    private var tabSelection: Binding<Tab> {
+        Binding(
+            get: { selectedTab },
+            set: { tab in
+                if selectedTab == tab {
+                    resetIDs[tab] = UUID()
+                } else {
+                    selectedTab = tab
+                }
+            }
+        )
+    }
+
     private func resetAllTabs() {
         // Keep Settings alive while it reports the connection result for the
         // newly selected analyzer. The picker dismisses itself, while every
@@ -133,96 +132,3 @@ struct RootTabView: View {
     }
 }
 
-private struct FloatingTabDock: View {
-    let selectedTab: RootTabView.Tab
-    let select: (RootTabView.Tab) -> Void
-    @Namespace private var glassNamespace
-
-    @ViewBuilder
-    var body: some View {
-        if #available(iOS 26.0, *) {
-            GlassEffectContainer(spacing: 4) {
-                FloatingTabItems(
-                    selectedTab: selectedTab,
-                    glassNamespace: glassNamespace,
-                    select: select
-                )
-            }
-            .padding(5)
-            .nodeScopeFloatingGlass(cornerRadius: 24)
-            .dockOutlineAndShadow()
-        } else {
-            FloatingTabItems(
-                selectedTab: selectedTab,
-                glassNamespace: glassNamespace,
-                select: select
-            )
-            .padding(5)
-            .nodeScopeFloatingGlass(cornerRadius: 24)
-            .dockOutlineAndShadow()
-        }
-    }
-}
-
-private struct FloatingTabItems: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var usesMaterializedTransition = false
-    let selectedTab: RootTabView.Tab
-    let glassNamespace: Namespace.ID
-    let select: (RootTabView.Tab) -> Void
-
-    var body: some View {
-        HStack(spacing: 4) {
-            ForEach(RootTabView.Tab.allCases, id: \.self) { tab in
-                Button {
-                    usesMaterializedTransition = tabDistance(from: selectedTab, to: tab) > 1
-                    if reduceMotion {
-                        select(tab)
-                    } else {
-                        withAnimation(.snappy(duration: 0.25)) {
-                            select(tab)
-                        }
-                    }
-                } label: {
-                    VStack(spacing: 3) {
-                        Image(systemName: tab.symbol)
-                            .font(.body.weight(.semibold))
-                        Text(tab.title)
-                            .font(.caption2.weight(.semibold))
-                    }
-                    .foregroundStyle(selectedTab == tab ? Color.white : Color.secondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .contentShape(Rectangle())
-                    .nodeScopeSelectedGlass(
-                        isSelected: selectedTab == tab,
-                        cornerRadius: 16,
-                        usesMaterializedTransition: usesMaterializedTransition,
-                        id: tab,
-                        in: glassNamespace
-                    )
-                }
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity)
-                .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
-            }
-        }
-    }
-
-    private func tabDistance(from source: RootTabView.Tab, to destination: RootTabView.Tab) -> Int {
-        guard let sourceIndex = RootTabView.Tab.allCases.firstIndex(of: source),
-              let destinationIndex = RootTabView.Tab.allCases.firstIndex(of: destination) else { return 0 }
-        return abs(sourceIndex - destinationIndex)
-    }
-}
-
-private extension View {
-    func dockOutlineAndShadow() -> some View {
-        self
-        .overlay {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(Color.white.opacity(0.16), lineWidth: 1)
-        }
-        .shadow(color: .black.opacity(0.2), radius: 18, y: 8)
-    }
-}

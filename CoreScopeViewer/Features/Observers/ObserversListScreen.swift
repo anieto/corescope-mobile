@@ -100,9 +100,8 @@ struct ObserversListScreen: View {
                         .textCase(.uppercase)
                 }
             }
-            .iPadSidebarListStyle()
+            .adaptiveSidebarListStyle()
             .adaptiveScrollContentWidth()
-            .floatingDockScrollClearance()
             .toolbar(.hidden, for: .navigationBar)
             .overlay {
                 if visibleObservers.isEmpty && !viewModel.isLoading {
@@ -306,57 +305,70 @@ private struct ObserversHeader: View {
     let showFilters: () -> Void
 
     var body: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 5) {
-                Text("Observers")
-                    .font(.largeTitle.bold())
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
-                        .frame(width: 7, height: 7)
-                    Text(isConnected ? "Network telemetry live" : "Reconnecting")
-                }
-                .font(.caption.weight(.medium))
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top) {
+                heading
+                    .fixedSize(horizontal: true, vertical: false)
+                Spacer()
+                actions
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                heading
+                actions
+            }
+        }
+    }
+
+    private var heading: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text("Observers")
+                .font(.largeTitle.bold())
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
+                    .frame(width: 7, height: 7)
+                Text(isConnected ? "Network telemetry live" : "Reconnecting")
+            }
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.secondary)
+            Text(filterSummary)
+                .font(.caption2.weight(.medium))
                 .foregroundStyle(.secondary)
-                Text(filterSummary)
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+        }
+    }
 
-            Spacer()
-
-            HStack(spacing: 10) {
-                Button(action: showFilters) {
-                    HStack(spacing: 4) {
-                        Image(systemName: filterCount == 0
-                            ? "line.3.horizontal.decrease.circle"
-                            : "line.3.horizontal.decrease.circle.fill")
-                        if filterCount > 0 {
-                            Text("\(filterCount)")
-                                .font(.caption.weight(.bold))
-                        }
+    private var actions: some View {
+        HStack(spacing: 10) {
+            Button(action: showFilters) {
+                HStack(spacing: 4) {
+                    Image(systemName: filterCount == 0
+                        ? "line.3.horizontal.decrease.circle"
+                        : "line.3.horizontal.decrease.circle.fill")
+                    if filterCount > 0 {
+                        Text("\(filterCount)")
+                            .font(.caption.weight(.bold))
                     }
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .padding(.horizontal, filterCount > 0 ? 10 : 0)
-                    .frame(minWidth: 40, minHeight: 40)
-                    .nodeScopeFloatingGlass(cornerRadius: 20)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Filter and sort observers")
-                .accessibilityValue(filterCount == 0 ? "No filters active" : "\(filterCount) active")
-
-                Button(action: toggleSearch) {
-                    Image(systemName: isSearchPresented ? "xmark" : "magnifyingglass")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(NodeScopeStyle.signal)
-                        .frame(width: 40, height: 40)
-                        .nodeScopeFloatingGlass(cornerRadius: 20)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(isSearchPresented ? "Close observer search" : "Search observers")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.primary)
+                .padding(.horizontal, filterCount > 0 ? 10 : 0)
+                .frame(minWidth: 40, minHeight: 40)
+                .nodeScopeFloatingGlass(cornerRadius: 20)
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Filter and sort observers")
+            .accessibilityValue(filterCount == 0 ? "No filters active" : "\(filterCount) active")
+
+            Button(action: toggleSearch) {
+                Image(systemName: isSearchPresented ? "xmark" : "magnifyingglass")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(NodeScopeStyle.signal)
+                    .frame(width: 40, height: 40)
+                    .nodeScopeFloatingGlass(cornerRadius: 20)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isSearchPresented ? "Close observer search" : "Search observers")
         }
     }
 }
@@ -459,12 +471,17 @@ private struct ObserverFiltersSheet: View {
 }
 
 private struct ObserverSummaryGrid: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let observerCount: Int
     let packetCount: Int
     let hourlyCount: Int
 
     var body: some View {
-        HStack(spacing: 8) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 8))
+            : AnyLayout(HStackLayout(spacing: 8))
+
+        layout {
             ObserverMetric(value: observerCount.formatted(), label: "Nodes", symbol: "antenna.radiowaves.left.and.right")
             ObserverMetric(value: hourlyCount.formatted(), label: "Packets / Hr", symbol: "waveform.path.ecg")
             ObserverMetric(value: packetCount.formatted(.number.notation(.compactName)), label: "Packets", symbol: "shippingbox.fill")

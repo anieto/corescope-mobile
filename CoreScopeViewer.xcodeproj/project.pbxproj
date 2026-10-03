@@ -39,6 +39,8 @@
 		316FE0183060985200FBA3B4 /* NodeAnalyticsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FE0173060985200FBA3B4 /* NodeAnalyticsViewModel.swift */; };
 		316FE01A3060988F00FBA3B4 /* NodeAnalyticsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FE0193060988F00FBA3B4 /* NodeAnalyticsScreen.swift */; };
 		31C733CCC554E34636022A89 /* OnboardingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9AFF0E38F9E8C2C60829E93 /* OnboardingScreen.swift */; };
+		31CCA84D306D984400D01155 /* DuoLayoutContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31CCA84C306D984400D01155 /* DuoLayoutContext.swift */; };
+		31CCA84F306DBC7A00D01155 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 31CCA84E306DBC7A00D01155 /* LaunchScreen.storyboard */; };
 		31DC215B3064091D00F0E9C5 /* SupportDevelopmentScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DC215A3064091D00F0E9C5 /* SupportDevelopmentScreen.swift */; };
 		367D92626A31391FE48F86D8 /* DistanceFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235873A5D91CB7811DDE491B /* DistanceFormat.swift */; };
 		37EEBAD9BA7B400246063847 /* NodeDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75CDCA22232763038FF030C6 /* NodeDetailViewModel.swift */; };
@@ -132,6 +134,8 @@
 		316FE0153060985200FBA3B4 /* NodeAnalytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeAnalytics.swift; sourceTree = "<group>"; };
 		316FE0173060985200FBA3B4 /* NodeAnalyticsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeAnalyticsViewModel.swift; sourceTree = "<group>"; };
 		316FE0193060988F00FBA3B4 /* NodeAnalyticsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeAnalyticsScreen.swift; sourceTree = "<group>"; };
+		31CCA84C306D984400D01155 /* DuoLayoutContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuoLayoutContext.swift; sourceTree = "<group>"; };
+		31CCA84E306DBC7A00D01155 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		31DC215A3064091D00F0E9C5 /* SupportDevelopmentScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportDevelopmentScreen.swift; sourceTree = "<group>"; };
 		31DC215C30640E6A00F0E9C5 /* NodeScope.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = NodeScope.storekit; sourceTree = "<group>"; };
 		32A0B4E835C764626FE71370 /* AnalyzerSourceLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerSourceLogo.swift; sourceTree = "<group>"; };
@@ -317,6 +321,7 @@
 				6EDB07FE4BF732F4BA52606B /* Assets.xcassets */,
 				56D774144710835E31B1A30E /* iata-airports.csv */,
 				C779CBD001144856373F59F6 /* us-sources.json */,
+				31CCA84E306DBC7A00D01155 /* LaunchScreen.storyboard */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -349,6 +354,7 @@
 				3144E9F6305B2A4300B57F18 /* InstrumentSearchField.swift */,
 				316FE009305E18ED00FBA3B4 /* LiquidGlassStyle.swift */,
 				31152DDF3069FCCF00146B37 /* AdaptiveListDetailNavigation.swift */,
+				31CCA84C306D984400D01155 /* DuoLayoutContext.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -519,6 +525,7 @@
 				2C1CCC5A4340804F13F8D110 /* Assets.xcassets in Resources */,
 				5141EA96414E3418A01575B2 /* PrivacyInfo.xcprivacy in Resources */,
 				7A58A4866E9870D60395F551 /* iata-airports.csv in Resources */,
+				31CCA84F306DBC7A00D01155 /* LaunchScreen.storyboard in Resources */,
 				748C3658362BEB182690BA21 /* us-sources.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -578,6 +585,7 @@
 				316FE0163060985200FBA3B4 /* NodeAnalytics.swift in Sources */,
 				524F4D5E1EF00C2775837C6C /* MonitorChannelSheet.swift in Sources */,
 				EF6E45CEC2D585AC27B07648 /* MonitoredChannel.swift in Sources */,
+				31CCA84D306D984400D01155 /* DuoLayoutContext.swift in Sources */,
 				14BBB677BE2C96A01E15E7D3 /* Node.swift in Sources */,
 				DB22D3F08439100648510953 /* NodeDetailScreen.swift in Sources */,
 				37EEBAD9BA7B400246063847 /* NodeDetailViewModel.swift in Sources */,
@@ -644,7 +652,8 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Your location centers the map around your current position.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = NO;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIRequiresFullScreen = NO;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -836,7 +845,8 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Your location centers the map around your current position.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = NO;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIRequiresFullScreen = NO;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";

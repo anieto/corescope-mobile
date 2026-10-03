@@ -39,7 +39,6 @@ struct AnalyzerDiagnosticsScreen: View {
                 Text("Diagnostics make read-only requests to the selected analyzer. No settings or analyzer data are changed.")
             }
         }
-        .floatingDockScrollClearance()
         .navigationTitle("Analyzer Diagnostics")
         .navigationBarTitleDisplayMode(.inline)
         .task(id: settings.host) {

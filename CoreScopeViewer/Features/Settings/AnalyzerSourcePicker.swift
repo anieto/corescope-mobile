@@ -121,7 +121,6 @@ struct AnalyzerSourcePickerScreen: View {
                 }
             }
             .adaptiveContentWidth()
-            .floatingDockScrollClearance()
             .refreshable {
                 await sourceRegistry.refresh()
             }

@@ -79,7 +79,6 @@ struct NodeAnalyticsScreen: View {
                 }
             }
             .padding(16)
-            .padding(.bottom, 104)
             .adaptiveContentWidth()
         }
         .background(NodeScopeBackground())
@@ -457,6 +456,7 @@ private struct NodeAnalyticsMetric: View {
 }
 
 private struct NodeActivityChart: View {
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     let points: [NodeActivityPoint]
 
     var body: some View {
@@ -488,7 +488,7 @@ private struct NodeActivityChart: View {
             .chartYAxis {
                 AxisMarks(position: .leading)
             }
-            .frame(height: 190)
+            .frame(height: verticalSizeClass == .compact ? 140 : 190)
             .accessibilityLabel("Packet activity chart")
         }
     }
@@ -941,8 +941,9 @@ private struct SignalRangeBar: View {
     }
 
     private func x(_ value: Double, _ width: CGFloat) -> CGFloat {
-        let fraction = (value - scale.lowerBound) / (scale.upperBound - scale.lowerBound)
-        return width * CGFloat(min(max(fraction, 0), 1))
+        let scaleWidth = max(scale.upperBound - scale.lowerBound, .leastNonzeroMagnitude)
+        let fraction = (value - scale.lowerBound) / scaleWidth
+        return max(width, 0) * CGFloat(min(max(fraction, 0), 1))
     }
 }
 
@@ -990,6 +991,7 @@ private struct SignalDetailGrid: View {
 /// decode limit, so a steady link reads as steady and its distance from failure
 /// stays visible.
 private struct ObserverReadingsChart: View {
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     let summary: ObserverSignalSummary
     let readings: [NodeSignalPoint]
     let scale: ClosedRange<Double>
@@ -1050,7 +1052,7 @@ private struct ObserverReadingsChart: View {
                 AxisValueLabel()
             }
         }
-        .frame(height: 140)
+        .frame(height: verticalSizeClass == .compact ? 110 : 140)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(summary.observer) readings")
         .accessibilityValue(accessibilityValue)
@@ -1087,6 +1089,7 @@ private struct SignalQualityLegend: View {
 }
 
 private struct NodePacketTypesChart: View {
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     let counts: [NodePacketTypeCount]
 
     /// Same data, names and order as an observer's packet types donut.
@@ -1111,13 +1114,14 @@ private struct NodePacketTypesChart: View {
                 .foregroundStyle(by: .value("Type", item.name))
             }
             .chartLegend(position: .bottom, alignment: .leading, spacing: 8)
-            .frame(height: 270)
+            .frame(height: verticalSizeClass == .compact ? 210 : 270)
             .accessibilityLabel("Packet type distribution")
         }
     }
 }
 
 private struct NodeHopDistributionChart: View {
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     let counts: [NodeHopCount]
 
     var body: some View {
@@ -1136,7 +1140,7 @@ private struct NodeHopDistributionChart: View {
             .chartYAxis {
                 AxisMarks(position: .leading)
             }
-            .frame(height: 170)
+            .frame(height: verticalSizeClass == .compact ? 130 : 170)
             .accessibilityLabel("Hop count distribution chart")
         }
     }
