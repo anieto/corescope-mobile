@@ -36,7 +36,7 @@
     <string name="map_load_failed">Could not load the map. Check your connection and try again.</string>
     <string name="retry">Retry</string>
     <string name="map_load_failed_because">Couldn\'t load the map: %1$s.</string>
-    <string name="map_error_refused">the map server refused the request (HTTP %1$d)</string>
+    <string name="map_error_refused">the map server refused the request (HTTP %1$d). App certificate: %2$s</string>
     <string name="map_error_server">the map server is having problems (HTTP %1$d)</string>
     <string name="map_error_http">the map server answered HTTP %1$d</string>
     <string name="map_error_unreachable">couldn\'t reach the map server. Check your connection, VPN or Private DNS</string>

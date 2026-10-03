@@ -870,3 +870,8 @@ performance work (above). Before uploading: Play Data safety form updated for th
   problem (5xx), other HTTP status, can't reach the server (offline/VPN/Private DNS), timeout, or a
   failed secure connection. The raw message is logged (`NodeScope` tag). Prompted by a Play user
   whose map wouldn't load after the signing-certificate fix (see the CARTO notes above).
+- 0.7.7 build 8: Settings → About & how to use → **App identity** shows the package and the
+  signing-certificate SHA-1 the app sends to CARTO (tap to copy), and the map's "refused" error
+  includes it (`AppIdentity`, shared with the CARTO header). For diagnosing installs whose
+  certificate isn't on the CARTO key: two Play users failed while the developer's devices passed,
+  and disabling CARTO's mobile-apps restriction made their maps load.

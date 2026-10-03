@@ -1,5 +1,8 @@
 package org.nodescope.android.feature.settings
 
+import androidx.compose.foundation.clickable
+import org.nodescope.android.core.design.rememberCopyAction
+import org.nodescope.android.app.AppIdentity
 import android.text.format.Formatter
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
@@ -238,6 +241,18 @@ fun AboutScreen() {
             }
         }
         item {
+            // What the map provider checks; a support request for a map that won't load needs this.
+            val context = LocalContext.current
+            val copy = rememberCopyAction()
+            val certificate = remember { runCatching { AppIdentity.fingerprint(AppIdentity.signingSha1(context)) }.getOrDefault("unavailable") }
+            Section("App identity") {
+                Text("If the map won't load, send these to the developer. Tap to copy.", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                IdentityRow("Package", context.packageName) { copy("Package", context.packageName, false) }
+                IdentityRow("Signing certificate (SHA-1)", certificate) { copy("Signing certificate SHA-1", certificate, false) }
+            }
+        }
+        item {
             Section("Map data") {
                 Text("Basemaps © CARTO, map data © OpenStreetMap contributors, rendered with MapLibre. Region locations use OurAirports data (public domain).",
                     style = MaterialTheme.typography.bodyMedium)
@@ -286,5 +301,13 @@ private fun Section(title: String?, footer: String? = null, content: @Composable
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
         }
         footer?.let { Text(it, Modifier.padding(horizontal = 4.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    }
+}
+
+@Composable
+private fun IdentityRow(label: String, value: String, onCopy: () -> Unit) {
+    Column(Modifier.fillMaxWidth().clickable(onClickLabel = "Copy $label", onClick = onCopy).padding(vertical = 4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
     }
 }

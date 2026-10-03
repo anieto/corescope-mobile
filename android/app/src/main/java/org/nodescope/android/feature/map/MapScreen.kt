@@ -543,7 +543,10 @@ internal fun replayNeedsFraming(points: List<Pair<Float, Float>>, width: Int, he
 
 @Composable
 private fun MapLoadError.describe(): String = when (this) {
-    is MapLoadError.Refused -> stringResource(R.string.map_error_refused, status)
+    // A refusal usually means this copy's signing certificate isn't on the map key: name it.
+    is MapLoadError.Refused -> stringResource(R.string.map_error_refused, status, LocalContext.current.let { context ->
+        remember { runCatching { org.nodescope.android.app.AppIdentity.fingerprint(org.nodescope.android.app.AppIdentity.signingSha1(context)) }.getOrDefault("unavailable") }
+    })
     is MapLoadError.ServerProblem -> stringResource(R.string.map_error_server, status)
     is MapLoadError.Http -> stringResource(R.string.map_error_http, status)
     MapLoadError.Unreachable -> stringResource(R.string.map_error_unreachable)
