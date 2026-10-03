@@ -67,7 +67,11 @@ internal class LiveRoute(val key: String, val receivedAt: Long, val color: Strin
 }
 
 /** One resolved route of a packet, placed on the map: coordinate chains and the nodes along it. */
-data class ReplayRoute(val subchains: List<List<Coordinate>>, val nodes: List<MeshNode>, val hops: Int)
+data class ReplayRoute(val subchains: List<List<Coordinate>>, val nodes: List<MeshNode>, val hops: Int,
+    /** The route and who heard it, for naming it in the replay controls. */
+    val option: org.nodescope.android.feature.packets.RouteOption? = null,
+    /** The observers it ends at (name and position), drawn as the route's labelled endpoints. */
+    val receivers: List<Pair<String, Coordinate>> = emptyList())
 
 /**
  * "Replay on map" from packet details (iOS `PacketReplayStore`): every route, and the one chosen.
@@ -75,8 +79,8 @@ data class ReplayRoute(val subchains: List<List<Coordinate>>, val nodes: List<Me
  * highlight the same packet the map is showing.
  */
 data class RouteReplay(val id: Long, val routes: List<ReplayRoute>, val selected: Int, val packetId: String? = null,
-    /** The routes as node keys, so more can be merged in while the replay runs. */
-    val keys: List<List<String>> = emptyList())
+    /** The routes and their observers, so more can be merged in while the replay runs. */
+    val options: List<org.nodescope.android.feature.packets.RouteOption> = emptyList())
 
 /** One hop's line; [route] and [hop] identify it from frame to frame. */
 internal data class RouteLine(val points: List<Coordinate>, val color: String, val opacity: Float, val route: String = "", val hop: Int = 0)

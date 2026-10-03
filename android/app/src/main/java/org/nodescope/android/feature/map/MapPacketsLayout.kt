@@ -25,7 +25,8 @@ import org.nodescope.android.core.network.LiveFeedState
 import org.nodescope.android.feature.packets.PacketScreen
 import org.nodescope.android.feature.packets.TransmissionGroup
 import org.nodescope.android.feature.packets.groupTransmissions
-import org.nodescope.android.feature.packets.replayRoutes
+import org.nodescope.android.feature.packets.RouteOption
+import org.nodescope.android.feature.packets.routeOptions
 
 /** Without a fold, below this content width the map keeps the whole screen (phones, small tablets). */
 internal val PACKETS_PANEL_MIN_WIDTH = 840.dp
@@ -48,7 +49,7 @@ private const val PANEL_OPEN_KEY = "packets-panel-open"
 @Composable
 fun MapPacketsLayout(
     feed: LiveFeedState, onReconnect: () -> Unit,
-    selectedId: String?, onSelect: (id: String?, hash: String?, routes: List<List<String>>) -> Unit, onDetails: (String) -> Unit,
+    selectedId: String?, onSelect: (id: String?, hash: String?, routes: List<RouteOption>) -> Unit, onDetails: (String) -> Unit,
     /** The packet whose route is on the map, and one whose full routes are still being fetched. */
     replayingId: String? = null, lookingUpId: String? = null,
     map: @Composable (onShowPackets: (() -> Unit)?) -> Unit,
@@ -92,7 +93,7 @@ fun MapPacketsLayout(
                             // Tapping the selected packet again deselects it (and ends its replay).
                             if (selectedId == id) onSelect(null, null, emptyList()) else {
                                 val group = groupTransmissions(feed.visiblePackets, null, feed.observers).firstOrNull { it.id == id }
-                                onSelect(id, group?.latest?.hash?.takeIf(String::isNotBlank), group?.let(::replayRoutes).orEmpty())
+                                onSelect(id, group?.latest?.hash?.takeIf(String::isNotBlank), group?.routeOptions().orEmpty())
                             }
                         },
                         selectedActions = { group -> SelectedPacketActions(group, replaying = group.id == replayingId, lookingUp = group.id == lookingUpId, onDetails) })

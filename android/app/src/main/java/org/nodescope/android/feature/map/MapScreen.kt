@@ -232,7 +232,9 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     val paths = remember { derivedStateOf { currentFeed().let { routeBuilder.build(it.visiblePackets, currentNodes, it.observers, currentFilters) } } }
     val replayRoute = remember(replayOption, replayStart, replayReady) {
         replayOption?.takeIf { replayReady }?.let { option ->
-            LiveRoute("replay-${routeReplay?.id}-$replayIndex-$replayStart", replayStart, "#FFA833", nodeMarkers(option.nodes), option.subchains, replay = true)
+            // The observers that heard the route are its labelled endpoints.
+            val receivers = option.receivers.map { (name, at) -> MapMarker(at, "observer", name = name) }
+            LiveRoute("replay-${routeReplay?.id}-$replayIndex-$replayStart", replayStart, "#FFA833", nodeMarkers(option.nodes) + receivers, option.subchains, replay = true)
         }
     }
     // While replaying, only the replayed route animates (live traffic resumes on "Live").
@@ -589,22 +591,13 @@ internal fun ReplayControls(playing: Boolean, routes: List<ReplayRoute>, selecte
                     Icon(Icons.Outlined.Replay, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp)); Text(if (playing) "Restart" else "Play again")
                 }
-                if (routes.size > 1) {
-                    var open by remember { mutableStateOf(false) }
-                    Box {
-                        OutlinedButton(onClick = { open = true }) {
-                            Text("Route ${selected + 1} of ${routes.size}")
-                            Icon(Icons.Outlined.ArrowDropDown, null)
-                        }
-                        DropdownMenu(open, { open = false }) {
-                            routes.forEachIndexed { index, route ->
-                                DropdownMenuItem(text = { Text("Route ${index + 1} · ${route.hops} hops") },
-                                    onClick = { onRoute(index); open = false },
-                                    trailingIcon = { if (index == selected) Icon(Icons.Outlined.Check, "Selected", Modifier.size(18.dp)) })
-                            }
-                        }
-                    }
-                } else routes.getOrNull(selected)?.let { Text("${it.hops} hops", style = MaterialTheme.typography.bodySmall) }
+                // Routes are named by the observer that heard them, as in packet details.
+                val options = remember(routes) { routes.map { it.option ?: org.nodescope.android.feature.packets.RouteOption(emptyList(), hops = it.hops) } }
+                if (routes.size > 1) org.nodescope.android.feature.packets.RoutePicker(options, selected, onRoute, Modifier.widthIn(max = 320.dp))
+                else options.getOrNull(selected)?.let { option ->
+                    Text(listOfNotNull(option.heardBy.firstOrNull()?.observer, "${option.hops} hops").joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
                 FilterChip(selected = routeOnly, onClick = onRouteOnly, label = { Text("Route nodes only") },
                     leadingIcon = { Icon(if (routeOnly) Icons.Outlined.Check else Icons.Outlined.Hub, null, Modifier.size(18.dp)) })
                 TextButton(onClick = onLive) { Text("Return to live") }

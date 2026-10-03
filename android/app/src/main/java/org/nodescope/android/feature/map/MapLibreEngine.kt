@@ -354,6 +354,9 @@ private fun addOverlays(style: Style, dark: Boolean) {
     style.addLayer(CircleLayer(ROUTE_NODE_POINTS, ROUTE_NODES).withProperties(
         circleRadius(6f), circleColor(match(get("role"), literal("#65DDB4"), stop("repeater", "#FFAA44"), stop("room", "#299EFF"), stop("companion", "#45C99D"), stop("sensor", "#B18AFF"))),
         circleStrokeWidth(2f), circleStrokeColor("#FFFFFF")))
+    // A replayed route's observers (route markers with a name) are always labelled.
+    style.addLayer(labels("nodescope-route-observer-labels", ROUTE_NODES)
+        .withFilter(all(eq(get("role"), literal("observer")), has("name"))).withProperties(visibility(Property.VISIBLE)))
     style.addSource(GeoJsonSource(ROUTE, emptyFeatures))
     style.addLayer(LineLayer("nodescope-route-line", ROUTE).withProperties(lineColor("#299EFF"), lineWidth(4f)))
     style.addSource(GeoJsonSource(PACKET, emptyFeatures))

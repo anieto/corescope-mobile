@@ -875,3 +875,21 @@ performance work (above). Before uploading: Play Data safety form updated for th
   includes it (`AppIdentity`, shared with the CARTO header). For diagnosing installs whose
   certificate isn't on the CARTO key: two Play users failed while the developer's devices passed,
   and disabling CARTO's mobile-apps restriction made their maps load.
+
+## 0.7.8 (code 9) — 2026-10-03: routes named by who heard them
+
+Suggested by a tester (CoderNemesis): say which observer recorded each route.
+- `RouteOption` (PacketGroups.kt): each distinct route keeps the observers that heard exactly that
+  path (strongest signal first) and those that heard a shorter part of it, i.e. earlier along the
+  way, which were previously dropped silently. Full routes from `/api/packets/{hash}` merge in
+  without renumbering. One "hops" count everywhere (the path's node count; the replay controls
+  used to show one fewer).
+- `RoutePicker`: the route dropdown in packet details, message packets and the map's replay
+  controls leads with the observer ("Volente HeltecV4 Observer +2"), then hops · region · signal.
+  Under the route, "Heard by" lists those observers and "Also heard along the way by …".
+- Packet details: each observer row whose path is a route gets "Show route" / "Shown below";
+  tapping selects its route and scrolls to it.
+- Map replay ends at the observers: a final hop from the last node to each observer that heard
+  the path (when its position is known), with the observer as a labelled endpoint on CARTO and
+  Google (`ReplayRoute.receivers`, `RouteOption.receivers`). Framing includes them.
+- Not yet on iOS.

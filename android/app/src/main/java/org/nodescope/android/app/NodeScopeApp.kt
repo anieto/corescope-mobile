@@ -49,8 +49,12 @@ import org.nodescope.android.feature.packets.PacketDetailScreen
 import org.nodescope.android.feature.packets.MessagePacketScreen
 import org.nodescope.android.feature.packets.PacketDetailViewModel
 import org.nodescope.android.feature.packets.routeSubchains
-import org.nodescope.android.feature.packets.distinctRoutes
-import org.nodescope.android.feature.packets.mergeReplayRoutes
+import org.nodescope.android.feature.packets.HeardPath
+import org.nodescope.android.feature.packets.RouteHearing
+import org.nodescope.android.feature.packets.RouteOption
+import org.nodescope.android.feature.packets.mergeRouteOptions
+import org.nodescope.android.feature.packets.receivers
+import org.nodescope.android.feature.packets.routeOptions
 import androidx.compose.ui.text.style.TextOverflow
 import org.nodescope.android.core.storage.AppPreferences
 import org.nodescope.android.feature.explore.*
@@ -220,12 +224,19 @@ internal fun AppShell(
     // A packet picked in the map's live packets panel that has no route to replay; a packet
     // with a route is highlighted through `replay` instead, so the panel always matches the map.
     var panelPacket by remember { mutableStateOf<String?>(null) }
-    fun placedRoutes(routes: List<List<String>>): List<ReplayRoute> {
+    fun placedRoutes(routes: List<RouteOption>): List<ReplayRoute> {
         val nodes = state.snapshot?.nodes.orEmpty()
         val lookup = nodes.associateBy { it.publicKey.lowercase() }
-        return routes.map { route -> ReplayRoute(routeSubchains(route, nodes), route.mapNotNull { lookup[it.lowercase()] }, route.size - 1) }
+        val observers = liveFeed.value.observers
+        return routes.map { route ->
+            // The replay ends with the hop from the last node to each observer that heard this path.
+            val receivers = route.receivers(observers)
+            val last = route.keys.lastOrNull()?.let { lookup[it.lowercase()]?.coordinate }
+            val finalHops = if (last == null) emptyList() else receivers.map { it.second }.filter { it != last }.map { listOf(last, it) }
+            ReplayRoute(routeSubchains(route.keys, nodes) + finalHops, route.keys.mapNotNull { lookup[it.lowercase()] }, route.hops, route, receivers)
+        }
     }
-    fun startReplay(routes: List<List<String>>, selected: Int, packetId: String? = null) {
+    fun startReplay(routes: List<RouteOption>, selected: Int, packetId: String? = null) {
         replay = RouteReplay(System.nanoTime(), placedRoutes(routes), selected, packetId, routes)
         panelPacket = null
         selectTab(Destination.MAP)
@@ -237,10 +248,10 @@ internal fun AppShell(
     var routeLookup by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     var lookingUp by remember { mutableStateOf<String?>(null) }
     /** A packet's distinct routes from its full observation list, limited to the selected region. */
-    suspend fun fullRoutes(host: String, region: String?, hash: String): List<List<String>> {
+    suspend fun fullRoutes(host: String, region: String?, hash: String): List<RouteOption> {
         val detail = browse?.let { repository -> runCatching { repository.packetDetail(host, hash) }.getOrNull() } ?: return emptyList()
         val observations = detail.observations.filter { region == null || it.observerIata.equals(region, true) }
-        return distinctRoutes(observations.map { it.resolvedPath.orEmpty() })
+        return routeOptions(observations.map { HeardPath(it.resolvedPath.orEmpty(), RouteHearing(it.observerName?.takeIf(String::isNotBlank) ?: "Observer ${it.id}", it.observerIata, it.snr, it.rssi)) })
     }
     fun completeRoutes(id: String, hash: String) {
         if (browse == null) return
@@ -254,9 +265,9 @@ internal fun AppShell(
             if (complete.isEmpty() || host != preferences.host) return@launch
             val current = replay
             when {
-                // Same replay, same id: routes are added after the one playing, which keeps going.
-                current?.packetId == id -> mergeReplayRoutes(current.keys, complete).takeIf { it.size > current.keys.size }?.let { merged ->
-                    replay = current.copy(routes = placedRoutes(merged), keys = merged)
+                // Same replay, same id: routes (and who heard them) are added after the one playing, which keeps going.
+                current?.packetId == id -> mergeRouteOptions(current.options, complete).takeIf { it != current.options }?.let { merged ->
+                    replay = current.copy(routes = placedRoutes(merged), options = merged)
                 }
                 // Selected with no route in its row, but the full list has one.
                 panelPacket == id -> startReplay(complete, 0, id)

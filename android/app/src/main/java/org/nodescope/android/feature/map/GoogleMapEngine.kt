@@ -456,7 +456,7 @@ internal class RouteLayer(context: Context) : View(context) {
         val projection = map.projection
         fun screen(point: Coordinate) = projection.toScreenLocation(LatLng(point.latitude, point.longitude))
         // Names first, under the routes, as the CARTO layers stack.
-        if (labels) drawLabels(canvas, ::screen)
+        if (labels) drawLabels(canvas, labelNodes, ::screen)
         for (line in frame.lines) {
             path.reset()
             line.points.forEachIndexed { index, point ->
@@ -474,13 +474,17 @@ internal class RouteLayer(context: Context) : View(context) {
         }
         for ((point, color) in frame.heads) dot(canvas, screen(point), 3.5f, 0xFFFFFFFF.toInt(), 1.5f, parseColor(color))
         for (anchor in anchors) dot(canvas, screen(anchor.coordinate), 6f, roleColors[anchor.role.lowercase()] ?: 0xFF65DDB4.toInt(), 2f, 0xFFFFFFFF.toInt())
+        // A replayed route's observers are always labelled, as on CARTO.
+        val receivers = anchors.filter { it.role == "observer" && it.name != null }
+        if (receivers.isNotEmpty()) drawLabels(canvas, receivers, ::screen, fresh = !labels)
     }
 
-    private fun drawLabels(canvas: Canvas, screen: (Coordinate) -> android.graphics.Point) {
-        placedLabels.clear()
+    /** [fresh] starts collision checks over; otherwise these labels also avoid ones already drawn. */
+    private fun drawLabels(canvas: Canvas, markers: List<MapMarker>, screen: (Coordinate) -> android.graphics.Point, fresh: Boolean = true) {
+        if (fresh) placedLabels.clear()
         val textColor = if (lightLabels) 0xFFFFFFFF.toInt() else 0xFF14243A.toInt()
         val haloColor = if (lightLabels) 0xB8000000.toInt() else 0xD9FFFFFF.toInt()
-        for (node in labelNodes) {
+        for (node in markers) {
             val name = node.name?.takeIf(String::isNotBlank) ?: continue
             val at = screen(node.coordinate)
             if (at.x < 0 || at.y < 0 || at.x > width || at.y > height) continue
