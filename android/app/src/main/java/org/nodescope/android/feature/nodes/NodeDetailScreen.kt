@@ -1,11 +1,19 @@
 package org.nodescope.android.feature.nodes
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.graphics.Bitmap
+import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.CallMade
@@ -16,13 +24,21 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
+import com.google.zxing.qrcode.QRCodeWriter
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import org.nodescope.android.core.design.*
@@ -99,6 +115,7 @@ private fun IdentityCard(node: MeshNode, publicKey: String, favorite: Boolean, n
     val copy = rememberCopyAction()
     val context = LocalContext.current
     var menuOpen by remember { mutableStateOf(false) }
+    var meshCoreContact by remember { mutableStateOf<MeshCoreContactLink?>(null) }
     var identityExpanded by rememberSaveable(publicKey) { mutableStateOf(false) }
     DetailCard {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -121,6 +138,10 @@ private fun IdentityCard(node: MeshNode, publicKey: String, favorite: Boolean, n
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(text = { Text("Copy key") }, leadingIcon = { Icon(Icons.Outlined.ContentCopy, null) },
                         onClick = { menuOpen = false; copy("Public key", publicKey, false) })
+                    MeshCoreContactLink.from(node.name, publicKey, node.role)?.let { contact ->
+                        DropdownMenuItem(text = { Text("Add to MeshCore") }, leadingIcon = { Icon(Icons.Outlined.QrCode2, null) },
+                            onClick = { menuOpen = false; meshCoreContact = contact })
+                    }
                     DropdownMenuItem(text = { Text("Share") }, leadingIcon = { Icon(Icons.Outlined.Share, null) }, onClick = {
                         menuOpen = false
                         context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
@@ -129,6 +150,7 @@ private fun IdentityCard(node: MeshNode, publicKey: String, favorite: Boolean, n
                 }
             }
         }
+        meshCoreContact?.let { MeshCoreContactSheet(it, onDismiss = { meshCoreContact = null }) }
         if (node.coordinate != null) Button(onClick = { onMap(node) }) {
             Icon(Icons.Outlined.Map, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Show on map")
         }
@@ -308,4 +330,66 @@ private fun DetailCard(title: String? = null, icon: ImageVector? = null, content
             content()
         }
     }
+}
+
+/**
+ * A QR code plus open/copy/share actions for a node's MeshCore contact link, matching iOS.
+ * The QR is the path that works everywhere: apps that handle `meshcore://` open the link
+ * directly (Android offers a chooser when several do), and other apps can scan or paste it.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MeshCoreContactSheet(contact: MeshCoreContactLink, onDismiss: () -> Unit) {
+    val copy = rememberCopyAction()
+    val context = LocalContext.current
+    val qr = remember(contact.url) { meshCoreQrBitmap(contact.url) }
+    var openFailed by remember { mutableStateOf(false) }
+    var copied by remember { mutableStateOf(false) }
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text("Add to MeshCore", style = MaterialTheme.typography.titleLarge)
+            Image(qr.asImageBitmap(), null, filterQuality = FilterQuality.None,
+                modifier = Modifier.widthIn(max = 280.dp).fillMaxWidth().aspectRatio(1f)
+                    .background(Color.White, RoundedCornerShape(16.dp)).padding(14.dp)
+                    .semantics { contentDescription = "QR code for adding ${contact.name} as a MeshCore contact" })
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(contact.name, style = MaterialTheme.typography.titleMedium)
+                Text(contact.typeLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Button(onClick = {
+                openFailed = try {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(contact.url))); false
+                } catch (_: ActivityNotFoundException) { true }
+            }, Modifier.fillMaxWidth()) {
+                Icon(Icons.AutoMirrored.Outlined.OpenInNew, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Open in MeshCore")
+            }
+            OutlinedButton(onClick = { copy("MeshCore contact", contact.url, false); copied = true }, Modifier.fillMaxWidth()) {
+                Icon(if (copied) Icons.Outlined.Check else Icons.Outlined.ContentCopy, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp)); Text(if (copied) "Copied" else "Copy contact link")
+            }
+            OutlinedButton(onClick = {
+                context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
+                    .putExtra(Intent.EXTRA_TEXT, contact.url), "Share MeshCore contact"))
+            }, Modifier.fillMaxWidth()) {
+                Icon(Icons.Outlined.Share, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Share contact link")
+            }
+            if (openFailed) Text("No installed app opens MeshCore links. Scan the code from your MeshCore app, or copy the link and import it there.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+            Text("Scan this code from your MeshCore app\u2019s add-contact screen on another phone, or open it directly on this one. Other MeshCore apps can import the copied link or the code.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        }
+    }
+}
+
+/** One pixel per module; the Image scales it up without filtering so edges stay sharp. */
+private fun meshCoreQrBitmap(text: String): Bitmap {
+    val matrix = QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, 0, 0,
+        mapOf(EncodeHintType.MARGIN to 0, EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M))
+    val pixels = IntArray(matrix.width * matrix.height) { i ->
+        if (matrix[i % matrix.width, i / matrix.width]) android.graphics.Color.BLACK else android.graphics.Color.WHITE
+    }
+    return Bitmap.createBitmap(pixels, matrix.width, matrix.height, Bitmap.Config.ARGB_8888)
 }

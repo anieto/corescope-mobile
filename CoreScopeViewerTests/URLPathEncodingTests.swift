@@ -55,6 +55,38 @@ struct NodeScopeDeepLinkTests {
     }
 }
 
+struct MeshCoreContactLinkTests {
+    private let key = "9CD8FCF22A47333B591D96A2B848B73F457B1BB1A3EA2453A885F9E5787765B1"
+
+    @Test func buildsTheMeshCoreAppContactLink() {
+        let link = try! #require(MeshCoreContactLink(name: "Example Contact", publicKey: key, role: "companion"))
+        #expect(link.urlString == "meshcore://contact/add?name=Example%20Contact&public_key=\(key.lowercased())&type=1")
+    }
+
+    @Test func mapsRolesToContactTypes() {
+        #expect(MeshCoreContactLink(name: "R", publicKey: key, role: "repeater")?.type == 2)
+        #expect(MeshCoreContactLink(name: "R", publicKey: key, role: "Room")?.type == 3)
+        #expect(MeshCoreContactLink(name: "S", publicKey: key, role: "sensor")?.type == 4)
+        #expect(MeshCoreContactLink(name: "?", publicKey: key, role: "unknown") == nil)
+    }
+
+    @Test func escapesReservedCharactersInNames() {
+        let link = try! #require(MeshCoreContactLink(name: "A+B & C=D #1", publicKey: key, role: "repeater"))
+        #expect(link.urlString.hasPrefix("meshcore://contact/add?name=A%2BB%20%26%20C%3DD%20%231&"))
+        let items = URLComponents(url: try! #require(link.url), resolvingAgainstBaseURL: false)?.queryItems
+        #expect(items?.first { $0.name == "name" }?.value == "A+B & C=D #1")
+    }
+
+    @Test func fallsBackToAKeyPrefixForUnnamedNodes() {
+        #expect(MeshCoreContactLink(name: "  ", publicKey: key, role: "repeater")?.name == "9CD8FCF2")
+    }
+
+    @Test func rejectsIncompleteKeys() {
+        #expect(MeshCoreContactLink(name: "R", publicKey: "9cd8fcf2", role: "repeater") == nil)
+        #expect(MeshCoreContactLink(name: "R", publicKey: String(repeating: "z", count: 64), role: "repeater") == nil)
+    }
+}
+
 struct ChannelNameNormalizationTests {
     @Test func usesMeshCoreWellKnownPublicChannelKey() {
         #expect(ChannelCrypto.derivedKeyHex(for: "Public") == ChannelCrypto.publicKeyHex)

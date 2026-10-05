@@ -25,8 +25,8 @@ android {
         applicationId = "org.nodescope.android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 9
-        versionName = "0.7.7"
+        versionCode = 10
+        versionName = "0.7.8"
         buildConfigField("String", "CARTO_API_KEY", "\"" + cartoKey.replace("\\", "\\\\").replace("\"", "\\\"") + "\"")
         buildConfigField("boolean", "MAPS_CONFIGURED", cartoKey.isNotBlank().toString())
         buildConfigField("boolean", "GOOGLE_MAPS_CONFIGURED", googleMapsKey.isNotBlank().toString())
@@ -85,6 +85,8 @@ dependencies {
     // Google Maps (beta): the native SDK with ordinary markers and no map ID (the free Maps SDK SKU).
     implementation("com.google.android.gms:play-services-maps:20.0.0")
     implementation("com.google.maps.android:android-maps-utils:4.0.0")
+    // QR encoding for MeshCore contact codes (iOS uses Core Image's built-in generator).
+    implementation("com.google.zxing:core:3.5.3")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
