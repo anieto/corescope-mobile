@@ -360,8 +360,11 @@ private fun MeshCoreContactSheet(contact: MeshCoreContactLink, onDismiss: () -> 
                 Text(contact.typeLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Button(onClick = {
+                // A new task keeps MeshCore in its own recents entry; without it, MeshCore stacks
+                // inside NodeScope's task and Back/relaunch can't return to NodeScope.
                 openFailed = try {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(contact.url))); false
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(contact.url))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); false
                 } catch (_: ActivityNotFoundException) { true }
             }, Modifier.fillMaxWidth()) {
                 Icon(Icons.AutoMirrored.Outlined.OpenInNew, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Open in MeshCore")
