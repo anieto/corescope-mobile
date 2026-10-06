@@ -30,7 +30,7 @@
     {
       "id": "comchan",
       "icon": "icons/comchan.png",
-      "name": "ComChan",
+      "name": "Comchan",
       "host": "analyzer.comchan.net",
       "subtitle": "Central Texas Meshcore",
       "isDefault": false

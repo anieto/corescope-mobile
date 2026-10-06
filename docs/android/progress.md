@@ -895,3 +895,15 @@ Suggested by a tester (CoderNemesis): say which observer recorded each route.
   the path (when its position is known), with the observer as a labelled endpoint on CARTO and
   Google (`ReplayRoute.receivers`, `RouteOption.receivers`). Framing includes them.
 - Not yet on iOS.
+
+## 0.7.8 (code 10) — 2026-10-05: add a node to MeshCore
+
+Suggested by a tester (CoderNemesis): the copied public key can't be imported into MeshCore
+("invalid MeshCore contact data"); the app wants a full contact link.
+- `MeshCoreContactLink` builds `meshcore://contact/add?name=…&public_key=…&type=…` (types 1
+  companion, 2 repeater, 3 room server, 4 sensor; format from MeshCore's `docs/qr_codes.md`).
+  Names are strictly percent-encoded ("+" too); unnamed nodes fall back to the key prefix.
+- Node actions menu → "Add to MeshCore": a sheet with the QR code (ZXing core), "Open in
+  MeshCore" (ACTION_VIEW; Android shows a chooser if several apps claim the scheme), copy, and
+  share. Hidden for roles with no MeshCore contact type.
+- Same feature on iOS (`MeshCoreContactSheet` in NodeDetailScreen.swift, Core Image QR).

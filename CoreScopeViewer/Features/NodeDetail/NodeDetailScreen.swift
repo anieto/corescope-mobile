@@ -1,3 +1,4 @@
+import CoreImage.CIFilterBuiltins
 import SwiftUI
 import UIKit
 
@@ -11,6 +12,7 @@ struct NodeDetailScreen: View {
     @State private var nodeCatalogViewModel = MapViewModel()
     @State private var linkedNodesByPublicKey: [String: MeshNode] = [:]
     @State private var selectedLinkedNode: MeshNode?
+    @State private var meshCoreContact: MeshCoreContactLink?
 
     var body: some View {
         ScrollView {
@@ -89,6 +91,9 @@ struct NodeDetailScreen: View {
         .navigationDestination(item: $selectedLinkedNode) { linkedNode in
             NodeDetailScreen(node: linkedNode)
         }
+        .sheet(item: $meshCoreContact) { contact in
+            MeshCoreContactSheet(contact: contact)
+        }
         .onChange(of: nodeCatalogViewModel.nodes) {
             linkedNodesByPublicKey = nodeCatalogViewModel.nodesByPubkey
         }
@@ -112,6 +117,14 @@ struct NodeDetailScreen: View {
                 UIPasteboard.general.string = displayedNode.publicKey
             } label: {
                 Label("Copy Public Key", systemImage: "doc.on.doc")
+            }
+
+            if let contact = MeshCoreContactLink(node: displayedNode) {
+                Button {
+                    meshCoreContact = contact
+                } label: {
+                    Label("Add to MeshCore", systemImage: "qrcode")
+                }
             }
 
             if let url = NodeScopeDeepLink.node(displayedNode.publicKey).url {
@@ -596,5 +609,121 @@ private struct NodeDetailCard<Content: View>: View {
         }
         .padding(16)
         .instrumentCard()
+    }
+}
+
+extension MeshCoreContactLink: Identifiable {
+    var id: String { urlString }
+}
+
+/// A QR code plus open/copy/share actions for a node's MeshCore contact link.
+/// The QR is the path that works everywhere: the MeshCore app opens the link
+/// directly, and other MeshCore apps can scan or paste it.
+private struct MeshCoreContactSheet: View {
+    let contact: MeshCoreContactLink
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+    @State private var openFailed = false
+    @State private var copied = false
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    if let image = MeshCoreContactSheet.qrImage(for: contact.urlString) {
+                        Image(uiImage: image)
+                            .interpolation(.none)
+                            .resizable()
+                            .scaledToFit()
+                            .padding(14)
+                            .background(.white, in: RoundedRectangle(cornerRadius: 16))
+                            .frame(maxWidth: 280)
+                            .accessibilityLabel("QR code for adding \(contact.name) as a MeshCore contact")
+                    }
+
+                    VStack(spacing: 4) {
+                        Text(contact.name)
+                            .font(.headline)
+                        Text(typeLabel)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    VStack(spacing: 10) {
+                        if let url = contact.url {
+                            Button {
+                                openURL(url) { accepted in
+                                    openFailed = !accepted
+                                }
+                            } label: {
+                                Label("Open in MeshCore", systemImage: "arrow.up.forward.app")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+
+                        Button {
+                            UIPasteboard.general.string = contact.urlString
+                            copied = true
+                        } label: {
+                            Label(copied ? "Copied" : "Copy Contact Link",
+                                  systemImage: copied ? "checkmark" : "doc.on.doc")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+
+                        ShareLink(item: contact.urlString) {
+                            Label("Share Contact Link", systemImage: "square.and.arrow.up")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .controlSize(.large)
+
+                    if openFailed {
+                        Text("No installed app opened MeshCore links. Scan the code from your MeshCore app, or copy the link and import it there.")
+                            .font(.footnote)
+                            .foregroundStyle(.orange)
+                            .multilineTextAlignment(.center)
+                    }
+
+                    Text("Scan this code from your MeshCore app\u{2019}s add-contact screen on another phone, or open it directly on this one. Other MeshCore apps can import the copied link or the code.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(20)
+                .frame(maxWidth: .infinity)
+            }
+            .navigationTitle("Add to MeshCore")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.large])
+    }
+
+    private var typeLabel: String {
+        switch contact.type {
+        case 1: "Companion"
+        case 2: "Repeater"
+        case 3: "Room Server"
+        default: "Sensor"
+        }
+    }
+
+    static func qrImage(for text: String) -> UIImage? {
+        let filter = CIFilter.qrCodeGenerator()
+        filter.message = Data(text.utf8)
+        filter.correctionLevel = "M"
+        guard let output = filter.outputImage?
+            .transformed(by: CGAffineTransform(scaleX: 10, y: 10)),
+              let cgImage = CIContext().createCGImage(output, from: output.extent) else {
+            return nil
+        }
+        return UIImage(cgImage: cgImage)
     }
 }
