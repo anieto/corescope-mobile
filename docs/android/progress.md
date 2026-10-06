@@ -907,3 +907,6 @@ Suggested by a tester (CoderNemesis): the copied public key can't be imported in
   MeshCore" (ACTION_VIEW; Android shows a chooser if several apps claim the scheme), copy, and
   share. Hidden for roles with no MeshCore contact type.
 - Same feature on iOS (`MeshCoreContactSheet` in NodeDetailScreen.swift, Core Image QR).
+- Build 11 (2026-10-06): "Open in MeshCore" starts MeshCore in a new task. A tester found that
+  without it MeshCore opened inside NodeScope's task: Back minimized it and relaunching NodeScope
+  returned to MeshCore.
