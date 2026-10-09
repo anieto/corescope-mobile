@@ -299,19 +299,32 @@ struct MapScreen: View {
                         .padding(.bottom, 12)
                 }
                 .overlay(alignment: .bottom) {
-                    if isReplayMode {
+                    if packetReplayStore.isReplayActive || isReplayMode {
                         HStack(spacing: 0) {
                             VStack(spacing: 8) {
+                                if !isReplayMode {
+                                    Text(isChangingRegion || viewModel.isLoading
+                                         ? "Loading route locations…"
+                                         : "Not enough known locations to replay this route")
+                                        .font(.caption)
+                                        .multilineTextAlignment(.center)
+                                        .padding(8)
+                                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                                }
                                 replayControl
-                                routeOptionsControl
+                                if isReplayMode {
+                                    routeOptionsControl
+                                }
                             }
                             // Stay between the locate and zoom controls on narrow phones.
                             .padding(.horizontal, 64)
                             .frame(maxWidth: .infinity)
 
                             if centersBottomControlsInLeadingPane {
+                                // Reserve horizontal space without stretching the bottom overlay vertically.
                                 Color.clear
                                     .frame(maxWidth: .infinity)
+                                    .frame(height: 0)
                             }
                         }
                         .padding(.bottom, viewModel.nodes.isEmpty ? 12 : 44)
@@ -406,7 +419,9 @@ struct MapScreen: View {
             async let minimumLoaderDuration: Void = keepRegionLoaderVisible()
             defer {
                 isChangingRegion = false
-                replayPendingPacketIfNeeded()
+                if !Task.isCancelled {
+                    queuePacketReplay()
+                }
             }
 
             if analyzerChanged {
@@ -479,9 +494,15 @@ struct MapScreen: View {
             guard isLoaded else { return }
             validateSelectedObserver()
             rebuildPathsAfterLoadingObservers()
+            if !isChangingRegion {
+                replayPendingPacketIfNeeded()
+            }
         }
         .onChange(of: viewModel.nodes) {
             updateDisplayedNodes()
+            if !isChangingRegion {
+                replayPendingPacketIfNeeded()
+            }
         }
         .onChange(of: nodeFilters) {
             nodeFilters.persist(for: settings.host)
@@ -507,7 +528,10 @@ struct MapScreen: View {
             handleNavigationRequest()
         }
         .onChange(of: packetReplayStore.selectedRouteIndex) {
-            guard isReplayMode else { return }
+            guard isReplayMode else {
+                queuePacketReplay()
+                return
+            }
             // Only re-fit the camera when the newly selected route would
             // actually fall outside the current viewport — switching between
             // routes that share the same on-screen area shouldn't jump the map.
@@ -1042,10 +1066,14 @@ struct MapScreen: View {
     private var replayControl: some View {
         HStack(spacing: 4) {
             Button {
-                replayPacketRoute(recenter: false)
+                if isReplayMode {
+                    replayPacketRoute(recenter: false)
+                } else {
+                    queuePacketReplay()
+                }
             } label: {
                 Label(
-                    isReplayPlaying ? "Replay" : "Play Again",
+                    !isReplayMode ? "Retry Replay" : isReplayPlaying ? "Replay" : "Play Again",
                     systemImage: isReplayPlaying ? "play.fill" : "arrow.counterclockwise"
                 )
                 .font(.caption.weight(.semibold))
@@ -1055,12 +1083,13 @@ struct MapScreen: View {
                 .background(Color.accentColor, in: Capsule())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(isReplayPlaying ? "Replay in progress" : "Play replay again")
+            .accessibilityLabel(!isReplayMode ? "Retry route replay" : isReplayPlaying ? "Replay in progress" : "Play replay again")
 
             Button("Live") {
                 packetReplayStore.stopReplay()
                 stopPacketReplay()
             }
+            .accessibilityLabel("Resume live traffic")
             .font(.caption.weight(.semibold))
             .foregroundStyle(mapControlAccentColor)
             .padding(.horizontal, 12)
@@ -1348,9 +1377,9 @@ struct MapScreen: View {
             return
         }
         guard pendingReplayRequestID == packetReplayStore.requestID else { return }
-        guard currentRouteCoordinates().count >= 2 else { return }
-        pendingReplayRequestID = nil
-        replayPacketRoute()
+        if replayPacketRoute() {
+            pendingReplayRequestID = nil
+        }
     }
 
     private func currentRouteCoordinates() -> [CLLocationCoordinate2D] {
@@ -1398,13 +1427,21 @@ struct MapScreen: View {
         }
     }
 
-    private func replayPacketRoute(recenter: Bool = true) {
+    @discardableResult
+    private func replayPacketRoute(recenter: Bool = true) -> Bool {
+        guard packetReplayStore.isReplayActive else { return false }
         let receivers = currentReceivers()
         let routeCoordinates = packetReplayStore.resolvedPath.compactMap { publicKey in
             validCoordinate(viewModel.nodesByPubkey[publicKey.lowercased()]?.coordinate)
         }
         let coordinates = routeCoordinates + receivers.map(\.coordinate)
-        guard routeCoordinates.count >= 2 else { return }
+        guard !routeCoordinates.isEmpty, coordinates.count >= 2 else {
+            // Do not leave the previous packet's replay visible when the new
+            // route is waiting for locations. Keep this request retryable.
+            stopPacketReplay()
+            pendingReplayRequestID = packetReplayStore.requestID
+            return false
+        }
 
         let routeColor: Color = colorScheme == .dark
             ? Color(red: 0.35, green: 0.78, blue: 1.0)
@@ -1469,12 +1506,14 @@ struct MapScreen: View {
         isReplayMode = true
         hasCenteredCamera = true
 
-        guard recenter else { return }
+        guard recenter else { return true }
 
-        guard let routeMapRect = replayRouteMapRect(for: coordinates) else { return }
-        withAnimation {
-            cameraPosition = .rect(routeMapRect)
+        if let routeMapRect = replayRouteMapRect(for: coordinates) {
+            withAnimation {
+                cameraPosition = .rect(routeMapRect)
+            }
         }
+        return true
     }
 
     private func replayRouteMapRect(for coordinates: [CLLocationCoordinate2D]) -> MKMapRect? {

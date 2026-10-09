@@ -206,17 +206,27 @@ private struct MapLivePacketSidebar: View {
         List {
             LivePacketFeedHeader(
                 isConnected: liveFeed.isConnected,
-                isPaused: selectedGroupID != nil,
+                isPaused: isFeedPaused,
                 isCompact: true,
                 transmissionCount: feedModel.groups.count,
                 observationCount: feedModel.groups.reduce(0) { $0 + $1.observationCount },
-                scope: selectedGroupID == nil
-                    ? regionFilter.selectedRegion.map(regionFilter.label(for:)) ?? String(localized: "Entire network")
-                    : replayStore.isReplayActive
-                        ? String(localized: "Replay paused")
-                        : String(localized: "Packet selected")
+                scope: replayStore.isReplayActive
+                    ? String(localized: "Route replay")
+                    : selectedGroupID != nil
+                        ? String(localized: "Packet selected")
+                        : regionFilter.selectedRegion.map(regionFilter.label(for:)) ?? String(localized: "Entire network")
             )
             .packetFeedListRow(top: 14, bottom: 10)
+
+            if isFeedPaused {
+                Button(action: resumeLiveFeed) {
+                    Label("Resume Live", systemImage: "play.fill")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.borderless)
+                .packetFeedListRow()
+            }
 
             Section {
                 ForEach(feedModel.groups) { group in
@@ -265,7 +275,7 @@ private struct MapLivePacketSidebar: View {
                     .accessibilityHint(accessibilityHint(for: group))
                 }
             } header: {
-                Text(selectedGroupID == nil ? "Incoming Traffic" : "Packet Selected")
+                Text(isFeedPaused ? "Paused Traffic" : "Incoming Traffic")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(.secondary)
                     .textCase(.uppercase)
@@ -307,7 +317,7 @@ private struct MapLivePacketSidebar: View {
             }
         }
         .overlay {
-            if feedModel.groups.isEmpty && (regionFilter.selectedRegion == nil || observerRegionLookup.isLoaded) {
+            if !isFeedPaused && feedModel.groups.isEmpty && (regionFilter.selectedRegion == nil || observerRegionLookup.isLoaded) {
                 ContentUnavailableView(
                     liveFeed.isConnected ? "Waiting for Packets" : "Not Connected",
                     systemImage: "dot.radiowaves.left.and.right"
@@ -325,7 +335,7 @@ private struct MapLivePacketSidebar: View {
         .onChange(of: filterType) { resumeLiveFeed() }
         .onChange(of: observerRegionLookup.isLoaded) { rebuildGroupsUnlessPaused() }
         .onChange(of: replayStore.isReplayActive) { _, isActive in
-            if !isActive, selectedGroupID != nil {
+            if !isActive {
                 if keepsSelectionWhenReplayStops {
                     keepsSelectionWhenReplayStops = false
                     return
@@ -379,8 +389,12 @@ private struct MapLivePacketSidebar: View {
         )
     }
 
+    private var isFeedPaused: Bool {
+        selectedGroupID != nil || replayStore.isReplayActive
+    }
+
     private func rebuildGroupsUnlessPaused() {
-        guard selectedGroupID == nil else { return }
+        guard !isFeedPaused else { return }
         rebuildGroups()
     }
 
@@ -395,6 +409,7 @@ private struct MapLivePacketSidebar: View {
     }
 
     private func resumeLiveFeed() {
+        keepsSelectionWhenReplayStops = false
         replayStore.stopReplay()
         selectedGroupID = nil
         rebuildGroups()
@@ -649,7 +664,7 @@ private struct LivePacketFeedHeader: View {
                     .fill(isPaused ? NodeScopeStyle.activity : isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
                     .frame(width: 8, height: 8)
                 Text(isPaused
-                    ? "Paused on selected packet"
+                    ? "Live feed paused"
                     : isConnected ? "Listening for live traffic" : "Reconnecting to analyzer")
                     .font(.subheadline.weight(.semibold))
             }

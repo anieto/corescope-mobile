@@ -7,6 +7,10 @@ final class ChannelsViewModel {
     var channels: [MeshChannel] = []
     var messages: [ChannelMessage] = []
     var isLoading = false
+    var isLoadingOlderMessages = false
+    var hasOlderMessages = false
+    private var loadedMessageHash: String?
+    private var nextMessageOffset = 0
     var errorMessage: String?
     var lastUpdatedAt: Date?
 
@@ -18,6 +22,8 @@ final class ChannelsViewModel {
         if configuredSourceIdentifier != client.cacheIdentifier {
             channels = []
             messages = []
+            loadedMessageHash = nil
+            hasOlderMessages = false
             lastUpdatedAt = nil
             errorMessage = nil
             configuredSourceIdentifier = client.cacheIdentifier
@@ -51,19 +57,68 @@ final class ChannelsViewModel {
 
     func loadMessages(hash: String, forceRefresh: Bool = false) async {
         guard let apiClient else { return }
+        if loadedMessageHash != hash {
+            messages = []
+            hasOlderMessages = false
+            loadedMessageHash = hash
+        }
         isLoading = messages.isEmpty
         defer { isLoading = false }
         do {
             let key = ChannelMessagesCache.Key(source: apiClient.cacheIdentifier, hash: hash)
-            messages = try await ChannelMessagesCache.shared.load(
+            let response = try await ChannelMessagesCache.shared.load(
                 for: key,
                 using: apiClient,
                 forceRefresh: forceRefresh
             )
+            guard configuredSourceIdentifier == apiClient.cacheIdentifier,
+                  loadedMessageHash == hash else { return }
+            let existingIDs = Set(messages.map(\.id))
+            let incomingIDs = Set(response.messages.map(\.id))
+            // A disconnected interval may contain more than one page. Restart
+            // pagination at this page's boundary so that interval can be loaded.
+            if existingIDs.isDisjoint(with: incomingIDs) {
+                nextMessageOffset = response.messages.count
+            } else {
+                nextMessageOffset += incomingIDs.subtracting(existingIDs).count
+            }
+            mergeMessages(response.messages)
+            hasOlderMessages = nextMessageOffset < response.total
             lastUpdatedAt = .now
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func loadOlderMessages(hash: String) async {
+        guard let apiClient, hasOlderMessages, !isLoadingOlderMessages else { return }
+        isLoadingOlderMessages = true
+        defer { isLoadingOlderMessages = false }
+        do {
+            let response = try await ChannelMessagesCache.shared.load(
+                for: .init(source: apiClient.cacheIdentifier, hash: hash, offset: nextMessageOffset),
+                using: apiClient,
+                forceRefresh: true
+            )
+            guard configuredSourceIdentifier == apiClient.cacheIdentifier,
+                  loadedMessageHash == hash else { return }
+            nextMessageOffset += response.messages.count
+            mergeMessages(response.messages)
+            hasOlderMessages = !response.messages.isEmpty && nextMessageOffset < response.total
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func mergeMessages(_ incoming: [ChannelMessage]) {
+        var byID = Dictionary(messages.map { ($0.id, $0) }, uniquingKeysWith: { _, latest in latest })
+        for message in incoming {
+            byID[message.id] = message
+        }
+        messages = byID.values.sorted {
+            $0.timestamp == $1.timestamp ? $0.id < $1.id : $0.timestamp < $1.timestamp
         }
     }
 
