@@ -4,6 +4,8 @@ import SwiftUI
 struct AdaptiveListDetailNavigation<Sidebar: View, Detail: View>: View {
     @Binding var preferredCompactColumn: NavigationSplitViewColumn
     let detailNavigationID: AnyHashable?
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var isHingedDevice: Bool?
     @ViewBuilder let sidebar: Sidebar
     @ViewBuilder let detail: Detail
 
@@ -20,20 +22,44 @@ struct AdaptiveListDetailNavigation<Sidebar: View, Detail: View>: View {
     }
 
     var body: some View {
-        NavigationSplitView(preferredCompactColumn: $preferredCompactColumn) {
-            sidebar
-                .navigationSplitViewColumnWidth(min: 320, ideal: 380, max: 460)
-        } detail: {
-            NavigationStack {
-                detail
+        Group {
+            if usesDuoPaneOrder {
+                DuoTwoPaneLayout {
+                    NavigationStack {
+                        detail
+                    }
+                    .id(detailNavigationID)
+                } secondary: {
+                    NavigationStack {
+                        sidebar
+                    }
+                }
+                .transition(.opacity)
+            } else {
+                NavigationSplitView(preferredCompactColumn: $preferredCompactColumn) {
+                    sidebar
+                        .navigationSplitViewColumnWidth(min: 280, ideal: 340, max: 420)
+                } detail: {
+                    NavigationStack {
+                        detail
+                    }
+                    .id(detailNavigationID)
+                }
+                .navigationSplitViewStyle(.balanced)
+                .opacity(isHingedDevice == nil ? 0 : 1)
+                .accessibilityHidden(isHingedDevice == nil)
+                .transition(.opacity)
             }
-            .id(detailNavigationID)
         }
-        .navigationSplitViewStyle(.balanced)
         .ignoresSafeArea(.container, edges: .top)
         .background {
             NodeScopeBackground()
                 .ignoresSafeArea(.container, edges: .top)
         }
+        .observesDuoHinge($isHingedDevice)
+    }
+
+    private var usesDuoPaneOrder: Bool {
+        isHingedDevice == true && horizontalSizeClass == .regular
     }
 }

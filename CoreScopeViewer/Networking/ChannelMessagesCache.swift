@@ -9,16 +9,17 @@ actor ChannelMessagesCache {
     struct Key: Hashable, Sendable {
         let source: String
         let hash: String
+        var offset: Int = 0
     }
 
     private struct Entry: Sendable {
-        let messages: [ChannelMessage]
+        let response: ChannelMessagesResponse
         let loadedAt: Date
     }
 
     private let lifetime: TimeInterval = 30
     private var entries: [Key: Entry] = [:]
-    private var inFlightLoads: [Key: Task<[ChannelMessage], Error>] = [:]
+    private var inFlightLoads: [Key: Task<ChannelMessagesResponse, Error>] = [:]
 
     func clear() {
         inFlightLoads.values.forEach { $0.cancel() }
@@ -30,11 +31,11 @@ actor ChannelMessagesCache {
         for key: Key,
         using apiClient: APIClient,
         forceRefresh: Bool = false
-    ) async throws -> [ChannelMessage] {
+    ) async throws -> ChannelMessagesResponse {
         if !forceRefresh,
            let entry = entries[key],
            Date().timeIntervalSince(entry.loadedAt) < lifetime {
-            return entry.messages
+            return entry.response
         }
 
         if let inFlightLoad = inFlightLoads[key] {
@@ -43,15 +44,19 @@ actor ChannelMessagesCache {
 
         let load = Task { [apiClient] in
             let response: ChannelMessagesResponse = try await apiClient.get(
-                "/api/channels/\(key.hash.urlPathComponentEncoded)/messages"
+                "/api/channels/\(key.hash.urlPathComponentEncoded)/messages",
+                query: [
+                    URLQueryItem(name: "limit", value: "500"),
+                    URLQueryItem(name: "offset", value: String(key.offset))
+                ]
             )
-            return response.messages
+            return response
         }
         inFlightLoads[key] = load
 
         do {
             let messages = try await load.value
-            entries[key] = Entry(messages: messages, loadedAt: Date())
+            entries[key] = Entry(response: messages, loadedAt: Date())
             inFlightLoads[key] = nil
             return messages
         } catch {

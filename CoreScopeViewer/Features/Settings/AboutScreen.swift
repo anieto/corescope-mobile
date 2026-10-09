@@ -106,7 +106,6 @@ struct AboutScreen: View {
         }
         .adaptiveContentWidth()
         .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
-        .floatingDockScrollClearance()
         .navigationTitle("About")
         .navigationBarTitleDisplayMode(.inline)
     }

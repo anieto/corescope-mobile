@@ -120,7 +120,6 @@ struct SupportDevelopmentScreen: View {
         }
         .adaptiveContentWidth()
         .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
-        .floatingDockScrollClearance()
         .navigationTitle("Support Development")
         .navigationBarTitleDisplayMode(.inline)
         .task {

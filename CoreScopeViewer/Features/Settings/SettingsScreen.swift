@@ -27,7 +27,6 @@ struct SettingsScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     SettingsHeader(isConnected: liveFeed.isConnected)
-                        .iPadWindowControlsClearance()
 
                     SettingsPanel(title: "Appearance", symbol: "circle.lefthalf.filled") {
                         Picker("Appearance", selection: $appearanceSettings.mode) {
@@ -132,7 +131,6 @@ struct SettingsScreen: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 18)
-                .padding(.bottom, 112)
                 .adaptiveContentWidth()
             }
             .background(NodeScopeBackground())
@@ -142,7 +140,6 @@ struct SettingsScreen: View {
                 if let sourceSaveStatus {
                     SettingsSaveBanner(status: sourceSaveStatus)
                         .padding(.horizontal, 20)
-                        .padding(.bottom, 104)
                         .accessibilityAddTraits(.isStaticText)
                 }
             }
@@ -271,7 +268,7 @@ private struct SettingsNavigationRow: View {
                 Text(value)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(2)
             }
             Spacer()
             Image(systemName: "chevron.right")
@@ -289,19 +286,16 @@ private struct ConnectionStatusRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                HStack(spacing: 7) {
-                    Circle()
-                        .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
-                        .frame(width: 9, height: 9)
-                    Text(isConnected ? "Connected" : "Disconnected")
-                        .font(.subheadline.weight(.semibold))
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    connectionStatus
+                    Spacer()
+                    hostLabel
                 }
-                Spacer()
-                Text(host)
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: 6) {
+                    connectionStatus
+                    hostLabel
+                }
             }
             if let error {
                 Label(error, systemImage: "exclamationmark.triangle.fill")
@@ -309,6 +303,24 @@ private struct ConnectionStatusRow: View {
                     .foregroundStyle(NodeScopeStyle.activity)
             }
         }
+    }
+
+    private var connectionStatus: some View {
+        HStack(spacing: 7) {
+            Circle()
+                .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
+                .frame(width: 9, height: 9)
+            Text(isConnected ? "Connected" : "Disconnected")
+                .font(.subheadline.weight(.semibold))
+        }
+        .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var hostLabel: some View {
+        Text(host)
+            .font(.caption.monospaced())
+            .foregroundStyle(.secondary)
+            .textSelection(.enabled)
     }
 }
 

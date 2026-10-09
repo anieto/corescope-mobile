@@ -7,6 +7,8 @@ struct MapScreen: View {
     let resetID: UUID
     var showLivePackets: (() -> Void)? = nil
     var togglePacketSidebar: (() -> Void)? = nil
+    var pinsPacketSidebarToggle = false
+    var centersBottomControlsInLeadingPane = false
     var bottomObscuredFraction: Double = 0
 
     @Environment(AnalyzerSettings.self) private var settings
@@ -51,6 +53,7 @@ struct MapScreen: View {
     @State private var displayUpdateTask: Task<Void, Never>?
     @State private var incomingEventTask: Task<Void, Never>?
     @State private var pendingMapTapTask: Task<Void, Never>?
+    @State private var viewportResizeTask: Task<Void, Never>?
     @State private var displayUpdateID = UUID()
     @State private var isSearchPresented = false
     @State private var isMapFiltersPresented = false
@@ -59,10 +62,6 @@ struct MapScreen: View {
     @State private var lastHandledNavigationRequestID: UUID?
     @State private var isMapCameraMoving = false
     @State private var mapViewportSize = CGSize.zero
-
-    // The map remains edge-to-edge, while interactive controls sit above the
-    // app-level floating dock rendered by RootTabView.
-    private let floatingDockClearance: CGFloat = 96
 
     private struct NodeCluster: Identifiable, Sendable {
         let id: String
@@ -159,19 +158,38 @@ struct MapScreen: View {
                 .onAppear { mapViewportSize = geometry.size }
                 .onChange(of: geometry.size) { _, size in
                     mapViewportSize = size
+                    viewportResizeTask?.cancel()
+                    viewportResizeTask = Task {
+                        try? await Task.sleep(for: .milliseconds(150))
+                        guard !Task.isCancelled else { return }
+                        refitReplayForVisibleMapArea()
+                    }
                 }
                 .onChange(of: bottomObscuredFraction) {
                     refitReplayForVisibleMapArea()
                 }
             }
                 .mapScope(mapScope)
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItemGroup(placement: .topBarLeading) {
-                        if let togglePacketSidebar {
+                    if isTabActive {
+                        if #available(iOS 27.0, *), pinsPacketSidebarToggle,
+                       let togglePacketSidebar {
+                        ToolbarItem(placement: .topBarPinnedTrailing) {
                             Button(action: togglePacketSidebar) {
                                 Image(systemName: "list.bullet.rectangle")
                             }
-                            .accessibilityLabel("Show live packets")
+                            .accessibilityLabel("Toggle live packets")
+                        }
+                        .visibilityPriority(.high)
+                    }
+
+                    ToolbarItemGroup(placement: .topBarLeading) {
+                        if !pinsPacketSidebarToggle, let togglePacketSidebar {
+                            Button(action: togglePacketSidebar) {
+                                Image(systemName: "list.bullet.rectangle")
+                            }
+                            .accessibilityLabel("Toggle live packets")
                         }
 
                         HStack(spacing: 6) {
@@ -215,6 +233,7 @@ struct MapScreen: View {
                             Image(systemName: "map")
                         }
 
+                    }
                     }
                 }
                 .navigationDestination(item: $selectedNode) { node in
@@ -272,32 +291,54 @@ struct MapScreen: View {
                         .accessibilityLabel("Center on my location")
                     }
                     .padding(.leading, 12)
-                    .padding(.bottom, floatingDockClearance)
+                    .padding(.bottom, 12)
                 }
                 .overlay(alignment: .bottomTrailing) {
                     zoomControl
                         .padding(.trailing, 12)
-                        .padding(.bottom, floatingDockClearance)
+                        .padding(.bottom, 12)
                 }
                 .overlay(alignment: .bottom) {
-                    VStack(spacing: 8) {
-                        if isReplayMode {
+                    if packetReplayStore.isReplayActive || isReplayMode {
+                        HStack(spacing: 0) {
                             VStack(spacing: 8) {
+                                if !isReplayMode {
+                                    Text(isChangingRegion || viewModel.isLoading
+                                         ? "Loading route locations…"
+                                         : "Not enough known locations to replay this route")
+                                        .font(.caption)
+                                        .multilineTextAlignment(.center)
+                                        .padding(8)
+                                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                                }
                                 replayControl
-                                routeOptionsControl
+                                if isReplayMode {
+                                    routeOptionsControl
+                                }
                             }
                             // Stay between the locate and zoom controls on narrow phones.
                             .padding(.horizontal, 64)
+                            .frame(maxWidth: .infinity)
+
+                            if centersBottomControlsInLeadingPane {
+                                // Reserve horizontal space without stretching the bottom overlay vertically.
+                                Color.clear
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 0)
+                            }
                         }
-                        if !viewModel.nodes.isEmpty {
-                            Text("\(filteredNodeCount) nodes")
-                                .font(.caption)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
-                                .background(.thinMaterial, in: Capsule())
-                        }
+                        .padding(.bottom, viewModel.nodes.isEmpty ? 12 : 44)
                     }
-                    .padding(.bottom, floatingDockClearance)
+                }
+                .overlay(alignment: .bottom) {
+                    if !viewModel.nodes.isEmpty {
+                        Text("\(filteredNodeCount) nodes")
+                            .font(.caption)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(.thinMaterial, in: Capsule())
+                            .padding(.bottom, 12)
+                    }
                 }
                 .overlay {
                     if let errorMessage = viewModel.errorMessage, viewModel.nodes.isEmpty {
@@ -344,8 +385,10 @@ struct MapScreen: View {
             displayUpdateTask?.cancel()
             incomingEventTask?.cancel()
             pendingMapTapTask?.cancel()
+            viewportResizeTask?.cancel()
             incomingEventTask = nil
             pendingMapTapTask = nil
+            viewportResizeTask = nil
         }
         .task {
             processedEventIds = Set(liveFeed.recentEvents.map { liveEventKey(for: $0) })
@@ -376,7 +419,9 @@ struct MapScreen: View {
             async let minimumLoaderDuration: Void = keepRegionLoaderVisible()
             defer {
                 isChangingRegion = false
-                replayPendingPacketIfNeeded()
+                if !Task.isCancelled {
+                    queuePacketReplay()
+                }
             }
 
             if analyzerChanged {
@@ -449,9 +494,15 @@ struct MapScreen: View {
             guard isLoaded else { return }
             validateSelectedObserver()
             rebuildPathsAfterLoadingObservers()
+            if !isChangingRegion {
+                replayPendingPacketIfNeeded()
+            }
         }
         .onChange(of: viewModel.nodes) {
             updateDisplayedNodes()
+            if !isChangingRegion {
+                replayPendingPacketIfNeeded()
+            }
         }
         .onChange(of: nodeFilters) {
             nodeFilters.persist(for: settings.host)
@@ -477,7 +528,10 @@ struct MapScreen: View {
             handleNavigationRequest()
         }
         .onChange(of: packetReplayStore.selectedRouteIndex) {
-            guard isReplayMode else { return }
+            guard isReplayMode else {
+                queuePacketReplay()
+                return
+            }
             // Only re-fit the camera when the newly selected route would
             // actually fall outside the current viewport — switching between
             // routes that share the same on-screen area shouldn't jump the map.
@@ -1012,10 +1066,14 @@ struct MapScreen: View {
     private var replayControl: some View {
         HStack(spacing: 4) {
             Button {
-                replayPacketRoute(recenter: false)
+                if isReplayMode {
+                    replayPacketRoute(recenter: false)
+                } else {
+                    queuePacketReplay()
+                }
             } label: {
                 Label(
-                    isReplayPlaying ? "Replay" : "Play Again",
+                    !isReplayMode ? "Retry Replay" : isReplayPlaying ? "Replay" : "Play Again",
                     systemImage: isReplayPlaying ? "play.fill" : "arrow.counterclockwise"
                 )
                 .font(.caption.weight(.semibold))
@@ -1025,12 +1083,13 @@ struct MapScreen: View {
                 .background(Color.accentColor, in: Capsule())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(isReplayPlaying ? "Replay in progress" : "Play replay again")
+            .accessibilityLabel(!isReplayMode ? "Retry route replay" : isReplayPlaying ? "Replay in progress" : "Play replay again")
 
             Button("Live") {
                 packetReplayStore.stopReplay()
                 stopPacketReplay()
             }
+            .accessibilityLabel("Resume live traffic")
             .font(.caption.weight(.semibold))
             .foregroundStyle(mapControlAccentColor)
             .padding(.horizontal, 12)
@@ -1318,9 +1377,9 @@ struct MapScreen: View {
             return
         }
         guard pendingReplayRequestID == packetReplayStore.requestID else { return }
-        guard currentRouteCoordinates().count >= 2 else { return }
-        pendingReplayRequestID = nil
-        replayPacketRoute()
+        if replayPacketRoute() {
+            pendingReplayRequestID = nil
+        }
     }
 
     private func currentRouteCoordinates() -> [CLLocationCoordinate2D] {
@@ -1368,13 +1427,21 @@ struct MapScreen: View {
         }
     }
 
-    private func replayPacketRoute(recenter: Bool = true) {
+    @discardableResult
+    private func replayPacketRoute(recenter: Bool = true) -> Bool {
+        guard packetReplayStore.isReplayActive else { return false }
         let receivers = currentReceivers()
         let routeCoordinates = packetReplayStore.resolvedPath.compactMap { publicKey in
             validCoordinate(viewModel.nodesByPubkey[publicKey.lowercased()]?.coordinate)
         }
         let coordinates = routeCoordinates + receivers.map(\.coordinate)
-        guard routeCoordinates.count >= 2 else { return }
+        guard !routeCoordinates.isEmpty, coordinates.count >= 2 else {
+            // Do not leave the previous packet's replay visible when the new
+            // route is waiting for locations. Keep this request retryable.
+            stopPacketReplay()
+            pendingReplayRequestID = packetReplayStore.requestID
+            return false
+        }
 
         let routeColor: Color = colorScheme == .dark
             ? Color(red: 0.35, green: 0.78, blue: 1.0)
@@ -1439,12 +1506,14 @@ struct MapScreen: View {
         isReplayMode = true
         hasCenteredCamera = true
 
-        guard recenter else { return }
+        guard recenter else { return true }
 
-        guard let routeMapRect = replayRouteMapRect(for: coordinates) else { return }
-        withAnimation {
-            cameraPosition = .rect(routeMapRect)
+        if let routeMapRect = replayRouteMapRect(for: coordinates) {
+            withAnimation {
+                cameraPosition = .rect(routeMapRect)
+            }
         }
+        return true
     }
 
     private func replayRouteMapRect(for coordinates: [CLLocationCoordinate2D]) -> MKMapRect? {
@@ -1470,8 +1539,8 @@ struct MapScreen: View {
         let horizontalMarginFraction = 0.12
         let topMarginFraction = 0.12
         let bottomMarginFraction = max(0.32, min(bottomObscuredFraction + 0.08, 0.8))
-        let availableWidth = viewportWidth * (1 - horizontalMarginFraction * 2)
-        let availableHeight = viewportHeight * (1 - topMarginFraction - bottomMarginFraction)
+        let availableWidth = max(viewportWidth * (1 - horizontalMarginFraction * 2), 1)
+        let availableHeight = max(viewportHeight * (1 - topMarginFraction - bottomMarginFraction), 1)
         let mapPointsPerPoint = max(routeWidth / availableWidth, routeHeight / availableHeight)
         let fittedWidth = viewportWidth * mapPointsPerPoint
         let fittedHeight = viewportHeight * mapPointsPerPoint

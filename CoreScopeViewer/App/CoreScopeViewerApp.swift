@@ -33,6 +33,9 @@ struct NodeScopeApp: App {
                     }
                 }
             }
+            .background {
+                NodeScopeBackground()
+            }
             .environment(settings)
             .environment(liveFeed)
             .environment(regionFilter)

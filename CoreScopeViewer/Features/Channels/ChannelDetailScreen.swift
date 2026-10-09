@@ -22,6 +22,16 @@ struct ChannelDetailScreen: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 14) {
+                    if viewModel.hasOlderMessages {
+                        Button {
+                            Task { await viewModel.loadOlderMessages(hash: channel.hash) }
+                        } label: {
+                            Text(viewModel.isLoadingOlderMessages ? "Loading older messages…" : "Load older messages")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .disabled(viewModel.isLoadingOlderMessages)
+                    }
+
                     ForEach(orderedMessages) { message in
                         ChatBubbleRow(
                             message: message,
@@ -32,7 +42,7 @@ struct ChannelDetailScreen: View {
                     }
 
                     Color.clear
-                        .frame(height: 92)
+                        .frame(height: 0)
                         .id(scrollBottomID)
                         .accessibilityHidden(true)
                 }
@@ -40,7 +50,8 @@ struct ChannelDetailScreen: View {
                 .padding(.vertical, 12)
                 .adaptiveContentWidth(760)
             }
-            .onChange(of: viewModel.messages.count) {
+            .defaultScrollAnchor(.bottom, for: .alignment)
+            .onChange(of: orderedMessages.last?.id) {
                 scrollToBottom(proxy: proxy)
             }
             .onAppear {
@@ -89,7 +100,7 @@ struct ChannelDetailScreen: View {
             .padding(.vertical, 6)
         }
         .overlay {
-            if orderedMessages.isEmpty && !viewModel.isLoading && viewModel.errorMessage == nil {
+            if orderedMessages.isEmpty && !viewModel.hasOlderMessages && !viewModel.isLoading && viewModel.errorMessage == nil {
                 ContentUnavailableView(
                     regionFilter.selectedRegion == nil ? "No messages yet" : "No messages from this region",
                     systemImage: "message"
@@ -186,13 +197,15 @@ struct ChannelDetailScreen: View {
     /// top-to-bottom regardless of what the server returns.
     private var orderedMessages: [ChannelMessage] {
         var messages = viewModel.messages
-        if monitorStore.channel(matching: channel) == nil,
+        if !channel.hash.hasPrefix("user:"),
            let selectedRegion = regionFilter.selectedRegion {
             messages = messages.filter { message in
                 message.observers.contains { observerRegionLookup.iataByName[$0] == selectedRegion }
             }
         }
-        return messages.sorted { $0.timestamp < $1.timestamp }
+        return messages.sorted {
+            $0.timestamp == $1.timestamp ? $0.id < $1.id : $0.timestamp < $1.timestamp
+        }
     }
 
     /// Alternates speakers across the conversation, while preserving a
@@ -213,7 +226,8 @@ struct ChannelDetailScreen: View {
     }
 
     private func loadMessages(forceRefresh: Bool = false) async {
-        if let monitoredChannel = monitorStore.channel(matching: channel) {
+        if channel.hash.hasPrefix("user:"),
+           let monitoredChannel = monitorStore.channel(matching: channel) {
             await viewModel.loadMonitoredMessages(
                 channel: monitoredChannel,
                 region: regionFilter.selectedRegion,
