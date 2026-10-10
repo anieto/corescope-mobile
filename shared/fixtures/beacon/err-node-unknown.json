@@ -1,0 +1,10 @@
+{
+  "request": "nodes/dc744fc7-94a3-ba97-592c-53667693be2c",
+  "status": 404,
+  "body": {
+    "error": {
+      "code": "not_found",
+      "message": "Synthetic message 8c86a6"
+    }
+  }
+}

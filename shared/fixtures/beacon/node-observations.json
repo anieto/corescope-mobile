@@ -1,0 +1,97 @@
+{
+  "request": "nodes/e28eb9e9-ab40-c112-32c5-50393ebb2359/observations?limit=200",
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "id": 437368,
+        "packetHash": "645d0c8b7aeaf1f8",
+        "payloadType": 4,
+        "payloadTypeName": "advert",
+        "iata": "DFW",
+        "heardAt": 1791666758828,
+        "rssi": -44,
+        "snr": 12,
+        "hopCount": 0
+      },
+      {
+        "id": 428593,
+        "packetHash": "4745b8f133fdae52",
+        "payloadType": 4,
+        "payloadTypeName": "advert",
+        "iata": "DFW",
+        "heardAt": 1791663158785,
+        "rssi": -43,
+        "snr": 12,
+        "hopCount": 0
+      },
+      {
+        "id": 419085,
+        "packetHash": "5b22539fb20c232b",
+        "payloadType": 4,
+        "payloadTypeName": "advert",
+        "iata": "DFW",
+        "heardAt": 1791659558752,
+        "rssi": -43,
+        "snr": 12.2,
+        "hopCount": 0
+      },
+      {
+        "id": 407475,
+        "packetHash": "651a65e0d967e9c0",
+        "payloadType": 4,
+        "payloadTypeName": "advert",
+        "iata": "DFW",
+        "heardAt": 1791655958765,
+        "rssi": -51,
+        "snr": 12.5,
+        "hopCount": 0
+      },
+      {
+        "id": 398305,
+        "packetHash": "d7e71265e0f8273a",
+        "payloadType": 4,
+        "payloadTypeName": "advert",
+        "iata": "DFW",
+        "heardAt": 1791652358852,
+        "rssi": -48,
+        "snr": 12,
+        "hopCount": 0
+      },
+      {
+        "id": 389130,
+        "packetHash": "f61631beda3a619b",
+        "payloadType": 4,
+        "payloadTypeName": "advert",
+        "iata": "DFW",
+        "heardAt": 1791648758867,
+        "rssi": -52,
+        "snr": 11.5,
+        "hopCount": 0
+      },
+      {
+        "id": 378803,
+        "packetHash": "e3f4b3572b96f4bf",
+        "payloadType": 4,
+        "payloadTypeName": "advert",
+        "iata": "DFW",
+        "heardAt": 1791645158982,
+        "rssi": -50,
+        "snr": 12.5,
+        "hopCount": 0
+      },
+      {
+        "id": 368997,
+        "packetHash": "32b2b1ec59ee5c36",
+        "payloadType": 4,
+        "payloadTypeName": "advert",
+        "iata": "DFW",
+        "heardAt": 1791641559033,
+        "rssi": -48,
+        "snr": 11.8,
+        "hopCount": 0
+      }
+    ],
+    "hasMore": false
+  }
+}

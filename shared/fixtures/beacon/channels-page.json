@@ -1,0 +1,84 @@
+{
+  "request": "channels?limit=200",
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "id": 58,
+        "name": "Public",
+        "channelHash": "11",
+        "lastSeen": 1791666768073,
+        "isHashtag": false,
+        "keyKnown": true
+      },
+      {
+        "id": 870,
+        "channelHash": "11",
+        "lastSeen": 1791666353614,
+        "isHashtag": false,
+        "keyKnown": false
+      },
+      {
+        "id": 29216,
+        "channelHash": "cc",
+        "lastSeen": 1791658747342,
+        "isHashtag": false,
+        "keyKnown": false
+      },
+      {
+        "id": 1958,
+        "name": "#channel-51",
+        "channelHash": "cc",
+        "lastSeen": 1791653066577,
+        "isHashtag": true,
+        "keyKnown": true
+      },
+      {
+        "id": 42121,
+        "channelHash": "6a",
+        "lastSeen": 1791635820575,
+        "isHashtag": false,
+        "keyKnown": false
+      },
+      {
+        "id": 3662,
+        "name": "#channel-52",
+        "channelHash": "8e",
+        "lastSeen": 1791573438835,
+        "isHashtag": true,
+        "keyKnown": true
+      },
+      {
+        "id": 372,
+        "name": "#channel-53",
+        "channelHash": "6a",
+        "lastSeen": 1791503487787,
+        "isHashtag": true,
+        "keyKnown": true
+      },
+      {
+        "id": 5,
+        "channelHash": "81",
+        "lastSeen": 1791666704057,
+        "isHashtag": false,
+        "keyKnown": false
+      },
+      {
+        "id": 1480,
+        "channelHash": "a5",
+        "lastSeen": 1791666484884,
+        "isHashtag": false,
+        "keyKnown": false
+      },
+      {
+        "id": 4690,
+        "channelHash": "b4",
+        "lastSeen": 1791666172955,
+        "isHashtag": false,
+        "keyKnown": false
+      }
+    ],
+    "hasMore": false
+  },
+  "note": "subset: every channel sharing a hash with a decryptable one, plus 3 others"
+}

@@ -1,0 +1,28 @@
+{
+  "request": "nodes?pubkey=d077b9ec24d44ad069c03348ff01d88d0a86e35cee85d8d8c0a9e1ffb73fdfe3",
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "id": "e28eb9e9-ab40-c112-32c5-50393ebb2359",
+        "publicKey": "d077b9ec24d44ad069c03348ff01d88d0a86e35cee85d8d8c0a9e1ffb73fdfe3",
+        "nodeType": 2,
+        "nodeTypeName": "repeater",
+        "name": "Node 019",
+        "isObserver": false,
+        "lat": 43.08165,
+        "lng": -76.70885,
+        "radio": "910.525,62.5,7",
+        "iatas": [
+          {
+            "iata": "DFW",
+            "lastHeard": 1791666758959
+          }
+        ],
+        "knownNeighborCount": 1,
+        "stale": false
+      }
+    ],
+    "hasMore": false
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "request": "regions",
+  "status": 200,
+  "body": [
+    {
+      "id": 1,
+      "slug": "texas",
+      "name": "Node 014"
+    },
+    {
+      "id": 2,
+      "slug": "central-texas",
+      "name": "Node 015"
+    },
+    {
+      "id": 3,
+      "slug": "north-texas",
+      "name": "Node 016"
+    },
+    {
+      "id": 4,
+      "slug": "gulf-coast",
+      "name": "Node 017"
+    },
+    {
+      "id": 5,
+      "slug": "west-texas",
+      "name": "Node 018"
+    }
+  ]
+}

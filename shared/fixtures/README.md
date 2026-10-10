@@ -27,3 +27,14 @@ as test resources. Add matching Swift tests as the cross-platform suite grows.
   without a name or distance.
 
 Socket and packet-detail fixtures remain part of the Phase 0 backlog.
+
+## Beacon (`beacon/`)
+
+Unlike the synthetic CoreScope files above, these are **sanitized recordings** of a real Beacon
+2.0.3 server (beacon.meshtexas.org, contract `9d1dae3`), made by `tools/beacon-contract/`. Every
+key, UUID, packet hash, name, message and coordinate is replaced by a deterministic fake, so cross
+references still line up; `check_leaks.py` must report 0 leaks before committing a refresh. Key
+prefixes and `pathBytes` share one byte permutation, so route hops still match their nodes' keys
+and hash collisions survive. Each file is `{request, status, body}`; `ws-session.json` is a live
+socket session (subscribe, configure on/off/on, ping). See `docs/beacon/phase0-findings.md` for what
+each shape implies.

@@ -1,6 +1,6 @@
 # Beacon support plan
 
-Status: planning, nothing implemented. Last updated 2026-10-10.
+Status: phase 0 done (see [phase0-findings.md](phase0-findings.md), which wins where the two differ); phase 1 next. Last updated 2026-10-10.
 
 NodeScope talks only to CoreScope today. Some communities are moving to
 [Beacon](https://github.com/MeshCore-Beacon/beacon-docs) (Colorado Mesh already has, and dropped out of
@@ -242,9 +242,9 @@ check how NodeScope behaves against it during testing.
 
 Still open:
 
-- **Phase 0 contracts:** efficient observer public-key lookup and missing-key behavior; collision-safe
-  channel identity/migration; endpoint-specific paging guarantees; live recovery checkpoint strategy.
-- **Compatibility and budgets:** pin the minimum tested server version and contract revision, set
-  measured resource budgets, and define how partial history and uncertain routes are presented.
+- ~~Phase 0 contracts~~ and ~~compatibility and budgets~~: resolved in
+  [phase0-findings.md](phase0-findings.md) (server 2.0.3+, contract `9d1dae3`, identity, paging,
+  live recovery and budget rules). How partial history and uncertain routes are *presented* is a UI
+  decision for phases 2–3.
 - **Contact the Beacon maintainers** about a second client, `publicKey` in observer summaries (or a
   key filter), and a cheap way to read group-text payloads.

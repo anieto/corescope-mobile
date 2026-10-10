@@ -1,0 +1,10 @@
+{
+  "request": "nodes/not-a-uuid",
+  "status": 400,
+  "body": {
+    "error": {
+      "code": "bad_request",
+      "message": "Synthetic message d9d717"
+    }
+  }
+}

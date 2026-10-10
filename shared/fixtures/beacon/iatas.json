@@ -1,0 +1,84 @@
+{
+  "request": "iatas",
+  "status": 200,
+  "body": [
+    {
+      "iata": "ABI",
+      "displayName": "Observer 001",
+      "lat": 42.4113,
+      "lon": -79.6819
+    },
+    {
+      "iata": "ACT",
+      "displayName": "Observer 002",
+      "lat": 41.6113,
+      "lon": -77.2305
+    },
+    {
+      "iata": "AMA",
+      "displayName": "Observer 003",
+      "lat": 45.2194,
+      "lon": -81.7059
+    },
+    {
+      "iata": "AUS",
+      "displayName": "Observer 004",
+      "lat": 40.1975,
+      "lon": -77.6664
+    },
+    {
+      "iata": "CRP",
+      "displayName": "Observer 005",
+      "lat": 37.7704,
+      "lon": -77.5012
+    },
+    {
+      "iata": "DFW",
+      "displayName": "Observer 006",
+      "lat": 42.8998,
+      "lon": -77.0403
+    },
+    {
+      "iata": "ELP",
+      "displayName": "Observer 007",
+      "lat": 41.8072,
+      "lon": -86.3776
+    },
+    {
+      "iata": "GGG",
+      "displayName": "Observer 008",
+      "lat": 42.384,
+      "lon": -74.7115
+    },
+    {
+      "iata": "HOU",
+      "displayName": "Observer 009",
+      "lat": 39.6454,
+      "lon": -75.2789
+    },
+    {
+      "iata": "MFE",
+      "displayName": "Observer 010",
+      "lat": 36.1758,
+      "lon": -78.2386
+    },
+    {
+      "iata": "SAT",
+      "displayName": "Observer 011",
+      "lat": 39.5337,
+      "lon": -78.4698
+    },
+    {
+      "iata": "SJT",
+      "displayName": "Observer 012",
+      "lat": 41.3577,
+      "lon": -80.4963
+    },
+    {
+      "iata": "TXK",
+      "displayName": "Observer 013",
+      "lat": 43.4537,
+      "lon": -73.991
+    }
+  ]
+}

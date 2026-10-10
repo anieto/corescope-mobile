@@ -1,0 +1,61 @@
+{
+  "request": "packets/d5ff18240cd1ec07",
+  "status": 200,
+  "body": {
+    "packetHash": "d5ff18240cd1ec07",
+    "header": {
+      "raw": "eb",
+      "routeType": 1,
+      "routeTypeName": "FLOOD",
+      "payloadType": 5,
+      "payloadTypeName": "group_text",
+      "payloadVersion": 0
+    },
+    "parsedPayload": {
+      "type": "GROUP_TEXT",
+      "raw": "76ecec933641758e26f2768c698105ddef8176d1ab5c97ae4462e58180576d15",
+      "channelHash": "11",
+      "cipherMac": "4a16",
+      "ciphertext": "5977feee3a8059ea802fc4f56736194d782d2c8833d55f7a4c5289ee711f8e5b",
+      "ciphertextLength": 32,
+      "decrypted": {
+        "sender": "Sender 049",
+        "content": "Synthetic message beb164",
+        "sentAt": 1791666768000
+      }
+    },
+    "rawPayload": "ef8b108148a01659a332d619b34ea7c42e238a74d4d63bb4108b2d33d7b6144c",
+    "decrypted": true,
+    "channelHash": "11",
+    "firstHeardAt": 1791666768069,
+    "lastHeardAt": 1791666768069,
+    "firstToLastMs": 0,
+    "observationCount": 1,
+    "observations": [
+      {
+        "id": 437386,
+        "observerId": "7adc3e07-68ae-e5bd-d23a-ae3db5553634",
+        "observerName": "Observer 050",
+        "iata": "AUS",
+        "heardAt": 1791666768046,
+        "pathLength": {
+          "raw": "d3",
+          "hashSize": 2,
+          "hopCount": 0
+        },
+        "pathBytes": "",
+        "rssi": -8,
+        "snr": 12.5,
+        "propagationTimeMs": 0,
+        "radio": {
+          "freqMhz": 910.525,
+          "spreadFactor": 7,
+          "bandwidthKhz": 62.5,
+          "codingRate": 5
+        },
+        "sourceBroker": "mqtt1",
+        "resolvedPath": []
+      }
+    ]
+  }
+}

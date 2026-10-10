@@ -1,0 +1,358 @@
+{
+  "request": "packets/{hash}",
+  "status": 200,
+  "body": {
+    "packetHash": "107ea5a8f574ec49",
+    "header": {
+      "raw": "db",
+      "routeType": 1,
+      "routeTypeName": "FLOOD",
+      "payloadType": 0,
+      "payloadTypeName": "request",
+      "payloadVersion": 0
+    },
+    "parsedPayload": {
+      "raw": "2d11ee636065972f8e9636abb6bd750923a333f8",
+      "type": "REQUEST",
+      "cipherMac": "59ba",
+      "decrypted": null,
+      "ciphertext": "cc27f4d2f46c17e0cb55d6e12643d7d3",
+      "sourceHash": "6f",
+      "destinationHash": "63",
+      "ciphertextLength": 16
+    },
+    "rawPayload": "25d44db5dd7e453e1c721a4beb2baf2f6158957b",
+    "decrypted": false,
+    "firstHeardAt": 1791666777630,
+    "lastHeardAt": 1791666777630,
+    "firstToLastMs": 8298,
+    "observationCount": 20,
+    "observations": [
+      {
+        "id": 437387,
+        "observerId": "f7055f25-b0f6-0aeb-8a66-f3a884dcf99a",
+        "observerName": "Observer 037",
+        "iata": "AUS",
+        "heardAt": 1791666777593,
+        "pathLength": {
+          "raw": "b8",
+          "hashSize": 2,
+          "hopCount": 3
+        },
+        "pathBytes": "c5505e569ac5",
+        "rssi": -117,
+        "snr": -3,
+        "propagationTimeMs": 0,
+        "radio": {
+          "freqMhz": 910.525,
+          "spreadFactor": 7,
+          "bandwidthKhz": 62.5,
+          "codingRate": 5
+        },
+        "sourceBroker": "mqtt1",
+        "resolvedPath": [
+          {
+            "confidence": "high",
+            "nodes": [
+              {
+                "id": "ed8a6920-905e-9c95-ab79-aca45e524403",
+                "name": "Node 038",
+                "publicKey": "c550d2a4a84c3b2099462061a70b48559f2c50bd80d3870bbef0726f33df7a8d",
+                "latitude": 40.50483,
+                "longitude": -77.72125
+              }
+            ]
+          },
+          {
+            "confidence": "high",
+            "nodes": [
+              {
+                "id": "bdb750f9-b665-4695-e874-7cb831c23673",
+                "name": "Node 039",
+                "publicKey": "5e56ba2eb4d1208dbc6600b8286c3ef75b194c81c207a9f27a8459e08da88644",
+                "latitude": 40.50632,
+                "longitude": -77.73715
+              }
+            ]
+          },
+          {
+            "confidence": "high",
+            "nodes": [
+              {
+                "id": "9521c683-ab90-4389-f9e5-b2186f352aec",
+                "name": "Node 040",
+                "publicKey": "9ac5e3d44645fb127128de77a3989476b0402f95e90d8b75cad28d25b42f1d74"
+              }
+            ]
+          }
+        ],
+        "resolvedSource": {
+          "confidence": "ambiguous",
+          "nodes": [
+            {
+              "id": "a1bd0851-5f63-a133-bcce-baea63ddf34d",
+              "name": "Node 041",
+              "publicKey": "d75a3b0b883fa390a032839cc782131247d6b26cc128edb6ff08ff40ce9cd394",
+              "latitude": 40.7232,
+              "longitude": -77.90407
+            },
+            {
+              "id": "67460953-2dc2-e3a9-c2ae-c8bbeb8327e7",
+              "name": "Node 031",
+              "publicKey": "d7406e11eea11d914029807ae461391eb2a70fa28ed1348e83c4a1dfbc1a8e02",
+              "latitude": 40.17532,
+              "longitude": -77.78999
+            }
+          ]
+        },
+        "resolvedDestination": {
+          "confidence": "high",
+          "nodes": [
+            {
+              "id": "4504df55-618f-e300-eb0a-d425e92588a8",
+              "name": "Node 032",
+              "publicKey": "8ffdc814641029921b235e8b3f772133bf248a28b9383193dce3ee92ac4b1e28",
+              "latitude": 40.19797,
+              "longitude": -77.73519
+            }
+          ]
+        }
+      },
+      {
+        "id": 437389,
+        "observerId": "9549bfd5-d6de-87b4-a186-c26cef90587c",
+        "observerName": "Observer 042",
+        "iata": "AUS",
+        "heardAt": 1791666777836,
+        "pathLength": {
+          "raw": "7f",
+          "hashSize": 2,
+          "hopCount": 4
+        },
+        "pathBytes": "c5505e569ac551a6",
+        "rssi": -35,
+        "snr": 11.25,
+        "propagationTimeMs": 242,
+        "radio": {
+          "freqMhz": 910.525,
+          "spreadFactor": 7,
+          "bandwidthKhz": 62.5,
+          "codingRate": 5
+        },
+        "sourceBroker": "mqtt1",
+        "resolvedPath": [
+          {
+            "confidence": "high",
+            "nodes": [
+              {
+                "id": "ed8a6920-905e-9c95-ab79-aca45e524403",
+                "name": "Node 038",
+                "publicKey": "c550d2a4a84c3b2099462061a70b48559f2c50bd80d3870bbef0726f33df7a8d",
+                "latitude": 40.50483,
+                "longitude": -77.72125
+              }
+            ]
+          },
+          {
+            "confidence": "high",
+            "nodes": [
+              {
+                "id": "bdb750f9-b665-4695-e874-7cb831c23673",
+                "name": "Node 039",
+                "publicKey": "5e56ba2eb4d1208dbc6600b8286c3ef75b194c81c207a9f27a8459e08da88644",
+                "latitude": 40.50632,
+                "longitude": -77.73715
+              }
+            ]
+          },
+          {
+            "confidence": "high",
+            "nodes": [
+              {
+                "id": "9521c683-ab90-4389-f9e5-b2186f352aec",
+                "name": "Node 040",
+                "publicKey": "9ac5e3d44645fb127128de77a3989476b0402f95e90d8b75cad28d25b42f1d74"
+              }
+            ]
+          },
+          {
+            "confidence": "none",
+            "nodes": []
+          }
+        ],
+        "resolvedSource": {
+          "confidence": "ambiguous",
+          "nodes": [
+            {
+              "id": "a1bd0851-5f63-a133-bcce-baea63ddf34d",
+              "name": "Node 041",
+              "publicKey": "d75a3b0b883fa390a032839cc782131247d6b26cc128edb6ff08ff40ce9cd394",
+              "latitude": 40.7232,
+              "longitude": -77.90407
+            },
+            {
+              "id": "67460953-2dc2-e3a9-c2ae-c8bbeb8327e7",
+              "name": "Node 031",
+              "publicKey": "d7406e11eea11d914029807ae461391eb2a70fa28ed1348e83c4a1dfbc1a8e02",
+              "latitude": 40.17532,
+              "longitude": -77.78999
+            }
+          ]
+        },
+        "resolvedDestination": {
+          "confidence": "high",
+          "nodes": [
+            {
+              "id": "4504df55-618f-e300-eb0a-d425e92588a8",
+              "name": "Node 032",
+              "publicKey": "8ffdc814641029921b235e8b3f772133bf248a28b9383193dce3ee92ac4b1e28",
+              "latitude": 40.19797,
+              "longitude": -77.73519
+            }
+          ]
+        }
+      },
+      {
+        "id": 437394,
+        "observerId": "1f79055f-05d1-bea1-bf42-8aa8a4858df0",
+        "observerName": "Observer 043",
+        "iata": "AUS",
+        "heardAt": 1791666778036,
+        "pathLength": {
+          "raw": "a1",
+          "hashSize": 2,
+          "hopCount": 7
+        },
+        "pathBytes": "c5505e56db9f1f82bb6841855fa3",
+        "rssi": -95,
+        "snr": 12,
+        "propagationTimeMs": 442,
+        "radio": {
+          "freqMhz": 910.525,
+          "spreadFactor": 7,
+          "bandwidthKhz": 62.5,
+          "codingRate": 5
+        },
+        "sourceBroker": "mqtt1",
+        "resolvedPath": [
+          {
+            "confidence": "high",
+            "nodes": [
+              {
+                "id": "ed8a6920-905e-9c95-ab79-aca45e524403",
+                "name": "Node 038",
+                "publicKey": "c550d2a4a84c3b2099462061a70b48559f2c50bd80d3870bbef0726f33df7a8d",
+                "latitude": 40.50483,
+                "longitude": -77.72125
+              }
+            ]
+          },
+          {
+            "confidence": "high",
+            "nodes": [
+              {
+                "id": "bdb750f9-b665-4695-e874-7cb831c23673",
+                "name": "Node 039",
+                "publicKey": "5e56ba2eb4d1208dbc6600b8286c3ef75b194c81c207a9f27a8459e08da88644",
+                "latitude": 40.50632,
+                "longitude": -77.73715
+              }
+            ]
+          },
+          {
+            "confidence": "high",
+            "nodes": [
+              {
+                "id": "c7e9b18e-3d6e-af68-20b8-33bcebed1956",
+                "name": "Node 044",
+                "publicKey": "db9f5a1df7715b2478777725e72d4391e9c4243ecf9e1402d80ae21ac650cc18",
+                "latitude": 40.74404,
+                "longitude": -77.60214
+              }
+            ]
+          },
+          {
+            "confidence": "high",
+            "nodes": [
+              {
+                "id": "5e66250b-eaa7-6ee2-e2d2-0b88c9f1a189",
+                "name": "Node 045",
+                "publicKey": "1f82b48b7758590c52a99a01357702e6874942a5fbc29fcf47a42620aa15e48b",
+                "latitude": 40.703,
+                "longitude": -77.89929
+              }
+            ]
+          },
+          {
+            "confidence": "high",
+            "nodes": [
+              {
+                "id": "fd2d8bd4-34b1-8b4e-9878-69cad7f1a873",
+                "name": "Node 046",
+                "publicKey": "bb68bae65d34b2417c24c4d42de6eede121016e3a7f7adbfa2ee757a2a86a547",
+                "latitude": 40.55352,
+                "longitude": -77.86374
+              }
+            ]
+          },
+          {
+            "confidence": "high",
+            "nodes": [
+              {
+                "id": "7fb88b9c-ebe9-6e01-b1d2-e303ba7b6579",
+                "name": "Node 047",
+                "publicKey": "418573c6d3c4d463a8db65e2ef1447e873f138e87eec111d08ddd5a7b31b6c33",
+                "latitude": 40.28673,
+                "longitude": -78.06474
+              }
+            ]
+          },
+          {
+            "confidence": "high",
+            "nodes": [
+              {
+                "id": "144fcad6-c61b-8413-5d9c-7034306d64aa",
+                "name": "Node 048",
+                "publicKey": "5fa38bd59a09dff761b04091149c11a91ebb7420e2e26f528067039da3980ec4",
+                "latitude": 40.20796,
+                "longitude": -77.97564
+              }
+            ]
+          }
+        ],
+        "resolvedSource": {
+          "confidence": "ambiguous",
+          "nodes": [
+            {
+              "id": "a1bd0851-5f63-a133-bcce-baea63ddf34d",
+              "name": "Node 041",
+              "publicKey": "d75a3b0b883fa390a032839cc782131247d6b26cc128edb6ff08ff40ce9cd394",
+              "latitude": 40.7232,
+              "longitude": -77.90407
+            },
+            {
+              "id": "67460953-2dc2-e3a9-c2ae-c8bbeb8327e7",
+              "name": "Node 031",
+              "publicKey": "d7406e11eea11d914029807ae461391eb2a70fa28ed1348e83c4a1dfbc1a8e02",
+              "latitude": 40.17532,
+              "longitude": -77.78999
+            }
+          ]
+        },
+        "resolvedDestination": {
+          "confidence": "high",
+          "nodes": [
+            {
+              "id": "4504df55-618f-e300-eb0a-d425e92588a8",
+              "name": "Node 032",
+              "publicKey": "8ffdc814641029921b235e8b3f772133bf248a28b9383193dce3ee92ac4b1e28",
+              "latitude": 40.19797,
+              "longitude": -77.73519
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "note": "observations trimmed to 3 of 20"
+}

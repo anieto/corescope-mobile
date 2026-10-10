@@ -1,0 +1,20 @@
+{
+  "request": "nodes/e28eb9e9-ab40-c112-32c5-50393ebb2359/neighbors",
+  "status": 200,
+  "body": [
+    {
+      "id": "dcef149b-a5ee-1c53-6d3f-0b140fecbd32",
+      "name": "Node 025",
+      "publicKey": "24cfc33446bc6fa1ca4e71071b782c9fe98f5e227f9aba8a1934127843282a66",
+      "nodeType": 2,
+      "nodeTypeName": "repeater",
+      "lat": 43.07863,
+      "lng": -76.71968,
+      "iata": "DFW",
+      "observationCount": 2,
+      "firstSeen": 1791506293498,
+      "lastSeen": 1791506293499,
+      "snr": -5.75
+    }
+  ]
+}

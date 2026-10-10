@@ -1,0 +1,57 @@
+{
+  "request": "observers/f6c9d02e-eee0-7882-1a89-9bc1dc6d1170",
+  "status": 200,
+  "body": {
+    "id": "f6c9d02e-eee0-7882-1a89-9bc1dc6d1170",
+    "displayName": "Observer 026",
+    "observerType": "meshcore/v1.16.0.31-observer-ed674fd",
+    "iata": "SAT",
+    "status": "online",
+    "publicKey": "b18fd11df6a134788b6c82d6cf5a136753164c95c7ea8c4d43962bb58cf9d1c5",
+    "softwareVersion": "meshcore/v1.16.0.31-observer-ed674fd",
+    "hardwareModel": "Heltec V4.3 OLED",
+    "firmwareVersion": "v1.16.0.31-observer-ed674fd",
+    "firmwareBuild": "",
+    "radioFreqMhz": 910.525,
+    "radioSf": 7,
+    "radioBwKhz": 62.5,
+    "radioCr": 5,
+    "batteryLevel": 4.244,
+    "uptimeSeconds": 998621,
+    "statusMetadata": {
+      "model": "Heltec V4.3 OLED",
+      "radio": "910.525024,62.5,7,5",
+      "stats": {
+        "errors": 8,
+        "queue_len": 0,
+        "battery_mv": 4244,
+        "noise_floor": -96,
+        "recv_errors": 9002,
+        "rx_air_secs": 23040,
+        "tx_air_secs": 276,
+        "uptime_secs": 998621,
+        "packets_sent": 828,
+        "internal_heap": 141248,
+        "packets_received": 76895
+      },
+      "origin": "Observer 026",
+      "repeat": "off",
+      "status": "online",
+      "origin_id": "B18FD11DF6A134788B6C82D6CF5A136753164C95C7EA8C4D43962BB58CF9D1C5",
+      "timestamp": "2026-10-10T21:11:52.416649+00:00",
+      "client_version": "meshcore/v1.16.0.31-observer-ed674fd",
+      "firmware_version": "v1.16.0.31-observer-ed674fd"
+    },
+    "lastStatusAt": 1791666713567,
+    "firstSeen": 1791472508367,
+    "lastSeen": 1791666786053,
+    "observationCount": 7863,
+    "brokers": [
+      {
+        "name": "mqtt1",
+        "lastSeenAt": 1791666713567,
+        "lastPacketAt": 1791666665418
+      }
+    ]
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "request": "channels/58/messages?limit=20",
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "id": 12150,
+        "packetHash": "d5ff18240cd1ec07",
+        "channelHash": "11",
+        "senderName": "Sender 049",
+        "content": "Synthetic message beb164",
+        "sentAt": 1791666768000,
+        "observationCount": 1,
+        "scope": null,
+        "scopeStatus": "unscoped"
+      },
+      {
+        "id": 12132,
+        "packetHash": "b8bc2259fd6a46e9",
+        "channelHash": "11",
+        "senderName": "Sender 054",
+        "content": "Synthetic message fe3a26",
+        "sentAt": 1791666650000,
+        "observationCount": 18,
+        "scope": null,
+        "scopeStatus": "unscoped"
+      },
+      {
+        "id": 12114,
+        "packetHash": "7d3c46a43c7192ea",
+        "channelHash": "11",
+        "senderName": "Sender 055",
+        "content": "Synthetic message b83015",
+        "sentAt": 1791666337000,
+        "observationCount": 1,
+        "scope": null,
+        "scopeStatus": "unscoped"
+      },
+      {
+        "id": 12112,
+        "packetHash": "e3cab7c231e4eab0",
+        "channelHash": "11",
+        "senderName": "Sender 056",
+        "content": "Synthetic message 2ecbdd",
+        "sentAt": 1791666338000,
+        "observationCount": 18,
+        "scope": null,
+        "scopeStatus": "unscoped"
+      }
+    ],
+    "nextCursor": 11953,
+    "hasMore": true
+  }
+}

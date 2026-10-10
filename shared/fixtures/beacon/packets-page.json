@@ -1,0 +1,202 @@
+{
+  "request": "packets?limit=50&iatas=SAT",
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "packetHash": "107ea5a8f574ec49",
+        "payloadType": 0,
+        "payloadTypeName": "request",
+        "routeType": 1,
+        "routeTypeName": "FLOOD",
+        "firstHeardAt": 1791666777630,
+        "lastHeardAt": 1791666777630,
+        "observationCount": 20,
+        "latestObserver": {
+          "id": "f6c9d02e-eee0-7882-1a89-9bc1dc6d1170",
+          "displayName": "Observer 026",
+          "iata": "SAT",
+          "pathLength": {
+            "raw": "71",
+            "hashSize": 2,
+            "hopCount": 13
+          },
+          "pathBytes": "c5505e56db9f1f82bb6841855fa3680ac9337cc00c99e01494b1",
+          "resolvedSource": {
+            "confidence": "high",
+            "nodes": [
+              {
+                "id": "67460953-2dc2-e3a9-c2ae-c8bbeb8327e7",
+                "name": "Node 031",
+                "publicKey": "d7406e11eea11d914029807ae461391eb2a70fa28ed1348e83c4a1dfbc1a8e02",
+                "latitude": 40.17532,
+                "longitude": -77.78999
+              }
+            ]
+          },
+          "resolvedDestination": {
+            "confidence": "high",
+            "nodes": [
+              {
+                "id": "4504df55-618f-e300-eb0a-d425e92588a8",
+                "name": "Node 032",
+                "publicKey": "8ffdc814641029921b235e8b3f772133bf248a28b9383193dce3ee92ac4b1e28",
+                "latitude": 40.19797,
+                "longitude": -77.73519
+              }
+            ]
+          }
+        }
+      },
+      {
+        "packetHash": "b8bc2259fd6a46e9",
+        "payloadType": 5,
+        "payloadTypeName": "group_text",
+        "routeType": 1,
+        "routeTypeName": "FLOOD",
+        "firstHeardAt": 1791666652238,
+        "lastHeardAt": 1791666715051,
+        "observationCount": 18,
+        "latestObserver": {
+          "id": "d09ed40a-8b31-541b-a00f-8c606dd926b6",
+          "displayName": "Observer 027",
+          "iata": "SAT",
+          "pathLength": {
+            "raw": "b4",
+            "hashSize": 2,
+            "hopCount": 12
+          },
+          "pathBytes": "0c09d5b5f339680ac933f8eebb1bd99fa76eeef40c99a363"
+        }
+      },
+      {
+        "packetHash": "cdd2b63730386b71",
+        "payloadType": 4,
+        "payloadTypeName": "advert",
+        "routeType": 2,
+        "routeTypeName": "DIRECT",
+        "firstHeardAt": 1791666655323,
+        "lastHeardAt": 1791666659570,
+        "observationCount": 1,
+        "latestObserver": {
+          "id": "e207a86a-4128-74e6-568f-2b571e3ec71d",
+          "displayName": "Observer 033",
+          "iata": "SAT",
+          "pathLength": {
+            "raw": "2e",
+            "hashSize": 1,
+            "hopCount": 0
+          },
+          "pathBytes": "",
+          "resolvedSource": {
+            "confidence": "high",
+            "nodes": [
+              {
+                "id": "c2f4d666-8d5b-4e2a-86fc-8e318e0e5675",
+                "name": "Node 034",
+                "publicKey": "c4dbd6dc3d4ed48accfbdd45d95e549f8fe155c5c210a2860b60489f8be56a71",
+                "latitude": 39.69638,
+                "longitude": -78.4955
+              }
+            ]
+          }
+        },
+        "summary": "Node 034"
+      },
+      {
+        "packetHash": "3267158c4ac898c6",
+        "payloadType": 0,
+        "payloadTypeName": "request",
+        "routeType": 1,
+        "routeTypeName": "FLOOD",
+        "firstHeardAt": 1791666571268,
+        "lastHeardAt": 1791666579401,
+        "observationCount": 18,
+        "latestObserver": {
+          "id": "f6c9d02e-eee0-7882-1a89-9bc1dc6d1170",
+          "displayName": "Observer 026",
+          "iata": "SAT",
+          "pathLength": {
+            "raw": "30",
+            "hashSize": 1,
+            "hopCount": 13
+          },
+          "pathBytes": "67e85168c9dea3a7ee0c7aa294",
+          "resolvedSource": {
+            "confidence": "none",
+            "nodes": []
+          },
+          "resolvedDestination": {
+            "confidence": "none",
+            "nodes": []
+          }
+        }
+      },
+      {
+        "packetHash": "ae5159c872721279",
+        "payloadType": 4,
+        "payloadTypeName": "advert",
+        "routeType": 1,
+        "routeTypeName": "FLOOD",
+        "firstHeardAt": 1791666448481,
+        "lastHeardAt": 1791666484660,
+        "observationCount": 13,
+        "latestObserver": {
+          "id": "ca468ff8-501b-81f4-b698-30d2faca1ad7",
+          "displayName": "Observer 035",
+          "iata": "SAT",
+          "pathLength": {
+            "raw": "35",
+            "hashSize": 1,
+            "hopCount": 8
+          },
+          "pathBytes": "425551f368c9f8b1",
+          "resolvedSource": {
+            "confidence": "high",
+            "nodes": [
+              {
+                "id": "d8467622-b1b6-af0e-1313-491b4c029652",
+                "name": "Node 036",
+                "publicKey": "21e58be694f09c008871dbbeb75fb3f9bddf72c65bccd01e3336eed5fb4f6faa",
+                "latitude": 40.27415,
+                "longitude": -77.6897
+              }
+            ]
+          }
+        },
+        "summary": "Node 036"
+      },
+      {
+        "packetHash": "73ab3f9ab71e3c33",
+        "payloadType": 0,
+        "payloadTypeName": "request",
+        "routeType": 1,
+        "routeTypeName": "FLOOD",
+        "firstHeardAt": 1791666400033,
+        "lastHeardAt": 1791666405228,
+        "observationCount": 18,
+        "latestObserver": {
+          "id": "d09ed40a-8b31-541b-a00f-8c606dd926b6",
+          "displayName": "Observer 027",
+          "iata": "SAT",
+          "pathLength": {
+            "raw": "9d",
+            "hashSize": 1,
+            "hopCount": 11
+          },
+          "pathBytes": "3c7c981268c9bba70e0ca3",
+          "resolvedSource": {
+            "confidence": "none",
+            "nodes": []
+          },
+          "resolvedDestination": {
+            "confidence": "none",
+            "nodes": []
+          }
+        }
+      }
+    ],
+    "nextCursor": 1791664682240,
+    "hasMore": true
+  }
+}

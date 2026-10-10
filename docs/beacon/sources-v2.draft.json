@@ -1,0 +1,55 @@
+{
+  "version": 2,
+  "sources": [
+    {
+      "id": "meshtexas",
+      "type": "corescope",
+      "icon": "icons/meshtexas.png",
+      "name": "MeshTexas",
+      "host": "analyzer.meshtexas.org",
+      "subtitle": "Connecting the Lone Star State",
+      "isDefault": true
+    },
+    {
+      "id": "wcmesh",
+      "type": "corescope",
+      "icon": "icons/wcmesh.png",
+      "name": "WCMesh",
+      "host": "corescope.wcmesh.com",
+      "subtitle": "West Coast, USA",
+      "isDefault": false
+    },
+    {
+      "id": "gulf-coast-mesh",
+      "type": "corescope",
+      "icon": "icons/gulf-coast-mesh.png",
+      "name": "Gulf Coast Mesh",
+      "host": "analyzer.gulfcoastmesh.org",
+      "subtitle": "Comms that hold when the coast does not.",
+      "isDefault": false,
+      "mapCenter": [
+        30.2,
+        -90.5
+      ],
+      "mapRadiusKm": 300
+    },
+    {
+      "id": "comchan",
+      "type": "corescope",
+      "icon": "icons/comchan.png",
+      "name": "Comchan",
+      "host": "analyzer.comchan.net",
+      "subtitle": "Central Texas Meshcore",
+      "isDefault": false
+    },
+    {
+      "id": "colorado-mesh",
+      "type": "beacon",
+      "icon": "icons/colorado-mesh.png",
+      "name": "Colorado Mesh",
+      "host": "map.meshcore.coloradomesh.org",
+      "subtitle": "Colorado's Mesh Network Community",
+      "isDefault": false
+    }
+  ]
+}

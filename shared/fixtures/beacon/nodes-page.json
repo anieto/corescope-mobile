@@ -1,0 +1,177 @@
+{
+  "request": "nodes",
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "id": "e28eb9e9-ab40-c112-32c5-50393ebb2359",
+        "publicKey": "d077b9ec24d44ad069c03348ff01d88d0a86e35cee85d8d8c0a9e1ffb73fdfe3",
+        "nodeType": 2,
+        "nodeTypeName": "repeater",
+        "name": "Node 019",
+        "isObserver": false,
+        "lat": 43.08165,
+        "lng": -76.70885,
+        "radio": "910.525,62.5,7",
+        "iatas": [
+          {
+            "iata": "DFW",
+            "lastHeard": 1791666758959
+          }
+        ],
+        "knownNeighborCount": 1,
+        "stale": false
+      },
+      {
+        "id": "46e0541b-2fde-f584-9ade-2bf233f895d6",
+        "publicKey": "831ed9a526d0cae9bf56ec8b40d7fc9984d6cfdc1bad6dd725ddb37c083f2e1b",
+        "nodeType": 2,
+        "nodeTypeName": "repeater",
+        "name": "Node 020",
+        "isObserver": true,
+        "observerId": "1a05eca1-370d-667a-b51b-a4b5d21c0a21",
+        "lat": 39.61314,
+        "lng": -75.72663,
+        "radio": "910.525,62.5,7",
+        "iatas": [
+          {
+            "iata": "HOU",
+            "lastHeard": 1791666758566
+          }
+        ],
+        "knownNeighborCount": 3,
+        "stale": false
+      },
+      {
+        "id": "ea73d235-20c7-ac59-9d20-fca4454b0482",
+        "publicKey": "b46a654ac30fb495d8941ad10e478e6f0f1ac0a6885178415991c4174c29adc3",
+        "nodeType": 2,
+        "nodeTypeName": "repeater",
+        "name": "Node 021",
+        "isObserver": false,
+        "lat": 40.3206,
+        "lng": -77.77343,
+        "iatas": [
+          {
+            "iata": "AUS",
+            "lastHeard": 1791666744493
+          },
+          {
+            "iata": "HOU",
+            "lastHeard": 1791634338998
+          }
+        ],
+        "knownNeighborCount": 18,
+        "stale": false
+      },
+      {
+        "id": "2c95a56d-a987-0544-d854-480a0a57eb70",
+        "publicKey": "b3ca3dea963401974a1e5eb046c683ea91441c1c9c0b981332a73b4f6d2a6938",
+        "nodeType": 4,
+        "nodeTypeName": "sensor",
+        "name": "Node 022",
+        "isObserver": false,
+        "radio": "910.525,62.5,7",
+        "iatas": [
+          {
+            "iata": "CRP",
+            "lastHeard": 1791666717309
+          }
+        ],
+        "knownNeighborCount": 0,
+        "stale": false
+      },
+      {
+        "id": "9b198b55-42b6-3b9f-ebf5-dbf1820c4435",
+        "publicKey": "988f9153f8e16c1a41444a16cf1aa70b451f07e7f0a1424ea1548bb69b115836",
+        "nodeType": 1,
+        "nodeTypeName": "companion",
+        "name": "Node 023",
+        "isObserver": false,
+        "iatas": [
+          {
+            "iata": "AUS",
+            "lastHeard": 1791666715130
+          }
+        ],
+        "knownNeighborCount": 0,
+        "stale": false
+      },
+      {
+        "id": "7d451a60-51c4-f6cb-7825-f0dd3ce5c579",
+        "publicKey": "89bcde8fbbfcfeb2472798d4299a55b7ad8554f1c3e65ba91e7c7e3ed20f0249",
+        "nodeType": 2,
+        "nodeTypeName": "repeater",
+        "name": "Node 024",
+        "isObserver": false,
+        "lat": 40.19753,
+        "lng": -78.00236,
+        "radio": "910.525,62.5,7",
+        "iatas": [
+          {
+            "iata": "AUS",
+            "lastHeard": 1791666660237
+          }
+        ],
+        "knownNeighborCount": 21,
+        "stale": false
+      }
+    ],
+    "pages": [
+      {
+        "cursor": null,
+        "next": 1791663775459,
+        "hasMore": true,
+        "n": 100
+      },
+      {
+        "cursor": 1791663775459,
+        "next": 1791658779869,
+        "hasMore": true,
+        "n": 100
+      },
+      {
+        "cursor": 1791658779869,
+        "next": 1791652632031,
+        "hasMore": true,
+        "n": 100
+      },
+      {
+        "cursor": 1791652632031,
+        "next": 1791642777648,
+        "hasMore": true,
+        "n": 100
+      },
+      {
+        "cursor": 1791642777648,
+        "next": 1791627070570,
+        "hasMore": true,
+        "n": 100
+      },
+      {
+        "cursor": 1791627070570,
+        "next": 1791600759253,
+        "hasMore": true,
+        "n": 100
+      },
+      {
+        "cursor": 1791600759253,
+        "next": 1791569695794,
+        "hasMore": true,
+        "n": 100
+      },
+      {
+        "cursor": 1791569695794,
+        "next": 1791522508894,
+        "hasMore": true,
+        "n": 100
+      },
+      {
+        "cursor": 1791522508894,
+        "next": null,
+        "hasMore": false,
+        "n": 78
+      }
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "request": "channels/58",
+  "status": 200,
+  "body": {
+    "id": 58,
+    "name": "Public",
+    "channelHash": "11",
+    "lastSeen": 1791666768073,
+    "isHashtag": false,
+    "keyKnown": true,
+    "messageCount": 1217
+  }
+}

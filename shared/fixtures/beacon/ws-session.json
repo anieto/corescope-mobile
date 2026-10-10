@@ -1,0 +1,675 @@
+{
+  "note": "SAT-filtered session: subscribe, configure (resolvePath on/off/on), ping; control frames complete, events sampled",
+  "frames": [
+    {
+      "t": 0.198,
+      "dir": "in",
+      "msg": {
+        "connectionId": "70da7c22-e0fc-f14c-39c8-e1579784d9ca",
+        "serverTime": 1791666881404,
+        "type": "hello",
+        "v": 1
+      }
+    },
+    {
+      "t": 1.199,
+      "dir": "out",
+      "msg": {
+        "v": 1,
+        "type": "subscribe",
+        "id": "sub-sat",
+        "scope": {
+          "iatas": [
+            "SAT"
+          ],
+          "events": [
+            "packetObservation",
+            "nodeUpdate",
+            "observerStatus",
+            "channelMessage"
+          ]
+        }
+      }
+    },
+    {
+      "t": 1.199,
+      "dir": "out",
+      "msg": {
+        "v": 1,
+        "type": "configure",
+        "id": "cfg-1",
+        "resolvePath": true,
+        "includeObserverKey": true,
+        "includeRepeats": false
+      }
+    },
+    {
+      "t": 1.227,
+      "dir": "in",
+      "msg": {
+        "id": "sub-sat",
+        "subscriptionId": "20b95c4a-c312-4c82-2a98-c616ae137550",
+        "type": "subscribed",
+        "v": 1
+      }
+    },
+    {
+      "t": 1.227,
+      "dir": "in",
+      "msg": {
+        "id": "cfg-1",
+        "includeObserverKey": true,
+        "includeRepeats": false,
+        "resolvePath": true,
+        "type": "configured",
+        "v": 1
+      }
+    },
+    {
+      "t": 5.919,
+      "dir": "in",
+      "msg": {
+        "data": {
+          "nodeId": "00d4777e-066d-a817-622f-338eca619683",
+          "publicKey": "37cfddfb37f535001c3b7ed993d76d876cc8c2935c095e7c356eac80f25418ce",
+          "name": "Node 057",
+          "nodeType": 2,
+          "nodeTypeName": "repeater",
+          "iata": "SAT",
+          "lat": null,
+          "lng": null,
+          "isObserver": false,
+          "iatas": [
+            {
+              "iata": "SAT",
+              "lastHeard": 1791666887063
+            }
+          ],
+          "radio": "910.525,62.5,7"
+        },
+        "event": "nodeUpdate",
+        "type": "event",
+        "v": 1
+      }
+    },
+    {
+      "t": 5.919,
+      "dir": "in",
+      "msg": {
+        "data": {
+          "packetHash": "6bc79aca4f3a2e99",
+          "packet": {
+            "payloadType": 4,
+            "payloadTypeName": "ADVERT",
+            "routeType": 2,
+            "routeTypeName": "DIRECT",
+            "isFirstObservation": true,
+            "observationCount": 1,
+            "summary": "Node 057"
+          },
+          "observation": {
+            "observerId": "d09ed40a-8b31-541b-a00f-8c606dd926b6",
+            "observerName": "Observer 027",
+            "observerPublicKey": "16bc1db4b947c01a39d89b37d064156bc2c007dc62677d5ec87b14061873dfdf",
+            "iata": "SAT",
+            "heardAt": 1791666887434,
+            "rssi": -28,
+            "snr": 12.2,
+            "sourceBroker": "mqtt1",
+            "pathBytes": "",
+            "pathLength": {
+              "raw": "2e",
+              "hashSize": 1,
+              "hopCount": 0
+            },
+            "propagationTimeMs": 0,
+            "resolvedPath": [],
+            "resolvedSource": {
+              "confidence": "high",
+              "nodes": [
+                {
+                  "id": "00d4777e-066d-a817-622f-338eca619683",
+                  "name": "Node 057",
+                  "publicKey": "37cfddfb37f535001c3b7ed993d76d876cc8c2935c095e7c356eac80f25418ce"
+                }
+              ]
+            }
+          }
+        },
+        "event": "packetObservation",
+        "type": "event",
+        "v": 1
+      }
+    },
+    {
+      "t": 10.116,
+      "dir": "in",
+      "msg": {
+        "data": {
+          "observerId": "e207a86a-4128-74e6-568f-2b571e3ec71d",
+          "displayName": "Observer 033",
+          "iata": "SAT",
+          "online": true,
+          "radio": "910.525,62.5,7",
+          "scopes": [],
+          "uptimeSeconds": 2012640,
+          "lastStatusAt": 1791666891262
+        },
+        "event": "observerStatus",
+        "type": "event",
+        "v": 1
+      }
+    },
+    {
+      "t": 10.167,
+      "dir": "in",
+      "msg": {
+        "data": {
+          "observerId": "e207a86a-4128-74e6-568f-2b571e3ec71d",
+          "displayName": "Observer 033",
+          "iata": "SAT",
+          "online": true,
+          "radio": "910.525,62.5,7",
+          "scopes": [],
+          "uptimeSeconds": 2012640,
+          "lastStatusAt": 1791666891373
+        },
+        "event": "observerStatus",
+        "type": "event",
+        "v": 1
+      }
+    },
+    {
+      "t": 25.434,
+      "dir": "in",
+      "msg": {
+        "data": {
+          "packetHash": "ea78b86d8a0933ed",
+          "packet": {
+            "payloadType": 0,
+            "payloadTypeName": "REQ",
+            "routeType": 1,
+            "routeTypeName": "FLOOD",
+            "isFirstObservation": false,
+            "observationCount": 14
+          },
+          "observation": {
+            "observerId": "ca468ff8-501b-81f4-b698-30d2faca1ad7",
+            "observerName": "Observer 035",
+            "observerPublicKey": "7cc0ee2c56cb1b9de4b31c098fd986c6c53e4c687c8010681975d2419a69cd6e",
+            "iata": "SAT",
+            "heardAt": 1791666906592,
+            "rssi": -93,
+            "snr": 8.2,
+            "sourceBroker": "mqtt1",
+            "pathBytes": "c5505e56db9f6f4056bfd5b5680ac933f8eeb10865df",
+            "pathLength": {
+              "raw": "ea",
+              "hashSize": 2,
+              "hopCount": 11
+            },
+            "propagationTimeMs": 0,
+            "resolvedPath": [
+              {
+                "confidence": "none",
+                "nodes": []
+              },
+              {
+                "confidence": "high",
+                "nodes": [
+                  {
+                    "id": "bdb750f9-b665-4695-e874-7cb831c23673",
+                    "name": "Node 039",
+                    "publicKey": "5e56ba2eb4d1208dbc6600b8286c3ef75b194c81c207a9f27a8459e08da88644",
+                    "latitude": 40.50632,
+                    "longitude": -77.73715
+                  }
+                ]
+              },
+              {
+                "confidence": "high",
+                "nodes": [
+                  {
+                    "id": "c7e9b18e-3d6e-af68-20b8-33bcebed1956",
+                    "name": "Node 044",
+                    "publicKey": "db9f5a1df7715b2478777725e72d4391e9c4243ecf9e1402d80ae21ac650cc18",
+                    "latitude": 40.74404,
+                    "longitude": -77.60214
+                  }
+                ]
+              },
+              {
+                "confidence": "high",
+                "nodes": [
+                  {
+                    "id": "439d09e6-faac-a4c8-fd41-1760c59528ba",
+                    "name": "Node 058",
+                    "publicKey": "6f4078e4cc2b08516b9a5a6151ef0ceb280e1d30ef4886c9aa05af369b380c3c",
+                    "latitude": 40.38323,
+                    "longitude": -77.31539
+                  }
+                ]
+              },
+              {
+                "confidence": "high",
+                "nodes": [
+                  {
+                    "id": "0911ec3e-90f3-a5c7-3498-1501be986402",
+                    "name": "Node 059",
+                    "publicKey": "56bfbff3798a5978f54b8b2f18477475b18f0f58464bcc137d9a1d449f3176ea",
+                    "latitude": 40.23411,
+                    "longitude": -77.91246
+                  }
+                ]
+              },
+              {
+                "confidence": "high",
+                "nodes": [
+                  {
+                    "id": "2bcb0c24-c84f-669a-b065-4274a1b02264",
+                    "name": "Node 060",
+                    "publicKey": "d5b5e6726684f5348c2fd9ee03345afd3042f15fd8294d076baaab466c8914ff",
+                    "latitude": 40.1384,
+                    "longitude": -77.93367
+                  }
+                ]
+              },
+              {
+                "confidence": "high",
+                "nodes": [
+                  {
+                    "id": "4b3a6c97-fcab-cad0-8b67-76990b92ecb9",
+                    "name": "Node 061",
+                    "publicKey": "680adca0b6e9e7df9d3653f1ea2f6eec76fe5edd70c86f0a5e7a8191e7d7a6b8",
+                    "latitude": 39.99495,
+                    "longitude": -77.89643
+                  }
+                ]
+              },
+              {
+                "confidence": "high",
+                "nodes": [
+                  {
+                    "id": "6352a212-b87d-34c0-776c-6fb7bb9b7156",
+                    "name": "Node 062",
+                    "publicKey": "c933de6f884b53858e78c6efab597efc14a9cb88ccdce0eba724790a8f187ab0",
+                    "latitude": 39.60352,
+                    "longitude": -78.22445
+                  }
+                ]
+              },
+              {
+                "confidence": "high",
+                "nodes": [
+                  {
+                    "id": "bcab8abf-0c3e-4e93-02ef-5f42213f95f6",
+                    "name": "Node 063",
+                    "publicKey": "f8eedf06eff7881dd8d4c6bda4fb4e59462390aad611a579cf5781508de278e6",
+                    "latitude": 39.57019,
+                    "longitude": -78.13939
+                  }
+                ]
+              },
+              {
+                "confidence": "high",
+                "nodes": [
+                  {
+                    "id": "9ae45697-6604-a07c-9629-7ef21f735b06",
+                    "name": "Node 064",
+                    "publicKey": "b108a0bb30f7d9513c512cece13bce2cf69568f533cc899da0404e790c4af355",
+                    "latitude": 39.55892,
+                    "longitude": -78.29541
+                  }
+                ]
+              },
+              {
+                "confidence": "high",
+                "nodes": [
+                  {
+                    "id": "13886063-05a6-54a2-f8b6-74f15ff63d28",
+                    "name": "Node 065",
+                    "publicKey": "65df58572467445a0730ef62a2a7b427c8944dbeeb95f88c3ab8e635b362a5af",
+                    "latitude": 39.58487,
+                    "longitude": -78.32442
+                  }
+                ]
+              }
+            ],
+            "resolvedSource": {
+              "confidence": "high",
+              "nodes": [
+                {
+                  "id": "67460953-2dc2-e3a9-c2ae-c8bbeb8327e7",
+                  "name": "Node 031",
+                  "publicKey": "d7406e11eea11d914029807ae461391eb2a70fa28ed1348e83c4a1dfbc1a8e02",
+                  "latitude": 40.17532,
+                  "longitude": -77.78999
+                }
+              ]
+            },
+            "resolvedDestination": {
+              "confidence": "none",
+              "nodes": []
+            }
+          }
+        },
+        "event": "packetObservation",
+        "type": "event",
+        "v": 1
+      }
+    },
+    {
+      "t": 27.832,
+      "dir": "in",
+      "msg": {
+        "data": {
+          "packetHash": "ea78b86d8a0933ed",
+          "packet": {
+            "payloadType": 0,
+            "payloadTypeName": "REQ",
+            "routeType": 1,
+            "routeTypeName": "FLOOD",
+            "isFirstObservation": false,
+            "observationCount": 15
+          },
+          "observation": {
+            "observerId": "e207a86a-4128-74e6-568f-2b571e3ec71d",
+            "observerName": "Observer 033",
+            "observerPublicKey": "c4dbd6dc3d4ed48accfbdd45d95e549f8fe155c5c210a2860b60489f8be56a71",
+            "iata": "SAT",
+            "heardAt": 1791666908897,
+            "rssi": -116,
+            "snr": -4.2,
+            "sourceBroker": "mqtt2",
+            "pathBytes": "c5505e56db9f6f4056bfd5b5680ac933f8eeb1087cc072a8",
+            "pathLength": {
+              "raw": "b4",
+              "hashSize": 2,
+              "hopCount": 12
+            },
+            "propagationTimeMs": 0,
+            "resolvedPath": [
+              {
+                "confidence": "none",
+                "nodes": []
+              },
+              {
+                "confidence": "high",
+                "nodes": [
+                  {
+                    "id": "bdb750f9-b665-4695-e874-7cb831c23673",
+                    "name": "Node 039",
+                    "publicKey": "5e56ba2eb4d1208dbc6600b8286c3ef75b194c81c207a9f27a8459e08da88644",
+                    "latitude": 40.50632,
+                    "longitude": -77.73715
+                  }
+                ]
+              },
+              {
+                "confidence": "high",
+                "nodes": [
+                  {
+                    "id": "c7e9b18e-3d6e-af68-20b8-33bcebed1956",
+                    "name": "Node 044",
+                    "publicKey": "db9f5a1df7715b2478777725e72d4391e9c4243ecf9e1402d80ae21ac650cc18",
+                    "latitude": 40.74404,
+                    "longitude": -77.60214
+                  }
+                ]
+              },
+              {
+                "confidence": "high",
+                "nodes": [
+                  {
+                    "id": "439d09e6-faac-a4c8-fd41-1760c59528ba",
+                    "name": "Node 058",
+                    "publicKey": "6f4078e4cc2b08516b9a5a6151ef0ceb280e1d30ef4886c9aa05af369b380c3c",
+                    "latitude": 40.38323,
+                    "longitude": -77.31539
+                  }
+                ]
+              },
+              {
+                "confidence": "high",
+                "nodes": [
+                  {
+                    "id": "0911ec3e-90f3-a5c7-3498-1501be986402",
+                    "name": "Node 059",
+                    "publicKey": "56bfbff3798a5978f54b8b2f18477475b18f0f58464bcc137d9a1d449f3176ea",
+                    "latitude": 40.23411,
+                    "longitude": -77.91246
+                  }
+                ]
+              },
+              {
+                "confidence": "high",
+                "nodes": [
+                  {
+                    "id": "2bcb0c24-c84f-669a-b065-4274a1b02264",
+                    "name": "Node 060",
+                    "publicKey": "d5b5e6726684f5348c2fd9ee03345afd3042f15fd8294d076baaab466c8914ff",
+                    "latitude": 40.1384,
+                    "longitude": -77.93367
+                  }
+                ]
+              },
+              {
+                "confidence": "high",
+                "nodes": [
+                  {
+                    "id": "4b3a6c97-fcab-cad0-8b67-76990b92ecb9",
+                    "name": "Node 061",
+                    "publicKey": "680adca0b6e9e7df9d3653f1ea2f6eec76fe5edd70c86f0a5e7a8191e7d7a6b8",
+                    "latitude": 39.99495,
+                    "longitude": -77.89643
+                  }
+                ]
+              },
+              {
+                "confidence": "high",
+                "nodes": [
+                  {
+                    "id": "6352a212-b87d-34c0-776c-6fb7bb9b7156",
+                    "name": "Node 062",
+                    "publicKey": "c933de6f884b53858e78c6efab597efc14a9cb88ccdce0eba724790a8f187ab0",
+                    "latitude": 39.60352,
+                    "longitude": -78.22445
+                  }
+                ]
+              },
+              {
+                "confidence": "high",
+                "nodes": [
+                  {
+                    "id": "bcab8abf-0c3e-4e93-02ef-5f42213f95f6",
+                    "name": "Node 063",
+                    "publicKey": "f8eedf06eff7881dd8d4c6bda4fb4e59462390aad611a579cf5781508de278e6",
+                    "latitude": 39.57019,
+                    "longitude": -78.13939
+                  }
+                ]
+              },
+              {
+                "confidence": "high",
+                "nodes": [
+                  {
+                    "id": "9ae45697-6604-a07c-9629-7ef21f735b06",
+                    "name": "Node 064",
+                    "publicKey": "b108a0bb30f7d9513c512cece13bce2cf69568f533cc899da0404e790c4af355",
+                    "latitude": 39.55892,
+                    "longitude": -78.29541
+                  }
+                ]
+              },
+              {
+                "confidence": "high",
+                "nodes": [
+                  {
+                    "id": "6956621c-4149-6c9a-6aa2-33ac017fb29e",
+                    "name": "Node 066",
+                    "publicKey": "7cc0ee2c56cb1b9de4b31c098fd986c6c53e4c687c8010681975d2419a69cd6e",
+                    "latitude": 39.60077,
+                    "longitude": -78.37207
+                  }
+                ]
+              },
+              {
+                "confidence": "high",
+                "nodes": [
+                  {
+                    "id": "f22b2e72-b8af-9b5b-3b20-88e4e80256c3",
+                    "name": "Node 067",
+                    "publicKey": "72a851b0dcdac0f9da1aace5faae56a8bee94fc53ba6a3c0e2321ce1bb3565c4",
+                    "latitude": 39.68658,
+                    "longitude": -78.49323
+                  }
+                ]
+              }
+            ],
+            "resolvedSource": {
+              "confidence": "high",
+              "nodes": [
+                {
+                  "id": "67460953-2dc2-e3a9-c2ae-c8bbeb8327e7",
+                  "name": "Node 031",
+                  "publicKey": "d7406e11eea11d914029807ae461391eb2a70fa28ed1348e83c4a1dfbc1a8e02",
+                  "latitude": 40.17532,
+                  "longitude": -77.78999
+                }
+              ]
+            },
+            "resolvedDestination": {
+              "confidence": "none",
+              "nodes": []
+            }
+          }
+        },
+        "event": "packetObservation",
+        "type": "event",
+        "v": 1
+      }
+    },
+    {
+      "t": 31.201,
+      "dir": "out",
+      "msg": {
+        "v": 1,
+        "type": "configure",
+        "id": "cfg-2",
+        "includeObserverKey": true
+      }
+    },
+    {
+      "t": 31.201,
+      "dir": "out",
+      "msg": {
+        "v": 1,
+        "type": "ping",
+        "id": "p-1"
+      }
+    },
+    {
+      "t": 31.225,
+      "dir": "in",
+      "msg": {
+        "id": "cfg-2",
+        "includeObserverKey": true,
+        "includeRepeats": false,
+        "resolvePath": false,
+        "type": "configured",
+        "v": 1
+      }
+    },
+    {
+      "t": 31.225,
+      "dir": "in",
+      "msg": {
+        "id": "p-1",
+        "type": "pong",
+        "v": 1
+      }
+    },
+    {
+      "t": 35.0,
+      "dir": "in",
+      "msg": {
+        "data": {
+          "observerId": "ff683c8d-e1ef-5f32-6635-5857103bd8f9",
+          "displayName": "Observer 068",
+          "observerType": "meshcore-ha",
+          "iata": "SAT",
+          "online": true,
+          "radio": "910.525,62.5,7",
+          "scopes": [],
+          "batteryMv": 6330,
+          "uptimeSeconds": 186416,
+          "lastStatusAt": 1791666916174
+        },
+        "event": "observerStatus",
+        "type": "event",
+        "v": 1
+      }
+    },
+    {
+      "t": 61.203,
+      "dir": "out",
+      "msg": {
+        "v": 1,
+        "type": "configure",
+        "id": "cfg-3",
+        "resolvePath": true,
+        "includeObserverKey": true
+      }
+    },
+    {
+      "t": 61.203,
+      "dir": "out",
+      "msg": {
+        "v": 1,
+        "type": "ping",
+        "id": "p-2"
+      }
+    },
+    {
+      "t": 61.226,
+      "dir": "in",
+      "msg": {
+        "id": "cfg-3",
+        "includeObserverKey": true,
+        "includeRepeats": false,
+        "resolvePath": true,
+        "type": "configured",
+        "v": 1
+      }
+    },
+    {
+      "t": 61.228,
+      "dir": "in",
+      "msg": {
+        "id": "p-2",
+        "type": "pong",
+        "v": 1
+      }
+    },
+    {
+      "t": 71.302,
+      "dir": "in",
+      "msg": {
+        "data": {
+          "id": 12190,
+          "channelId": 58,
+          "channelHash": "11",
+          "packetHash": "adef1fb43bf31c31",
+          "senderName": "Sender 069",
+          "content": "Synthetic message e586e0",
+          "sentAt": 1791666949000,
+          "scope": null,
+          "scopeStatus": "unscoped"
+        },
+        "event": "channelMessage",
+        "type": "event",
+        "v": 1
+      }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "request": "packets/86eaebe57cd969a6",
+  "status": 404,
+  "body": {
+    "error": {
+      "code": "not_found",
+      "message": "Synthetic message 24ac1f"
+    }
+  }
+}

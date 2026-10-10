@@ -1,0 +1,49 @@
+{
+  "request": "observers?limit=200",
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "id": "f6c9d02e-eee0-7882-1a89-9bc1dc6d1170",
+        "displayName": "Observer 026",
+        "observerType": "meshcore/v1.16.0.31-observer-ed674fd",
+        "iata": "SAT",
+        "status": "online",
+        "radio": "910.525,62.5,7"
+      },
+      {
+        "id": "d09ed40a-8b31-541b-a00f-8c606dd926b6",
+        "displayName": "Observer 027",
+        "observerType": "openhop_repeater/1.1.4",
+        "iata": "SAT",
+        "status": "online",
+        "radio": "910.525,62.5,7"
+      },
+      {
+        "id": "34c754cc-63ad-aa20-f448-64a187973cf9",
+        "displayName": "Observer 028",
+        "observerType": "meshcore/v1.17.1.2-observer-8998409",
+        "iata": "SAT",
+        "status": "online",
+        "radio": "910.525,62.5,7"
+      },
+      {
+        "id": "b2f8e810-3f85-c34e-380b-6741531b27f8",
+        "displayName": "Observer 029",
+        "observerType": "meshcore/v1.17.1.2-observer-8998409",
+        "iata": "AUS",
+        "status": "online",
+        "radio": "910.525,62.5,7"
+      },
+      {
+        "id": "036d3abb-ddbd-14a2-36f6-0f8b77c627e9",
+        "displayName": "Observer 030",
+        "observerType": "meshcore/v1.17.1.2-observer-8998409",
+        "iata": "AUS",
+        "status": "online",
+        "radio": "910.525,62.5,7"
+      }
+    ],
+    "hasMore": false
+  }
+}
