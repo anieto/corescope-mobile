@@ -364,7 +364,7 @@ struct ExploreScreen: View {
     }
 
     private func loadSearchPackets() async {
-        let client = APIClient(settings: settings)
+        let client = AnalyzerBackendFactory.make(settings: settings)
         let cacheKey = "explore-search-packets-\(client.cacheIdentifier)"
         if let cached: PacketsResponse = await APIResponseCache.shared.value(
             for: cacheKey,
@@ -374,10 +374,7 @@ struct ExploreScreen: View {
         }
         do {
             let response: PacketsResponse = try await APIResponseCache.shared.refresh(for: cacheKey) {
-                try await client.get(
-                    "/api/packets",
-                    query: [URLQueryItem(name: "limit", value: "1000")]
-                )
+                try await client.packets(region: nil, limit: 1000, payloadType: nil)
             }
             searchPackets = response.packets
         } catch {

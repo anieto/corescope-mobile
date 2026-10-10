@@ -94,7 +94,7 @@ final class MapViewModel {
     /// every live packet, instead of scanning up to ~1,000 nodes per hop.
     private(set) var nodesByPubkey: [String: MeshNode] = [:]
 
-    private var apiClient: APIClient?
+    private var apiClient: (any AnalyzerBackend)?
     private var cacheNamespace = ""
     private let automaticRefreshInterval: TimeInterval = 30
     private let staleCacheLifetime: TimeInterval = 7 * 24 * 60 * 60
@@ -104,7 +104,7 @@ final class MapViewModel {
     }
 
     func configure(settings: AnalyzerSettings) {
-        apiClient = APIClient(settings: settings)
+        apiClient = AnalyzerBackendFactory.make(settings: settings)
         cacheNamespace = settings.host.lowercased()
     }
 
@@ -133,7 +133,7 @@ final class MapViewModel {
 
         guard let apiClient else { return }
         // Non-fatal if this fails: the map just falls back to cached defaults.
-        if let defaults: MapDefaults = try? await apiClient.get("/api/config/map") {
+        if let defaults: MapDefaults = try? await apiClient.mapDefaults() {
             mapDefaults = defaults
             await MapResponseCache.shared.store(defaults, for: cacheKey)
         }
@@ -170,11 +170,7 @@ final class MapViewModel {
             // through a node outside a small page silently fails to
             // resolve. The host has ~1,000 nodes today; ask for well above
             // that rather than re-checking `total` on every load.
-            var query: [URLQueryItem] = [URLQueryItem(name: "limit", value: "5000")]
-            if let region {
-                query.append(URLQueryItem(name: "region", value: region))
-            }
-            let response: NodesResponse = try await apiClient.get("/api/nodes", query: query)
+            let response = try await apiClient.nodes(region: region)
             nodes = response.nodes
             lastUpdatedAt = .now
             errorMessage = nil
@@ -203,11 +199,7 @@ final class MapViewModel {
         }
 
         do {
-            var query: [URLQueryItem] = [URLQueryItem(name: "limit", value: "200")]
-            if let region {
-                query.append(URLQueryItem(name: "region", value: region))
-            }
-            let response: PacketsResponse = try await apiClient.get("/api/packets", query: query)
+            let response = try await apiClient.packets(region: region, limit: 200, payloadType: nil)
             recentPackets = response.packets
             await MapResponseCache.shared.store(response, for: cacheKey)
             recordRefresh(for: cacheKey)

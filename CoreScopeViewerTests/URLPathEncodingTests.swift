@@ -148,7 +148,7 @@ struct ChannelNameNormalizationTests {
 
 struct PacketFeedCacheTests {
     @Test func requestsOnlyGroupTextPacketsUsingServerParameter() {
-        let query = PacketFeedCache.channelPacketQuery(region: "AUS")
+        let query = CoreScopeBackend.packetQuery(region: "AUS", limit: 1000, payloadType: 5)
 
         #expect(query.contains(URLQueryItem(name: "limit", value: "1000")))
         #expect(query.contains(URLQueryItem(name: "type", value: "5")))

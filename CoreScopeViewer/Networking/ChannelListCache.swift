@@ -28,7 +28,7 @@ actor ChannelListCache {
 
     func load(
         for key: Key,
-        using apiClient: APIClient,
+        using apiClient: any AnalyzerBackend,
         forceRefresh: Bool = false
     ) async throws -> [MeshChannel] {
         if !forceRefresh,
@@ -42,11 +42,7 @@ actor ChannelListCache {
         }
 
         let load = Task { [apiClient] in
-            var query: [URLQueryItem] = []
-            if let region = key.region {
-                query.append(URLQueryItem(name: "region", value: region))
-            }
-            let response: ChannelsResponse = try await apiClient.get("/api/channels", query: query)
+            let response = try await apiClient.channels(region: key.region)
             return response.channels
         }
         inFlightLoads[key] = load

@@ -21,11 +21,11 @@ final class ObserverRegionLookup {
     private(set) var coordinateByName: [String: CLLocationCoordinate2D] = [:]
     private(set) var isLoaded = false
 
-    private var apiClient: APIClient?
+    private var apiClient: (any AnalyzerBackend)?
     private var cacheNamespace = ""
 
     func configure(settings: AnalyzerSettings) {
-        apiClient = APIClient(settings: settings)
+        apiClient = AnalyzerBackendFactory.make(settings: settings)
         cacheNamespace = settings.host.lowercased()
     }
 
@@ -51,7 +51,7 @@ final class ObserverRegionLookup {
             apply(cached)
         }
         guard let response: ObserversResponse = try? await APIResponseCache.shared.refresh(for: cacheKey, loader: {
-            try await apiClient.get("/api/observers")
+            try await apiClient.observers()
         }) else { return }
         apply(response)
     }

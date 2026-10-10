@@ -41,6 +41,11 @@ acceptance-test references. Paths below are relative to `CoreScopeViewer/`.
 
 ## Contracts to capture as fixtures
 
+Beacon groundwork, 2026-10-10: both platforms now select a CoreScope backend through a factory and
+declare matching capability sets. iOS extracts a live-feed transport; Android reuses its existing
+`PacketSource`/`LiveSignal` boundary. Automated regression passes on both platforms; manual parity
+checks remain pending. See [phase 1 implementation](../beacon/phase1-implementation.md).
+
 | Contract observed | Notes to preserve |
 |---|---|
 | `GET /api/config/map` | Analyzer-provided camera defaults; use a documented fallback if unavailable |

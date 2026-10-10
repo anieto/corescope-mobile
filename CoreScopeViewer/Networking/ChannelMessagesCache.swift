@@ -29,7 +29,7 @@ actor ChannelMessagesCache {
 
     func load(
         for key: Key,
-        using apiClient: APIClient,
+        using apiClient: any AnalyzerBackend,
         forceRefresh: Bool = false
     ) async throws -> ChannelMessagesResponse {
         if !forceRefresh,
@@ -43,13 +43,7 @@ actor ChannelMessagesCache {
         }
 
         let load = Task { [apiClient] in
-            let response: ChannelMessagesResponse = try await apiClient.get(
-                "/api/channels/\(key.hash.urlPathComponentEncoded)/messages",
-                query: [
-                    URLQueryItem(name: "limit", value: "500"),
-                    URLQueryItem(name: "offset", value: String(key.offset))
-                ]
-            )
+            let response: ChannelMessagesResponse = try await apiClient.channelMessages(id: key.hash, offset: key.offset)
             return response
         }
         inFlightLoads[key] = load

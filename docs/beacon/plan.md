@@ -1,6 +1,8 @@
 # Beacon support plan
 
-Status: phase 0 done (see [phase0-findings.md](phase0-findings.md), which wins where the two differ); phase 1 next. Last updated 2026-10-10.
+Status: phase 0 done (see [phase0-findings.md](phase0-findings.md), which wins where the two differ).
+Phase 1 backend extraction implemented on iOS and Android; automated checks pass, manual CoreScope
+regression pending. See [phase1-implementation.md](phase1-implementation.md). Last updated 2026-10-10.
 
 NodeScope talks only to CoreScope today. Some communities are moving to
 [Beacon](https://github.com/MeshCore-Beacon/beacon-docs) (Colorado Mesh already has, and dropped out of

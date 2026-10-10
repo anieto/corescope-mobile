@@ -37,9 +37,10 @@ class AppContainer(application: Application) {
     }
     /** Last successful analyzer responses, shown immediately on launch and when offline. */
     val responses = ResponseCache(java.io.File(application.cacheDir, "api-responses"))
-    val repository = HttpAnalyzerRepository(client, responses) { airports }
-    val packetSource = HttpPacketSource(client)
-    val browse = HttpBrowseRepository(client, responses)
+    val backend = AnalyzerBackendFactory.create(client, responses) { airports }
+    val repository: AnalyzerRepository = backend
+    val packetSource: PacketSource = backend.liveFeed
+    val browse: BrowseRepository = backend
     val diagnostics = AnalyzerDiagnostics(client)
     val cacheStorage = org.nodescope.android.core.storage.CacheStorage(application)
     val sourceIcons = org.nodescope.android.core.storage.SourceIcons(application, client)

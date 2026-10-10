@@ -10,12 +10,12 @@ final class ObserversViewModel {
     var errorMessage: String?
     var lastUpdatedAt: Date?
 
-    private var apiClient: APIClient?
+    private var apiClient: (any AnalyzerBackend)?
     private var cacheNamespace = ""
     private let staleCacheLifetime: TimeInterval = 7 * 24 * 60 * 60
 
     func configure(settings: AnalyzerSettings) {
-        apiClient = APIClient(settings: settings)
+        apiClient = AnalyzerBackendFactory.make(settings: settings)
         cacheNamespace = settings.host.lowercased()
     }
 
@@ -34,7 +34,7 @@ final class ObserversViewModel {
         defer { isLoading = false }
         do {
             let response: ObserversResponse = try await APIResponseCache.shared.refresh(for: cacheKey) {
-                try await apiClient.get("/api/observers")
+                try await apiClient.observers()
             }
             observers = response.observers
             lastUpdatedAt = .now
@@ -59,7 +59,7 @@ final class ObserversViewModel {
         defer { isLoading = false }
         do {
             analytics = try await APIResponseCache.shared.refresh(for: cacheKey) {
-                try await apiClient.get("/api/observers/\(id.urlPathComponentEncoded)/analytics")
+                try await apiClient.observerAnalytics(id: id)
             }
             lastUpdatedAt = .now
             errorMessage = nil

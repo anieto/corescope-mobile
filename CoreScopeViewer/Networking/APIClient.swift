@@ -138,7 +138,11 @@ struct APIClient: Sendable {
     /// to call safely from background tasks. Reconstruct the client (view
     /// models do this in `configure`) after the host changes.
     init(settings: AnalyzerSettings, session: URLSession = .shared) {
-        self.baseURL = settings.baseURL
+        self.init(baseURL: settings.baseURL, session: session)
+    }
+
+    init(baseURL: URL, session: URLSession = .shared) {
+        self.baseURL = baseURL
         self.session = session
         self.decoder = Self.makeDecoder()
     }

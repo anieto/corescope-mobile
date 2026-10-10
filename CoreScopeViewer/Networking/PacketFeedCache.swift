@@ -30,7 +30,7 @@ actor PacketFeedCache {
 
     func load(
         for key: Key,
-        using apiClient: APIClient,
+        using apiClient: any AnalyzerBackend,
         forceRefresh: Bool = false
     ) async throws -> [Packet] {
         if !forceRefresh,
@@ -44,8 +44,7 @@ actor PacketFeedCache {
         }
 
         let load = Task { [apiClient] in
-            let query = Self.channelPacketQuery(region: key.region)
-            let response: PacketsResponse = try await apiClient.get("/api/packets", query: query)
+            let response = try await apiClient.packets(region: key.region, limit: 1000, payloadType: 5)
             return response.packets
         }
         inFlightLoads[key] = load
@@ -61,14 +60,4 @@ actor PacketFeedCache {
         }
     }
 
-    nonisolated static func channelPacketQuery(region: String?) -> [URLQueryItem] {
-        var query = [
-            URLQueryItem(name: "limit", value: "1000"),
-            URLQueryItem(name: "type", value: "5")
-        ]
-        if let region {
-            query.append(URLQueryItem(name: "region", value: region))
-        }
-        return query
-    }
 }

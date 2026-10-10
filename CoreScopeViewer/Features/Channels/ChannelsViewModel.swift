@@ -14,11 +14,11 @@ final class ChannelsViewModel {
     var errorMessage: String?
     var lastUpdatedAt: Date?
 
-    private var apiClient: APIClient?
+    private var apiClient: (any AnalyzerBackend)?
     private var configuredSourceIdentifier: String?
 
     func configure(settings: AnalyzerSettings) {
-        let client = APIClient(settings: settings)
+        let client = AnalyzerBackendFactory.make(settings: settings)
         if configuredSourceIdentifier != client.cacheIdentifier {
             channels = []
             messages = []
@@ -50,7 +50,7 @@ final class ChannelsViewModel {
     }
 
     static func preload(settings: AnalyzerSettings, region: String?) async {
-        let apiClient = APIClient(settings: settings)
+        let apiClient = AnalyzerBackendFactory.make(settings: settings)
         let key = ChannelListCache.Key(source: apiClient.cacheIdentifier, region: region)
         _ = try? await ChannelListCache.shared.load(for: key, using: apiClient)
     }

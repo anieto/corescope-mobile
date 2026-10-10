@@ -29,13 +29,13 @@ final class NodeAnalyticsViewModel {
     var lastUpdatedAt: Date?
     var isSupported = true
 
-    private var apiClient: APIClient?
+    private var apiClient: (any AnalyzerBackend)?
     private var cacheNamespace = ""
     private var activeLoadID = UUID()
     private let staleCacheLifetime: TimeInterval = 24 * 60 * 60
 
     func configure(settings: AnalyzerSettings) {
-        apiClient = APIClient(settings: settings)
+        apiClient = AnalyzerBackendFactory.make(settings: settings)
         cacheNamespace = AnalyzerSettings.normalizedHost(settings.host).lowercased()
     }
 
@@ -68,10 +68,7 @@ final class NodeAnalyticsViewModel {
 
         do {
             let response: NodeAnalyticsResponse = try await APIResponseCache.shared.refresh(for: cacheKey) {
-                try await apiClient.get(
-                    "/api/nodes/\(pubkey.urlPathComponentEncoded)/analytics",
-                    query: [URLQueryItem(name: "days", value: String(requestedRange.rawValue))]
-                )
+                try await apiClient.nodeAnalytics(publicKey: pubkey, days: requestedRange.rawValue)
             }
             guard activeLoadID == loadID else { return }
             analytics = response

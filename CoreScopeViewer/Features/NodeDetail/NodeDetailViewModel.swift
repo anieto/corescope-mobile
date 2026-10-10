@@ -17,11 +17,11 @@ final class NodeDetailViewModel {
     var errorMessage: String?
     var lastUpdatedAt: Date?
 
-    private var apiClient: APIClient?
+    private var apiClient: (any AnalyzerBackend)?
     private var cacheNamespace = ""
 
     func configure(settings: AnalyzerSettings) {
-        apiClient = APIClient(settings: settings)
+        apiClient = AnalyzerBackendFactory.make(settings: settings)
         cacheNamespace = settings.host.lowercased()
     }
 
@@ -41,14 +41,13 @@ final class NodeDetailViewModel {
         isLoading = health == nil && paths == nil && reach == nil
         defer { isLoading = false }
 
-        let encodedPubkey = pubkey.urlPathComponentEncoded
         do {
             let fresh: NodeDetailCacheValue = try await APIResponseCache.shared.refresh(
                 for: cacheKey,
                 loader: {
-                async let healthTask: NodeHealthResponse? = try? apiClient.get("/api/nodes/\(encodedPubkey)/health")
-                async let pathsTask: NodePathsResponse? = try? apiClient.get("/api/nodes/\(encodedPubkey)/paths")
-                async let reachTask: NodeReachResponse? = try? apiClient.get("/api/nodes/\(encodedPubkey)/reach")
+                async let healthTask: NodeHealthResponse? = try? apiClient.nodeHealth(publicKey: pubkey)
+                async let pathsTask: NodePathsResponse? = try? apiClient.nodePaths(publicKey: pubkey)
+                async let reachTask: NodeReachResponse? = try? apiClient.nodeReach(publicKey: pubkey)
                 let result = await NodeDetailCacheValue(
                     health: healthTask,
                     paths: pathsTask,

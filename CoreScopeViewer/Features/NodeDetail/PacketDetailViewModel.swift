@@ -9,11 +9,11 @@ final class PacketDetailViewModel {
     var errorMessage: String?
     var lastUpdatedAt: Date?
 
-    private var apiClient: APIClient?
+    private var apiClient: (any AnalyzerBackend)?
     private var cacheNamespace = ""
 
     func configure(settings: AnalyzerSettings) {
-        apiClient = APIClient(settings: settings)
+        apiClient = AnalyzerBackendFactory.make(settings: settings)
         cacheNamespace = settings.host.lowercased()
     }
 
@@ -33,7 +33,7 @@ final class PacketDetailViewModel {
 
         do {
             detail = try await APIResponseCache.shared.refresh(for: cacheKey) {
-                try await apiClient.get("/api/packets/\(hash.urlPathComponentEncoded)")
+                try await apiClient.packetDetail(hash: hash)
             }
             lastUpdatedAt = .now
             errorMessage = nil

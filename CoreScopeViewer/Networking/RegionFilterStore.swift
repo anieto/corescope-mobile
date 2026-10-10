@@ -19,7 +19,7 @@ final class RegionFilterStore {
     }
     private(set) var iataCoords: [String: IataCoordinate] = [:]
 
-    private var apiClient: APIClient?
+    private var apiClient: (any AnalyzerBackend)?
     private var cacheNamespace = ""
 
     init() {
@@ -27,7 +27,7 @@ final class RegionFilterStore {
     }
 
     func configure(settings: AnalyzerSettings) {
-        apiClient = APIClient(settings: settings)
+        apiClient = AnalyzerBackendFactory.make(settings: settings)
         cacheNamespace = settings.host.lowercased()
     }
 
@@ -57,7 +57,7 @@ final class RegionFilterStore {
             regions = cached
         }
         if let fresh: RegionsMap = try? await APIResponseCache.shared.refresh(for: cacheKey, loader: {
-            try await apiClient.get("/api/config/regions")
+            try await apiClient.regions()
         }) {
             regions = fresh
         }
@@ -75,7 +75,7 @@ final class RegionFilterStore {
             iataCoords = cached.coords
         }
         if let fresh: IataCoordsResponse = try? await APIResponseCache.shared.refresh(for: cacheKey, loader: {
-            try await apiClient.get("/api/iata-coords")
+            try await apiClient.iataCoordinates()
         }) {
             iataCoords = fresh.coords
         }
