@@ -16,8 +16,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: '21'
+          # Matches gradle/gradle-daemon-jvm.properties, so Gradle doesn't download its own JDK.
+          distribution: jetbrains
+          java-version: '25'
       - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
       - run: ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug :app:assembleDebugAndroidTest
