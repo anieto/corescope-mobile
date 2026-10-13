@@ -18,7 +18,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     private val session = AnalyzerSession(container.preferences, container.repository)
     val state = session.states.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SessionState())
-    private val feed = LiveFeed(container.preferences, container.packetSource)
+    private val feed = LiveFeed(container.preferences, container.packetSource, container.sourceRouter.liveReadiness)
     // Packet bookkeeping runs off the main thread, which only receives each finished state; on a
     // busy network it otherwise competed with the map's animation for every frame.
     val live = feed.states.flowOn(kotlinx.coroutines.Dispatchers.Default)

@@ -295,21 +295,22 @@ data class BeaconResolvedHop(val confidence: String, val nodes: List<Node> = emp
     }
 }
 
+@Serializable
+data class BeaconPacketSummary(
+    val packetHash: String,
+    val payloadType: Int,
+    val routeType: Int,
+    val firstHeardAt: Long,
+    val lastHeardAt: Long,
+    val observationCount: Int,
+    val latestObserver: Observer? = null,
+) {
+    @Serializable data class Observer(val id: String, val displayName: String? = null, val iata: String? = null)
+}
+
 class BeaconPacketReader(val client: BeaconApiClient, verifiedServerInfo: BeaconServerInfo) {
     init { verifiedServerInfo.requireSupported() }
 
-    @Serializable
-    private data class Summary(
-        val packetHash: String,
-        val payloadType: Int,
-        val routeType: Int,
-        val firstHeardAt: Long,
-        val lastHeardAt: Long,
-        val observationCount: Int,
-        val latestObserver: Observer? = null,
-    ) {
-        @Serializable data class Observer(val id: String, val displayName: String? = null, val iata: String? = null)
-    }
 
     @Serializable
     private data class Detail(
@@ -333,17 +334,22 @@ class BeaconPacketReader(val client: BeaconApiClient, verifiedServerInfo: Beacon
     }
 
     suspend fun packetPage(region: String?, pageSize: Int, payloadType: Int?, cursor: AnalyzerCursor?): AnalyzerPage<LivePacket> {
+        val page = summaryPage(region, pageSize, payloadType, cursor)
+        val now = client.currentTime()
+        return AnalyzerPage(page.items.map { it.livePacket(now) }, page.nextCursor)
+    }
+
+    suspend fun summaryPage(region: String?, pageSize: Int, payloadType: Int?, cursor: AnalyzerCursor?): AnalyzerPage<BeaconPacketSummary> {
         client.sourceSession.check()
         val query = pageQuery(pageSize, region)
         payloadType?.let { query += "payloadType" to it.toString() }
         cursor?.let { query += "cursor" to BeaconCursor.decode(it, "packets", client, region, payloadType) }
         val page = client.get(BeaconRawPage.serializer(), listOf("packets"), query)
-        val items = decodeItems(page, Summary.serializer())
+        val items = decodeItems(page, BeaconPacketSummary.serializer())
         if (!items.all { it.packetHash.isNotEmpty() && it.observationCount >= 0 }) throw BeaconApiException.InvalidResponse()
         val next = continuation(page, items) { BeaconCursor.encode("packets", client, region, payloadType, it) }
         client.sourceSession.check()
-        val now = client.currentTime()
-        return AnalyzerPage(items.map { it.livePacket(now) }, next)
+        return AnalyzerPage(items, next)
     }
 
     suspend fun packetDetail(hash: String): PacketDetail {
@@ -367,7 +373,7 @@ class BeaconPacketReader(val client: BeaconApiClient, verifiedServerInfo: Beacon
         )
     }
 
-    private fun Summary.livePacket(now: Long) = LivePacket(
+    private fun BeaconPacketSummary.livePacket(now: Long) = LivePacket(
         id = null, hash = packetHash, payloadType = payloadType, typeName = payloadTypeName(payloadType),
         observerId = latestObserver?.id?.lowercase(), observerName = latestObserver?.displayName,
         region = latestObserver?.iata, snr = null, rssi = null, hops = emptyList(), resolvedPath = emptyList(),

@@ -6,7 +6,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.flowOn
 import okhttp3.OkHttpClient
 import org.nodescope.android.core.model.*
 
@@ -134,6 +138,14 @@ class AnalyzerSourceRouter(
     }
 
     val currentBeacon: BeaconBackend? get() = mutableState.value.beacon
+
+    fun makeSocket(url: String): BeaconSocket = OkHttpBeaconSocket(http, url)
+
+    /** Readiness for [LiveFeed]: a new key whenever the backend or source session changes. */
+    val liveReadiness: kotlinx.coroutines.flow.Flow<LiveSourceReadiness> = state.map {
+        // No host yet means nothing has been selected through the router, so nothing is gated.
+        LiveSourceReadiness(it.host, it.ready || it.host == null, it.session.id)
+    }.distinctUntilChanged()
 }
 
 class AnalyzerSourceNotReadyException : IllegalStateException("Checking analyzer source…")
@@ -202,13 +214,43 @@ class RoutingPacketSource(private val coreScope: PacketSource, private val route
     override fun events(host: String): Flow<LiveSignal> = events(host, kotlinx.coroutines.flow.flowOf(LiveFeedControls(emptySet(), LiveFeedConfiguration())))
     override fun events(host: String, controls: Flow<LiveFeedControls>): Flow<LiveSignal> =
         on(host, { beaconEvents(it, controls) }) { coreScope.events(host, controls) }
+    override fun usesBrowseSnapshots(host: String) = router.route(host) is AnalyzerSourceRouter.Route.Beacon
 
     private suspend fun beaconRecent(backend: BeaconBackend, selection: AnalyzerSelection): List<LivePacket> =
         collectAnalyzerPages(200, identity = { it.hash }) { cursor, size ->
             backend.packetReader.packetPage(selection.region, size, null, cursor)
         }
 
-    /** Replaced by the Beacon live feed port; until then a Beacon source is browse-only. */
+    /**
+     * One Beacon live feed per collection, confined to a serial dispatcher like iOS's @MainActor
+     * feed; demands are re-applied on every hello, as iOS `LiveFeedService` does.
+     */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     private fun beaconEvents(backend: BeaconBackend, controls: Flow<LiveFeedControls>): Flow<LiveSignal> =
-        kotlinx.coroutines.flow.flow { emit(LiveSignal.Connection(LiveConnection.PAUSED)); kotlinx.coroutines.awaitCancellation() }
+        kotlinx.coroutines.flow.channelFlow {
+            val feed = BeaconLiveFeed(backend.client, backend.serverInfo, this, makeSocket = router::makeSocket,
+                observerReader = backend.observerReader)
+            var latest: LiveFeedControls? = null
+            fun apply() = latest?.let { feed.subscribe(it.subscriptions); feed.configure(it.configuration) }
+            send(LiveSignal.Connection(LiveConnection.CONNECTING))
+            launch { controls.collect { latest = it; apply() } }
+            feed.connect()
+            try {
+                for (event in feed.events) {
+                    when (event) {
+                        BeaconLiveEvent.Connected -> { apply(); send(LiveSignal.Connection(LiveConnection.LIVE)) }
+                        is BeaconLiveEvent.Disconnected -> send(LiveSignal.Connection(LiveConnection.RECONNECTING))
+                        else -> Unit
+                    }
+                    send(LiveSignal.Beacon(event))
+                }
+            } finally {
+                feed.disconnect()
+            }
+        }.flowOn(BEACON_LIVE_DISPATCHER)
+
+    companion object {
+        @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+        private val BEACON_LIVE_DISPATCHER = kotlinx.coroutines.Dispatchers.Default.limitedParallelism(1)
+    }
 }

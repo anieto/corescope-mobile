@@ -21,9 +21,13 @@ data class LiveFeedState(
     val observers: List<MeshObserver> = emptyList(),
     val observersLoaded: Boolean = false,
     val historyError: Boolean = false,
+    /** Set for a Beacon source, which delivers browse snapshots instead of a packet stream. */
+    val beacon: BeaconLiveState? = null,
 ) {
     /** Worked out once per state; screens read it on every recomposition. */
     val visiblePackets: List<LivePacket> by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        // Beacon snapshots are already scoped to the region by the server.
+        if (beacon != null) return@lazy packets
         val region = selection?.region ?: return@lazy packets
         val ids = observers.filter { it.iata.equals(region, true) }.map { it.id.lowercase() }.toSet()
         packets.filter { it.region.equals(region, true) || it.observerId?.lowercase() in ids }
@@ -32,18 +36,23 @@ data class LiveFeedState(
 sealed interface LiveSignal {
     data class Connection(val value: LiveConnection) : LiveSignal
     data class Packet(val value: LivePacket) : LiveSignal
+    data class Beacon(val event: BeaconLiveEvent) : LiveSignal
 }
 interface PacketSource {
     suspend fun recent(selection: AnalyzerSelection): List<LivePacket>
     suspend fun observers(host: String): List<MeshObserver>
     fun events(host: String): Flow<LiveSignal>
     fun events(host: String, controls: Flow<LiveFeedControls>): Flow<LiveSignal> = events(host)
+    /** True when [events] delivers Beacon browse snapshots rather than packets (iOS `usesBrowseSnapshots`). */
+    fun usesBrowseSnapshots(host: String): Boolean = false
 }
 
 data class LiveFeedConfiguration(
     val resolvePath: Boolean = false,
     val includeObserverKey: Boolean = false,
     val includeRepeats: Boolean = false,
+    /** Beacon only: load the observer catalog after every reconnect. */
+    val recoverObservers: Boolean = false,
 )
 data class LiveFeedSubscription(val regions: Set<String> = emptySet(), val payloadTypes: Set<Int> = emptySet())
 data class LiveFeedDemand(
@@ -60,6 +69,7 @@ fun mergeLiveFeedDemands(demands: Collection<LiveFeedDemand>) = LiveFeedControls
         demands.any { it.configuration.resolvePath },
         demands.any { it.configuration.includeObserverKey },
         demands.any { it.configuration.includeRepeats },
+        demands.any { it.configuration.recoverObservers },
     ),
 )
 class HttpPacketSource(client: OkHttpClient) : PacketSource {
@@ -114,8 +124,15 @@ class HttpPacketSource(client: OkHttpClient) : PacketSource {
     }.buffer(256, kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST)
 }
 
+/** Whether the selected source has been identified; [key] changes whenever its backend or session does. */
+data class LiveSourceReadiness(val host: String?, val ready: Boolean, val key: Any? = null)
+
 @OptIn(ExperimentalCoroutinesApi::class)
-class LiveFeed(preferences: PreferencesStore, private val source: PacketSource) {
+class LiveFeed(
+    preferences: PreferencesStore,
+    private val source: PacketSource,
+    readiness: Flow<LiveSourceReadiness> = flowOf(LiveSourceReadiness(null, true)),
+) {
     private val demands = MutableStateFlow<Map<UUID, Pair<String, LiveFeedDemand>>>(emptyMap())
     fun setDemand(consumer: UUID, host: String, demand: LiveFeedDemand?) {
         demands.update { current ->
@@ -126,25 +143,38 @@ class LiveFeed(preferences: PreferencesStore, private val source: PacketSource) 
     fun reconnect() { restart.update { it + 1 } }
     val states = combine(preferences.values.map {
         if (it.onboarded) AnalyzerSelection(it.host, it.region) else null
-    }.distinctUntilChanged(), restart) { selection, _ -> selection }.flatMapLatest { selection ->
-        if (selection == null) flowOf(LiveFeedState()) else session(selection)
+    }.distinctUntilChanged(), restart, readiness.distinctUntilChanged()) { selection, generation, source ->
+        Triple(selection, generation, source)
+    }.flatMapLatest { (selection, _, source) ->
+        val host = selection?.let { runCatching { normalizeHost(it.host).lowercase() }.getOrNull() }
+        when {
+            selection == null -> flowOf(LiveFeedState())
+            // Nothing connects to a source that's still being identified.
+            source.host != null && (source.host != host || !source.ready) -> flowOf(LiveFeedState(selection, LiveConnection.PAUSED))
+            else -> session(selection)
+        }
     }
     private sealed interface Update {
         data class Signal(val value: LiveSignal) : Update
         data class History(val value: List<LivePacket>?, val observers: List<MeshObserver>?) : Update
     }
     private fun session(selection: AnalyzerSelection): Flow<LiveFeedState> = channelFlow {
-        var state = LiveFeedState(selection, LiveConnection.CONNECTING)
+        val beacon = source.usesBrowseSnapshots(selection.host)
+        var state = LiveFeedState(selection, LiveConnection.CONNECTING, beacon = if (beacon) BeaconLiveState() else null)
         send(state)
         val updates = Channel<Update>(Channel.BUFFERED)
+        // Beacon screens use browse snapshots, the same subscription iOS's packet feed asks for.
+        val browseFilter = LiveBrowseFilter(selection.region?.uppercase(), null)
+        val browseDemand = LiveFeedDemand(LiveFeedSubscription(regions = setOfNotNull(selection.region?.uppercase())))
         suspend fun refreshHistory() {
             val packets = try { source.recent(selection) } catch (e: CancellationException) { throw e } catch (_: Exception) { null }
             val observers = try { source.observers(selection.host) } catch (e: CancellationException) { throw e } catch (_: Exception) { null }
             updates.send(Update.History(packets, observers))
         }
-        var historyJob: Job? = launch { refreshHistory() }
+        var historyJob: Job? = if (beacon) null else launch { refreshHistory() }
         val controls = demands.map { current ->
-            mergeLiveFeedDemands(current.values.filter { it.first == selection.host }.map { it.second })
+            mergeLiveFeedDemands(current.values.filter { it.first == selection.host }.map { it.second } +
+                listOfNotNull(browseDemand.takeIf { beacon }))
         }.distinctUntilChanged()
         launch { source.events(selection.host, controls).collect { updates.send(Update.Signal(it)) } }
         try {
@@ -153,9 +183,21 @@ class LiveFeed(preferences: PreferencesStore, private val source: PacketSource) 
                     is Update.Signal -> when (val signal = update.value) {
                         is LiveSignal.Connection -> {
                             state = state.copy(connection = signal.value)
-                            if (signal.value == LiveConnection.LIVE) {
+                            if (signal.value == LiveConnection.LIVE && !beacon) {
                                 if (historyJob?.isActive != true) historyJob = launch { refreshHistory() }
                             }
+                        }
+                        is LiveSignal.Beacon -> {
+                            val next = (state.beacon ?: BeaconLiveState()).reduce(signal.event)
+                            val rows = next.browseSnapshots[browseFilter]
+                            state = state.copy(
+                                beacon = next,
+                                packets = if (rows === state.beacon?.browseSnapshots?.get(browseFilter)) state.packets
+                                    else rows?.rows.orEmpty().map { it.livePacket(System.currentTimeMillis()) },
+                                observers = next.recoveredObservers() ?: state.observers,
+                                observersLoaded = next.observerCatalog != null || state.observersLoaded,
+                                historyError = browseFilter in next.recoveryErrors,
+                            )
                         }
                         is LiveSignal.Packet -> {
                             val previous = state.packets.firstOrNull { it.key == signal.value.key }

@@ -21,6 +21,9 @@ data class MeshObserver(val id: String, val name: String? = null, val iata: Stri
     @SerialName("uptime_secs") val uptimeSecs: Long? = null,
     @SerialName("noise_floor") val noiseFloor: Double? = null,
     val nodeRole: String? = null,
+    /** Beacon live status only; CoreScope never reports it, and it's not cached. */
+    @kotlinx.serialization.Transient val online: Boolean? = null,
+    @kotlinx.serialization.Transient val lastStatusAt: Long? = null,
 ) {
     val coordinate: Coordinate? get() = Coordinate.gps(lat, lon)
     val displayName: String get() = name?.takeIf(String::isNotBlank) ?: id.take(12)
