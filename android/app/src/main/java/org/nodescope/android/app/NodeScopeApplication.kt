@@ -37,7 +37,18 @@ class AppContainer(application: Application) {
     }
     /** Last successful analyzer responses, shown immediately on launch and when offline. */
     val responses = ResponseCache(java.io.File(application.cacheDir, "api-responses"))
-    val backend = AnalyzerBackendFactory.create(client, responses) { airports }
+    /** Verified Beacon servers by origin, kept between launches (iOS `BeaconServerCatalog`). */
+    private val beaconServers = application.getSharedPreferences("beacon-servers", android.content.Context.MODE_PRIVATE).let { prefs ->
+        object : BeaconServerStore {
+            override fun load(): String? = prefs.getString(BeaconServerCatalog.STORAGE_KEY, null)
+            override fun save(value: String) { prefs.edit().putString(BeaconServerCatalog.STORAGE_KEY, value).apply() }
+        }
+    }
+    /** Picks CoreScope or Beacon for the selected host; nothing goes to a source still being identified. */
+    val sourceRouter = AnalyzerSourceRouter(client, BeaconServerCatalog(beaconServers))
+    val backend: AnalyzerBackend = RoutingAnalyzerBackend(
+        AnalyzerBackendFactory.createCoreScope(client, responses) { airports }, sourceRouter,
+    )
     val repository: AnalyzerRepository = backend
     val packetSource: PacketSource = backend.liveFeed
     val browse: BrowseRepository = org.nodescope.android.core.network.CapabilityBrowseRepository(backend) { backend.capabilities }

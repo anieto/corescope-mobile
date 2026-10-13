@@ -32,8 +32,8 @@ class AnalyzerBackendTest {
                 try {
                     request()
                     fail("Unsupported feature must fail")
-                } catch (error: IllegalStateException) {
-                    assertEquals("This feature is not available on this server.", error.message)
+                } catch (error: BeaconUnsupportedException) {
+                    assertEquals(error.capability.beaconExplanation, error.message)
                 }
             }
         } finally {

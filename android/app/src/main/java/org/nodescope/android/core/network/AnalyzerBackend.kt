@@ -18,8 +18,9 @@ class CapabilityBrowseRepository(
     private val delegate: BrowseRepository,
     private val capabilities: () -> Set<BackendCapability>,
 ) : BrowseRepository by delegate {
+    /** Fails before any request, with the feature's explanation (iOS `beaconExplanation`). */
     private fun requireCapability(capability: BackendCapability) {
-        check(capability in capabilities()) { "This feature is not available on this server." }
+        if (capability !in capabilities()) throw BeaconUnsupportedException(capability)
     }
 
     override suspend fun channels(selection: AnalyzerSelection) =
@@ -61,7 +62,13 @@ object AnalyzerBackendFactory {
         client: OkHttpClient,
         cache: ResponseCache? = null,
         airports: () -> Map<String, RegionCoordinate> = { emptyMap() },
-    ): AnalyzerBackend = CoreScopeBackend(
+    ): AnalyzerBackend = createCoreScope(client, cache, airports)
+
+    fun createCoreScope(
+        client: OkHttpClient,
+        cache: ResponseCache? = null,
+        airports: () -> Map<String, RegionCoordinate> = { emptyMap() },
+    ): CoreScopeBackend = CoreScopeBackend(
         HttpAnalyzerRepository(client, cache, airports),
         HttpBrowseRepository(client, cache),
         HttpPacketSource(client),
