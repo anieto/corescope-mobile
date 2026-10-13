@@ -132,6 +132,8 @@ class AnalyzerSourceRouter(
     fun route(host: String): Route {
         val requested = runCatching { normalizeHost(host).lowercase() }.getOrNull()
         val current = mutableState.value
+        // Nothing selected yet: never guess CoreScope for what may be a Beacon source.
+        if (current.host == null) return Route.NotReady
         if (requested == null || requested != current.host) return Route.CoreScope
         current.beacon?.let { return Route.Beacon(it) }
         return if (current.ready) Route.CoreScope else Route.NotReady
@@ -143,8 +145,8 @@ class AnalyzerSourceRouter(
 
     /** Readiness for [LiveFeed]: a new key whenever the backend or source session changes. */
     val liveReadiness: kotlinx.coroutines.flow.Flow<LiveSourceReadiness> = state.map {
-        // No host yet means nothing has been selected through the router, so nothing is gated.
-        LiveSourceReadiness(it.host, it.ready || it.host == null, it.session.id)
+        // Until the selected host reaches the router nothing is identified, so everything waits.
+        LiveSourceReadiness(it.host ?: "", it.host != null && it.ready, it.session.id)
     }.distinctUntilChanged()
 }
 

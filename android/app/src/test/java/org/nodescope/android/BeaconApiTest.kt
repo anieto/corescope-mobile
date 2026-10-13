@@ -5,6 +5,7 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.*
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
@@ -339,6 +340,14 @@ class BeaconApiTest {
         known.resolve(knownCoreScope = true)
         assertTrue(known.state.value.ready)
         assertEquals(1, fake.requests.size)
+    }
+
+    @Test fun nothingIsRoutedBeforeASourceIsSelected() = runBlocking {
+        val router = AnalyzerSourceRouter(client(FakeBeacon()), BeaconServerCatalog(InMemoryBeaconServerStore()))
+        assertEquals(AnalyzerSourceRouter.Route.NotReady, router.route(host))
+        val readiness = router.liveReadiness.first()
+        assertFalse(readiness.ready)
+        assertNotNull("An unset host still gates sessions", readiness.host)
     }
 
     @Test fun switchingHostInvalidatesTheOldSession() {
