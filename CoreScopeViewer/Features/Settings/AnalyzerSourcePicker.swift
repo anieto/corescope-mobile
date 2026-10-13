@@ -27,8 +27,11 @@ struct AnalyzerSourcePickerScreen: View {
                                 AnalyzerSourceLogo(source: source)
 
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(source.name)
-                                        .foregroundStyle(Color.primary)
+                                    HStack(spacing: 6) {
+                                        Text(source.name)
+                                            .foregroundStyle(Color.primary)
+                                        AnalyzerSourceTypeLabel(type: source.backendType, color: metadataColor)
+                                    }
                                     Text(source.subtitle)
                                         .font(.caption)
                                         .foregroundStyle(metadataColor)
@@ -46,7 +49,7 @@ struct AnalyzerSourcePickerScreen: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .contentShape(Rectangle())
                         }
-                        .accessibilityLabel("Use \(source.name), \(source.subtitle)")
+                        .accessibilityLabel("Use \(source.name), \(source.backendType.displayName) server, \(source.subtitle)")
                         .accessibilityValue(
                             source.host.caseInsensitiveCompare(selectedHost) == .orderedSame ? "Selected" : ""
                         )
@@ -183,6 +186,31 @@ struct AnalyzerSourcePickerScreen: View {
         onSelection?(normalizedHost)
         if appliesSelectionImmediately {
             dismiss()
+        }
+    }
+}
+
+/// Which server software a listed source runs, so Beacon sources are recognizable before choosing.
+private struct AnalyzerSourceTypeLabel: View {
+    let type: AnalyzerSourceType
+    let color: Color
+
+    var body: some View {
+        Text(type.displayName)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(color)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .overlay(Capsule().strokeBorder(color.opacity(0.5)))
+            .accessibilityHidden(true)
+    }
+}
+
+extension AnalyzerSourceType {
+    var displayName: String {
+        switch self {
+        case .coreScope: String(localized: "CoreScope")
+        case .beacon: String(localized: "Beacon")
         }
     }
 }

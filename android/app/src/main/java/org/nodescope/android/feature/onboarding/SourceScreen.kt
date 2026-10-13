@@ -62,7 +62,10 @@ fun SourceScreen(
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     SourceLogo(source, icons)
                     Column(Modifier.weight(1f)) {
-                        Text(source.name, style = MaterialTheme.typography.titleMedium)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(source.name, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.titleMedium)
+                            SourceTypeLabel(source.backendType)
+                        }
                         Text(source.subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(source.host, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -138,5 +141,15 @@ internal fun SourceLogo(source: AnalyzerSource, icons: SourceIcons?) {
         logo?.let { Image(it, null, Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp))) }
             ?: Icon(if (source.isDefault) Icons.Outlined.Stars else Icons.Outlined.SettingsInputAntenna, null,
                 tint = if (source.isDefault) Color(0xFFE0A100) else MaterialTheme.colorScheme.primary)
+    }
+}
+
+/** Which server software a listed source runs, so Beacon sources are recognizable before choosing. */
+@Composable
+private fun SourceTypeLabel(type: org.nodescope.android.core.model.AnalyzerSourceType) {
+    val color = MaterialTheme.colorScheme.onSurfaceVariant
+    Surface(shape = androidx.compose.foundation.shape.CircleShape, color = androidx.compose.ui.graphics.Color.Transparent,
+        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.5f))) {
+        Text(type.displayName, Modifier.padding(horizontal = 6.dp, vertical = 1.dp), style = MaterialTheme.typography.labelSmall, color = color)
     }
 }

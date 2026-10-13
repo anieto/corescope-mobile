@@ -26,6 +26,7 @@ data class AnalyzerSource(
 }
 enum class AnalyzerSourceType(val raw: String) {
     CORESCOPE("corescope"), BEACON("beacon");
+    val displayName: String get() = if (this == BEACON) "Beacon" else "CoreScope"
     companion object { fun from(raw: String?) = entries.firstOrNull { it.raw == raw } }
 }
 @Serializable
