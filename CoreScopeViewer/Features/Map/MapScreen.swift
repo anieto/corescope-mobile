@@ -367,6 +367,17 @@ struct MapScreen: View {
                                 "Beacon adds nodes as it hears their advertisements. Some repeaters advertise only every 12–47 hours, so a quiet region can take time to fill in."
                             )
                         )
+                        .frame(maxWidth: 360)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 20)
+                        .background(.thickMaterial, in: RoundedRectangle(cornerRadius: 24))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 24)
+                                .stroke(.white.opacity(0.28), lineWidth: 1)
+                        }
+                        .shadow(color: .black.opacity(0.16), radius: 16, y: 8)
+                        .padding(.horizontal, 24)
                     }
                 }
                 .overlay(alignment: .top) {

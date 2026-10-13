@@ -49,7 +49,11 @@ struct AnalyzerSourcePickerScreen: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .contentShape(Rectangle())
                         }
-                        .accessibilityLabel("Use \(source.name), \(source.backendType.displayName) server, \(source.subtitle)")
+                        .accessibilityLabel(
+                            source.backendType == .beacon
+                                ? "Use \(source.name), Beacon beta server, \(source.subtitle)"
+                                : "Use \(source.name), CoreScope server, \(source.subtitle)"
+                        )
                         .accessibilityValue(
                             source.host.caseInsensitiveCompare(selectedHost) == .orderedSame ? "Selected" : ""
                         )
@@ -196,7 +200,7 @@ private struct AnalyzerSourceTypeLabel: View {
     let color: Color
 
     var body: some View {
-        Text(type.displayName)
+        Text(type == .beacon ? "Beacon · Beta" : "CoreScope")
             .font(.caption2.weight(.semibold))
             .foregroundStyle(color)
             .padding(.horizontal, 6)

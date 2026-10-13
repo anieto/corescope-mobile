@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import org.nodescope.android.R
 import org.nodescope.android.core.design.SectionLabel
 import org.nodescope.android.core.model.AnalyzerSource
+import org.nodescope.android.core.model.AnalyzerSourceType
 import org.nodescope.android.core.network.normalizeHost
 
 /**
@@ -146,10 +147,15 @@ internal fun SourceLogo(source: AnalyzerSource, icons: SourceIcons?) {
 
 /** Which server software a listed source runs, so Beacon sources are recognizable before choosing. */
 @Composable
-private fun SourceTypeLabel(type: org.nodescope.android.core.model.AnalyzerSourceType) {
+private fun SourceTypeLabel(type: AnalyzerSourceType) {
     val color = MaterialTheme.colorScheme.onSurfaceVariant
     Surface(shape = androidx.compose.foundation.shape.CircleShape, color = androidx.compose.ui.graphics.Color.Transparent,
         border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.5f))) {
-        Text(type.displayName, Modifier.padding(horizontal = 6.dp, vertical = 1.dp), style = MaterialTheme.typography.labelSmall, color = color)
+        Text(
+            if (type == AnalyzerSourceType.BEACON) "Beacon · Beta" else "CoreScope",
+            Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = color,
+        )
     }
 }
