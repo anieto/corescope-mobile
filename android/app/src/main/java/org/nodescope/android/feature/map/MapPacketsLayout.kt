@@ -107,13 +107,16 @@ private fun LivePacketsList(
     feed: LiveFeedState, onReconnect: () -> Unit,
     selectedId: String?, onSelect: (id: String?, hash: String?, routes: List<RouteOption>) -> Unit, onDetails: (String) -> Unit,
     replayingId: String?, lookingUpId: String?,
-    /** Called when a tap starts a route replay or opens details, so the phone sheet can get out of the way. */
-    onLeave: () -> Unit = {},
+    /**
+     * Called when a tap starts a route replay or opens details, so the phone sheet can get out of
+     * the way; [then] runs once it has (details replace the map, so the sheet must close first).
+     */
+    onLeave: (then: () -> Unit) -> Unit = { it() },
 ) {
     val beaconHost = feed.selection?.host?.takeIf { org.nodescope.android.core.design.LocalBeaconSource.current }
     // Beacon rows are server snapshots without routes: a tap opens the packet's details (iOS sidebar).
     if (beaconHost != null) org.nodescope.android.feature.packets.BeaconPacketScreen(feed, beaconHost,
-        selectedHash = selectedId, onPacket = { onLeave(); onDetails(it) })
+        selectedHash = selectedId, onPacket = { hash -> onLeave { onDetails(hash) } })
     else PacketScreen(feed, onReconnect, selectedId = selectedId,
         onGroup = { id ->
             // Tapping the selected packet again deselects it (and ends its replay).
@@ -122,10 +125,10 @@ private fun LivePacketsList(
                 val routes = group?.routeOptions().orEmpty()
                 onSelect(id, group?.latest?.hash?.takeIf(String::isNotBlank), routes)
                 // As on iPhone, a packet with a route closes the sheet to show its replay.
-                if (routes.isNotEmpty()) onLeave()
+                if (routes.isNotEmpty()) onLeave {}
             }
         },
-        selectedActions = { group -> SelectedPacketActions(group, replaying = group.id == replayingId, lookingUp = group.id == lookingUpId) { onLeave(); onDetails(it) } })
+        selectedActions = { group -> SelectedPacketActions(group, replaying = group.id == replayingId, lookingUp = group.id == lookingUpId) { id -> onLeave { onDetails(id) } } })
 }
 
 /**
@@ -145,6 +148,12 @@ private fun PacketsSheetLayout(
     val scope = rememberCoroutineScope()
     val open = sheetState.targetValue != SheetValue.Hidden
     fun hide() { scope.launch { sheetState.hide() } }
+    // Details are a separate screen: close the sheet first, or it comes back open with the map
+    // (its saved position) and covers a replay started from there.
+    fun leave(then: () -> Unit) { scope.launch { try { sheetState.hide() } finally { then() } } }
+    // Whatever starts a replay (a row here, or "Replay on map" in packet details), the route is
+    // what to show, as on iPhone.
+    LaunchedEffect(replayingId) { if (replayingId != null && sheetState.currentValue != SheetValue.Hidden) sheetState.hide() }
     androidx.activity.compose.BackHandler(enabled = open) { hide() }
     BottomSheetScaffold(
         scaffoldState = scaffoldState, sheetPeekHeight = height / 2, sheetSwipeEnabled = true,
@@ -156,7 +165,7 @@ private fun PacketsSheetLayout(
                 }
                 Box(Modifier.weight(1f).fillMaxWidth()) {
                     // Composed only while open, so a hidden sheet doesn't hold a Beacon packet subscription.
-                    if (open) LivePacketsList(feed, onReconnect, selectedId, onSelect, onDetails, replayingId, lookingUpId, onLeave = ::hide)
+                    if (open) LivePacketsList(feed, onReconnect, selectedId, onSelect, onDetails, replayingId, lookingUpId, onLeave = ::leave)
                 }
             }
         },
