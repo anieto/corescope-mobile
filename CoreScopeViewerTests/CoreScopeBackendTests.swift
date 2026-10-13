@@ -34,7 +34,7 @@ struct CoreScopeBackendTests {
         await #expect(throws: CancellationError.self) { _ = try await task.value }
     }
     enum RequestCase: String, CaseIterable, Sendable {
-        case nodes, regionalNodes, node, health, paths, reach, analytics
+        case nodes, regionalNodes, node, health, paths, reach, neighbors, analytics
         case observers, observerAnalytics, packets, regionalPackets, channelPackets
         case packet, channels, regionalChannels, messages, regions, coordinates, map
 
@@ -45,7 +45,7 @@ struct CoreScopeBackendTests {
             case .node: "/api/nodes/key%2Ftest"
             case .health: "/api/nodes/key%2Ftest/health"
             case .paths: "/api/nodes/key%2Ftest/paths"
-            case .reach: "/api/nodes/key%2Ftest/reach"
+            case .reach, .neighbors: "/api/nodes/key%2Ftest/reach"
             case .analytics: "/api/nodes/key%2Ftest/analytics?days=7"
             case .observers: "/api/observers"
             case .observerAnalytics: "/api/observers/observer%2Ftest/analytics"
@@ -70,6 +70,7 @@ struct CoreScopeBackendTests {
             case .health: _ = try await backend.nodeHealth(publicKey: "key/test")
             case .paths: _ = try await backend.nodePaths(publicKey: "key/test")
             case .reach: _ = try await backend.nodeReach(publicKey: "key/test")
+            case .neighbors: _ = try await backend.neighbors(publicKey: "key/test")
             case .analytics: _ = try await backend.nodeAnalytics(publicKey: "key/test", days: 7)
             case .observers: _ = try await backend.observers()
             case .observerAnalytics: _ = try await backend.observerAnalytics(id: "observer/test")
@@ -112,6 +113,32 @@ struct CoreScopeBackendTests {
         #expect(result.zoom == 8)
         #expect(backend.cacheIdentifier == "corescope|https://backend.invalid")
         #expect(backend.capabilities == Set(BackendCapability.allCases))
+    }
+
+    @Test func neutralNeighborsReuseCoreScopeReachWithoutInventingSignal() async throws {
+        let key = String(repeating: "ab", count: 32)
+        let body = """
+        {
+          "node":{"pubkey":"node","name":"Node","role":"repeater","lat":null,"lon":null,"first_seen":"2026-10-01T00:00:00Z"},
+          "window":{"days":7,"since":"2026-10-06T00:00:00Z"},
+          "reliable_tokens":[],
+          "importance":{"neighbor_degree":1,"degree_rank":1,"nodes_with_edges":1,"relay_observations":1,"bidirectional_links":1,"direct_observers":0},
+          "direct_observers":[],
+          "links":[{"pubkey":"\(key)","name":"Neighbor","role":"repeater","lat":30,"lon":-98,"we_hear":2,"they_hear":3,"bottleneck":2,"bidir":true,"distance_km":4.5}]
+        }
+        """
+        let session = Self.session(
+            target: "/api/nodes/key%2Fneutral/reach",
+            body: body.replacingOccurrences(of: "\n", with: "")
+        )
+        defer { session.invalidateAndCancel() }
+
+        let result = try await Self.backend(session: session).neighbors(publicKey: "key/neutral")
+        let neighbor = try #require(result.neighbors.first)
+        #expect(neighbor.identity.linkablePublicKey == key)
+        #expect(neighbor.direction == .bidirectional)
+        #expect(neighbor.signal.snr == nil && neighbor.signal.rssi == nil)
+        #expect(neighbor.observationCount == nil && neighbor.lastHeard == nil)
     }
 
     @Test(arguments: ["2026-10-10T12:00:00Z", "2026-10-10T12:00:00.000Z"])

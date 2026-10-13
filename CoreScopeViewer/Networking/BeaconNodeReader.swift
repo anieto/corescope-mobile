@@ -53,6 +53,30 @@ struct BeaconNodeReader: Sendable {
     }
 
     func nodeDetail(publicKey: String) async throws -> Node? {
+        guard let summary = try await nodeSummary(publicKey: publicKey) else { return nil }
+        let key = publicKey.lowercased()
+        let detail: Node = try await client.get(["nodes", summary.id])
+        try detail.validate()
+        guard detail.id == summary.id, detail.publicKey.lowercased() == key else {
+            throw APIError.invalidResponse
+        }
+        try client.sourceSession.check()
+        return detail
+    }
+
+    func neighbors(publicKey: String) async throws -> NeighborCollection? {
+        guard let summary = try await nodeSummary(publicKey: publicKey) else { return nil }
+        let records: [Neighbor] = try await client.get(["nodes", summary.id, "neighbors"])
+        try records.forEach { try $0.validate() }
+        try client.sourceSession.check()
+        return NeighborCollection(
+            neighbors: records.map(\.insight),
+            completeness: .complete,
+            explanation: nil
+        )
+    }
+
+    private func nodeSummary(publicKey: String) async throws -> Node? {
         try client.sourceSession.check()
         guard Self.isFullKey(publicKey) else { throw APIError.invalidResponse }
         let key = publicKey.lowercased()
@@ -63,13 +87,8 @@ struct BeaconNodeReader: Sendable {
         guard let summary = lookup.items.first else { return nil }
         try summary.validate()
         guard summary.publicKey.lowercased() == key else { throw APIError.invalidResponse }
-        let detail: Node = try await client.get(["nodes", summary.id])
-        try detail.validate()
-        guard detail.id == summary.id, detail.publicKey.lowercased() == key else {
-            throw APIError.invalidResponse
-        }
         try client.sourceSession.check()
-        return detail
+        return summary
     }
 
     private static func isFullKey(_ value: String) -> Bool {
@@ -122,6 +141,48 @@ struct BeaconNodeReader: Sendable {
 
         func validate() throws {
             guard UUID(uuidString: id) != nil, BeaconNodeReader.isFullKey(publicKey) else {
+                throw APIError.invalidResponse
+            }
+        }
+    }
+
+    struct Neighbor: Codable, Sendable {
+        let id: String
+        let name: String?
+        let publicKey: String
+        let nodeType: Int?
+        let nodeTypeName: String?
+        let lat: Double?
+        let lng: Double?
+        let observationCount: Int?
+        let lastSeen: Date?
+        let snr: Double?
+
+        var insight: NeighborInsight {
+            NeighborInsight(
+                identity: NeighborIdentity(
+                    publicKey: publicKey.lowercased(),
+                    displayPrefix: String(publicKey.prefix(8)).lowercased(),
+                    sourceID: id.lowercased()
+                ),
+                name: name,
+                role: nodeTypeName,
+                lastHeard: lastSeen,
+                observationCount: observationCount,
+                signal: NeighborSignal(snr: snr, rssi: nil),
+                direction: .unknown,
+                latitude: lat,
+                longitude: lng
+            )
+        }
+
+        func validate() throws {
+            guard UUID(uuidString: id) != nil,
+                  BeaconNodeReader.isFullKey(publicKey),
+                  observationCount.map({ $0 >= 0 }) != false,
+                  snr.map(\.isFinite) != false,
+                  lat.map(\.isFinite) != false,
+                  lng.map(\.isFinite) != false else {
                 throw APIError.invalidResponse
             }
         }

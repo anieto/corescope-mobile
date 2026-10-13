@@ -88,8 +88,8 @@ current values and requests.
 
 | ID | Task | Done when | Status |
 |---|---|---|---|
-| B1 | **Neutral analytics models.** Represent bounded time ranges, completeness, optional series, packet-versus-observation counts, unknown values, and provenance for derived Beacon analytics. | CoreScope decoding is unchanged; synthetic tests cover empty, partial, unsupported, and seven-day-capped histories | todo |
-| B2 | **Neighbor model.** Add neutral neighbor identity, last-heard time, signal values, directionality, and completeness without treating key prefixes as full identities. | CoreScope reach data maps without visible change; Beacon full keys are linkable and prefixes are display-only | todo |
+| B1 | **Neutral analytics models.** Represent bounded time ranges, completeness, optional series, packet-versus-observation counts, unknown values, and provenance for derived Beacon analytics. | CoreScope decoding is unchanged; synthetic tests cover empty, partial, unsupported, and seven-day-capped histories | done |
+| B2 | **Neighbor model.** Add neutral neighbor identity, last-heard time, signal values, directionality, and completeness without treating key prefixes as full identities. | CoreScope reach data maps without visible change; Beacon full keys are linkable and prefixes are display-only | done |
 | B3 | **Observer telemetry model.** Add optional battery, noise floor, airtime, activity, and sample-time fields with explicit units and missing-value behavior. | Unit conversions and missing/null semantics are fixture-tested on both platforms | todo |
 | B4 | **Source-scoped channel model.** Replace assumptions that channel hash or name is globally unique. Persist a source-scoped reference while preserving CoreScope favorites, recents, monitored channels, and links. | Upgrade tests preserve existing CoreScope data; collisions and identical names never merge Beacon channels | todo |
 | B5 | **Capabilities.** Split broad Phase 2 gates into the Phase 3 capabilities required for neighbors, node analytics, observer activity, observer telemetry, server channels, and channel messages. | Each screen can independently distinguish supported, empty, partial, and unavailable; CoreScope still advertises its current capabilities | todo |
@@ -98,7 +98,7 @@ current values and requests.
 
 | ID | Task | Done when | Status |
 |---|---|---|---|
-| C1 | Implement Beacon `/nodes/{id}/neighbors` behind the backend, including caching, cancellation, source-session rejection, errors, and identity safety. | Fixture and request tests pass; opening detail stays within the Phase 3 budget | todo |
+| C1 | Implement Beacon `/nodes/{id}/neighbors` behind the backend, including caching, cancellation, source-session rejection, errors, and identity safety. | Fixture and request tests pass; opening detail stays within the Phase 3 budget | doing |
 | C2 | Populate the existing CoreScope reach/neighbors area with Beacon data using the same card, row ordering, navigation, signal formatting, loading state, and empty state wherever semantics match. | Side-by-side review shows the same UI structure; every absent CoreScope field has documented explanatory behavior | todo |
 | C3 | Port C1–C2 to Android and update the parity matrix. | iOS and Android show equivalent values and interactions from the same fixture | todo |
 

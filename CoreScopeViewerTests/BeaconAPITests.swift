@@ -364,7 +364,7 @@ struct BeaconAPITests {
         #expect(pair.feed.observers === pair.backend.observerReader)
         #expect(pair.backend.sourceSession.id == client.sourceSession.id)
         #expect(pair.backend.cacheIdentifier == client.cacheIdentifier)
-        #expect(pair.backend.capabilities.isEmpty)
+        #expect(pair.backend.capabilities == [.neighbors])
         let other = try BeaconObserverReader(client: Self.client(session), verifiedServerInfo: info)
         #expect(throws: APIError.self) {
             _ = try BeaconLiveFeed(client: client, verifiedServerInfo: info, transport: transport, observerReader: other)
@@ -1021,6 +1021,38 @@ struct BeaconAPITests {
         #expect(node.lastSeen == Date(timeIntervalSince1970: 1791666758.956))
         #expect(node.supportsMultibytePaths == true)
         #expect(node.supportsMultibyteTraces == false)
+    }
+
+    @Test func nodeNeighborsResolveFullKeyAndPreserveUnknownDirection() async throws {
+        let node = try Self.fixtureBody("node-detail")
+        let key = try #require(node["publicKey"] as? String)
+        let identifier = try #require(node["id"] as? String)
+        let lookup = "/api/v1/nodes?pubkey=\(key)"
+        let neighborsPath = "/api/v1/nodes/\(identifier)/neighbors"
+        let neighborRoot = try #require(JSONSerialization.jsonObject(
+            with: Data(contentsOf: Self.fixtureURL("node-neighbors"))
+        ) as? [String: Any])
+        let neighbors = try #require(neighborRoot["body"] as? [[String: Any]])
+        let routes = String(decoding: try JSONSerialization.data(withJSONObject: [
+            lookup: try Self.fixtureBody("node-by-pubkey"),
+            neighborsPath: neighbors
+        ]), as: UTF8.self)
+        let session = Self.session(targets: [lookup, neighborsPath], routes: routes)
+        defer { session.invalidateAndCancel() }
+        let reader = try BeaconNodeReader(
+            client: Self.client(session),
+            verifiedServerInfo: .init(serverVersion: "2.0.3")
+        )
+
+        let result = try #require(await reader.neighbors(publicKey: key.uppercased()))
+        let neighbor = try #require(result.neighbors.first)
+        #expect(result.completeness == .complete)
+        #expect(neighbor.identity.linkablePublicKey != nil)
+        #expect(neighbor.identity.displayPrefix?.count == 8)
+        #expect(neighbor.direction == .unknown)
+        #expect(neighbor.signal.snr == -5.75)
+        #expect(neighbor.signal.rssi == nil)
+        #expect(neighbor.observationCount == 2)
     }
 
     @Test func missingNodeDoesNotScanOrFetchDetail() async throws {

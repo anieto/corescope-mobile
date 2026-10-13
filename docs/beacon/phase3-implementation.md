@@ -151,3 +151,20 @@ resource identity, filters, and requested range; changing sources invalidates ev
 1. Measure a representative multi-page node history against the 20-request ceiling.
 2. Complete the detailed parity matrix and channel identity recovery cases.
 3. Encode the neutral completeness and provenance models used by both platforms.
+
+## 2026-10-13: Neutral analytics and neighbors foundation
+
+The iOS neutral analytics contract now carries explicit count units, provenance, requested versus
+covered bounds, and complete/partial/unsupported status. CoreScope payloads continue decoding with
+no added wire requirement. Beacon history requests longer than seven days remain represented as the
+original request plus partial seven-day coverage rather than appearing to be complete.
+
+The neutral neighbor contract keeps full public keys, display prefixes, and source-local IDs
+separate. Only validated 64-character public keys are linkable. Missing signal, time, direction, or
+position stays unknown. CoreScope adapts its existing reach response without changing its request;
+Beacon resolves the node's source-local UUID and then reads `/nodes/{id}/neighbors` in two bounded
+requests. Beacon currently reports SNR but not RSSI or reliable directionality, so those values are
+left unknown.
+
+The project builds successfully and the complete iOS suite passes with 210 tests. C1 remains in
+progress until the node-detail cache and source-switch UI loading path are integrated.

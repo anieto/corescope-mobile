@@ -53,6 +53,9 @@
 		316FE0163060985200FBA3B4 /* NodeAnalytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FE0153060985200FBA3B4 /* NodeAnalytics.swift */; };
 		316FE0183060985200FBA3B4 /* NodeAnalyticsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FE0173060985200FBA3B4 /* NodeAnalyticsViewModel.swift */; };
 		316FE01A3060988F00FBA3B4 /* NodeAnalyticsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FE0193060988F00FBA3B4 /* NodeAnalyticsScreen.swift */; };
+		318BF7D7307EBCF900C8BFAD /* AnalyticsContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318BF7D6307EBCF900C8BFAD /* AnalyticsContext.swift */; };
+		318BF7D9307EBE6000C8BFAD /* NeighborInsight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318BF7D8307EBE6000C8BFAD /* NeighborInsight.swift */; };
+		318BF7DB307EBE7000C8BFAD /* NeighborInsightTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318BF7DA307EBE7000C8BFAD /* NeighborInsightTests.swift */; };
 		31A2B0023070000100FBA3B4 /* RouteOption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A2B0013070000100FBA3B4 /* RouteOption.swift */; };
 		31A2B0043070000100FBA3B4 /* RoutePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A2B0033070000100FBA3B4 /* RoutePicker.swift */; };
 		31A2B0063070000100FBA3B4 /* RouteOptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A2B0053070000100FBA3B4 /* RouteOptionTests.swift */; };
@@ -168,6 +171,9 @@
 		316FE0153060985200FBA3B4 /* NodeAnalytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeAnalytics.swift; sourceTree = "<group>"; };
 		316FE0173060985200FBA3B4 /* NodeAnalyticsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeAnalyticsViewModel.swift; sourceTree = "<group>"; };
 		316FE0193060988F00FBA3B4 /* NodeAnalyticsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeAnalyticsScreen.swift; sourceTree = "<group>"; };
+		318BF7D6307EBCF900C8BFAD /* AnalyticsContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsContext.swift; sourceTree = "<group>"; };
+		318BF7D8307EBE6000C8BFAD /* NeighborInsight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeighborInsight.swift; sourceTree = "<group>"; };
+		318BF7DA307EBE7000C8BFAD /* NeighborInsightTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeighborInsightTests.swift; sourceTree = "<group>"; };
 		31A2B0013070000100FBA3B4 /* RouteOption.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteOption.swift; sourceTree = "<group>"; };
 		31A2B0033070000100FBA3B4 /* RoutePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePicker.swift; sourceTree = "<group>"; };
 		31A2B0053070000100FBA3B4 /* RouteOptionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteOptionTests.swift; sourceTree = "<group>"; };
@@ -350,6 +356,8 @@
 				B5A6EF6652A955D16C20CA75 /* PacketDetail.swift */,
 				31A2B0013070000100FBA3B4 /* RouteOption.swift */,
 				316FE0153060985200FBA3B4 /* NodeAnalytics.swift */,
+				318BF7D6307EBCF900C8BFAD /* AnalyticsContext.swift */,
+				318BF7D8307EBE6000C8BFAD /* NeighborInsight.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -496,6 +504,7 @@
 				F4803E09AA9A3CD1D7EF773B /* SignalQualityTests.swift */,
 				312714C3307AE6C000829346 /* CoreScopeBackendTests.swift */,
 				311D6C7C307BBA6500E2EB70 /* BeaconAPITests.swift */,
+				318BF7DA307EBE7000C8BFAD /* NeighborInsightTests.swift */,
 			);
 			path = CoreScopeViewerTests;
 			sourceTree = "<group>";
@@ -597,6 +606,7 @@
 			files = (
 				3BE961FDCF2336382895F4C3 /* ModelDecodingTests.swift in Sources */,
 				036ACF59063991FAB8B4D9A0 /* URLPathEncodingTests.swift in Sources */,
+				318BF7DB307EBE7000C8BFAD /* NeighborInsightTests.swift in Sources */,
 				311D6C7D307BBA6500E2EB70 /* BeaconAPITests.swift in Sources */,
 				C9442265B47B2D20E681223B /* AnalyzerSourceLogoTests.swift in Sources */,
 				A742196194F327F868B0E61C /* AirportCoordinatesTests.swift in Sources */,
@@ -619,6 +629,7 @@
 				311D6C87307C45C400E2EB70 /* BeaconLiveTransport.swift in Sources */,
 				6A8C5BB6EED7A1F412DCCA73 /* AnalyzerConfig.swift in Sources */,
 				22E6EDC06317772F4D948AC2 /* AnalyzerSettings.swift in Sources */,
+				318BF7D9307EBE6000C8BFAD /* NeighborInsight.swift in Sources */,
 				312714BE307AE61D00829346 /* AnalyzerBackend.swift in Sources */,
 				311D6C85307C44E700E2EB70 /* BeaconLiveProtocol.swift in Sources */,
 				DD6C9F810E54AD2B21E18201 /* AnalyzerSourceLogo.swift in Sources */,
@@ -655,6 +666,7 @@
 				316FE0163060985200FBA3B4 /* NodeAnalytics.swift in Sources */,
 				524F4D5E1EF00C2775837C6C /* MonitorChannelSheet.swift in Sources */,
 				EF6E45CEC2D585AC27B07648 /* MonitoredChannel.swift in Sources */,
+				318BF7D7307EBCF900C8BFAD /* AnalyticsContext.swift in Sources */,
 				31CCA84D306D984400D01155 /* DuoLayoutContext.swift in Sources */,
 				14BBB677BE2C96A01E15E7D3 /* Node.swift in Sources */,
 				311D6C81307C431200E2EB70 /* BeaconObserverReader.swift in Sources */,

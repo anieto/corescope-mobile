@@ -12,7 +12,7 @@ struct CoreScopeBackend: AnalyzerBackend {
     var cacheIdentifier: String { "corescope|\(client.cacheIdentifier)" }
 
     let capabilities: Set<BackendCapability> = [
-        .nodeHealth, .nodeReach, .nodePaths, .nodeAnalytics,
+        .neighbors, .nodeHealth, .nodeReach, .nodePaths, .nodeAnalytics,
         .observerAnalytics, .channelDecryptOnPhone, .serverChannels, .mapDefaults
     ]
 
@@ -34,6 +34,31 @@ struct CoreScopeBackend: AnalyzerBackend {
 
     func nodeReach(publicKey: String) async throws -> NodeReachResponse {
         try await get("/api/nodes/\(publicKey.urlPathComponentEncoded)/reach")
+    }
+
+    func neighbors(publicKey: String) async throws -> NeighborCollection {
+        let reach = try await nodeReach(publicKey: publicKey)
+        return NeighborCollection(
+            neighbors: reach.links.map { link in
+                NeighborInsight(
+                    identity: NeighborIdentity(
+                        publicKey: link.pubkey,
+                        displayPrefix: String(link.pubkey.prefix(8)).lowercased(),
+                        sourceID: nil
+                    ),
+                    name: link.name,
+                    role: link.role,
+                    lastHeard: nil,
+                    observationCount: nil,
+                    signal: NeighborSignal(snr: nil, rssi: nil),
+                    direction: link.bidir ? .bidirectional : .unknown,
+                    latitude: link.lat,
+                    longitude: link.lon
+                )
+            },
+            completeness: .complete,
+            explanation: nil
+        )
     }
 
     func nodeAnalytics(publicKey: String, days: Int) async throws -> NodeAnalyticsResponse {

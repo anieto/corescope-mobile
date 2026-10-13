@@ -293,6 +293,7 @@ struct ModelDecodingTests {
         let response = try APIClient.makeDecoder().decode(NodeAnalyticsResponse.self, from: json)
 
         #expect(response.timeRange.days == 7)
+        #expect(response.context == nil)
         #expect(response.activityTimeline.first?.count == 12)
         #expect(response.snrTrend.first?.observerID == "observer-1")
         #expect(response.packetTypeBreakdown.first?.name == "ADVERT")
@@ -343,6 +344,80 @@ struct ModelDecodingTests {
         #expect(response.hopDistribution.isEmpty)
         #expect(response.peerInteractions.isEmpty)
         #expect(response.uptimeHeatmap.isEmpty)
+    }
+
+    @Test func analyticsContextPreservesUnknownCoverageAndObservationSemantics() throws {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let data = """
+        {
+          "completeness": "partial",
+          "countUnit": "observations",
+          "provenance": "derived",
+          "requestedFrom": "2026-10-06T12:00:00Z",
+          "requestedTo": "2026-10-13T12:00:00Z",
+          "coveredFrom": null,
+          "coveredTo": null,
+          "explanation": "The request budget was reached before history was exhausted."
+        }
+        """.data(using: .utf8)!
+
+        let context = try decoder.decode(AnalyticsContext.self, from: data)
+        #expect(context.completeness == .partial)
+        #expect(context.countUnit == .observations)
+        #expect(context.provenance == .derived)
+        #expect(!context.hasKnownCoverage)
+        #expect(context.explanation != nil)
+    }
+
+    @Test func legacyObserverAnalyticsDecodesWithoutNeutralContext() throws {
+        let data = """
+        {
+          "timeline": [],
+          "packetTypes": {},
+          "nodesTimeline": [],
+          "snrDistribution": [],
+          "recentPackets": []
+        }
+        """.data(using: .utf8)!
+
+        let response = try APIClient.makeDecoder().decode(ObserverAnalyticsResponse.self, from: data)
+        #expect(response.context == nil)
+        #expect(response.timeline.isEmpty)
+        #expect(response.recentPackets.isEmpty)
+    }
+
+    @Test func beaconAnalyticsContextCapsHistoryAndPreservesEmptyCoverage() throws {
+        let end = try #require(ISO8601DateFormatter().date(from: "2026-10-13T12:00:00Z"))
+        let coveredStart = end.addingTimeInterval(-7 * 24 * 60 * 60)
+
+        let capped = AnalyticsContext.beaconObservations(
+            requestedDays: 30,
+            coveredFrom: coveredStart,
+            coveredTo: end
+        )
+        #expect(capped.completeness == .partial)
+        #expect(capped.countUnit == .observations)
+        #expect(capped.requestedFrom == end.addingTimeInterval(-30 * 24 * 60 * 60))
+        #expect(capped.coveredFrom == coveredStart)
+        #expect(capped.explanation?.contains("seven days") == true)
+
+        let empty = AnalyticsContext.beaconObservations(
+            requestedDays: 1,
+            coveredFrom: end.addingTimeInterval(-24 * 60 * 60),
+            coveredTo: end
+        )
+        #expect(empty.completeness == .complete)
+        #expect(empty.hasKnownCoverage)
+
+        let unsupported = AnalyticsContext.unsupported(
+            countUnit: .packets,
+            requestedFrom: coveredStart,
+            requestedTo: end,
+            explanation: "This metric is not available from Beacon."
+        )
+        #expect(unsupported.completeness == .unsupported)
+        #expect(!unsupported.hasKnownCoverage)
     }
 
     @Test func payloadTypeNameFallsBackForUnknownCodes() {

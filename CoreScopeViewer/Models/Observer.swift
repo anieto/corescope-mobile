@@ -69,11 +69,26 @@ struct ObserversResponse: Codable, Sendable {
 
 /// GET /api/observers/:id/analytics
 struct ObserverAnalyticsResponse: Codable, Sendable {
+    let context: AnalyticsContext?
     let timeline: [LabeledCount]
     let packetTypes: [String: Int]
     let nodesTimeline: [LabeledCount]
     let snrDistribution: [SnrBucket]
     let recentPackets: [ObserverRecentPacket]
+
+    enum CodingKeys: String, CodingKey {
+        case context, timeline, packetTypes, nodesTimeline, snrDistribution, recentPackets
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        context = try container.decodeIfPresent(AnalyticsContext.self, forKey: .context)
+        timeline = try container.decode([LabeledCount].self, forKey: .timeline)
+        packetTypes = try container.decode([String: Int].self, forKey: .packetTypes)
+        nodesTimeline = try container.decode([LabeledCount].self, forKey: .nodesTimeline)
+        snrDistribution = try container.decode([SnrBucket].self, forKey: .snrDistribution)
+        recentPackets = try container.decode([ObserverRecentPacket].self, forKey: .recentPackets)
+    }
 }
 
 /// The observer analytics endpoint returns a lightweight packet projection,

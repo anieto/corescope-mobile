@@ -1,6 +1,7 @@
 import Foundation
 
 enum BackendCapability: String, CaseIterable, Sendable {
+    case neighbors
     case nodeHealth
     case nodeReach
     case nodePaths
@@ -12,6 +13,8 @@ enum BackendCapability: String, CaseIterable, Sendable {
 
     var beaconExplanation: String {
         switch self {
+        case .neighbors:
+            String(localized: "Neighbor information isn’t available from this source.")
         case .nodeAnalytics:
             String(localized: "Node analytics for Beacon servers aren’t supported in this version of NodeScope. Support is planned for a future update.")
         case .observerAnalytics:
@@ -38,6 +41,7 @@ protocol AnalyzerBackend: Sendable {
     func nodeHealth(publicKey: String) async throws -> NodeHealthResponse
     func nodePaths(publicKey: String) async throws -> NodePathsResponse
     func nodeReach(publicKey: String) async throws -> NodeReachResponse
+    func neighbors(publicKey: String) async throws -> NeighborCollection
     func nodeAnalytics(publicKey: String, days: Int) async throws -> NodeAnalyticsResponse
     func observers() async throws -> ObserversResponse
     func observerAnalytics(id: String) async throws -> ObserverAnalyticsResponse
@@ -151,7 +155,7 @@ struct BeaconBackend: AnalyzerBackend {
 
     var sourceSession: AnalyzerSourceSession { client.sourceSession }
     var cacheIdentifier: String { client.cacheIdentifier }
-    let capabilities: Set<BackendCapability> = []
+    let capabilities: Set<BackendCapability> = [.neighbors]
 
     init(client: BeaconAPIClient, verifiedServerInfo: BeaconServerInfo) throws {
         try verifiedServerInfo.requireSupported()
@@ -176,6 +180,13 @@ struct BeaconBackend: AnalyzerBackend {
         guard let node = try await nodeReader.nodeDetail(publicKey: publicKey) else { throw BeaconBackendError.nodeUnavailable }
         try sourceSession.check()
         return NodeDetailResponse(node: node.meshNode, recentAdverts: nil)
+    }
+
+    func neighbors(publicKey: String) async throws -> NeighborCollection {
+        guard let neighbors = try await nodeReader.neighbors(publicKey: publicKey) else {
+            throw BeaconBackendError.nodeUnavailable
+        }
+        return neighbors
     }
 
     func observers() async throws -> ObserversResponse {

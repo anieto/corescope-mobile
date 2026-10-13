@@ -3,6 +3,7 @@ import Foundation
 struct NodeAnalyticsResponse: Codable, Sendable {
     let node: MeshNode
     let timeRange: NodeAnalyticsTimeRange
+    let context: AnalyticsContext?
     let activityTimeline: [NodeActivityPoint]
     let snrTrend: [NodeSignalPoint]
     let packetTypeBreakdown: [NodePacketTypeCount]
@@ -13,7 +14,7 @@ struct NodeAnalyticsResponse: Codable, Sendable {
     let computedStats: NodeComputedStats
 
     enum CodingKeys: String, CodingKey {
-        case node, timeRange, activityTimeline, snrTrend, packetTypeBreakdown
+        case node, timeRange, context, activityTimeline, snrTrend, packetTypeBreakdown
         case observerCoverage, hopDistribution, peerInteractions, uptimeHeatmap
         case computedStats
     }
@@ -22,6 +23,7 @@ struct NodeAnalyticsResponse: Codable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         node = try container.decode(MeshNode.self, forKey: .node)
         timeRange = try container.decode(NodeAnalyticsTimeRange.self, forKey: .timeRange)
+        context = try container.decodeIfPresent(AnalyticsContext.self, forKey: .context)
         activityTimeline = try container.decodeIfPresent([NodeActivityPoint].self, forKey: .activityTimeline) ?? []
         snrTrend = try container.decodeIfPresent([NodeSignalPoint].self, forKey: .snrTrend) ?? []
         packetTypeBreakdown = try container.decodeIfPresent(
