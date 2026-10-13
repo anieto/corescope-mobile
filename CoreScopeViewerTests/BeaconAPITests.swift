@@ -1639,7 +1639,13 @@ struct BeaconAPITests {
             "v": 1, "type": "event", "event": "packetObservation",
             "data": ["packetHash": "live-new",
                      "packet": ["payloadType": 5, "routeType": 1, "observationCount": 3, "isFirstObservation": false],
-                     "observation": ["observerId": identifier, "observerPublicKey": key, "iata": "SAT", "heardAt": 1999999999999]]
+                     "observation": [
+                        "observerId": identifier,
+                        "observerPublicKey": key,
+                        "iata": "SAT",
+                        "heardAt": 1999999999999,
+                        "resolvedPath": [["confidence": "high", "nodes": [["publicKey": key]]]]
+                     ]]
         ]
         let encoded = String(decoding: try JSONSerialization.data(withJSONObject: message), as: UTF8.self)
         socket.push(encoded)
@@ -1648,7 +1654,13 @@ struct BeaconAPITests {
         #expect(service.browseSnapshots[filter]?.rows.count == 1)
         #expect(service.browseSnapshots[filter]?.rows.first?.observationCount == 3)
         #expect(service.browseSnapshots[filter]?.rows.first?.firstSeen == nil)
-        #expect(service.recentEvents.isEmpty)
+        try await Self.waitUntil { service.recentEvents.first?.data?.hash == "live-new" }
+        let liveEvent = try #require(service.recentEvents.first)
+        #expect(liveEvent.type == "packet")
+        #expect(liveEvent.data?.observerId == identifier)
+        #expect(liveEvent.data?.observationCount == 3)
+        #expect(liveEvent.data?.decoded?.header?.payloadType == 5)
+        #expect(liveEvent.data?.resolvedPath == [key.lowercased()])
         #expect(service.usesBrowseSnapshots)
         #expect(try await feed.observers.observerDetail(publicKey: key)?.id == identifier)
         #expect(socketCount == 1)

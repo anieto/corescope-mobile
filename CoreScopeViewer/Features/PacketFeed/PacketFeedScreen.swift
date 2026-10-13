@@ -844,9 +844,13 @@ struct PacketFeedScreen: View {
                         systemImage: "dot.radiowaves.left.and.right"
                     )
                 } description: {
-                    Text(liveFeed.isConnected
-                        ? "New mesh traffic will appear here as the analyzer receives it."
-                        : "NodeScope will resume the live feed when the analyzer reconnects.")
+                    if !liveFeed.isConnected {
+                        Text("NodeScope will resume the live feed when the analyzer reconnects.")
+                    } else if liveFeed.usesBrowseSnapshots {
+                        Text("New mesh traffic will appear here as the analyzer receives it. Beacon retains up to seven days of packet history, and quiet regions may have no recent traffic.")
+                    } else {
+                        Text("New mesh traffic will appear here as the analyzer receives it.")
+                    }
                 }
             }
         }

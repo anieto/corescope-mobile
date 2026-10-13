@@ -1,14 +1,15 @@
 # Beacon support plan
 
 Status: phase 0 done (see [phase0-findings.md](phase0-findings.md), which wins where the two differ).
-Phase 1 backend extraction implemented on iOS and Android; automated checks pass and the user reports
-manual testing works. See [phase1-implementation.md](phase1-implementation.md). Phase 2 step 1 groundwork
-is implemented on both platforms; manual regression of these changes is pending. Phase 2 step 2 has
-started with the iOS transport, packet, node, observer and region readers. Last updated 2026-10-12.
+Phase 1 backend extraction is implemented on iOS and Android. Phase 2 is implemented on iOS and on
+Android branch `feature/beacon-phase-2-android`; device testing, branch integration, and the Phase 2R release gate remain open.
+See [phase1-implementation.md](phase1-implementation.md). Last updated 2026-10-13.
 
-WebSocket protocol, socket lifecycle and filtered REST recovery now connect through a Beacon
-adapter to the shared live-feed service. The packet sidebar now consumes browse snapshots;
-factory/source activation and the remaining screen integration are pending.
+The iOS Beacon adapter now covers source activation, REST browsing, WebSocket recovery, node and
+observer overlays, packet detail/replay, diagnostics, capability gating, sparse-data empty states,
+and live map packet animation. Beacon packet observations feed both browse snapshots and the shared
+map event stream. Manual and live-server validation remain pending.
+The iOS project builds successfully and all 199 tests pass after the final Phase 2 fixes.
 
 ## Phase 2 execution checkpoints
 

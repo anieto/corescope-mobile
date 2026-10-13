@@ -53,11 +53,13 @@ struct AnalyzerSourceLogoTests {
         }
     }
 
-    @Test func versionTwoFiltersUnknownAndMissingTypes() throws {
-        let data = Data(#"{"version":2,"sources":[{"id":"a","type":"beacon","name":"A","host":"a.example","subtitle":"","isDefault":false},{"type":"future"},{"id":"missing","name":"Missing","host":"missing.example","subtitle":"","isDefault":false}]}"#.utf8)
+    @Test func versionTwoFiltersUnknownAndMalformedEntriesAndDefaultsMissingType() throws {
+        let data = Data(#"{"version":2,"sources":[{"id":"a","type":"beacon","name":"A","host":"a.example","subtitle":"","isDefault":false},{"type":"future"},{"id":"broken","type":"beacon","name":7},{"id":"missing","name":"Missing","host":"missing.example","subtitle":"","isDefault":false}]}"#.utf8)
         let document = try JSONDecoder().decode(AnalyzerSourceRegistryDocument.self, from: data)
-        #expect(document.sources.count == 1)
+        #expect(document.sources.count == 2)
         #expect(document.sources.first?.backendType == .beacon)
+        #expect(document.sources.last?.id == "missing")
+        #expect(document.sources.last?.backendType == .coreScope)
         let restored = try JSONDecoder().decode(AnalyzerSourceRegistryDocument.self,
                                                from: JSONEncoder().encode(document))
         #expect(restored.sources == document.sources)

@@ -21,6 +21,12 @@ struct LiveEnvelope: Codable, Sendable, Identifiable {
 
     var id: Int { data?.id ?? -1 }
 
+    init(type: String, data: LivePacketData?, receivedAt: Date = .now) {
+        self.type = type
+        self.data = data
+        self.receivedAt = receivedAt
+    }
+
     enum CodingKeys: String, CodingKey {
         case type, data
     }
