@@ -454,6 +454,14 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                     }
                 }
             }
+            // A sparse Beacon server can genuinely have no nodes yet (iOS "No Nodes Reported Yet").
+            if (beaconSource && snapshot != null && snapshot.nodes.isEmpty()) Surface(shape = MaterialTheme.shapes.medium, tonalElevation = 4.dp) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("No nodes reported yet", style = MaterialTheme.typography.titleSmall)
+                    Text("Beacon adds nodes as it hears their advertisements. Some repeaters advertise only every 12–47 hours, so a quiet region can take time to fill in.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
             // A Beacon map waits for its node catalog after every reconnect (iOS metadata overlay).
             beaconMetadata?.let { (_, error) ->
                 Surface(shape = MaterialTheme.shapes.medium, tonalElevation = 4.dp) {

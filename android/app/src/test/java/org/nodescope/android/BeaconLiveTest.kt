@@ -349,4 +349,30 @@ class BeaconLiveTest {
         assertTrue("Region filtering applies to the catalog", beaconMapNodes(loaded, fresh, "AUS").isEmpty())
         assertEquals("A stale catalog is ignored", loaded, beaconMapNodes(loaded, fresh.copy(metadataNeedsRecovery = true), "AUS"))
     }
+
+    @Test fun liveObservationsAlsoFeedTheMapAnimation() = runTest {
+        val socket = TestSocket()
+        val client = client(now = { testScheduler.currentTime })
+        val feed = BeaconLiveFeed(client, info, backgroundScope, transport = transport(client, mutableListOf(socket)),
+            fetchNodes = { emptyList() }, fetchObservers = { emptyList() })
+        feed.subscribe(setOf(LiveFeedSubscription()))
+        feed.connect()
+        socket.push("""{"v":1,"type":"hello"}""")
+        socket.push("""{"v":1,"type":"event","event":"packetObservation","data":{"packetHash":"live-new",
+            "packet":{"payloadType":5,"routeType":1,"observationCount":3,"isFirstObservation":false},
+            "observation":{"observerId":"$observerId","iata":"SAT","heardAt":1999999999999,
+            "resolvedPath":[{"confidence":"high","nodes":[{"publicKey":"${key.uppercase()}"}]},{"confidence":"low","nodes":[]}]}}}""")
+        runCurrent()
+        val events = generateSequence { feed.events.tryReceive().getOrNull() }.toList()
+        val packet = events.filterIsInstance<BeaconLiveEvent.Packet>().single().packet
+        assertTrue(packet.isLive)
+        assertEquals("live-new", packet.hash)
+        assertEquals(observerId, packet.observerId)
+        assertEquals("SAT", packet.region)
+        assertEquals(5, packet.payloadType)
+        assertEquals(3, packet.observations)
+        assertEquals("Only confirmed hops carry a key", listOf(key, null), packet.resolvedPath)
+        assertTrue("The browse snapshot still updates", events.any { it is BeaconLiveEvent.BrowseSnapshot && it.snapshot.rows.isNotEmpty() })
+        feed.disconnect()
+    }
 }

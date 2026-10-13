@@ -20,6 +20,8 @@ data class LiveBrowseFilter(val region: String?, val payloadType: Int?)
 data class LiveBrowseSnapshot(val filter: LiveBrowseFilter, val rows: List<BeaconLiveRecovery.Row>, val possiblyIncomplete: Boolean)
 
 sealed interface BeaconLiveEvent {
+    /** One live observation for the map's route animation (iOS `.packet(observation.liveEnvelope)`). */
+    data class Packet(val packet: LivePacket) : BeaconLiveEvent
     data class BrowseSnapshot(val snapshot: LiveBrowseSnapshot) : BeaconLiveEvent
     data class NodeUpdated(val update: BeaconLiveProtocol.NodeUpdate) : BeaconLiveEvent
     data class ObserverStatus(val status: BeaconLiveProtocol.ObserverStatus) : BeaconLiveEvent
@@ -288,13 +290,6 @@ class BeaconLiveRecovery(
             lastHeard = maxOf(lastHeard, other.lastHeard),
             observationCount = maxOf(observationCount, other.observationCount),
         )
-
-        fun livePacket(receivedAt: Long) = LivePacket(
-            id = null, hash = hash, payloadType = payloadType, typeName = payloadTypeName(payloadType),
-            observerId = null, observerName = null, region = null, snr = null, rssi = null,
-            hops = emptyList(), resolvedPath = emptyList(), timestamp = isoMillis(lastHeard),
-            receivedAt = receivedAt, isLive = false, observations = observationCount,
-        )
     }
 
     var rows: List<Row> = emptyList(); private set
@@ -525,6 +520,7 @@ class BeaconLiveFeed(
                         publish(filter, projection)
                     } catch (_: Exception) { return }
                 }
+                events.trySend(BeaconLiveEvent.Packet(frame.value.livePacket(System.currentTimeMillis())))
                 val key = frame.value.observation.observerPublicKey ?: return
                 try {
                     observers.learn(frame.value.observation.observerId, key, client.sourceSession.id)
@@ -683,6 +679,7 @@ data class BeaconLiveState(
             copy(browseSnapshots = browseSnapshots - event.filter, recoveryErrors = recoveryErrors - event.filter)
         is BeaconLiveEvent.RecoveryFailed -> copy(recoveryErrors = recoveryErrors + (event.filter to event.message))
         is BeaconLiveEvent.RecoveryCompleted -> copy(recoveryErrors = recoveryErrors - event.filter)
+        is BeaconLiveEvent.Packet -> this
         BeaconLiveEvent.Connected -> copy(lastError = null)
         is BeaconLiveEvent.Disconnected -> copy(lastError = event.message)
         is BeaconLiveEvent.DecodingFailed -> copy(lastError = event.message)
@@ -745,3 +742,11 @@ fun mergingBeaconNodes(nodes: List<MeshNode>, states: Map<String, BeaconLiveProt
     }
     return result
 }
+
+/** A live Beacon observation as a live packet: confirmed hops only, its region from the hearing. */
+fun BeaconLiveProtocol.Observation.livePacket(receivedAt: Long) = LivePacket(
+    id = null, hash = packetHash, payloadType = packet.payloadType, typeName = payloadTypeName(packet.payloadType),
+    observerId = observation.observerId.lowercase(), observerName = observation.observerName, region = observation.iata,
+    snr = observation.snr, rssi = observation.rssi, hops = emptyList(), resolvedPath = resolvedPath.orEmpty(),
+    timestamp = isoMillis(observation.heardAt), receivedAt = receivedAt, isLive = true, observations = packet.observationCount,
+)

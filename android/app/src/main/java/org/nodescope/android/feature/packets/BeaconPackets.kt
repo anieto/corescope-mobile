@@ -94,7 +94,7 @@ fun BeaconPacketScreen(feed: LiveFeedState, host: String, regionControl: @Compos
         items(rows, key = { it.hash }) { row -> BeaconPacketRow(row, now, row.hash == selectedHash) { onPacket(row.hash) } }
         if (rows.isEmpty()) item {
             EmptyState(Icons.Outlined.SettingsInputAntenna, if (live) "Waiting for packets" else "Not connected",
-                if (live) "New mesh traffic will appear here as the analyzer receives it."
+                if (live) "New mesh traffic will appear here as the analyzer receives it. Beacon retains up to seven days of packet history, and quiet regions may have no recent traffic."
                 else "NodeScope will resume the live feed when the analyzer reconnects.")
         }
     }

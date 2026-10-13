@@ -26,8 +26,6 @@ data class LiveFeedState(
 ) {
     /** Worked out once per state; screens read it on every recomposition. */
     val visiblePackets: List<LivePacket> by lazy(LazyThreadSafetyMode.PUBLICATION) {
-        // Beacon snapshots are already scoped to the region by the server.
-        if (beacon != null) return@lazy packets
         val region = selection?.region ?: return@lazy packets
         val ids = observers.filter { it.iata.equals(region, true) }.map { it.id.lowercase() }.toSet()
         packets.filter { it.region.equals(region, true) || it.observerId?.lowercase() in ids }
@@ -197,11 +195,9 @@ class LiveFeed(
                         }
                         is LiveSignal.Beacon -> {
                             val next = (state.beacon ?: BeaconLiveState()).reduce(signal.event)
-                            val rows = next.browseSnapshots[browseFilter]
+                            // Packets come from live observations (LiveSignal.Packet); browse rows stay in the snapshots.
                             state = state.copy(
                                 beacon = next,
-                                packets = if (rows === state.beacon?.browseSnapshots?.get(browseFilter)) state.packets
-                                    else rows?.rows.orEmpty().map { it.livePacket(System.currentTimeMillis()) },
                                 observers = next.recoveredObservers() ?: state.observers,
                                 observersLoaded = next.observerCatalog != null || state.observersLoaded,
                                 historyError = browseFilter in next.recoveryErrors,

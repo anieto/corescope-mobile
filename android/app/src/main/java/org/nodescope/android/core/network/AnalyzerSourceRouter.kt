@@ -251,6 +251,8 @@ class RoutingPacketSource(private val coreScope: PacketSource, private val route
                     when (event) {
                         BeaconLiveEvent.Connected -> { apply(); send(LiveSignal.Connection(LiveConnection.LIVE)) }
                         is BeaconLiveEvent.Disconnected -> send(LiveSignal.Connection(LiveConnection.RECONNECTING))
+                        // The shared live packet stream, which the map animates as it does for CoreScope.
+                        is BeaconLiveEvent.Packet -> { send(LiveSignal.Packet(event.packet)); continue }
                         else -> Unit
                     }
                     send(LiveSignal.Beacon(event))
