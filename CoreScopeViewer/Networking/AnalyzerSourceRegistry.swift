@@ -46,20 +46,23 @@ struct AnalyzerSourceRegistryDocument: Codable {
         var accepted: [AnalyzerSource] = []
         var identifiers: Set<String> = []
         while !entries.isAtEnd {
-            let entry = try entries.superDecoder()
-            let fields = try entry.container(keyedBy: SourceKeys.self)
-            let rawType = try fields.decodeIfPresent(String.self, forKey: .type)
-            if let rawType {
-                guard AnalyzerSourceType(rawValue: rawType) != nil else { continue }
-            } else if version == 2 {
+            do {
+                let entry = try entries.superDecoder()
+                let fields = try entry.container(keyedBy: SourceKeys.self)
+                if let rawType = try fields.decodeIfPresent(String.self, forKey: .type),
+                   AnalyzerSourceType(rawValue: rawType) == nil {
+                    continue
+                }
+                let source = try AnalyzerSource(from: entry)
+                guard !source.host.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                      !source.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                      !source.id.isEmpty,
+                      identifiers.insert(source.id).inserted else { continue }
+                accepted.append(source)
+            } catch {
+                // A bad community entry must not hide otherwise valid sources.
                 continue
             }
-            let source = try AnalyzerSource(from: entry)
-            guard !source.host.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  !source.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  !source.id.isEmpty,
-                  identifiers.insert(source.id).inserted else { continue }
-            accepted.append(source)
         }
         guard !accepted.isEmpty else {
             throw DecodingError.dataCorruptedError(forKey: .sources, in: container,

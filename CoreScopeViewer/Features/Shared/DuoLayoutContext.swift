@@ -7,6 +7,7 @@ private struct DuoHingeObserver: ViewModifier {
 
     @ViewBuilder
     func body(content: Content) -> some View {
+#if HAS_DUO_LAYOUT_API
         if #available(iOS 27.1, *) {
             content
                 .onHingeChange { _, newContext in
@@ -34,6 +35,12 @@ private struct DuoHingeObserver: ViewModifier {
                     isHingedDevice = false
                 }
         }
+#else
+        content
+            .task {
+                isHingedDevice = false
+            }
+#endif
     }
 }
 
@@ -59,6 +66,7 @@ struct DuoTwoPaneLayout<Primary: View, Secondary: View>: View {
 
     @ViewBuilder
     var body: some View {
+#if HAS_DUO_LAYOUT_API
         if #available(iOS 27.1, *) {
             GeometryReader { geometry in
                 ArrangementView {
@@ -83,6 +91,21 @@ struct DuoTwoPaneLayout<Primary: View, Secondary: View>: View {
                 secondary
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+        }
+#else
+        fallbackLayout
+#endif
+    }
+
+    private var fallbackLayout: some View {
+        HStack(spacing: 0) {
+            primary
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            Divider()
+
+            secondary
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 }

@@ -167,6 +167,7 @@ final class BeaconLiveFeed: AnalyzerLiveFeed, LivePacketDetailProvider, LiveObse
                     publish(filter, projection)
                 } catch { return }
             }
+            continuation.yield(.packet(observation.liveEnvelope))
             if let key = observation.observation.observerPublicKey {
                 do {
                     try await observers.learn(
@@ -273,5 +274,31 @@ final class BeaconLiveFeed: AnalyzerLiveFeed, LivePacketDetailProvider, LiveObse
         continuation.yield(.browseSnapshot(LiveBrowseSnapshot(
             filter: filter, rows: projection.rows, possiblyIncomplete: projection.possiblyIncomplete
         )))
+    }
+}
+
+private extension BeaconLiveProtocol.Observation {
+    var liveEnvelope: LiveEnvelope {
+        LiveEnvelope(
+            type: "packet",
+            data: LivePacketData(
+                id: observationIdentity.hashValue,
+                raw: nil,
+                decoded: LiveDecoded(
+                    header: LiveHeader(routeType: packet.routeType, payloadType: packet.payloadType),
+                    path: nil,
+                    payload: nil
+                ),
+                snr: observation.snr,
+                rssi: observation.rssi,
+                hash: packetHash,
+                observerId: observation.observerId,
+                observerName: observation.observerName,
+                pathJson: nil,
+                observationCount: packet.observationCount,
+                resolvedPath: resolvedPath
+            ),
+            receivedAt: observation.heardAt
+        )
     }
 }

@@ -359,6 +359,14 @@ struct MapScreen: View {
                             systemImage: "wifi.slash",
                             description: Text(errorMessage)
                         )
+                    } else if liveFeed.usesBrowseSnapshots, !viewModel.isLoading, viewModel.nodes.isEmpty {
+                        ContentUnavailableView(
+                            "No Nodes Reported Yet",
+                            systemImage: "antenna.radiowaves.left.and.right.slash",
+                            description: Text(
+                                "Beacon adds nodes as it hears their advertisements. Some repeaters advertise only every 12–47 hours, so a quiet region can take time to fill in."
+                            )
+                        )
                     }
                 }
                 .overlay(alignment: .top) {
@@ -527,7 +535,7 @@ struct MapScreen: View {
         .onChange(of: liveFeed.beaconNodeSequence) {
             applyBeaconNodeUpdates()
         }
-        .onChange(of: liveFeed.recentEvents.first?.id) {
+        .onChange(of: liveFeed.eventSequence) {
             if isInitialLoadComplete {
                 scheduleIncomingEventProcessing()
             }
