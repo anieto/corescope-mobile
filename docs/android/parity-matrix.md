@@ -46,6 +46,9 @@ declare matching capability sets. iOS extracts a live-feed transport; Android re
 `PacketSource`/`LiveSignal` boundary. Automated regression passes on both platforms; manual parity
 checks remain pending. See [phase 1 implementation](../beacon/phase1-implementation.md).
 
+Beacon phase 2, 2026-10-12: Android now matches the iOS Beacon phase 2 work (detection, browse
+readers, live feed and screens). See the Android port checkpoint in [the Beacon plan](../beacon/plan.md).
+
 | Contract observed | Notes to preserve |
 |---|---|
 | `GET /api/config/map` | Analyzer-provided camera defaults; use a documented fallback if unavailable |

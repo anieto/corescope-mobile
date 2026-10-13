@@ -38,6 +38,20 @@ requests or public registry publication occurred. Until publication, fresh insta
 the bundled MeshTexas listing (custom hosts remain available). Android v2 integration, Colorado's
 release listing/icon and cross-platform release validation remain pending.
 
+Android port checkpoint (2026-10-12): the iOS phase 2 work is ported to Android on
+`feature/beacon-phase-2-android`, matching iOS behaviour, including the current registry rules
+(a v2 entry without `type` is skipped; one malformed entry fails the document). Ported: the
+session-bound Beacon client with the shared per-origin cooldown, the persisted 2.0.3+ server
+catalog, the node/observer/packet/region readers with source-bound cursors, the browse-only backend
+with the iOS capability explanations, source detection that never falls back from Beacon to
+CoreScope, the typed `sources-v2.json` loader and bundle, the WebSocket protocol/transport/recovery,
+and the screens (source check, diagnostics type/version, Beacon Support notices, snapshot packet
+browsing with confirmed-route replay, recovered observers with live status, map catalog and advert
+merge). Android-specific shape: repositories take a host per call, so a router picks the backend
+for the selected host, and Android's single `last_seen` carries the newest of last seen/last heard.
+`./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug :app:assembleDebugAndroidTest`
+passes with 217 unit tests. Manual testing on a device and live Beacon checks remain pending.
+
 Use this order, iOS first and then Android:
 
 1. **Backend groundwork:** cursor-based pages, neutral models that preserve unknown values and
