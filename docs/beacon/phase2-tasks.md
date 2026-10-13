@@ -78,7 +78,7 @@ Must merge before B and D start; it changes interfaces every screen uses. No vis
 |---|---|---|---|
 | D1 | Apply A4 gating everywhere listed there, with wording that doesn't read as an error ("This server doesn't provide node analytics"). | Each gated screen is reachable on Beacon and shows the explained state | done |
 | D2 | Source picker and custom host: show the server type; detection states (checking, CoreScope, Beacon, unreachable); switching back to CoreScope always works. | Matches B1 outcomes | done |
-| D3 | Empty states for sparse Beacon servers (nodes appear as they advert, every 12–47 h for repeaters) and for history limited to 7 days. | Copy reviewed by the user | implemented; user review pending |
+| D3 | Empty states for sparse Beacon servers (nodes appear as they advert, every 12–47 h for repeaters) and for history limited to 7 days. | Copy reviewed by the user | done |
 | D4 | Diagnostics shows the server type and version and runs the backend's probes. | Works for both types | done |
 
 ## Milestone E: Android port — `beacon/p2-android`
@@ -89,20 +89,20 @@ same fixtures. Update `docs/android/parity-matrix.md`.
 
 | ID | Task | Status |
 |---|---|---|
-| E1 | Foundation: paging, neutral hop states, source session and cache keys, capability gating, live demand (A1–A6) | done on `feature/beacon-phase-2-android`; awaiting device testing |
-| E2 | Beacon REST backend, detection, identity (B1–B5, B7) | done on `feature/beacon-phase-2-android`; awaiting device testing |
-| E3 | Beacon live feed (B6) | done on `feature/beacon-phase-2-android`; awaiting device testing |
-| E4 | Source list v2 (C1) | done on `feature/beacon-phase-2-android`; awaiting device testing |
-| E5 | Screens (D1–D4) | done on `feature/beacon-phase-2-android`; awaiting device testing |
+| E1 | Foundation: paging, neutral hop states, source session and cache keys, capability gating, live demand (A1–A6) | done |
+| E2 | Beacon REST backend, detection, identity (B1–B5, B7) | done |
+| E3 | Beacon live feed (B6) | done |
+| E4 | Source list v2 (C1) | done |
+| E5 | Screens (D1–D4) | done |
 
 ## Milestone F: 0.8.0 release gate ("2R")
 
 | ID | Task | Status |
 |---|---|---|
-| F1 | Both platforms pass CoreScope regression and Beacon browse tests; the user completes a manual pass on CoreScope and on our Beacon, Colorado and dev.meshcore.ca | todo |
-| F2 | `check_contract.py` passes on all three servers; refresh fixtures if a server change matters (`capture.py` → `make_fixtures.py` → `check_leaks.py` must report 0) | todo |
-| F3 | Publish `CommunitySources/sources-v2.json` with Colorado's entry and icon; confirm `us-sources.json` is unchanged | todo |
-| F4 | Build numbers: iOS `CURRENT_PROJECT_VERSION`, Android `versionCode` (12 or higher). Version names are already 0.8.0 | todo |
+| F1 | Both platforms pass CoreScope regression and Beacon browse tests; the user completes a manual pass on CoreScope and on our Beacon, Colorado and dev.meshcore.ca | done — iOS 199/199, Android 220/220; manual CoreScope and Beacon pass on both platforms |
+| F2 | `check_contract.py` passes on all three servers; refresh fixtures if a server change matters (`capture.py` → `make_fixtures.py` → `check_leaks.py` must report 0) | done — all three passed 2026-10-13; no fixture refresh needed |
+| F3 | Publish `CommunitySources/sources-v2.json` with Colorado's entry and icon; confirm `us-sources.json` is unchanged | prepared; publication pending release push |
+| F4 | Build numbers: iOS `CURRENT_PROJECT_VERSION`, Android `versionCode` (12 or higher). Version names are already 0.8.0 | done — iOS build 1, Android build 12 |
 | F5 | Store text and screenshots say "CoreScope and Beacon"; review notes give a Beacon host to test against; TestFlight and Play beta before production | todo |
 | F6 | Rollback ready: pull a listing from `sources-v2.json`; users on a removed or broken custom host get a recoverable error and can switch back | todo |
 
