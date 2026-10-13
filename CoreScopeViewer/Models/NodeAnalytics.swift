@@ -42,6 +42,32 @@ struct NodeAnalyticsResponse: Codable, Sendable {
         uptimeHeatmap = try container.decodeIfPresent([NodeUptimeCell].self, forKey: .uptimeHeatmap) ?? []
         computedStats = try container.decode(NodeComputedStats.self, forKey: .computedStats)
     }
+
+    init(
+        node: MeshNode,
+        timeRange: NodeAnalyticsTimeRange,
+        context: AnalyticsContext?,
+        activityTimeline: [NodeActivityPoint],
+        snrTrend: [NodeSignalPoint],
+        packetTypeBreakdown: [NodePacketTypeCount],
+        observerCoverage: [NodeObserverCoverage],
+        hopDistribution: [NodeHopCount],
+        peerInteractions: [NodePeerInteraction],
+        uptimeHeatmap: [NodeUptimeCell],
+        computedStats: NodeComputedStats
+    ) {
+        self.node = node
+        self.timeRange = timeRange
+        self.context = context
+        self.activityTimeline = activityTimeline
+        self.snrTrend = snrTrend
+        self.packetTypeBreakdown = packetTypeBreakdown
+        self.observerCoverage = observerCoverage
+        self.hopDistribution = hopDistribution
+        self.peerInteractions = peerInteractions
+        self.uptimeHeatmap = uptimeHeatmap
+        self.computedStats = computedStats
+    }
 }
 
 struct NodeAnalyticsTimeRange: Codable, Sendable {
@@ -137,15 +163,15 @@ struct NodeUptimeCell: Codable, Sendable, Identifiable {
 }
 
 struct NodeComputedStats: Codable, Sendable {
-    let availabilityPct: Double
-    let longestSilenceMs: Double
+    let availabilityPct: Double?
+    let longestSilenceMs: Double?
     let longestSilenceStart: Date?
-    let signalGrade: String
-    let snrMean: Double
-    let snrStdDev: Double
-    let relayPct: Double
+    let signalGrade: String?
+    let snrMean: Double?
+    let snrStdDev: Double?
+    let relayPct: Double?
     let totalPackets: Int
-    let uniqueObservers: Int
-    let uniquePeers: Int
+    let uniqueObservers: Int?
+    let uniquePeers: Int?
     let avgPacketsPerDay: Double
 }

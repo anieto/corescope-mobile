@@ -76,7 +76,7 @@ struct BeaconNodeReader: Sendable {
         )
     }
 
-    private func nodeSummary(publicKey: String) async throws -> Node? {
+    func nodeSummary(publicKey: String) async throws -> Node? {
         try client.sourceSession.check()
         guard Self.isFullKey(publicKey) else { throw APIError.invalidResponse }
         let key = publicKey.lowercased()
@@ -188,8 +188,95 @@ struct BeaconNodeReader: Sendable {
         }
     }
 
+    struct Observation: Codable, Sendable, Identifiable, Equatable {
+        let id: Int64
+        let packetHash: String
+        let payloadType: Int
+        let heardAt: Date
+        let rssi: Double?
+        let snr: Double?
+        let hopCount: Int?
+
+        func validate() throws {
+            guard id >= 0,
+                  !packetHash.isEmpty,
+                  payloadType >= 0,
+                  rssi.map(\.isFinite) != false,
+                  snr.map(\.isFinite) != false,
+                  hopCount.map({ $0 >= 0 }) != false else {
+                throw APIError.invalidResponse
+            }
+        }
+    }
+
+    struct ObservationHistory: Sendable {
+        let node: Node
+        let observations: [Observation]
+        let isComplete: Bool
+        let requestCount: Int
+    }
+
+    func observationHistory(
+        publicKey: String,
+        since: Date,
+        maximumPages: Int = 19
+    ) async throws -> ObservationHistory? {
+        guard maximumPages > 0 else { throw AnalyzerPagingError.invalidPageSize }
+        guard let node = try await nodeSummary(publicKey: publicKey) else { return nil }
+        var observations: [Observation] = []
+        var cursor: CursorValue?
+        var seenCursors: Set<String> = []
+        var seenObservationIDs: Set<Int64> = []
+        var previousDate: Date?
+        var isComplete = false
+        var pages = 0
+
+        while pages < min(maximumPages, 19) {
+            var query = [URLQueryItem(name: "limit", value: "200")]
+            if let cursor { query.append(URLQueryItem(name: "cursor", value: cursor.queryValue)) }
+            let page: ObservationPage = try await client.get(
+                ["nodes", node.id, "observations"],
+                query: query
+            )
+            try page.items.forEach { try $0.validate() }
+            for observation in page.items {
+                if let previousDate, observation.heardAt > previousDate {
+                    throw BeaconAPIError.malformedPage
+                }
+                previousDate = observation.heardAt
+                guard seenObservationIDs.insert(observation.id).inserted else { continue }
+                if observation.heardAt >= since { observations.append(observation) }
+            }
+            pages += 1
+
+            if !page.hasMore || page.items.last.map({ $0.heardAt < since }) == true {
+                isComplete = true
+                break
+            }
+            guard !page.items.isEmpty, let next = page.nextCursor,
+                  seenCursors.insert(next.queryValue).inserted else {
+                throw BeaconAPIError.malformedPage
+            }
+            cursor = next
+        }
+
+        try client.sourceSession.check()
+        return ObservationHistory(
+            node: node,
+            observations: observations,
+            isComplete: isComplete,
+            requestCount: pages + 1
+        )
+    }
+
     private struct Page: Decodable, Sendable {
         let items: [Node]
+        let hasMore: Bool
+        let nextCursor: CursorValue?
+    }
+
+    private struct ObservationPage: Decodable, Sendable {
+        let items: [Observation]
         let hasMore: Bool
         let nextCursor: CursorValue?
     }

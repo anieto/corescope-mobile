@@ -56,6 +56,7 @@
 		318BF7D7307EBCF900C8BFAD /* AnalyticsContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318BF7D6307EBCF900C8BFAD /* AnalyticsContext.swift */; };
 		318BF7D9307EBE6000C8BFAD /* NeighborInsight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318BF7D8307EBE6000C8BFAD /* NeighborInsight.swift */; };
 		318BF7DB307EBE7000C8BFAD /* NeighborInsightTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318BF7DA307EBE7000C8BFAD /* NeighborInsightTests.swift */; };
+		318BF7DD307EC37B00C8BFAD /* BeaconNodeAnalyticsBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318BF7DC307EC37B00C8BFAD /* BeaconNodeAnalyticsBuilder.swift */; };
 		31A2B0023070000100FBA3B4 /* RouteOption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A2B0013070000100FBA3B4 /* RouteOption.swift */; };
 		31A2B0043070000100FBA3B4 /* RoutePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A2B0033070000100FBA3B4 /* RoutePicker.swift */; };
 		31A2B0063070000100FBA3B4 /* RouteOptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A2B0053070000100FBA3B4 /* RouteOptionTests.swift */; };
@@ -174,6 +175,7 @@
 		318BF7D6307EBCF900C8BFAD /* AnalyticsContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsContext.swift; sourceTree = "<group>"; };
 		318BF7D8307EBE6000C8BFAD /* NeighborInsight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeighborInsight.swift; sourceTree = "<group>"; };
 		318BF7DA307EBE7000C8BFAD /* NeighborInsightTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeighborInsightTests.swift; sourceTree = "<group>"; };
+		318BF7DC307EC37B00C8BFAD /* BeaconNodeAnalyticsBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeaconNodeAnalyticsBuilder.swift; sourceTree = "<group>"; };
 		31A2B0013070000100FBA3B4 /* RouteOption.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteOption.swift; sourceTree = "<group>"; };
 		31A2B0033070000100FBA3B4 /* RoutePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePicker.swift; sourceTree = "<group>"; };
 		31A2B0053070000100FBA3B4 /* RouteOptionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteOptionTests.swift; sourceTree = "<group>"; };
@@ -488,6 +490,7 @@
 				311D6C86307C45C400E2EB70 /* BeaconLiveTransport.swift */,
 				311D6C88307C45EC00E2EB70 /* BeaconLiveRecovery.swift */,
 				311D6C8A307C473800E2EB70 /* BeaconLiveFeed.swift */,
+				318BF7DC307EC37B00C8BFAD /* BeaconNodeAnalyticsBuilder.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -633,6 +636,7 @@
 				312714BE307AE61D00829346 /* AnalyzerBackend.swift in Sources */,
 				311D6C85307C44E700E2EB70 /* BeaconLiveProtocol.swift in Sources */,
 				DD6C9F810E54AD2B21E18201 /* AnalyzerSourceLogo.swift in Sources */,
+				318BF7DD307EC37B00C8BFAD /* BeaconNodeAnalyticsBuilder.swift in Sources */,
 				D79DF7E587202E277463644A /* AnalyzerSourcePicker.swift in Sources */,
 				312714C2307AE67F00829346 /* AnalyzerLiveFeed.swift in Sources */,
 				316FDFFF305C6CB100FBA3B4 /* SearchHistoryStore.swift in Sources */,

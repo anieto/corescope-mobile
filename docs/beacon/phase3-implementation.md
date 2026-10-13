@@ -172,3 +172,17 @@ navigation, loading state, refresh gesture, and error status. Beacon leaves the 
 Observers metrics visibly unknown and explains why, while each neighbor row shows reported SNR.
 The project builds successfully and the complete pre-UI iOS suite passes with 210 tests. C2 remains
 in progress until side-by-side runtime review.
+
+## 2026-10-13: iOS node analytics started
+
+Beacon node analytics now use one full-key identity lookup plus at most 19 pages of 200 observations,
+keeping the entire screen at or below 20 requests with no packet-detail fan-out. Pages must remain
+newest-first, cursors may not repeat, duplicate observation IDs are ignored, and obsolete source
+sessions cannot publish results. Results are cached for five minutes by source, node, and range.
+
+The existing CoreScope analytics screen now accepts honest unknown summary values. Beacon fills the
+shared activity, observed-activity heatmap, signal, packet-type, and hop sections; counts and exports
+say “observations,” not “packets.” Requests beyond seven days show the retained seven-day window as
+partial. Availability, longest silence, signal grade, observer coverage, and peer interactions remain
+unknown with an explicit explanation because the node-history endpoint cannot support them. The
+CoreScope wire contract and labels remain unchanged.

@@ -63,10 +63,11 @@ final class NodeAnalyticsViewModel {
             return
         }
         let cacheKey = "node-analytics-\(cacheNamespace)-\(pubkey.lowercased())-\(requestedRange.rawValue)"
+        let cacheLifetime: TimeInterval = apiClient is BeaconBackend ? 5 * 60 : staleCacheLifetime
 
         if let cached: NodeAnalyticsResponse = await APIResponseCache.shared.value(
             for: cacheKey,
-            maximumAge: staleCacheLifetime
+            maximumAge: cacheLifetime
         ) {
             let savedAt = await APIResponseCache.shared.savedAt(for: cacheKey)
             guard isCurrent(loadID, backend: apiClient) else { return }

@@ -51,18 +51,37 @@ struct NodeAnalyticsScreen: View {
                         .frame(maxWidth: .infinity)
                     }
                 } else if let analytics = viewModel.analytics {
-                    NodeAnalyticsSummaryCard(stats: analytics.computedStats)
+                    if let context = analytics.context,
+                       context.completeness != .complete,
+                       let explanation = context.explanation {
+                        NodeAnalyticsCoverageNotice(explanation: explanation)
+                    }
+
+                    NodeAnalyticsSummaryCard(
+                        stats: analytics.computedStats,
+                        countUnit: analytics.context?.countUnit ?? .packets
+                    )
 
                     if !analytics.activityTimeline.isEmpty {
-                        NodeActivityChart(points: analytics.activityTimeline)
+                        NodeActivityChart(
+                            points: analytics.activityTimeline,
+                            countUnit: analytics.context?.countUnit ?? .packets
+                        )
                     }
 
                     if !analytics.uptimeHeatmap.isEmpty {
-                        NodeUptimeHeatmapCard(cells: analytics.uptimeHeatmap)
+                        NodeUptimeHeatmapCard(
+                            cells: analytics.uptimeHeatmap,
+                            countUnit: analytics.context?.countUnit ?? .packets
+                        )
                     }
 
                     if !analytics.snrTrend.isEmpty {
-                        NodeSignalCard(points: analytics.snrTrend, observers: observerRegionLookup.observers)
+                        if analytics.context?.countUnit == .observations {
+                            BeaconNodeSignalCard(points: analytics.snrTrend)
+                        } else {
+                            NodeSignalCard(points: analytics.snrTrend, observers: observerRegionLookup.observers)
+                        }
                     }
 
                     if !analytics.packetTypeBreakdown.isEmpty {
@@ -79,6 +98,10 @@ struct NodeAnalyticsScreen: View {
 
                     if !analytics.peerInteractions.isEmpty {
                         NodePeerInteractionsCard(peers: analytics.peerInteractions)
+                    }
+
+                    if analytics.context?.countUnit == .observations {
+                        BeaconNodeAnalyticsLimitationsNotice()
                     }
                 }
             }
@@ -186,7 +209,7 @@ private enum NodeAnalyticsExportBuilder {
     static func csv(analyzer: String, analytics: NodeAnalyticsResponse) -> Data {
         StatisticsExportBuilder.csv(
             rows: metadataRows(analyzer: analyzer, analytics: analytics)
-                + statisticRows(analytics.computedStats)
+                + statisticRows(analytics.computedStats, context: analytics.context)
                 + analytics.activityTimeline.map {
                     ["activity", "", $0.bucket.ISO8601Format(), String($0.count), "", ""]
                 }
@@ -243,7 +266,7 @@ private enum NodeAnalyticsExportBuilder {
         analyzer: String,
         analytics: NodeAnalyticsResponse
     ) -> [[String]] {
-        [
+        return [
             ["section", "key", "timestamp", "count", "value", "detail"],
             ["export", "analyzer", Date.now.ISO8601Format(), "", analyzer, ""],
             ["node", "public_key", "", "", analytics.node.publicKey, ""],
@@ -255,10 +278,17 @@ private enum NodeAnalyticsExportBuilder {
         ]
     }
 
-    private static func statisticRows(_ stats: NodeComputedStats) -> [[String]] {
-        [
-            ["statistic", "availability_percent", "", "", String(stats.availabilityPct), ""],
-            ["statistic", "longest_silence_ms", "", "", String(stats.longestSilenceMs), ""],
+    private static func statisticRows(
+        _ stats: NodeComputedStats,
+        context: AnalyticsContext?
+    ) -> [[String]] {
+        let totalKey = context?.countUnit == .observations ? "total_observations" : "total_packets"
+        let averageKey = context?.countUnit == .observations
+            ? "average_observations_per_day"
+            : "average_packets_per_day"
+        return [
+            ["statistic", "availability_percent", "", "", stats.availabilityPct.map { String($0) } ?? "", ""],
+            ["statistic", "longest_silence_ms", "", "", stats.longestSilenceMs.map { String($0) } ?? "", ""],
             [
                 "statistic",
                 "longest_silence_start",
@@ -267,14 +297,14 @@ private enum NodeAnalyticsExportBuilder {
                 "",
                 ""
             ],
-            ["statistic", "signal_grade", "", "", stats.signalGrade, ""],
-            ["statistic", "snr_mean", "", "", String(stats.snrMean), ""],
-            ["statistic", "snr_standard_deviation", "", "", String(stats.snrStdDev), ""],
-            ["statistic", "relay_percent", "", "", String(stats.relayPct), ""],
-            ["statistic", "total_packets", "", "", String(stats.totalPackets), ""],
-            ["statistic", "unique_observers", "", "", String(stats.uniqueObservers), ""],
-            ["statistic", "unique_peers", "", "", String(stats.uniquePeers), ""],
-            ["statistic", "average_packets_per_day", "", "", String(stats.avgPacketsPerDay), ""]
+            ["statistic", "signal_grade", "", "", stats.signalGrade ?? "", ""],
+            ["statistic", "snr_mean", "", "", stats.snrMean.map { String($0) } ?? "", ""],
+            ["statistic", "snr_standard_deviation", "", "", stats.snrStdDev.map { String($0) } ?? "", ""],
+            ["statistic", "relay_percent", "", "", stats.relayPct.map { String($0) } ?? "", ""],
+            ["statistic", totalKey, "", "", String(stats.totalPackets), ""],
+            ["statistic", "unique_observers", "", "", stats.uniqueObservers.map { String($0) } ?? "", ""],
+            ["statistic", "unique_peers", "", "", stats.uniquePeers.map { String($0) } ?? "", ""],
+            ["statistic", averageKey, "", "", String(stats.avgPacketsPerDay), ""]
         ]
     }
 }
@@ -368,6 +398,7 @@ private struct NodeAnalyticsRangePicker: View {
 
 private struct NodeAnalyticsSummaryCard: View {
     let stats: NodeComputedStats
+    let countUnit: AnalyticsCountUnit
 
     private let columns = [
         GridItem(.adaptive(minimum: 132), spacing: 12)
@@ -382,32 +413,32 @@ private struct NodeAnalyticsSummaryCard: View {
 
             LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
                 NodeAnalyticsMetric(
-                    value: stats.availabilityPct.formatted(.number.precision(.fractionLength(0))) + "%",
+                    value: percent(stats.availabilityPct),
                     label: "Availability",
                     tint: NodeScopeStyle.healthy
                 )
                 NodeAnalyticsMetric(
-                    value: stats.signalGrade,
+                    value: stats.signalGrade ?? "—",
                     label: "Signal grade",
                     tint: NodeScopeStyle.signal
                 )
                 NodeAnalyticsMetric(
                     value: stats.avgPacketsPerDay.formatted(.number.precision(.fractionLength(0))),
-                    label: "Packets / day",
+                    label: countUnit == .observations ? "Observations / day" : "Packets / day",
                     tint: NodeScopeStyle.signal
                 )
                 NodeAnalyticsMetric(
-                    value: stats.relayPct.formatted(.number.precision(.fractionLength(0))) + "%",
+                    value: percent(stats.relayPct),
                     label: "Relayed",
                     tint: .orange
                 )
                 NodeAnalyticsMetric(
-                    value: stats.uniqueObservers.formatted(),
+                    value: stats.uniqueObservers?.formatted() ?? "—",
                     label: "Observers",
                     tint: .blue
                 )
                 NodeAnalyticsMetric(
-                    value: Self.duration(stats.longestSilenceMs),
+                    value: stats.longestSilenceMs.map(Self.duration) ?? "—",
                     label: "Longest silence",
                     tint: .secondary
                 )
@@ -415,6 +446,10 @@ private struct NodeAnalyticsSummaryCard: View {
         }
         .padding(16)
         .instrumentCard()
+    }
+
+    private func percent(_ value: Double?) -> String {
+        value.map { $0.formatted(.number.precision(.fractionLength(0))) + "%" } ?? "—"
     }
 
     private static func duration(_ milliseconds: Double) -> String {
@@ -459,20 +494,59 @@ private struct NodeAnalyticsMetric: View {
     }
 }
 
+private struct NodeAnalyticsCoverageNotice: View {
+    let explanation: String
+
+    var body: some View {
+        Label(explanation, systemImage: "clock.badge.exclamationmark")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .instrumentCard()
+    }
+}
+
+private struct BeaconNodeAnalyticsLimitationsNotice: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Unavailable from Beacon", systemImage: "info.circle")
+                .font(.headline)
+                .accessibilityAddTraits(.isHeader)
+            Text("Beacon node history does not identify observers or peers, so observer coverage, peer interactions, availability, longest silence, and signal grade cannot be calculated reliably.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .instrumentCard()
+    }
+}
+
 private struct NodeActivityChart: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     let points: [NodeActivityPoint]
+    let countUnit: AnalyticsCountUnit
+
+    private var subtitle: LocalizedStringResource {
+        let count = points.reduce(0) { $0 + $1.count }.formatted()
+        return countUnit == .observations ? "\(count) observations" : "\(count) packets"
+    }
+
+    private var accessibilityTitle: LocalizedStringResource {
+        countUnit == .observations ? "Observation activity chart" : "Packet activity chart"
+    }
 
     var body: some View {
         NodeAnalyticsChartCard(
             title: "Activity",
-            subtitle: "\(points.reduce(0) { $0 + $1.count }.formatted()) packets",
+            subtitle: subtitle,
             symbol: "waveform.path.ecg"
         ) {
             Chart(points) { point in
                 AreaMark(
                     x: .value("Time", point.bucket),
-                    y: .value("Packets", point.count)
+                    y: .value(countUnit == .observations ? "Observations" : "Packets", point.count)
                 )
                 .foregroundStyle(
                     .linearGradient(
@@ -484,7 +558,7 @@ private struct NodeActivityChart: View {
 
                 LineMark(
                     x: .value("Time", point.bucket),
-                    y: .value("Packets", point.count)
+                    y: .value(countUnit == .observations ? "Observations" : "Packets", point.count)
                 )
                 .foregroundStyle(.blue)
                 .interpolationMethod(.catmullRom)
@@ -493,7 +567,7 @@ private struct NodeActivityChart: View {
                 AxisMarks(position: .leading)
             }
             .frame(height: verticalSizeClass == .compact ? 140 : 190)
-            .accessibilityLabel("Packet activity chart")
+            .accessibilityLabel(Text(accessibilityTitle))
         }
     }
 }
@@ -501,6 +575,7 @@ private struct NodeActivityChart: View {
 
 private struct NodeUptimeHeatmapCard: View {
     let cells: [NodeUptimeCell]
+    let countUnit: AnalyticsCountUnit
 
     private var rows: [NodeUptimeRow] {
         let counts = Dictionary(
@@ -529,15 +604,22 @@ private struct NodeUptimeHeatmapCard: View {
                     .font(.headline)
                     .foregroundStyle(.primary)
                     .accessibilityAddTraits(.isHeader)
-                Text("Packet activity by weekday and hour, shown in UTC")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                if countUnit == .observations {
+                    Text("Observed activity by weekday and hour, shown in UTC")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Packet activity by weekday and hour, shown in UTC")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             ViewThatFits(in: .horizontal) {
                 NodeUptimeHeatmapGrid(
                     rows: rows,
                     maximumCount: maximumCount,
+                    countUnit: countUnit,
                     expandsToFillWidth: true
                 )
 
@@ -545,6 +627,7 @@ private struct NodeUptimeHeatmapCard: View {
                     NodeUptimeHeatmapGrid(
                         rows: rows,
                         maximumCount: maximumCount,
+                        countUnit: countUnit,
                         expandsToFillWidth: false
                     )
                 }
@@ -561,6 +644,7 @@ private struct NodeUptimeHeatmapCard: View {
 private struct NodeUptimeHeatmapGrid: View {
     let rows: [NodeUptimeRow]
     let maximumCount: Int
+    let countUnit: AnalyticsCountUnit
     let expandsToFillWidth: Bool
 
     var body: some View {
@@ -580,6 +664,7 @@ private struct NodeUptimeHeatmapGrid: View {
                             hour: slot.id.hour,
                             count: slot.count,
                             maximumCount: maximumCount,
+                            countUnit: countUnit,
                             expandsToFillWidth: expandsToFillWidth
                         )
                     }
@@ -654,6 +739,7 @@ private struct NodeUptimeHeatmapCell: View {
     let hour: Int
     let count: Int
     let maximumCount: Int
+    let countUnit: AnalyticsCountUnit
     let expandsToFillWidth: Bool
 
     var body: some View {
@@ -670,7 +756,9 @@ private struct NodeUptimeHeatmapCell: View {
                     .stroke(Color.secondary.opacity(0.12), lineWidth: 0.5)
             }
             .accessibilityLabel(dayName)
-            .accessibilityValue("\(count) packets at UTC hour \(hour)")
+            .accessibilityValue(countUnit == .observations
+                ? "\(count) observations at UTC hour \(hour)"
+                : "\(count) packets at UTC hour \(hour)")
     }
 
     private var fillColor: Color {
@@ -724,6 +812,32 @@ extension SignalQuality {
     }
 }
 
+private struct BeaconNodeSignalCard: View {
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    let points: [NodeSignalPoint]
+
+    var body: some View {
+        NodeAnalyticsChartCard(
+            title: "Signal",
+            subtitle: "Reported SNR over time; Beacon does not identify the observer",
+            symbol: "wave.3.right"
+        ) {
+            Chart(points) { point in
+                LineMark(
+                    x: .value("Time", point.timestamp),
+                    y: .value("SNR", point.snr)
+                )
+                .foregroundStyle(NodeScopeStyle.signal)
+            }
+            .chartYAxis {
+                AxisMarks(position: .leading)
+            }
+            .frame(height: verticalSizeClass == .compact ? 140 : 190)
+            .accessibilityLabel("Reported SNR over time")
+        }
+    }
+}
+
 private func formattedDB(_ value: Double) -> String {
     value.formatted(.number.precision(.fractionLength(1))) + " dB"
 }
@@ -748,7 +862,7 @@ private struct NodeSignalCard: View {
             let scale = Self.scale(for: summaries)
             NodeAnalyticsChartCard(
                 title: "Signal",
-                subtitle: String(localized: "How well observers hear this node (SNR)"),
+                subtitle: "How well observers hear this node (SNR)",
                 symbol: "wave.3.right"
             ) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -1152,7 +1266,7 @@ private struct NodeHopDistributionChart: View {
 
 private struct NodeAnalyticsChartCard<Content: View>: View {
     let title: LocalizedStringKey
-    let subtitle: String
+    let subtitle: LocalizedStringResource
     let symbol: String
     @ViewBuilder let content: Content
 

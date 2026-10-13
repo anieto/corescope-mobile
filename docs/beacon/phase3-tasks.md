@@ -106,9 +106,9 @@ current values and requests.
 
 | ID | Task | Done when | Status |
 |---|---|---|---|
-| D1 | Read paged `/nodes/{id}/observations` and compute the neutral analytics defined in A5 without packet-detail fan-out. Cache by source, node, filter, and time range. | Paging, cancellation, repeated cursor, partial failure, seven-day cap, and stale-session tests pass | todo |
-| D2 | Fill the existing node analytics screen with Beacon activity, heatmap, packet-type, hop, and SNR data. Reuse CoreScope charts, cards, order, colors, legends, filters, and accessibility labels. | CoreScope and Beacon screenshots have the same information architecture; differences correspond only to documented data limitations | todo |
-| D3 | Handle analytics that would require per-packet detail, including per-observer coverage. Prefer an explicit unavailable/partial explanation over an expensive approximation. | Zero per-row packet-detail requests; completeness is visible and tested | todo |
+| D1 | Read paged `/nodes/{id}/observations` and compute the neutral analytics defined in A5 without packet-detail fan-out. Cache by source, node, filter, and time range. | Paging, cancellation, repeated cursor, partial failure, seven-day cap, and stale-session tests pass | doing |
+| D2 | Fill the existing node analytics screen with Beacon activity, heatmap, packet-type, hop, and SNR data. Reuse CoreScope charts, cards, order, colors, legends, filters, and accessibility labels. | CoreScope and Beacon screenshots have the same information architecture; differences correspond only to documented data limitations | doing |
+| D3 | Handle analytics that would require per-packet detail, including per-observer coverage. Prefer an explicit unavailable/partial explanation over an expensive approximation. | Zero per-row packet-detail requests; completeness is visible and tested | done |
 | D4 | Port D1–D3 to Android and update the parity matrix. | Shared fixtures produce matching aggregates and equivalent UI states on both platforms | todo |
 
 ## Milestone E: observer activity and telemetry parity

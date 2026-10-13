@@ -364,7 +364,7 @@ struct BeaconAPITests {
         #expect(pair.feed.observers === pair.backend.observerReader)
         #expect(pair.backend.sourceSession.id == client.sourceSession.id)
         #expect(pair.backend.cacheIdentifier == client.cacheIdentifier)
-        #expect(pair.backend.capabilities == [.neighbors])
+        #expect(pair.backend.capabilities == [.neighbors, .nodeAnalytics])
         let other = try BeaconObserverReader(client: Self.client(session), verifiedServerInfo: info)
         #expect(throws: APIError.self) {
             _ = try BeaconLiveFeed(client: client, verifiedServerInfo: info, transport: transport, observerReader: other)
@@ -411,7 +411,6 @@ struct BeaconAPITests {
         await #expect(throws: BeaconBackendError.self) { _ = try await backend.nodeHealth(publicKey: "node") }
         await #expect(throws: BeaconBackendError.self) { _ = try await backend.nodePaths(publicKey: "node") }
         await #expect(throws: BeaconBackendError.self) { _ = try await backend.nodeReach(publicKey: "node") }
-        await #expect(throws: BeaconBackendError.self) { _ = try await backend.nodeAnalytics(publicKey: "node", days: 7) }
         await #expect(throws: BeaconBackendError.self) { _ = try await backend.observerAnalytics(id: "observer") }
         await #expect(throws: BeaconBackendError.self) { _ = try await backend.channels(region: nil) }
         await #expect(throws: BeaconBackendError.self) { _ = try await backend.channelMessages(id: "1", offset: 0) }
@@ -1053,6 +1052,64 @@ struct BeaconAPITests {
         #expect(neighbor.signal.snr == -5.75)
         #expect(neighbor.signal.rssi == nil)
         #expect(neighbor.observationCount == 2)
+    }
+
+    @Test func nodeObservationHistoryUsesBoundedPagesAndObservationSemantics() async throws {
+        let node = try Self.fixtureBody("node-detail")
+        let key = try #require(node["publicKey"] as? String)
+        let identifier = try #require(node["id"] as? String)
+        let lookup = "/api/v1/nodes?pubkey=\(key)"
+        let observationsPath = "/api/v1/nodes/\(identifier)/observations?limit=200"
+        let routes = String(decoding: try JSONSerialization.data(withJSONObject: [
+            lookup: try Self.fixtureBody("node-by-pubkey"),
+            observationsPath: try Self.fixtureBody("node-observations")
+        ]), as: UTF8.self)
+        let session = Self.session(targets: [lookup, observationsPath], routes: routes)
+        defer { session.invalidateAndCancel() }
+        let reader = try BeaconNodeReader(
+            client: Self.client(session),
+            verifiedServerInfo: .init(serverVersion: "2.0.3")
+        )
+
+        let history = try #require(await reader.observationHistory(
+            publicKey: key,
+            since: Date(timeIntervalSince1970: 0)
+        ))
+        #expect(history.isComplete)
+        #expect(history.requestCount == 2)
+        #expect(history.observations.count == 8)
+        #expect(history.observations.allSatisfy { $0.payloadType == 4 && $0.hopCount == 0 })
+        #expect(history.observations.first?.heardAt == Date(timeIntervalSince1970: 1791666758.828))
+    }
+
+    @Test func beaconBackendDerivesNodeAnalyticsWithoutPacketFanout() async throws {
+        let node = try Self.fixtureBody("node-detail")
+        let key = try #require(node["publicKey"] as? String)
+        let identifier = try #require(node["id"] as? String)
+        let lookup = "/api/v1/nodes?pubkey=\(key)"
+        let observationsPath = "/api/v1/nodes/\(identifier)/observations?limit=200"
+        let routes = String(decoding: try JSONSerialization.data(withJSONObject: [
+            lookup: try Self.fixtureBody("node-by-pubkey"),
+            observationsPath: try Self.fixtureBody("node-observations")
+        ]), as: UTF8.self)
+        let session = Self.session(targets: [lookup, observationsPath], routes: routes)
+        defer { session.invalidateAndCancel() }
+        let backend = try BeaconBackend(
+            client: Self.client(session),
+            verifiedServerInfo: .init(serverVersion: "2.0.3")
+        )
+
+        let analytics = try await backend.nodeAnalytics(publicKey: key, days: 30)
+        #expect(analytics.context?.countUnit == .observations)
+        #expect(analytics.context?.completeness == .partial)
+        #expect(analytics.timeRange.days == 7)
+        #expect(analytics.computedStats.totalPackets == 8)
+        #expect(analytics.computedStats.availabilityPct == nil)
+        #expect(analytics.computedStats.signalGrade == nil)
+        #expect(analytics.computedStats.uniqueObservers == nil)
+        #expect(analytics.packetTypeBreakdown.first?.payloadType == 4)
+        #expect(analytics.hopDistribution.first?.hops == "0")
+        #expect(analytics.observerCoverage.isEmpty && analytics.peerInteractions.isEmpty)
     }
 
     @Test func missingNodeDoesNotScanOrFetchDetail() async throws {

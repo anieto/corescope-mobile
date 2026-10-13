@@ -155,7 +155,7 @@ struct BeaconBackend: AnalyzerBackend {
 
     var sourceSession: AnalyzerSourceSession { client.sourceSession }
     var cacheIdentifier: String { client.cacheIdentifier }
-    let capabilities: Set<BackendCapability> = [.neighbors]
+    let capabilities: Set<BackendCapability> = [.neighbors, .nodeAnalytics]
 
     init(client: BeaconAPIClient, verifiedServerInfo: BeaconServerInfo) throws {
         try verifiedServerInfo.requireSupported()
@@ -214,7 +214,26 @@ struct BeaconBackend: AnalyzerBackend {
     func nodeHealth(publicKey: String) async throws -> NodeHealthResponse { try unavailable("Node health") }
     func nodePaths(publicKey: String) async throws -> NodePathsResponse { try unavailable("Node paths") }
     func nodeReach(publicKey: String) async throws -> NodeReachResponse { try unavailable("Node reach") }
-    func nodeAnalytics(publicKey: String, days: Int) async throws -> NodeAnalyticsResponse { try unavailable("Node analytics") }
+    func nodeAnalytics(publicKey: String, days: Int) async throws -> NodeAnalyticsResponse {
+        try sourceSession.check()
+        let safeDays = max(1, days)
+        let requestedTo = Date.now
+        let requestedFrom = requestedTo.addingTimeInterval(-Double(safeDays) * 24 * 60 * 60)
+        let retainedFrom = max(requestedFrom, requestedTo.addingTimeInterval(-7 * 24 * 60 * 60))
+        guard let history = try await nodeReader.observationHistory(
+            publicKey: publicKey,
+            since: retainedFrom
+        ) else {
+            throw BeaconBackendError.nodeUnavailable
+        }
+        try sourceSession.check()
+        return BeaconNodeAnalyticsBuilder.build(
+            history: history,
+            requestedDays: safeDays,
+            from: requestedFrom,
+            to: requestedTo
+        )
+    }
     func observerAnalytics(id: String) async throws -> ObserverAnalyticsResponse { try unavailable("Observer analytics") }
     func channels(region: String?) async throws -> ChannelsResponse { try unavailable("Channels") }
     func channelMessages(id: String, offset: Int) async throws -> ChannelMessagesResponse { try unavailable("Channel messages") }
