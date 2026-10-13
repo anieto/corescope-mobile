@@ -14,6 +14,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
+import kotlinx.coroutines.launch
 import org.nodescope.android.core.design.CardCornerMasks
 import org.nodescope.android.core.design.LocalWideLayout
 import org.nodescope.android.core.design.PaneGap
@@ -52,7 +53,8 @@ fun MapPacketsLayout(
     selectedId: String?, onSelect: (id: String?, hash: String?, routes: List<RouteOption>) -> Unit, onDetails: (String) -> Unit,
     /** The packet whose route is on the map, and one whose full routes are still being fetched. */
     replayingId: String? = null, lookingUpId: String? = null,
-    map: @Composable (onShowPackets: (() -> Unit)?) -> Unit,
+    /** [onShowPackets] restores the wide panel; [onShowPacketsSheet] opens the phone sheet (iOS compact). */
+    map: @Composable (onShowPackets: (() -> Unit)?, onShowPacketsSheet: (() -> Unit)?) -> Unit,
 ) {
     val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences("map-layout", Context.MODE_PRIVATE) }
@@ -68,11 +70,13 @@ fun MapPacketsLayout(
         // other), whatever its width; other screens use the width cutoff.
         val atFold = fold.firstPaneWidth(maxWidth, MIN_PANE_AT_FOLD)
         if (atFold == null && maxWidth < PACKETS_PANEL_MIN_WIDTH) {
-            MapCard(wide, Modifier.fillMaxSize()) { map(null) }
+            PacketsSheetLayout(feed, onReconnect, selectedId, onSelect, onDetails, replayingId, lookingUpId, maxHeight) { show ->
+                MapCard(wide, Modifier.fillMaxSize()) { map(null, show) }
+            }
             return@BoxWithConstraints
         }
         if (!open) {
-            MapCard(true, Modifier.fillMaxSize()) { map { setOpen(true) } }
+            MapCard(true, Modifier.fillMaxSize()) { map({ setOpen(true) }, null) }
             return@BoxWithConstraints
         }
         // Panel and map as two cards on the canvas; at a fold the gap between them sits on the crease.
@@ -88,24 +92,77 @@ fun MapPacketsLayout(
                     IconButton(onClick = { setOpen(false) }) { Icon(Icons.Outlined.Close, "Hide live packets") }
                 }
                 Box(Modifier.weight(1f).fillMaxWidth()) {
-                    val beaconHost = feed.selection?.host?.takeIf { org.nodescope.android.core.design.LocalBeaconSource.current }
-                    // Beacon rows are server snapshots without routes: a tap opens the packet's details (iOS sidebar).
-                    if (beaconHost != null) org.nodescope.android.feature.packets.BeaconPacketScreen(feed, beaconHost,
-                        selectedHash = selectedId, onPacket = onDetails)
-                    else PacketScreen(feed, onReconnect, selectedId = selectedId,
-                        onGroup = { id ->
-                            // Tapping the selected packet again deselects it (and ends its replay).
-                            if (selectedId == id) onSelect(null, null, emptyList()) else {
-                                val group = groupTransmissions(feed.visiblePackets, null, feed.observers).firstOrNull { it.id == id }
-                                onSelect(id, group?.latest?.hash?.takeIf(String::isNotBlank), group?.routeOptions().orEmpty())
-                            }
-                        },
-                        selectedActions = { group -> SelectedPacketActions(group, replaying = group.id == replayingId, lookingUp = group.id == lookingUpId, onDetails) })
+                    LivePacketsList(feed, onReconnect, selectedId, onSelect, onDetails, replayingId, lookingUpId)
                 }
             }
             Spacer(Modifier.width(PaneGap))
-            MapCard(true, Modifier.weight(1f).fillMaxHeight()) { map(null) }
+            MapCard(true, Modifier.weight(1f).fillMaxHeight()) { map(null, null) }
         }
+    }
+}
+
+/** The packets list shared by the wide panel and the phone sheet. */
+@Composable
+private fun LivePacketsList(
+    feed: LiveFeedState, onReconnect: () -> Unit,
+    selectedId: String?, onSelect: (id: String?, hash: String?, routes: List<RouteOption>) -> Unit, onDetails: (String) -> Unit,
+    replayingId: String?, lookingUpId: String?,
+    /** Called when a tap starts a route replay or opens details, so the phone sheet can get out of the way. */
+    onLeave: () -> Unit = {},
+) {
+    val beaconHost = feed.selection?.host?.takeIf { org.nodescope.android.core.design.LocalBeaconSource.current }
+    // Beacon rows are server snapshots without routes: a tap opens the packet's details (iOS sidebar).
+    if (beaconHost != null) org.nodescope.android.feature.packets.BeaconPacketScreen(feed, beaconHost,
+        selectedHash = selectedId, onPacket = { onLeave(); onDetails(it) })
+    else PacketScreen(feed, onReconnect, selectedId = selectedId,
+        onGroup = { id ->
+            // Tapping the selected packet again deselects it (and ends its replay).
+            if (selectedId == id) onSelect(null, null, emptyList()) else {
+                val group = groupTransmissions(feed.visiblePackets, null, feed.observers).firstOrNull { it.id == id }
+                val routes = group?.routeOptions().orEmpty()
+                onSelect(id, group?.latest?.hash?.takeIf(String::isNotBlank), routes)
+                // As on iPhone, a packet with a route closes the sheet to show its replay.
+                if (routes.isNotEmpty()) onLeave()
+            }
+        },
+        selectedActions = { group -> SelectedPacketActions(group, replaying = group.id == replayingId, lookingUp = group.id == lookingUpId) { onLeave(); onDetails(it) } })
+}
+
+/**
+ * Phones (iOS compact): the map keeps the screen and a "Show live packets" button opens the list
+ * in a sheet at half height, draggable to nearly full; the map stays usable behind it.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PacketsSheetLayout(
+    feed: LiveFeedState, onReconnect: () -> Unit,
+    selectedId: String?, onSelect: (id: String?, hash: String?, routes: List<RouteOption>) -> Unit, onDetails: (String) -> Unit,
+    replayingId: String?, lookingUpId: String?, height: androidx.compose.ui.unit.Dp,
+    map: @Composable (onShowPacketsSheet: () -> Unit) -> Unit,
+) {
+    val sheetState = rememberStandardBottomSheetState(initialValue = SheetValue.Hidden, skipHiddenState = false)
+    val scaffoldState = rememberBottomSheetScaffoldState(sheetState)
+    val scope = rememberCoroutineScope()
+    val open = sheetState.targetValue != SheetValue.Hidden
+    fun hide() { scope.launch { sheetState.hide() } }
+    androidx.activity.compose.BackHandler(enabled = open) { hide() }
+    BottomSheetScaffold(
+        scaffoldState = scaffoldState, sheetPeekHeight = height / 2, sheetSwipeEnabled = true,
+        sheetContent = {
+            Column(Modifier.fillMaxWidth().height(height * 0.85f)) {
+                Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Live packets", Modifier.weight(1f).semantics { heading() }, style = MaterialTheme.typography.titleLarge)
+                    IconButton(onClick = ::hide) { Icon(Icons.Outlined.Close, "Close live packets") }
+                }
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    // Composed only while open, so a hidden sheet doesn't hold a Beacon packet subscription.
+                    if (open) LivePacketsList(feed, onReconnect, selectedId, onSelect, onDetails, replayingId, lookingUpId, onLeave = ::hide)
+                }
+            }
+        },
+    ) {
+        // The map keeps the whole area; the sheet floats over it.
+        map { scope.launch { sheetState.partialExpand() } }
     }
 }
 

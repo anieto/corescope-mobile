@@ -50,7 +50,7 @@ import org.nodescope.android.core.model.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (String) -> Unit, sampleRoute: List<Coordinate> = emptyList(), feed: () -> LiveFeedState = { LiveFeedState() }, onRefresh: () -> Unit = {}, regionControl: @Composable () -> Unit = {}, focusedCoordinate: Coordinate? = null, selectedRegion: String? = null, sourceViewport: RegionCoordinate? = null, routeReplay: RouteReplay? = null, onExitReplay: () -> Unit = {}, host: String? = null, showActiveNodes: Boolean = false, onActiveNodesShown: () -> Unit = {}, onShowPackets: (() -> Unit)? = null, onLiveFeedDemand: (java.util.UUID, String, org.nodescope.android.core.network.LiveFeedDemand?) -> Unit = { _, _, _ -> }) {
+fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (String) -> Unit, sampleRoute: List<Coordinate> = emptyList(), feed: () -> LiveFeedState = { LiveFeedState() }, onRefresh: () -> Unit = {}, regionControl: @Composable () -> Unit = {}, focusedCoordinate: Coordinate? = null, selectedRegion: String? = null, sourceViewport: RegionCoordinate? = null, routeReplay: RouteReplay? = null, onExitReplay: () -> Unit = {}, host: String? = null, showActiveNodes: Boolean = false, onActiveNodesShown: () -> Unit = {}, onShowPackets: (() -> Unit)? = null, onShowPacketsSheet: (() -> Unit)? = null, onLiveFeedDemand: (java.util.UUID, String, org.nodescope.android.core.network.LiveFeedDemand?) -> Unit = { _, _, _ -> }) {
     if (!BuildConfig.MAPS_CONFIGURED) {
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.map_unavailable), style = MaterialTheme.typography.headlineSmall)
@@ -474,6 +474,12 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         if (engine.loading) CircularProgressIndicator(Modifier.align(Alignment.Center))
         // Location sits above zoom, which sits just above the attribution line at the right edge.
         Column(Modifier.align(Alignment.BottomEnd).offset { IntOffset(0, -controlsInset) }.padding(end = 12.dp, bottom = 56.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Phones: opens the live packets sheet (the iPhone map's "Show live packets" button).
+            onShowPacketsSheet?.let { show ->
+                Surface(shape = MaterialTheme.shapes.medium, shadowElevation = 2.dp) {
+                    IconButton(onClick = show) { Icon(Icons.Outlined.Sensors, "Show live packets") }
+                }
+            }
             Surface(shape = MaterialTheme.shapes.medium, shadowElevation = 2.dp) {
                 IconButton(onClick = { if (hasLocationPermission(context)) centerOnUser() else locationPermission.launch(LOCATION_PERMISSIONS) }, enabled = !locating) {
                     if (locating) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)

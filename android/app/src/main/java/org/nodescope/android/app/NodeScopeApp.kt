@@ -468,10 +468,10 @@ internal fun AppShell(
                                         else -> { replay = null; panelPacket = id }
                                     }
                                     if (id != null && hash != null) completeRoutes(id, hash)
-                                }, onDetails = { nav.navigate(PacketDetailRoute(it)) }) { onShowPackets ->
+                                }, onDetails = { nav.navigate(PacketDetailRoute(it)) }) { onShowPackets, onShowPacketsSheet ->
                             MapScreen(mapSnapshot, focusedNode, ::openNode, feed = { currentFeed }, onRefresh = onRefresh, regionControl = { RegionMenu(preferences, state) { focusedNode = null; focusedPosition = null; onRegion(it) } }, focusedCoordinate = focusedPosition?.let { org.nodescope.android.core.model.Coordinate.gps(it[0], it[1]) }, selectedRegion = preferences.region, sourceViewport = sourceViewport, routeReplay = replay, onExitReplay = { replay = null },
                                 host = preferences.host, showActiveNodes = showActiveNodes, onActiveNodesShown = { showActiveNodes = false }, onShowPackets = onShowPackets,
-                                onLiveFeedDemand = onLiveFeedDemand)
+                                onShowPacketsSheet = onShowPacketsSheet, onLiveFeedDemand = onLiveFeedDemand)
                             }
                         }
                         screen<ExploreRoute> { backStack ->
