@@ -15,8 +15,8 @@ const val SOURCE_REGISTRY_URL = "${org.nodescope.android.core.storage.REGISTRY_B
 
 /**
  * Decodes a source registry with the iOS `AnalyzerSourceRegistryDocument` rules: versions 1 and 2
- * only; an unknown `type` skips just that entry; a v2 entry without `type` is skipped; blank or
- * duplicate entries are dropped; a malformed entry fails the document, as does an empty result.
+ * only; an entry without `type` is CoreScope; an unknown `type`, a malformed, blank or duplicate
+ * entry is skipped on its own; a document with no usable entry fails.
  */
 fun decodeSourceRegistry(raw: String): SourceDocument {
     val root = protocolJson.parseToJsonElement(raw).jsonObject
@@ -25,16 +25,15 @@ fun decodeSourceRegistry(raw: String): SourceDocument {
     val accepted = mutableListOf<AnalyzerSource>()
     val identifiers = mutableSetOf<String>()
     for (entry in root.getValue("sources").jsonArray) {
-        val rawType = entry.jsonObject["type"]?.takeIf { it !is JsonNull }?.let {
-            (it as? JsonPrimitive)?.takeIf { primitive -> primitive.isString }?.content
-                ?: throw IllegalArgumentException("A source type must be a string.")
-        }
-        if (rawType != null) {
-            if (AnalyzerSourceType.from(rawType) == null) continue
-        } else if (version == 2) {
-            continue
-        }
-        val source = protocolJson.decodeFromJsonElement(AnalyzerSource.serializer(), entry)
+        // A bad community entry must not hide otherwise valid sources.
+        val source = runCatching {
+            val rawType = entry.jsonObject["type"]?.takeIf { it !is JsonNull }?.let {
+                (it as? JsonPrimitive)?.takeIf { primitive -> primitive.isString }?.content
+                    ?: throw IllegalArgumentException("A source type must be a string.")
+            }
+            if (rawType != null && AnalyzerSourceType.from(rawType) == null) null
+            else protocolJson.decodeFromJsonElement(AnalyzerSource.serializer(), entry)
+        }.getOrNull() ?: continue
         if (source.host.isBlank() || source.name.isBlank() || source.id.isEmpty() || !identifiers.add(source.id)) continue
         accepted += source
     }

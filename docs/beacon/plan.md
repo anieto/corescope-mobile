@@ -40,8 +40,8 @@ the bundled MeshTexas listing (custom hosts remain available). Android v2 integr
 release listing/icon and cross-platform release validation remain pending.
 
 Android port checkpoint (2026-10-12): the iOS phase 2 work is ported to Android on
-`feature/beacon-phase-2-android`, matching iOS behaviour, including the current registry rules
-(a v2 entry without `type` is skipped; one malformed entry fails the document). Ported: the
+`feature/beacon-phase-2-android`, matching iOS behaviour, including the registry rules (a v2 entry
+without `type` is CoreScope; an unknown type or malformed entry skips only that entry). Ported: the
 session-bound Beacon client with the shared per-origin cooldown, the persisted 2.0.3+ server
 catalog, the node/observer/packet/region readers with source-bound cursors, the browse-only backend
 with the iOS capability explanations, source detection that never falls back from Beacon to

@@ -9,10 +9,11 @@ import org.nodescope.android.core.network.decodeSourceRegistryV2
 
 /** Mirrors the iOS registry tests in AnalyzerSourceLogoTests.swift. */
 class SourceRegistryTest {
-    @Test fun versionTwoFiltersUnknownAndMissingTypes() {
-        val document = decodeSourceRegistry("""{"version":2,"sources":[{"id":"a","type":"beacon","name":"A","host":"a.example","subtitle":"","isDefault":false},{"type":"future"},{"id":"missing","name":"Missing","host":"missing.example","subtitle":"","isDefault":false}]}""")
-        assertEquals(1, document.sources.size)
+    @Test fun versionTwoFiltersUnknownAndMalformedEntriesAndDefaultsMissingType() {
+        val document = decodeSourceRegistry("""{"version":2,"sources":[{"id":"a","type":"beacon","name":"A","host":"a.example","subtitle":"","isDefault":false},{"type":"future"},{"id":"broken","type":"beacon","name":7},{"id":"missing","name":"Missing","host":"missing.example","subtitle":"","isDefault":false}]}""")
+        assertEquals(listOf("a", "missing"), document.sources.map { it.id })
         assertEquals(AnalyzerSourceType.BEACON, document.sources.first().backendType)
+        assertEquals(AnalyzerSourceType.CORESCOPE, document.sources.last().backendType)
     }
 
     @Test fun legacyRegistryRemainsCoreScopeButIsNotAcceptedAsV2() {
@@ -26,8 +27,7 @@ class SourceRegistryTest {
             """{"version":3,"sources":[]}""",
             """{"version":2,"sources":[{"type":"future"}]}""",
             """{"version":2,"sources":[{"id":"a","type":"beacon","name":"A","host":"  ","subtitle":"","isDefault":false}]}""",
-            // Matches iOS for now: one malformed supported entry fails the whole document.
-            """{"version":2,"sources":[{"id":"a","type":"beacon","name":"A","host":"a.example","subtitle":"","isDefault":false},{"id":"b","type":"corescope"}]}""",
+            """{"version":2,"sources":[{"id":"b","type":"corescope"}]}""",
             "invalid JSON",
         )) {
             assertThrows(json, Exception::class.java) { decodeSourceRegistry(json) }
