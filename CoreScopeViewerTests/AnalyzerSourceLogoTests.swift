@@ -98,6 +98,20 @@ struct AnalyzerSourceLogoTests {
         #expect(try JSONDecoder().decode(AnalyzerSource.self, from: Data(withIcon.utf8)).icon == "icons/a.png")
         #expect(try JSONDecoder().decode(AnalyzerSource.self, from: Data(without.utf8)).icon == nil)
     }
+
+    @Test func coloradoBeaconPublishesStatewideInitialViewport() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let data = try Data(contentsOf: repositoryRoot.appendingPathComponent("CommunitySources/sources-v2.json"))
+        let document = try JSONDecoder().decode(AnalyzerSourceRegistryDocument.self, from: data)
+        let colorado = try #require(document.sources.first { $0.id == "colorado-mesh" })
+
+        #expect(colorado.backendType == .beacon)
+        #expect(colorado.mapLatitude == 39.0)
+        #expect(colorado.mapLongitude == -105.5)
+        #expect(colorado.mapRadiusKm == 400)
+    }
 }
 
 private final class RegistryFixtureProtocol: URLProtocol, @unchecked Sendable {

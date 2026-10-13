@@ -49,6 +49,8 @@
       "name": "Colorado Mesh",
       "host": "map.meshcore.coloradomesh.org",
       "subtitle": "Colorado's Mesh Network Community",
+      "mapCenter": [39.0, -105.5],
+      "mapRadiusKm": 400,
       "isDefault": false
     }
   ]
