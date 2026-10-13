@@ -50,7 +50,9 @@ import org.nodescope.android.core.model.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (String) -> Unit, sampleRoute: List<Coordinate> = emptyList(), feed: () -> LiveFeedState = { LiveFeedState() }, onRefresh: () -> Unit = {}, regionControl: @Composable () -> Unit = {}, focusedCoordinate: Coordinate? = null, selectedRegion: String? = null, sourceViewport: RegionCoordinate? = null, routeReplay: RouteReplay? = null, onExitReplay: () -> Unit = {}, host: String? = null, showActiveNodes: Boolean = false, onActiveNodesShown: () -> Unit = {}, onShowPackets: (() -> Unit)? = null, onShowPacketsSheet: (() -> Unit)? = null, onLiveFeedDemand: (java.util.UUID, String, org.nodescope.android.core.network.LiveFeedDemand?) -> Unit = { _, _, _ -> }) {
+fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (String) -> Unit, sampleRoute: List<Coordinate> = emptyList(), feed: () -> LiveFeedState = { LiveFeedState() }, onRefresh: () -> Unit = {}, regionControl: @Composable () -> Unit = {}, focusedCoordinate: Coordinate? = null, selectedRegion: String? = null, sourceViewport: RegionCoordinate? = null, routeReplay: RouteReplay? = null, onExitReplay: () -> Unit = {}, host: String? = null, showActiveNodes: Boolean = false, onActiveNodesShown: () -> Unit = {}, onShowPackets: (() -> Unit)? = null, onShowPacketsSheet: (() -> Unit)? = null,
+    /** Share of the map's height covered by the live packets sheet (iOS `bottomObscuredFraction`). */
+    bottomObscuredFraction: Float = 0f, onLiveFeedDemand: (java.util.UUID, String, org.nodescope.android.core.network.LiveFeedDemand?) -> Unit = { _, _, _ -> }) {
     if (!BuildConfig.MAPS_CONFIGURED) {
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.map_unavailable), style = MaterialTheme.typography.headlineSmall)
@@ -297,7 +299,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         // Judge and frame against the controls' real height (measured on their first layout),
         // so the camera makes one move instead of correcting itself as they appear.
         withTimeoutOrNull(300) { snapshotFlow { replayControlsHeight }.first { it > 0 } }
-        val insets = replayFramingInsets(ready.width, ready.height, replayControlsHeight, density)
+        val insets = replayFramingInsets(ready.width, ready.height, replayControlsHeight, density, bottomObscuredFraction)
         val screen = points.map(ready::toScreen)
         if (!replayNeedsFraming(screen, ready.width, ready.height, insets, ready.zoom)) return@LaunchedEffect play()
         val update = if (points.size > 1) {
@@ -313,6 +315,24 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         // Then let the new area's tiles load (the map reports idle once everything is drawn).
         withTimeoutOrNull(1_500) { ready.awaitIdle() }
         play()
+    }
+    // When the packets sheet opens, resizes or closes during a replay, keep the route in the part
+    // of the map still visible (iOS `refitReplayForVisibleMapArea`). The replay itself carries on.
+    var framedFraction by remember { mutableFloatStateOf(bottomObscuredFraction) }
+    LaunchedEffect(bottomObscuredFraction) {
+        if (framedFraction == bottomObscuredFraction) return@LaunchedEffect
+        framedFraction = bottomObscuredFraction
+        val ready = camera ?: return@LaunchedEffect
+        val points = replayOption?.subchains?.flatten().orEmpty()
+        if (routeReplay == null || points.isEmpty()) return@LaunchedEffect
+        val insets = replayFramingInsets(ready.width, ready.height, replayControlsHeight, density, bottomObscuredFraction)
+        if (!replayNeedsFraming(points.map(ready::toScreen), ready.width, ready.height, insets, ready.zoom)) return@LaunchedEffect
+        val update = if (points.size > 1) {
+            val bounds = boundsOf(points)
+            val fitted = ready.fittedZoom(bounds, insets)
+            if (fitted != null && fitted > REPLAY_MAX_ZOOM) CameraMove.Center(bounds.center, REPLAY_MAX_ZOOM) else CameraMove.Fit(bounds, insets)
+        } else CameraMove.Center(points[0], maxOf(ready.zoom, REPLAY_POINT_ZOOM))
+        withTimeoutOrNull(1_500) { ready.animateAndWait(update, 300) }
     }
     LaunchedEffect(overlays) {
         val drawing = overlays ?: return@LaunchedEffect
@@ -546,14 +566,18 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
  */
 internal data class FramingInsets(val left: Int, val top: Int, val right: Int, val bottom: Int)
 
-internal fun replayFramingInsets(width: Int, height: Int, controlsHeight: Int, density: Float): FramingInsets {
+internal fun replayFramingInsets(width: Int, height: Int, controlsHeight: Int, density: Float, obscuredFraction: Float = 0f): FramingInsets {
     fun dp(value: Int) = (value * density).toInt()
     var left = maxOf(dp(24), (width * 0.06f).toInt())
     var right = dp(76)
     var top = dp(72)
     var bottom = controlsHeight + dp(72)
+    // A packets sheet over the map: keep the route above it with a little room (iOS: the
+    // obscured share plus 8%, at most 80% of the height).
+    if (obscuredFraction > 0f) bottom = maxOf(bottom, (height * minOf(obscuredFraction + 0.08f, 0.8f)).toInt())
+    val maxVertical = if (obscuredFraction > 0f) 0.92f else 0.8f
     if (left + right > width * 0.6f) { val scale = width * 0.6f / (left + right); left = (left * scale).toInt(); right = (right * scale).toInt() }
-    if (top + bottom > height * 0.8f) { val scale = height * 0.8f / (top + bottom); top = (top * scale).toInt(); bottom = (bottom * scale).toInt() }
+    if (top + bottom > height * maxVertical) { val scale = height * maxVertical / (top + bottom); top = (top * scale).toInt(); bottom = (bottom * scale).toInt() }
     return FramingInsets(left, top, right, bottom)
 }
 

@@ -134,4 +134,13 @@ class LiveRouteAnimationTest {
         assertTrue(needs(400f to 800f, zoom = 6.0))              // lone point, zoomed far out
         assertFalse(needs(400f to 800f, zoom = 11.0))
     }
+
+    @Test fun packetsSheetKeepsReplayFramingAboveIt() {
+        val open = replayFramingInsets(1080, 2000, 0, 2.625f, 0.5f)
+        assertEquals("Half sheet: the route stays above it plus 8%", 1160, open.bottom)
+        assertTrue(open.top + open.bottom <= 2000 * 0.92f)
+        val full = replayFramingInsets(1080, 2000, 0, 2.625f, 0.85f)
+        assertTrue("Never more than 92% of the height is reserved", full.top + full.bottom <= 2000 * 0.92f + 1)
+        assertEquals("No sheet keeps the old framing", replayFramingInsets(1080, 2000, 0, 2.625f), replayFramingInsets(1080, 2000, 0, 2.625f, 0f))
+    }
 }

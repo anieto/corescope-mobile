@@ -54,7 +54,7 @@ fun MapPacketsLayout(
     /** The packet whose route is on the map, and one whose full routes are still being fetched. */
     replayingId: String? = null, lookingUpId: String? = null,
     /** [onShowPackets] restores the wide panel; [onShowPacketsSheet] opens the phone sheet (iOS compact). */
-    map: @Composable (onShowPackets: (() -> Unit)?, onShowPacketsSheet: (() -> Unit)?) -> Unit,
+    map: @Composable (onShowPackets: (() -> Unit)?, onShowPacketsSheet: (() -> Unit)?, bottomObscuredFraction: Float) -> Unit,
 ) {
     val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences("map-layout", Context.MODE_PRIVATE) }
@@ -70,13 +70,13 @@ fun MapPacketsLayout(
         // other), whatever its width; other screens use the width cutoff.
         val atFold = fold.firstPaneWidth(maxWidth, MIN_PANE_AT_FOLD)
         if (atFold == null && maxWidth < PACKETS_PANEL_MIN_WIDTH) {
-            PacketsSheetLayout(feed, onReconnect, selectedId, onSelect, onDetails, replayingId, lookingUpId, maxHeight) { show ->
-                MapCard(wide, Modifier.fillMaxSize()) { map(null, show) }
+            PacketsSheetLayout(feed, onReconnect, selectedId, onSelect, onDetails, replayingId, lookingUpId, maxHeight) { show, obscured ->
+                MapCard(wide, Modifier.fillMaxSize()) { map(null, show, obscured) }
             }
             return@BoxWithConstraints
         }
         if (!open) {
-            MapCard(true, Modifier.fillMaxSize()) { map({ setOpen(true) }, null) }
+            MapCard(true, Modifier.fillMaxSize()) { map({ setOpen(true) }, null, 0f) }
             return@BoxWithConstraints
         }
         // Panel and map as two cards on the canvas; at a fold the gap between them sits on the crease.
@@ -96,7 +96,7 @@ fun MapPacketsLayout(
                 }
             }
             Spacer(Modifier.width(PaneGap))
-            MapCard(true, Modifier.weight(1f).fillMaxHeight()) { map(null, null) }
+            MapCard(true, Modifier.weight(1f).fillMaxHeight()) { map(null, null, 0f) }
         }
     }
 }
@@ -138,7 +138,7 @@ private fun PacketsSheetLayout(
     feed: LiveFeedState, onReconnect: () -> Unit,
     selectedId: String?, onSelect: (id: String?, hash: String?, routes: List<RouteOption>) -> Unit, onDetails: (String) -> Unit,
     replayingId: String?, lookingUpId: String?, height: androidx.compose.ui.unit.Dp,
-    map: @Composable (onShowPacketsSheet: () -> Unit) -> Unit,
+    map: @Composable (onShowPacketsSheet: () -> Unit, bottomObscuredFraction: Float) -> Unit,
 ) {
     val sheetState = rememberStandardBottomSheetState(initialValue = SheetValue.Hidden, skipHiddenState = false)
     val scaffoldState = rememberBottomSheetScaffoldState(sheetState)
@@ -162,7 +162,13 @@ private fun PacketsSheetLayout(
         },
     ) {
         // The map keeps the whole area; the sheet floats over it.
-        map { scope.launch { sheetState.partialExpand() } }
+        // The sheet's resting height, not every drag frame, like iOS detents (half or nearly full).
+        val obscured = when (sheetState.targetValue) {
+            SheetValue.Hidden -> 0f
+            SheetValue.PartiallyExpanded -> 0.5f
+            SheetValue.Expanded -> 0.85f
+        }
+        map({ scope.launch { sheetState.partialExpand() } }, obscured)
     }
 }
 
