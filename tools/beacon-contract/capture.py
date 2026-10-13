@@ -3,11 +3,11 @@
 
 Usage: BEACON_RAW_DIR=/path/outside/repo capture.py [extra-host ...]
 
-Does a full capture of beacon.meshtexas.org (~45 requests) and a light one (5 requests) of
+Does a full capture of beacon.meshtexas.org (~55 requests) and a light one (7 requests) of
 each extra host. Raw output holds real identities and messages: keep it outside the repo
 and run make_fixtures.py + check_leaks.py to produce committable fixtures.
 """
-import json, os, sys, time, urllib.request, urllib.error
+import json, os, sys, time, urllib.request, urllib.error, urllib.parse
 
 OUT = os.environ.get("BEACON_RAW_DIR") or sys.exit("set BEACON_RAW_DIR to a directory outside the repo")
 UA = "NodeScope-phase0-probe/1.0 (contract validation)"
@@ -72,13 +72,19 @@ def full(host):
     obs = s("observers", "observers?limit=200")["data"]["items"]
     s("observers-directory", "observers/directory?limit=50")
     if obs:
-        s("observer-detail", f"observers/{obs[0]['id']}")
+        observer_id = obs[0]["id"]
+        s("observer-detail", f"observers/{observer_id}")
+        s("observer-activity-24h", f"observers/{observer_id}/activity?range=24h&interval=15m")
+        s("observer-activity-7d", f"observers/{observer_id}/activity?range=168h&interval=1h")
+        s("observer-telemetry-24h", f"observers/{observer_id}/telemetry?range=24h&interval=1h")
+        s("observer-adverts", f"observers/{observer_id}/adverts?limit=50")
     rep = next((n for n in nodes if n.get("nodeType") == 2 and n.get("lat")), nodes[0])
     s("node-by-pubkey", f"nodes?pubkey={rep['publicKey']}")
     s("node-by-pubkey-upper", f"nodes?pubkey={rep['publicKey'].upper()}")
     s("node-detail", f"nodes/{rep['id']}")
     s("node-neighbors", f"nodes/{rep['id']}/neighbors")
     s("node-observations", f"nodes/{rep['id']}/observations?limit=200")
+    walk(host, f"nodes/{rep['id']}/observations", 200, "node-observations-walk", max_pages=20)
     pk = s("packets", "packets?limit=50")["data"]["items"]
     s("packets-sat", "packets?limit=50&iatas=SAT")
     walk(host, "packets?iatas=SAT", 25, "packets-walk-25", max_pages=4)
@@ -89,9 +95,14 @@ def full(host):
         if grp:
             s("packet-detail-grptxt", f"packets/{grp['packetHash']}")
     ch = s("channels", "channels?limit=200")["data"]
-    s("channels-keyknown", "channels?limit=200&keyKnown=true")
+    known_page = s("channels-keyknown", "channels?limit=200&keyKnown=true")["data"]
+    tied_page = s("channels-keyknown-page-1", "channels?limit=2&keyKnown=true")["data"]
+    if tied_page.get("hasMore") and tied_page.get("nextPageCursor"):
+        cursor = urllib.parse.quote(str(tied_page["nextPageCursor"]), safe="")
+        s("channels-keyknown-page-2", f"channels?limit=2&keyKnown=true&pageCursor={cursor}")
     items = ch.get("items", []) if isinstance(ch, dict) else ch
-    known = [c for c in items if c.get("keyKnown") or c.get("decryptable")] or items
+    known_items = known_page.get("items", []) if isinstance(known_page, dict) else known_page
+    known = known_items or [c for c in items if c.get("keyKnown") or c.get("decryptable")]
     if known:
         s("channel-detail", f"channels/{known[0]['id']}")
         s("channel-messages", f"channels/{known[0]['id']}/messages?limit=20")
@@ -99,13 +110,19 @@ def full(host):
     s("err-node-bad-id", "nodes/not-a-uuid")
     s("err-node-unknown", "nodes/00000000-0000-0000-0000-000000000000")
     s("err-packet-unknown", "packets/0000000000000000")
+    s("err-observer-activity-unknown", "observers/00000000-0000-0000-0000-000000000000/activity")
+    s("err-channel-unknown", "channels/2147483647")
 
 
 def light(host):
     s = lambda n, p: save(host, n, get(host, p))
     s("info", "info")
     s("nodes", "nodes?limit=50")
-    s("observers", "observers?limit=50")
+    observers = s("observers", "observers?limit=50")["data"].get("items", [])
+    if observers:
+        observer_id = observers[0]["id"]
+        s("observer-activity", f"observers/{observer_id}/activity?range=24h&interval=1h")
+        s("observer-telemetry", f"observers/{observer_id}/telemetry?range=24h&interval=1h")
     s("channels", "channels?limit=50")
     s("packets", "packets?limit=20")
 

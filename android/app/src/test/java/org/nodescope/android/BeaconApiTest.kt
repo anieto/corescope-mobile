@@ -358,4 +358,45 @@ class BeaconApiTest {
         assertFalse(session.isCurrent)
         assertEquals(AnalyzerSourceRouter.Route.CoreScope, router.route(host))
     }
+
+    @Test fun phaseThreeFixturesPreserveCoverageAndPagingSemantics() {
+        val rawActivity = body("observer-activity-24h.json").jsonObject
+        assertEquals("15m", rawActivity.getValue("interval").jsonPrimitive.content)
+        assertTrue(rawActivity.getValue("points").jsonArray.isNotEmpty())
+        assertFalse(rawActivity.containsKey("rolledUntil"))
+        assertFalse(rawActivity.containsKey("rawFrom"))
+
+        val hourlyActivity = body("observer-activity-7d.json").jsonObject
+        assertEquals("1h", hourlyActivity.getValue("interval").jsonPrimitive.content)
+        assertTrue(hourlyActivity.getValue("rolledUntil").jsonPrimitive.long > 0)
+        assertTrue(hourlyActivity.getValue("rawFrom").jsonPrimitive.long > 0)
+
+        val telemetryPoint = body("observer-telemetry-24h.json").jsonObject
+            .getValue("points").jsonArray.first().jsonObject
+        for (field in listOf("batteryMv", "noiseFloorDb", "airtimeTxSecs", "airtimeRxSecs")) {
+            assertTrue(field, telemetryPoint.getValue(field).jsonPrimitive.double.isFinite())
+        }
+
+        val firstPage = body("channels-keyknown-page-1.json").jsonObject
+        val secondPage = body("channels-keyknown-page-2.json").jsonObject
+        assertTrue(firstPage.getValue("nextPageCursor").jsonPrimitive.content.isNotBlank())
+        val firstIds = firstPage.getValue("items").jsonArray.map { it.jsonObject.getValue("id").jsonPrimitive.int }.toSet()
+        val secondIds = secondPage.getValue("items").jsonArray.map { it.jsonObject.getValue("id").jsonPrimitive.int }.toSet()
+        assertTrue(firstIds.intersect(secondIds).isEmpty())
+    }
+
+    @Test fun phaseThreeEmptyHistoryFixturesAreSuccessfulAndComplete() {
+        val observations = body("node-observations-empty.json").jsonObject
+        assertTrue(observations.getValue("items").jsonArray.isEmpty())
+        assertFalse(observations.getValue("hasMore").jsonPrimitive.boolean)
+
+        val activity = body("observer-activity-empty.json").jsonObject
+        assertTrue(activity.getValue("points").jsonArray.isEmpty())
+        assertTrue(activity.getValue("payloadTypes").jsonArray.isEmpty())
+        assertEquals(0, activity.getValue("summary").jsonObject
+            .getValue("recordedPackets").jsonPrimitive.int)
+
+        val telemetry = body("observer-telemetry-empty.json").jsonObject
+        assertTrue(telemetry.getValue("points").jsonArray.isEmpty())
+    }
 }

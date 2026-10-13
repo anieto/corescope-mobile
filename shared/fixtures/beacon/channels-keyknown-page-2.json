@@ -1,0 +1,25 @@
+{
+  "request": "channels?limit=2&keyKnown=true&pageCursor=v1%3A1791813616402547%3A1958",
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "id": 372,
+        "name": "#channel-89",
+        "channelHash": "6a",
+        "lastSeen": 1791774117163,
+        "isHashtag": true,
+        "keyKnown": true
+      },
+      {
+        "id": 3662,
+        "name": "#channel-92",
+        "channelHash": "8e",
+        "lastSeen": 1791573438835,
+        "isHashtag": true,
+        "keyKnown": true
+      }
+    ],
+    "hasMore": false
+  }
+}

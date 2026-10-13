@@ -1,0 +1,1079 @@
+{
+  "request": "observers/9549bfd5-d6de-87b4-a186-c26cef90587c/activity?range=168h&interval=1h",
+  "status": 200,
+  "body": {
+    "windowStart": 1791313200000,
+    "windowEnd": 1791917603751,
+    "generatedAt": 1791917603751,
+    "source": "hourly",
+    "summary": {
+      "recordedPackets": 73638,
+      "lastCompleteHour": 403,
+      "lastCompleteHourStart": 1791910800000,
+      "lastCompleteHourEnd": 1791914400000,
+      "latestRecordedAt": 1791917573896
+    },
+    "rolledUntil": 1791914400000,
+    "rawFrom": 1791914400000,
+    "range": "168h",
+    "interval": "1h",
+    "radio": {
+      "freqMhz": 910.525,
+      "sf": 7,
+      "bwKhz": 62.5,
+      "cr": 5,
+      "preambleSymbols": 32
+    },
+    "payloadTypes": [
+      {
+        "payloadType": 11,
+        "payloadTypeName": "control",
+        "count": 40166
+      },
+      {
+        "payloadType": 9,
+        "payloadTypeName": "trace",
+        "count": 19225
+      },
+      {
+        "payloadType": 5,
+        "payloadTypeName": "group_text",
+        "count": 3923
+      },
+      {
+        "payloadType": 0,
+        "payloadTypeName": "request",
+        "count": 3908
+      },
+      {
+        "payloadType": 4,
+        "payloadTypeName": "advert",
+        "count": 2160
+      },
+      {
+        "payloadType": 1,
+        "payloadTypeName": "response",
+        "count": 1554
+      },
+      {
+        "payloadType": 8,
+        "payloadTypeName": "path",
+        "count": 817
+      },
+      {
+        "payloadType": 2,
+        "payloadTypeName": "text_message",
+        "count": 712
+      },
+      {
+        "payloadType": 7,
+        "payloadTypeName": "anonymous_request",
+        "count": 681
+      },
+      {
+        "payloadType": 6,
+        "payloadTypeName": "group_data",
+        "count": 429
+      },
+      {
+        "payloadType": 3,
+        "payloadTypeName": "acknowledgement",
+        "count": 63
+      }
+    ],
+    "points": [
+      {
+        "t": 1791471600000,
+        "observations": 505,
+        "airtimeMs": 73465.92,
+        "snrAvg": 11.586634,
+        "snrMin": -5.75,
+        "rssiAvg": -44.827724
+      },
+      {
+        "t": 1791475200000,
+        "observations": 719,
+        "airtimeMs": 127069.695,
+        "snrAvg": 11.215925,
+        "snrMin": -9.25,
+        "rssiAvg": -46.738525
+      },
+      {
+        "t": 1791478800000,
+        "observations": 677,
+        "airtimeMs": 111989.24,
+        "snrAvg": 11.343796,
+        "snrMin": -9,
+        "rssiAvg": -46.078285
+      },
+      {
+        "t": 1791482400000,
+        "observations": 667,
+        "airtimeMs": 105922.02,
+        "snrAvg": 11.342954,
+        "snrMin": -7,
+        "rssiAvg": -46.164917
+      },
+      {
+        "t": 1791486000000,
+        "observations": 687,
+        "airtimeMs": 112045.53,
+        "snrAvg": 11.1728525,
+        "snrMin": -6.5,
+        "rssiAvg": -47.754
+      },
+      {
+        "t": 1791489600000,
+        "observations": 663,
+        "airtimeMs": 108559.86,
+        "snrAvg": 11.300528,
+        "snrMin": -6.25,
+        "rssiAvg": -47.224735
+      },
+      {
+        "t": 1791493200000,
+        "observations": 695,
+        "airtimeMs": 116221.42,
+        "snrAvg": 11.00036,
+        "snrMin": -10.25,
+        "rssiAvg": -48.658993
+      },
+      {
+        "t": 1791496800000,
+        "observations": 671,
+        "airtimeMs": 109725.164,
+        "snrAvg": 11.291729,
+        "snrMin": -9,
+        "rssiAvg": -47.451565
+      },
+      {
+        "t": 1791500400000,
+        "observations": 673,
+        "airtimeMs": 110868.97,
+        "snrAvg": 11.27526,
+        "snrMin": -8.75,
+        "rssiAvg": -47.05052
+      },
+      {
+        "t": 1791504000000,
+        "observations": 685,
+        "airtimeMs": 113871.34,
+        "snrAvg": 11.093796,
+        "snrMin": -9.25,
+        "rssiAvg": -47.651096
+      },
+      {
+        "t": 1791507600000,
+        "observations": 691,
+        "airtimeMs": 112981.47,
+        "snrAvg": 11.353474,
+        "snrMin": -10.5,
+        "rssiAvg": -47.01592
+      },
+      {
+        "t": 1791511200000,
+        "observations": 682,
+        "airtimeMs": 115084.27,
+        "snrAvg": 11.171921,
+        "snrMin": -9.75,
+        "rssiAvg": -46.61437
+      },
+      {
+        "t": 1791514800000,
+        "observations": 708,
+        "airtimeMs": 116897.77,
+        "snrAvg": 11.134887,
+        "snrMin": -9.5,
+        "rssiAvg": -48.097458
+      },
+      {
+        "t": 1791518400000,
+        "observations": 688,
+        "airtimeMs": 113641.445,
+        "snrAvg": 11.16388,
+        "snrMin": -6.75,
+        "rssiAvg": -47.26744
+      },
+      {
+        "t": 1791522000000,
+        "observations": 666,
+        "airtimeMs": 109599.72,
+        "snrAvg": 11.074699,
+        "snrMin": -6.25,
+        "rssiAvg": -48.58108
+      },
+      {
+        "t": 1791525600000,
+        "observations": 674,
+        "airtimeMs": 109116.4,
+        "snrAvg": 11.1776705,
+        "snrMin": -6.25,
+        "rssiAvg": -47.62018
+      },
+      {
+        "t": 1791529200000,
+        "observations": 687,
+        "airtimeMs": 112608.75,
+        "snrAvg": 11.088428,
+        "snrMin": -7,
+        "rssiAvg": -47.73508
+      },
+      {
+        "t": 1791532800000,
+        "observations": 661,
+        "airtimeMs": 107252.22,
+        "snrAvg": 11.249244,
+        "snrMin": -7.25,
+        "rssiAvg": -47.515884
+      },
+      {
+        "t": 1791536400000,
+        "observations": 655,
+        "airtimeMs": 104926.7,
+        "snrAvg": 11.452291,
+        "snrMin": -8.25,
+        "rssiAvg": -47.896183
+      },
+      {
+        "t": 1791540000000,
+        "observations": 660,
+        "airtimeMs": 106004.44,
+        "snrAvg": 11.407954,
+        "snrMin": -5.75,
+        "rssiAvg": -47.548485
+      },
+      {
+        "t": 1791543600000,
+        "observations": 693,
+        "airtimeMs": 117043.7,
+        "snrAvg": 11.311688,
+        "snrMin": -6.25,
+        "rssiAvg": -48.027416
+      },
+      {
+        "t": 1791547200000,
+        "observations": 740,
+        "airtimeMs": 130201.6,
+        "snrAvg": 11.458108,
+        "snrMin": -5.75,
+        "rssiAvg": -47.985134
+      },
+      {
+        "t": 1791550800000,
+        "observations": 717,
+        "airtimeMs": 124738.05,
+        "snrAvg": 11.388075,
+        "snrMin": -6.5,
+        "rssiAvg": -47.822872
+      },
+      {
+        "t": 1791554400000,
+        "observations": 730,
+        "airtimeMs": 132295.69,
+        "snrAvg": 11.275343,
+        "snrMin": -7.75,
+        "rssiAvg": -48.754795
+      },
+      {
+        "t": 1791558000000,
+        "observations": 713,
+        "airtimeMs": 119460.35,
+        "snrAvg": 11.42742,
+        "snrMin": -6.75,
+        "rssiAvg": -47.87798
+      },
+      {
+        "t": 1791561600000,
+        "observations": 649,
+        "airtimeMs": 103922.14,
+        "snrAvg": 11.607859,
+        "snrMin": -6,
+        "rssiAvg": -48.22034
+      },
+      {
+        "t": 1791565200000,
+        "observations": 654,
+        "airtimeMs": 106812.4,
+        "snrAvg": 11.477064,
+        "snrMin": -9.5,
+        "rssiAvg": -48.847095
+      },
+      {
+        "t": 1791568800000,
+        "observations": 677,
+        "airtimeMs": 111569.39,
+        "snrAvg": 11.294313,
+        "snrMin": -9.75,
+        "rssiAvg": -49.060562
+      },
+      {
+        "t": 1791572400000,
+        "observations": 638,
+        "airtimeMs": 102321.14,
+        "snrAvg": 11.35384,
+        "snrMin": -9.5,
+        "rssiAvg": -48.278996
+      },
+      {
+        "t": 1791576000000,
+        "observations": 697,
+        "airtimeMs": 116525.55,
+        "snrAvg": 11.314921,
+        "snrMin": -9.25,
+        "rssiAvg": -48.859398
+      },
+      {
+        "t": 1791579600000,
+        "observations": 659,
+        "airtimeMs": 110255.59,
+        "snrAvg": 11.11874,
+        "snrMin": -9.5,
+        "rssiAvg": -49.593323
+      },
+      {
+        "t": 1791583200000,
+        "observations": 692,
+        "airtimeMs": 119328.766,
+        "snrAvg": 10.856214,
+        "snrMin": -10,
+        "rssiAvg": -50.38295
+      },
+      {
+        "t": 1791586800000,
+        "observations": 683,
+        "airtimeMs": 112338.42,
+        "snrAvg": 11.192899,
+        "snrMin": -9.25,
+        "rssiAvg": -50.480236
+      },
+      {
+        "t": 1791590400000,
+        "observations": 658,
+        "airtimeMs": 108332.016,
+        "snrAvg": 11.047873,
+        "snrMin": -9,
+        "rssiAvg": -50.648937
+      },
+      {
+        "t": 1791594000000,
+        "observations": 653,
+        "airtimeMs": 105974.25,
+        "snrAvg": 11.41003,
+        "snrMin": -9,
+        "rssiAvg": -49.03063
+      },
+      {
+        "t": 1791597600000,
+        "observations": 707,
+        "airtimeMs": 123565.56,
+        "snrAvg": 10.667256,
+        "snrMin": -8.75,
+        "rssiAvg": -51.080624
+      },
+      {
+        "t": 1791601200000,
+        "observations": 658,
+        "airtimeMs": 107656.17,
+        "snrAvg": 11.080547,
+        "snrMin": -9.25,
+        "rssiAvg": -48.293312
+      },
+      {
+        "t": 1791604800000,
+        "observations": 655,
+        "airtimeMs": 109555.19,
+        "snrAvg": 11.262977,
+        "snrMin": -9.75,
+        "rssiAvg": -47.583206
+      },
+      {
+        "t": 1791608400000,
+        "observations": 683,
+        "airtimeMs": 113219.05,
+        "snrAvg": 11.183382,
+        "snrMin": -10.25,
+        "rssiAvg": -48.171303
+      },
+      {
+        "t": 1791612000000,
+        "observations": 677,
+        "airtimeMs": 112081.38,
+        "snrAvg": 11.642541,
+        "snrMin": -6.25,
+        "rssiAvg": -47.51994
+      },
+      {
+        "t": 1791615600000,
+        "observations": 677,
+        "airtimeMs": 111159.79,
+        "snrAvg": 11.149188,
+        "snrMin": -7.5,
+        "rssiAvg": -48.093056
+      },
+      {
+        "t": 1791619200000,
+        "observations": 682,
+        "airtimeMs": 116159.47,
+        "snrAvg": 11.2679615,
+        "snrMin": -6.75,
+        "rssiAvg": -46.71261
+      },
+      {
+        "t": 1791622800000,
+        "observations": 695,
+        "airtimeMs": 116794.86,
+        "snrAvg": 11.291007,
+        "snrMin": -6.75,
+        "rssiAvg": -45.264748
+      },
+      {
+        "t": 1791626400000,
+        "observations": 688,
+        "airtimeMs": 116559.86,
+        "snrAvg": 11.38263,
+        "snrMin": -8,
+        "rssiAvg": -46.158432
+      },
+      {
+        "t": 1791630000000,
+        "observations": 711,
+        "airtimeMs": 122566.13,
+        "snrAvg": 11.055204,
+        "snrMin": -7.25,
+        "rssiAvg": -46.80872
+      },
+      {
+        "t": 1791633600000,
+        "observations": 746,
+        "airtimeMs": 133581.81,
+        "snrAvg": 10.977212,
+        "snrMin": -8.25,
+        "rssiAvg": -47.128685
+      },
+      {
+        "t": 1791637200000,
+        "observations": 721,
+        "airtimeMs": 126759.41,
+        "snrAvg": 11.196602,
+        "snrMin": -7.5,
+        "rssiAvg": -47.138695
+      },
+      {
+        "t": 1791640800000,
+        "observations": 725,
+        "airtimeMs": 128821.74,
+        "snrAvg": 11.467931,
+        "snrMin": -8.75,
+        "rssiAvg": -47.36
+      },
+      {
+        "t": 1791644400000,
+        "observations": 754,
+        "airtimeMs": 138546.17,
+        "snrAvg": 11.315318,
+        "snrMin": -8,
+        "rssiAvg": -47.64589
+      },
+      {
+        "t": 1791648000000,
+        "observations": 759,
+        "airtimeMs": 141313.52,
+        "snrAvg": 11.284256,
+        "snrMin": -9.5,
+        "rssiAvg": -47.885376
+      },
+      {
+        "t": 1791651600000,
+        "observations": 720,
+        "airtimeMs": 123934.7,
+        "snrAvg": 11.22743,
+        "snrMin": -9.25,
+        "rssiAvg": -47.62361
+      },
+      {
+        "t": 1791655200000,
+        "observations": 588,
+        "airtimeMs": 104415.195,
+        "snrAvg": 10.39966,
+        "snrMin": -9.5,
+        "rssiAvg": -48.92517
+      },
+      {
+        "t": 1791658800000,
+        "observations": 581,
+        "airtimeMs": 108521.95,
+        "snrAvg": 10.225043,
+        "snrMin": -9.5,
+        "rssiAvg": -50.061962
+      },
+      {
+        "t": 1791662400000,
+        "observations": 557,
+        "airtimeMs": 95543.76,
+        "snrAvg": 10.8330345,
+        "snrMin": -10,
+        "rssiAvg": -47.732494
+      },
+      {
+        "t": 1791666000000,
+        "observations": 553,
+        "airtimeMs": 96358.87,
+        "snrAvg": 10.794756,
+        "snrMin": -9.25,
+        "rssiAvg": -47.9566
+      },
+      {
+        "t": 1791669600000,
+        "observations": 473,
+        "airtimeMs": 79073.734,
+        "snrAvg": 10.9651165,
+        "snrMin": -9.75,
+        "rssiAvg": -48.230446
+      },
+      {
+        "t": 1791673200000,
+        "observations": 567,
+        "airtimeMs": 104805.83,
+        "snrAvg": 10.530423,
+        "snrMin": -9.5,
+        "rssiAvg": -49.617283
+      },
+      {
+        "t": 1791676800000,
+        "observations": 530,
+        "airtimeMs": 98636.75,
+        "snrAvg": 9.896698,
+        "snrMin": -9.75,
+        "rssiAvg": -52.652832
+      },
+      {
+        "t": 1791680400000,
+        "observations": 514,
+        "airtimeMs": 89906.11,
+        "snrAvg": 10.631809,
+        "snrMin": -9.75,
+        "rssiAvg": -49.968872
+      },
+      {
+        "t": 1791684000000,
+        "observations": 556,
+        "airtimeMs": 94787.53,
+        "snrAvg": 10.936601,
+        "snrMin": -8.75,
+        "rssiAvg": -48.269783
+      },
+      {
+        "t": 1791687600000,
+        "observations": 506,
+        "airtimeMs": 85371.85,
+        "snrAvg": 11.374506,
+        "snrMin": -6.5,
+        "rssiAvg": -46.12846
+      },
+      {
+        "t": 1791691200000,
+        "observations": 514,
+        "airtimeMs": 85779.41,
+        "snrAvg": 11.396887,
+        "snrMin": -8.25,
+        "rssiAvg": -45.492218
+      },
+      {
+        "t": 1791694800000,
+        "observations": 510,
+        "airtimeMs": 86154.195,
+        "snrAvg": 11.556863,
+        "snrMin": -9.25,
+        "rssiAvg": -45.215687
+      },
+      {
+        "t": 1791698400000,
+        "observations": 509,
+        "airtimeMs": 84804.04,
+        "snrAvg": 11.451866,
+        "snrMin": -9.5,
+        "rssiAvg": -45.180748
+      },
+      {
+        "t": 1791702000000,
+        "observations": 497,
+        "airtimeMs": 79180.25,
+        "snrAvg": 11.496479,
+        "snrMin": -9.5,
+        "rssiAvg": -44.98994
+      },
+      {
+        "t": 1791705600000,
+        "observations": 554,
+        "airtimeMs": 91534.29,
+        "snrAvg": 11.321751,
+        "snrMin": -9,
+        "rssiAvg": -45.579422
+      },
+      {
+        "t": 1791709200000,
+        "observations": 533,
+        "airtimeMs": 88566.22,
+        "snrAvg": 10.957317,
+        "snrMin": -8.75,
+        "rssiAvg": -47.540337
+      },
+      {
+        "t": 1791712800000,
+        "observations": 555,
+        "airtimeMs": 94696.914,
+        "snrAvg": 11.164865,
+        "snrMin": -9.5,
+        "rssiAvg": -47.338737
+      },
+      {
+        "t": 1791716400000,
+        "observations": 535,
+        "airtimeMs": 93068.76,
+        "snrAvg": 10.854205,
+        "snrMin": -8,
+        "rssiAvg": -48.527103
+      },
+      {
+        "t": 1791720000000,
+        "observations": 603,
+        "airtimeMs": 113966.586,
+        "snrAvg": 10.870646,
+        "snrMin": -9.25,
+        "rssiAvg": -48.7927
+      },
+      {
+        "t": 1791723600000,
+        "observations": 577,
+        "airtimeMs": 109408.72,
+        "snrAvg": 10.868284,
+        "snrMin": -10.25,
+        "rssiAvg": -48.824955
+      },
+      {
+        "t": 1791727200000,
+        "observations": 505,
+        "airtimeMs": 87185.9,
+        "snrAvg": 11.068316,
+        "snrMin": -9.25,
+        "rssiAvg": -46.69109
+      },
+      {
+        "t": 1791730800000,
+        "observations": 547,
+        "airtimeMs": 95047.13,
+        "snrAvg": 11.16042,
+        "snrMin": -9.5,
+        "rssiAvg": -46.539307
+      },
+      {
+        "t": 1791734400000,
+        "observations": 544,
+        "airtimeMs": 98041.8,
+        "snrAvg": 11.352022,
+        "snrMin": -9.75,
+        "rssiAvg": -46.06066
+      },
+      {
+        "t": 1791738000000,
+        "observations": 576,
+        "airtimeMs": 103972.83,
+        "snrAvg": 10.8203125,
+        "snrMin": -9.5,
+        "rssiAvg": -47.524307
+      },
+      {
+        "t": 1791741600000,
+        "observations": 558,
+        "airtimeMs": 99013.58,
+        "snrAvg": 10.932347,
+        "snrMin": -8.75,
+        "rssiAvg": -46.439068
+      },
+      {
+        "t": 1791745200000,
+        "observations": 524,
+        "airtimeMs": 90873.8,
+        "snrAvg": 11.241412,
+        "snrMin": -9.5,
+        "rssiAvg": -46.66603
+      },
+      {
+        "t": 1791748800000,
+        "observations": 509,
+        "airtimeMs": 89463.25,
+        "snrAvg": 10.931238,
+        "snrMin": -9.25,
+        "rssiAvg": -48.561886
+      },
+      {
+        "t": 1791752400000,
+        "observations": 527,
+        "airtimeMs": 93122.01,
+        "snrAvg": 11.166983,
+        "snrMin": -9.25,
+        "rssiAvg": -48.273243
+      },
+      {
+        "t": 1791756000000,
+        "observations": 583,
+        "airtimeMs": 103757.266,
+        "snrAvg": 10.987564,
+        "snrMin": -9.5,
+        "rssiAvg": -48.68439
+      },
+      {
+        "t": 1791759600000,
+        "observations": 591,
+        "airtimeMs": 108987.86,
+        "snrAvg": 10.719966,
+        "snrMin": -9.75,
+        "rssiAvg": -49.783417
+      },
+      {
+        "t": 1791763200000,
+        "observations": 586,
+        "airtimeMs": 111770.6,
+        "snrAvg": 10.276877,
+        "snrMin": -9.75,
+        "rssiAvg": -51.754265
+      },
+      {
+        "t": 1791766800000,
+        "observations": 618,
+        "airtimeMs": 113933.27,
+        "snrAvg": 10.726942,
+        "snrMin": -9.5,
+        "rssiAvg": -51.585762
+      },
+      {
+        "t": 1791770400000,
+        "observations": 594,
+        "airtimeMs": 108102.61,
+        "snrAvg": 10.809764,
+        "snrMin": -9.25,
+        "rssiAvg": -48.892258
+      },
+      {
+        "t": 1791774000000,
+        "observations": 597,
+        "airtimeMs": 103285.195,
+        "snrAvg": 10.415829,
+        "snrMin": -9.5,
+        "rssiAvg": -48.795647
+      },
+      {
+        "t": 1791777600000,
+        "observations": 637,
+        "airtimeMs": 114252.26,
+        "snrAvg": 10.836735,
+        "snrMin": -9.25,
+        "rssiAvg": -48.43171
+      },
+      {
+        "t": 1791781200000,
+        "observations": 591,
+        "airtimeMs": 110851.56,
+        "snrAvg": 11.057107,
+        "snrMin": -9.75,
+        "rssiAvg": -48.077835
+      },
+      {
+        "t": 1791784800000,
+        "observations": 724,
+        "airtimeMs": 136329.2,
+        "snrAvg": 10.407804,
+        "snrMin": -9.75,
+        "rssiAvg": -53.28591
+      },
+      {
+        "t": 1791788400000,
+        "observations": 632,
+        "airtimeMs": 115181.55,
+        "snrAvg": 10.54905,
+        "snrMin": -9.5,
+        "rssiAvg": -52.015823
+      },
+      {
+        "t": 1791792000000,
+        "observations": 738,
+        "airtimeMs": 150039.55,
+        "snrAvg": 10.512534,
+        "snrMin": -7.5,
+        "rssiAvg": -51.27778
+      },
+      {
+        "t": 1791795600000,
+        "observations": 818,
+        "airtimeMs": 174902.27,
+        "snrAvg": 10.371638,
+        "snrMin": -8.25,
+        "rssiAvg": -52.146698
+      },
+      {
+        "t": 1791799200000,
+        "observations": 850,
+        "airtimeMs": 183823.36,
+        "snrAvg": 10.155294,
+        "snrMin": -8,
+        "rssiAvg": -52.56235
+      },
+      {
+        "t": 1791802800000,
+        "observations": 879,
+        "airtimeMs": 205497.84,
+        "snrAvg": 10.398748,
+        "snrMin": -6.75,
+        "rssiAvg": -51.895336
+      },
+      {
+        "t": 1791806400000,
+        "observations": 935,
+        "airtimeMs": 215621.12,
+        "snrAvg": 10.680214,
+        "snrMin": -7,
+        "rssiAvg": -51.42353
+      },
+      {
+        "t": 1791810000000,
+        "observations": 857,
+        "airtimeMs": 183300.6,
+        "snrAvg": 10.936114,
+        "snrMin": -9.75,
+        "rssiAvg": -50.555428
+      },
+      {
+        "t": 1791813600000,
+        "observations": 649,
+        "airtimeMs": 137017.84,
+        "snrAvg": 10.835131,
+        "snrMin": -8.5,
+        "rssiAvg": -52.465332
+      },
+      {
+        "t": 1791817200000,
+        "observations": 460,
+        "airtimeMs": 86937.53,
+        "snrAvg": 11.147826,
+        "snrMin": -8.5,
+        "rssiAvg": -51.20652
+      },
+      {
+        "t": 1791820800000,
+        "observations": 403,
+        "airtimeMs": 71706.055,
+        "snrAvg": 11.439826,
+        "snrMin": -8,
+        "rssiAvg": -49.823822
+      },
+      {
+        "t": 1791824400000,
+        "observations": 410,
+        "airtimeMs": 71377.86,
+        "snrAvg": 11.304878,
+        "snrMin": -8.25,
+        "rssiAvg": -49.22195
+      },
+      {
+        "t": 1791828000000,
+        "observations": 438,
+        "airtimeMs": 78533.58,
+        "snrAvg": 11.072489,
+        "snrMin": -9.5,
+        "rssiAvg": -50.61872
+      },
+      {
+        "t": 1791831600000,
+        "observations": 375,
+        "airtimeMs": 60321.227,
+        "snrAvg": 11.538,
+        "snrMin": -8.5,
+        "rssiAvg": -48.064
+      },
+      {
+        "t": 1791835200000,
+        "observations": 437,
+        "airtimeMs": 76057.04,
+        "snrAvg": 11.204233,
+        "snrMin": -9.5,
+        "rssiAvg": -49.514874
+      },
+      {
+        "t": 1791838800000,
+        "observations": 446,
+        "airtimeMs": 78541.766,
+        "snrAvg": 11.332399,
+        "snrMin": -9.75,
+        "rssiAvg": -50.42601
+      },
+      {
+        "t": 1791842400000,
+        "observations": 470,
+        "airtimeMs": 79907.77,
+        "snrAvg": 10.960107,
+        "snrMin": -8.75,
+        "rssiAvg": -51.34468
+      },
+      {
+        "t": 1791846000000,
+        "observations": 436,
+        "airtimeMs": 72792,
+        "snrAvg": 11.036697,
+        "snrMin": -8.75,
+        "rssiAvg": -49.938072
+      },
+      {
+        "t": 1791849600000,
+        "observations": 444,
+        "airtimeMs": 78002.12,
+        "snrAvg": 11.198761,
+        "snrMin": -7.5,
+        "rssiAvg": -50.029278
+      },
+      {
+        "t": 1791853200000,
+        "observations": 480,
+        "airtimeMs": 89702.34,
+        "snrAvg": 10.838542,
+        "snrMin": -7.25,
+        "rssiAvg": -52.204166
+      },
+      {
+        "t": 1791856800000,
+        "observations": 412,
+        "airtimeMs": 69838.766,
+        "snrAvg": 11.216626,
+        "snrMin": -7.25,
+        "rssiAvg": -50.43932
+      },
+      {
+        "t": 1791860400000,
+        "observations": 416,
+        "airtimeMs": 71235.516,
+        "snrAvg": 10.772236,
+        "snrMin": -8,
+        "rssiAvg": -51.38702
+      },
+      {
+        "t": 1791864000000,
+        "observations": 388,
+        "airtimeMs": 65267.64,
+        "snrAvg": 11.4407215,
+        "snrMin": -9,
+        "rssiAvg": -49.28093
+      },
+      {
+        "t": 1791867600000,
+        "observations": 418,
+        "airtimeMs": 73126.85,
+        "snrAvg": 11.065191,
+        "snrMin": -9.75,
+        "rssiAvg": -50.72488
+      },
+      {
+        "t": 1791871200000,
+        "observations": 414,
+        "airtimeMs": 68309.93,
+        "snrAvg": 10.941425,
+        "snrMin": -8,
+        "rssiAvg": -52.246376
+      },
+      {
+        "t": 1791874800000,
+        "observations": 410,
+        "airtimeMs": 69585.85,
+        "snrAvg": 10.840244,
+        "snrMin": -9.75,
+        "rssiAvg": -51.6439
+      },
+      {
+        "t": 1791878400000,
+        "observations": 410,
+        "airtimeMs": 68899.766,
+        "snrAvg": 11.270732,
+        "snrMin": -9.75,
+        "rssiAvg": -50.414635
+      },
+      {
+        "t": 1791882000000,
+        "observations": 379,
+        "airtimeMs": 61318.582,
+        "snrAvg": 11.414907,
+        "snrMin": -9.5,
+        "rssiAvg": -50.118732
+      },
+      {
+        "t": 1791885600000,
+        "observations": 388,
+        "airtimeMs": 64028.605,
+        "snrAvg": 11.277706,
+        "snrMin": -9,
+        "rssiAvg": -51.335052
+      },
+      {
+        "t": 1791889200000,
+        "observations": 398,
+        "airtimeMs": 66952.11,
+        "snrAvg": 11.380653,
+        "snrMin": -9,
+        "rssiAvg": -51.447235
+      },
+      {
+        "t": 1791892800000,
+        "observations": 430,
+        "airtimeMs": 74142.65,
+        "snrAvg": 10.594768,
+        "snrMin": -8.5,
+        "rssiAvg": -53.860466
+      },
+      {
+        "t": 1791896400000,
+        "observations": 435,
+        "airtimeMs": 75967.92,
+        "snrAvg": 11.068966,
+        "snrMin": -9.25,
+        "rssiAvg": -52.845978
+      },
+      {
+        "t": 1791900000000,
+        "observations": 465,
+        "airtimeMs": 81820.09,
+        "snrAvg": 11.089248,
+        "snrMin": -9,
+        "rssiAvg": -52.931183
+      },
+      {
+        "t": 1791903600000,
+        "observations": 398,
+        "airtimeMs": 68611.02,
+        "snrAvg": 11.488066,
+        "snrMin": -9.25,
+        "rssiAvg": -49.61809
+      },
+      {
+        "t": 1791907200000,
+        "observations": 412,
+        "airtimeMs": 68200.39,
+        "snrAvg": 11.152306,
+        "snrMin": -9,
+        "rssiAvg": -50.42233
+      },
+      {
+        "t": 1791910800000,
+        "observations": 403,
+        "airtimeMs": 66350.53,
+        "snrAvg": 11.685484,
+        "snrMin": -7.25,
+        "rssiAvg": -46.406948
+      },
+      {
+        "t": 1791914400000,
+        "observations": 357,
+        "airtimeMs": 61045.117,
+        "snrAvg": 11.144958,
+        "snrMin": -9.5,
+        "rssiAvg": -49.871147
+      }
+    ]
+  }
+}

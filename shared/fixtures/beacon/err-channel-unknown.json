@@ -1,0 +1,10 @@
+{
+  "request": "channels/2147483647",
+  "status": 404,
+  "body": {
+    "error": {
+      "code": "not_found",
+      "message": "Synthetic message c56c25"
+    }
+  }
+}

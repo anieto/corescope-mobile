@@ -12,9 +12,9 @@ import json
 import re
 import sys
 
-ID_FIELDS = {"publicKey", "observerPublicKey", "originPubkey", "id", "nodeId", "observerId",
+ID_FIELDS = {"publicKey", "nodePublicKey", "observerPublicKey", "originPubkey", "id", "nodeId", "observerId",
              "connectionId", "subscriptionId", "origin_id", "packetHash", "rawPayload", "raw", "ciphertext"}
-NAME_FIELDS = {"name", "displayName", "observerName", "origin", "sender", "senderName", "summary", "content", "text"}
+NAME_FIELDS = {"name", "nodeName", "displayName", "observerName", "origin", "sender", "senderName", "summary", "content", "text"}
 COORD_FIELDS = {"lat", "lng", "lon", "latitude", "longitude"}
 NOT_IDENTITIES = {"Public"}
 

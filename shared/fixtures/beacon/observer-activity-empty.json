@@ -1,0 +1,22 @@
+{
+  "request": "observers/00000000-0000-0000-0000-000000000002/activity?range=24h&interval=15m",
+  "status": 200,
+  "body": {
+    "windowStart": 1791831600000,
+    "windowEnd": 1791918000000,
+    "generatedAt": 1791918000000,
+    "source": "raw",
+    "summary": {
+      "recordedPackets": 0,
+      "lastCompleteHour": null,
+      "lastCompleteHourStart": null,
+      "lastCompleteHourEnd": null,
+      "latestRecordedAt": null
+    },
+    "range": "24h",
+    "interval": "15m",
+    "radio": null,
+    "payloadTypes": [],
+    "points": []
+  }
+}

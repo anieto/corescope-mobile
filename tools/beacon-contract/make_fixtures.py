@@ -22,12 +22,12 @@ import sys
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 HEX_RE = re.compile(r"^[0-9a-fA-F]+$")
 
-KEY_FIELDS = {"publicKey", "observerPublicKey", "originPubkey"}
+KEY_FIELDS = {"publicKey", "nodePublicKey", "observerPublicKey", "originPubkey"}
 UUID_FIELDS = {"id", "nodeId", "observerId", "connectionId", "subscriptionId", "origin_id"}
 HASH_FIELDS = {"packetHash"}
 HEX_FIELDS = {"rawPayload", "raw", "ciphertext", "cipherMac", "signature"}
 PATH_FIELDS = {"pathBytes"}
-NAME_FIELDS = {"name", "displayName", "observerName", "origin", "sender", "senderName"}
+NAME_FIELDS = {"name", "nodeName", "displayName", "observerName", "origin", "sender", "senderName"}
 TEXT_FIELDS = {"content", "text", "message"}
 SUMMARY_FIELDS = {"summary"}
 LAT_FIELDS = {"lat", "latitude"}
@@ -180,6 +180,10 @@ def main(raw, out):
     rest("node-observations.json", "node-observations", n=8)
     rest("observers-page.json", "observers", n=5)
     rest("observer-detail.json", "observer-detail")
+    rest("observer-activity-24h.json", "observer-activity-24h")
+    rest("observer-activity-7d.json", "observer-activity-7d")
+    rest("observer-telemetry-24h.json", "observer-telemetry-24h")
+    rest("observer-adverts.json", "observer-adverts", n=8)
     rest("packets-page.json", "packets-sat", n=6)
     det = load(raw, ours, "packet-detail")
     det["data"] = {**det["data"], "observations": det["data"]["observations"][:3]}
@@ -197,21 +201,27 @@ def main(raw, out):
                                 "note": "subset: every channel sharing a hash with a decryptable one, plus 3 others"})
     rest("channel-detail.json", "channel-detail")
     rest("channel-messages.json", "channel-messages", n=4)
-    for name in ("err-node-bad-id", "err-node-unknown", "err-packet-unknown"):
+    rest("channels-keyknown-page-1.json", "channels-keyknown-page-1")
+    rest("channels-keyknown-page-2.json", "channels-keyknown-page-2")
+    for name in ("err-node-bad-id", "err-node-unknown", "err-packet-unknown",
+                 "err-observer-activity-unknown", "err-channel-unknown"):
         rest(name + ".json", name)
 
     # WebSocket: all control frames plus a few events of each kind, from the SAT-filtered session.
-    with open(os.path.join(raw, ours, "ws", "frames.json")) as f:
-        frames = json.load(f)
-    seen, picked = {}, []
-    for fr in frames:
-        msg = fr["msg"]
-        kind = msg.get("event") or msg["type"]
-        if fr["dir"] == "out" or msg["type"] != "event" or seen.get(kind, 0) < 3:
-            seen[kind] = seen.get(kind, 0) + 1
-            picked.append({"t": fr["t"], "dir": fr["dir"], "msg": msg})
-    emit("ws-session.json", {"note": "SAT-filtered session: subscribe, configure (resolvePath on/off/on), ping; "
-                                     "control frames complete, events sampled", "frames": picked})
+    # A REST-only refresh intentionally leaves the existing WebSocket fixture untouched.
+    ws_path = os.path.join(raw, ours, "ws", "frames.json")
+    if os.path.exists(ws_path):
+        with open(ws_path) as f:
+            frames = json.load(f)
+        seen, picked = {}, []
+        for fr in frames:
+            msg = fr["msg"]
+            kind = msg.get("event") or msg["type"]
+            if fr["dir"] == "out" or msg["type"] != "event" or seen.get(kind, 0) < 3:
+                seen[kind] = seen.get(kind, 0) + 1
+                picked.append({"t": fr["t"], "dir": fr["dir"], "msg": msg})
+        emit("ws-session.json", {"note": "SAT-filtered session: subscribe, configure (resolvePath on/off/on), ping; "
+                                         "control frames complete, events sampled", "frames": picked})
 
     print("\n".join(written))
 

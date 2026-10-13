@@ -1,0 +1,8 @@
+{
+  "request": "nodes/00000000-0000-0000-0000-000000000001/observations?limit=200",
+  "status": 200,
+  "body": {
+    "items": [],
+    "hasMore": false
+  }
+}

@@ -1,0 +1,250 @@
+{
+  "request": "observers/9549bfd5-d6de-87b4-a186-c26cef90587c/telemetry?range=24h&interval=1h",
+  "status": 200,
+  "body": {
+    "range": "24h",
+    "interval": "1h",
+    "points": [
+      {
+        "t": 1791831600000,
+        "batteryMv": 4221,
+        "airtimeTxSecs": 2368,
+        "airtimeRxSecs": 137942,
+        "noiseFloorDb": -112,
+        "uptimeSeconds": 4156740,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791835200000,
+        "batteryMv": 4233,
+        "airtimeTxSecs": 2370,
+        "airtimeRxSecs": 138021,
+        "noiseFloorDb": -113,
+        "uptimeSeconds": 4160311,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791838800000,
+        "batteryMv": 4221,
+        "airtimeTxSecs": 2372,
+        "airtimeRxSecs": 138130,
+        "noiseFloorDb": -102,
+        "uptimeSeconds": 4163913,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791842400000,
+        "batteryMv": 4238,
+        "airtimeTxSecs": 2373,
+        "airtimeRxSecs": 138253,
+        "noiseFloorDb": -112,
+        "uptimeSeconds": 4167716,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791846000000,
+        "batteryMv": 4233,
+        "airtimeTxSecs": 2374,
+        "airtimeRxSecs": 138368,
+        "noiseFloorDb": -112,
+        "uptimeSeconds": 4171308,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791849600000,
+        "batteryMv": 4223,
+        "airtimeTxSecs": 2375,
+        "airtimeRxSecs": 138451,
+        "noiseFloorDb": -112,
+        "uptimeSeconds": 4174346,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791853200000,
+        "batteryMv": 4229,
+        "airtimeTxSecs": 2377,
+        "airtimeRxSecs": 138581,
+        "noiseFloorDb": -111,
+        "uptimeSeconds": 4178332,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791856800000,
+        "batteryMv": 4230,
+        "airtimeTxSecs": 2378,
+        "airtimeRxSecs": 138725,
+        "noiseFloorDb": -113,
+        "uptimeSeconds": 4181972,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791860400000,
+        "batteryMv": 4238,
+        "airtimeTxSecs": 2380,
+        "airtimeRxSecs": 138822,
+        "noiseFloorDb": -110,
+        "uptimeSeconds": 4185573,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791864000000,
+        "batteryMv": 4224,
+        "airtimeTxSecs": 2382,
+        "airtimeRxSecs": 138920,
+        "noiseFloorDb": -110,
+        "uptimeSeconds": 4189176,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791867600000,
+        "batteryMv": 4226,
+        "airtimeTxSecs": 2383,
+        "airtimeRxSecs": 139002,
+        "noiseFloorDb": -112,
+        "uptimeSeconds": 4192798,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791871200000,
+        "batteryMv": 4226,
+        "airtimeTxSecs": 1,
+        "airtimeRxSecs": 41,
+        "noiseFloorDb": -112,
+        "uptimeSeconds": 1831,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791874800000,
+        "batteryMv": 4235,
+        "airtimeTxSecs": 1,
+        "airtimeRxSecs": 118,
+        "noiseFloorDb": -112,
+        "uptimeSeconds": 4977,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791878400000,
+        "batteryMv": 4232,
+        "airtimeTxSecs": 2,
+        "airtimeRxSecs": 216,
+        "noiseFloorDb": -112,
+        "uptimeSeconds": 8578,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791882000000,
+        "batteryMv": 4238,
+        "airtimeTxSecs": 4,
+        "airtimeRxSecs": 302,
+        "noiseFloorDb": -112,
+        "uptimeSeconds": 12179,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791885600000,
+        "batteryMv": 4221,
+        "airtimeTxSecs": 7,
+        "airtimeRxSecs": 392,
+        "noiseFloorDb": -112,
+        "uptimeSeconds": 16337,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791889200000,
+        "batteryMv": 4233,
+        "airtimeTxSecs": 8,
+        "airtimeRxSecs": 471,
+        "noiseFloorDb": -111,
+        "uptimeSeconds": 19897,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791892800000,
+        "batteryMv": 4232,
+        "airtimeTxSecs": 10,
+        "airtimeRxSecs": 556,
+        "noiseFloorDb": -97,
+        "uptimeSeconds": 23498,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791896400000,
+        "batteryMv": 4242,
+        "airtimeTxSecs": 11,
+        "airtimeRxSecs": 659,
+        "noiseFloorDb": -113,
+        "uptimeSeconds": 26934,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791900000000,
+        "batteryMv": 4235,
+        "airtimeTxSecs": 12,
+        "airtimeRxSecs": 760,
+        "noiseFloorDb": -112,
+        "uptimeSeconds": 30534,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791903600000,
+        "batteryMv": 4235,
+        "airtimeTxSecs": 14,
+        "airtimeRxSecs": 877,
+        "noiseFloorDb": -112,
+        "uptimeSeconds": 34196,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791907200000,
+        "batteryMv": 4239,
+        "airtimeTxSecs": 15,
+        "airtimeRxSecs": 964,
+        "noiseFloorDb": -113,
+        "uptimeSeconds": 37739,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791910800000,
+        "batteryMv": 4232,
+        "airtimeTxSecs": 17,
+        "airtimeRxSecs": 1058,
+        "noiseFloorDb": -112,
+        "uptimeSeconds": 41523,
+        "queueLength": 0,
+        "receiveErrors": 0
+      },
+      {
+        "t": 1791914400000,
+        "batteryMv": 4230,
+        "airtimeTxSecs": 18,
+        "airtimeRxSecs": 1144,
+        "noiseFloorDb": -113,
+        "uptimeSeconds": 45096,
+        "queueLength": 0,
+        "receiveErrors": 0
+      }
+    ]
+  }
+}

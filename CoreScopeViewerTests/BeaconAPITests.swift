@@ -1795,6 +1795,49 @@ struct BeaconAPITests {
         return observation
     }
 
+    @Test func phaseThreeFixturesPreserveCoverageAndPagingSemantics() throws {
+        let rawActivity = try Self.fixtureBody("observer-activity-24h")
+        #expect(rawActivity["interval"] as? String == "15m")
+        #expect((rawActivity["points"] as? [[String: Any]])?.isEmpty == false)
+        #expect(rawActivity["rolledUntil"] == nil)
+        #expect(rawActivity["rawFrom"] == nil)
+
+        let hourlyActivity = try Self.fixtureBody("observer-activity-7d")
+        #expect(hourlyActivity["interval"] as? String == "1h")
+        #expect(hourlyActivity["rolledUntil"] is NSNumber)
+        #expect(hourlyActivity["rawFrom"] is NSNumber)
+
+        let telemetry = try Self.fixtureBody("observer-telemetry-24h")
+        let telemetryPoints = try #require(telemetry["points"] as? [[String: Any]])
+        let point = try #require(telemetryPoints.first)
+        #expect(point["batteryMv"] is NSNumber)
+        #expect(point["noiseFloorDb"] is NSNumber)
+        #expect(point["airtimeTxSecs"] is NSNumber)
+        #expect(point["airtimeRxSecs"] is NSNumber)
+
+        let firstPage = try Self.fixtureBody("channels-keyknown-page-1")
+        let secondPage = try Self.fixtureBody("channels-keyknown-page-2")
+        #expect(firstPage["nextPageCursor"] is String)
+        let firstIDs = Set(try #require(firstPage["items"] as? [[String: Any]]).compactMap { $0["id"] as? Int })
+        let secondIDs = Set(try #require(secondPage["items"] as? [[String: Any]]).compactMap { $0["id"] as? Int })
+        #expect(firstIDs.isDisjoint(with: secondIDs))
+    }
+
+    @Test func phaseThreeEmptyHistoryFixturesAreSuccessfulAndComplete() throws {
+        let observations = try Self.fixtureBody("node-observations-empty")
+        #expect((observations["items"] as? [Any])?.isEmpty == true)
+        #expect(observations["hasMore"] as? Bool == false)
+
+        let activity = try Self.fixtureBody("observer-activity-empty")
+        #expect((activity["points"] as? [Any])?.isEmpty == true)
+        #expect((activity["payloadTypes"] as? [Any])?.isEmpty == true)
+        let summary = try #require(activity["summary"] as? [String: Any])
+        #expect(summary["recordedPackets"] as? Int == 0)
+
+        let telemetry = try Self.fixtureBody("observer-telemetry-empty")
+        #expect((telemetry["points"] as? [Any])?.isEmpty == true)
+    }
+
     @MainActor private static func waitUntil(_ condition: () -> Bool) async throws {
         for _ in 0..<2000 {
             if condition() { return }
