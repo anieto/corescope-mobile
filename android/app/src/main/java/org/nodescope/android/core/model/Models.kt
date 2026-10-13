@@ -17,9 +17,16 @@ data class AnalyzerSource(
     val mapRadiusKm: Double? = null,
     /** Optional square logo, as a path inside the registry folder (`icons/<name>.png`), shared with iOS. */
     val icon: String? = null,
+    /** `corescope` or `beacon`; registry v1 entries may omit it and are CoreScope. */
+    val type: String? = null,
 ) {
+    val backendType: AnalyzerSourceType get() = AnalyzerSourceType.from(type) ?: AnalyzerSourceType.CORESCOPE
     val viewport: RegionCoordinate? get() = Coordinate.valid(mapCenter?.getOrNull(0), mapCenter?.getOrNull(1))
         ?.let { RegionCoordinate(it.latitude, it.longitude, mapRadiusKm ?: 250.0) }
+}
+enum class AnalyzerSourceType(val raw: String) {
+    CORESCOPE("corescope"), BEACON("beacon");
+    companion object { fun from(raw: String?) = entries.firstOrNull { it.raw == raw } }
 }
 @Serializable
 data class SourceDocument(val version: Int, val sources: List<AnalyzerSource>)

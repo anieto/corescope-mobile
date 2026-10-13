@@ -12,7 +12,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
-/** Where registry icons are published: next to `us-sources.json` in the NodeScope repo. */
+/** Where registry icons are published: next to `sources-v2.json` in the NodeScope repo. */
 const val REGISTRY_BASE_URL = "https://raw.githubusercontent.com/anieto/corescope-mobile/main/CommunitySources/"
 
 private val iconPath = Regex("icons/[a-z0-9][a-z0-9-]*\\.png")

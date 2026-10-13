@@ -52,7 +52,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             val cached = container.preferences.values.first().registry
             cached?.let { parseSources(it)?.let { sourceState.value = it.sources } }
             try {
-                val raw = container.client.read("https://raw.githubusercontent.com/anieto/corescope-mobile/main/CommunitySources/us-sources.json".toHttpUrl())
+                val raw = container.client.read(SOURCE_REGISTRY_URL.toHttpUrl())
                 parseSources(raw)?.let {
                     sourceState.value = it.sources
                     container.preferences.cacheRegistry(raw)
@@ -63,7 +63,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
     private fun parseSources(raw: String): SourceDocument? = runCatching {
-        protocolJson.decodeFromString<SourceDocument>(raw).let { document ->
+        decodeSourceRegistryV2(raw).let { document ->
             document.copy(sources = document.sources.filter {
                 it.name.isNotBlank() && runCatching { normalizeHost(it.host) }.isSuccess
             }).takeIf { it.sources.isNotEmpty() }

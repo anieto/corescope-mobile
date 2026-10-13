@@ -57,7 +57,7 @@ class AppContainer(application: Application) {
     val sourceIcons = org.nodescope.android.core.storage.SourceIcons(application, client)
     /** Opened on first use: reading sealed channel keys touches the Android Keystore. */
     val monitoredChannels by lazy { MonitoredChannelStore.forDevice(application) }
-    val bundledSources: SourceDocument = application.assets.open("us-sources.json").bufferedReader().use {
-        protocolJson.decodeFromString(it.readText())
+    val bundledSources: SourceDocument = application.assets.open("sources-v2.json").bufferedReader().use {
+        decodeSourceRegistryV2(it.readText())
     }
 }

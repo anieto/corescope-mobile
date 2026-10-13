@@ -27,12 +27,14 @@ class SourceIconsTest {
     }
 
     @Test fun bundledRegistryMatchesIosAndShipsItsIcons() {
-        val android = File("src/main/assets/us-sources.json")
-        val ios = File("../../CoreScopeViewer/Resources/us-sources.json")
-        assertEquals(protocolJson.parseToJsonElement(ios.readText()), protocolJson.parseToJsonElement(android.readText()))
-        protocolJson.decodeFromString<SourceDocument>(android.readText()).sources.forEach { source ->
-            val path = sourceIconPath(source.icon) ?: return@forEach
-            assertArrayEquals(source.id, File("../../CommunitySources", path).readBytes(), File("src/main/assets", path).readBytes())
+        for (name in listOf("us-sources.json", "sources-v2.json")) {
+            val android = File("src/main/assets/$name")
+            val ios = File("../../CoreScopeViewer/Resources/$name")
+            assertEquals(protocolJson.parseToJsonElement(ios.readText()), protocolJson.parseToJsonElement(android.readText()))
+            protocolJson.decodeFromString<SourceDocument>(android.readText()).sources.forEach { source ->
+                val path = sourceIconPath(source.icon) ?: return@forEach
+                assertArrayEquals(source.id, File("../../CommunitySources", path).readBytes(), File("src/main/assets", path).readBytes())
+            }
         }
     }
 

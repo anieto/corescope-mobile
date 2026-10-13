@@ -38,7 +38,8 @@ class AndroidPreferences(context: Context) : PreferencesStore {
     private val appearance = stringPreferencesKey("appearance")
     private val region = stringPreferencesKey("region")
     private val destination = stringPreferencesKey("destination")
-    private val registry = stringPreferencesKey("registry")
+    /** Typed v2 registry; the old untyped document under "registry" is ignored (iOS does the same). */
+    private val registry = stringPreferencesKey("registry_typed_v2")
     private val distanceUnit = stringPreferencesKey("distance_unit")
     override val values = store.data.catch {
         if (it is IOException) emit(emptyPreferences()) else throw it

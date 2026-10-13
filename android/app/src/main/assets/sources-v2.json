@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "sources": [
+    {
+      "id": "meshtexas",
+      "type": "corescope",
+      "icon": "icons/meshtexas.png",
+      "name": "MeshTexas",
+      "host": "analyzer.meshtexas.org",
+      "subtitle": "Connecting the Lone Star State",
+      "isDefault": true
+    }
+  ]
+}
