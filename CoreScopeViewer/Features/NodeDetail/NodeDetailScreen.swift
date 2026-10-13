@@ -22,14 +22,13 @@ struct NodeDetailScreen: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                if settings.beaconBackend == nil {
-                    DataLoadStatusView(
-                        lastUpdatedAt: viewModel.lastUpdatedAt,
-                        errorMessage: viewModel.errorMessage,
-                        hasContent: viewModel.health != nil || viewModel.paths != nil || viewModel.reach != nil,
-                        retry: retryNodeData
-                    )
-                }
+                DataLoadStatusView(
+                    lastUpdatedAt: viewModel.lastUpdatedAt,
+                    errorMessage: viewModel.errorMessage,
+                    hasContent: viewModel.health != nil || viewModel.paths != nil
+                        || viewModel.reach != nil || viewModel.neighbors != nil,
+                    retry: retryNodeData
+                )
 
                 NodeIdentityCard(node: displayedNode)
 
@@ -46,6 +45,8 @@ struct NodeDetailScreen: View {
 
                 if let reach = viewModel.reach {
                     NodeReachCard(reach: reach)
+                } else if let neighbors = viewModel.neighbors {
+                    BeaconNodeReachCard(neighborCount: neighbors.neighbors.count)
                 } else if viewModel.isLoading {
                     NodeReachLoadingCard()
                 }
@@ -68,6 +69,14 @@ struct NodeDetailScreen: View {
                             openNode: { selectedLinkedNode = $0 }
                         )
                     }
+                }
+
+                if let neighbors = viewModel.neighbors, !neighbors.neighbors.isEmpty {
+                    NodeNeighborsCard(
+                        neighbors: neighbors.neighbors,
+                        nodesByPublicKey: linkedNodesByPublicKey,
+                        openNode: { selectedLinkedNode = $0 }
+                    )
                 }
 
                 if let paths = viewModel.paths, !paths.paths.isEmpty {
@@ -445,6 +454,117 @@ private struct NodeReachCard: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+    }
+}
+
+private struct BeaconNodeReachCard: View {
+    let neighborCount: Int
+
+    var body: some View {
+        NodeDetailCard(title: "Mesh Reach", symbol: "network") {
+            HStack(spacing: 8) {
+                NodeMetricTile(value: neighborCount.formatted(), label: "Neighbors")
+                NodeMetricTile(value: "—", label: "Two-way Links")
+                NodeMetricTile(value: "—", label: "Observers")
+            }
+            Text("Beacon reports nearby nodes, but not link direction or observer coverage.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+private struct NodeNeighborsCard: View {
+    let neighbors: [NeighborInsight]
+    let nodesByPublicKey: [String: MeshNode]
+    let openNode: (MeshNode) -> Void
+    @State private var isExpanded = false
+
+    private var visibleNeighbors: ArraySlice<NeighborInsight> {
+        neighbors.prefix(isExpanded ? neighbors.count : 3)
+    }
+
+    var body: some View {
+        NodeDetailCard(title: "Links", symbol: "link") {
+            VStack(spacing: 0) {
+                ForEach(visibleNeighbors) { neighbor in
+                    let linkedNode = neighbor.identity.linkablePublicKey.flatMap { nodesByPublicKey[$0] }
+                    if let linkedNode {
+                        Button {
+                            openNode(linkedNode)
+                        } label: {
+                            NodeNeighborRow(
+                                name: neighbor.name,
+                                displayPrefix: neighbor.identity.displayPrefix,
+                                snr: neighbor.signal.snr,
+                                showsDisclosure: true
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Opens node details")
+                    } else {
+                        NodeNeighborRow(
+                            name: neighbor.name,
+                            displayPrefix: neighbor.identity.displayPrefix,
+                            snr: neighbor.signal.snr,
+                            showsDisclosure: false
+                        )
+                    }
+
+                    if neighbor.id != visibleNeighbors.last?.id {
+                        Divider().opacity(0.3)
+                    }
+                }
+            }
+            if neighbors.count > 3 {
+                ExpandSectionButton(
+                    isExpanded: $isExpanded,
+                    totalCount: neighbors.count,
+                    noun: "links"
+                )
+            }
+        }
+    }
+}
+
+private struct NodeNeighborRow: View {
+    let name: String?
+    let displayPrefix: String?
+    let snr: Double?
+    let showsDisclosure: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "arrow.right.circle.fill")
+                .foregroundStyle(NodeScopeStyle.activity)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name ?? displayPrefix ?? String(localized: "Unknown Node"))
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(2)
+                    .layoutPriority(1)
+                if let snr {
+                    Text("SNR \(snr, format: .number.precision(.fractionLength(1))) dB")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Direction unavailable")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Spacer()
+
+            if showsDisclosure {
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
+            }
+        }
+        .padding(.vertical, 9)
+        .contentShape(Rectangle())
     }
 }
 

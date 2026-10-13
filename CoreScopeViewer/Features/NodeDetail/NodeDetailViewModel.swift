@@ -5,6 +5,7 @@ private struct NodeDetailCacheValue: Codable, Sendable {
     let health: NodeHealthResponse?
     let paths: NodePathsResponse?
     let reach: NodeReachResponse?
+    let neighbors: NeighborCollection?
 }
 
 @Observable
@@ -13,6 +14,7 @@ final class NodeDetailViewModel {
     var health: NodeHealthResponse?
     var paths: NodePathsResponse?
     var reach: NodeReachResponse?
+    var neighbors: NeighborCollection?
     var isLoading = true
     var errorMessage: String?
     var lastUpdatedAt: Date?
@@ -28,6 +30,7 @@ final class NodeDetailViewModel {
             health = nil
             paths = nil
             reach = nil
+            neighbors = nil
             lastUpdatedAt = nil
             errorMessage = nil
             isLoading = false
@@ -40,10 +43,11 @@ final class NodeDetailViewModel {
         guard let apiClient else { return }
         let loadID = UUID()
         activeLoadID = loadID
-        guard !apiClient.capabilities.isDisjoint(with: [.nodeHealth, .nodePaths, .nodeReach]) else {
+        guard !apiClient.capabilities.isDisjoint(with: [.neighbors, .nodeHealth, .nodePaths, .nodeReach]) else {
             health = nil
             paths = nil
             reach = nil
+            neighbors = nil
             lastUpdatedAt = nil
             isLoading = false
             errorMessage = apiClient is BeaconBackend ? BackendCapability.nodeHealth.beaconExplanation
@@ -60,11 +64,12 @@ final class NodeDetailViewModel {
             health = apiClient.capabilities.contains(.nodeHealth) ? cached.health : nil
             paths = apiClient.capabilities.contains(.nodePaths) ? cached.paths : nil
             reach = apiClient.capabilities.contains(.nodeReach) ? cached.reach : nil
+            neighbors = apiClient.capabilities.contains(.neighbors) ? cached.neighbors : nil
             lastUpdatedAt = savedAt
             errorMessage = nil
         }
         guard isCurrent(loadID, backend: apiClient) else { return }
-        isLoading = health == nil && paths == nil && reach == nil
+        isLoading = health == nil && paths == nil && reach == nil && neighbors == nil
         defer {
             if activeLoadID == loadID, apiClient.sourceSession.isCurrent { isLoading = false }
         }
@@ -80,13 +85,17 @@ final class NodeDetailViewModel {
                     ? try? apiClient.nodePaths(publicKey: pubkey) : nil
                 async let reachTask: NodeReachResponse? = apiClient.capabilities.contains(.nodeReach)
                     ? try? apiClient.nodeReach(publicKey: pubkey) : nil
+                async let neighborsTask: NeighborCollection? = apiClient is BeaconBackend
+                    && apiClient.capabilities.contains(.neighbors)
+                    ? try? apiClient.neighbors(publicKey: pubkey) : nil
                 let result = await NodeDetailCacheValue(
                     health: healthTask,
                     paths: pathsTask,
-                    reach: reachTask
+                    reach: reachTask,
+                    neighbors: neighborsTask
                 )
                 try apiClient.sourceSession.check()
-                guard result.health != nil || result.paths != nil || result.reach != nil else {
+                guard result.health != nil || result.paths != nil || result.reach != nil || result.neighbors != nil else {
                     throw URLError(.cannotLoadFromNetwork)
                 }
                 return result
@@ -96,6 +105,7 @@ final class NodeDetailViewModel {
             health = fresh.health
             paths = fresh.paths
             reach = fresh.reach
+            neighbors = fresh.neighbors
             lastUpdatedAt = .now
             errorMessage = nil
         } catch {

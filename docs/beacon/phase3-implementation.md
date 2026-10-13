@@ -166,5 +166,9 @@ Beacon resolves the node's source-local UUID and then reads `/nodes/{id}/neighbo
 requests. Beacon currently reports SNR but not RSSI or reliable directionality, so those values are
 left unknown.
 
-The project builds successfully and the complete iOS suite passes with 210 tests. C1 remains in
-progress until the node-detail cache and source-switch UI loading path are integrated.
+The node-detail cache and source-switch loading path now include Beacon neighbors. The screen reuses
+the existing Mesh Reach and Links card positions, row density, expansion behavior, catalog-backed
+navigation, loading state, refresh gesture, and error status. Beacon leaves the Two-way Links and
+Observers metrics visibly unknown and explains why, while each neighbor row shows reported SNR.
+The project builds successfully and the complete pre-UI iOS suite passes with 210 tests. C2 remains
+in progress until side-by-side runtime review.

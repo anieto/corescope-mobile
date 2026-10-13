@@ -24,7 +24,7 @@ enum BackendCapability: String, CaseIterable, Sendable {
         case .channelDecryptOnPhone:
             String(localized: "On-device channel decryption isn’t currently supported for Beacon sources. Future support depends on changes to Beacon’s API.")
         case .nodeHealth, .nodeReach, .nodePaths:
-            String(localized: "These detailed statistics are currently available only with CoreScope servers. Node analytics and a neighbors view for Beacon servers are planned for a future update.")
+            String(localized: "Detailed health, route, and network-importance statistics are currently available only with CoreScope servers.")
         case .mapDefaults:
             String(localized: "Beacon servers don’t provide map defaults. NodeScope uses region coordinates to frame the map instead.")
         }

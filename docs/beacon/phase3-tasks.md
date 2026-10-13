@@ -98,8 +98,8 @@ current values and requests.
 
 | ID | Task | Done when | Status |
 |---|---|---|---|
-| C1 | Implement Beacon `/nodes/{id}/neighbors` behind the backend, including caching, cancellation, source-session rejection, errors, and identity safety. | Fixture and request tests pass; opening detail stays within the Phase 3 budget | doing |
-| C2 | Populate the existing CoreScope reach/neighbors area with Beacon data using the same card, row ordering, navigation, signal formatting, loading state, and empty state wherever semantics match. | Side-by-side review shows the same UI structure; every absent CoreScope field has documented explanatory behavior | todo |
+| C1 | Implement Beacon `/nodes/{id}/neighbors` behind the backend, including caching, cancellation, source-session rejection, errors, and identity safety. | Fixture and request tests pass; opening detail stays within the Phase 3 budget | done |
+| C2 | Populate the existing CoreScope reach/neighbors area with Beacon data using the same card, row ordering, navigation, signal formatting, loading state, and empty state wherever semantics match. | Side-by-side review shows the same UI structure; every absent CoreScope field has documented explanatory behavior | doing |
 | C3 | Port C1–C2 to Android and update the parity matrix. | iOS and Android show equivalent values and interactions from the same fixture | todo |
 
 ## Milestone D: node analytics parity
