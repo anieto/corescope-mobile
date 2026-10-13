@@ -33,6 +33,9 @@ data class DiagnosticReport(
     val connectionLevel: DiagnosticLevel, val connectionDetail: String,
     val compatibilityLevel: DiagnosticLevel, val compatibilityDetail: String,
     val capabilities: List<CapabilityCheck>,
+    val backendType: String = "CoreScope",
+    /** Beacon only: the version the server last reported. */
+    val serverVersion: String? = null,
 )
 
 sealed interface ProbeOutcome {
@@ -43,12 +46,47 @@ sealed interface ProbeOutcome {
     data class NetworkFailure(val message: String) : ProbeOutcome
 }
 
-class AnalyzerDiagnostics(client: OkHttpClient, private val clock: () -> Long = System::currentTimeMillis) {
+class AnalyzerDiagnostics(
+    client: OkHttpClient,
+    private val clock: () -> Long = System::currentTimeMillis,
+    /** The verified Beacon backend for a host, if that's what it is. */
+    private val beaconBackend: (String) -> BeaconBackend? = { null },
+) {
     // Short timeouts and no shared cache, so a check reflects the analyzer right now.
     private val http = client.newBuilder().cache(null)
         .connectTimeout(10, TimeUnit.SECONDS).readTimeout(10, TimeUnit.SECONDS).callTimeout(15, TimeUnit.SECONDS).build()
 
-    suspend fun run(host: String): DiagnosticReport = run("https://${normalizeHost(host)}/".toHttpUrl(), host)
+    suspend fun run(host: String): DiagnosticReport {
+        beaconBackend(host)?.let { return runBeacon(host, it) }
+        return run("https://${normalizeHost(host)}/".toHttpUrl(), host)
+    }
+
+    /** Beacon has no CoreScope probes: recheck `/info` and report the adapter's coverage (iOS `runBeacon`). */
+    internal suspend fun runBeacon(host: String, backend: BeaconBackend): DiagnosticReport {
+        val checks = AnalyzerCapability.entries.map { capability ->
+            CapabilityCheck(capability, DiagnosticLevel.WARNING,
+                if (capability == AnalyzerCapability.CHANNELS || capability == AnalyzerCapability.MAP_CONFIGURATION)
+                    "Not available for Beacon sources in this release."
+                else "Supported by the Beacon adapter; endpoint not probed.")
+        }
+        return try {
+            val info = backend.client.serverInfo()
+            val (compatibility, detail) = try {
+                info.requireSupported()
+                DiagnosticLevel.SUCCESS to "Beacon version is supported. Browse endpoints were not probed."
+            } catch (e: BeaconApiException) {
+                DiagnosticLevel.FAILURE to (e.message ?: "This Beacon version is not supported.")
+            }
+            DiagnosticReport(host, clock(), DiagnosticLevel.SUCCESS, "Beacon responded over HTTPS.", compatibility, detail,
+                checks, "Beacon", info.serverVersion)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            DiagnosticReport(host, clock(), DiagnosticLevel.WARNING, e.message ?: networkMessage(e), DiagnosticLevel.WARNING,
+                "Beacon could not be rechecked. The selected server type is unchanged.", checks, "Beacon",
+                backend.serverInfo.serverVersion)
+        }
+    }
 
     internal suspend fun run(base: HttpUrl, host: String): DiagnosticReport = coroutineScope {
         val results = AnalyzerCapability.entries.map { capability -> async { capability to probe(base, capability) } }.awaitAll()

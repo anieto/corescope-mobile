@@ -43,5 +43,7 @@ fun visibleObservers(
 /** The list and its detail screens share one observer download. */
 class ObserversViewModel(repository: BrowseRepository) : ViewModel() {
     val observers = KeyedLoader(viewModelScope, 60_000, restore = { host: String -> repository.saved(ResponseCache.STALE_LIFETIME) { observers(host) } }) { host -> repository.observers(host) }
+    /** Beacon only: the observer's server record (iOS `loadBeaconDetail`). */
+    val beaconDetail = KeyedLoader(viewModelScope, 60_000) { key: Pair<String, String> -> repository.observerDetail(key.first, key.second) }
     val analytics = KeyedLoader(viewModelScope, 5 * 60_000, restore = { key: Pair<String, String> -> repository.saved(ResponseCache.DETAIL_LIFETIME) { observerAnalytics(key.first, key.second) } }) { key -> repository.observerAnalytics(key.first, key.second) }
 }

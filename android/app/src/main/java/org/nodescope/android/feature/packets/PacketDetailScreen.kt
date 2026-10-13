@@ -125,7 +125,7 @@ fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNod
 }
 
 @Composable
-private fun DetailSection(title: String, content: @Composable ColumnScope.() -> Unit) {
+internal fun DetailSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(title.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -135,7 +135,7 @@ private fun DetailSection(title: String, content: @Composable ColumnScope.() -> 
 }
 
 @Composable
-private fun DetailRow(label: String, value: String, monospace: Boolean = false) {
+internal fun DetailRow(label: String, value: String, monospace: Boolean = false) {
     Column(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         SelectionContainer {

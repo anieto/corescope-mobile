@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.nodes
 
+import org.nodescope.android.core.network.BackendCapability
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Bitmap
@@ -78,10 +79,12 @@ fun NodeDetailScreen(
     val reach = model?.reach?.state?.collectAsStateWithLifecycle()?.value ?: Loaded()
     val paths = model?.paths?.state?.collectAsStateWithLifecycle()?.value ?: Loaded()
     val key = host to publicKey
-    LaunchedEffect(model, key) { model?.load(host, publicKey) }
+    // Beacon has no health, reach or path statistics (iOS: capabilities disjoint → notice).
+    val beacon = LocalBeaconSource.current
+    LaunchedEffect(model, key) { if (!beacon) model?.load(host, publicKey) }
     val now = rememberNow()
     // Never show another node's (or analyzer's) sections while this one loads.
-    val sections = listOf(health, reach, paths).map { if (it.key == key) it else Loaded(loading = model != null) }
+    val sections = listOf(health, reach, paths).map { if (it.key == key) it else Loaded(loading = model != null && !beacon) }
     val healthValue = health.value?.takeIf { health.key == key }
     val reachValue = reach.value?.takeIf { reach.key == key }
     val pathsValue = paths.value?.takeIf { paths.key == key }
@@ -90,7 +93,8 @@ fun NodeDetailScreen(
     LaunchedEffect(node?.publicKey) { node?.let(onViewed) }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        if (model != null) item {
+        if (beacon) item { BeaconFeatureNotice(BackendCapability.NODE_HEALTH) }
+        else if (model != null) item {
             LoadStatus(combinedStatus(sections),
                 hasContent = healthValue != null || reachValue != null || pathsValue != null, now) { model.load(host, publicKey, force = true) }
         }
@@ -126,8 +130,11 @@ private fun IdentityCard(node: MeshNode, publicKey: String, favorite: Boolean, n
                 Text(node.name?.takeIf(String::isNotBlank) ?: "Unnamed node", style = MaterialTheme.typography.titleLarge)
                 Text(node.role.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Seen ${relativeTime(parseInstant(node.lastSeen), now)}", style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // Beacon may not know when a node was last seen; never show "Seen Unknown".
+                parseInstant(node.lastSeen)?.let { seen ->
+                    Text("Seen ${relativeTime(seen, now)}", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
             IconToggleButton(checked = favorite, onCheckedChange = { onFavorite(node) }) {
                 Icon(if (favorite) Icons.Outlined.Star else Icons.Outlined.StarBorder,

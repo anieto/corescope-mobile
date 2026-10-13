@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.channels
 
+import org.nodescope.android.core.network.BackendCapability
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -36,7 +38,9 @@ fun ChannelDetailScreen(
     val messageKey = selection.host to channelId
     val now = rememberNow()
 
+    val beacon = LocalBeaconSource.current
     fun refresh(force: Boolean) {
+        if (beacon) return
         if (monitored != null) model.packets.load(selection, force) else model.messages.load(messageKey, force)
     }
     LaunchedEffect(selection, channelId, monitored != null) { refresh(false) }
@@ -74,7 +78,8 @@ fun ChannelDetailScreen(
                 }
                 ChannelActions(channelName, channelId, monitored != null, onRefresh = { refresh(true) }, onRemove = { confirmRemove = true })
             }
-            LoadStatus(loadState, raw.isNotEmpty(), now) { refresh(true) }
+            if (beacon) BeaconFeatureNotice(if (monitored != null) BackendCapability.CHANNEL_DECRYPT_ON_PHONE else BackendCapability.SERVER_CHANNELS)
+            else LoadStatus(loadState, raw.isNotEmpty(), now) { refresh(true) }
             if (regional == null) Text("Observer regions are unavailable, so messages from every region are shown.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

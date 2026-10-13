@@ -88,7 +88,11 @@ fun MapPacketsLayout(
                     IconButton(onClick = { setOpen(false) }) { Icon(Icons.Outlined.Close, "Hide live packets") }
                 }
                 Box(Modifier.weight(1f).fillMaxWidth()) {
-                    PacketScreen(feed, onReconnect, selectedId = selectedId,
+                    val beaconHost = feed.selection?.host?.takeIf { org.nodescope.android.core.design.LocalBeaconSource.current }
+                    // Beacon rows are server snapshots without routes: a tap opens the packet's details (iOS sidebar).
+                    if (beaconHost != null) org.nodescope.android.feature.packets.BeaconPacketScreen(feed, beaconHost,
+                        selectedHash = selectedId, onPacket = onDetails)
+                    else PacketScreen(feed, onReconnect, selectedId = selectedId,
                         onGroup = { id ->
                             // Tapping the selected packet again deselects it (and ends its replay).
                             if (selectedId == id) onSelect(null, null, emptyList()) else {

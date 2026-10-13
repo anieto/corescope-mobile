@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -136,7 +137,20 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
             }
         }
     } else {
-        key(preferences.host) {
+        val sourceStatus by model.sourceStatus.collectAsStateWithLifecycle()
+        val selectedHost = runCatching { org.nodescope.android.core.network.normalizeHost(preferences.host).lowercase() }
+            .getOrDefault(preferences.host.lowercase())
+        if (!(sourceStatus.host == selectedHost && sourceStatus.ready)) {
+            SourceCheck(sourceStatus.error.takeIf { sourceStatus.host == selectedHost },
+                onRetry = model::retrySourceDetection, onChooseAnother = model::chooseAnotherSource)
+            return
+        }
+        val liveActions = remember(model) {
+            org.nodescope.android.core.design.LiveFeedActions(model::setLiveFeedDemand, model::refreshBeaconObservers, model::retryBeaconMetadata)
+        }
+        key(preferences.host, sourceStatus.session.id) { CompositionLocalProvider(
+            org.nodescope.android.core.design.LocalBeaconSource provides (sourceStatus.beacon != null),
+            org.nodescope.android.core.design.LocalLiveFeedActions provides liveActions) {
             val rawState by model.state.collectAsStateWithLifecycle()
             // Preferences and session emit separately: never expose a previous selection's data.
             val state = rawState.takeIf { it.selection?.host == preferences.host && it.selection.region == preferences.region }
@@ -155,7 +169,26 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
                 sourceViewport = sources.firstOrNull { source ->
                     runCatching { org.nodescope.android.core.network.normalizeHost(source.host) }.getOrNull().equals(preferences.host, true)
                 }?.viewport)
+        } }
+    }
+}
 
+/** Shown until the selected analyzer is identified as CoreScope or Beacon (iOS app root). */
+@Composable
+private fun SourceCheck(error: String?, onRetry: () -> Unit, onChooseAnother: () -> Unit) {
+    Surface(Modifier.fillMaxSize()) {
+        Column(Modifier.safeDrawingPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+            horizontalAlignment = Alignment.CenterHorizontally) {
+            if (error == null) {
+                CircularProgressIndicator()
+                Text("Checking analyzer source…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                Icon(Icons.Outlined.CloudOff, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Couldn't identify this server", style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+                Text(error, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                Button(onClick = onRetry) { Text("Retry") }
+                TextButton(onClick = onChooseAnother) { Text("Choose Another Source") }
+            }
         }
     }
 }
@@ -410,6 +443,17 @@ internal fun AppShell(
                         // Read when composing a screen, not when building the graph (see liveFeed).
                         val currentFeed by liveFeed
                         screen<MapRoute> {
+                            // A Beacon map adds the recovered node catalog and live adverts; recomputed only
+                            // when those change, not on every packet.
+                            val loadedSnapshot = state.snapshot?.takeIf { state.selection?.host == preferences.host }
+                            val beaconNodesKey by remember { derivedStateOf {
+                                currentFeed.beacon?.let { listOf(it.nodeSequence, it.nodeCatalogId, it.metadataNeedsRecovery) }
+                            } }
+                            val mapSnapshot = remember(loadedSnapshot, beaconNodesKey, preferences.region) {
+                                if (beaconNodesKey == null || loadedSnapshot == null) loadedSnapshot
+                                else loadedSnapshot.copy(nodes = org.nodescope.android.core.network.beaconMapNodes(
+                                    loadedSnapshot.nodes, currentFeed.beacon, preferences.region))
+                            }
                             // One map for all regions: it re-frames itself and keeps the chosen map style.
                             // Wide screens add the live packet feed beside it; a tapped packet replays
                             // its routes, or opens its details when none can be drawn.
@@ -425,7 +469,7 @@ internal fun AppShell(
                                     }
                                     if (id != null && hash != null) completeRoutes(id, hash)
                                 }, onDetails = { nav.navigate(PacketDetailRoute(it)) }) { onShowPackets ->
-                            MapScreen(state.snapshot?.takeIf { state.selection?.host == preferences.host }, focusedNode, ::openNode, feed = { currentFeed }, onRefresh = onRefresh, regionControl = { RegionMenu(preferences, state) { focusedNode = null; focusedPosition = null; onRegion(it) } }, focusedCoordinate = focusedPosition?.let { org.nodescope.android.core.model.Coordinate.gps(it[0], it[1]) }, selectedRegion = preferences.region, sourceViewport = sourceViewport, routeReplay = replay, onExitReplay = { replay = null },
+                            MapScreen(mapSnapshot, focusedNode, ::openNode, feed = { currentFeed }, onRefresh = onRefresh, regionControl = { RegionMenu(preferences, state) { focusedNode = null; focusedPosition = null; onRegion(it) } }, focusedCoordinate = focusedPosition?.let { org.nodescope.android.core.model.Coordinate.gps(it[0], it[1]) }, selectedRegion = preferences.region, sourceViewport = sourceViewport, routeReplay = replay, onExitReplay = { replay = null },
                                 host = preferences.host, showActiveNodes = showActiveNodes, onActiveNodesShown = { showActiveNodes = false }, onShowPackets = onShowPackets,
                                 onLiveFeedDemand = onLiveFeedDemand)
                             }
@@ -446,12 +490,21 @@ internal fun AppShell(
                                 ))
                         }
                         screen<PacketRoute> {
-                            PacketScreen(currentFeed, onReconnect, regionControl, { onRegion(null) }, onGroup = { nav.navigate(PacketDetailRoute(it)) })
+                            if (org.nodescope.android.core.design.LocalBeaconSource.current)
+                                org.nodescope.android.feature.packets.BeaconPacketScreen(currentFeed, preferences.host, regionControl, { onRegion(null) }) {
+                                    nav.navigate(PacketDetailRoute(it))
+                                }
+                            else PacketScreen(currentFeed, onReconnect, regionControl, { onRegion(null) }, onGroup = { nav.navigate(PacketDetailRoute(it)) })
                         }
                         screen<PacketDetailRoute> { backStack ->
                             val nodes = state.snapshot?.nodes.orEmpty()
                             val groupId = backStack.toRoute<PacketDetailRoute>().groupId
-                            PacketDetailScreen(currentFeed, groupId, nodes, loadRoutes = { fullRoutes(preferences.host, preferences.region, it) }) { routes, selected -> startReplay(routes, selected, groupId) }
+                            // A Beacon packet is opened by its hash, a CoreScope one by its transmission group.
+                            if (org.nodescope.android.core.design.LocalBeaconSource.current)
+                                org.nodescope.android.feature.packets.BeaconPacketDetailScreen(currentFeed, browse, preferences.host, groupId, nodes) { routes, selected ->
+                                    startReplay(routes, selected, groupId)
+                                }
+                            else PacketDetailScreen(currentFeed, groupId, nodes, loadRoutes = { fullRoutes(preferences.host, preferences.region, it) }) { routes, selected -> startReplay(routes, selected, groupId) }
                         }
                         screen<MessagePacketRoute> { backStack ->
                             val route = backStack.toRoute<MessagePacketRoute>()

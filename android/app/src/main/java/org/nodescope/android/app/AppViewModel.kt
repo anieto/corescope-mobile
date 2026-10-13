@@ -16,7 +16,12 @@ data class PendingLink(val id: Long, val link: NodeScopeLink)
 class AppViewModel(private val container: AppContainer) : ViewModel() {
     val preferences = container.preferences.values.map<AppPreferences, AppPreferences?> { it }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
-    private val session = AnalyzerSession(container.preferences, container.repository)
+    private val session = AnalyzerSession(container.preferences, container.repository, container.sourceRouter.liveReadiness)
+    /** Whether the selected analyzer has been identified as CoreScope or Beacon (iOS `sourceIsReady`). */
+    val sourceStatus: StateFlow<AnalyzerSourceRouter.State> get() = container.sourceRouter.state
+    fun retrySourceDetection() = container.sourceRouter.requestResolution()
+    /** iOS "Choose Another Source": back to the source list without forgetting the current one. */
+    fun chooseAnotherSource() = persist { container.preferences.setOnboarded(false) }
     val state = session.states.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SessionState())
     private val feed = LiveFeed(container.preferences, container.packetSource, container.sourceRouter.liveReadiness)
     // Packet bookkeeping runs off the main thread, which only receives each finished state; on a
@@ -24,6 +29,8 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     val live = feed.states.flowOn(kotlinx.coroutines.Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(0, 0), LiveFeedState())
     fun reconnectLive() = feed.reconnect()
+    fun refreshBeaconObservers() = feed.refreshObservers()
+    fun retryBeaconMetadata() = feed.retryMetadataRecovery()
     fun setLiveFeedDemand(consumer: java.util.UUID, host: String, demand: LiveFeedDemand?) =
         feed.setDemand(consumer, host, demand)
     val browse: BrowseRepository get() = container.browse
@@ -48,6 +55,23 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     init {
         viewModelScope.launch { container.responses.prune() }
+        // Identify the source whenever it changes or a retry is requested (iOS app `.task(id:)`).
+        viewModelScope.launch {
+            container.preferences.values.map { it.onboarded to it.host }.distinctUntilChanged().collectLatest { (onboarded, host) ->
+                if (!onboarded) return@collectLatest
+                container.sourceRouter.setHost(host)
+                container.sourceRouter.state.map { it.resolutionId }.distinctUntilChanged().collectLatest {
+                    val normalized = runCatching { normalizeHost(host).lowercase() }.getOrDefault(host.lowercase())
+                    val listed = sourceState.value.firstOrNull {
+                        runCatching { normalizeHost(it.host).lowercase() }.getOrNull() == normalized
+                    }
+                    val requiresBeacon = listed?.backendType == AnalyzerSourceType.BEACON
+                    val knownCoreScope = !requiresBeacon &&
+                        (normalized == DEFAULT_HOST || listed?.backendType == AnalyzerSourceType.CORESCOPE)
+                    container.sourceRouter.resolve(knownCoreScope, requiresBeacon)
+                }
+            }
+        }
         viewModelScope.launch {
             val cached = container.preferences.values.first().registry
             cached?.let { parseSources(it)?.let { sourceState.value = it.sources } }
@@ -77,7 +101,10 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
             writeErrorState.value = null
             try {
                 val host = normalizeHost(input)
+                val sameHost = container.sourceRouter.state.value.host == host.lowercase()
                 container.preferences.selectSource(host)
+                // Re-choosing the current source re-identifies it, as on iOS.
+                if (sameHost) container.sourceRouter.requestResolution()
                 sourceChangeState.value = System.currentTimeMillis()
                 onSaved()
             } catch (e: CancellationException) { throw e } catch (e: Exception) {

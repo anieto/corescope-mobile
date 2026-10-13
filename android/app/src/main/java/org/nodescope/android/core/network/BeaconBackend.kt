@@ -72,6 +72,13 @@ class BeaconBackend(val client: BeaconApiClient, val serverInfo: BeaconServerInf
         return observers
     }
 
+    override suspend fun observerDetail(host: String, id: String): MeshObserver {
+        requireHost(host)
+        val detail = observerReader.observerDetail(id).meshObserver()
+        sourceSession.check()
+        return detail
+    }
+
     override suspend fun allNodes(host: String): List<MeshNode> {
         requireHost(host)
         return nodeReader.nodes(null).map { it.meshNode() }.distinctBy { it.publicKey }

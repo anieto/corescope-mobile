@@ -62,6 +62,10 @@ data class LiveFeedDemand(
 data class LiveFeedControls(
     val subscriptions: Set<LiveFeedSubscription>,
     val configuration: LiveFeedConfiguration,
+    /** Beacon only: bumped to reload the observer catalog (iOS `refreshObservers`). */
+    val observerRefresh: Int = 0,
+    /** Beacon only: bumped to retry node metadata recovery (iOS `retryMetadataRecovery`). */
+    val metadataRetry: Int = 0,
 )
 fun mergeLiveFeedDemands(demands: Collection<LiveFeedDemand>) = LiveFeedControls(
     demands.map { it.subscription }.toSet() + LiveFeedSubscription(),
@@ -141,6 +145,10 @@ class LiveFeed(
     }
     private val restart = MutableStateFlow(0)
     fun reconnect() { restart.update { it + 1 } }
+    private val observerRefresh = MutableStateFlow(0)
+    fun refreshObservers() { observerRefresh.update { it + 1 } }
+    private val metadataRetry = MutableStateFlow(0)
+    fun retryMetadataRecovery() { metadataRetry.update { it + 1 } }
     val states = combine(preferences.values.map {
         if (it.onboarded) AnalyzerSelection(it.host, it.region) else null
     }.distinctUntilChanged(), restart, readiness.distinctUntilChanged()) { selection, generation, source ->
@@ -172,9 +180,9 @@ class LiveFeed(
             updates.send(Update.History(packets, observers))
         }
         var historyJob: Job? = if (beacon) null else launch { refreshHistory() }
-        val controls = demands.map { current ->
+        val controls = combine(demands, observerRefresh, metadataRetry) { current, refresh, retry ->
             mergeLiveFeedDemands(current.values.filter { it.first == selection.host }.map { it.second } +
-                listOfNotNull(browseDemand.takeIf { beacon }))
+                listOfNotNull(browseDemand.takeIf { beacon })).copy(observerRefresh = refresh, metadataRetry = retry)
         }.distinctUntilChanged()
         launch { source.events(selection.host, controls).collect { updates.send(Update.Signal(it)) } }
         try {

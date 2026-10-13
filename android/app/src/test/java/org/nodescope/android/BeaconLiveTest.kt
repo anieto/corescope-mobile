@@ -326,4 +326,27 @@ class BeaconLiveTest {
         assertTrue(events.any { it is BeaconLiveEvent.BrowseSnapshot })
         feed.disconnect()
     }
+
+    @Test fun liveMapNodesPreserveDatesClearPositionsAndRespectRegions() {
+        val rest = MeshNode(key, "Rest", "repeater", 30.0, -97.0, "1970-01-01T00:00:05Z")
+        val other = "b".repeat(64)
+        val states = mapOf(
+            key to BeaconLiveProtocol.NodeState.of(node(""","lat":null,"lng":null,"iatas":[{"iata":"SAT","lastHeard":9000}]""")),
+            other to BeaconLiveProtocol.NodeState.of(node(""","name":"Elsewhere","iatas":[{"iata":"AUS","lastHeard":9000}]""").copy(publicKey = other)),
+        )
+        val sat = mergingBeaconNodes(listOf(rest), states, "SAT")
+        assertEquals("A live-only node outside the region stays off the map", listOf(key), sat.map { it.publicKey })
+        assertNull("An explicit clear removes the position", sat.single().lat)
+        assertEquals("1970-01-01T00:00:09Z", sat.single().lastSeen)
+        assertEquals(2, mergingBeaconNodes(listOf(rest), states, null).size)
+    }
+
+    @Test fun recoveredCatalogReplacesLoadedNodesOnlyWhenCurrent() {
+        val loaded = listOf(MeshNode(key, "Loaded", "repeater", null, null, "2030-01-01T00:00:00Z"))
+        val catalogNode = BeaconNode(nodeId, key, 2, name = "Catalog", lastSeen = 1_000, iatas = listOf(BeaconNodeRegion("SAT", 1_000)))
+        val fresh = BeaconLiveState(nodeCatalog = listOf(catalogNode))
+        assertEquals("A newer loaded record wins", "Loaded", beaconMapNodes(loaded, fresh, "SAT").single().name)
+        assertTrue("Region filtering applies to the catalog", beaconMapNodes(loaded, fresh, "AUS").isEmpty())
+        assertEquals("A stale catalog is ignored", loaded, beaconMapNodes(loaded, fresh.copy(metadataNeedsRecovery = true), "AUS"))
+    }
 }

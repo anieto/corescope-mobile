@@ -30,7 +30,7 @@ fun ObserversListDetailScreen(
                 selectedId = selectedId.takeIf { showSelection })
         },
         detailPane = { id ->
-            ObserverDetailScreen(model, selection.host, id, favorite = library.isFavorite(SavedKind.OBSERVER, id),
+            ObserverDetailScreen(model, selection.host, id, feed = feed, favorite = library.isFavorite(SavedKind.OBSERVER, id),
                 onFavorite = library::toggle, onViewed = library::viewed)
         },
     )

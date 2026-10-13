@@ -710,3 +710,38 @@ data class BeaconLiveState(
         }
     }
 }
+
+/**
+ * Map nodes for a Beacon source (iOS `MapViewModel.applyBeaconNodes`): the recovered catalog when
+ * it's current (keeping a newer REST record), otherwise the loaded nodes, then live adverts on top.
+ * A live-only node joins only when one of its hearing regions is selected.
+ */
+fun beaconMapNodes(loaded: List<MeshNode>, live: BeaconLiveState?, region: String?): List<MeshNode> {
+    live ?: return loaded
+    val selected = region?.split(",")?.map { it.trim().uppercase() }?.filter { it.isNotEmpty() }?.toSet().orEmpty()
+    val catalog = live.nodeCatalog?.takeIf { !live.metadataNeedsRecovery }
+    val baseline = if (catalog == null) loaded else {
+        val existing = loaded.associateBy { it.publicKey.lowercase() }
+        catalog.filter { node -> selected.isEmpty() || node.iatas.orEmpty().any { it.iata.uppercase() in selected } }.map { record ->
+            val node = record.meshNode()
+            val previous = existing[node.publicKey]
+            val previousDate = previous?.let { parseInstant(it.lastSeen) }
+            val date = parseInstant(node.lastSeen)
+            if (previous != null && previousDate != null && date != null && previousDate > date) previous else node
+        }
+    }
+    return mergingBeaconNodes(baseline, live.nodes, region)
+}
+
+fun mergingBeaconNodes(nodes: List<MeshNode>, states: Map<String, BeaconLiveProtocol.NodeState>, region: String?): List<MeshNode> {
+    val result = nodes.map { node -> states[node.publicKey.lowercase()]?.applying(node) ?: node }.toMutableList()
+    val existing = nodes.mapTo(HashSet()) { it.publicKey.lowercase() }
+    val selected = region?.split(",")?.map { it.trim().uppercase() }?.filter { it.isNotEmpty() }?.toSet().orEmpty()
+    for (key in states.keys.sorted()) {
+        if (key in existing) continue
+        val state = states.getValue(key)
+        if (selected.isNotEmpty() && selected.none { it in state.regions.keys }) continue
+        result += state.applying(null)
+    }
+    return result
+}

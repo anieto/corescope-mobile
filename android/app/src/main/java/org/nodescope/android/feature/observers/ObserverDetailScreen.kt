@@ -20,29 +20,44 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.nodescope.android.core.design.*
 import org.nodescope.android.core.model.*
+import org.nodescope.android.core.network.LiveFeedState
+import org.nodescope.android.core.network.BackendCapability
 
 @Composable
-fun ObserverDetailScreen(model: ObserversViewModel, host: String, observerId: String, favorite: Boolean = false,
+fun ObserverDetailScreen(model: ObserversViewModel, host: String, observerId: String, feed: LiveFeedState? = null, favorite: Boolean = false,
     onFavorite: (MeshObserver) -> Unit = {}, onViewed: (MeshObserver) -> Unit = {}) {
     val listState by model.observers.state.collectAsStateWithLifecycle()
     val analyticsState by model.analytics.state.collectAsStateWithLifecycle()
     val key = host to observerId
     val now = rememberNow()
-    LaunchedEffect(host) { model.observers.load(host) }
-    LaunchedEffect(key) { model.analytics.load(key) }
-    val observer = listState.value.takeIf { listState.key == host }?.firstOrNull { it.id == observerId }
-    val analytics = analyticsState.value.takeIf { analyticsState.key == key }
+    val beacon = LocalBeaconSource.current
+    val detailState by model.beaconDetail.state.collectAsStateWithLifecycle()
+    if (beacon) LaunchedEffect(key) { model.beaconDetail.load(key) }
+    else {
+        LaunchedEffect(host) { model.observers.load(host) }
+        LaunchedEffect(key) { model.analytics.load(key) }
+    }
+    val observer = if (beacon) {
+        // The server record, with the list's online state and the newest live status (iOS `displayedObserver`).
+        val listed = feed?.observers?.firstOrNull { it.id.equals(observerId, ignoreCase = true) }
+        val detail = detailState.value?.takeIf { detailState.key == key }?.copy(online = listed?.online) ?: listed
+        detail?.let { feed?.beacon?.observers?.get(it.id.lowercase())?.applying(it) ?: it }
+    } else listState.value.takeIf { listState.key == host }?.firstOrNull { it.id == observerId }
+    val analytics = if (beacon) null else analyticsState.value.takeIf { analyticsState.key == key }
     LaunchedEffect(observer?.id) { observer?.let(onViewed) }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             when {
                 observer != null -> ObserverIdentityCard(observer, now, favorite) { onFavorite(observer) }
-                listState.loading -> LinearProgressIndicator(Modifier.fillMaxWidth())
+                (if (beacon) detailState.loading || detailState.key != key else listState.loading) -> LinearProgressIndicator(Modifier.fillMaxWidth())
                 else -> Text("This observer is not in the current results for $host.", style = MaterialTheme.typography.bodyMedium)
             }
         }
-        item { LoadStatus(analyticsState, analytics != null, now) { model.analytics.load(key, force = true) } }
+        if (beacon) {
+            if (detailState.key == key) item { LoadStatus(detailState, detailState.value != null, now) { model.beaconDetail.load(key, force = true) } }
+            item { BeaconFeatureNotice(BackendCapability.OBSERVER_ANALYTICS) }
+        } else item { LoadStatus(analyticsState, analytics != null, now) { model.analytics.load(key, force = true) } }
         if (analytics != null) {
             if (analytics.timeline.isNotEmpty()) item {
                 AnalyticsCard("Packets over time", Icons.Outlined.BarChart) {
@@ -84,13 +99,15 @@ internal fun ObserverIdentityCard(observer: MeshObserver, now: Long, favorite: B
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                val tone = statusAccent(observer.isActive(now))
+                val tone = statusAccent(observer.online ?: observer.isActive(now))
                 Box(Modifier.size(48.dp).background(tone.copy(alpha = 0.13f), CircleShape), contentAlignment = Alignment.Center) {
                     Icon(Icons.Outlined.Sensors, null, tint = tone)
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(observer.displayName, style = MaterialTheme.typography.titleLarge)
-                    Text(listOfNotNull(observer.iata, "Seen ${relativeTime(parseInstant(observer.lastSeen), now)}").joinToString(" · "),
+                    Text(listOfNotNull(observer.iata,
+                        parseInstant(observer.lastSeen)?.let { "Seen ${relativeTime(it, now)}" } ?: "Last seen unknown",
+                        observer.online?.let { if (it) "Online" else "Offline" }).joinToString(" · "),
                         style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onClick = onFavorite) {

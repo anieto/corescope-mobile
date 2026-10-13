@@ -29,6 +29,9 @@ interface BrowseRepository {
     suspend fun nodeAnalytics(host: String, publicKey: String, days: Int): NodeAnalytics
     suspend fun packetDetail(host: String, hash: String): PacketDetail
     /** Every node on the analyzer (no region), for Explore's search and dashboard. */
+    /** Beacon only: one observer's server record (CoreScope screens use the observer list). */
+    suspend fun observerDetail(host: String, id: String): MeshObserver =
+        throw UnsupportedOperationException("Observer detail is not available on this server.")
     suspend fun allNodes(host: String): List<MeshNode>
     /** The analyzer's latest packets (no region), for Explore's search and dashboard. */
     suspend fun recentPackets(host: String, limit: Int = 1_000): List<LivePacket>

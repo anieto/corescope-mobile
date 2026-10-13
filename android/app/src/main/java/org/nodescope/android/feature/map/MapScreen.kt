@@ -126,6 +126,11 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     var framedHost by rememberSaveable { mutableStateOf(host) }
     var lastFocus by rememberSaveable { mutableStateOf<String?>(null) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val liveActions = org.nodescope.android.core.design.LocalLiveFeedActions.current
+    val beaconSource = org.nodescope.android.core.design.LocalBeaconSource.current
+    val beaconMetadata by remember(beaconSource) { derivedStateOf {
+        feed().beacon?.takeIf { beaconSource && it.metadataNeedsRecovery }?.let { true to it.metadataRecoveryError }
+    } }
     val liveFeedConsumer = remember { java.util.UUID.randomUUID() }
     val currentLiveFeedDemand by rememberUpdatedState(onLiveFeedDemand)
     LaunchedEffect(lifecycle, host) {
@@ -426,6 +431,16 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                         Icon(Icons.Outlined.FilterList, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(if (filters.isFiltering) "${filters.activeCount} active" else "Filters")
+                    }
+                }
+            }
+            // A Beacon map waits for its node catalog after every reconnect (iOS metadata overlay).
+            beaconMetadata?.let { (_, error) ->
+                Surface(shape = MaterialTheme.shapes.medium, tonalElevation = 4.dp) {
+                    Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (error == null) "Map data may be outdated. Waiting for refresh…" else "Map data may be outdated.",
+                            Modifier.weight(1f, fill = false).padding(vertical = 10.dp), style = MaterialTheme.typography.bodySmall)
+                        if (error != null) TextButton(onClick = liveActions.retryMetadata) { Text(stringResource(R.string.retry)) }
                     }
                 }
             }

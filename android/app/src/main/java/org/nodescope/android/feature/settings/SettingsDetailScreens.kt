@@ -75,6 +75,10 @@ fun DiagnosticsScreen(diagnostics: AnalyzerDiagnostics, host: String, connection
                 Row { Text("Analyzer", Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant); Text(host, textAlign = TextAlign.End) }
                 val current = report
                 if (current != null) {
+                    Row { Text("Server type", Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant); Text(current.backendType, textAlign = TextAlign.End) }
+                    current.serverVersion?.let { version ->
+                        Row { Text("Server version (last reported)", Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant); Text(version, textAlign = TextAlign.End) }
+                    }
                     DiagnosticRow("HTTPS connection", current.connectionDetail, Icons.Outlined.Lock, current.connectionLevel)
                     DiagnosticRow("API compatibility", current.compatibilityDetail, Icons.Outlined.Verified, current.compatibilityLevel)
                     Row {

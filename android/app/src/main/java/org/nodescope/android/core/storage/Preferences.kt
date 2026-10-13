@@ -29,6 +29,7 @@ interface PreferencesStore {
     suspend fun setDestination(destination: String)
     suspend fun cacheRegistry(document: String)
     suspend fun setDistanceUnit(unit: DistanceUnit) {}
+    suspend fun setOnboarded(value: Boolean) {}
 }
 private val Context.preferences by preferencesDataStore("nodescope")
 class AndroidPreferences(context: Context) : PreferencesStore {
@@ -59,4 +60,5 @@ class AndroidPreferences(context: Context) : PreferencesStore {
     override suspend fun setDestination(destination: String) { store.edit { it[this.destination] = destination } }
     override suspend fun cacheRegistry(document: String) { store.edit { it[registry] = document } }
     override suspend fun setDistanceUnit(unit: DistanceUnit) { store.edit { it[distanceUnit] = unit.name } }
+    override suspend fun setOnboarded(value: Boolean) { store.edit { it[onboarded] = value } }
 }

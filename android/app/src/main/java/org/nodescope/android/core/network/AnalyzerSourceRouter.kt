@@ -190,6 +190,8 @@ class RoutingAnalyzerBackend(
     override suspend fun packetDetail(host: String, hash: String) =
         on(host, { it.packetDetail(host, hash) }) { coreScope.packetDetail(host, hash) }
     override suspend fun allNodes(host: String) = on(host, { it.allNodes(host) }) { coreScope.allNodes(host) }
+    override suspend fun observerDetail(host: String, id: String) =
+        on(host, { it.observerDetail(host, id) }) { coreScope.observerDetail(host, id) }
     override suspend fun recentPackets(host: String, limit: Int) =
         on(host, { it.recentPackets(host, limit) }) { coreScope.recentPackets(host, limit) }
     override suspend fun packetPage(host: String, size: Int, cursor: AnalyzerCursor?) =
@@ -233,7 +235,14 @@ class RoutingPacketSource(private val coreScope: PacketSource, private val route
             var latest: LiveFeedControls? = null
             fun apply() = latest?.let { feed.subscribe(it.subscriptions); feed.configure(it.configuration) }
             send(LiveSignal.Connection(LiveConnection.CONNECTING))
-            launch { controls.collect { latest = it; apply() } }
+            launch {
+                controls.collect { next ->
+                    val refreshed = latest != null && latest?.observerRefresh != next.observerRefresh
+                    latest = next
+                    apply()
+                    if (refreshed) feed.refreshObservers()
+                }
+            }
             feed.connect()
             try {
                 for (event in feed.events) {

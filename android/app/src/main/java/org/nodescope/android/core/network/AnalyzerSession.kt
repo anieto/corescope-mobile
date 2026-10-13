@@ -15,13 +15,21 @@ data class SessionState(
 
 /** Switching source/region cancels old work; new state never contains old-source data. */
 @OptIn(ExperimentalCoroutinesApi::class)
-class AnalyzerSession(preferences: PreferencesStore, repository: AnalyzerRepository) {
+class AnalyzerSession(
+    preferences: PreferencesStore,
+    repository: AnalyzerRepository,
+    readiness: Flow<LiveSourceReadiness> = flowOf(LiveSourceReadiness(null, true)),
+) {
     private val refreshSequence = MutableStateFlow(0L)
     fun refresh() { refreshSequence.update { it + 1 } }
-    val states: Flow<SessionState> = preferences.values.map {
+    val states: Flow<SessionState> = combine(preferences.values.map {
         if (it.onboarded) AnalyzerSelection(it.host, it.region) else null
-    }.distinctUntilChanged().flatMapLatest { selection ->
-        if (selection == null) flowOf(SessionState()) else {
+    }.distinctUntilChanged(), readiness.distinctUntilChanged()) { selection, source -> selection to source }.flatMapLatest { (selection, source) ->
+        val host = selection?.let { runCatching { normalizeHost(it.host).lowercase() }.getOrNull() }
+        if (selection == null) flowOf(SessionState())
+        // Nothing is requested from a source that's still being identified.
+        else if (source.host != null && (source.host != host || !source.ready)) flowOf(SessionState(selection, loading = true))
+        else {
             var lastSnapshot: AnalyzerSnapshot? = null
             refreshSequence.flatMapLatest {
                 flow {

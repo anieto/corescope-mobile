@@ -21,8 +21,10 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import androidx.lifecycle.repeatOnLifecycle
 import org.nodescope.android.core.network.LiveConnection
 import org.nodescope.android.core.network.Loaded
+import org.nodescope.android.core.network.beaconExplanation
 
 /** Minute-resolution clock so "5m ago" labels stay truthful while a screen is open. */
 @Composable
@@ -190,6 +192,50 @@ fun <T> AdaptiveChoiceRow(options: List<T>, selected: T, label: @Composable (T) 
         options.forEachIndexed { index, option ->
             SegmentedButton(selected = option == selected, onClick = { onSelect(option) },
                 shape = SegmentedButtonDefaults.itemShape(index, options.size)) { Text(label(option)) }
+        }
+    }
+}
+
+/** True while the selected analyzer is a Beacon server; screens use it to show [BeaconFeatureNotice]. */
+val LocalBeaconSource = staticCompositionLocalOf { false }
+
+/** iOS `BeaconFeatureNotice`: why a CoreScope-only feature isn't shown for a Beacon source. */
+@Composable
+fun BeaconFeatureNotice(capability: org.nodescope.android.core.network.BackendCapability, modifier: Modifier = Modifier) {
+    Surface(modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainer) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Outlined.Info, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                Text("Beacon Support", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            }
+            Text(capability.beaconExplanation,
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** What screens can ask of the shared live feed: extra demand while visible, and an observer reload. */
+class LiveFeedActions(
+    val setDemand: (consumer: java.util.UUID, host: String, demand: org.nodescope.android.core.network.LiveFeedDemand?) -> Unit = { _, _, _ -> },
+    val refreshObservers: () -> Unit = {},
+    val retryMetadata: () -> Unit = {},
+)
+val LocalLiveFeedActions = staticCompositionLocalOf { LiveFeedActions() }
+
+/** Holds [demand] on the live feed while the screen is resumed (iOS `setDemand` on appear/scene phase). */
+@Composable
+fun LiveFeedDemandEffect(host: String, demand: org.nodescope.android.core.network.LiveFeedDemand) {
+    val actions = LocalLiveFeedActions.current
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    val consumer = remember { java.util.UUID.randomUUID() }
+    LaunchedEffect(lifecycle, host, demand) {
+        lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+            try {
+                actions.setDemand(consumer, host, demand)
+                kotlinx.coroutines.awaitCancellation()
+            } finally {
+                actions.setDemand(consumer, host, null)
+            }
         }
     }
 }

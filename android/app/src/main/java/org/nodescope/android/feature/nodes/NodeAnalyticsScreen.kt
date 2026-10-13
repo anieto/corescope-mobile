@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.nodes
 
+import org.nodescope.android.core.network.BackendCapability
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,9 +38,10 @@ fun NodeAnalyticsScreen(model: NodeAnalyticsViewModel, host: String, publicKey: 
     var range by rememberSaveable { mutableStateOf(AnalyticsRange.WEEK) }
     val key = AnalyticsKey(host, publicKey, range.days)
     val state by model.analytics.state.collectAsStateWithLifecycle()
-    LaunchedEffect(key) { model.analytics.load(key) }
+    val beacon = LocalBeaconSource.current
+    LaunchedEffect(key) { if (!beacon) model.analytics.load(key) }
     val observerState by model.observers.state.collectAsStateWithLifecycle()
-    LaunchedEffect(host) { model.observers.load(host) }
+    LaunchedEffect(host) { if (!beacon) model.observers.load(host) }
     val observerList = observerState.value.takeIf { observerState.key == host }.orEmpty()
     val now = rememberNow()
     val result = state.value.takeIf { state.key == key }
@@ -61,12 +63,13 @@ fun NodeAnalyticsScreen(model: NodeAnalyticsViewModel, host: String, publicKey: 
                 }
             }
         }
-        if (result != AnalyticsResult.Unsupported) item {
+        if (beacon) item { BeaconFeatureNotice(BackendCapability.NODE_ANALYTICS) }
+        else if (result != AnalyticsResult.Unsupported) item {
             LoadStatus(state.takeIf { it.key == key } ?: org.nodescope.android.core.network.Loaded<AnalyticsKey, AnalyticsResult>(loading = true), analytics != null, now) {
                 model.analytics.load(key, force = true)
             }
         }
-        if (result == AnalyticsResult.Unsupported) item {
+        if (!beacon && result == AnalyticsResult.Unsupported) item {
             EmptyState(Icons.Outlined.QueryStats, "Analytics unavailable", "This analyzer does not currently provide node analytics.")
         }
         if (analytics != null) {

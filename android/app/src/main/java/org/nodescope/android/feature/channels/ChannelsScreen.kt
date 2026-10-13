@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.channels
 
+import org.nodescope.android.core.network.BackendCapability
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -39,10 +41,13 @@ fun ChannelsScreen(
     var searching by rememberSaveable { mutableStateOf(false) }
     var showFilters by remember { mutableStateOf(false) }
     val now = rememberNow()
+    // Beacon has neither server channels nor packet payloads to decrypt (iOS `supports(_:)`).
+    val beacon = LocalBeaconSource.current
 
-    LaunchedEffect(selection) { model.channels.load(selection) }
-    LaunchedEffect(selection, monitored.isNotEmpty()) { if (monitored.isNotEmpty()) model.packets.load(selection) }
+    LaunchedEffect(selection) { if (!beacon) model.channels.load(selection) }
+    LaunchedEffect(selection, monitored.isNotEmpty()) { if (!beacon && monitored.isNotEmpty()) model.packets.load(selection) }
     fun refresh() {
+        if (beacon) return
         model.channels.load(selection, force = true)
         if (monitored.isNotEmpty()) model.packets.load(selection, force = true)
     }
@@ -80,7 +85,10 @@ fun ChannelsScreen(
                 Text("Previously monitored channels couldn't be unlocked on this device. Add them again to keep listening.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
-            item { LoadStatus(channelState, server.isNotEmpty(), now, ::refresh) }
+            if (beacon) {
+                item { BeaconFeatureNotice(BackendCapability.SERVER_CHANNELS) }
+                item { BeaconFeatureNotice(BackendCapability.CHANNEL_DECRYPT_ON_PHONE) }
+            } else item { LoadStatus(channelState, server.isNotEmpty(), now, ::refresh) }
             if (sections.monitored.isNotEmpty()) {
                 item { SectionLabel("Monitoring on this device · ${sections.monitored.size}") }
                 items(sections.monitored, key = { it.id }) { ChannelCard(it, now, it.id == selectedId) { onChannel(it) } }
@@ -91,7 +99,7 @@ fun ChannelsScreen(
             }
             // Only once a load has finished: before the first load starts nothing is "loading" yet,
             // and "No channels yet" flashed on every visit.
-            if (sections.isEmpty && !channelState.loading && channelState.updatedAt != null) item {
+            if (!beacon && sections.isEmpty && !channelState.loading && channelState.updatedAt != null) item {
                 EmptyState(if (query.isBlank()) Icons.Outlined.Tag else Icons.Outlined.SearchOff,
                     if (query.isBlank()) "No channels yet" else "No matching channels",
                     if (query.isBlank()) "Channels appear as your analyzer hears group messages. You can also add a hashtag or private channel." else "Try a different search or filter.")
