@@ -3,6 +3,8 @@ package org.nodescope.android.core.network
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,6 +44,7 @@ class KeyedLoader<K, T>(
         mutable.value = retained.copy(loading = true, error = null)
         job = scope.launch {
             if (retained.value == null) restore?.invoke(key)?.let { saved ->
+                currentCoroutineContext().ensureActive()
                 retained = Loaded(key, saved.value, updatedAt = saved.savedAt)
                 val fresh = !force && clock() - saved.savedAt < maxAgeMillis
                 mutable.value = retained.copy(loading = !fresh)
@@ -49,10 +52,12 @@ class KeyedLoader<K, T>(
             }
             try {
                 val value = fetch(key)
+                currentCoroutineContext().ensureActive()
                 mutable.value = Loaded(key, value, updatedAt = clock())
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                currentCoroutineContext().ensureActive()
                 mutable.value = retained.copy(loading = false, error = e.message ?: "Unable to reach the analyzer.")
             }
         }

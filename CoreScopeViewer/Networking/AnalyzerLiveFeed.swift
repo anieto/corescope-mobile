@@ -1,7 +1,47 @@
 import Foundation
 
+struct LiveFeedConfiguration: Equatable, Sendable {
+    var resolvePath = false
+    var includeObserverKey = false
+    var includeRepeats = false
+    var recoverObservers = false
+}
+
+struct LiveFeedSubscription: Hashable, Sendable {
+    var regions: Set<String> = []
+    var payloadTypes: Set<Int> = []
+}
+
+struct LiveFeedDemand: Equatable, Sendable {
+    var subscription = LiveFeedSubscription()
+    var configuration = LiveFeedConfiguration()
+}
+
+struct LiveBrowseFilter: Hashable, Sendable {
+    let region: String?
+    let payloadType: Int?
+}
+
+struct LiveBrowseSnapshot: Sendable {
+    let filter: LiveBrowseFilter
+    let rows: [BeaconLiveRecovery.Row]
+    let possiblyIncomplete: Bool
+}
+
 enum AnalyzerLiveEvent: Sendable {
     case packet(LiveEnvelope)
+    case browseSnapshot(LiveBrowseSnapshot)
+    case nodeUpdated(BeaconLiveProtocol.NodeUpdate)
+    case observerStatus(BeaconLiveProtocol.ObserverStatus)
+    case metadataInvalidated
+    case nodeCatalog([BeaconNodeReader.Node])
+    case metadataRecoveryFailed(String)
+    case observerCatalog([BeaconObserverReader.Observer])
+    case observerRecoveryFailed(String)
+    case observerCatalogInvalidated
+    case browseRemoved(LiveBrowseFilter)
+    case recoveryFailed(LiveBrowseFilter, String)
+    case recoveryCompleted(LiveBrowseFilter)
     case connected
     case disconnected(String?)
     case decodingFailed(String)
@@ -10,12 +50,53 @@ enum AnalyzerLiveEvent: Sendable {
 @MainActor
 protocol AnalyzerLiveFeed: AnyObject {
     var events: AsyncStream<AnalyzerLiveEvent> { get }
+    var usesBrowseSnapshots: Bool { get }
     func connect()
     func disconnect()
+    func subscribe(_ subscriptions: Set<LiveFeedSubscription>)
+    func configure(_ configuration: LiveFeedConfiguration)
+    func refreshObservers()
+}
+
+extension AnalyzerLiveFeed {
+    var usesBrowseSnapshots: Bool { false }
+    func refreshObservers() {}
+}
+
+@MainActor
+protocol LiveObserverDetailProvider: AnyObject {
+    func observerDetail(id: String) async throws -> MeshObserver
+}
+
+@MainActor
+protocol LivePacketDetailProvider: AnyObject {
+    func packetDetail(hash: String) async throws -> PacketDetailResponse
+}
+
+@MainActor
+final class UnavailableBeaconLiveFeed: AnalyzerLiveFeed {
+    let usesBrowseSnapshots = true
+    let events: AsyncStream<AnalyzerLiveEvent>
+
+    init(message: String) {
+        events = AsyncStream { continuation in
+            continuation.yield(.disconnected(message))
+            continuation.finish()
+        }
+    }
+
+    func connect() {}
+    func disconnect() {}
+    func subscribe(_ subscriptions: Set<LiveFeedSubscription>) {}
+    func configure(_ configuration: LiveFeedConfiguration) {}
 }
 
 @MainActor
 final class CoreScopeLiveFeed: NSObject, AnalyzerLiveFeed, URLSessionWebSocketDelegate {
+    // CoreScope broadcasts its fixed payload; it has no subscription/configuration frames.
+    func subscribe(_ subscriptions: Set<LiveFeedSubscription>) {}
+    func configure(_ configuration: LiveFeedConfiguration) {}
+
     let events: AsyncStream<AnalyzerLiveEvent>
     private let continuation: AsyncStream<AnalyzerLiveEvent>.Continuation
     private let url: URL

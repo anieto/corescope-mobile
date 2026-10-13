@@ -193,6 +193,349 @@ private struct MapLivePacketSidebar: View {
     var detailPresentationChanged: ((Bool) -> Void)?
 
     @Environment(LiveFeedService.self) private var liveFeed
+
+    var body: some View {
+        if liveFeed.usesBrowseSnapshots {
+            BeaconPacketSidebar(
+                close: close, toggleSidebar: toggleSidebar,
+                routeReplayStarted: routeReplayStarted,
+                detailPresentationChanged: detailPresentationChanged
+            )
+        } else {
+            CoreScopeMapLivePacketSidebar(
+                selectedGroupID: $selectedGroupID, close: close, toggleSidebar: toggleSidebar,
+                routeReplayStarted: routeReplayStarted, detailPresentationChanged: detailPresentationChanged
+            )
+        }
+    }
+}
+
+private struct BeaconPacketSidebar: View {
+    var close: (() -> Void)?
+    var toggleSidebar: (() -> Void)?
+    var routeReplayStarted: ((LiveObservationGroup.ID) -> Void)?
+    var detailPresentationChanged: ((Bool) -> Void)?
+
+    @Environment(LiveFeedService.self) private var liveFeed
+    @Environment(RegionFilterStore.self) private var regionFilter
+    @Environment(AnalyzerSettings.self) private var settings
+    @State private var consumerID = UUID()
+    @State private var filterType: Int?
+    @State private var showsFilters = false
+    @State private var detailRow: BeaconLiveRecovery.Row?
+
+    private var packetDetailsPresented: Binding<Bool> {
+        Binding(
+            get: { detailRow != nil },
+            set: { isPresented in
+                if !isPresented { detailRow = nil }
+                detailPresentationChanged?(isPresented)
+            }
+        )
+    }
+
+    private struct DemandKey: Hashable {
+        let sessionID: UUID
+        let filter: LiveBrowseFilter
+    }
+
+    private var filter: LiveBrowseFilter {
+        LiveBrowseFilter(region: regionFilter.selectedRegion?.uppercased(), payloadType: filterType)
+    }
+
+    var body: some View {
+        let snapshot = liveFeed.browseSnapshots[filter]
+        List {
+            LivePacketFeedHeader(
+                isConnected: liveFeed.isConnected,
+                isPaused: false,
+                isCompact: true,
+                transmissionCount: snapshot?.rows.count ?? 0,
+                observationCount: snapshot?.rows.reduce(0) { $0 + $1.observationCount } ?? 0,
+                scope: regionFilter.selectedRegion.map(regionFilter.label(for:)) ?? String(localized: "Entire network")
+            )
+            .packetFeedListRow(top: 8, bottom: 8)
+            Section {
+                if let error = liveFeed.recoveryErrors[filter] {
+                    Label("History refresh failed", systemImage: "exclamationmark.triangle")
+                        .packetFeedListRow()
+                    Text(error).font(.caption).foregroundStyle(.secondary)
+                        .packetFeedListRow()
+                }
+                if snapshot?.possiblyIncomplete == true {
+                    Text("Recent history may be incomplete.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .packetFeedListRow()
+                }
+            }
+
+            Section("Recent Packets") {
+                if let snapshot, !snapshot.rows.isEmpty {
+                    ForEach(snapshot.rows, id: \.hash) { row in
+                        Button {
+                            detailPresentationChanged?(true)
+                            detailRow = row
+                        } label: {
+                            BeaconPacketSummaryRow(row: row)
+                        }
+                        .buttonStyle(.plain)
+                        .packetFeedListRow()
+                        .accessibilityHint("Show packet details")
+                    }
+                } else {
+                    ContentUnavailableView(
+                        liveFeed.isConnected ? "Waiting for Packets" : "Not Connected",
+                        systemImage: "dot.radiowaves.left.and.right"
+                    )
+                }
+            }
+        }
+        .adaptiveSidebarListStyle()
+        .navigationTitle("Live Packets")
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(isPresented: packetDetailsPresented) {
+            if let detailRow {
+                BeaconPacketSummary(row: detailRow, replayStarted: {
+                    detailPresentationChanged?(false)
+                    routeReplayStarted?(detailRow.hash)
+                })
+            }
+        }
+        .toolbar {
+            if let close {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: close) { Image(systemName: "xmark") }
+                        .accessibilityLabel("Close live packets")
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { showsFilters = true } label: {
+                    Image(systemName: filterType == nil
+                          ? "line.3.horizontal.decrease.circle"
+                          : "line.3.horizontal.decrease.circle.fill")
+                }
+                .accessibilityLabel("Filter live packets")
+            }
+            if let toggleSidebar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: toggleSidebar) { Image(systemName: "list.bullet.rectangle") }
+                        .accessibilityLabel("Hide live packets")
+                }
+            }
+        }
+        .sheet(isPresented: $showsFilters) {
+            LivePacketFiltersSheet(filterType: $filterType)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+        .task(id: DemandKey(sessionID: settings.sourceSession.id, filter: filter)) {
+            let regions = filter.region.map { Set([$0]) } ?? []
+            let payloads = filter.payloadType.map { Set([$0]) } ?? []
+            liveFeed.setDemand(.init(subscription: .init(regions: regions, payloadTypes: payloads)), for: consumerID)
+        }
+        .onDisappear {
+            liveFeed.setDemand(nil, for: consumerID)
+        }
+    }
+}
+
+private struct BeaconPacketSummaryRow: View {
+    let row: BeaconLiveRecovery.Row
+
+    var body: some View {
+        LivePacketCard(
+            payloadTypeName: PayloadType.name(for: row.payloadType),
+            hopCount: 0,
+            observationCount: row.observationCount,
+            region: nil,
+            preview: row.hash,
+            receivedAt: row.lastHeard
+        )
+    }
+}
+
+private struct BeaconPacketSummary: View {
+    let row: BeaconLiveRecovery.Row
+    var replayStarted: (() -> Void)?
+    @Environment(LiveFeedService.self) private var liveFeed
+    @Environment(AnalyzerSettings.self) private var settings
+    @Environment(PacketReplayStore.self) private var replayStore
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var viewModel = BeaconPacketDetailViewModel()
+    @State private var selectedRouteIndex = 0
+    @State private var retryID = UUID()
+
+    private struct LoadKey: Hashable {
+        let sourceSessionID: UUID
+        let retryID: UUID
+    }
+
+    var body: some View {
+        List {
+            if viewModel.isLoading {
+                ProgressView("Loading packet…")
+            }
+            if let error = viewModel.errorMessage {
+                Section {
+                    Text(error).foregroundStyle(.secondary)
+                    Button("Retry") { retryID = UUID() }
+                }
+            }
+            Section("Packet") {
+                PacketDetailField(title: "Type", value: PayloadType.name(for: row.payloadType))
+                PacketDetailField(title: "Hash", value: row.hash, monospaced: true)
+                PacketDetailField(title: "Observations", value: max(viewModel.detail?.observationCount ?? 0, row.observationCount).formatted())
+            }
+            Section("Heard") {
+                LabeledContent("First seen") {
+                    if let date = viewModel.detail?.packet.firstSeen ?? row.firstSeen {
+                        Text(date, format: .dateTime)
+                    } else {
+                        Text("Unknown")
+                    }
+                }
+                LabeledContent("Last heard") {
+                    Text(max(viewModel.detail?.packet.timestamp ?? row.lastHeard, row.lastHeard), format: .dateTime)
+                }
+            }
+            if let detail = viewModel.detail {
+                BeaconPacketObservations(observations: detail.observations)
+                Section("Route") {
+                    if viewModel.routes.isEmpty {
+                        Text("No fully resolved route is available. Uncertain hops are not replayed.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        if viewModel.routes.count > 1 {
+                            RoutePicker(options: viewModel.routes, selection: $selectedRouteIndex)
+                                .tint(NodeScopeStyle.signal)
+                        }
+                        if viewModel.routes.indices.contains(selectedRouteIndex) {
+                            RouteHearersView(option: viewModel.routes[selectedRouteIndex])
+                            ForEach(viewModel.routes[selectedRouteIndex].keys.indices, id: \.self) { index in
+                                PacketDetailField(
+                                    title: "Hop \(index + 1)",
+                                    value: viewModel.routes[selectedRouteIndex].keys[index],
+                                    monospaced: true
+                                )
+                            }
+                        }
+                        Button {
+                            guard viewModel.belongsToSource(settings.sourceSession.id) else { return }
+                            replayStore.replay(
+                                routes: viewModel.routes, selectedIndex: selectedRouteIndex,
+                                packetHash: detail.packet.hash, observedAt: detail.packet.timestamp,
+                                snr: detail.packet.snr, rssi: detail.packet.rssi, sender: nil, messageText: nil
+                            )
+                            dismiss()
+                            replayStarted?()
+                        } label: {
+                            Label("Replay on Map", systemImage: "play.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(NodeScopeStyle.activity)
+                        .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+                        .disabled(!viewModel.belongsToSource(settings.sourceSession.id))
+                    }
+                }
+            }
+        }
+        .navigationTitle("Packet Details")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if horizontalSizeClass == .regular {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .accessibilityLabel("Close packet details")
+                }
+            }
+        }
+        .task(id: LoadKey(sourceSessionID: settings.sourceSession.id, retryID: retryID)) {
+            selectedRouteIndex = 0
+            await viewModel.load(hash: row.hash, sourceSessionID: settings.sourceSession.id, service: liveFeed)
+        }
+    }
+}
+
+private struct BeaconPacketObservations: View {
+    let observations: [PacketObservation]
+
+    var body: some View {
+        Section("Observations") {
+            ForEach(observations) { observation in
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(observation.observerName ?? String(localized: "Unknown observer"))
+                        .font(.body.weight(.semibold))
+                    if let region = observation.observerIata {
+                        Label(region, systemImage: "globe.americas.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(observation.timestamp, format: .dateTime)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 12) {
+                            PacketObservationSignal(snr: observation.snr, rssi: observation.rssi)
+                        }
+                        VStack(alignment: .leading, spacing: 5) {
+                            PacketObservationSignal(snr: observation.snr, rssi: observation.rssi)
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+}
+
+private struct PacketObservationSignal: View {
+    let snr: Double?
+    let rssi: Double?
+
+    var body: some View {
+        if let snr {
+            Label("\(snr.formatted(.number.precision(.fractionLength(1)))) dB", systemImage: "waveform")
+                .accessibilityLabel("SNR: \(snr.formatted()) decibels")
+        }
+        if let rssi {
+            Label("\(rssi.formatted(.number.precision(.fractionLength(1)))) dBm", systemImage: "antenna.radiowaves.left.and.right")
+                .accessibilityLabel("RSSI: \(rssi.formatted()) dBm")
+        }
+    }
+}
+
+private struct PacketDetailField: View {
+    let title: LocalizedStringKey
+    let value: String
+    var monospaced = false
+
+    var body: some View {
+        LabeledContent {
+            Text(value)
+                .font(monospaced ? .body.monospaced() : .body)
+                .foregroundStyle(.primary)
+                .multilineTextAlignment(.trailing)
+                .textSelection(.enabled)
+        } label: {
+            Text(title).foregroundStyle(.secondary)
+        }
+    }
+}
+
+private struct CoreScopeMapLivePacketSidebar: View {
+    @Binding var selectedGroupID: LiveObservationGroup.ID?
+    var close: (() -> Void)?
+    var toggleSidebar: (() -> Void)?
+    var routeReplayStarted: ((LiveObservationGroup.ID) -> Void)?
+    var detailPresentationChanged: ((Bool) -> Void)?
+
+    @Environment(LiveFeedService.self) private var liveFeed
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(ObserverRegionLookup.self) private var observerRegionLookup
     @Environment(PacketReplayStore.self) private var replayStore
@@ -727,6 +1070,28 @@ private struct LivePacketRow: View {
     var isSelected = false
 
     var body: some View {
+        LivePacketCard(
+            payloadTypeName: group.payloadTypeName,
+            hopCount: group.hopCount,
+            observationCount: group.observationCount,
+            region: group.region,
+            preview: group.preview,
+            receivedAt: group.latestReceivedAt,
+            isSelected: isSelected
+        )
+    }
+}
+
+private struct LivePacketCard: View {
+    let payloadTypeName: String
+    let hopCount: Int
+    let observationCount: Int
+    let region: String?
+    let preview: String
+    let receivedAt: Date
+    var isSelected = false
+
+    var body: some View {
         HStack(spacing: 12) {
             Image(systemName: symbol)
                 .font(.title3.weight(.bold))
@@ -735,22 +1100,22 @@ private struct LivePacketRow: View {
 
             VStack(alignment: .leading, spacing: 9) {
                 HStack(spacing: 8) {
-                    Text(group.payloadTypeName)
+                    Text(payloadTypeName)
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(color)
                         .lineLimit(1)
 
-                    if group.hopCount > 0 {
-                        Label("\(group.hopCount)", systemImage: "arrow.right")
+                    if hopCount > 0 {
+                        Label("\(hopCount)", systemImage: "arrow.right")
                             .liveObservationBadge()
                     }
 
-                    if group.observationCount > 1 {
-                        Label("\(group.observationCount)", systemImage: "eye.fill")
+                    if observationCount > 1 {
+                        Label("\(observationCount)", systemImage: "eye.fill")
                             .liveObservationBadge(color: .purple)
                     }
 
-                    if let region = group.region {
+                    if let region {
                         Text(region)
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(.white)
@@ -791,7 +1156,7 @@ private struct LivePacketRow: View {
     }
 
     private var packetPreview: some View {
-        Text(group.preview)
+        Text(preview)
             .font(.subheadline)
             .foregroundStyle(.secondary)
             .lineLimit(2)
@@ -799,14 +1164,14 @@ private struct LivePacketRow: View {
     }
 
     private var packetTime: some View {
-        Text(group.latestReceivedAt, style: .relative)
+        Text(receivedAt, style: .relative)
             .font(.caption.monospacedDigit())
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
     }
 
     private var symbol: String {
-        switch group.payloadTypeName {
+        switch payloadTypeName {
         case "ADVERT": "antenna.radiowaves.left.and.right"
         case "GRP_TXT", "TXT_MSG": "message"
         case "TRACE", "PATH": "point.3.connected.trianglepath.dotted"
@@ -815,7 +1180,7 @@ private struct LivePacketRow: View {
     }
 
     private var color: Color {
-        switch group.payloadTypeName {
+        switch payloadTypeName {
         case "ADVERT": .green
         case "GRP_TXT", "TXT_MSG": NodeScopeStyle.signal
         case "TRACE", "PATH": .orange
@@ -1051,15 +1416,7 @@ private struct LivePacketDetailScreen: View {
     }
 
     private func detailRow(_ label: LocalizedStringKey, value: String, monospaced: Bool = false) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(label)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Text(value)
-                .font(monospaced ? .body.monospaced() : .body)
-                .multilineTextAlignment(.trailing)
-                .textSelection(.enabled)
-        }
+        PacketDetailField(title: label, value: value, monospaced: monospaced)
     }
 }
 

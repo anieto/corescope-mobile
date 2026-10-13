@@ -90,14 +90,20 @@ struct ChannelDetailScreen: View {
             }
         }
         .safeAreaInset(edge: .top) {
-            DataLoadStatusView(
-                lastUpdatedAt: viewModel.lastUpdatedAt,
-                errorMessage: viewModel.errorMessage,
-                hasContent: !orderedMessages.isEmpty,
-                retry: { Task { await loadMessages(forceRefresh: true) } }
-            )
-            .padding(.horizontal, 16)
-            .padding(.vertical, 6)
+            if settings.beaconBackend != nil {
+                BeaconFeatureNotice(capability: channel.hash.hasPrefix("user:") ? .channelDecryptOnPhone : .serverChannels)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 6)
+            } else {
+                DataLoadStatusView(
+                    lastUpdatedAt: viewModel.lastUpdatedAt,
+                    errorMessage: viewModel.errorMessage,
+                    hasContent: !orderedMessages.isEmpty,
+                    retry: { Task { await loadMessages(forceRefresh: true) } }
+                )
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+            }
         }
         .overlay {
             if orderedMessages.isEmpty && !viewModel.hasOlderMessages && !viewModel.isLoading && viewModel.errorMessage == nil {
@@ -210,8 +216,8 @@ struct ChannelDetailScreen: View {
 
     /// Alternates speakers across the conversation, while preserving a
     /// sender's side for an uninterrupted run of their own messages.
-    private var messageSides: [Int: Bool] {
-        var sides: [Int: Bool] = [:]
+    private var messageSides: [String: Bool] {
+        var sides: [String: Bool] = [:]
         var previousSender: String?
         var isTrailing = false
 

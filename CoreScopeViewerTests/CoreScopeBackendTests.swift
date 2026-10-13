@@ -3,6 +3,36 @@ import Testing
 @testable import CoreScopeViewer
 
 struct CoreScopeBackendTests {
+    @Test func sourceInvalidationCancelsRegisteredWork() async throws {
+        let source = AnalyzerSourceSession()
+        let task = Task {
+            try await Task.sleep(for: .seconds(30))
+        }
+        let identifier = source.registerCancellation { task.cancel() }
+        source.invalidate()
+        await #expect(throws: CancellationError.self) { try await task.value }
+        source.removeCancellation(identifier)
+        #expect(!source.isCurrent)
+    }
+
+    @Test func cacheClearDoesNotResurrectAnOldRefresh() async throws {
+        let cache = APIResponseCache()
+        let started = AsyncStream<Void>.makeStream()
+        let release = AsyncStream<Void>.makeStream()
+        let task = Task {
+            try await cache.refresh(for: "test-clear-\(UUID())") {
+                started.continuation.yield(())
+                for await _ in release.stream { break }
+                return "stale"
+            }
+        }
+        for await _ in started.stream { break }
+        await cache.clear()
+        release.continuation.yield(())
+        release.continuation.finish()
+        started.continuation.finish()
+        await #expect(throws: CancellationError.self) { _ = try await task.value }
+    }
     enum RequestCase: String, CaseIterable, Sendable {
         case nodes, regionalNodes, node, health, paths, reach, analytics
         case observers, observerAnalytics, packets, regionalPackets, channelPackets
@@ -80,7 +110,7 @@ struct CoreScopeBackendTests {
         let result = try await backend.mapDefaults()
         #expect(result.center == [29.4, -98.5])
         #expect(result.zoom == 8)
-        #expect(backend.cacheIdentifier == "https://backend.invalid")
+        #expect(backend.cacheIdentifier == "corescope|https://backend.invalid")
         #expect(backend.capabilities == Set(BackendCapability.allCases))
     }
 
@@ -125,6 +155,99 @@ struct CoreScopeBackendTests {
         return CoreScopeBackend(client: APIClient(baseURL: url, session: session))
     }
 
+    @Test func invalidatedSessionRejectsRequests() async throws {
+        let session = Self.session(target: "/api/config/map")
+        defer { session.invalidateAndCancel() }
+        let backend = try Self.backend(session: session)
+        backend.sourceSession.invalidate()
+        await #expect(throws: CancellationError.self) {
+            _ = try await backend.mapDefaults()
+        }
+    }
+
+    @Test func rejectsInvalidPacketCursor() async throws {
+        let session = Self.session(target: "/api/packets?limit=200")
+        defer { session.invalidateAndCancel() }
+        let backend = try Self.backend(session: session)
+        await #expect(throws: AnalyzerPagingError.self) {
+            _ = try await backend.packetPage(
+                region: nil, pageSize: 200, payloadType: nil,
+                cursor: AnalyzerCursor(value: "not-a-cursor")
+            )
+        }
+    }
+
+    @Test func pagingPreservesOrderAndDeduplicatesOverlaps() async throws {
+        var requestedCursors: [AnalyzerCursor?] = []
+        var requestedSizes: [Int] = []
+        let next = AnalyzerCursor(value: "server-generated")
+        let result = try await AnalyzerPaging.collect(limit: 4, identity: { $0 }) { cursor, size in
+            requestedCursors.append(cursor)
+            requestedSizes.append(size)
+            return cursor == nil
+                ? AnalyzerPage(items: [3, 1], nextCursor: next, total: nil)
+                : AnalyzerPage(items: [1, 4, 2], nextCursor: nil, total: nil)
+        }
+        #expect(result == [3, 1, 4, 2])
+        #expect(requestedCursors == [nil, next])
+        #expect(requestedSizes == [4, 2])
+    }
+
+    @Test func pagingRejectsRepeatedCursor() async throws {
+        await #expect(throws: AnalyzerPagingError.self) {
+            _ = try await AnalyzerPaging.collect(limit: 3, identity: { $0 }) { _, _ in
+                AnalyzerPage(items: [1], nextCursor: AnalyzerCursor(value: "same"), total: nil)
+            }
+        }
+    }
+
+    @Test func pagingEnforcesRequestBudget() async throws {
+        var requests = 0
+        await #expect(throws: AnalyzerPagingError.self) {
+            _ = try await AnalyzerPaging.collect(limit: 10, maximumPages: 2, identity: { $0 }) { _, _ in
+                requests += 1
+                return AnalyzerPage(items: [requests], nextCursor: AnalyzerCursor(value: String(requests)), total: nil)
+            }
+        }
+        #expect(requests == 2)
+    }
+
+    @Test func emptyPagingDoesNotFetch() async throws {
+        let result: [Int] = try await AnalyzerPaging.collect(limit: 0, identity: { $0 }) { _, _ in
+            Issue.record("Empty requests must not fetch")
+            return AnalyzerPage(items: [], nextCursor: nil, total: nil)
+        }
+        #expect(result.isEmpty)
+    }
+
+    @Test func packetCursorRejectsDifferentFiltersAndSessions() async throws {
+        let body = #"{"packets":[{"id":1,"hash":"first","first_seen":"2026-10-10T12:00:00Z","timestamp":"2026-10-10T12:00:00Z","route_type":1,"payload_type":5,"observation_count":1}],"total":2}"#
+        let session = Self.session(target: "/api/packets?limit=1&region=SAT", body: body)
+        defer { session.invalidateAndCancel() }
+        let backend = try Self.backend(session: session)
+        let page = try await backend.packetPage(region: "SAT", pageSize: 1, payloadType: nil, cursor: nil)
+        let cursor = try #require(page.nextCursor)
+        #expect(page.items.map(\.hash) == ["first"])
+        #expect(page.total == 2)
+        await #expect(throws: AnalyzerPagingError.self) {
+            _ = try await backend.packetPage(region: "DFW", pageSize: 1, payloadType: nil, cursor: cursor)
+        }
+        let newSessionBackend = try Self.backend(session: session)
+        await #expect(throws: AnalyzerPagingError.self) {
+            _ = try await newSessionBackend.packetPage(region: "SAT", pageSize: 1, payloadType: nil, cursor: cursor)
+        }
+    }
+
+    @Test func emptyPageTerminatesEvenWithNonzeroTotal() async throws {
+        let session = Self.session(target: "/api/packets?limit=200", body: #"{"packets":[],"total":42}"#)
+        defer { session.invalidateAndCancel() }
+        let page = try await Self.backend(session: session).packetPage(
+            region: nil, pageSize: 200, payloadType: nil, cursor: nil
+        )
+        #expect(page.items.isEmpty)
+        #expect(page.nextCursor == nil)
+    }
+
     private static func session(target: String, status: Int = 200, body: String = "{}") -> URLSession {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [BackendFixtureProtocol.self]
@@ -139,6 +262,124 @@ struct CoreScopeBackendTests {
 
 @MainActor
 struct LiveFeedServiceTests {
+    @Test func beaconMetadataReplacesStatusAndResetsWithSourceSession() async throws {
+        let settings = AnalyzerSettings()
+        let first = FixtureLiveFeed()
+        let second = FixtureLiveFeed()
+        var connections = 0
+        let service = LiveFeedService(settings: settings) { _ in
+            connections += 1
+            return connections == 1 ? first : second
+        }
+        defer {
+            service.disconnect()
+            first.continuation.finish()
+            second.continuation.finish()
+        }
+        let identifier = "00000000-0000-0000-0000-000000000001"
+        let key = String(repeating: "ab", count: 32)
+        let json = "{\"v\":1,\"type\":\"event\",\"event\":\"nodeUpdate\",\"data\":{\"nodeId\":\"\(identifier)\",\"publicKey\":\"\(key)\",\"nodeType\":2}}"
+        guard case .node(let update) = try BeaconLiveProtocol.decode(Data(json.utf8)) else {
+            Issue.record("Expected node update")
+            return
+        }
+        let initial = BeaconLiveProtocol.ObserverStatus(observerId: identifier, displayName: "Station", iata: "SAT", online: true,
+                                                       batteryMv: 4100, uptimeSeconds: 100, lastStatusAt: Date())
+        let replacement = BeaconLiveProtocol.ObserverStatus(observerId: identifier, displayName: nil, iata: nil, online: false,
+                                                           batteryMv: nil, uptimeSeconds: nil, lastStatusAt: nil)
+        service.connect()
+        first.continuation.yield(.nodeUpdated(update))
+        first.continuation.yield(.observerStatus(initial))
+        try await waitUntil { service.beaconNodes[key] != nil && service.beaconObservers[identifier]?.batteryMv == 4100 }
+        first.continuation.yield(.observerStatus(replacement))
+        try await waitUntil { service.beaconObservers[identifier]?.online == false }
+        #expect(service.beaconObservers[identifier]?.batteryMv == nil)
+        #expect(service.beaconObservers[identifier]?.iata == nil)
+        #expect(service.beaconObservers[identifier]?.lastStatusAt == nil)
+        settings.renewSourceSession()
+        service.connect()
+        #expect(service.beaconNodes.isEmpty && service.beaconObservers.isEmpty)
+        first.continuation.yield(.nodeUpdated(update))
+        first.continuation.yield(.observerStatus(initial))
+        second.continuation.yield(.connected)
+        try await waitUntil { service.isConnected }
+        #expect(service.beaconNodes.isEmpty && service.beaconObservers.isEmpty)
+    }
+
+    @Test func browsePresentationModeFollowsFeedRatherThanSnapshotArrival() {
+        let beacon = FixtureLiveFeed()
+        beacon.usesBrowseSnapshots = true
+        let coreScope = FixtureLiveFeed()
+        var connections = 0
+        let service = LiveFeedService(settings: AnalyzerSettings()) { _ in
+            connections += 1
+            return connections == 1 ? beacon : coreScope
+        }
+        defer {
+            service.disconnect()
+            beacon.continuation.finish()
+            coreScope.continuation.finish()
+        }
+        service.connect()
+        #expect(service.usesBrowseSnapshots)
+        #expect(service.browseSnapshots.isEmpty)
+        service.connect()
+        #expect(!service.usesBrowseSnapshots)
+        #expect(service.browseSnapshots.isEmpty)
+    }
+
+    @Test func browseSnapshotsResetOnSameHostSessionChangeAndRejectOldEvents() async throws {
+        let settings = AnalyzerSettings()
+        let first = FixtureLiveFeed()
+        let second = FixtureLiveFeed()
+        var connections = 0
+        let service = LiveFeedService(settings: settings) { _ in
+            connections += 1
+            return connections == 1 ? first : second
+        }
+        defer {
+            service.disconnect()
+            first.continuation.finish()
+            second.continuation.finish()
+        }
+        let filter = LiveBrowseFilter(region: "SAT", payloadType: nil)
+        let snapshot = LiveBrowseSnapshot(filter: filter, rows: [], possiblyIncomplete: true)
+        service.connect()
+        first.continuation.yield(.browseSnapshot(snapshot))
+        first.continuation.yield(.recoveryFailed(filter, "Offline"))
+        try await waitUntil { service.browseSnapshots.count == 1 && service.recoveryErrors[filter] != nil }
+        first.continuation.yield(.recoveryCompleted(filter))
+        try await waitUntil { service.recoveryErrors[filter] == nil }
+        settings.renewSourceSession()
+        service.connect()
+        #expect(service.browseSnapshots.isEmpty)
+        first.continuation.yield(.browseSnapshot(snapshot))
+        first.continuation.yield(.recoveryFailed(filter, "Stale"))
+        second.continuation.yield(.connected)
+        try await waitUntil { service.isConnected }
+        #expect(service.browseSnapshots.isEmpty && service.recoveryErrors.isEmpty)
+    }
+
+    @Test func demandsMergeAcrossWindowsAndSurviveReconnect() async throws {
+        let feed = FixtureLiveFeed()
+        let service = LiveFeedService(settings: AnalyzerSettings()) { _ in feed }
+        defer { service.disconnect() }
+        let first = UUID()
+        let second = UUID()
+        service.connect()
+        service.setDemand(LiveFeedDemand(configuration: LiveFeedConfiguration(resolvePath: true)), for: first)
+        service.setDemand(LiveFeedDemand(configuration: LiveFeedConfiguration(resolvePath: true, includeObserverKey: true)), for: second)
+        #expect(feed.configuration.resolvePath)
+        #expect(feed.configuration.includeObserverKey)
+        service.setDemand(nil, for: first)
+        #expect(feed.configuration.resolvePath)
+        feed.configure(LiveFeedConfiguration())
+        feed.continuation.yield(.connected)
+        try await waitUntil { feed.configuration.resolvePath }
+        service.setDemand(nil, for: second)
+        #expect(feed.configuration == LiveFeedConfiguration())
+        #expect(feed.subscriptions == [LiveFeedSubscription()])
+    }
     @Test func boundsEventsAndDiscardsDisconnectedFeedUpdates() async throws {
         let first = FixtureLiveFeed()
         let second = FixtureLiveFeed()
@@ -187,9 +428,15 @@ struct LiveFeedServiceTests {
 
 @MainActor
 private final class FixtureLiveFeed: AnalyzerLiveFeed {
+    var usesBrowseSnapshots = false
     let events: AsyncStream<AnalyzerLiveEvent>
     let continuation: AsyncStream<AnalyzerLiveEvent>.Continuation
     private(set) var disconnected = false
+    private(set) var subscriptions: Set<LiveFeedSubscription> = []
+    private(set) var configuration = LiveFeedConfiguration()
+
+    func subscribe(_ subscriptions: Set<LiveFeedSubscription>) { self.subscriptions = subscriptions }
+    func configure(_ configuration: LiveFeedConfiguration) { self.configuration = configuration }
 
     init() {
         let stream = AsyncStream<AnalyzerLiveEvent>.makeStream()

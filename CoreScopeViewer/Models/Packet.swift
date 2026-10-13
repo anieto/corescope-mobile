@@ -37,7 +37,7 @@ enum PayloadType: Int, CaseIterable, Sendable {
 /// The "Packet Object" shared shape returned by /api/packets, /api/nodes/:pubkey
 /// (recentAdverts), /api/nodes/:pubkey/health (recentPackets), etc.
 struct Packet: Codable, Sendable, Identifiable, Hashable {
-    let id: Int
+    let serverID: Int?
     let rawHex: String?
     let hash: String
     let firstSeen: Date
@@ -55,10 +55,12 @@ struct Packet: Codable, Sendable, Identifiable, Hashable {
     let direction: String?
     let score: Double?
 
+    var id: String { hash.isEmpty ? "server:\(serverID.map(String.init) ?? "")" : hash }
+
     var payloadTypeName: String { PayloadType.name(for: payloadType) }
 
     enum CodingKeys: String, CodingKey {
-        case id
+        case serverID = "id"
         case rawHex = "raw_hex"
         case hash
         case firstSeen = "first_seen"

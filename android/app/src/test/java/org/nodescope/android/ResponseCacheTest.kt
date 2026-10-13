@@ -19,6 +19,21 @@ import org.nodescope.android.core.network.*
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ResponseCacheTest {
+    @Test fun backendKindsDoNotShareCachedBodies() = runBlocking {
+        val directory = directory()
+        try {
+            val coreScope = ResponseCache(directory, backendKind = "corescope")
+            val beacon = ResponseCache(directory, backendKind = "beacon")
+            val url = endpoint("fixture.example", "api", "nodes")
+            coreScope.write(url, "corescope")
+            assertNull(beacon.read(url, 60_000))
+            beacon.write(url, "beacon")
+            assertEquals("corescope", coreScope.read(url, 60_000)?.value)
+            assertEquals("beacon", beacon.read(url, 60_000)?.value)
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
     private fun directory() = Files.createTempDirectory("responses").toFile().apply { deleteOnExit() }
 
     @Test fun savedBodiesExpireAndAreKeyedByFullUrl() = runBlocking {

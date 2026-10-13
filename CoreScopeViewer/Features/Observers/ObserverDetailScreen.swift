@@ -8,28 +8,47 @@ struct ObserverDetailScreen: View {
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(FavoritesStore.self) private var favoritesStore
     @Environment(RecentItemsStore.self) private var recentItemsStore
+    @Environment(LiveFeedService.self) private var liveFeed
     @State private var viewModel = ObserversViewModel()
     @State private var isExporting = false
     @State private var exportDocument = TextExportDocument()
     @State private var exportContentType = UTType.json
     @State private var exportFilename = "observer-statistics"
 
+    private var usesBeaconDetail: Bool { viewModel.beaconDetailSource != nil || liveFeed.usesBrowseSnapshots }
+    private var isCurrentSource: Bool {
+        viewModel.beaconDetailSource.map { $0 == settings.sourceSession.id } ?? true
+    }
+    private var displayedObserver: MeshObserver {
+        guard usesBeaconDetail, isCurrentSource else { return observer }
+        var detail = viewModel.beaconDetail ?? observer
+        detail.online = observer.online
+        let statuses = liveFeed.beaconObserverStatuses(sourceSessionID: settings.sourceSession.id)
+        return statuses[observer.id.lowercased()]?.applying(to: detail) ?? detail
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 if viewModel.isLoading {
-                    LoadingIndicator(title: "Loading observer analytics…")
+                    LoadingIndicator(title: usesBeaconDetail ? "Loading observer details…" : "Loading observer analytics…")
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 DataLoadStatusView(
                     lastUpdatedAt: viewModel.lastUpdatedAt,
                     errorMessage: viewModel.errorMessage,
-                    hasContent: viewModel.analytics != nil,
+                    hasContent: usesBeaconDetail ? viewModel.beaconDetail != nil : viewModel.analytics != nil,
                     retry: retryAnalytics
                 )
 
-                ObserverIdentityCard(observer: observer)
+                if isCurrentSource {
+                    ObserverIdentityCard(observer: displayedObserver)
+                }
+
+                if usesBeaconDetail {
+                    BeaconFeatureNotice(capability: .observerAnalytics)
+                }
 
                 if let analytics = viewModel.analytics {
                     if !analytics.timeline.isEmpty {
@@ -53,7 +72,7 @@ struct ObserverDetailScreen: View {
             .adaptiveContentWidth()
         }
         .background(NodeScopeBackground())
-        .navigationTitle(observer.name ?? "Observer")
+        .navigationTitle(isCurrentSource ? displayedObserver.name ?? "Observer" : "Observer")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             recentItemsStore.record(observer: observer, source: favoriteSource)
@@ -61,6 +80,7 @@ struct ObserverDetailScreen: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 favoriteButton
+                    .disabled(!isCurrentSource)
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -89,11 +109,11 @@ struct ObserverDetailScreen: View {
                     Image(systemName: "ellipsis.circle")
                 }
                 .accessibilityLabel("Observer actions")
+                .disabled(!isCurrentSource)
             }
         }
-        .task {
-            viewModel.configure(settings: settings)
-            await viewModel.loadAnalytics(id: observer.id)
+        .task(id: "\(settings.sourceSession.id)|\(observer.id)") {
+            await loadDetails()
         }
         .fileExporter(
             isPresented: $isExporting,
@@ -124,11 +144,22 @@ struct ObserverDetailScreen: View {
 
     private func retryAnalytics() {
         Task {
+            await loadDetails()
+        }
+    }
+
+    private func loadDetails() async {
+        if usesBeaconDetail {
+            await viewModel.loadBeaconDetail(id: observer.id, sourceSessionID: settings.sourceSession.id, service: liveFeed)
+        } else {
+            viewModel.configure(settings: settings)
             await viewModel.loadAnalytics(id: observer.id)
         }
     }
 
     private func prepareExport(_ format: StatisticsExportFormat) {
+        guard isCurrentSource else { return }
+        let observer = displayedObserver
         let data: Data
         switch format {
         case .csv:
@@ -152,15 +183,16 @@ struct ObserverDetailScreen: View {
     }
 
     private var observerCSVRows: [[String]] {
+        let observer = displayedObserver
         var rows = [["section", "label", "value"]]
         rows += [
             ["observer", "id", observer.id],
             ["observer", "name", observer.name ?? ""],
             ["observer", "region", observer.iata ?? ""],
-            ["observer", "first_seen", observer.firstSeen.ISO8601Format()],
-            ["observer", "last_seen", observer.lastSeen.ISO8601Format()],
-            ["observer", "packet_count", "\(observer.packetCount)"],
-            ["observer", "packets_last_hour", "\(observer.packetsLastHour)"],
+            ["observer", "first_seen", observer.firstSeen?.ISO8601Format() ?? "unknown"],
+            ["observer", "last_seen", observer.lastSeen?.ISO8601Format() ?? "unknown"],
+            ["observer", "packet_count", observer.packetCount.map(String.init) ?? "unknown"],
+            ["observer", "packets_last_hour", observer.packetsLastHour.map(String.init) ?? "unknown"],
             ["observer", "model", observer.model ?? ""],
             ["observer", "firmware", observer.firmware ?? ""],
             ["observer", "battery_mv", observer.batteryMv.map { String($0) } ?? ""],
@@ -204,7 +236,14 @@ private struct ObserverIdentityCard: View {
                         if let iata = observer.iata {
                             Label(iata, systemImage: "mappin.and.ellipse")
                         }
-                        Text("Seen \(RelativeTime.string(from: observer.lastSeen))")
+                        if let lastSeen = observer.lastSeen {
+                            Text("Seen \(RelativeTime.string(from: lastSeen))")
+                        } else {
+                            Text("Last seen unknown")
+                        }
+                        if let online = observer.online {
+                            if online { Text("Online") } else { Text("Offline") }
+                        }
                     }
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -219,8 +258,8 @@ private struct ObserverIdentityCard: View {
                     ObserverDetailMetric(label: "Firmware", value: observer.firmware ?? "Unknown")
                 }
                 GridRow {
-                    ObserverDetailMetric(label: "Packets / Hr", value: observer.packetsLastHour.formatted())
-                    ObserverDetailMetric(label: "All Packets", value: observer.packetCount.formatted(.number.notation(.compactName)))
+                    ObserverDetailMetric(label: "Packets / Hr", value: observer.packetsLastHour?.formatted() ?? String(localized: "Unknown"))
+                    ObserverDetailMetric(label: "All Packets", value: observer.packetCount?.formatted(.number.notation(.compactName)) ?? String(localized: "Unknown"))
                 }
                 if let batteryMv = observer.batteryMv {
                     GridRow {

@@ -114,6 +114,7 @@ fun routeOptions(reports: List<HeardPath>): List<RouteOption> {
     class Entry(val keys: List<String>, val hearers: MutableList<RouteHearing> = mutableListOf()) { val lower = keys.lower() }
     val byPath = LinkedHashMap<List<String>, Entry>()
     reports.forEach { report ->
+        if (report.path.any { it.isNullOrBlank() }) return@forEach
         val keys = report.path.mapNotNull { it?.takeIf(String::isNotBlank) }
         if (keys.size < 2) return@forEach
         val entry = byPath.getOrPut(keys.lower()) { Entry(keys) }
@@ -161,6 +162,7 @@ fun mergeRouteOptions(existing: List<RouteOption>, complete: List<RouteOption>):
 
 /** Which route (index) a reported path belongs to: the same route, or one it is part of. */
 fun routeIndexFor(path: List<String?>, options: List<RouteOption>): Int? {
+    if (path.any { it.isNullOrBlank() }) return null
     val keys = path.mapNotNull { it?.takeIf(String::isNotBlank) }.lower()
     if (keys.size < 2) return null
     return options.indexOfFirst { it.keys.lower() == keys }.takeIf { it >= 0 }

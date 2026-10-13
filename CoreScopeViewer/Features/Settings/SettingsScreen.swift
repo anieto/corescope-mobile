@@ -64,7 +64,7 @@ struct SettingsScreen: View {
                         }
                         .buttonStyle(.plain)
 
-                        Text("Every screen reads regions, areas, and map defaults from this CoreScope analyzer.")
+                        Text("Every screen uses the selected analyzer’s supported features and regions.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -154,19 +154,9 @@ struct SettingsScreen: View {
         let normalizedHost = AnalyzerSettings.normalizedHost(newHost)
         guard !normalizedHost.isEmpty else { return }
         hostInput = normalizedHost
+        let sameHost = AnalyzerSettings.normalizedHost(settings.host).lowercased() == normalizedHost.lowercased()
         settings.host = normalizedHost
-        liveFeed.connect()
-        regionFilter.reset()
-        regionFilter.configure(settings: settings)
-        observerRegionLookup.reset()
-        observerRegionLookup.configure(settings: settings)
-        showSourceConnectionStatus()
-        Task {
-            async let regions: Void = regionFilter.loadRegions()
-            async let coords: Void = regionFilter.loadIataCoords()
-            async let observerRegions: Void = observerRegionLookup.load()
-            _ = await (regions, coords, observerRegions)
-        }
+        if sameHost { settings.requestSourceResolution() }
     }
 
     private func showSourceConnectionStatus() {

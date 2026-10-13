@@ -19,11 +19,13 @@ final class ChannelsViewModel {
 
     func configure(settings: AnalyzerSettings) {
         let client = AnalyzerBackendFactory.make(settings: settings)
-        if configuredSourceIdentifier != client.cacheIdentifier {
+        if apiClient?.sourceSession.id != client.sourceSession.id {
             channels = []
             messages = []
             loadedMessageHash = nil
             hasOlderMessages = false
+            isLoading = false
+            isLoadingOlderMessages = false
             lastUpdatedAt = nil
             errorMessage = nil
             configuredSourceIdentifier = client.cacheIdentifier
@@ -33,37 +35,43 @@ final class ChannelsViewModel {
 
     func loadChannels(region: String?, forceRefresh: Bool = false) async {
         guard let apiClient else { return }
+        guard supports(.serverChannels, using: apiClient) else { return }
         isLoading = channels.isEmpty
-        defer { isLoading = false }
+        defer { if apiClient.sourceSession.isCurrent { isLoading = false } }
         do {
             let key = ChannelListCache.Key(source: apiClient.cacheIdentifier, region: region)
-            channels = try await ChannelListCache.shared.load(
+            let result = try await ChannelListCache.shared.load(
                 for: key,
                 using: apiClient,
                 forceRefresh: forceRefresh
             )
+            try apiClient.sourceSession.check()
+            channels = result
             lastUpdatedAt = .now
             errorMessage = nil
         } catch {
+            guard apiClient.sourceSession.isCurrent, !Task.isCancelled, !(error is CancellationError) else { return }
             errorMessage = error.localizedDescription
         }
     }
 
     static func preload(settings: AnalyzerSettings, region: String?) async {
         let apiClient = AnalyzerBackendFactory.make(settings: settings)
+        guard apiClient.capabilities.contains(.serverChannels) else { return }
         let key = ChannelListCache.Key(source: apiClient.cacheIdentifier, region: region)
         _ = try? await ChannelListCache.shared.load(for: key, using: apiClient)
     }
 
     func loadMessages(hash: String, forceRefresh: Bool = false) async {
         guard let apiClient else { return }
+        guard supports(.serverChannels, using: apiClient) else { return }
         if loadedMessageHash != hash {
             messages = []
             hasOlderMessages = false
             loadedMessageHash = hash
         }
         isLoading = messages.isEmpty
-        defer { isLoading = false }
+        defer { if apiClient.sourceSession.isCurrent { isLoading = false } }
         do {
             let key = ChannelMessagesCache.Key(source: apiClient.cacheIdentifier, hash: hash)
             let response = try await ChannelMessagesCache.shared.load(
@@ -71,7 +79,8 @@ final class ChannelsViewModel {
                 using: apiClient,
                 forceRefresh: forceRefresh
             )
-            guard configuredSourceIdentifier == apiClient.cacheIdentifier,
+            guard apiClient.sourceSession.isCurrent, !Task.isCancelled,
+                  configuredSourceIdentifier == apiClient.cacheIdentifier,
                   loadedMessageHash == hash else { return }
             let existingIDs = Set(messages.map(\.id))
             let incomingIDs = Set(response.messages.map(\.id))
@@ -87,27 +96,31 @@ final class ChannelsViewModel {
             lastUpdatedAt = .now
             errorMessage = nil
         } catch {
+            guard apiClient.sourceSession.isCurrent, !Task.isCancelled, !(error is CancellationError) else { return }
             errorMessage = error.localizedDescription
         }
     }
 
     func loadOlderMessages(hash: String) async {
         guard let apiClient, hasOlderMessages, !isLoadingOlderMessages else { return }
+        guard supports(.serverChannels, using: apiClient) else { return }
         isLoadingOlderMessages = true
-        defer { isLoadingOlderMessages = false }
+        defer { if apiClient.sourceSession.isCurrent { isLoadingOlderMessages = false } }
         do {
             let response = try await ChannelMessagesCache.shared.load(
                 for: .init(source: apiClient.cacheIdentifier, hash: hash, offset: nextMessageOffset),
                 using: apiClient,
                 forceRefresh: true
             )
-            guard configuredSourceIdentifier == apiClient.cacheIdentifier,
+            guard apiClient.sourceSession.isCurrent, !Task.isCancelled,
+                  configuredSourceIdentifier == apiClient.cacheIdentifier,
                   loadedMessageHash == hash else { return }
             nextMessageOffset += response.messages.count
             mergeMessages(response.messages)
             hasOlderMessages = !response.messages.isEmpty && nextMessageOffset < response.total
             errorMessage = nil
         } catch {
+            guard apiClient.sourceSession.isCurrent, !Task.isCancelled, !(error is CancellationError) else { return }
             errorMessage = error.localizedDescription
         }
     }
@@ -125,8 +138,9 @@ final class ChannelsViewModel {
     func loadMonitoredMessages(channel: MonitoredChannel, region: String?, forceRefresh: Bool = false) async {
         guard let apiClient,
               let channelHash = ChannelCrypto.channelHash(for: channel.keyHex) else { return }
+        guard supports(.channelDecryptOnPhone, using: apiClient) else { return }
         isLoading = messages.isEmpty
-        defer { isLoading = false }
+        defer { if apiClient.sourceSession.isCurrent { isLoading = false } }
 
         do {
             let key = PacketFeedCache.Key(source: apiClient.cacheIdentifier, region: region)
@@ -135,6 +149,7 @@ final class ChannelsViewModel {
                 using: apiClient,
                 forceRefresh: forceRefresh
             )
+            try apiClient.sourceSession.check()
             messages = packets.compactMap { packet in
                 guard let payload = Self.parsePayload(for: packet) else { return nil }
                 return Self.message(from: packet, payload: payload, channel: channel, channelHash: channelHash)
@@ -142,6 +157,7 @@ final class ChannelsViewModel {
             lastUpdatedAt = .now
             errorMessage = nil
         } catch {
+            guard apiClient.sourceSession.isCurrent, !Task.isCancelled, !(error is CancellationError) else { return }
             errorMessage = error.localizedDescription
         }
     }
@@ -153,10 +169,12 @@ final class ChannelsViewModel {
         forceRefresh: Bool = false
     ) async {
         guard let apiClient, !channels.isEmpty else { return }
+        guard apiClient.capabilities.contains(.channelDecryptOnPhone) else { return }
 
         do {
             let key = PacketFeedCache.Key(source: apiClient.cacheIdentifier, region: region)
             let packets = try await PacketFeedCache.shared.load(for: key, using: apiClient, forceRefresh: forceRefresh)
+            try apiClient.sourceSession.check()
 
             // Each packet's payload is independent of which channel is being
             // summarized, so it's parsed once here rather than once per
@@ -177,6 +195,22 @@ final class ChannelsViewModel {
             // The monitored channel remains usable; the detail screen will
             // surface a network failure if the person opens it explicitly.
         }
+    }
+
+    private func supports(_ capability: BackendCapability, using backend: any AnalyzerBackend) -> Bool {
+        guard backend.sourceSession.isCurrent, !Task.isCancelled else { return false }
+        guard backend.capabilities.contains(capability) else {
+            channels = []
+            messages = []
+            hasOlderMessages = false
+            isLoading = false
+            isLoadingOlderMessages = false
+            lastUpdatedAt = nil
+            errorMessage = backend is BeaconBackend ? capability.beaconExplanation
+                : String(localized: "This channel feature is not available on this server.")
+            return false
+        }
+        return true
     }
 
     private static let payloadDecoder = JSONDecoder()
@@ -201,7 +235,7 @@ final class ChannelsViewModel {
                 text: payload.text ?? "",
                 timestamp: packet.firstSeen,
                 senderTimestamp: payload.senderTimestamp,
-                packetId: packet.id,
+                packetId: packet.serverID,
                 packetHash: packet.hash,
                 repeats: packet.observationCount,
                 observers: packet.observerName.map { [$0] } ?? [],
@@ -227,7 +261,7 @@ final class ChannelsViewModel {
             text: decrypted.text,
             timestamp: packet.firstSeen,
             senderTimestamp: decrypted.senderTimestamp,
-            packetId: packet.id,
+            packetId: packet.serverID,
             packetHash: packet.hash,
             repeats: packet.observationCount,
             observers: packet.observerName.map { [$0] } ?? [],

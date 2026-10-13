@@ -11,8 +11,8 @@ struct MeshNode: Codable, Identifiable, Hashable, Sendable {
     let role: String
     let lat: Double?
     let lon: Double?
-    let lastSeen: Date
-    let firstSeen: Date
+    let lastSeen: Date?
+    let firstSeen: Date?
     let advertCount: Int?
     let hashSize: Int?
     let hashSizeInconsistent: Bool?
@@ -20,6 +20,8 @@ struct MeshNode: Codable, Identifiable, Hashable, Sendable {
     let defaultScope: String?
 
     var id: String { publicKey }
+
+    var latestActivity: Date? { [lastSeen, lastHeard].compactMap { $0 }.max() }
 
     var coordinate: CLLocationCoordinate2D? {
         guard let lat, let lon else { return nil }
@@ -54,5 +56,5 @@ struct RoleCounts: Codable, Sendable {
 
 struct NodeDetailResponse: Codable, Sendable {
     let node: MeshNode
-    let recentAdverts: [Packet]
+    let recentAdverts: [Packet]?
 }

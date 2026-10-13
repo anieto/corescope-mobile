@@ -19,9 +19,13 @@ class NotCached : IOException("No saved response.")
  * under the app cache directory, keyed by full URL (so analyzer, region and entity are
  * isolated), and "Clear cache" in Settings removes them with the rest of the cache directory.
  */
-class ResponseCache(private val directory: File, private val clock: () -> Long = System::currentTimeMillis) {
+class ResponseCache(
+    private val directory: File,
+    private val backendKind: String = "corescope",
+    private val clock: () -> Long = System::currentTimeMillis,
+) {
     private fun file(url: HttpUrl) = File(directory, MessageDigest.getInstance("SHA-256")
-        .digest(url.toString().toByteArray()).joinToString("") { "%02x".format(it) } + ".json")
+        .digest("$backendKind|$url".toByteArray()).joinToString("") { "%02x".format(it) } + ".json")
 
     /** The body saved at most [maxAgeMillis] ago, or null. */
     suspend fun read(url: HttpUrl, maxAgeMillis: Long): Cached<String>? = withContext(Dispatchers.IO) {

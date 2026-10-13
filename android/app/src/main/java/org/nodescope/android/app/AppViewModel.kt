@@ -24,6 +24,8 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     val live = feed.states.flowOn(kotlinx.coroutines.Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(0, 0), LiveFeedState())
     fun reconnectLive() = feed.reconnect()
+    fun setLiveFeedDemand(consumer: java.util.UUID, host: String, demand: LiveFeedDemand?) =
+        feed.setDemand(consumer, host, demand)
     val browse: BrowseRepository get() = container.browse
     val monitoredChannels: MonitoredChannelStore get() = container.monitoredChannels
     val diagnostics: AnalyzerDiagnostics get() = container.diagnostics

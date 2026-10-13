@@ -7,6 +7,9 @@ struct ObserversListScreen: View {
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(LiveFeedService.self) private var liveFeed
     @Environment(AppNavigationStore.self) private var appNavigationStore
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var liveConsumer = UUID()
+    @State private var isVisible = false
     @State private var viewModel = ObserversViewModel()
     @State private var selectedObserverID: MeshObserver.ID?
     @State private var selectedObserverSnapshot: MeshObserver?
@@ -39,6 +42,17 @@ struct ObserversListScreen: View {
                         .instrumentListRow(top: 0, bottom: 8)
                 }
 
+                if liveFeed.usesBrowseSnapshots, liveFeed.observerNeedsRecovery {
+                    HStack {
+                        Text("Observer status may be outdated.")
+                        if liveFeed.observerRecoveryError != nil {
+                            Button("Retry") { liveFeed.refreshObservers() }
+                        }
+                    }
+                    .font(.caption)
+                    .instrumentListRow(top: 0, bottom: 8)
+                }
+
                 if viewModel.isLoading {
                     LoadingIndicator(title: "Polling observer network")
                         .instrumentListRow(top: 0, bottom: 8)
@@ -58,8 +72,8 @@ struct ObserversListScreen: View {
                 if !visibleObservers.isEmpty {
                     ObserverSummaryGrid(
                         observerCount: visibleObservers.count,
-                        packetCount: visibleObservers.reduce(0) { $0 + $1.packetCount },
-                        hourlyCount: visibleObservers.reduce(0) { $0 + $1.packetsLastHour }
+                        packetCount: MeshObserver.total(visibleObservers.map(\.packetCount)),
+                        hourlyCount: MeshObserver.total(visibleObservers.map(\.packetsLastHour))
                     )
                     .instrumentListRow(top: 2, bottom: 12)
                 }
@@ -73,7 +87,7 @@ struct ObserversListScreen: View {
                     } else {
                         ForEach(visibleObservers) { observer in
                             Button {
-                                selectedObserverSnapshot = observer
+                                selectedObserverSnapshot = observerBaseline.first { $0.id == observer.id }
                                 selectedObserverID = observer.id
                                 preferredCompactColumn = .detail
                             } label: {
@@ -82,6 +96,7 @@ struct ObserversListScreen: View {
                                     iata: observer.iata,
                                     model: observer.model,
                                     lastSeen: observer.lastSeen,
+                                    online: observer.online,
                                     packetCount: observer.packetCount,
                                     packetsLastHour: observer.packetsLastHour,
                                     batteryMv: observer.batteryMv,
@@ -104,7 +119,8 @@ struct ObserversListScreen: View {
             .adaptiveScrollContentWidth()
             .toolbar(.hidden, for: .navigationBar)
             .overlay {
-                if visibleObservers.isEmpty && !viewModel.isLoading {
+                if visibleObservers.isEmpty && !viewModel.isLoading
+                    && !(liveFeed.usesBrowseSnapshots && liveFeed.observerNeedsRecovery) {
                     ObserverEmptyState()
                 }
             }
@@ -139,17 +155,31 @@ struct ObserversListScreen: View {
             isSearchPresented = false
             isFiltersPresented = false
         }
-        .task(id: settings.host) {
+        .task(id: settings.sourceSession.id) {
+            selectedObserverID = nil
+            selectedObserverSnapshot = nil
             viewModel.configure(settings: settings)
-            await viewModel.loadObservers()
+            updateObserverDemand()
+            if !liveFeed.usesBrowseSnapshots { await viewModel.loadObservers() }
             updateVisibleObservers()
             openRequestedObserverIfAvailable()
         }
         .refreshable {
-            await viewModel.loadObservers()
+            if liveFeed.usesBrowseSnapshots {
+                liveFeed.refreshObservers()
+            } else {
+                await viewModel.loadObservers()
+            }
             updateVisibleObservers()
         }
         .onChange(of: viewModel.observers) { updateVisibleObservers() }
+        .onChange(of: liveFeed.beaconObserverSequence) {
+            updateVisibleObservers()
+            openRequestedObserverIfAvailable()
+        }
+        .onAppear { isVisible = true; updateObserverDemand() }
+        .onDisappear { isVisible = false; liveFeed.setDemand(nil, for: liveConsumer) }
+        .onChange(of: scenePhase) { updateObserverDemand() }
         .onChange(of: regionFilter.selectedRegion) { updateVisibleObservers() }
         .onChange(of: searchText) { updateVisibleObservers() }
         .onChange(of: activityFilter) { updateVisibleObservers() }
@@ -160,7 +190,7 @@ struct ObserversListScreen: View {
                 selectedObserverSnapshot = nil
                 return
             }
-            selectedObserverSnapshot = observer(matching: selectedID) ?? selectedObserverSnapshot
+            selectedObserverSnapshot = observerBaseline.first { $0.id == selectedID } ?? selectedObserverSnapshot
         }
         .onChange(of: appNavigationStore.requestID) { openRequestedObserverIfAvailable() }
     }
@@ -170,17 +200,38 @@ struct ObserversListScreen: View {
         if let currentObserver = observer(matching: selectedObserverID) {
             return currentObserver
         }
-        guard selectedObserverSnapshot?.id == selectedObserverID else { return nil }
-        return selectedObserverSnapshot
+        guard !liveFeed.usesBrowseSnapshots, selectedObserverSnapshot?.id == selectedObserverID else { return nil }
+        return selectedObserverSnapshot.map(applyingLiveStatus)
     }
 
     private func observer(matching id: MeshObserver.ID) -> MeshObserver? {
-        viewModel.observers.first { $0.id == id }
+        observerBaseline.first { $0.id == id }.map(applyingLiveStatus)
+    }
+
+    private var observerBaseline: [MeshObserver] {
+        if liveFeed.usesBrowseSnapshots {
+            return liveFeed.recoveredObservers(sourceSessionID: settings.sourceSession.id) ?? []
+        }
+        return viewModel.observers
+    }
+
+    private func updateObserverDemand() {
+        liveFeed.setDemand(isVisible && scenePhase == .active
+                           ? .init(configuration: .init(recoverObservers: true)) : nil, for: liveConsumer)
+    }
+
+    private func applyingLiveStatus(_ observer: MeshObserver) -> MeshObserver {
+        let statuses = liveFeed.beaconObserverStatuses(sourceSessionID: settings.sourceSession.id)
+        return statuses[observer.id.lowercased()]?.applying(to: observer) ?? observer
     }
 
     private func retryObserverLoad() {
         Task {
-            await viewModel.loadObservers()
+            if liveFeed.usesBrowseSnapshots {
+                liveFeed.refreshObservers()
+            } else {
+                await viewModel.loadObservers()
+            }
             updateVisibleObservers()
         }
     }
@@ -194,7 +245,7 @@ struct ObserversListScreen: View {
             return
         }
         guard case .observer(let observerID) = appNavigationStore.destination,
-              let observer = viewModel.observers.first(where: { $0.id == observerID }) else { return }
+              let observer = observerBaseline.first(where: { $0.id == observerID }) else { return }
         lastHandledNavigationRequestID = appNavigationStore.requestID
         selectedObserverSnapshot = observer
         selectedObserverID = observer.id
@@ -212,11 +263,11 @@ struct ObserversListScreen: View {
 
     private func updateVisibleObservers() {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        availableModels = Array(Set(viewModel.observers.compactMap(\.model))).sorted()
+        availableModels = Array(Set(observerBaseline.compactMap(\.model))).sorted()
 
-        let filtered = viewModel.observers.filter { observer in
+        let filtered = observerBaseline.map(applyingLiveStatus).filter { observer in
             let matchesRegion = regionFilter.selectedRegion == nil || observer.iata == regionFilter.selectedRegion
-            let matchesActivity = activityFilter == .all || observer.lastSeen.timeIntervalSinceNow > -900
+            let matchesActivity = activityFilter == .all || observer.isRecentlySeen
             let matchesModel = selectedModel == nil || observer.model == selectedModel
             let matchesQuery = query.isEmpty
                 || observer.name?.localizedCaseInsensitiveContains(query) == true
@@ -229,15 +280,15 @@ struct ObserversListScreen: View {
         visibleObservers = filtered.sorted { lhs, rhs in
             switch sortOption {
             case .recent:
-                lhs.lastSeen > rhs.lastSeen
+                MeshObserver.moreRecentlySeen(lhs, than: rhs)
             case .hourlyPackets:
                 lhs.packetsLastHour == rhs.packetsLastHour
-                    ? lhs.lastSeen > rhs.lastSeen
-                    : lhs.packetsLastHour > rhs.packetsLastHour
+                    ? MeshObserver.moreRecentlySeen(lhs, than: rhs)
+                    : (lhs.packetsLastHour ?? -1) > (rhs.packetsLastHour ?? -1)
             case .totalPackets:
                 lhs.packetCount == rhs.packetCount
-                    ? lhs.lastSeen > rhs.lastSeen
-                    : lhs.packetCount > rhs.packetCount
+                    ? MeshObserver.moreRecentlySeen(lhs, than: rhs)
+                    : (lhs.packetCount ?? -1) > (rhs.packetCount ?? -1)
             case .name:
                 (lhs.name ?? lhs.id).localizedCaseInsensitiveCompare(rhs.name ?? rhs.id) == .orderedAscending
             }
@@ -473,8 +524,8 @@ private struct ObserverFiltersSheet: View {
 private struct ObserverSummaryGrid: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let observerCount: Int
-    let packetCount: Int
-    let hourlyCount: Int
+    let packetCount: Int?
+    let hourlyCount: Int?
 
     var body: some View {
         let layout = dynamicTypeSize.isAccessibilitySize
@@ -483,8 +534,8 @@ private struct ObserverSummaryGrid: View {
 
         layout {
             ObserverMetric(value: observerCount.formatted(), label: "Nodes", symbol: "antenna.radiowaves.left.and.right")
-            ObserverMetric(value: hourlyCount.formatted(), label: "Packets / Hr", symbol: "waveform.path.ecg")
-            ObserverMetric(value: packetCount.formatted(.number.notation(.compactName)), label: "Packets", symbol: "shippingbox.fill")
+            ObserverMetric(value: hourlyCount?.formatted() ?? String(localized: "Unknown"), label: "Packets / Hr", symbol: "waveform.path.ecg")
+            ObserverMetric(value: packetCount?.formatted(.number.notation(.compactName)) ?? String(localized: "Unknown"), label: "Packets", symbol: "shippingbox.fill")
         }
     }
 }
@@ -515,15 +566,16 @@ private struct ObserverStatusCard: View {
     let name: String
     let iata: String?
     let model: String?
-    let lastSeen: Date
-    let packetCount: Int
-    let packetsLastHour: Int
+    let lastSeen: Date?
+    let online: Bool?
+    let packetCount: Int?
+    let packetsLastHour: Int?
     let batteryMv: Int?
     let noiseFloor: Double?
     let isSelected: Bool
 
     private var isRecent: Bool {
-        lastSeen.timeIntervalSinceNow > -900
+        online ?? (lastSeen.map { $0.timeIntervalSinceNow > -900 } ?? false)
     }
 
     var body: some View {
@@ -542,9 +594,17 @@ private struct ObserverStatusCard: View {
                         .font(.headline)
                         .lineLimit(1)
                     Spacer()
-                    Text(lastSeen, style: .relative)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                    if let online {
+                        if online { Text("Online") } else { Text("Offline") }
+                    } else if let lastSeen {
+                        Text(lastSeen, style: .relative)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    } else {
+                        Text("Unknown")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
                 }
 
                 HStack(spacing: 6) {
@@ -558,8 +618,8 @@ private struct ObserverStatusCard: View {
 
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 16) {
-                        Label("\(packetsLastHour)/hr", systemImage: "waveform")
-                        Label(packetCount.formatted(.number.notation(.compactName)), systemImage: "shippingbox")
+                        Label(packetsLastHour.map { "\($0.formatted())/hr" } ?? String(localized: "Unknown"), systemImage: "waveform")
+                        Label(packetCount?.formatted(.number.notation(.compactName)) ?? String(localized: "Unknown"), systemImage: "shippingbox")
                     }
                     HStack(spacing: 16) {
                         if let batteryMv {

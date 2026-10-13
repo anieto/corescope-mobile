@@ -20,6 +20,9 @@ struct MapScreen: View {
     @Environment(AnalyzerSourceRegistry.self) private var analyzerSourceRegistry
     @Environment(\.colorScheme) private var colorScheme
     @State private var viewModel = MapViewModel()
+    @State private var liveFeedConsumer = UUID()
+    @State private var isVisible = false
+    @Environment(\.scenePhase) private var scenePhase
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var visibleRegion: MKCoordinateRegion?
     @State private var selectedNode: MeshNode?
@@ -48,7 +51,7 @@ struct MapScreen: View {
     @State private var isLocatingUser = false
     @State private var isRefreshingMap = false
     @State private var pendingReplayRequestID: UUID?
-    @State private var loadedAnalyzerHost = ""
+    @State private var loadedAnalyzerSessionID: UUID?
     @State private var lastFramedMapScopeID: String?
     @State private var displayUpdateTask: Task<Void, Never>?
     @State private var incomingEventTask: Task<Void, Never>?
@@ -68,6 +71,15 @@ struct MapScreen: View {
         let coordinate: CLLocationCoordinate2D
         let count: Int
         let memberCoordinates: Set<CoordinateKey>
+    }
+
+    private func updateLiveFeedDemand() {
+        let demand: LiveFeedDemand? = isVisible && isTabActive && scenePhase == .active
+            ? LiveFeedDemand(configuration: LiveFeedConfiguration(
+                resolvePath: true, includeObserverKey: true, includeRepeats: true
+            ))
+            : nil
+        liveFeed.setDemand(demand, for: liveFeedConsumer)
     }
 
     private struct CoordinateKey: Hashable, Sendable {
@@ -349,6 +361,22 @@ struct MapScreen: View {
                         )
                     }
                 }
+                .overlay(alignment: .top) {
+                    if liveFeed.usesBrowseSnapshots, liveFeed.metadataNeedsRecovery {
+                        HStack {
+                            if liveFeed.metadataRecoveryError == nil {
+                                Text("Map data may be outdated. Waiting for refresh…")
+                            } else {
+                                Text("Map data may be outdated.")
+                                Button("Retry") { liveFeed.retryMetadataRecovery() }
+                            }
+                        }
+                        .font(.caption)
+                        .padding(8)
+                        .background(.regularMaterial, in: Capsule())
+                        .padding(.top, 8)
+                    }
+                }
         }
         .sheet(isPresented: $isSearchPresented) {
             MapNodeSearchSheet(nodes: viewModel.nodes, selectNode: focusOnSearchedNode)
@@ -381,7 +409,16 @@ struct MapScreen: View {
             selectedRouteDetails = nil
             highlightedNodeID = nil
         }
+        .onAppear {
+            isVisible = true
+            updateLiveFeedDemand()
+        }
+        .onChange(of: isTabActive) { updateLiveFeedDemand() }
+        .onChange(of: scenePhase) { updateLiveFeedDemand() }
+        .onChange(of: settings.sourceSession.id) { updateLiveFeedDemand() }
         .onDisappear {
+            isVisible = false
+            liveFeed.setDemand(nil, for: liveFeedConsumer)
             displayUpdateTask?.cancel()
             incomingEventTask?.cancel()
             pendingMapTapTask?.cancel()
@@ -396,11 +433,12 @@ struct MapScreen: View {
         }
         .task(id: mapLoadTaskID) {
             let sourceHost = settings.host
+            let sourceSessionID = settings.sourceSession.id
             let selectedRegion = regionFilter.selectedRegion
             let mapScopeID = mapLoadTaskID
             let shouldFrameMapScope = lastFramedMapScopeID != mapScopeID
             isChangingRegion = true
-            let analyzerChanged = loadedAnalyzerHost != sourceHost
+            let analyzerChanged = loadedAnalyzerSessionID != sourceSessionID
 
             if analyzerChanged {
                 nodeFilters = MapNodeFilterSelection.persisted(for: sourceHost)
@@ -425,7 +463,7 @@ struct MapScreen: View {
             }
 
             if analyzerChanged {
-                loadedAnalyzerHost = sourceHost
+                loadedAnalyzerSessionID = sourceSessionID
                 viewModel.resetForAnalyzerSource()
                 iataCoordinates = [:]
                 iataRadiusKm = [:]
@@ -444,7 +482,7 @@ struct MapScreen: View {
             // A newer host or region selection started loading while this
             // request was suspended. Only the current request may move the
             // camera or replace the displayed data.
-            guard sourceHost == settings.host,
+            guard sourceHost == settings.host, sourceSessionID == settings.sourceSession.id,
                   selectedRegion == regionFilter.selectedRegion else {
                 return
             }
@@ -472,7 +510,7 @@ struct MapScreen: View {
             // that data settles so MapKit's automatic content fit cannot use
             // distant observed traffic as the final landing viewport.
             guard !Task.isCancelled,
-                  sourceHost == settings.host,
+                  sourceHost == settings.host, sourceSessionID == settings.sourceSession.id,
                   selectedRegion == regionFilter.selectedRegion else {
                 return
             }
@@ -483,7 +521,11 @@ struct MapScreen: View {
 
             processHistoricalPackets()
             processIncomingEvents()
+            applyBeaconNodeUpdates()
             handleNavigationRequest()
+        }
+        .onChange(of: liveFeed.beaconNodeSequence) {
+            applyBeaconNodeUpdates()
         }
         .onChange(of: liveFeed.recentEvents.first?.id) {
             if isInitialLoadComplete {
@@ -546,14 +588,26 @@ struct MapScreen: View {
 
     private func retryMapLoad() {
         guard !isRefreshingMap else { return }
+        liveFeed.retryMetadataRecovery()
         isRefreshingMap = true
         Task {
             defer { isRefreshingMap = false }
             await viewModel.loadNodes(region: regionFilter.selectedRegion, forceRefresh: true)
+            applyBeaconNodeUpdates()
             await viewModel.loadPackets(region: regionFilter.selectedRegion, forceRefresh: true)
             processHistoricalPackets()
             processIncomingEvents()
         }
+    }
+
+    private func applyBeaconNodeUpdates() {
+        let sessionID = settings.sourceSession.id
+        guard let states = liveFeed.beaconNodeStates(sourceSessionID: sessionID) else { return }
+        viewModel.applyBeaconNodes(
+            states, region: regionFilter.selectedRegion, sourceSessionID: sessionID,
+            catalog: liveFeed.metadataNeedsRecovery ? nil : liveFeed.beaconNodeCatalog,
+            catalogID: liveFeed.beaconNodeCatalogID
+        )
     }
 
     private func toggleMapSearch() {
@@ -847,7 +901,9 @@ struct MapScreen: View {
         let validNodes = nodes.filter { node in
             guard !Task.isCancelled, let latitude = node.lat, let longitude = node.lon else { return false }
             let matchesRole = selectedRoles.isEmpty || selectedRoles.contains(node.role.lowercased())
-            let matchesActivity = activityCutoff.map { node.lastSeen >= $0 } ?? true
+            let matchesActivity = activityCutoff.map { cutoff in
+                node.latestActivity.map { $0 >= cutoff } ?? false
+            } ?? true
             return (latitude != 0 || longitude != 0) && matchesRole && matchesActivity
         }
         guard !Task.isCancelled else { return nil }
@@ -1678,7 +1734,7 @@ struct MapScreen: View {
 
     private var mapLoadTaskID: String {
         [
-            settings.host.lowercased(),
+            settings.sourceSession.id.uuidString,
             regionFilter.selectedRegion ?? "all",
             communitySourceViewportSignature ?? "server-default"
         ].joined(separator: "|")
@@ -3018,7 +3074,7 @@ private struct MapNodeSearchSheet: View {
                                 name: node.name ?? "Unnamed Node",
                                 role: node.role,
                                 publicKey: node.publicKey,
-                                lastSeen: node.lastSeen
+                                lastSeen: node.latestActivity
                             )
                         }
                         .buttonStyle(.plain)
@@ -3105,7 +3161,7 @@ private struct MapNodeSearchRow: View {
     let name: String
     let role: String
     let publicKey: String
-    let lastSeen: Date
+    let lastSeen: Date?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -3131,9 +3187,15 @@ private struct MapNodeSearchRow: View {
 
             Spacer()
 
-            Text(lastSeen, style: .relative)
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
+            if let lastSeen {
+                Text(lastSeen, style: .relative)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            } else {
+                Text("Unknown")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
         }
         .contentShape(Rectangle())
         .padding(.vertical, 4)

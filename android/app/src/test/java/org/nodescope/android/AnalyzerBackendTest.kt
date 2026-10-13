@@ -13,6 +13,34 @@ import org.nodescope.android.core.model.AnalyzerSelection
 import org.nodescope.android.core.network.*
 
 class AnalyzerBackendTest {
+    @Test fun unsupportedFeaturesDoNotReachTheNetwork() = runBlocking {
+        val client = OkHttpClient.Builder().addInterceptor { error("Unexpected network request") }.build()
+        val backend = AnalyzerBackendFactory.create(client)
+        val browse = CapabilityBrowseRepository(backend) { emptySet() }
+        try {
+            val requests: List<suspend () -> Unit> = listOf(
+                { browse.channels(AnalyzerSelection("fixture.example", null)); Unit },
+                { browse.channelMessages("fixture.example", "old-favorite"); Unit },
+                { browse.channelPackets(AnalyzerSelection("fixture.example", null)); Unit },
+                { browse.observerAnalytics("fixture.example", "observer"); Unit },
+                { browse.nodeHealth("fixture.example", "node"); Unit },
+                { browse.nodePaths("fixture.example", "node"); Unit },
+                { browse.nodeReach("fixture.example", "node"); Unit },
+                { browse.nodeAnalytics("fixture.example", "node", 7); Unit },
+            )
+            for (request in requests) {
+                try {
+                    request()
+                    fail("Unsupported feature must fail")
+                } catch (error: IllegalStateException) {
+                    assertEquals("This feature is not available on this server.", error.message)
+                }
+            }
+        } finally {
+            client.dispatcher.executorService.shutdown()
+            client.connectionPool.evictAll()
+        }
+    }
     @Test fun factoryPreservesBrowseLiveAndSnapshotContracts() = runBlocking {
         val requests = java.util.Collections.synchronizedList(mutableListOf<String>())
         val client = OkHttpClient.Builder().addInterceptor { chain ->

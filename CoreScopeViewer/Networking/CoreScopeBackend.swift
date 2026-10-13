@@ -2,12 +2,14 @@ import Foundation
 
 struct CoreScopeBackend: AnalyzerBackend {
     private let client: APIClient
+    let sourceSession: AnalyzerSourceSession
 
-    init(client: APIClient) {
+    init(client: APIClient, sourceSession: AnalyzerSourceSession = AnalyzerSourceSession()) {
         self.client = client
+        self.sourceSession = sourceSession
     }
 
-    var cacheIdentifier: String { client.cacheIdentifier }
+    var cacheIdentifier: String { "corescope|\(client.cacheIdentifier)" }
 
     let capabilities: Set<BackendCapability> = [
         .nodeHealth, .nodeReach, .nodePaths, .nodeAnalytics,
@@ -15,58 +17,84 @@ struct CoreScopeBackend: AnalyzerBackend {
     ]
 
     func nodes(region: String?) async throws -> NodesResponse {
-        try await client.get("/api/nodes", query: Self.listQuery(limit: 5000, region: region))
+        try await get("/api/nodes", query: Self.listQuery(limit: 5000, region: region))
     }
 
     func nodeDetail(publicKey: String) async throws -> NodeDetailResponse {
-        try await client.get("/api/nodes/\(publicKey.urlPathComponentEncoded)")
+        try await get("/api/nodes/\(publicKey.urlPathComponentEncoded)")
     }
 
     func nodeHealth(publicKey: String) async throws -> NodeHealthResponse {
-        try await client.get("/api/nodes/\(publicKey.urlPathComponentEncoded)/health")
+        try await get("/api/nodes/\(publicKey.urlPathComponentEncoded)/health")
     }
 
     func nodePaths(publicKey: String) async throws -> NodePathsResponse {
-        try await client.get("/api/nodes/\(publicKey.urlPathComponentEncoded)/paths")
+        try await get("/api/nodes/\(publicKey.urlPathComponentEncoded)/paths")
     }
 
     func nodeReach(publicKey: String) async throws -> NodeReachResponse {
-        try await client.get("/api/nodes/\(publicKey.urlPathComponentEncoded)/reach")
+        try await get("/api/nodes/\(publicKey.urlPathComponentEncoded)/reach")
     }
 
     func nodeAnalytics(publicKey: String, days: Int) async throws -> NodeAnalyticsResponse {
-        try await client.get(
+        try await get(
             "/api/nodes/\(publicKey.urlPathComponentEncoded)/analytics",
             query: [URLQueryItem(name: "days", value: String(days))]
         )
     }
 
     func observers() async throws -> ObserversResponse {
-        try await client.get("/api/observers")
+        try await get("/api/observers")
     }
 
     func observerAnalytics(id: String) async throws -> ObserverAnalyticsResponse {
-        try await client.get("/api/observers/\(id.urlPathComponentEncoded)/analytics")
+        try await get("/api/observers/\(id.urlPathComponentEncoded)/analytics")
     }
 
-    func packets(region: String?, limit: Int, payloadType: Int?) async throws -> PacketsResponse {
-        try await client.get(
-            "/api/packets",
-            query: Self.packetQuery(region: region, limit: limit, payloadType: payloadType)
-        )
+    func packetPage(region: String?, pageSize: Int, payloadType: Int?, cursor: AnalyzerCursor?) async throws -> AnalyzerPage<Packet> {
+        try sourceSession.check()
+        guard pageSize > 0 else { throw AnalyzerPagingError.invalidPageSize }
+        let scope = "\(cacheIdentifier)|\(sourceSession.id)|packets|\(region ?? "")|\(payloadType.map(String.init) ?? "")"
+        let offset: Int
+        if let cursor {
+            guard let data = Data(base64Encoded: cursor.value),
+                  let saved = try? JSONDecoder().decode(PacketCursor.self, from: data),
+                  saved.scope == scope, saved.offset >= 0 else { throw AnalyzerPagingError.invalidCursor }
+            offset = saved.offset
+        } else {
+            offset = 0
+        }
+        var query = Self.packetQuery(region: region, limit: pageSize, payloadType: payloadType)
+        if offset > 0 { query.append(URLQueryItem(name: "offset", value: String(offset))) }
+        let response: PacketsResponse = try await get("/api/packets", query: query)
+        try sourceSession.check()
+        let nextOffset = offset + response.packets.count
+        let next: AnalyzerCursor?
+        if !response.packets.isEmpty && nextOffset < response.total {
+            let data = try JSONEncoder().encode(PacketCursor(scope: scope, offset: nextOffset))
+            next = AnalyzerCursor(value: data.base64EncodedString())
+        } else {
+            next = nil
+        }
+        return AnalyzerPage(items: response.packets, nextCursor: next, total: response.total)
+    }
+
+    private struct PacketCursor: Codable {
+        let scope: String
+        let offset: Int
     }
 
     func packetDetail(hash: String) async throws -> PacketDetailResponse {
-        try await client.get("/api/packets/\(hash.urlPathComponentEncoded)")
+        try await get("/api/packets/\(hash.urlPathComponentEncoded)")
     }
 
     func channels(region: String?) async throws -> ChannelsResponse {
         let query = region.map { [URLQueryItem(name: "region", value: $0)] } ?? []
-        return try await client.get("/api/channels", query: query)
+        return try await get("/api/channels", query: query)
     }
 
     func channelMessages(id: String, offset: Int) async throws -> ChannelMessagesResponse {
-        try await client.get(
+        try await get(
             "/api/channels/\(id.urlPathComponentEncoded)/messages",
             query: [
                 URLQueryItem(name: "limit", value: "500"),
@@ -76,15 +104,15 @@ struct CoreScopeBackend: AnalyzerBackend {
     }
 
     func regions() async throws -> RegionsMap {
-        try await client.get("/api/config/regions")
+        try await get("/api/config/regions")
     }
 
     func iataCoordinates() async throws -> IataCoordsResponse {
-        try await client.get("/api/iata-coords")
+        try await get("/api/iata-coords")
     }
 
     func mapDefaults() async throws -> MapDefaults {
-        try await client.get("/api/config/map")
+        try await get("/api/config/map")
     }
 
     static func packetQuery(region: String?, limit: Int, payloadType: Int?) -> [URLQueryItem] {
@@ -104,5 +132,24 @@ struct CoreScopeBackend: AnalyzerBackend {
             query.append(URLQueryItem(name: "region", value: region))
         }
         return query
+    }
+
+    private func get<Value: Decodable & Sendable>(_ path: String, query: [URLQueryItem] = []) async throws -> Value {
+        try sourceSession.check()
+        let request = Task<Value, Error> { try await client.get(path, query: query) }
+        let cancellationID = sourceSession.registerCancellation { request.cancel() }
+        defer { sourceSession.removeCancellation(cancellationID) }
+        do {
+            let value = try await withTaskCancellationHandler {
+                try await request.value
+            } onCancel: {
+                request.cancel()
+            }
+            try sourceSession.check()
+            return value
+        } catch {
+            try sourceSession.check()
+            throw error
+        }
     }
 }

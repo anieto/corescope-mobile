@@ -14,6 +14,9 @@ enum class ObserverSort(val title: String) { RECENT("Recently seen"), HOURLY("Pa
 
 const val ACTIVE_WINDOW_MILLIS = 15 * 60_000L
 
+fun observerCountTotal(counts: List<Long?>): Long? =
+    if (counts.any { it == null }) null else counts.filterNotNull().sum()
+
 fun MeshObserver.isActive(now: Long): Boolean = parseInstant(lastSeen)?.let { now - it.toEpochMilli() < ACTIVE_WINDOW_MILLIS } == true
 
 /** Same meanings as iOS: region is the observer's IATA code; activity means seen within 15 minutes. */

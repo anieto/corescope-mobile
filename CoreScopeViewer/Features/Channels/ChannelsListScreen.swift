@@ -58,6 +58,7 @@ struct ChannelsListScreen: View {
                 }
 
                 if !viewModel.isLoading,
+                   settings.beaconBackend == nil,
                    viewModel.lastUpdatedAt != nil || viewModel.errorMessage != nil {
                     DataLoadStatusView(
                         lastUpdatedAt: viewModel.lastUpdatedAt,
@@ -68,6 +69,15 @@ struct ChannelsListScreen: View {
                     .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 8, trailing: 20))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
+                }
+
+                if settings.beaconBackend != nil {
+                    BeaconFeatureNotice(capability: .serverChannels)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                    BeaconFeatureNotice(capability: .channelDecryptOnPhone)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                 }
 
                 if !visibleMonitoredChannels.isEmpty {
@@ -107,7 +117,7 @@ struct ChannelsListScreen: View {
             .adaptiveScrollContentWidth()
             .toolbar(.hidden, for: .navigationBar)
             .overlay {
-                if visibleServerChannels.isEmpty && visibleMonitoredChannels.isEmpty && !viewModel.isLoading {
+                if settings.beaconBackend == nil && visibleServerChannels.isEmpty && visibleMonitoredChannels.isEmpty && !viewModel.isLoading {
                     ContentUnavailableView(
                         searchText.isEmpty ? "No channels yet" : "No matching channels",
                         systemImage: searchText.isEmpty ? "number" : "magnifyingglass"
@@ -137,7 +147,7 @@ struct ChannelsListScreen: View {
             isSearchPresented = false
             isFiltersPresented = false
         }
-        .task(id: "\(settings.host)|\(regionFilter.selectedRegion ?? "")") {
+        .task(id: "\(settings.sourceSession.id)|\(regionFilter.selectedRegion ?? "")") {
             viewModel.configure(settings: settings)
             await viewModel.loadChannels(region: regionFilter.selectedRegion)
             updateVisibleChannels()

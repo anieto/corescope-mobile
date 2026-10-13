@@ -50,7 +50,7 @@ import org.nodescope.android.core.model.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (String) -> Unit, sampleRoute: List<Coordinate> = emptyList(), feed: () -> LiveFeedState = { LiveFeedState() }, onRefresh: () -> Unit = {}, regionControl: @Composable () -> Unit = {}, focusedCoordinate: Coordinate? = null, selectedRegion: String? = null, sourceViewport: RegionCoordinate? = null, routeReplay: RouteReplay? = null, onExitReplay: () -> Unit = {}, host: String? = null, showActiveNodes: Boolean = false, onActiveNodesShown: () -> Unit = {}, onShowPackets: (() -> Unit)? = null) {
+fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (String) -> Unit, sampleRoute: List<Coordinate> = emptyList(), feed: () -> LiveFeedState = { LiveFeedState() }, onRefresh: () -> Unit = {}, regionControl: @Composable () -> Unit = {}, focusedCoordinate: Coordinate? = null, selectedRegion: String? = null, sourceViewport: RegionCoordinate? = null, routeReplay: RouteReplay? = null, onExitReplay: () -> Unit = {}, host: String? = null, showActiveNodes: Boolean = false, onActiveNodesShown: () -> Unit = {}, onShowPackets: (() -> Unit)? = null, onLiveFeedDemand: (java.util.UUID, String, org.nodescope.android.core.network.LiveFeedDemand?) -> Unit = { _, _, _ -> }) {
     if (!BuildConfig.MAPS_CONFIGURED) {
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.map_unavailable), style = MaterialTheme.typography.headlineSmall)
@@ -126,6 +126,22 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     var framedHost by rememberSaveable { mutableStateOf(host) }
     var lastFocus by rememberSaveable { mutableStateOf<String?>(null) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val liveFeedConsumer = remember { java.util.UUID.randomUUID() }
+    val currentLiveFeedDemand by rememberUpdatedState(onLiveFeedDemand)
+    LaunchedEffect(lifecycle, host) {
+        val sourceHost = host ?: return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            try {
+                currentLiveFeedDemand(liveFeedConsumer, sourceHost,
+                    org.nodescope.android.core.network.LiveFeedDemand(configuration =
+                        org.nodescope.android.core.network.LiveFeedConfiguration(
+                            resolvePath = true, includeObserverKey = true, includeRepeats = true)))
+                kotlinx.coroutines.awaitCancellation()
+            } finally {
+                currentLiveFeedDemand(liveFeedConsumer, sourceHost, null)
+            }
+        }
+    }
     // Switching provider replaces the engine; the new map opens where the old one was looking.
     val engine: MapEngineState = if (providerChoice.provider == MapProvider.GOOGLE) rememberGoogleMapEngine() else rememberMapLibreEngine()
     // Camera control once the map is ready, and overlay drawing once its base style has loaded.

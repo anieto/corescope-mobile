@@ -66,6 +66,8 @@ struct AnalyzerDiagnosticReport: Sendable {
     let compatibilityLevel: AnalyzerDiagnosticLevel
     let compatibilityDetail: String
     let capabilities: [AnalyzerCapabilityCheck]
+    var backendType = "CoreScope"
+    var serverVersion: String? = nil
 }
 
 struct AnalyzerDiagnosticsService: Sendable {
@@ -93,9 +95,11 @@ struct AnalyzerDiagnosticsService: Sendable {
 
     private let baseURL: URL
     private let session: URLSession
+    private let beaconBackend: BeaconBackend?
 
     init(settings: AnalyzerSettings) {
         baseURL = settings.baseURL
+        beaconBackend = settings.beaconBackend
 
         let configuration = URLSessionConfiguration.ephemeral
         configuration.timeoutIntervalForRequest = 10
@@ -105,6 +109,7 @@ struct AnalyzerDiagnosticsService: Sendable {
     }
 
     func run() async -> AnalyzerDiagnosticReport {
+        if let beaconBackend { return await runBeacon(beaconBackend) }
         let results = await withTaskGroup(of: ProbeResult.self, returning: [ProbeResult].self) { group in
             for capability in AnalyzerCapability.allCases {
                 group.addTask {
@@ -171,6 +176,50 @@ struct AnalyzerDiagnosticsService: Sendable {
             compatibilityDetail: compatibilityDetail,
             capabilities: orderedResults.map(makeCapabilityCheck)
         )
+    }
+
+    private func runBeacon(_ backend: BeaconBackend) async -> AnalyzerDiagnosticReport {
+        var report = AnalyzerDiagnosticReport(
+            host: baseURL.host(percentEncoded: false) ?? baseURL.absoluteString, checkedAt: .now,
+            connectionLevel: .warning, connectionDetail: "Connection has not been checked.",
+            compatibilityLevel: .warning, compatibilityDetail: "Compatibility has not been checked.",
+            capabilities: [], backendType: "Beacon", serverVersion: backend.serverInfo.serverVersion
+        )
+        let checks = AnalyzerCapability.allCases.map { capability in
+            AnalyzerCapabilityCheck(
+                capability: capability, level: .warning,
+                detail: capability == .channels || capability == .mapConfiguration
+                    ? "Not available for Beacon sources in this release."
+                    : "Supported by the Beacon adapter; endpoint not probed."
+            )
+        }
+        do {
+            let info = try await backend.client.serverInfo()
+            let compatibility: AnalyzerDiagnosticLevel
+            let detail: String
+            do {
+                try info.requireSupported()
+                compatibility = .success
+                detail = "Beacon version is supported. Browse endpoints were not probed."
+            } catch {
+                compatibility = .failure
+                detail = error.localizedDescription
+            }
+            report = AnalyzerDiagnosticReport(
+                host: report.host, checkedAt: .now, connectionLevel: .success,
+                connectionDetail: "Beacon responded over HTTPS.", compatibilityLevel: compatibility,
+                compatibilityDetail: detail, capabilities: checks, backendType: "Beacon",
+                serverVersion: info.serverVersion
+            )
+        } catch {
+            report = AnalyzerDiagnosticReport(
+                host: report.host, checkedAt: .now, connectionLevel: .warning,
+                connectionDetail: error.localizedDescription, compatibilityLevel: .warning,
+                compatibilityDetail: "Beacon could not be rechecked. The selected server type is unchanged.",
+                capabilities: checks, backendType: "Beacon", serverVersion: backend.serverInfo.serverVersion
+            )
+        }
+        return report
     }
 
     private func probe(_ capability: AnalyzerCapability) async -> ProbeResult {

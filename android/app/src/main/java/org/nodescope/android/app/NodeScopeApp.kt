@@ -149,6 +149,7 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
             AppShell(preferences, state, model::setRegion, { model.refresh(); model.reconnectLive() }, model::setAppearance, model::selectDestination,
                 sourceScreen = { onDone -> SourceScreen(sources, preferences.host, saving, error, { host -> model.selectSource(host, onDone) }, model.sourceIcons) },
                 feed = live, onReconnect = model::reconnectLive, browse = model.browse, monitoredChannels = { model.monitoredChannels },
+                onLiveFeedDemand = model::setLiveFeedDemand,
                 diagnostics = model.diagnostics, cacheStorage = model.cacheStorage, sourceChangedAt = sourceChangedAt,
                 pendingLink = pendingLink, onLinkHandled = model::linkHandled, onDistanceUnit = model::setDistanceUnit,
                 sourceViewport = sources.firstOrNull { source ->
@@ -177,6 +178,7 @@ internal fun AppShell(
     cacheStorage: org.nodescope.android.core.storage.CacheStorage? = null, sourceChangedAt: Long? = null,
     pendingLink: PendingLink? = null, onLinkHandled: (Long) -> Unit = {},
     onDistanceUnit: (org.nodescope.android.core.storage.DistanceUnit) -> Unit = {},
+    onLiveFeedDemand: (java.util.UUID, String, org.nodescope.android.core.network.LiveFeedDemand?) -> Unit = { _, _, _ -> },
 ) {
     val context = LocalContext.current
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
@@ -424,7 +426,8 @@ internal fun AppShell(
                                     if (id != null && hash != null) completeRoutes(id, hash)
                                 }, onDetails = { nav.navigate(PacketDetailRoute(it)) }) { onShowPackets ->
                             MapScreen(state.snapshot?.takeIf { state.selection?.host == preferences.host }, focusedNode, ::openNode, feed = { currentFeed }, onRefresh = onRefresh, regionControl = { RegionMenu(preferences, state) { focusedNode = null; focusedPosition = null; onRegion(it) } }, focusedCoordinate = focusedPosition?.let { org.nodescope.android.core.model.Coordinate.gps(it[0], it[1]) }, selectedRegion = preferences.region, sourceViewport = sourceViewport, routeReplay = replay, onExitReplay = { replay = null },
-                                host = preferences.host, showActiveNodes = showActiveNodes, onActiveNodesShown = { showActiveNodes = false }, onShowPackets = onShowPackets)
+                                host = preferences.host, showActiveNodes = showActiveNodes, onActiveNodesShown = { showActiveNodes = false }, onShowPackets = onShowPackets,
+                                onLiveFeedDemand = onLiveFeedDemand)
                             }
                         }
                         screen<ExploreRoute> { backStack ->

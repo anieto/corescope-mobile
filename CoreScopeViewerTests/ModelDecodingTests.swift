@@ -3,6 +3,60 @@ import Testing
 @testable import CoreScopeViewer
 
 struct ModelDecodingTests {
+    @Test func observerUnknownDatesRoundTripAndSortAfterKnownDates() throws {
+        let decoder = APIClient.makeDecoder()
+        let unknown = try decoder.decode(MeshObserver.self, from: Data(#"{"id":"unknown"}"#.utf8))
+        let known = try decoder.decode(MeshObserver.self, from: Data(#"{"id":"known","last_seen":"2026-10-12T12:00:00Z"}"#.utf8))
+        #expect(unknown.firstSeen == nil && unknown.lastSeen == nil && unknown.online == nil)
+        #expect(!unknown.isRecentlySeen)
+        #expect(MeshObserver.moreRecentlySeen(known, than: unknown))
+        #expect(!MeshObserver.moreRecentlySeen(unknown, than: known))
+        #expect(try JSONDecoder().decode(MeshObserver.self, from: JSONEncoder().encode(unknown)) == unknown)
+    }
+
+    @Test func nodeDatesRemainUnknownThroughCacheRoundTrip() throws {
+        let node = try APIClient.makeDecoder().decode(MeshNode.self, from: Data(
+            #"{"public_key":"node","role":"repeater"}"#.utf8
+        ))
+        #expect(node.firstSeen == nil && node.lastSeen == nil && node.latestActivity == nil)
+        let restored = try JSONDecoder().decode(MeshNode.self, from: JSONEncoder().encode(node))
+        #expect(restored == node)
+    }
+
+    @Test func nodeActivityUsesLatestKnownHearingWithoutInventingSeenDates() throws {
+        let node = try APIClient.makeDecoder().decode(MeshNode.self, from: Data(
+            #"{"public_key":"node","role":"repeater","last_heard":"2026-10-10T12:00:00Z"}"#.utf8
+        ))
+        #expect(node.latestActivity == node.lastHeard)
+        #expect(node.latestActivity != nil)
+        #expect(node.firstSeen == nil && node.lastSeen == nil)
+        let dated = try APIClient.makeDecoder().decode(MeshNode.self, from: Data(
+            #"{"public_key":"node","role":"repeater","last_seen":"2026-10-11T12:00:00Z","last_heard":"2026-10-10T12:00:00Z"}"#.utf8
+        ))
+        #expect(dated.latestActivity == dated.lastSeen)
+    }
+
+    @Test func packetIdentityDoesNotRequireCoreScopeNumericID() throws {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let packet = try decoder.decode(Packet.self, from: Data(
+            #"{"hash":"packet-hash","first_seen":"2026-10-10T12:00:00Z","timestamp":"2026-10-10T12:00:00Z","route_type":1,"payload_type":5,"observation_count":1}"#.utf8
+        ))
+        #expect(packet.serverID == nil)
+        #expect(packet.id == "packet-hash")
+    }
+    @Test func unknownObserverCountsStayUnknown() throws {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let observer = try decoder.decode(MeshObserver.self, from: Data(
+            #"{"id":"observer","last_seen":"2026-10-10T12:00:00Z","first_seen":"2026-10-10T12:00:00Z"}"#.utf8
+        ))
+        #expect(observer.packetCount == nil)
+        #expect(observer.packetsLastHour == nil)
+        #expect(MeshObserver.total([0, 2]) == 2)
+        #expect(MeshObserver.total([0, nil]) == nil)
+        #expect(MeshObserver.total([]) == 0)
+    }
     @Test func decodesNodesResponse() throws {
         let json = """
         {

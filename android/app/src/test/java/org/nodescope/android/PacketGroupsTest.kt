@@ -9,6 +9,14 @@ import org.nodescope.android.feature.map.*
 import org.nodescope.android.feature.packets.*
 
 class PacketGroupsTest {
+    @Test fun incompleteRoutesAreNotBridged() {
+        val paths = listOf(listOf("a", null, "b"), listOf(null, "a", "b"),
+            listOf("a", "b", null), listOf("a", " ", "b"), listOf("a", "\n", "b"))
+        paths.forEach { path ->
+            assertTrue(routeOptions(listOf(HeardPath(path, RouteHearing("Receiver")))).isEmpty())
+            assertNull(routeIndexFor(path, listOf(RouteOption(listOf("a", "b")))))
+        }
+    }
     private fun packet(id: Long, hash: String, at: Long, observer: String = "obs$id", type: String = "ADVERT", hops: List<String?> = emptyList(),
         resolved: List<String?> = emptyList(), live: Boolean = true, region: String? = null, text: String? = null, name: String? = null, count: Int = 1) =
         LivePacket(id, hash, 4, type, observer, "Observer $observer", region, 5.0, -90.0, hops, resolved, null, at, live, count,
@@ -45,7 +53,7 @@ class PacketGroupsTest {
             HeardPath(listOf("x", null, "y"), heard("ASL239", -101.0)),
             HeardPath(listOf("solo"), heard("Direct", -80.0)),               // not a route
         ))
-        assertEquals(listOf(listOf("a", "b", "c", "d"), listOf("x", "y")), options.map { it.keys })
+        assertEquals(listOf(listOf("a", "b", "c", "d")), options.map { it.keys })
         assertEquals(listOf("Silverado", "Volente"), options[0].heardBy.map { it.observer })
         assertEquals(listOf("HAL9000"), options[0].alongTheWay.map { it.observer })
         assertEquals(2, options[0].alongTheWay.single().hops)
@@ -68,7 +76,7 @@ class PacketGroupsTest {
         val options = listOf(RouteOption(listOf("a", "b", "c", "d")), RouteOption(listOf("x", "y")))
         assertEquals(0, routeIndexFor(listOf("A", "B", "C", "D"), options))
         assertEquals(0, routeIndexFor(listOf("b", "c"), options)) // heard along the way
-        assertEquals(1, routeIndexFor(listOf("x", null, "y"), options))
+        assertNull(routeIndexFor(listOf("x", null, "y"), options))
         assertNull(routeIndexFor(listOf("q", "r"), options))
         assertNull(routeIndexFor(listOf("a"), options))
     }
@@ -99,7 +107,7 @@ class PacketGroupsTest {
             packet(3, "aa", 2, resolved = listOf("A", "B", "C")),
             packet(4, "aa", 3, resolved = listOf("X", null, "Y")),
             packet(5, "aa", 4, resolved = listOf("Z"))), null, emptyList()).single()
-        assertEquals(listOf(listOf("A", "B", "C"), listOf("X", "Y")), replayRoutes(group))
+        assertEquals(listOf(listOf("A", "B", "C")), replayRoutes(group))
     }
 
     @Test fun routeSubchainsBreakAtUnknownNodes() {

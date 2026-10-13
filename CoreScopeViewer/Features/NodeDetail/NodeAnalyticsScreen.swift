@@ -39,13 +39,17 @@ struct NodeAnalyticsScreen: View {
                 }
 
                 if !viewModel.isSupported {
-                    ContentUnavailableView(
-                        "Analytics Unavailable",
-                        systemImage: "chart.xyaxis.line",
-                        description: Text("This analyzer does not currently provide node analytics.")
-                    )
-                    .padding(.vertical, 48)
-                    .frame(maxWidth: .infinity)
+                    if settings.beaconBackend != nil {
+                        BeaconFeatureNotice(capability: .nodeAnalytics)
+                    } else {
+                        ContentUnavailableView(
+                            "Analytics Unavailable",
+                            systemImage: "chart.xyaxis.line",
+                            description: Text("This analyzer does not currently provide node analytics.")
+                        )
+                        .padding(.vertical, 48)
+                        .frame(maxWidth: .infinity)
+                    }
                 } else if let analytics = viewModel.analytics {
                     NodeAnalyticsSummaryCard(stats: analytics.computedStats)
 

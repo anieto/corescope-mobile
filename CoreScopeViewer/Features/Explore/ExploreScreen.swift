@@ -137,13 +137,13 @@ struct ExploreScreen: View {
             isAddFavoritePresented = false
             isSearchPresented = false
         }
-        .onChange(of: settings.host) { updateVisibleItems() }
+        .onChange(of: settings.sourceSession.id) { updateVisibleItems() }
         .onChange(of: favoritesStore.items) { updateVisibleItems() }
         .onChange(of: recentItemsStore.items) { updateVisibleItems() }
         .onChange(of: appNavigationStore.requestID) {
             openRequestedDeepLinkIfAvailable()
         }
-        .task(id: settings.host) {
+        .task(id: settings.sourceSession.id) {
             updateVisibleItems()
             nodeViewModel.resetForAnalyzerSource()
             nodeViewModel.configure(settings: settings)
@@ -158,7 +158,7 @@ struct ExploreScreen: View {
             refreshFavoriteNodeSnapshots()
             openRequestedDeepLinkIfAvailable()
         }
-        .task(id: "\(settings.host)|\(isTabActive)") {
+        .task(id: "\(settings.sourceSession.id)|\(isTabActive)") {
             guard isTabActive else { return }
 
             while !Task.isCancelled {
@@ -303,7 +303,7 @@ struct ExploreScreen: View {
             text: "",
             timestamp: packet.firstSeen,
             senderTimestamp: nil,
-            packetId: packet.id,
+            packetId: packet.serverID,
             packetHash: packet.hash,
             repeats: packet.observationCount,
             observers: packet.observerName.map { [$0] } ?? [],
@@ -366,17 +366,19 @@ struct ExploreScreen: View {
     private func loadSearchPackets() async {
         let client = AnalyzerBackendFactory.make(settings: settings)
         let cacheKey = "explore-search-packets-\(client.cacheIdentifier)"
-        if let cached: PacketsResponse = await APIResponseCache.shared.value(
+        if let cached: [Packet] = await APIResponseCache.shared.value(
             for: cacheKey,
             maximumAge: 7 * 24 * 60 * 60
         ) {
-            searchPackets = cached.packets
+            guard client.sourceSession.isCurrent, !Task.isCancelled else { return }
+            searchPackets = cached
         }
         do {
-            let response: PacketsResponse = try await APIResponseCache.shared.refresh(for: cacheKey) {
+            let response: [Packet] = try await APIResponseCache.shared.refresh(for: cacheKey, session: client.sourceSession) {
                 try await client.packets(region: nil, limit: 1000, payloadType: nil)
             }
-            searchPackets = response.packets
+            try client.sourceSession.check()
+            searchPackets = response
         } catch {
             // Keep the cached packet index searchable while the analyzer is unavailable.
         }
@@ -629,7 +631,7 @@ private struct NetworkAtAGlanceCard: View {
     }
 
     private var activeNodeCount: Int {
-        nodes.count { isActive($0.lastSeen) }
+        nodes.count { isActive($0.latestActivity) }
     }
 
     private var activeObserverCount: Int {
@@ -652,7 +654,7 @@ private struct NetworkAtAGlanceCard: View {
     }
 
     private var activeFavoriteCount: Int {
-        let activeNodeKeys = Set(nodes.filter { isActive($0.lastSeen) }.map(\.publicKey))
+        let activeNodeKeys = Set(nodes.filter { isActive($0.latestActivity) }.map(\.publicKey))
         let activeObserverIDs = Set(observers.filter { isActive($0.lastSeen) }.map(\.id))
         return favorites.count { item in
             if let node = item.node {
@@ -682,8 +684,8 @@ private struct NetworkAtAGlanceCard: View {
         return "\(channels) \(channelLabel) · \(nodes) \(nodeLabel) · \(observers) \(observerLabel)"
     }
 
-    private func isActive(_ date: Date) -> Bool {
-        date.timeIntervalSinceNow > -activeInterval
+    private func isActive(_ date: Date?) -> Bool {
+        date.map { $0.timeIntervalSinceNow > -activeInterval } ?? false
     }
 }
 
@@ -1562,7 +1564,7 @@ private struct GlobalSearchSheet: View {
             text: "",
             timestamp: packet.firstSeen,
             senderTimestamp: nil,
-            packetId: packet.id,
+            packetId: packet.serverID,
             packetHash: packet.hash,
             repeats: packet.observationCount,
             observers: packet.observerName.map { [$0] } ?? [],

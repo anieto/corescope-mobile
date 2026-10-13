@@ -10,6 +10,21 @@ import org.nodescope.android.core.storage.*
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class BrowseStateTest {
+    @Test fun cancelledUncooperativeFetchCannotPublish() = runTest {
+        val old = CompletableDeferred<String>()
+        val loader = KeyedLoader(backgroundScope, 60_000, { currentTime }) { key: String ->
+            if (key == "old") withContext(NonCancellable) { old.await() } else "fresh"
+        }
+        loader.load("old")
+        runCurrent()
+        loader.load("new")
+        runCurrent()
+        old.complete("stale")
+        runCurrent()
+        assertEquals("new", loader.state.value.key)
+        assertEquals("fresh", loader.state.value.value)
+        assertNull(loader.state.value.error)
+    }
     @Test fun newKeyCancelsOldRequestAndNeverShowsItsData() = runTest {
         val old = CompletableDeferred<String>()
         var oldCancelled = false

@@ -28,7 +28,7 @@ data class MeshObserver(val id: String, val name: String? = null, val iata: Stri
 @Serializable data class ObserversResponse(val observers: List<MeshObserver> = emptyList())
 
 data class LivePacket(
-    val id: Long, val hash: String, val payloadType: Int?, val typeName: String,
+    val id: Long?, val hash: String, val payloadType: Int?, val typeName: String,
     val observerId: String?, val observerName: String?, val region: String?,
     val snr: Double?, val rssi: Double?, val hops: List<String?>,
     val resolvedPath: List<String?>, val timestamp: String?,

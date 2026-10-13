@@ -22,14 +22,16 @@ struct ChannelMessage: Codable, Sendable, Identifiable, Hashable {
     let text: String
     let timestamp: Date
     let senderTimestamp: Double?
-    let packetId: Int
+    let packetId: Int?
     let packetHash: String
     let repeats: Int
     let observers: [String]
     let hops: Int
     let snr: Double?
 
-    var id: Int { packetId }
+    var id: String {
+        packetHash.isEmpty ? "server:\(packetId.map(String.init) ?? "")" : packetHash
+    }
 
     enum CodingKeys: String, CodingKey {
         case sender, text, timestamp

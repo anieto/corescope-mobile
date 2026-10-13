@@ -18,11 +18,18 @@ actor PacketFeedCache {
         let loadedAt: Date
     }
 
+    private struct RequestKey: Hashable {
+        let key: Key
+        let sessionID: UUID
+    }
+
+    private var generation = UUID()
     private let lifetime: TimeInterval = 30
     private var entries: [Key: Entry] = [:]
-    private var inFlightLoads: [Key: Task<[Packet], Error>] = [:]
+    private var inFlightLoads: [RequestKey: Task<[Packet], Error>] = [:]
 
     func clear() {
+        generation = UUID()
         inFlightLoads.values.forEach { $0.cancel() }
         inFlightLoads.removeAll()
         entries.removeAll()
@@ -33,29 +40,37 @@ actor PacketFeedCache {
         using apiClient: any AnalyzerBackend,
         forceRefresh: Bool = false
     ) async throws -> [Packet] {
+        try apiClient.sourceSession.check()
+        let generation = self.generation
+        let requestKey = RequestKey(key: key, sessionID: apiClient.sourceSession.id)
         if !forceRefresh,
            let entry = entries[key],
            Date().timeIntervalSince(entry.loadedAt) < lifetime {
             return entry.packets
         }
 
-        if let inFlightLoad = inFlightLoads[key] {
-            return try await inFlightLoad.value
+        if let inFlightLoad = inFlightLoads[requestKey] {
+            let result = try await inFlightLoad.value
+            try apiClient.sourceSession.check()
+            guard generation == self.generation else { throw CancellationError() }
+            return result
         }
 
         let load = Task { [apiClient] in
             let response = try await apiClient.packets(region: key.region, limit: 1000, payloadType: 5)
-            return response.packets
+            return response
         }
-        inFlightLoads[key] = load
+        inFlightLoads[requestKey] = load
 
         do {
             let packets = try await load.value
+            try apiClient.sourceSession.check()
+            guard generation == self.generation else { throw CancellationError() }
             entries[key] = Entry(packets: packets, loadedAt: Date())
-            inFlightLoads[key] = nil
+            inFlightLoads[requestKey] = nil
             return packets
         } catch {
-            inFlightLoads[key] = nil
+            if generation == self.generation { inFlightLoads[requestKey] = nil }
             throw error
         }
     }

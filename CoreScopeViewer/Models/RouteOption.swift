@@ -96,6 +96,9 @@ enum RouteOptions {
         var entries: [Entry] = []
         var indexByPath: [[String]: Int] = [:]
         for report in reports {
+            guard report.path.allSatisfy({ key in
+                key.map { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? false
+            }) else { continue }
             let keys = report.path.compactMap { $0 }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
             guard keys.count >= 2 else { continue }
             let lower = keys.map { $0.lowercased() }
@@ -161,6 +164,9 @@ enum RouteOptions {
 
     /// Which route (index) a reported path belongs to: the same route, or one it is part of.
     static func index(for path: [String?], in options: [RouteOption]) -> Int? {
+        guard path.allSatisfy({ key in
+            key.map { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? false
+        }) else { return nil }
         let keys = path.compactMap { $0 }
             .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
             .map { $0.lowercased() }

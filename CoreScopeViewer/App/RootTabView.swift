@@ -101,10 +101,10 @@ struct RootTabView: View {
         .onChange(of: selectedTab) {
             lastSelectedTabRawValue = selectedTab.rawValue
         }
-        .onChange(of: settings.host) {
+        .onChange(of: settings.sourceSession.id) {
             resetAllTabs()
         }
-        .task(id: "\(settings.host)|\(regionFilter.selectedRegion ?? "")") {
+        .task(id: "\(settings.sourceSession.id)|\(regionFilter.selectedRegion ?? "")") {
             await ChannelsViewModel.preload(settings: settings, region: regionFilter.selectedRegion)
         }
     }
@@ -131,4 +131,3 @@ struct RootTabView: View {
         }
     }
 }
-

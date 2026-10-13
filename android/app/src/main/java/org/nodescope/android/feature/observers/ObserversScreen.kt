@@ -77,8 +77,8 @@ fun ObserversScreen(
             if (visible.isNotEmpty()) item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     SummaryMetric("Observers", visible.size.toString(), Modifier.weight(1f))
-                    SummaryMetric("Packets / hr", compactCount(visible.sumOf { it.packetsLastHour ?: 0 }), Modifier.weight(1f))
-                    SummaryMetric("Packets", compactCount(visible.sumOf { it.packetCount ?: 0 }), Modifier.weight(1f))
+                    SummaryMetric("Packets / hr", observerCountTotal(visible.map { it.packetsLastHour })?.let(::compactCount) ?: "Unknown", Modifier.weight(1f))
+                    SummaryMetric("Packets", observerCountTotal(visible.map { it.packetCount })?.let(::compactCount) ?: "Unknown", Modifier.weight(1f))
                 }
             }
             if (visible.isNotEmpty()) item { SectionLabel("Observer nodes") }

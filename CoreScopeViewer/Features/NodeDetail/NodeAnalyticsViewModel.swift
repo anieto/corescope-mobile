@@ -35,8 +35,17 @@ final class NodeAnalyticsViewModel {
     private let staleCacheLifetime: TimeInterval = 24 * 60 * 60
 
     func configure(settings: AnalyzerSettings) {
-        apiClient = AnalyzerBackendFactory.make(settings: settings)
-        cacheNamespace = AnalyzerSettings.normalizedHost(settings.host).lowercased()
+        let backend = AnalyzerBackendFactory.make(settings: settings)
+        if apiClient?.sourceSession.id != backend.sourceSession.id {
+            activeLoadID = UUID()
+            analytics = nil
+            isSupported = true
+            lastUpdatedAt = nil
+            errorMessage = nil
+            isLoading = false
+        }
+        apiClient = backend
+        cacheNamespace = backend.cacheIdentifier
     }
 
     func load(pubkey: String, range: NodeAnalyticsRange? = nil) async {
@@ -45,20 +54,32 @@ final class NodeAnalyticsViewModel {
         selectedRange = requestedRange
         let loadID = UUID()
         activeLoadID = loadID
+        guard apiClient.capabilities.contains(.nodeAnalytics) else {
+            analytics = nil
+            lastUpdatedAt = nil
+            errorMessage = nil
+            isLoading = false
+            isSupported = false
+            return
+        }
         let cacheKey = "node-analytics-\(cacheNamespace)-\(pubkey.lowercased())-\(requestedRange.rawValue)"
 
         if let cached: NodeAnalyticsResponse = await APIResponseCache.shared.value(
             for: cacheKey,
             maximumAge: staleCacheLifetime
         ) {
+            let savedAt = await APIResponseCache.shared.savedAt(for: cacheKey)
+            guard isCurrent(loadID, backend: apiClient) else { return }
             analytics = cached
-            lastUpdatedAt = await APIResponseCache.shared.savedAt(for: cacheKey)
+            lastUpdatedAt = savedAt
             errorMessage = nil
             isSupported = true
         } else {
+            guard isCurrent(loadID, backend: apiClient) else { return }
             analytics = nil
         }
 
+        guard isCurrent(loadID, backend: apiClient) else { return }
         isLoading = analytics == nil
         defer {
             if activeLoadID == loadID {
@@ -67,25 +88,30 @@ final class NodeAnalyticsViewModel {
         }
 
         do {
-            let response: NodeAnalyticsResponse = try await APIResponseCache.shared.refresh(for: cacheKey) {
+            let response: NodeAnalyticsResponse = try await APIResponseCache.shared.refresh(for: cacheKey, session: apiClient.sourceSession) {
                 try await apiClient.nodeAnalytics(publicKey: pubkey, days: requestedRange.rawValue)
             }
-            guard activeLoadID == loadID else { return }
+            guard isCurrent(loadID, backend: apiClient) else { return }
             analytics = response
             lastUpdatedAt = .now
             errorMessage = nil
             isSupported = true
         } catch APIError.http(404) {
-            guard activeLoadID == loadID else { return }
+            guard isCurrent(loadID, backend: apiClient) else { return }
             analytics = nil
             errorMessage = nil
             isSupported = false
         } catch {
-            guard activeLoadID == loadID else { return }
+            guard isCurrent(loadID, backend: apiClient) else { return }
+            guard isCurrent(loadID, backend: apiClient) else { return }
             if error is CancellationError || (error as? URLError)?.code == .cancelled {
                 return
             }
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func isCurrent(_ loadID: UUID, backend: any AnalyzerBackend) -> Bool {
+        activeLoadID == loadID && backend.sourceSession.isCurrent && !Task.isCancelled
     }
 }

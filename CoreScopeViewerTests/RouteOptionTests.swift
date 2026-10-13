@@ -15,7 +15,7 @@ struct RouteOptionTests {
             HeardPath(path: ["x", nil, "y"], hearing: heard("ASL239", -101)),
             HeardPath(path: ["solo"], hearing: heard("Direct", -80)),                // not a route
         ])
-        #expect(options.map(\.keys) == [["a", "b", "c", "d"], ["x", "y"]])
+        #expect(options.map(\.keys) == [["a", "b", "c", "d"]])
         #expect(options[0].heardBy.map(\.observer) == ["Silverado", "Volente"])
         #expect(options[0].alongTheWay.map(\.observer) == ["HAL9000"])
         #expect(options[0].alongTheWay.first?.hops == 2)
@@ -43,7 +43,7 @@ struct RouteOptionTests {
         let options = [RouteOption(keys: ["a", "b", "c", "d"]), RouteOption(keys: ["x", "y"])]
         #expect(RouteOptions.index(for: ["A", "B", "C", "D"], in: options) == 0)
         #expect(RouteOptions.index(for: ["b", "c"], in: options) == 0) // heard along the way
-        #expect(RouteOptions.index(for: ["x", nil, "y"], in: options) == 1)
+        #expect(RouteOptions.index(for: ["x", nil, "y"], in: options) == nil)
         #expect(RouteOptions.index(for: ["q", "r"], in: options) == nil)
         #expect(RouteOptions.index(for: ["a"], in: options) == nil)
     }
@@ -68,10 +68,23 @@ struct RouteOptionTests {
         let options = RouteOptions.make(from: [
             HeardPath(path: ["A", "B", "C"], hearing: nil),
             HeardPath(path: ["b", "c"], hearing: nil),
-            HeardPath(path: ["X", nil, "Y"], hearing: nil),
+            HeardPath(path: ["X", "Y"], hearing: nil),
         ])
         #expect(options.map(\.keys) == [["A", "B", "C"], ["X", "Y"]])
         #expect(options[1].name(index: 1) == "Route 2")
         #expect(options[1].summary == "2 hops")
+    }
+
+    @Test func uncertainRoutesAreNotBridgedOrAttributed() {
+        let paths: [[String?]] = [
+            ["a", nil, "b"], [nil, "a", "b"], ["a", "b", nil],
+            ["a", " ", "b"], ["a", "\n", "b"]
+        ]
+        for path in paths {
+            #expect(RouteOptions.make(from: [
+                HeardPath(path: path, hearing: RouteHearing(observer: "Receiver"))
+            ]).isEmpty)
+            #expect(RouteOptions.index(for: path, in: [RouteOption(keys: ["a", "b"])]) == nil)
+        }
     }
 }

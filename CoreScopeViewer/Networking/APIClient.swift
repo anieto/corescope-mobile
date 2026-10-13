@@ -17,6 +17,7 @@ actor APIResponseCache {
 
     private var memoryData: [String: Data] = [:]
     private var inFlightRefreshes: [String: Task<Data, Error>] = [:]
+    private var generation = UUID()
 
     func value<Value: Codable>(
         for key: String,
@@ -33,6 +34,7 @@ actor APIResponseCache {
     }
 
     func clear() {
+        generation = UUID()
         inFlightRefreshes.values.forEach { $0.cancel() }
         inFlightRefreshes.removeAll()
         memoryData.removeAll()
@@ -51,26 +53,37 @@ actor APIResponseCache {
 
     func refresh<Value: Codable & Sendable>(
         for key: String,
+        session: AnalyzerSourceSession? = nil,
         loader: @escaping @Sendable () async throws -> Value
     ) async throws -> Value {
-        if let inFlight = inFlightRefreshes[key] {
+        try session?.check()
+        let generation = self.generation
+        let requestKey = "\(key)|\(session?.id.uuidString ?? "")"
+        if let inFlight = inFlightRefreshes[requestKey] {
             let data = try await inFlight.value
+            try session?.check()
+            try Task.checkCancellation()
+            guard generation == self.generation else { throw CancellationError() }
             return try JSONDecoder().decode(Entry<Value>.self, from: data).value
         }
 
         let refresh = Task<Data, Error> {
             let value = try await loader()
+            try session?.check()
+            try Task.checkCancellation()
             return try JSONEncoder().encode(Entry(savedAt: .now, value: value))
         }
-        inFlightRefreshes[key] = refresh
+        inFlightRefreshes[requestKey] = refresh
         do {
             let data = try await refresh.value
+            try session?.check()
+            guard generation == self.generation else { throw CancellationError() }
             memoryData[key] = data
             try? data.write(to: fileURL(for: key), options: .atomic)
-            inFlightRefreshes[key] = nil
+            inFlightRefreshes[requestKey] = nil
             return try JSONDecoder().decode(Entry<Value>.self, from: data).value
         } catch {
-            inFlightRefreshes[key] = nil
+            if generation == self.generation { inFlightRefreshes[requestKey] = nil }
             throw error
         }
     }

@@ -7,9 +7,9 @@ struct MeshObserver: Codable, Sendable, Identifiable, Hashable {
     let id: String
     let name: String?
     let iata: String?
-    let lastSeen: Date
-    let firstSeen: Date
-    let packetCount: Int
+    let lastSeen: Date?
+    let firstSeen: Date?
+    let packetCount: Int?
     let model: String?
     let firmware: String?
     let clientVersion: String?
@@ -17,10 +17,28 @@ struct MeshObserver: Codable, Sendable, Identifiable, Hashable {
     let batteryMv: Int?
     let uptimeSecs: Int?
     let noiseFloor: Double?
-    let packetsLastHour: Int
+    let packetsLastHour: Int?
     let lat: Double?
     let lon: Double?
     let nodeRole: String?
+    var online: Bool? = nil
+    var lastStatusAt: Date? = nil
+
+    var isRecentlySeen: Bool { lastSeen.map { $0.timeIntervalSinceNow > -900 } ?? false }
+
+    static func moreRecentlySeen(_ lhs: MeshObserver, than rhs: MeshObserver) -> Bool {
+        switch (lhs.lastSeen, rhs.lastSeen) {
+        case (.some(let left), .some(let right)) where left != right: return left > right
+        case (.some, .none): return true
+        case (.none, .some): return false
+        default: return lhs.id < rhs.id
+        }
+    }
+
+    static func total(_ counts: [Int?]) -> Int? {
+        guard counts.allSatisfy({ $0 != nil }) else { return nil }
+        return counts.compactMap { $0 }.reduce(0, +)
+    }
 
     enum CodingKeys: String, CodingKey {
         case id, name, iata
@@ -34,12 +52,14 @@ struct MeshObserver: Codable, Sendable, Identifiable, Hashable {
         case uptimeSecs = "uptime_secs"
         case noiseFloor = "noise_floor"
         case packetsLastHour, lat, lon, nodeRole
+        case online
+        case lastStatusAt = "last_status_at"
     }
 }
 
 struct ObserversResponse: Codable, Sendable {
     let observers: [MeshObserver]
-    let serverTime: Date
+    let serverTime: Date?
 
     enum CodingKeys: String, CodingKey {
         case observers

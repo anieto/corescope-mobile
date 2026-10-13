@@ -96,6 +96,11 @@ final class MapViewModel {
 
     private var apiClient: (any AnalyzerBackend)?
     private var cacheNamespace = ""
+    private var nodeLoadID = UUID()
+    private var loadedNodeRegion: String?
+    private var hasLoadedNodeRegion = false
+    private var appliedCatalogID: UUID?
+    private var appliedCatalogRegion: String?
     private let automaticRefreshInterval: TimeInterval = 30
     private let staleCacheLifetime: TimeInterval = 7 * 24 * 60 * 60
 
@@ -104,14 +109,18 @@ final class MapViewModel {
     }
 
     func configure(settings: AnalyzerSettings) {
-        apiClient = AnalyzerBackendFactory.make(settings: settings)
-        cacheNamespace = settings.host.lowercased()
+        let backend = AnalyzerBackendFactory.make(settings: settings)
+        apiClient = backend
+        cacheNamespace = backend.cacheIdentifier
     }
 
     /// Analyzer hosts have independent node sets and map defaults. Clear the
     /// displayed state before loading a new source so old-host data cannot
     /// briefly appear or influence the next camera position.
     func resetForAnalyzerSource() {
+        nodeLoadID = UUID()
+        hasLoadedNodeRegion = false
+        appliedCatalogID = nil
         nodes = []
         recentPackets = []
         mapDefaults = nil
@@ -121,48 +130,61 @@ final class MapViewModel {
     }
 
     func loadMapDefaults() async {
+        guard let apiClient, apiClient.capabilities.contains(.mapDefaults),
+              apiClient.sourceSession.isCurrent, !Task.isCancelled else { return }
         guard mapDefaults == nil else { return }
         let cacheKey = "map-defaults-\(cacheNamespace)"
         if let cached: MapDefaults = await MapResponseCache.shared.value(
             for: cacheKey,
             maximumAge: staleCacheLifetime
         ) {
+            guard apiClient.sourceSession.isCurrent, !Task.isCancelled else { return }
             mapDefaults = cached
             return
         }
 
-        guard let apiClient else { return }
         // Non-fatal if this fails: the map just falls back to cached defaults.
         if let defaults: MapDefaults = try? await apiClient.mapDefaults() {
+            guard apiClient.sourceSession.isCurrent, !Task.isCancelled else { return }
             mapDefaults = defaults
             await MapResponseCache.shared.store(defaults, for: cacheKey)
         }
     }
 
     func loadNodes(region: String?, forceRefresh: Bool = false) async {
+        guard let apiClient, apiClient.sourceSession.isCurrent, !Task.isCancelled else { return }
+        let requestID = UUID()
+        nodeLoadID = requestID
+        hasLoadedNodeRegion = false
         let cacheKey = "map-nodes-\(cacheNamespace)-\(region ?? "all")"
         let hadCachedNodes: Bool
         if let cached: NodesResponse = await MapResponseCache.shared.value(
             for: cacheKey,
             maximumAge: staleCacheLifetime
         ) {
+            let savedAt = await MapResponseCache.shared.savedAt(for: cacheKey)
+            guard apiClient.sourceSession.isCurrent, nodeLoadID == requestID, !Task.isCancelled else { return }
             nodes = cached.nodes
-            lastUpdatedAt = await MapResponseCache.shared.savedAt(for: cacheKey)
+            loadedNodeRegion = region
+            hasLoadedNodeRegion = true
+            lastUpdatedAt = savedAt
             errorMessage = nil
             hadCachedNodes = true
         } else {
+            guard apiClient.sourceSession.isCurrent, nodeLoadID == requestID, !Task.isCancelled else { return }
             hadCachedNodes = false
             errorMessage = nil
         }
 
-        guard let apiClient,
-              forceRefresh || refreshIsDue(for: cacheKey) else {
+        guard forceRefresh || refreshIsDue(for: cacheKey) else {
             return
         }
 
         // Cached content remains interactive while the background refresh runs.
         isLoading = !hadCachedNodes && nodes.isEmpty
-        defer { isLoading = false }
+        defer {
+            if apiClient.sourceSession.isCurrent, nodeLoadID == requestID { isLoading = false }
+        }
         do {
             // Request enough to cover the whole node set, not just a
             // display-sized page — the live map's ping animation resolves
@@ -171,12 +193,17 @@ final class MapViewModel {
             // resolve. The host has ~1,000 nodes today; ask for well above
             // that rather than re-checking `total` on every load.
             let response = try await apiClient.nodes(region: region)
+            try apiClient.sourceSession.check()
+            guard nodeLoadID == requestID, !Task.isCancelled else { return }
             nodes = response.nodes
+            loadedNodeRegion = region
+            hasLoadedNodeRegion = true
             lastUpdatedAt = .now
             errorMessage = nil
             await MapResponseCache.shared.store(response, for: cacheKey)
             recordRefresh(for: cacheKey)
         } catch {
+            guard apiClient.sourceSession.isCurrent, nodeLoadID == requestID, !Task.isCancelled else { return }
             if error is CancellationError || (error as? URLError)?.code == .cancelled {
                 return
             }
@@ -184,23 +211,71 @@ final class MapViewModel {
         }
     }
 
+    func applyBeaconNodes(
+        _ states: [String: BeaconLiveProtocol.NodeState], region: String?, sourceSessionID: UUID,
+        catalog: [BeaconNodeReader.Node]? = nil, catalogID: UUID? = nil
+    ) {
+        guard let apiClient, apiClient.sourceSession.id == sourceSessionID,
+              apiClient.sourceSession.isCurrent else { return }
+        let baseline: [MeshNode]
+        if let catalog, catalogID == nil || catalogID != appliedCatalogID || region != appliedCatalogRegion {
+            let selected = Set(region?.split(separator: ",").map { String($0).uppercased() } ?? [])
+            baseline = catalog.filter { node in
+                selected.isEmpty || (node.iatas ?? []).contains { selected.contains($0.iata.uppercased()) }
+            }.map { record in
+                let node = record.meshNode
+                if loadedNodeRegion == region, let existing = nodesByPubkey[node.publicKey.lowercased()],
+                   let existingDate = existing.latestActivity, let date = node.latestActivity,
+                   existingDate > date { return existing }
+                return node
+            }
+            appliedCatalogID = catalogID
+            appliedCatalogRegion = region
+            loadedNodeRegion = region
+            hasLoadedNodeRegion = true
+        } else {
+            guard hasLoadedNodeRegion, loadedNodeRegion == region else { return }
+            baseline = nodes
+        }
+        let updated = Self.mergingBeaconNodes(baseline, states: states, region: region)
+        if updated != nodes { nodes = updated }
+    }
+
+    static func mergingBeaconNodes(
+        _ nodes: [MeshNode], states: [String: BeaconLiveProtocol.NodeState], region: String?
+    ) -> [MeshNode] {
+        var result = nodes.map { node in
+            states[node.publicKey.lowercased()]?.applying(to: node) ?? node
+        }
+        let existingKeys = Set(nodes.map { $0.publicKey.lowercased() })
+        let selectedRegions = Set(region?.split(separator: ",").map { String($0).uppercased() } ?? [])
+        for key in states.keys.sorted() where !existingKeys.contains(key) {
+            guard let state = states[key],
+                  selectedRegions.isEmpty || !selectedRegions.isDisjoint(with: state.regions.keys) else { continue }
+            result.append(state.applying(to: nil))
+        }
+        return result
+    }
+
     func loadPackets(region: String?, forceRefresh: Bool = false) async {
+        guard let apiClient, apiClient.sourceSession.isCurrent, !Task.isCancelled else { return }
         let cacheKey = "map-packets-\(cacheNamespace)-\(region ?? "all")"
-        if let cached: PacketsResponse = await MapResponseCache.shared.value(
+        if let cached: [Packet] = await MapResponseCache.shared.value(
             for: cacheKey,
             maximumAge: staleCacheLifetime
         ) {
-            recentPackets = cached.packets
+            guard apiClient.sourceSession.isCurrent, !Task.isCancelled else { return }
+            recentPackets = cached
         }
 
-        guard let apiClient,
-              forceRefresh || refreshIsDue(for: cacheKey) else {
+        guard forceRefresh || refreshIsDue(for: cacheKey) else {
             return
         }
 
         do {
             let response = try await apiClient.packets(region: region, limit: 200, payloadType: nil)
-            recentPackets = response.packets
+            try apiClient.sourceSession.check()
+            recentPackets = response
             await MapResponseCache.shared.store(response, for: cacheKey)
             recordRefresh(for: cacheKey)
         } catch {

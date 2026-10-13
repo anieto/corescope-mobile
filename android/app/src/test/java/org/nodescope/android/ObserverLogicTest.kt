@@ -9,6 +9,11 @@ import org.nodescope.android.core.network.protocolJson
 import org.nodescope.android.feature.observers.*
 
 class ObserverLogicTest {
+    @Test fun partialTotalsStayUnknown() {
+        assertNull(observerCountTotal(listOf(0L, null)))
+        assertEquals(2L, observerCountTotal(listOf(0L, 2L)))
+        assertEquals(0L, observerCountTotal(emptyList()))
+    }
     private val now = Instant.parse("2026-09-23T12:05:00Z").toEpochMilli()
     private val observers = protocolJson.decodeFromString<ObserversResponse>(fixture("observers.json")).observers
 

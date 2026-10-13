@@ -25,8 +25,10 @@ final class ObserverRegionLookup {
     private var cacheNamespace = ""
 
     func configure(settings: AnalyzerSettings) {
-        apiClient = AnalyzerBackendFactory.make(settings: settings)
-        cacheNamespace = settings.host.lowercased()
+        let backend = AnalyzerBackendFactory.make(settings: settings)
+        if let previous = apiClient, previous.sourceSession.id != backend.sourceSession.id { reset() }
+        apiClient = backend
+        cacheNamespace = backend.cacheIdentifier
     }
 
     /// Call when the analyzer host changes — a lookup built from the old
@@ -47,12 +49,14 @@ final class ObserverRegionLookup {
             for: cacheKey,
             maximumAge: 7 * 24 * 60 * 60
         )
+        guard apiClient.sourceSession.isCurrent, !Task.isCancelled else { return }
         if let cached {
             apply(cached)
         }
-        guard let response: ObserversResponse = try? await APIResponseCache.shared.refresh(for: cacheKey, loader: {
+        guard let response: ObserversResponse = try? await APIResponseCache.shared.refresh(for: cacheKey, session: apiClient.sourceSession, loader: {
             try await apiClient.observers()
         }) else { return }
+        guard apiClient.sourceSession.isCurrent, !Task.isCancelled else { return }
         apply(response)
     }
 

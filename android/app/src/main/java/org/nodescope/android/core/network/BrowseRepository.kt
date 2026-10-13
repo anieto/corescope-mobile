@@ -32,6 +32,10 @@ interface BrowseRepository {
     suspend fun allNodes(host: String): List<MeshNode>
     /** The analyzer's latest packets (no region), for Explore's search and dashboard. */
     suspend fun recentPackets(host: String, limit: Int = 1_000): List<LivePacket>
+    suspend fun packetPage(host: String, size: Int, cursor: AnalyzerCursor?): AnalyzerPage<LivePacket> {
+        require(cursor == null)
+        return AnalyzerPage(recentPackets(host, size), null)
+    }
     /** Runs [block] against saved responses only (null when not saved or older than [maxAgeMillis]). */
     suspend fun <T> saved(maxAgeMillis: Long, block: suspend BrowseRepository.() -> T): Cached<T>? = null
 }
@@ -91,11 +95,11 @@ class HttpBrowseRepository(private val client: BodySource, private val ephemeral
         protocolJson.decodeFromString<NodeReach>(client.read(nodeSectionUrl(host, publicKey, "reach")))
     override suspend fun allNodes(host: String) = protocolJson.decodeFromString<NodesResponse>(
         client.read(endpoint(host, "api", "nodes").newBuilder().addQueryParameter("limit", "5000").build())).nodes.distinctBy { it.publicKey }
-    override suspend fun recentPackets(host: String, limit: Int): List<LivePacket> {
-        val root = protocolJson.parseToJsonElement(client.read(endpoint(host, "api", "packets").newBuilder()
-            .addQueryParameter("limit", limit.toString()).build())).jsonObject
-        return (root["packets"] as? JsonArray).orEmpty().mapNotNull { runCatching { parseLivePacket(it.jsonObject, live = false) }.getOrNull() }
-    }
+    override suspend fun recentPackets(host: String, limit: Int): List<LivePacket> =
+        collectAnalyzerPages(limit, identity = { it.hash.ifBlank { "id:" + it.id } }) { cursor, size -> packetPage(host, size, cursor) }
+
+    override suspend fun packetPage(host: String, size: Int, cursor: AnalyzerCursor?): AnalyzerPage<LivePacket> =
+        coreScopePacketPage(client, endpoint(host, "api", "packets"), size, cursor)
     override suspend fun packetDetail(host: String, hash: String) =
         protocolJson.decodeFromString<PacketDetail>(client.read(packetDetailUrl(host, hash)))
     override suspend fun nodeAnalytics(host: String, publicKey: String, days: Int) =

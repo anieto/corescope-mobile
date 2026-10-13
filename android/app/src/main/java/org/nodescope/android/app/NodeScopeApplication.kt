@@ -40,7 +40,7 @@ class AppContainer(application: Application) {
     val backend = AnalyzerBackendFactory.create(client, responses) { airports }
     val repository: AnalyzerRepository = backend
     val packetSource: PacketSource = backend.liveFeed
-    val browse: BrowseRepository = backend
+    val browse: BrowseRepository = org.nodescope.android.core.network.CapabilityBrowseRepository(backend) { backend.capabilities }
     val diagnostics = AnalyzerDiagnostics(client)
     val cacheStorage = org.nodescope.android.core.storage.CacheStorage(application)
     val sourceIcons = org.nodescope.android.core.storage.SourceIcons(application, client)

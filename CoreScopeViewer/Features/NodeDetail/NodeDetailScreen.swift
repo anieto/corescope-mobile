@@ -22,14 +22,20 @@ struct NodeDetailScreen: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                DataLoadStatusView(
-                    lastUpdatedAt: viewModel.lastUpdatedAt,
-                    errorMessage: viewModel.errorMessage,
-                    hasContent: viewModel.health != nil || viewModel.paths != nil || viewModel.reach != nil,
-                    retry: retryNodeData
-                )
+                if settings.beaconBackend == nil {
+                    DataLoadStatusView(
+                        lastUpdatedAt: viewModel.lastUpdatedAt,
+                        errorMessage: viewModel.errorMessage,
+                        hasContent: viewModel.health != nil || viewModel.paths != nil || viewModel.reach != nil,
+                        retry: retryNodeData
+                    )
+                }
 
                 NodeIdentityCard(node: displayedNode)
+
+                if settings.beaconBackend != nil {
+                    BeaconFeatureNotice(capability: .nodeHealth)
+                }
 
                 NavigationLink {
                     NodeAnalyticsScreen(node: displayedNode)
@@ -265,9 +271,15 @@ private struct NodeIdentityCard: View {
                         Text(node.role.capitalized)
                             .font(.caption.weight(.bold))
                             .foregroundStyle(NodeRoleStyle.color(for: node.role))
-                        Text("· Seen \(RelativeTime.string(from: node.lastSeen))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        if let lastSeen = node.lastSeen {
+                            Text("· Seen \(RelativeTime.string(from: lastSeen))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else if let lastHeard = node.lastHeard {
+                            Text("· Heard \(RelativeTime.string(from: lastHeard))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
             }
@@ -296,15 +308,20 @@ private struct NodeIdentityCard: View {
 
 private struct NodeDateMetric: View {
     let label: LocalizedStringKey
-    let date: Date
+    let date: Date?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
-            Text(date, format: .dateTime.month().day().year())
-                .font(.subheadline.weight(.semibold))
+            if let date {
+                Text(date, format: .dateTime.month().day().year())
+                    .font(.subheadline.weight(.semibold))
+            } else {
+                Text("Unknown")
+                    .font(.subheadline.weight(.semibold))
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

@@ -7,6 +7,11 @@ import org.nodescope.android.core.network.*
 import org.nodescope.android.feature.packets.distinctRoutes
 
 class PacketDetailTest {
+    @Test fun packetRecordDoesNotRequireCoreScopeNumericID() {
+        val packet = protocolJson.decodeFromString<PacketRecord>("""{"hash":"beacon-packet"}""")
+        assertNull(packet.id)
+        assertEquals("beacon-packet", packet.hash)
+    }
     private val detail = protocolJson.decodeFromString<PacketDetail>(fixture("packet-detail.json"))
 
     @Test fun decodesWithPartialObservations() {
@@ -19,8 +24,8 @@ class PacketDetailTest {
     }
 
     @Test fun routesDropContainedPathsAndBreakAtUnresolvedHops() {
-        // ["BB22","CC33"] is inside ["aa11","bb22","cc33"] ignoring case; the null hop leaves ["dd44","ee55"].
-        assertEquals(listOf(listOf("aa11", "bb22", "cc33"), listOf("dd44", "ee55")),
+        // The contained path is merged; the incomplete path is not a confirmed replay route.
+        assertEquals(listOf(listOf("aa11", "bb22", "cc33")),
             distinctRoutes(detail.observations.map { it.resolvedPath.orEmpty() }))
     }
 

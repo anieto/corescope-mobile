@@ -1,6 +1,7 @@
 package org.nodescope.android.core.network
 
 import java.io.IOException
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
@@ -36,16 +37,39 @@ interface PacketSource {
     suspend fun recent(selection: AnalyzerSelection): List<LivePacket>
     suspend fun observers(host: String): List<MeshObserver>
     fun events(host: String): Flow<LiveSignal>
+    fun events(host: String, controls: Flow<LiveFeedControls>): Flow<LiveSignal> = events(host)
 }
+
+data class LiveFeedConfiguration(
+    val resolvePath: Boolean = false,
+    val includeObserverKey: Boolean = false,
+    val includeRepeats: Boolean = false,
+)
+data class LiveFeedSubscription(val regions: Set<String> = emptySet(), val payloadTypes: Set<Int> = emptySet())
+data class LiveFeedDemand(
+    val subscription: LiveFeedSubscription = LiveFeedSubscription(),
+    val configuration: LiveFeedConfiguration = LiveFeedConfiguration(),
+)
+data class LiveFeedControls(
+    val subscriptions: Set<LiveFeedSubscription>,
+    val configuration: LiveFeedConfiguration,
+)
+fun mergeLiveFeedDemands(demands: Collection<LiveFeedDemand>) = LiveFeedControls(
+    demands.map { it.subscription }.toSet() + LiveFeedSubscription(),
+    LiveFeedConfiguration(
+        demands.any { it.configuration.resolvePath },
+        demands.any { it.configuration.includeObserverKey },
+        demands.any { it.configuration.includeRepeats },
+    ),
+)
 class HttpPacketSource(client: OkHttpClient) : PacketSource {
     private val http = client
     private val socketClient = client.newBuilder().pingInterval(20, TimeUnit.SECONDS).readTimeout(0, TimeUnit.MILLISECONDS).build()
     override suspend fun recent(selection: AnalyzerSelection): List<LivePacket> {
-        val url = endpoint(selection.host, "api", "packets").newBuilder().addQueryParameter("limit", "200")
+        val url = endpoint(selection.host, "api", "packets").newBuilder()
             .apply { selection.region?.let { addQueryParameter("region", it) } }.build()
-        val root = protocolJson.parseToJsonElement(http.read(url)).jsonObject
-        return (root["packets"] as? JsonArray).orEmpty().mapNotNull { value ->
-            runCatching { parseLivePacket(value.jsonObject, false) }.getOrNull()
+        return collectAnalyzerPages(200, identity = { it.hash.ifBlank { "id:" + it.id } }) { cursor, size ->
+            coreScopePacketPage(BodySource { http.read(it) }, url, size, cursor)
         }
     }
     override suspend fun observers(host: String) = protocolJson.decodeFromString<ObserversResponse>(
@@ -92,6 +116,12 @@ class HttpPacketSource(client: OkHttpClient) : PacketSource {
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LiveFeed(preferences: PreferencesStore, private val source: PacketSource) {
+    private val demands = MutableStateFlow<Map<UUID, Pair<String, LiveFeedDemand>>>(emptyMap())
+    fun setDemand(consumer: UUID, host: String, demand: LiveFeedDemand?) {
+        demands.update { current ->
+            if (demand == null) current - consumer else current + (consumer to (host to demand))
+        }
+    }
     private val restart = MutableStateFlow(0)
     fun reconnect() { restart.update { it + 1 } }
     val states = combine(preferences.values.map {
@@ -113,7 +143,10 @@ class LiveFeed(preferences: PreferencesStore, private val source: PacketSource) 
             updates.send(Update.History(packets, observers))
         }
         var historyJob: Job? = launch { refreshHistory() }
-        launch { source.events(selection.host).collect { updates.send(Update.Signal(it)) } }
+        val controls = demands.map { current ->
+            mergeLiveFeedDemands(current.values.filter { it.first == selection.host }.map { it.second })
+        }.distinctUntilChanged()
+        launch { source.events(selection.host, controls).collect { updates.send(Update.Signal(it)) } }
         try {
             for (update in updates) {
                 when (update) {

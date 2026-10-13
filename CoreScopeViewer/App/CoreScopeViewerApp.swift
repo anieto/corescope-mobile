@@ -26,7 +26,18 @@ struct NodeScopeApp: App {
         WindowGroup {
             Group {
                 if hasCompletedOnboarding {
-                    RootTabView()
+                    if settings.sourceIsReady {
+                        RootTabView()
+                    } else if let error = settings.backendSelectionError {
+                        VStack(spacing: 16) {
+                            ContentUnavailableView("Couldn't identify this server", systemImage: "network.slash", description: Text(error))
+                            Button("Retry") { settings.requestSourceResolution() }
+                            Button("Choose Another Source") { hasCompletedOnboarding = false }
+                        }
+                        .padding()
+                    } else {
+                        LoadingIndicator(title: "Checking analyzer source…")
+                    }
                 } else {
                     OnboardingScreen {
                         hasCompletedOnboarding = true
@@ -56,8 +67,19 @@ struct NodeScopeApp: App {
             .task {
                 await analyzerSourceRegistry.refresh()
             }
-            .task(id: hasCompletedOnboarding) {
+            .task(id: "\(hasCompletedOnboarding)|\(settings.sourceResolutionID)") {
                 guard hasCompletedOnboarding else { return }
+                liveFeed.disconnect()
+                let host = AnalyzerSettings.normalizedHost(settings.host).lowercased()
+                let listedSource = analyzerSourceRegistry.sources.first {
+                    AnalyzerSettings.normalizedHost($0.host).lowercased() == host
+                }
+                let requiresBeacon = listedSource?.backendType == .beacon
+                let knownCoreScope = !requiresBeacon && (host == AnalyzerSettings.defaultHost || listedSource?.backendType == .coreScope)
+                await settings.resolveSource(knownCoreScope: knownCoreScope, requiresBeacon: requiresBeacon)
+            }
+            .task(id: "\(hasCompletedOnboarding)|\(settings.sourceIsReady)|\(settings.sourceSession.id)") {
+                guard hasCompletedOnboarding, settings.sourceIsReady else { return }
                 liveFeed.connect()
                 regionFilter.configure(settings: settings)
                 observerRegionLookup.configure(settings: settings)

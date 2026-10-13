@@ -91,7 +91,7 @@ data class PacketDetail(
 )
 @Serializable
 data class PacketRecord(
-    val id: Long,
+    val id: Long? = null,
     val hash: String = "",
     @SerialName("payload_type") val payloadType: Int? = null,
     @SerialName("payload_version") val payloadVersion: Int? = null,

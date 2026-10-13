@@ -1,6 +1,11 @@
 import Foundation
 import Observation
 
+enum AnalyzerSourceType: String, Codable, Sendable {
+    case coreScope = "corescope"
+    case beacon
+}
+
 struct AnalyzerSource: Codable, Hashable, Identifiable {
     let id: String
     let name: String
@@ -12,6 +17,9 @@ struct AnalyzerSource: Codable, Hashable, Identifiable {
     /// Optional square logo, as a path inside the registry folder
     /// (`icons/<name>.png`), shared with Android.
     let icon: String?
+    let type: AnalyzerSourceType?
+
+    var backendType: AnalyzerSourceType { type ?? .coreScope }
 
     var mapLatitude: Double? { mapCenter?.first }
     var mapLongitude: Double? {
@@ -20,9 +28,45 @@ struct AnalyzerSource: Codable, Hashable, Identifiable {
     }
 }
 
-private struct AnalyzerSourceRegistryDocument: Codable {
+struct AnalyzerSourceRegistryDocument: Codable {
     let version: Int
     let sources: [AnalyzerSource]
+
+    private enum CodingKeys: String, CodingKey { case version, sources }
+    private enum SourceKeys: String, CodingKey { case type }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        version = try container.decode(Int.self, forKey: .version)
+        guard version == 1 || version == 2 else {
+            throw DecodingError.dataCorruptedError(forKey: .version, in: container,
+                                                  debugDescription: "Unsupported source registry version.")
+        }
+        var entries = try container.nestedUnkeyedContainer(forKey: .sources)
+        var accepted: [AnalyzerSource] = []
+        var identifiers: Set<String> = []
+        while !entries.isAtEnd {
+            let entry = try entries.superDecoder()
+            let fields = try entry.container(keyedBy: SourceKeys.self)
+            let rawType = try fields.decodeIfPresent(String.self, forKey: .type)
+            if let rawType {
+                guard AnalyzerSourceType(rawValue: rawType) != nil else { continue }
+            } else if version == 2 {
+                continue
+            }
+            let source = try AnalyzerSource(from: entry)
+            guard !source.host.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  !source.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  !source.id.isEmpty,
+                  identifiers.insert(source.id).inserted else { continue }
+            accepted.append(source)
+        }
+        guard !accepted.isEmpty else {
+            throw DecodingError.dataCorruptedError(forKey: .sources, in: container,
+                                                  debugDescription: "The source registry has no supported entries.")
+        }
+        sources = accepted
+    }
 }
 
 /// Loads the community-maintained analyzer list from GitHub. The bundled
@@ -31,17 +75,22 @@ private struct AnalyzerSourceRegistryDocument: Codable {
 @Observable
 @MainActor
 final class AnalyzerSourceRegistry {
-    private static let cachedDocumentDefaultsKey = "cachedAnalyzerSourceRegistry"
+    private static let cachedDocumentDefaultsKey = "cachedAnalyzerSourceRegistryTypedV2"
     private static let defaultRemoteRegistryURL = URL(
-        string: "https://api.github.com/repos/anieto/corescope-mobile/contents/CommunitySources/us-sources.json?ref=main"
+        string: "https://api.github.com/repos/anieto/corescope-mobile/contents/CommunitySources/sources-v2.json?ref=main"
     )
 
     private(set) var sources: [AnalyzerSource]
     private(set) var isRefreshing = false
     private(set) var lastError: String?
+    private let defaults: UserDefaults
+    private let session: URLSession
 
-    init() {
-        sources = Self.cachedSources ?? Self.bundledSources
+    init(defaults: UserDefaults = .standard, session: URLSession = .shared) {
+        self.defaults = defaults
+        self.session = session
+        sources = defaults.data(forKey: Self.cachedDocumentDefaultsKey)
+            .flatMap { try? Self.decodeV2($0).sources } ?? Self.bundledSources
     }
 
     var defaultSource: AnalyzerSource? {
@@ -63,24 +112,17 @@ final class AnalyzerSourceRegistry {
             request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
             request.setValue("no-cache", forHTTPHeaderField: "Pragma")
             request.setValue("NodeScope", forHTTPHeaderField: "User-Agent")
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await session.data(for: request)
             guard let response = response as? HTTPURLResponse,
                   200..<300 ~= response.statusCode else {
                 throw URLError(.badServerResponse)
             }
 
-            let document = try JSONDecoder().decode(AnalyzerSourceRegistryDocument.self, from: data)
-            let validSources = document.sources.filter { !$0.host.isEmpty && !$0.name.isEmpty }
-            guard !validSources.isEmpty else {
-                throw DecodingError.dataCorrupted(
-                    .init(codingPath: [], debugDescription: "The source registry is empty.")
-                )
-            }
-
-            sources = validSources
+            let document = try Self.decodeV2(data)
+            sources = document.sources
             lastError = nil
             if let encoded = try? JSONEncoder().encode(document) {
-                UserDefaults.standard.set(encoded, forKey: Self.cachedDocumentDefaultsKey)
+                defaults.set(encoded, forKey: Self.cachedDocumentDefaultsKey)
             }
         } catch {
             lastError = error.localizedDescription
@@ -108,19 +150,18 @@ final class AnalyzerSourceRegistry {
         return components.url ?? url
     }
 
-    private static var cachedSources: [AnalyzerSource]? {
-        guard let data = UserDefaults.standard.data(forKey: cachedDocumentDefaultsKey),
-              let document = try? JSONDecoder().decode(AnalyzerSourceRegistryDocument.self, from: data),
-              !document.sources.isEmpty else {
-            return nil
+    private static func decodeV2(_ data: Data) throws -> AnalyzerSourceRegistryDocument {
+        let document = try JSONDecoder().decode(AnalyzerSourceRegistryDocument.self, from: data)
+        guard document.version == 2 else {
+            throw DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "A version 2 source registry is required."))
         }
-        return document.sources
+        return document
     }
 
     private static var bundledSources: [AnalyzerSource] {
-        guard let url = Bundle.main.url(forResource: "us-sources", withExtension: "json"),
+        guard let url = Bundle.main.url(forResource: "sources-v2", withExtension: "json"),
               let data = try? Data(contentsOf: url),
-              let document = try? JSONDecoder().decode(AnalyzerSourceRegistryDocument.self, from: data) else {
+              let document = try? decodeV2(data) else {
             return []
         }
         return document.sources

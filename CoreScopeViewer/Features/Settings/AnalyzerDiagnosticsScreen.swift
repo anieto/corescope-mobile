@@ -6,6 +6,7 @@ struct AnalyzerDiagnosticsScreen: View {
 
     @State private var report: AnalyzerDiagnosticReport?
     @State private var isRunning = false
+    @State private var runID = UUID()
 
     var body: some View {
         List {
@@ -41,7 +42,7 @@ struct AnalyzerDiagnosticsScreen: View {
         }
         .navigationTitle("Analyzer Diagnostics")
         .navigationBarTitleDisplayMode(.inline)
-        .task(id: settings.host) {
+        .task(id: settings.sourceSession.id) {
             await runDiagnostics()
         }
         .refreshable {
@@ -50,11 +51,17 @@ struct AnalyzerDiagnosticsScreen: View {
     }
 
     private func runDiagnostics() async {
-        guard !isRunning else { return }
+        let identifier = UUID()
+        runID = identifier
+        let sourceSession = settings.sourceSession
         isRunning = true
+        report = nil
+        defer { if runID == identifier { isRunning = false } }
         let service = AnalyzerDiagnosticsService(settings: settings)
-        report = await service.run()
-        isRunning = false
+        let result = await service.run()
+        guard !Task.isCancelled, runID == identifier, sourceSession.isCurrent,
+              settings.sourceSession.id == sourceSession.id else { return }
+        report = result
     }
 }
 
@@ -72,6 +79,10 @@ private struct AnalyzerDiagnosticSummarySection: View {
             }
 
             if let report {
+                LabeledContent("Server type", value: report.backendType)
+                if let version = report.serverVersion {
+                    LabeledContent("Server version (last reported)", value: version)
+                }
                 AnalyzerDiagnosticRow(
                     title: "HTTPS connection",
                     detail: report.connectionDetail,

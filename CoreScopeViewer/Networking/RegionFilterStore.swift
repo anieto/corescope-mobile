@@ -27,8 +27,10 @@ final class RegionFilterStore {
     }
 
     func configure(settings: AnalyzerSettings) {
-        apiClient = AnalyzerBackendFactory.make(settings: settings)
-        cacheNamespace = settings.host.lowercased()
+        let backend = AnalyzerBackendFactory.make(settings: settings)
+        if let previous = apiClient, previous.sourceSession.id != backend.sourceSession.id { reset() }
+        apiClient = backend
+        cacheNamespace = backend.cacheIdentifier
     }
 
     /// Call after `configure` changes (e.g. the analyzer host changed) —
@@ -54,11 +56,13 @@ final class RegionFilterStore {
             for: cacheKey,
             maximumAge: 7 * 24 * 60 * 60
         ) {
+            guard apiClient.sourceSession.isCurrent, !Task.isCancelled else { return }
             regions = cached
         }
-        if let fresh: RegionsMap = try? await APIResponseCache.shared.refresh(for: cacheKey, loader: {
+        if let fresh: RegionsMap = try? await APIResponseCache.shared.refresh(for: cacheKey, session: apiClient.sourceSession, loader: {
             try await apiClient.regions()
         }) {
+            guard apiClient.sourceSession.isCurrent, !Task.isCancelled else { return }
             regions = fresh
         }
     }
@@ -72,11 +76,13 @@ final class RegionFilterStore {
             for: cacheKey,
             maximumAge: 7 * 24 * 60 * 60
         ) {
+            guard apiClient.sourceSession.isCurrent, !Task.isCancelled else { return }
             iataCoords = cached.coords
         }
-        if let fresh: IataCoordsResponse = try? await APIResponseCache.shared.refresh(for: cacheKey, loader: {
+        if let fresh: IataCoordsResponse = try? await APIResponseCache.shared.refresh(for: cacheKey, session: apiClient.sourceSession, loader: {
             try await apiClient.iataCoordinates()
         }) {
+            guard apiClient.sourceSession.isCurrent, !Task.isCancelled else { return }
             iataCoords = fresh.coords
         }
     }

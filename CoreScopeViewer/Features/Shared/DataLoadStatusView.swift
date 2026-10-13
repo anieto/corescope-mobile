@@ -1,5 +1,24 @@
 import SwiftUI
 
+struct BeaconFeatureNotice: View {
+    let capability: BackendCapability
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Beacon Support", systemImage: "info.circle")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(NodeScopeStyle.signal)
+            Text(capability.beaconExplanation)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .instrumentCard()
+    }
+}
+
 struct DataLoadStatusView: View {
     let lastUpdatedAt: Date?
     let errorMessage: String?
