@@ -247,6 +247,62 @@ class BeaconApiTest {
         assertEquals(8, times.size)
     }
 
+    /** A page wholly older than the window (beyond the ingestion grace) ends the walk early. */
+    @Test fun observationHistoryStopsOncePagesPredateTheWindow() = runBlocking {
+        val items = body("node-observations.json").jsonObject.getValue("items")
+        val newest = items.jsonArray.maxOf { it.jsonObject.getValue("heardAt").jsonPrimitive.long }
+        val fake = FakeBeacon(mutableMapOf(
+            "nodes?pubkey=$nodeKey" to Triple(200, body("node-by-pubkey.json").toString(), null),
+            "nodes/$nodeId/observations?limit=200" to Triple(200, page(items, true, JsonPrimitive("older")), null),
+        ))
+        val reader = BeaconNodeReader(api(fake), info)
+        val history = checkNotNull(reader.observationHistory(nodeKey, since = newest + INGESTION_GRACE_MILLIS + 1))
+        assertTrue(history.isComplete)
+        assertTrue(history.observations.isEmpty())
+        assertEquals("No request for the older page", 2, fake.requests.size)
+
+        // Within the grace a later page may still hold in-window observations, so the walk continues.
+        val continuing = FakeBeacon(mutableMapOf(
+            "nodes?pubkey=$nodeKey" to Triple(200, body("node-by-pubkey.json").toString(), null),
+            "nodes/$nodeId/observations?limit=200" to Triple(200, page(items, true, JsonPrimitive("older")), null),
+            "nodes/$nodeId/observations?limit=200&cursor=older" to Triple(200, page(JsonArray(emptyList())), null),
+        ))
+        BeaconNodeReader(api(continuing), info).observationHistory(nodeKey, since = newest + 60_000)
+        assertEquals(3, continuing.requests.size)
+    }
+
+    @Test fun implausibleBatteryIsNotReported() = runBlocking {
+        val telemetry = body("observer-telemetry-24h.json").jsonObject
+        var i = 0 // alternate 0 mV (no battery) and 98 (a percentage in the millivolt field)
+        val zeroed = buildJsonObject {
+            telemetry.forEach { (k, v) -> put(k, if (k != "points") v else v.jsonArray.map { point ->
+                buildJsonObject { point.jsonObject.forEach { (pk, pv) -> put(pk, if (pk == "batteryMv") JsonPrimitive(if (i++ % 2 == 0) 0 else 98) else pv) } }
+            }.let(::JsonArray)) }
+        }
+        val fake = FakeBeacon(mutableMapOf(
+            "observers/$observerId/activity?range=24h&interval=15m" to Triple(200, body("observer-activity-24h.json").toString(), null),
+            "observers/$observerId/telemetry?range=24h&interval=1h" to Triple(200, zeroed.toString(), null),
+        ))
+        val points = checkNotNull(BeaconObserverAnalyticsReader(api(fake), info).analytics(observerId).telemetry)
+        assertTrue(points.isNotEmpty() && points.all { it.batteryMillivolts == null })
+        assertEquals(-112.0, points.first().noiseFloorDecibels!!, 0.0)
+    }
+
+    /** pyMC observers (dev.meshcore.ca, 2026-10-14) send fractional airtime and a 0 dB noise floor. */
+    @Test fun pyMcTelemetryWithFractionalAirtimeDecodes() = runBlocking {
+        val pyMc = """{"range":"24h","interval":"1h","points":[{"t":1791921600000,"batteryMv":0,"airtimeTxSecs":13761.747,
+            "airtimeRxSecs":0,"noiseFloorDb":0,"uptimeSeconds":772246,"queueLength":0,"receiveErrors":0}]}"""
+        val fake = FakeBeacon(mutableMapOf(
+            "observers/$observerId/activity?range=24h&interval=15m" to Triple(200, body("observer-activity-24h.json").toString(), null),
+            "observers/$observerId/telemetry?range=24h&interval=1h" to Triple(200, pyMc, null),
+        ))
+        val point = checkNotNull(BeaconObserverAnalyticsReader(api(fake), info).analytics(observerId).telemetry).single()
+        assertEquals(13_762L, point.transmitAirtimeSeconds)
+        assertEquals(0L, point.receiveAirtimeSeconds)
+        assertNull("0 dB is not a reading", point.noiseFloorDecibels)
+        assertNull(point.batteryMillivolts)
+    }
+
     @Test fun beaconBackendDerivesNodeAnalyticsWithoutPacketFanout() = runBlocking {
         val fake = FakeBeacon(mutableMapOf(
             "nodes?pubkey=$nodeKey" to Triple(200, body("node-by-pubkey.json").toString(), null),

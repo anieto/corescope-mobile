@@ -180,7 +180,9 @@ class BeaconNodeReader(val client: BeaconApiClient, verifiedServerInfo: BeaconSe
      * Observations back to [since] (epoch ms), newest first, from at most [maximumPages] pages of 200
      * (capped at 19, so the screen stays within 20 requests with the key lookup). Cursors may not
      * repeat and duplicate observation ids are ignored. Beacon pages follow observation ids, not
-     * heardAt, so delayed ingestion can invert timestamps: only `hasMore` proves completion.
+     * heardAt, so delayed ingestion can invert timestamps; the worst measured on the live servers
+     * (2026-10-14) was under a minute. A page wholly older than [since] by more than
+     * [INGESTION_GRACE_MILLIS] ends the walk, so a 24-hour view doesn't download the whole history.
      */
     suspend fun observationHistory(publicKey: String, since: Long, maximumPages: Int = 19): BeaconObservationHistory? {
         if (maximumPages <= 0) throw AnalyzerPagingException.InvalidPageSize()
@@ -200,7 +202,7 @@ class BeaconNodeReader(val client: BeaconApiClient, verifiedServerInfo: BeaconSe
                 if (observation.heardAt >= since) observations += observation
             }
             pages++
-            if (!page.hasMore) {
+            if (!page.hasMore || items.maxOfOrNull { it.heardAt }?.let { it < since - INGESTION_GRACE_MILLIS } == true) {
                 complete = true
                 break
             }
@@ -212,6 +214,9 @@ class BeaconNodeReader(val client: BeaconApiClient, verifiedServerInfo: BeaconSe
         return BeaconObservationHistory(node, observations.sortedByDescending { it.heardAt }, complete, pages + 1)
     }
 }
+
+/** How far a later observation page's timestamps may exceed an earlier page's. */
+const val INGESTION_GRACE_MILLIS = 60 * 60 * 1_000L
 
 @Serializable
 data class BeaconNeighbor(

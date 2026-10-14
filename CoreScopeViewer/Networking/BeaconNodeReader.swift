@@ -216,6 +216,9 @@ struct BeaconNodeReader: Sendable {
         let requestCount: Int
     }
 
+    /// How far a later page's timestamps may exceed an earlier page's.
+    static let ingestionGrace: TimeInterval = 60 * 60
+
     func observationHistory(
         publicKey: String,
         since: Date,
@@ -246,8 +249,13 @@ struct BeaconNodeReader: Sendable {
 
             // Beacon cursors follow observation IDs, not heardAt. Delayed
             // ingestion can therefore make timestamps non-monotonic within a
-            // page, so only the server's hasMore flag can prove completion.
-            if !page.hasMore {
+            // page, so a page never proves completion by itself. Measured on
+            // the three live servers (2026-10-14) the worst inversion was under
+            // a minute, so a page wholly older than `since` by more than
+            // `ingestionGrace` ends the walk. Without that, a 24-hour view
+            // downloaded the server's entire retained history.
+            if !page.hasMore || page.items.max(by: { $0.heardAt < $1.heardAt })
+                .map({ $0.heardAt < since.addingTimeInterval(-Self.ingestionGrace) }) == true {
                 isComplete = true
                 break
             }

@@ -3,6 +3,7 @@ package org.nodescope.android.core.network
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlin.math.roundToLong
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.Serializable
@@ -13,6 +14,9 @@ import org.nodescope.android.core.model.*
  * together (two requests). Activity counts are observations; telemetry fields stay null when omitted,
  * and empty activity or telemetry is a successful empty result.
  */
+/** Below this a `batteryMv` value is not a plausible cell voltage. */
+const val MINIMUM_BATTERY_MILLIVOLTS = 1_000
+
 class BeaconObserverAnalyticsReader(val client: BeaconApiClient, verifiedServerInfo: BeaconServerInfo) {
     init { verifiedServerInfo.requireSupported() }
 
@@ -26,8 +30,9 @@ class BeaconObserverAnalyticsReader(val client: BeaconApiClient, verifiedServerI
         val summary: Summary, val rolledUntil: Long? = null, val rawFrom: Long? = null, val range: String, val interval: String,
         val payloadTypes: List<PayloadCount> = emptyList(), val points: List<ActivityPoint> = emptyList())
     @Serializable
-    private data class TelemetryPoint(val t: Long, val batteryMv: Int? = null, val airtimeTxSecs: Long? = null,
-        val airtimeRxSecs: Long? = null, val noiseFloorDb: Double? = null, val uptimeSeconds: Long? = null,
+    // pyMC observers report airtime as fractional seconds (e.g. 13761.747).
+    private data class TelemetryPoint(val t: Long, val batteryMv: Int? = null, val airtimeTxSecs: Double? = null,
+        val airtimeRxSecs: Double? = null, val noiseFloorDb: Double? = null, val uptimeSeconds: Long? = null,
         val queueLength: Int? = null, val receiveErrors: Long? = null)
     @Serializable private data class Telemetry(val range: String, val interval: String, val points: List<TelemetryPoint> = emptyList())
 
@@ -57,7 +62,11 @@ class BeaconObserverAnalyticsReader(val client: BeaconApiClient, verifiedServerI
             timeline = activity.points.map { LabeledCount(label.format(Instant.ofEpochMilli(it.t)), it.observations) },
             packetTypes = activity.payloadTypes.associate { it.payloadType.toString() to it.count },
             telemetry = telemetry.points.map {
-                ObserverTelemetryPoint(it.t, it.batteryMv, it.airtimeTxSecs, it.airtimeRxSecs, it.noiseFloorDb,
+                // Mains-powered observers report 0 mV (no battery), and some send a percentage in
+                // this millivolt field (98 seen live). Neither is a voltage.
+                // A real noise floor is well below zero; 0 dB means not reported.
+                ObserverTelemetryPoint(it.t, it.batteryMv?.takeIf { mv -> mv >= MINIMUM_BATTERY_MILLIVOLTS }, it.airtimeTxSecs?.roundToLong(),
+                    it.airtimeRxSecs?.roundToLong(), it.noiseFloorDb?.takeIf { db -> db != 0.0 },
                     it.uptimeSeconds, it.queueLength, it.receiveErrors)
             },
         )
@@ -77,7 +86,8 @@ class BeaconObserverAnalyticsReader(val client: BeaconApiClient, verifiedServerI
 
     private fun validate(telemetry: Telemetry) {
         val valid = telemetry.range == "24h" && telemetry.interval == "1h" && telemetry.points.all { point ->
-            (point.batteryMv ?: 0) >= 0 && (point.airtimeTxSecs ?: 0) >= 0 && (point.airtimeRxSecs ?: 0) >= 0 &&
+            (point.batteryMv ?: 0) >= 0 && point.airtimeTxSecs?.let { it.isFinite() && it >= 0 } != false &&
+                point.airtimeRxSecs?.let { it.isFinite() && it >= 0 } != false &&
                 point.noiseFloorDb?.isFinite() != false && (point.uptimeSeconds ?: 0) >= 0 &&
                 (point.queueLength ?: 0) >= 0 && (point.receiveErrors ?: 0) >= 0
         }

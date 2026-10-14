@@ -147,7 +147,7 @@ monitored/on-phone decryption.
 |---|---|---|---|
 | H1 | Automated regression and fixture suites pass on both platforms, including all existing Phase 2 CoreScope and Beacon tests. | Zero failures; CoreScope request-contract expectations remain unchanged | todo |
 | H2 | The user completes side-by-side CoreScope/Beacon UI review for every Phase 3 screen on iOS and Android, including Dynamic Type and dark mode. | UI concessions are accepted and recorded; no undocumented divergence remains | todo |
-| H3 | Live acceptance passes on MeshTexas Beacon, Colorado, and dev.meshcore.ca, including empty/sparse states, throttling, source switching, and histories near the seven-day boundary. | No screen exceeds its request budget or presents partial history as complete | todo |
+| H3 | Live acceptance passes on MeshTexas Beacon, Colorado, and dev.meshcore.ca, including empty/sparse states, throttling, source switching, and histories near the seven-day boundary. | No screen exceeds its request budget or presents partial history as complete | review |
 | H4 | Channel upgrade and rollback drills pass: old CoreScope state survives, a Beacon database reset is recoverable, a channel can be delisted without cross-source matching, and users can return to CoreScope. | Persistence and rollback outcomes are documented on both platforms | todo |
 | H5 | Update `phase3-implementation.md`, the Android parity matrix, store text, screenshots, review notes, version/build numbers, and beta checklist. | TestFlight and Play beta builds are ready for the user’s smoke test | todo |
 

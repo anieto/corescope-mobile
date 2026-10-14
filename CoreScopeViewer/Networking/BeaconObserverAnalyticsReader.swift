@@ -37,8 +37,9 @@ actor BeaconObserverAnalyticsReader {
         struct Point: Decodable, Sendable {
             let t: Date
             let batteryMv: Int?
-            let airtimeTxSecs: Int?
-            let airtimeRxSecs: Int?
+            // pyMC observers report fractional seconds (e.g. 13761.747).
+            let airtimeTxSecs: Double?
+            let airtimeRxSecs: Double?
             let noiseFloorDb: Double?
             let uptimeSeconds: Int?
             let queueLength: Int?
@@ -51,6 +52,8 @@ actor BeaconObserverAnalyticsReader {
     }
 
     private let client: BeaconAPIClient
+    /// Below this a `batteryMv` value is not a plausible cell voltage.
+    static let minimumBatteryMillivolts = 1_000
 
     init(client: BeaconAPIClient, verifiedServerInfo: BeaconServerInfo) throws {
         try verifiedServerInfo.requireSupported()
@@ -106,10 +109,13 @@ actor BeaconObserverAnalyticsReader {
             telemetry: telemetryResult.points.map {
                 ObserverTelemetryPoint(
                     timestamp: $0.t,
-                    batteryMillivolts: $0.batteryMv,
-                    transmitAirtimeSeconds: $0.airtimeTxSecs,
-                    receiveAirtimeSeconds: $0.airtimeRxSecs,
-                    noiseFloorDecibels: $0.noiseFloorDb,
+                    // Mains-powered observers report 0 mV (no battery), and some send a
+                    // percentage in this millivolt field (98 seen live). Neither is a voltage.
+                    batteryMillivolts: $0.batteryMv.flatMap { $0 >= Self.minimumBatteryMillivolts ? $0 : nil },
+                    transmitAirtimeSeconds: $0.airtimeTxSecs.map { Int($0.rounded()) },
+                    receiveAirtimeSeconds: $0.airtimeRxSecs.map { Int($0.rounded()) },
+                    // A real noise floor is well below zero; 0 dB means not reported.
+                    noiseFloorDecibels: $0.noiseFloorDb.flatMap { $0 != 0 ? $0 : nil },
                     uptimeSeconds: $0.uptimeSeconds,
                     queueLength: $0.queueLength,
                     receiveErrors: $0.receiveErrors
@@ -138,8 +144,8 @@ actor BeaconObserverAnalyticsReader {
         guard telemetry.range == "24h", telemetry.interval == "1h",
               telemetry.points.allSatisfy({ point in
                   point.batteryMv.map({ $0 >= 0 }) != false &&
-                      point.airtimeTxSecs.map({ $0 >= 0 }) != false &&
-                      point.airtimeRxSecs.map({ $0 >= 0 }) != false &&
+                      point.airtimeTxSecs.map({ $0.isFinite && $0 >= 0 }) != false &&
+                      point.airtimeRxSecs.map({ $0.isFinite && $0 >= 0 }) != false &&
                       point.noiseFloorDb.map(\.isFinite) != false &&
                       point.uptimeSeconds.map({ $0 >= 0 }) != false &&
                       point.queueLength.map({ $0 >= 0 }) != false &&

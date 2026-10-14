@@ -332,3 +332,40 @@ same values in Swift and Kotlin tests; the Android suite passes 249 of 249 tests
   renewal can briefly show the previous values while reloading.
 - C3, D4, E4, F5 and G3 are in review pending device checks on Android and live acceptance (H3).
 
+## 2026-10-14: H3 live acceptance
+
+Both platforms' real Beacon code was driven against the three approved servers: iOS through a
+macOS command-line harness compiled from `CoreScopeViewer/{Networking,Models,Utilities}`, Android
+through `LiveAcceptanceTest` (skipped unless `NODESCOPE_LIVE=1`). Each run covered identity and
+diagnostics, a busy node (neighbors; analytics at 1, 7 and 30 days), a node last heard more than
+eight days ago, observer activity and telemetry, keyed channels with one older page, an empty or
+sparse channel, and source switching. Throttling was deliberately not provoked on live servers;
+the fixture tests cover it.
+
+| Server | Version | Requests per run | Statuses | Notes |
+|---|---:|---:|---|---|
+| `beacon.meshtexas.org` | 2.0.5 | 27–33 | all 200 | fastest; pyMC observer present |
+| `map.meshcore.coloradomesh.org` | 2.0.3 | 30–44 | all 200 | quiet repeater (9 days) gives an empty, complete history |
+| `dev.meshcore.ca` | 2.0.5 | 26–40 | all 200 | slow: observer activity up to 18 s, messages up to 8 s |
+
+Every screen stayed within its budget (node analytics ≤ 8 requests, observer analytics 2,
+channel messages 1 per page, diagnostics 4). Requests beyond seven days show partial with the
+seven-day explanation; an invalidated source session rejects loads on both platforms.
+
+Fixed on both platforms during acceptance:
+
+- **Observation history read the whole retained history for every range.** Beacon has no
+  server-side time filter (`since`, `from`, `after`, `start`, `range` are ignored), and since only
+  `hasMore` ended the walk, a 24-hour view downloaded everything, up to the 19-page cap. The worst
+  timestamp inversion measured across 18 busy nodes was 47 s, so a page wholly older than the
+  window by more than one hour now ends the walk.
+- **pyMC observers' telemetry failed to decode.** They report `airtimeTxSecs`/`airtimeRxSecs` as
+  fractional seconds (e.g. 13761.747), which both clients decoded as integers, so the whole
+  observer analytics response was rejected. Airtime now decodes as a number and is rounded.
+- **Implausible telemetry is unknown, not shown.** `batteryMv` of 0 (mains power) or below
+  1,000 (one observer sends 98, a percentage) and a `noiseFloorDb` of exactly 0 are not readings.
+
+Observations: retention differs by server (about 6 days here, up to 12 days on the others); the
+seven-day cap is kept as policy. `dev.meshcore.ca` approaches Android's 20 s read timeout on
+observer activity. UI-level checks on devices remain part of H2.
+
