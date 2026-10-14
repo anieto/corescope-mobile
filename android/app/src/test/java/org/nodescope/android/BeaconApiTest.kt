@@ -654,11 +654,31 @@ class BeaconApiTest {
         assertFalse("A server error is not evidence of CoreScope", flaky.state.value.ready)
         assertEquals(1, coreScopeChecks)
 
+        // CoreScope answers unknown paths with its web page, so /api/v1/info is 200 HTML there.
+        val webPage = FakeBeacon(mutableMapOf("info" to Triple(200, "<!DOCTYPE html><html></html>", null)))
+        val coreScopeSite = AnalyzerSourceRouter(client(webPage), BeaconServerCatalog(InMemoryBeaconServerStore())) { _, _ -> coreScopeChecks++ }
+        coreScopeSite.setHost(host)
+        coreScopeSite.resolve(knownCoreScope = false)
+        assertTrue("A non-Beacon page permits the CoreScope check", coreScopeSite.state.value.ready)
+        assertEquals(2, coreScopeChecks)
+        assertEquals(AnalyzerSourceRouter.Route.CoreScope, coreScopeSite.route(host))
+
+        val failedCheck = AnalyzerSourceRouter(client(webPage), BeaconServerCatalog(InMemoryBeaconServerStore())) { _, _ -> error("not CoreScope either") }
+        failedCheck.setHost(host)
+        failedCheck.resolve(knownCoreScope = false)
+        assertFalse("The CoreScope check must still pass", failedCheck.state.value.ready)
+
+        val listedBeaconPage = AnalyzerSourceRouter(client(webPage), BeaconServerCatalog(InMemoryBeaconServerStore())) { _, _ -> coreScopeChecks++ }
+        listedBeaconPage.setHost(host)
+        listedBeaconPage.resolve(knownCoreScope = false, requiresBeacon = true)
+        assertFalse("A listed Beacon source never becomes CoreScope", listedBeaconPage.state.value.ready)
+        assertEquals(2, coreScopeChecks)
+
         val registryBeacon = AnalyzerSourceRouter(client(FakeBeacon()), BeaconServerCatalog(InMemoryBeaconServerStore())) { _, _ -> coreScopeChecks++ }
         registryBeacon.setHost(host)
         registryBeacon.resolve(knownCoreScope = false, requiresBeacon = true)
         assertFalse("A listed Beacon source never becomes CoreScope", registryBeacon.state.value.ready)
-        assertEquals(1, coreScopeChecks)
+        assertEquals(2, coreScopeChecks)
     }
 
     @Test fun verifiedBeaconIsRememberedAndKnownCoreScopeSkipsProbing() = runBlocking {
