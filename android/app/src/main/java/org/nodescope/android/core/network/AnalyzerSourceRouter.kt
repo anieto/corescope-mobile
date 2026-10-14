@@ -174,8 +174,8 @@ class RoutingAnalyzerBackend(
 
     override suspend fun channels(selection: AnalyzerSelection) =
         on(selection.host, { it.channels(selection) }) { coreScope.channels(selection) }
-    override suspend fun channelMessages(host: String, hash: String) =
-        on(host, { it.channelMessages(host, hash) }) { coreScope.channelMessages(host, hash) }
+    override suspend fun channelMessages(host: String, hash: String, offset: Int) =
+        on(host, { it.channelMessages(host, hash, offset) }) { coreScope.channelMessages(host, hash, offset) }
     override suspend fun channelPackets(selection: AnalyzerSelection) =
         on(selection.host, { it.channelPackets(selection) }) { coreScope.channelPackets(selection) }
     override suspend fun observers(host: String) = on(host, { it.observers(host) }) { coreScope.observers(host) }

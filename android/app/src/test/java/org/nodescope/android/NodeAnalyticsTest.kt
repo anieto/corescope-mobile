@@ -87,7 +87,7 @@ class NodeAnalyticsTest {
 
     private class FakeAnalytics(val status: Int?) : BrowseRepository {
         override suspend fun channels(selection: AnalyzerSelection) = error("unused")
-        override suspend fun channelMessages(host: String, hash: String) = error("unused")
+        override suspend fun channelMessages(host: String, hash: String, offset: Int) = error("unused")
         override suspend fun channelPackets(selection: AnalyzerSelection) = error("unused")
         override suspend fun observers(host: String) = error("unused")
         override suspend fun observerAnalytics(host: String, id: String) = error("unused")

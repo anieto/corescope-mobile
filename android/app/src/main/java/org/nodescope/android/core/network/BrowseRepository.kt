@@ -19,7 +19,11 @@ data class GroupPayload(
 
 interface BrowseRepository {
     suspend fun channels(selection: AnalyzerSelection): List<MeshChannel>
-    suspend fun channelMessages(host: String, hash: String): List<ChannelMessage>
+    /**
+     * Newest first from [offset] (0 = the latest page). `total` says whether older messages exist;
+     * CoreScope reports the channel's total, Beacon the loaded count plus one while more remain.
+     */
+    suspend fun channelMessages(host: String, hash: String, offset: Int = 0): ChannelMessagesResponse
     suspend fun channelPackets(selection: AnalyzerSelection): List<ChannelPacket>
     suspend fun observers(host: String): List<MeshObserver>
     suspend fun observerAnalytics(host: String, id: String): ObserverAnalytics
@@ -49,7 +53,8 @@ fun channelsUrl(selection: AnalyzerSelection): HttpUrl = endpoint(selection.host
     .apply { selection.region?.let { addQueryParameter("region", it) } }.build()
 
 /** Channel identifiers such as `#test` are encoded as one path segment. */
-fun channelMessagesUrl(host: String, hash: String): HttpUrl = endpoint(host, "api", "channels", hash, "messages")
+fun channelMessagesUrl(host: String, hash: String, offset: Int = 0): HttpUrl = endpoint(host, "api", "channels", hash, "messages")
+    .let { url -> if (offset == 0) url else url.newBuilder().addQueryParameter("limit", "100").addQueryParameter("offset", offset.toString()).build() }
 
 /** CoreScope filters payload type with `type`; it ignores the `payloadType` spelling. */
 fun channelPacketsUrl(selection: AnalyzerSelection): HttpUrl = endpoint(selection.host, "api", "packets").newBuilder()
@@ -81,8 +86,8 @@ class HttpBrowseRepository(private val client: BodySource, private val ephemeral
     override suspend fun channels(selection: AnalyzerSelection) =
         protocolJson.decodeFromString<ChannelsResponse>(ephemeral.read(channelsUrl(selection))).channels
 
-    override suspend fun channelMessages(host: String, hash: String) =
-        protocolJson.decodeFromString<ChannelMessagesResponse>(ephemeral.read(channelMessagesUrl(host, hash))).messages
+    override suspend fun channelMessages(host: String, hash: String, offset: Int) =
+        protocolJson.decodeFromString<ChannelMessagesResponse>(ephemeral.read(channelMessagesUrl(host, hash, offset)))
 
     override suspend fun channelPackets(selection: AnalyzerSelection) = parseChannelPackets(ephemeral.read(channelPacketsUrl(selection)))
 

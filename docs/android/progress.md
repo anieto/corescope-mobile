@@ -959,8 +959,21 @@ Ports of iOS E1–E3, F1–F4 and G1–G2, read from the iOS working tree before
   messages). CoreScope still probes only its five endpoints. Beacon makes at most four requests:
   `/info`, then one-row checks of nodes, observers and keyed channels; a failed family is a
   warning, and an unsupported version skips them.
-- Differences from iOS: Android has never paged older channel messages (no "Load older messages"),
-  so Beacon conversations show the latest 20. The node-analytics empty state also appears when
-  every hourly bucket is zero (iOS checks for an empty timeline, which Beacon never returns).
+- Difference from iOS: the node-analytics empty state also appears when every hourly bucket is
+  zero (iOS checks for an empty timeline, which Beacon never returns).
 - 246 JVM tests pass; not yet checked on a device or against live servers.
+
+## Beacon phase 3: parity with the committed iOS work — 2026-10-14
+
+Checked against iOS `0bfb2de` after Codex committed it.
+- "Load older messages" for server channels on both server types, as on iOS. `channelMessages`
+  takes an offset and returns the total. CoreScope keeps its original first request and pages
+  with `limit=100&offset=N`; Beacon keeps the server cursor for each loaded offset, so an older
+  page is one request (with a bounded ten-page walk when no cursor was saved). Pages are merged
+  and de-duplicated by the conversation's message id.
+- Live refreshes no longer cancel an in-flight request for the same key (`KeyedLoader`), and
+  phone-monitored channels are hidden on Beacon (`42ca90f`).
+- Map framing for a Beacon source with no region already matched iOS (trusted region centers).
+- Not ported: session-scoped cache keys (see phase3-implementation.md).
+- 249 JVM tests pass; not yet checked on a device.
 

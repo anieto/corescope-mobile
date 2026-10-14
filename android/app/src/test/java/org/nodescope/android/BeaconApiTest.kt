@@ -342,8 +342,10 @@ class BeaconApiTest {
 
     @Test fun channelMessagesMapRecordedServerDataWithoutInventingRouteMetadata() = runBlocking {
         val fake = FakeBeacon(mutableMapOf("channels/58/messages?limit=20" to Triple(200, body("channel-messages.json").toString(), null)))
-        val messages = BeaconChannelReader(api(fake), info).messages("beacon:58")
+        val response = BeaconChannelReader(api(fake), info).messages("beacon:58")
+        val messages = response.messages
         assertEquals(4, messages.size)
+        assertEquals(5, response.total)
         assertEquals(12150L, messages.first().packetId)
         assertEquals("Sender 049", messages.first().sender)
         assertEquals(1, messages.first().repeats)
@@ -360,7 +362,44 @@ class BeaconApiTest {
 
     @Test fun emptyBeaconChannelIsSuccessfulAndComplete() = runBlocking {
         val fake = FakeBeacon(mutableMapOf("channels/58/messages?limit=20" to Triple(200, """{"items":[],"hasMore":false}""", null)))
-        assertTrue(BeaconChannelReader(api(fake), info).messages("beacon:58").isEmpty())
+        val response = BeaconChannelReader(api(fake), info).messages("beacon:58")
+        assertTrue(response.messages.isEmpty())
+        assertEquals(0, response.total)
+    }
+
+    /** iOS keeps the cursor for each loaded offset, so "Load older messages" is one request. */
+    @Test fun olderChannelMessagesContinueFromTheSavedCursor() = runBlocking {
+        val first = body("channel-messages.json")
+        val cursor = first.jsonObject.getValue("nextCursor").jsonPrimitive.long
+        val older = buildJsonObject {
+            put("items", first.jsonObject.getValue("items").jsonArray.map { item ->
+                buildJsonObject { item.jsonObject.forEach { (k, v) -> put(k, if (k == "id") JsonPrimitive(v.jsonPrimitive.long - 1000) else v) } }
+            }.let(::JsonArray))
+            put("hasMore", false)
+        }
+        val fake = FakeBeacon(mutableMapOf(
+            "channels/58/messages?limit=20" to Triple(200, first.toString(), null),
+            "channels/58/messages?limit=20&cursor=$cursor" to Triple(200, older.toString(), null),
+        ))
+        val reader = BeaconChannelReader(api(fake), info)
+        val newest = reader.messages("beacon:58")
+        val page = reader.messages("beacon:58", newest.messages.size)
+        assertEquals(4, page.messages.size)
+        assertEquals(8, page.total) // nothing older remains
+        assertEquals(listOf("channels/58/messages?limit=20", "channels/58/messages?limit=20&cursor=$cursor"), fake.requests)
+    }
+
+    @Test fun olderChannelMessagesRejectARepeatedContinuation() {
+        val repeated = body("channel-messages.json")
+        val cursor = repeated.jsonObject.getValue("nextCursor").jsonPrimitive.long
+        val fake = FakeBeacon(mutableMapOf(
+            "channels/58/messages?limit=20" to Triple(200, repeated.toString(), null),
+            "channels/58/messages?limit=20&cursor=$cursor" to Triple(200, repeated.toString(), null),
+        ))
+        // No saved cursor for this offset: the bounded walk sees the same continuation twice.
+        assertThrows(BeaconApiException.MalformedPage::class.java) {
+            runBlocking { BeaconChannelReader(api(fake), info).messages("58", 4) }
+        }
     }
 
     @Test fun beaconChannelResetRecoveryIsExactUniqueAndRestricted() {

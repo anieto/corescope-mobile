@@ -25,8 +25,8 @@ class CapabilityBrowseRepository(
 
     override suspend fun channels(selection: AnalyzerSelection) =
         requireCapability(BackendCapability.SERVER_CHANNELS).let { delegate.channels(selection) }
-    override suspend fun channelMessages(host: String, hash: String) =
-        requireCapability(BackendCapability.SERVER_CHANNELS).let { delegate.channelMessages(host, hash) }
+    override suspend fun channelMessages(host: String, hash: String, offset: Int) =
+        requireCapability(BackendCapability.SERVER_CHANNELS).let { delegate.channelMessages(host, hash, offset) }
     override suspend fun channelPackets(selection: AnalyzerSelection) =
         requireCapability(BackendCapability.CHANNEL_DECRYPT_ON_PHONE).let { delegate.channelPackets(selection) }
     override suspend fun observerAnalytics(host: String, id: String) =

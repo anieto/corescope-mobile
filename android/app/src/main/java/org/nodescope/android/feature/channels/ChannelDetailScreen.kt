@@ -38,6 +38,7 @@ fun ChannelDetailScreen(
         if (beacon && !channelId.startsWith("user:")) null else model.monitor.matching(channelId, channelName)
     }
     val messageState by model.messages.state.collectAsStateWithLifecycle()
+    val olderState by model.older.collectAsStateWithLifecycle()
     val packetState by model.packets.state.collectAsStateWithLifecycle()
     val messageKey = selection.host to channelId
     val now = rememberNow()
@@ -50,10 +51,19 @@ fun ChannelDetailScreen(
     LiveChannelRefresh(feed) { refresh(true) }
 
     val loadState = if (monitored != null) packetState else messageState
-    val raw = remember(monitored, packetState, messageState) {
+    val raw = remember(monitored, packetState, messageState, olderState) {
         if (monitored != null) monitoredConversation(packetState.value.takeIf { packetState.key == selection }.orEmpty(), monitored)
-        else messageState.value?.takeIf { messageState.key == messageKey }?.messages.orEmpty().map { it.toConversation() }
+        else (messageState.value?.takeIf { messageState.key == messageKey }?.messages.orEmpty() +
+            olderState.takeIf { it.key == messageKey }?.messages.orEmpty())
+            .map { it.toConversation() }.distinctBy { it.id }
     }
+    // Server conversations page back on request, as on iOS; monitored ones only ever see recent traffic.
+    val shownTotal = messageState.value?.takeIf { messageState.key == messageKey }?.let { newest ->
+        val older = olderState.takeIf { it.key == messageKey }
+        val loaded = newest.messages.size + older?.messages.orEmpty().size
+        (older?.total ?: newest.total)?.takeIf { loaded < it }
+    }
+    val hasOlder = monitored == null && shownTotal != null
     // Monitored packets are already region-scoped by the server; CoreScope channel messages are not.
     // Beacon messages name no observers, so no region filter can apply.
     val regional = if (monitored != null || beacon) raw else regionFiltered(raw, selection.region, feed.observers)
@@ -94,6 +104,16 @@ fun ChannelDetailScreen(
         LazyColumn(Modifier.fillMaxSize(), reverseLayout = true, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(conversation, key = { it.first.id }) { (message, trailing) ->
                 ChatBubble(message, trailing, onPacket = message.packetHash?.let { hash -> { onPacket(hash, message.sender, message.text) } })
+            }
+            // Last in a reversed list, so it sits above the oldest message.
+            if (hasOlder || olderState.key == messageKey && olderState.error != null) item(key = "older") {
+                val older = olderState.takeIf { it.key == messageKey }
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    older?.error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+                    OutlinedButton(onClick = { model.loadOlder(messageKey) }, enabled = older?.loading != true) {
+                        Text(if (older?.loading == true) "Loading older messages…" else "Load older messages")
+                    }
+                }
             }
         }
     }

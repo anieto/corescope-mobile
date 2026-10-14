@@ -99,7 +99,11 @@ class AnalyzerBackendTest {
                 observers("fixture.example")
             }?.value?.single()?.name)
             assertEquals(requestCount, requests.size)
-            assertTrue(backend.channelMessages("fixture.example", "#Public").isEmpty())
+            assertTrue(backend.channelMessages("fixture.example", "#Public").messages.isEmpty())
+            // The first page keeps CoreScope's original request; older pages add limit and offset.
+            assertEquals("https://fixture.example/api/channels/%23Public/messages", channelMessagesUrl("fixture.example", "#Public").toString())
+            assertEquals("https://fixture.example/api/channels/%23Public/messages?limit=100&offset=100",
+                channelMessagesUrl("fixture.example", "#Public", 100).toString())
             val selection = AnalyzerSelection("fixture.example", "SAT")
             assertTrue(backend.liveFeed.recent(selection).isEmpty())
             assertEquals("North", backend.liveFeed.observers(selection.host).single().name)

@@ -120,9 +120,9 @@ class BeaconBackend(val client: BeaconApiClient, val serverInfo: BeaconServerInf
         requireHost(selection.host)
         return channelReader.channels()
     }
-    override suspend fun channelMessages(host: String, hash: String): List<ChannelMessage> {
+    override suspend fun channelMessages(host: String, hash: String, offset: Int): ChannelMessagesResponse {
         requireHost(host)
-        return channelReader.messages(hash)
+        return channelReader.messages(hash, offset)
     }
     override suspend fun channelPackets(selection: AnalyzerSelection): List<ChannelPacket> = unavailable(BackendCapability.CHANNEL_DECRYPT_ON_PHONE)
     override suspend fun observerAnalytics(host: String, id: String): ObserverAnalytics {

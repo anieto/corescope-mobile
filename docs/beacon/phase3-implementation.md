@@ -312,3 +312,23 @@ missing in-memory cursor, such as restoration from an older cache entry.
   date rather than literal placeholder text.
 - The iPhone Simulator build succeeds and the complete iOS suite passes: 223 of 223 tests. C2, D2,
   E2, and E3 remain in review until the side-by-side visual acceptance pass is complete.
+
+## 2026-10-14: Android port of C–G
+
+Android now matches the committed iOS Phase 3 work (`0bfb2de`): neighbors (C3), node analytics
+(D4), observer activity and telemetry (E4), server-decrypted channels with reset recovery and
+"Load older messages" (F5), and the bounded Beacon diagnostics (G3). Shared fixtures produce the
+same values in Swift and Kotlin tests; the Android suite passes 249 of 249 tests. Details are in
+`docs/android/progress.md`.
+
+- Live refreshes no longer cancel an in-flight load on either platform. On Beacon, events arrive
+  almost continuously; cancelled reloads discarded their responses, so a conversation whose first
+  load was cancelled stayed on "No messages yet" until a manual refresh. iOS also runs a
+  conversation's first load in its own task for the same reason.
+- Phone-monitored channels are hidden (not removed) on Beacon sources on both platforms and never
+  shadow the server-decrypted channel of the same name.
+- Known difference: iOS scopes its shared response caches by source session. Android has no
+  shared Beacon response cache; per-screen loaders are keyed by host, so a same-host session
+  renewal can briefly show the previous values while reloading.
+- C3, D4, E4, F5 and G3 are in review pending device checks on Android and live acceptance (H3).
+

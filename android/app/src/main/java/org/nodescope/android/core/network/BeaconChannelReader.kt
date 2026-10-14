@@ -1,12 +1,13 @@
 package org.nodescope.android.core.network
 
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.serialization.Serializable
 import org.nodescope.android.core.model.*
 
 /**
  * Port of iOS BeaconChannelReader: channels whose keys the server knows, decrypted server-side.
- * The list walks the opaque `nextPageCursor` (at most ten pages); messages read one page of 20,
+ * The list walks the opaque `nextPageCursor` (at most ten pages); messages read pages of 20,
  * the measured initial-view budget. Beacon reports no observers, hops or SNR per message, so
  * those stay unknown rather than invented.
  */
@@ -19,6 +20,9 @@ class BeaconChannelReader(val client: BeaconApiClient, verifiedServerInfo: Beaco
     @Serializable private data class Message(val id: Long, val packetHash: String, val senderName: String, val content: String,
         val sentAt: Long, val observationCount: Int)
     @Serializable private data class MessagePage(val items: List<Message> = emptyList(), val nextCursor: Long? = null, val hasMore: Boolean)
+
+    /** Channel id → (loaded offset → the server cursor that continues from it), so "older" is one request. */
+    private val messageCursors = ConcurrentHashMap<Int, MutableMap<Int, Long>>()
 
     suspend fun channels(pageSize: Int = 200): List<MeshChannel> {
         if (pageSize <= 0) throw AnalyzerPagingException.InvalidPageSize()
@@ -45,22 +49,50 @@ class BeaconChannelReader(val client: BeaconApiClient, verifiedServerInfo: Beaco
         throw BeaconApiException.MalformedPage()
     }
 
-    /** [channelId] is the channel's `beacon:<id>` identity or its bare integer id. */
-    suspend fun messages(channelId: String): List<ChannelMessage> {
+    /**
+     * Port of iOS `messages(channelID:offset:)`: [offset] counts messages already shown, newest
+     * first. Offset 0 starts over; a later offset continues from the cursor saved when it was
+     * reached, or walks at most ten pages when none was saved. [channelId] is `beacon:<id>` or the id.
+     */
+    suspend fun messages(channelId: String, offset: Int = 0): ChannelMessagesResponse {
         val id = channelId.removePrefix("beacon:").toIntOrNull()?.takeIf { it > 0 } ?: throw BeaconApiException.InvalidResponse()
+        if (offset < 0) throw BeaconApiException.InvalidResponse()
         client.sourceSession.check()
-        val page = client.get(MessagePage.serializer(), listOf("channels", id.toString(), "messages"), listOf("limit" to "20"))
-        client.sourceSession.check()
-        if (page.items.map { it.id }.toSet().size != page.items.size ||
-            !page.items.all { it.id > 0 && it.packetHash.isNotEmpty() && it.observationCount >= 0 }) {
-            throw BeaconApiException.InvalidResponse()
+        var cursor: Long? = null
+        var consumed = 0
+        val seenCursors = HashSet<Long>()
+        if (offset == 0) messageCursors.remove(id)
+        else messageCursors[id]?.get(offset)?.let { cursor = it; consumed = offset; seenCursors += it }
+
+        repeat(10) {
+            val query = mutableListOf("limit" to "20").apply { cursor?.let { add("cursor" to it.toString()) } }
+            val page = client.get(MessagePage.serializer(), listOf("channels", id.toString(), "messages"), query)
+            client.sourceSession.check()
+            if (page.items.map { it.id }.toSet().size != page.items.size ||
+                !page.items.all { it.id > 0 && it.packetHash.isNotEmpty() && it.observationCount >= 0 }) {
+                throw BeaconApiException.InvalidResponse()
+            }
+            // A page that says there is more must say where it continues, and never repeat itself.
+            val next = if (page.hasMore) {
+                val value = page.nextCursor
+                if (page.items.isEmpty() || value == null || !seenCursors.add(value)) throw BeaconApiException.MalformedPage()
+                value
+            } else null
+
+            val nextConsumed = consumed + page.items.size
+            if (offset < nextConsumed || (offset == consumed && page.items.isEmpty())) {
+                val messages = page.items.drop(maxOf(0, offset - consumed)).map {
+                    ChannelMessage(sender = it.senderName, text = it.content, timestamp = Instant.ofEpochMilli(it.sentAt).toString(),
+                        packetId = it.id, packetHash = it.packetHash, repeats = it.observationCount)
+                }
+                next?.let { messageCursors.getOrPut(id) { ConcurrentHashMap() }[offset + messages.size] = it }
+                return ChannelMessagesResponse(messages, offset + messages.size + if (page.hasMore) 1 else 0)
+            }
+            if (next == null) return ChannelMessagesResponse(emptyList(), consumed)
+            consumed = nextConsumed
+            cursor = next
         }
-        // A page that says there is more must say where it continues.
-        if (page.hasMore && (page.items.isEmpty() || page.nextCursor == null)) throw BeaconApiException.MalformedPage()
-        return page.items.map {
-            ChannelMessage(sender = it.senderName, text = it.content, timestamp = Instant.ofEpochMilli(it.sentAt).toString(),
-                packetId = it.id, packetHash = it.packetHash, repeats = it.observationCount)
-        }
+        throw BeaconApiException.MalformedPage()
     }
 }
 
