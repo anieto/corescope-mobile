@@ -152,10 +152,12 @@ struct BeaconBackend: AnalyzerBackend {
     private let nodeReader: BeaconNodeReader
     private let packetReader: BeaconPacketReader
     private let regionReader: BeaconRegionReader
+    private let observerAnalyticsReader: BeaconObserverAnalyticsReader
+    private let channelReader: BeaconChannelReader
 
     var sourceSession: AnalyzerSourceSession { client.sourceSession }
     var cacheIdentifier: String { client.cacheIdentifier }
-    let capabilities: Set<BackendCapability> = [.neighbors, .nodeAnalytics]
+    let capabilities: Set<BackendCapability> = [.neighbors, .nodeAnalytics, .observerAnalytics, .serverChannels]
 
     init(client: BeaconAPIClient, verifiedServerInfo: BeaconServerInfo) throws {
         try verifiedServerInfo.requireSupported()
@@ -165,6 +167,8 @@ struct BeaconBackend: AnalyzerBackend {
         observerReader = try BeaconObserverReader(client: client, verifiedServerInfo: verifiedServerInfo)
         packetReader = try BeaconPacketReader(client: client, verifiedServerInfo: verifiedServerInfo)
         regionReader = try BeaconRegionReader(client: client, verifiedServerInfo: verifiedServerInfo)
+        observerAnalyticsReader = try BeaconObserverAnalyticsReader(client: client, verifiedServerInfo: verifiedServerInfo)
+        channelReader = try BeaconChannelReader(client: client, verifiedServerInfo: verifiedServerInfo)
     }
 
     func nodes(region: String?) async throws -> NodesResponse {
@@ -234,8 +238,14 @@ struct BeaconBackend: AnalyzerBackend {
             to: requestedTo
         )
     }
-    func observerAnalytics(id: String) async throws -> ObserverAnalyticsResponse { try unavailable("Observer analytics") }
-    func channels(region: String?) async throws -> ChannelsResponse { try unavailable("Channels") }
-    func channelMessages(id: String, offset: Int) async throws -> ChannelMessagesResponse { try unavailable("Channel messages") }
+    func observerAnalytics(id: String) async throws -> ObserverAnalyticsResponse {
+        try await observerAnalyticsReader.analytics(observerID: id)
+    }
+    func channels(region: String?) async throws -> ChannelsResponse {
+        ChannelsResponse(channels: try await channelReader.channels())
+    }
+    func channelMessages(id: String, offset: Int) async throws -> ChannelMessagesResponse {
+        try await channelReader.messages(channelID: id, offset: offset)
+    }
     func mapDefaults() async throws -> MapDefaults { try unavailable("Map defaults") }
 }

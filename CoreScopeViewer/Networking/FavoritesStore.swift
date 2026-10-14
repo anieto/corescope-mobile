@@ -78,6 +78,26 @@ final class FavoritesStore {
         persist()
     }
 
+    func replaceChannel(from oldID: String, with channel: MeshChannel, source: String) {
+        guard let oldIndex = items.firstIndex(where: {
+            $0.kind == .channel && $0.entityID == oldID && $0.source == source
+        }) else { return }
+        let oldItem = items[oldIndex]
+        items.removeAll {
+            $0.kind == .channel && $0.source == source && ($0.entityID == oldID || $0.entityID == channel.id)
+        }
+        items.insert(
+            FavoriteItem(
+                source: source, kind: .channel, entityID: channel.id,
+                title: channel.name, subtitle: channel.lastSender,
+                favoritedAt: oldItem.favoritedAt, node: nil, observer: nil,
+                channel: channel
+            ),
+            at: min(oldIndex, items.count)
+        )
+        persist()
+    }
+
     /// Replaces saved node snapshots with the analyzer's latest values while
     /// preserving favorite order and the original date each node was saved.
     func refreshNodes(_ nodes: [MeshNode], source: String) {

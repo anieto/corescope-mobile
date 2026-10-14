@@ -58,7 +58,6 @@ struct ChannelsListScreen: View {
                 }
 
                 if !viewModel.isLoading,
-                   settings.beaconBackend == nil,
                    viewModel.lastUpdatedAt != nil || viewModel.errorMessage != nil {
                     DataLoadStatusView(
                         lastUpdatedAt: viewModel.lastUpdatedAt,
@@ -72,9 +71,6 @@ struct ChannelsListScreen: View {
                 }
 
                 if settings.beaconBackend != nil {
-                    BeaconFeatureNotice(capability: .serverChannels)
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
                     BeaconFeatureNotice(capability: .channelDecryptOnPhone)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
@@ -117,7 +113,7 @@ struct ChannelsListScreen: View {
             .adaptiveScrollContentWidth()
             .toolbar(.hidden, for: .navigationBar)
             .overlay {
-                if settings.beaconBackend == nil && visibleServerChannels.isEmpty && visibleMonitoredChannels.isEmpty && !viewModel.isLoading {
+                if visibleServerChannels.isEmpty && visibleMonitoredChannels.isEmpty && !viewModel.isLoading && viewModel.errorMessage == nil {
                     ContentUnavailableView(
                         searchText.isEmpty ? "No channels yet" : "No matching channels",
                         systemImage: searchText.isEmpty ? "number" : "magnifyingglass"
@@ -250,6 +246,13 @@ struct ChannelsListScreen: View {
         return payloadType == nil || payloadType == PayloadType.grpTxt.rawValue
     }
 
+    /// The phone-monitored channel behind a row; none on Beacon, where server
+    /// rows are the server's channels even when a monitored one shares the name.
+    private func monitoredChannel(for channel: MeshChannel) -> MonitoredChannel? {
+        guard settings.beaconBackend == nil || channel.isLocallyMonitored else { return nil }
+        return monitorStore.channel(matching: channel)
+    }
+
     private func updateVisibleChannels() {
         let monitored = monitorStore.channels.map { monitoredChannel in
             MeshChannel(
@@ -262,11 +265,15 @@ struct ChannelsListScreen: View {
             )
         }
 
-        visibleMonitoredChannels = sourceFilter == .server
+        // Beacon never exposes the encrypted payloads a phone-monitored channel
+        // needs, so on a Beacon source those channels are hidden (not removed)
+        // and never shadow the server-decrypted channel of the same name.
+        let showsMonitored = settings.beaconBackend == nil
+        visibleMonitoredChannels = sourceFilter == .server || !showsMonitored
             ? []
             : sortChannels(monitored.filter(matchesFilters))
 
-        let monitoredNames = Set(monitorStore.channels.map(\.channelName))
+        let monitoredNames = showsMonitored ? Set(monitorStore.channels.map(\.channelName)) : []
         let server = viewModel.channels.filter { channel in
             !monitoredNames.contains(channel.name) && matchesFilters(channel)
         }
@@ -291,7 +298,7 @@ struct ChannelsListScreen: View {
             case .messageCount:
                 return lhs.messageCount == rhs.messageCount
                     ? lhs.lastActivity > rhs.lastActivity
-                    : lhs.messageCount > rhs.messageCount
+                    : (lhs.messageCount ?? -1) > (rhs.messageCount ?? -1)
             case .name:
                 return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
             }
@@ -361,7 +368,7 @@ struct ChannelsListScreen: View {
                 lastSender: channel.lastSender,
                 messageCount: channel.messageCount,
                 lastActivity: channel.lastActivity,
-                isMonitored: monitorStore.channel(matching: channel) != nil,
+                isMonitored: monitoredChannel(for: channel) != nil,
                 isSelected: selectedChannelID == channel.id
             )
         }
@@ -370,7 +377,7 @@ struct ChannelsListScreen: View {
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
         .swipeActions {
-            if let monitoredChannel = monitorStore.channel(matching: channel) {
+            if let monitoredChannel = monitoredChannel(for: channel) {
                 Button(role: .destructive) {
                     try? monitorStore.remove(monitoredChannel)
                 } label: {
@@ -623,7 +630,7 @@ private struct ChannelCard: View {
     let name: String
     let lastMessage: String?
     let lastSender: String?
-    let messageCount: Int
+    let messageCount: Int?
     let lastActivity: Date
     let isMonitored: Bool
     let isSelected: Bool
@@ -645,12 +652,14 @@ private struct ChannelCard: View {
                     Text(name)
                         .font(.headline)
                     Spacer()
-                    HStack(spacing: 4) {
-                        Image(systemName: "bubble.left.fill")
-                        Text("\(messageCount)")
+                    if let messageCount {
+                        HStack(spacing: 4) {
+                            Image(systemName: "bubble.left.fill")
+                            Text("\(messageCount)")
+                        }
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
                     }
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
                     if lastActivity != .distantPast {
                         Text(RelativeTime.string(from: lastActivity))
                             .font(.caption2)

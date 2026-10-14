@@ -62,7 +62,7 @@ final class NodeAnalyticsViewModel {
             isSupported = false
             return
         }
-        let cacheKey = "node-analytics-\(cacheNamespace)-\(pubkey.lowercased())-\(requestedRange.rawValue)"
+        let cacheKey = "node-analytics-\(cacheNamespace)-\(apiClient.sourceSession.id)-\(pubkey.lowercased())-\(requestedRange.rawValue)"
         let cacheLifetime: TimeInterval = apiClient is BeaconBackend ? 5 * 60 : staleCacheLifetime
 
         if let cached: NodeAnalyticsResponse = await APIResponseCache.shared.value(
@@ -103,7 +103,6 @@ final class NodeAnalyticsViewModel {
             errorMessage = nil
             isSupported = false
         } catch {
-            guard isCurrent(loadID, backend: apiClient) else { return }
             guard isCurrent(loadID, backend: apiClient) else { return }
             if error is CancellationError || (error as? URLError)?.code == .cancelled {
                 return

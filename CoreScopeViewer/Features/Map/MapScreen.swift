@@ -543,6 +543,19 @@ struct MapScreen: View {
             applyBeaconNodeUpdates()
             handleNavigationRequest()
         }
+        .task(id: sourceRegionViewportSignature) {
+            guard let signature = sourceRegionViewportSignature,
+                  regionFilter.selectedRegion == nil,
+                  communitySourceViewport == nil,
+                  loadedAnalyzerSessionID == settings.sourceSession.id,
+                  !isReplayMode else { return }
+            await Task.yield()
+            guard !Task.isCancelled,
+                  signature == sourceRegionViewportSignature,
+                  let viewport = sourceRegionViewport else { return }
+            moveCamera(to: viewport)
+            lastFramedMapScopeID = mapLoadTaskID
+        }
         .onChange(of: liveFeed.beaconNodeSequence) {
             applyBeaconNodeUpdates()
         }
@@ -1680,6 +1693,10 @@ struct MapScreen: View {
                 moveCamera(to: viewport.center, radiusKm: viewport.radiusKm)
                 return
             }
+            if let viewport = sourceRegionViewport {
+                moveCamera(to: viewport)
+                return
+            }
             if let defaults = viewModel.mapDefaults {
                 moveCamera(
                     to: CLLocationCoordinate2D(latitude: defaults.latitude, longitude: defaults.longitude),
@@ -1751,6 +1768,21 @@ struct MapScreen: View {
         return "\(settings.host.lowercased())|\(viewport.center.latitude)|\(viewport.center.longitude)|\(viewport.radiusKm)"
     }
 
+    private var sourceRegionViewport: BeaconRegionReader.Frame? {
+        BeaconRegionReader.Frame.enclosing(Array(regionFilter.iataCoords.values))
+    }
+
+    private var sourceRegionViewportSignature: String? {
+        guard let viewport = sourceRegionViewport else { return nil }
+        return [
+            settings.sourceSession.id.uuidString,
+            String(viewport.latitude),
+            String(viewport.longitude),
+            String(viewport.latitudeDelta),
+            String(viewport.longitudeDelta)
+        ].joined(separator: "|")
+    }
+
     private var mapLoadTaskID: String {
         [
             settings.sourceSession.id.uuidString,
@@ -1787,6 +1819,21 @@ struct MapScreen: View {
             cameraPosition = .region(region)
         }
         visibleRegion = region
+    }
+
+    private func moveCamera(to frame: BeaconRegionReader.Frame) {
+        let region = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: frame.latitude, longitude: frame.longitude),
+            span: MKCoordinateSpan(
+                latitudeDelta: frame.latitudeDelta,
+                longitudeDelta: frame.longitudeDelta
+            )
+        )
+        withAnimation {
+            cameraPosition = .region(region)
+        }
+        visibleRegion = region
+        hasCenteredCamera = true
     }
 
     private var defaultReferenceCoordinate: CLLocationCoordinate2D? {

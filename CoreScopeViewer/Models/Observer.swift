@@ -75,9 +75,28 @@ struct ObserverAnalyticsResponse: Codable, Sendable {
     let nodesTimeline: [LabeledCount]
     let snrDistribution: [SnrBucket]
     let recentPackets: [ObserverRecentPacket]
+    let telemetry: [ObserverTelemetryPoint]?
 
     enum CodingKeys: String, CodingKey {
-        case context, timeline, packetTypes, nodesTimeline, snrDistribution, recentPackets
+        case context, timeline, packetTypes, nodesTimeline, snrDistribution, recentPackets, telemetry
+    }
+
+    init(
+        context: AnalyticsContext?,
+        timeline: [LabeledCount],
+        packetTypes: [String: Int],
+        nodesTimeline: [LabeledCount],
+        snrDistribution: [SnrBucket],
+        recentPackets: [ObserverRecentPacket],
+        telemetry: [ObserverTelemetryPoint]? = nil
+    ) {
+        self.context = context
+        self.timeline = timeline
+        self.packetTypes = packetTypes
+        self.nodesTimeline = nodesTimeline
+        self.snrDistribution = snrDistribution
+        self.recentPackets = recentPackets
+        self.telemetry = telemetry
     }
 
     init(from decoder: Decoder) throws {
@@ -88,7 +107,21 @@ struct ObserverAnalyticsResponse: Codable, Sendable {
         nodesTimeline = try container.decode([LabeledCount].self, forKey: .nodesTimeline)
         snrDistribution = try container.decode([SnrBucket].self, forKey: .snrDistribution)
         recentPackets = try container.decode([ObserverRecentPacket].self, forKey: .recentPackets)
+        telemetry = try container.decodeIfPresent([ObserverTelemetryPoint].self, forKey: .telemetry)
     }
+}
+
+struct ObserverTelemetryPoint: Codable, Sendable, Equatable, Identifiable {
+    let timestamp: Date
+    let batteryMillivolts: Int?
+    let transmitAirtimeSeconds: Int?
+    let receiveAirtimeSeconds: Int?
+    let noiseFloorDecibels: Double?
+    let uptimeSeconds: Int?
+    let queueLength: Int?
+    let receiveErrors: Int?
+
+    var id: Date { timestamp }
 }
 
 /// The observer analytics endpoint returns a lightweight packet projection,

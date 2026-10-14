@@ -46,16 +46,29 @@ struct ObserverDetailScreen: View {
                     ObserverIdentityCard(observer: displayedObserver)
                 }
 
-                if usesBeaconDetail {
-                    BeaconFeatureNotice(capability: .observerAnalytics)
-                }
-
                 if let analytics = viewModel.analytics {
+                    if let explanation = analytics.context?.explanation {
+                        BeaconAnalyticsNotice(message: explanation)
+                    }
+                    if analytics.timeline.isEmpty,
+                       analytics.packetTypes.isEmpty,
+                       analytics.nodesTimeline.isEmpty,
+                       analytics.snrDistribution.isEmpty,
+                       analytics.recentPackets.isEmpty,
+                       analytics.telemetry?.isEmpty != false {
+                        ObserverAnalyticsEmptyHistoryCard()
+                    }
                     if !analytics.timeline.isEmpty {
-                        PacketsTimelineCard(points: analytics.timeline)
+                        PacketsTimelineCard(
+                            points: analytics.timeline,
+                            countUnit: analytics.context?.countUnit ?? .packets
+                        )
                     }
                     if !analytics.packetTypes.isEmpty {
-                        PacketTypesCard(counts: analytics.packetTypes)
+                        PacketTypesCard(
+                            counts: analytics.packetTypes,
+                            countUnit: analytics.context?.countUnit ?? .packets
+                        )
                     }
                     if !analytics.nodesTimeline.isEmpty {
                         NodesTimelineCard(points: analytics.nodesTimeline)
@@ -65,6 +78,11 @@ struct ObserverDetailScreen: View {
                     }
                     if !analytics.recentPackets.isEmpty {
                         RecentObserverPacketsCard(packets: analytics.recentPackets)
+                    }
+                    if let telemetry = analytics.telemetry, !telemetry.isEmpty {
+                        ObserverTelemetrySummaryCard(points: telemetry)
+                        ObserverBatteryCard(points: telemetry)
+                        ObserverNoiseFloorCard(points: telemetry)
                     }
                 }
             }
@@ -151,10 +169,9 @@ struct ObserverDetailScreen: View {
     private func loadDetails() async {
         if usesBeaconDetail {
             await viewModel.loadBeaconDetail(id: observer.id, sourceSessionID: settings.sourceSession.id, service: liveFeed)
-        } else {
-            viewModel.configure(settings: settings)
-            await viewModel.loadAnalytics(id: observer.id)
         }
+        viewModel.configure(settings: settings)
+        await viewModel.loadAnalytics(id: observer.id)
     }
 
     private func prepareExport(_ format: StatisticsExportFormat) {
@@ -296,13 +313,22 @@ private struct ObserverDetailMetric: View {
 private struct PacketsTimelineCard: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     let points: [LabeledCount]
+    let countUnit: AnalyticsCountUnit
+
+    private var title: LocalizedStringKey {
+        countUnit == .observations ? "Observations Over Time" : "Packets Over Time"
+    }
+
+    private var valueLabel: String {
+        countUnit == .observations ? String(localized: "Observations") : String(localized: "Packets")
+    }
 
     var body: some View {
-        ObserverAnalyticsCard(title: "Packets Over Time", symbol: "chart.bar.fill") {
+        ObserverAnalyticsCard(title: title, symbol: "chart.bar.fill") {
             Chart(points) { point in
                 BarMark(
                     x: .value("Time", point.label),
-                    y: .value("Packets", point.count)
+                    y: .value(valueLabel, point.count)
                 )
                 .foregroundStyle(NodeScopeStyle.signal.gradient)
                 .cornerRadius(3)
@@ -317,7 +343,11 @@ private struct PacketsTimelineCard: View {
                 AxisMarks(position: .leading)
             }
             .frame(height: verticalSizeClass == .compact ? 140 : 190)
-            .accessibilityLabel("Packets received over time")
+            .accessibilityLabel(
+                countUnit == .observations
+                    ? "Observations received over time"
+                    : "Packets received over time"
+            )
         }
     }
 }
@@ -325,6 +355,15 @@ private struct PacketsTimelineCard: View {
 private struct PacketTypesCard: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     let counts: [String: Int]
+    let countUnit: AnalyticsCountUnit
+
+    private var title: LocalizedStringKey {
+        countUnit == .observations ? "Observation Types" : "Packet Types"
+    }
+
+    private var valueLabel: String {
+        countUnit == .observations ? String(localized: "Observations") : String(localized: "Packets")
+    }
 
     private var data: [PacketTypeDatum] {
         counts.compactMap { key, count in
@@ -335,10 +374,10 @@ private struct PacketTypesCard: View {
     }
 
     var body: some View {
-        ObserverAnalyticsCard(title: "Packet Types", symbol: "chart.pie.fill") {
+        ObserverAnalyticsCard(title: title, symbol: "chart.pie.fill") {
             Chart(data) { item in
                 SectorMark(
-                    angle: .value("Packets", item.count),
+                    angle: .value(valueLabel, item.count),
                     innerRadius: .ratio(0.58),
                     angularInset: 1.5
                 )
@@ -347,7 +386,11 @@ private struct PacketTypesCard: View {
             }
             .chartLegend(position: .bottom, alignment: .leading, spacing: 8)
             .frame(height: verticalSizeClass == .compact ? 210 : 270)
-            .accessibilityLabel("Packet type distribution")
+            .accessibilityLabel(
+                countUnit == .observations
+                    ? "Observation type distribution"
+                    : "Packet type distribution"
+            )
         }
     }
 }
@@ -481,6 +524,144 @@ private struct RecentObserverPacketsCard: View {
                         Divider().opacity(0.3)
                     }
                 }
+            }
+        }
+    }
+}
+
+private struct BeaconAnalyticsNotice: View {
+    let message: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "info.circle.fill")
+                .foregroundStyle(NodeScopeStyle.signal)
+            Text(message)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(14)
+        .instrumentCard()
+    }
+}
+
+private struct ObserverAnalyticsEmptyHistoryCard: View {
+    var body: some View {
+        ContentUnavailableView(
+            "No Activity in This Range",
+            systemImage: "waveform.path.ecg",
+            description: Text("No observer activity or telemetry was recorded during the selected time range.")
+        )
+        .padding(.vertical, 24)
+        .frame(maxWidth: .infinity)
+        .instrumentCard()
+    }
+}
+
+private struct ObserverTelemetrySummaryCard: View {
+    let points: [ObserverTelemetryPoint]
+
+    private var latest: ObserverTelemetryPoint? { points.max { $0.timestamp < $1.timestamp } }
+
+    var body: some View {
+        ObserverAnalyticsCard(title: "Observer Telemetry", symbol: "sensor.fill") {
+            if let latest {
+                Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 12) {
+                    GridRow {
+                        telemetryValue("Battery", value: latest.batteryMillivolts.map {
+                            Measurement(value: Double($0) / 1_000, unit: UnitElectricPotentialDifference.volts)
+                                .formatted(.measurement(width: .abbreviated, usage: .asProvided))
+                        })
+                        telemetryValue("Noise Floor", value: latest.noiseFloorDecibels.map {
+                            String(localized: "\($0.formatted(.number.precision(.fractionLength(0)))) dB")
+                        })
+                    }
+                    GridRow {
+                        telemetryValue("TX Airtime", value: duration(latest.transmitAirtimeSeconds))
+                        telemetryValue("RX Airtime", value: duration(latest.receiveAirtimeSeconds))
+                    }
+                    GridRow {
+                        telemetryValue("Uptime", value: duration(latest.uptimeSeconds))
+                        telemetryValue("Receive Errors", value: latest.receiveErrors?.formatted())
+                    }
+                }
+                Text("Latest telemetry sample ")
+                    + Text(latest.timestamp, style: .relative)
+                    + Text(".")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func telemetryValue(_ label: LocalizedStringKey, value: String?) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(value ?? "Unknown")
+                .font(.subheadline.weight(.semibold))
+                .monospacedDigit()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func duration(_ seconds: Int?) -> String? {
+        guard let seconds else { return nil }
+        let days = seconds / 86_400
+        let hours = seconds % 86_400 / 3_600
+        if days > 0 { return String(localized: "\(days) d \(hours) h") }
+        let minutes = seconds % 3_600 / 60
+        return String(localized: "\(hours) h \(minutes) min")
+    }
+}
+
+private struct ObserverBatteryCard: View {
+    let points: [ObserverTelemetryPoint]
+
+    private var values: [ObserverTelemetryPoint] { points.filter { $0.batteryMillivolts != nil } }
+
+    var body: some View {
+        if !values.isEmpty {
+            ObserverAnalyticsCard(title: "Battery History", symbol: "battery.100percent") {
+                Chart(values) { point in
+                    LineMark(
+                        x: .value("Time", point.timestamp),
+                        y: .value("Volts", Double(point.batteryMillivolts ?? 0) / 1_000)
+                    )
+                    .foregroundStyle(NodeScopeStyle.healthy)
+                    .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+                }
+                .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) }
+                .chartYAxis { AxisMarks(position: .leading) }
+                .frame(height: 180)
+                .accessibilityLabel("Observer battery voltage over time")
+            }
+        }
+    }
+}
+
+private struct ObserverNoiseFloorCard: View {
+    let points: [ObserverTelemetryPoint]
+
+    private var values: [ObserverTelemetryPoint] { points.filter { $0.noiseFloorDecibels != nil } }
+
+    var body: some View {
+        if !values.isEmpty {
+            ObserverAnalyticsCard(title: "Noise Floor History", symbol: "waveform") {
+                Chart(values) { point in
+                    LineMark(
+                        x: .value("Time", point.timestamp),
+                        y: .value("Decibels", point.noiseFloorDecibels ?? 0)
+                    )
+                    .foregroundStyle(NodeScopeStyle.activity)
+                    .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+                }
+                .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) }
+                .chartYAxis { AxisMarks(position: .leading) }
+                .frame(height: 180)
+                .accessibilityLabel("Observer noise floor over time")
             }
         }
     }

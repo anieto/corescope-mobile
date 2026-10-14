@@ -227,7 +227,6 @@ struct BeaconNodeReader: Sendable {
         var cursor: CursorValue?
         var seenCursors: Set<String> = []
         var seenObservationIDs: Set<Int64> = []
-        var previousDate: Date?
         var isComplete = false
         var pages = 0
 
@@ -240,16 +239,15 @@ struct BeaconNodeReader: Sendable {
             )
             try page.items.forEach { try $0.validate() }
             for observation in page.items {
-                if let previousDate, observation.heardAt > previousDate {
-                    throw BeaconAPIError.malformedPage
-                }
-                previousDate = observation.heardAt
                 guard seenObservationIDs.insert(observation.id).inserted else { continue }
                 if observation.heardAt >= since { observations.append(observation) }
             }
             pages += 1
 
-            if !page.hasMore || page.items.last.map({ $0.heardAt < since }) == true {
+            // Beacon cursors follow observation IDs, not heardAt. Delayed
+            // ingestion can therefore make timestamps non-monotonic within a
+            // page, so only the server's hasMore flag can prove completion.
+            if !page.hasMore {
                 isComplete = true
                 break
             }
@@ -263,7 +261,7 @@ struct BeaconNodeReader: Sendable {
         try client.sourceSession.check()
         return ObservationHistory(
             node: node,
-            observations: observations,
+            observations: observations.sorted { $0.heardAt > $1.heardAt },
             isComplete: isComplete,
             requestCount: pages + 1
         )

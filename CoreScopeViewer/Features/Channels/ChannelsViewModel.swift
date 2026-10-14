@@ -13,6 +13,7 @@ final class ChannelsViewModel {
     private var nextMessageOffset = 0
     var errorMessage: String?
     var lastUpdatedAt: Date?
+    var recoveredChannel: MeshChannel?
 
     private var apiClient: (any AnalyzerBackend)?
     private var configuredSourceIdentifier: String?
@@ -28,6 +29,7 @@ final class ChannelsViewModel {
             isLoadingOlderMessages = false
             lastUpdatedAt = nil
             errorMessage = nil
+            recoveredChannel = nil
             configuredSourceIdentifier = client.cacheIdentifier
         }
         apiClient = client
@@ -39,7 +41,11 @@ final class ChannelsViewModel {
         isLoading = channels.isEmpty
         defer { if apiClient.sourceSession.isCurrent { isLoading = false } }
         do {
-            let key = ChannelListCache.Key(source: apiClient.cacheIdentifier, region: region)
+            let key = ChannelListCache.Key(
+                source: apiClient.cacheIdentifier,
+                sessionID: apiClient.sourceSession.id,
+                region: region
+            )
             let result = try await ChannelListCache.shared.load(
                 for: key,
                 using: apiClient,
@@ -58,11 +64,25 @@ final class ChannelsViewModel {
     static func preload(settings: AnalyzerSettings, region: String?) async {
         let apiClient = AnalyzerBackendFactory.make(settings: settings)
         guard apiClient.capabilities.contains(.serverChannels) else { return }
-        let key = ChannelListCache.Key(source: apiClient.cacheIdentifier, region: region)
+        let key = ChannelListCache.Key(
+            source: apiClient.cacheIdentifier,
+            sessionID: apiClient.sourceSession.id,
+            region: region
+        )
         _ = try? await ChannelListCache.shared.load(for: key, using: apiClient)
     }
 
-    func loadMessages(hash: String, forceRefresh: Bool = false) async {
+    func loadMessages(channel: MeshChannel, forceRefresh: Bool = false) async {
+        await loadMessages(channel: channel, forceRefresh: forceRefresh, allowsRecovery: true)
+    }
+
+    private func loadMessages(
+        channel: MeshChannel,
+        forceRefresh: Bool,
+        allowsRecovery: Bool
+    ) async {
+        let hash = channel.id
+        let requestIdentifier = channel.requestIdentifier
         guard let apiClient else { return }
         guard supports(.serverChannels, using: apiClient) else { return }
         if loadedMessageHash != hash {
@@ -73,7 +93,12 @@ final class ChannelsViewModel {
         isLoading = messages.isEmpty
         defer { if apiClient.sourceSession.isCurrent { isLoading = false } }
         do {
-            let key = ChannelMessagesCache.Key(source: apiClient.cacheIdentifier, hash: hash)
+            let key = ChannelMessagesCache.Key(
+                source: apiClient.cacheIdentifier,
+                sessionID: apiClient.sourceSession.id,
+                hash: hash,
+                requestIdentifier: requestIdentifier
+            )
             let response = try await ChannelMessagesCache.shared.load(
                 for: key,
                 using: apiClient,
@@ -97,18 +122,52 @@ final class ChannelsViewModel {
             errorMessage = nil
         } catch {
             guard apiClient.sourceSession.isCurrent, !Task.isCancelled, !(error is CancellationError) else { return }
+            if allowsRecovery,
+               apiClient is BeaconBackend,
+               channel.allowsBeaconResetRecovery,
+               case BeaconAPIError.server(status: 404, code: _) = error {
+                do {
+                    let candidates = try await ChannelListCache.shared.load(
+                        for: .init(
+                            source: apiClient.cacheIdentifier,
+                            sessionID: apiClient.sourceSession.id,
+                            region: nil
+                        ),
+                        using: apiClient,
+                        forceRefresh: true
+                    )
+                    try apiClient.sourceSession.check()
+                    if let replacement = channel.beaconReplacement(in: candidates), replacement.id != channel.id {
+                        recoveredChannel = replacement
+                        await loadMessages(channel: replacement, forceRefresh: true, allowsRecovery: false)
+                        return
+                    }
+                } catch {
+                    guard apiClient.sourceSession.isCurrent, !Task.isCancelled,
+                          !(error is CancellationError) else { return }
+                }
+                errorMessage = String(localized: "This saved channel is no longer available on this Beacon server.")
+                return
+            }
             errorMessage = error.localizedDescription
         }
     }
 
-    func loadOlderMessages(hash: String) async {
+    func loadOlderMessages(channel: MeshChannel) async {
+        let hash = channel.id
         guard let apiClient, hasOlderMessages, !isLoadingOlderMessages else { return }
         guard supports(.serverChannels, using: apiClient) else { return }
         isLoadingOlderMessages = true
         defer { if apiClient.sourceSession.isCurrent { isLoadingOlderMessages = false } }
         do {
             let response = try await ChannelMessagesCache.shared.load(
-                for: .init(source: apiClient.cacheIdentifier, hash: hash, offset: nextMessageOffset),
+                for: .init(
+                    source: apiClient.cacheIdentifier,
+                    sessionID: apiClient.sourceSession.id,
+                    hash: hash,
+                    offset: nextMessageOffset,
+                    requestIdentifier: channel.requestIdentifier
+                ),
                 using: apiClient,
                 forceRefresh: true
             )

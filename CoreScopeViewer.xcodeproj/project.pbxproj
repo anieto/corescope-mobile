@@ -21,6 +21,8 @@
 		2C1CCC5A4340804F13F8D110 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6EDB07FE4BF732F4BA52606B /* Assets.xcassets */; };
 		2CB0E2884918B39C50850A22 /* AnalyzerSourceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4ABA4E1CD390396A7DC9A33 /* AnalyzerSourceRegistry.swift */; };
 		2D447FFABF6B77349DA614A1 /* SenderColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36B0A5E6DC5812474734F2C7 /* SenderColor.swift */; };
+		31084971307FC645007F4778 /* BeaconObserverAnalyticsReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31084970307FC645007F4778 /* BeaconObserverAnalyticsReader.swift */; };
+		31084973307FC947007F4778 /* BeaconChannelReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31084972307FC947007F4778 /* BeaconChannelReader.swift */; };
 		31152DE03069FCCF00146B37 /* AdaptiveListDetailNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31152DDF3069FCCF00146B37 /* AdaptiveListDetailNavigation.swift */; };
 		311D6C77307B2AD900E2EB70 /* AnalyzerContracts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311D6C76307B2AD900E2EB70 /* AnalyzerContracts.swift */; };
 		311D6C79307BB9BB00E2EB70 /* BeaconAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311D6C78307BB9BB00E2EB70 /* BeaconAPIClient.swift */; };
@@ -139,6 +141,8 @@
 		2CE357DF8B6328C61A2E23E4 /* NodeDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeDetailScreen.swift; sourceTree = "<group>"; };
 		2E1E309A8A435B7E5A61ADE9 /* MapLocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapLocationManager.swift; sourceTree = "<group>"; };
 		2FB247C32E6BA4792D18D413 /* RegionFilterStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionFilterStore.swift; sourceTree = "<group>"; };
+		31084970307FC645007F4778 /* BeaconObserverAnalyticsReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeaconObserverAnalyticsReader.swift; sourceTree = "<group>"; };
+		31084972307FC947007F4778 /* BeaconChannelReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeaconChannelReader.swift; sourceTree = "<group>"; };
 		31152DDF3069FCCF00146B37 /* AdaptiveListDetailNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveListDetailNavigation.swift; sourceTree = "<group>"; };
 		311D6C76307B2AD900E2EB70 /* AnalyzerContracts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerContracts.swift; sourceTree = "<group>"; };
 		311D6C78307BB9BB00E2EB70 /* BeaconAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeaconAPIClient.swift; sourceTree = "<group>"; };
@@ -491,6 +495,8 @@
 				311D6C88307C45EC00E2EB70 /* BeaconLiveRecovery.swift */,
 				311D6C8A307C473800E2EB70 /* BeaconLiveFeed.swift */,
 				318BF7DC307EC37B00C8BFAD /* BeaconNodeAnalyticsBuilder.swift */,
+				31084970307FC645007F4778 /* BeaconObserverAnalyticsReader.swift */,
+				31084972307FC947007F4778 /* BeaconChannelReader.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -661,6 +667,7 @@
 				9599A7997960A45E6E506D71 /* LiveFeedMessage.swift in Sources */,
 				ACBA05674E6F7E851685EB56 /* LiveFeedService.swift in Sources */,
 				31152DE03069FCCF00146B37 /* AdaptiveListDetailNavigation.swift in Sources */,
+				31084973307FC947007F4778 /* BeaconChannelReader.swift in Sources */,
 				720AC3BF3F9FAFDCD5C48C40 /* LoadingIndicator.swift in Sources */,
 				6444F2623473A5D38104F233 /* MapLocationManager.swift in Sources */,
 				311D6C79307BB9BB00E2EB70 /* BeaconAPIClient.swift in Sources */,
@@ -701,6 +708,7 @@
 				316FE014306070A900FBA3B4 /* NodeScopeDeepLink.swift in Sources */,
 				312714C0307AE61D00829346 /* CoreScopeBackend.swift in Sources */,
 				DAAB4861A12F70E15A9DBA56 /* PacketFeedCache.swift in Sources */,
+				31084971307FC645007F4778 /* BeaconObserverAnalyticsReader.swift in Sources */,
 				0F0D91D6301E5CA8492D24A1 /* PacketFeedScreen.swift in Sources */,
 				316FE00A305E18ED00FBA3B4 /* LiquidGlassStyle.swift in Sources */,
 				B2894ACD708E45B661A41E4A /* PacketReplayStore.swift in Sources */,

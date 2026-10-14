@@ -14,6 +14,7 @@ struct ChannelDetailScreen: View {
     @State private var viewModel = ChannelsViewModel()
     @State private var lastProcessedLiveEventID: Int?
     @State private var liveRefreshTask: Task<Void, Never>?
+    @State private var liveLoadTask: Task<Void, Never>?
     @State private var browserLink: BrowserLink?
 
     private let scrollBottomID = "channel-conversation-bottom"
@@ -24,7 +25,7 @@ struct ChannelDetailScreen: View {
                 LazyVStack(alignment: .leading, spacing: 14) {
                     if viewModel.hasOlderMessages {
                         Button {
-                            Task { await viewModel.loadOlderMessages(hash: channel.hash) }
+                            Task { await viewModel.loadOlderMessages(channel: effectiveChannel) }
                         } label: {
                             Text(viewModel.isLoadingOlderMessages ? "Loading older messages…" : "Load older messages")
                                 .frame(maxWidth: .infinity)
@@ -62,7 +63,7 @@ struct ChannelDetailScreen: View {
         .navigationTitle(channel.name)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            recentItemsStore.record(channel: channel, source: favoriteSource)
+            recentItemsStore.record(channel: effectiveChannel, source: favoriteSource)
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -75,7 +76,7 @@ struct ChannelDetailScreen: View {
                     } label: {
                         Label("Copy Channel Name", systemImage: "doc.on.doc")
                     }
-                    if let url = NodeScopeDeepLink.channel(channel.hash).url {
+                    if let url = NodeScopeDeepLink.channel(effectiveChannel.id).url {
                         ShareLink(item: url) {
                             Label("Share Channel Link", systemImage: "square.and.arrow.up")
                         }
@@ -90,8 +91,8 @@ struct ChannelDetailScreen: View {
             }
         }
         .safeAreaInset(edge: .top) {
-            if settings.beaconBackend != nil {
-                BeaconFeatureNotice(capability: channel.hash.hasPrefix("user:") ? .channelDecryptOnPhone : .serverChannels)
+            if settings.beaconBackend != nil && channel.isLocallyMonitored {
+                BeaconFeatureNotice(capability: .channelDecryptOnPhone)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 6)
             } else {
@@ -119,9 +120,13 @@ struct ChannelDetailScreen: View {
                     .padding(.top, 8)
             }
         }
-        .task(id: "\(channel.hash)|\(regionFilter.selectedRegion ?? "")") {
+        .task(id: "\(channel.id)|\(regionFilter.selectedRegion ?? "")") {
             viewModel.configure(settings: settings)
-            await loadMessages()
+            // SwiftUI can cancel this task while the conversation stays on screen,
+            // and a cancelled load is discarded without an error, leaving "No
+            // messages yet" until a manual refresh. The load runs in its own task
+            // (as pull-to-refresh does) so cancelling this one can't discard it.
+            await Task { await loadMessages() }.value
         }
         .navigationDestination(for: ChannelMessage.self) { message in
             PacketDetailScreen(message: message)
@@ -136,19 +141,26 @@ struct ChannelDetailScreen: View {
         .onChange(of: liveFeed.recentEvents.first?.id) {
             scheduleLiveRefreshIfNeeded()
         }
+        .onChange(of: viewModel.recoveredChannel) { _, recoveredChannel in
+            guard let recoveredChannel else { return }
+            favoritesStore.replaceChannel(from: channel.id, with: recoveredChannel, source: favoriteSource)
+            recentItemsStore.replaceChannel(from: channel.id, with: recoveredChannel, source: favoriteSource)
+        }
         .onDisappear {
             liveRefreshTask?.cancel()
+            liveLoadTask?.cancel()
+            liveLoadTask = nil
         }
     }
 
     private var favoriteButton: some View {
         let isFavorite = favoritesStore.contains(
             kind: .channel,
-            entityID: channel.id,
+            entityID: effectiveChannel.id,
             source: favoriteSource
         )
         return Button {
-            favoritesStore.toggle(channel: channel, source: favoriteSource)
+            favoritesStore.toggle(channel: effectiveChannel, source: favoriteSource)
         } label: {
             Image(systemName: isFavorite ? "star.fill" : "star")
         }
@@ -158,6 +170,10 @@ struct ChannelDetailScreen: View {
 
     private var favoriteSource: String {
         AnalyzerSettings.normalizedHost(settings.host)
+    }
+
+    private var effectiveChannel: MeshChannel {
+        viewModel.recoveredChannel ?? channel
     }
 
     /// New GRP_TXT packets arrive continuously over the shared WebSocket feed
@@ -180,11 +196,24 @@ struct ChannelDetailScreen: View {
         lastProcessedLiveEventID = latestEvent.id
         guard isPossiblyChannelRelevant(latestEvent) else { return }
 
+        // A newer event restarts only the quiet-period wait. The refresh itself
+        // runs in its own task: cancelling it mid-request discards the response,
+        // and on Beacon, where events arrive almost continuously, no refresh
+        // would ever finish.
         liveRefreshTask?.cancel()
         liveRefreshTask = Task {
             try? await Task.sleep(for: .seconds(1))
             guard !Task.isCancelled else { return }
+            startLiveLoad()
+        }
+    }
+
+    /// Starts a forced refresh unless one is already in flight.
+    private func startLiveLoad() {
+        guard liveLoadTask == nil else { return }
+        liveLoadTask = Task {
             await loadMessages(forceRefresh: true)
+            liveLoadTask = nil
         }
     }
 
@@ -203,7 +232,8 @@ struct ChannelDetailScreen: View {
     /// top-to-bottom regardless of what the server returns.
     private var orderedMessages: [ChannelMessage] {
         var messages = viewModel.messages
-        if !channel.hash.hasPrefix("user:"),
+        if !channel.isLocallyMonitored,
+           settings.beaconBackend == nil,
            let selectedRegion = regionFilter.selectedRegion {
             messages = messages.filter { message in
                 message.observers.contains { observerRegionLookup.iataByName[$0] == selectedRegion }
@@ -232,7 +262,7 @@ struct ChannelDetailScreen: View {
     }
 
     private func loadMessages(forceRefresh: Bool = false) async {
-        if channel.hash.hasPrefix("user:"),
+        if channel.isLocallyMonitored,
            let monitoredChannel = monitorStore.channel(matching: channel) {
             await viewModel.loadMonitoredMessages(
                 channel: monitoredChannel,
@@ -241,7 +271,7 @@ struct ChannelDetailScreen: View {
             )
             monitorStore.updateSummary(for: monitoredChannel.channelName, messages: viewModel.messages)
         } else {
-            await viewModel.loadMessages(hash: channel.hash, forceRefresh: forceRefresh)
+            await viewModel.loadMessages(channel: effectiveChannel, forceRefresh: forceRefresh)
         }
     }
 

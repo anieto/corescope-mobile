@@ -8,6 +8,7 @@ actor ChannelListCache {
 
     struct Key: Hashable, Sendable {
         let source: String
+        let sessionID: UUID
         let region: String?
     }
 
@@ -40,6 +41,7 @@ actor ChannelListCache {
     ) async throws -> [MeshChannel] {
         try apiClient.sourceSession.check()
         let generation = self.generation
+        guard key.sessionID == apiClient.sourceSession.id else { throw CancellationError() }
         let requestKey = RequestKey(key: key, sessionID: apiClient.sourceSession.id)
         if !forceRefresh,
            let entry = entries[key],

@@ -6,6 +6,11 @@ enum AnalyzerCapability: String, CaseIterable, Identifiable, Sendable {
     case channels
     case observers
     case regions
+    case neighbors
+    case nodeAnalytics
+    case observerActivity
+    case observerTelemetry
+    case channelMessages
 
     var id: String { rawValue }
 
@@ -16,6 +21,11 @@ enum AnalyzerCapability: String, CaseIterable, Identifiable, Sendable {
         case .channels: "Channels"
         case .observers: "Observers"
         case .regions: "Region filtering"
+        case .neighbors: "Node neighbors"
+        case .nodeAnalytics: "Node analytics"
+        case .observerActivity: "Observer activity"
+        case .observerTelemetry: "Observer telemetry"
+        case .channelMessages: "Channel messages"
         }
     }
 
@@ -26,16 +36,22 @@ enum AnalyzerCapability: String, CaseIterable, Identifiable, Sendable {
         case .channels: "bubble.left.and.bubble.right"
         case .observers: "antenna.radiowaves.left.and.right"
         case .regions: "globe.americas"
+        case .neighbors: "point.3.connected.trianglepath.dotted"
+        case .nodeAnalytics: "chart.xyaxis.line"
+        case .observerActivity: "waveform.path.ecg"
+        case .observerTelemetry: "gauge.with.dots.needle.33percent"
+        case .channelMessages: "text.bubble"
         }
     }
 
-    fileprivate var path: String {
+    fileprivate var path: String? {
         switch self {
         case .mapConfiguration: "/api/config/map"
         case .nodes: "/api/nodes?limit=1"
         case .channels: "/api/channels?limit=1"
         case .observers: "/api/observers?limit=1"
         case .regions: "/api/config/regions"
+        case .neighbors, .nodeAnalytics, .observerActivity, .observerTelemetry, .channelMessages: nil
         }
     }
 
@@ -71,6 +87,15 @@ struct AnalyzerDiagnosticReport: Sendable {
 }
 
 struct AnalyzerDiagnosticsService: Sendable {
+    private enum BeaconProbeFamily: Hashable, Sendable {
+        case nodes, observers, channels
+    }
+
+    private struct BeaconProbePage: Decodable, Sendable {
+        struct Item: Decodable, Sendable {}
+        let items: [Item]
+    }
+
     private struct ProbeResult: Sendable {
         let capability: AnalyzerCapability
         let outcome: Outcome
@@ -96,6 +121,9 @@ struct AnalyzerDiagnosticsService: Sendable {
     private let baseURL: URL
     private let session: URLSession
     private let beaconBackend: BeaconBackend?
+    private static let coreScopeProbedCapabilities: [AnalyzerCapability] = [
+        .mapConfiguration, .nodes, .channels, .observers, .regions
+    ]
 
     init(settings: AnalyzerSettings) {
         baseURL = settings.baseURL
@@ -111,7 +139,7 @@ struct AnalyzerDiagnosticsService: Sendable {
     func run() async -> AnalyzerDiagnosticReport {
         if let beaconBackend { return await runBeacon(beaconBackend) }
         let results = await withTaskGroup(of: ProbeResult.self, returning: [ProbeResult].self) { group in
-            for capability in AnalyzerCapability.allCases {
+            for capability in Self.coreScopeProbedCapabilities {
                 group.addTask {
                     await probe(capability)
                 }
@@ -124,7 +152,7 @@ struct AnalyzerDiagnosticsService: Sendable {
             return values
         }
 
-        let orderedResults = AnalyzerCapability.allCases.compactMap { capability in
+        let orderedResults = Self.coreScopeProbedCapabilities.compactMap { capability in
             results.first { $0.capability == capability }
         }
         let receivedHTTPResponse = orderedResults.contains(where: \.receivedHTTPResponse)
@@ -186,21 +214,52 @@ struct AnalyzerDiagnosticsService: Sendable {
             capabilities: [], backendType: "Beacon", serverVersion: backend.serverInfo.serverVersion
         )
         let checks = AnalyzerCapability.allCases.map { capability in
-            AnalyzerCapabilityCheck(
-                capability: capability, level: .warning,
-                detail: capability == .channels || capability == .mapConfiguration
-                    ? "Not available for Beacon sources in this release."
-                    : "Supported by the Beacon adapter; endpoint not probed."
+            if capability == .mapConfiguration {
+                return AnalyzerCapabilityCheck(
+                    capability: capability, level: .warning,
+                    detail: "Beacon does not provide map defaults; NodeScope uses region coordinates."
+                )
+            }
+            let backendCapability: BackendCapability? = switch capability {
+            case .neighbors: .neighbors
+            case .nodeAnalytics: .nodeAnalytics
+            case .observerActivity, .observerTelemetry: .observerAnalytics
+            case .channels, .channelMessages: .serverChannels
+            case .mapConfiguration, .nodes, .observers, .regions: nil
+            }
+            if let backendCapability, !backend.capabilities.contains(backendCapability) {
+                return AnalyzerCapabilityCheck(
+                    capability: capability, level: .warning,
+                    detail: backendCapability.beaconExplanation
+                )
+            }
+            let detail: String = switch capability {
+            case .nodeAnalytics:
+                "Supported with Beacon’s seven-day observation-history limit; endpoint not probed."
+            case .observerActivity:
+                "Supported with Beacon observation counts; endpoint not probed."
+            case .observerTelemetry:
+                "Battery, airtime, and radio telemetry are supported; endpoint not probed."
+            case .channels, .channelMessages:
+                "Server-decrypted keyed channels are supported; endpoint not probed."
+            default:
+                "Supported by the Beacon adapter; endpoint not probed."
+            }
+            return AnalyzerCapabilityCheck(
+                capability: capability, level: .success,
+                detail: detail
             )
         }
         do {
             let info = try await backend.client.serverInfo()
             let compatibility: AnalyzerDiagnosticLevel
             let detail: String
+            var reportedChecks = checks
             do {
                 try info.requireSupported()
                 compatibility = .success
-                detail = "Beacon version is supported. Browse endpoints were not probed."
+                reportedChecks = await beaconCapabilityChecks(backend: backend, defaults: checks)
+                detail = "Beacon version and bounded browse-family checks completed."
             } catch {
                 compatibility = .failure
                 detail = error.localizedDescription
@@ -208,7 +267,7 @@ struct AnalyzerDiagnosticsService: Sendable {
             report = AnalyzerDiagnosticReport(
                 host: report.host, checkedAt: .now, connectionLevel: .success,
                 connectionDetail: "Beacon responded over HTTPS.", compatibilityLevel: compatibility,
-                compatibilityDetail: detail, capabilities: checks, backendType: "Beacon",
+                compatibilityDetail: detail, capabilities: reportedChecks, backendType: "Beacon",
                 serverVersion: info.serverVersion
             )
         } catch {
@@ -222,8 +281,58 @@ struct AnalyzerDiagnosticsService: Sendable {
         return report
     }
 
+    private func beaconCapabilityChecks(
+        backend: BeaconBackend,
+        defaults: [AnalyzerCapabilityCheck]
+    ) async -> [AnalyzerCapabilityCheck] {
+        let results = await withTaskGroup(of: (BeaconProbeFamily, Bool).self) { group in
+            group.addTask {
+                let page: BeaconProbePage? = try? await backend.client.get(["nodes"], query: [.init(name: "limit", value: "1")])
+                return (.nodes, page != nil)
+            }
+            group.addTask {
+                let page: BeaconProbePage? = try? await backend.client.get(["observers"], query: [.init(name: "limit", value: "1")])
+                return (.observers, page != nil)
+            }
+            group.addTask {
+                let page: BeaconProbePage? = try? await backend.client.get(
+                    ["channels"], query: [.init(name: "limit", value: "1"), .init(name: "keyKnown", value: "true")]
+                )
+                return (.channels, page != nil)
+            }
+            var values: [BeaconProbeFamily: Bool] = [:]
+            for await (family, succeeded) in group { values[family] = succeeded }
+            return values
+        }
+
+        return defaults.map { check in
+            let family: BeaconProbeFamily? = switch check.capability {
+            case .nodes, .neighbors, .nodeAnalytics: .nodes
+            case .observers, .observerActivity, .observerTelemetry: .observers
+            case .channels, .channelMessages: .channels
+            case .mapConfiguration, .regions: nil
+            }
+            guard let family else { return check }
+            guard results[family] == true else {
+                return AnalyzerCapabilityCheck(
+                    capability: check.capability,
+                    level: .warning,
+                    detail: "The bounded Beacon family check did not succeed."
+                )
+            }
+            return AnalyzerCapabilityCheck(
+                capability: check.capability,
+                level: check.level,
+                detail: check.detail.replacingOccurrences(of: "; endpoint not probed", with: "; family check passed")
+                    .replacingOccurrences(of: "; endpoint not probed.", with: "; family check passed.")
+                    .replacingOccurrences(of: "Supported by the Beacon adapter; endpoint not probed.", with: "Supported by the Beacon adapter; family check passed.")
+            )
+        }
+    }
+
     private func probe(_ capability: AnalyzerCapability) async -> ProbeResult {
-        guard let url = URL(string: capability.path, relativeTo: baseURL) else {
+        guard let path = capability.path,
+              let url = URL(string: path, relativeTo: baseURL) else {
             return ProbeResult(
                 capability: capability,
                 outcome: .networkFailure("The analyzer address is invalid.")

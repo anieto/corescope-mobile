@@ -115,6 +115,16 @@ final class RecentItemsStore {
         persist()
     }
 
+    func replaceChannel(from oldID: String, with channel: MeshChannel, source: String) {
+        guard items.contains(where: {
+            $0.kind == .channel && $0.entityID == oldID && $0.source == source
+        }) else { return }
+        items.removeAll {
+            $0.kind == .channel && $0.source == source && ($0.entityID == oldID || $0.entityID == channel.id)
+        }
+        record(channel: channel, source: source)
+    }
+
     private func record(_ item: RecentItem) {
         items.removeAll { $0.id == item.id }
         items.insert(item, at: 0)

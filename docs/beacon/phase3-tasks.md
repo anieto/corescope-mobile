@@ -78,7 +78,7 @@ No product UI changes. This milestone gates implementation.
 | A1 | **Capture contracts.** Record and sanitize representative responses for node observations, neighbors, observer activity, observer telemetry, decryptable channel pages, channel messages, relevant errors, empty histories, and paging cursors from Beacon 2.0.3 and 2.0.5. | Both versions decode from shared fixtures; leak scan reports zero; differences are documented | done |
 | A2 | **Measure budgets.** Measure request count, bytes, response time, paging depth, time ranges, and maximum practical row counts for every Phase 3 endpoint on all three live servers. | A table in `phase3-implementation.md` defines hard per-screen ceilings and cache lifetimes; no proposed screen exceeds about 20 requests | doing |
 | A3 | **Map semantics to the current UI.** Inventory every field/card/chart on the CoreScope node analytics, observer analytics, reach/neighbors, channels, messages, and diagnostics screens. Map each to Beacon as direct, derived, unavailable, or Beacon-only. | A parity matrix names the mapper and UI behavior for every existing element; every proposed concession has a reason | doing |
-| A4 | **Pin channel identity.** Confirm `(source session identity, Beacon integer id)` as the primary identity, with stored name and `isHashtag`. On 404 after a database reset, exact-name rematching is allowed only for hashtag channels and `Public`; all other references are dropped with an explanation. Never match by hash or across sources. | Collision, rename, reset, 404, paging, and cross-source tests are specified before channel implementation starts | todo |
+| A4 | **Pin channel identity.** Confirm `(source session identity, Beacon integer id)` as the primary identity, with stored name and `isHashtag`. On 404 after a database reset, exact-name rematching is allowed only for hashtag channels and `Public`; all other references are dropped with an explanation. Never match by hash or across sources. | Collision, rename, reset, 404, paging, and cross-source tests are specified before channel implementation starts | done |
 | A5 | **Confirm analytics derivations.** Define formulas and units for activity, packet types, hop counts, SNR, heatmaps, neighbor strength, telemetry summaries, and missing samples. Distinguish packets from observations. | The same fixture produces identical neutral analytics values in Swift and Kotlin tests | doing |
 
 ## Milestone B: neutral backend contracts
@@ -90,9 +90,9 @@ current values and requests.
 |---|---|---|---|
 | B1 | **Neutral analytics models.** Represent bounded time ranges, completeness, optional series, packet-versus-observation counts, unknown values, and provenance for derived Beacon analytics. | CoreScope decoding is unchanged; synthetic tests cover empty, partial, unsupported, and seven-day-capped histories | done |
 | B2 | **Neighbor model.** Add neutral neighbor identity, last-heard time, signal values, directionality, and completeness without treating key prefixes as full identities. | CoreScope reach data maps without visible change; Beacon full keys are linkable and prefixes are display-only | done |
-| B3 | **Observer telemetry model.** Add optional battery, noise floor, airtime, activity, and sample-time fields with explicit units and missing-value behavior. | Unit conversions and missing/null semantics are fixture-tested on both platforms | todo |
-| B4 | **Source-scoped channel model.** Replace assumptions that channel hash or name is globally unique. Persist a source-scoped reference while preserving CoreScope favorites, recents, monitored channels, and links. | Upgrade tests preserve existing CoreScope data; collisions and identical names never merge Beacon channels | todo |
-| B5 | **Capabilities.** Split broad Phase 2 gates into the Phase 3 capabilities required for neighbors, node analytics, observer activity, observer telemetry, server channels, and channel messages. | Each screen can independently distinguish supported, empty, partial, and unavailable; CoreScope still advertises its current capabilities | todo |
+| B3 | **Observer telemetry model.** Add optional battery, noise floor, airtime, activity, and sample-time fields with explicit units and missing-value behavior. | Unit conversions and missing/null semantics are fixture-tested on both platforms | doing |
+| B4 | **Source-scoped channel model.** Replace assumptions that channel hash or name is globally unique. Persist a source-scoped reference while preserving CoreScope favorites, recents, monitored channels, and links. | Upgrade tests preserve existing CoreScope data; collisions and identical names never merge Beacon channels | done |
+| B5 | **Capabilities.** Split broad Phase 2 gates into the Phase 3 capabilities required for neighbors, node analytics, observer activity, observer telemetry, server channels, and channel messages. | Each screen can independently distinguish supported, empty, partial, and unavailable; CoreScope still advertises its current capabilities | done |
 
 ## Milestone C: neighbors and reach parity
 
@@ -106,7 +106,7 @@ current values and requests.
 
 | ID | Task | Done when | Status |
 |---|---|---|---|
-| D1 | Read paged `/nodes/{id}/observations` and compute the neutral analytics defined in A5 without packet-detail fan-out. Cache by source, node, filter, and time range. | Paging, cancellation, repeated cursor, partial failure, seven-day cap, and stale-session tests pass | doing |
+| D1 | Read paged `/nodes/{id}/observations` and compute the neutral analytics defined in A5 without packet-detail fan-out. Cache by source, node, filter, and time range. | Paging, cancellation, repeated cursor, partial failure, seven-day cap, and stale-session tests pass | done |
 | D2 | Fill the existing node analytics screen with Beacon activity, heatmap, packet-type, hop, and SNR data. Reuse CoreScope charts, cards, order, colors, legends, filters, and accessibility labels. | CoreScope and Beacon screenshots have the same information architecture; differences correspond only to documented data limitations | doing |
 | D3 | Handle analytics that would require per-packet detail, including per-observer coverage. Prefer an explicit unavailable/partial explanation over an expensive approximation. | Zero per-row packet-detail requests; completeness is visible and tested | done |
 | D4 | Port D1–D3 to Android and update the parity matrix. | Shared fixtures produce matching aggregates and equivalent UI states on both platforms | todo |
@@ -115,9 +115,9 @@ current values and requests.
 
 | ID | Task | Done when | Status |
 |---|---|---|---|
-| E1 | Implement `/observers/{id}/activity` and telemetry endpoints behind the backend using Beacon UUID identity and the Phase 2 learned-key rules. | No observer-detail fan-out; paging/range/errors/cache/source switching are tested | todo |
-| E2 | Populate the existing observer analytics screen with the closest Beacon equivalents, preserving the CoreScope layout, card order, charts, time controls, and navigation. | Shared sections visually match CoreScope; unsupported metrics are explained instead of shown as zero | todo |
-| E3 | Add genuinely Beacon-only telemetry—such as battery, noise floor, and airtime—after the shared sections using established NodeScope card and chart components. | Units, timestamps, sparse samples, and empty telemetry have reviewed copy and accessibility labels | todo |
+| E1 | Implement `/observers/{id}/activity` and telemetry endpoints behind the backend using Beacon UUID identity and the Phase 2 learned-key rules. | No observer-detail fan-out; paging/range/errors/cache/source switching are tested | done |
+| E2 | Populate the existing observer analytics screen with the closest Beacon equivalents, preserving the CoreScope layout, card order, charts, time controls, and navigation. | Shared sections visually match CoreScope; unsupported metrics are explained instead of shown as zero | doing |
+| E3 | Add genuinely Beacon-only telemetry—such as battery, noise floor, and airtime—after the shared sections using established NodeScope card and chart components. | Units, timestamps, sparse samples, and empty telemetry have reviewed copy and accessibility labels | doing |
 | E4 | Port E1–E3 to Android and update the parity matrix. | Both platforms show equivalent values and platform-appropriate but structurally matching UI | todo |
 
 ## Milestone F: server-decrypted channels
@@ -127,18 +127,18 @@ monitored/on-phone decryption.
 
 | ID | Task | Done when | Status |
 |---|---|---|---|
-| F1 | Implement paged `/channels?keyKnown=true` and `/channels/{id}/messages` operations, cursor handling, caching, errors, source sessions, and request budgets. | Fixtures cover multiple pages, empty channels, collisions, duplicate names, renamed channels, reset IDs, and 404s | todo |
-| F2 | Apply the A4 identity and recovery rules to favorites, recents, navigation, and persisted references. Keep CoreScope migration behavior unchanged. | No hash-only lookup exists; allowed exact-name recovery is tested; dropped references produce recoverable user-facing state | todo |
-| F3 | Reuse the existing channels list, channel detail, message rows, timestamps, loading states, refresh behavior, navigation, and empty states. Hide or explain only actions that require local keys or payloads Beacon does not expose. | CoreScope and Beacon channel screens match visually and behaviorally wherever the server data permits | todo |
-| F4 | Keep monitored channels capability-gated on Beacon with clear copy explaining that server-decrypted channels are available but on-phone monitored channels are not. | The two concepts cannot be confused in labels, navigation, deep links, or accessibility output | todo |
+| F1 | Implement paged `/channels?keyKnown=true` and `/channels/{id}/messages` operations, cursor handling, caching, errors, source sessions, and request budgets. | Fixtures cover multiple pages, empty channels, collisions, duplicate names, renamed channels, reset IDs, and 404s | done |
+| F2 | Apply the A4 identity and recovery rules to favorites, recents, navigation, and persisted references. Keep CoreScope migration behavior unchanged. | No hash-only lookup exists; allowed exact-name recovery is tested; dropped references produce recoverable user-facing state | done |
+| F3 | Reuse the existing channels list, channel detail, message rows, timestamps, loading states, refresh behavior, navigation, and empty states. Hide or explain only actions that require local keys or payloads Beacon does not expose. | CoreScope and Beacon channel screens match visually and behaviorally wherever the server data permits | done |
+| F4 | Keep monitored channels capability-gated on Beacon with clear copy explaining that server-decrypted channels are available but on-phone monitored channels are not. | The two concepts cannot be confused in labels, navigation, deep links, or accessibility output | done |
 | F5 | Port F1–F4 to Android and update the parity matrix. | Collision, reset, migration, and UI-parity tests pass on both platforms | todo |
 
 ## Milestone G: expanded diagnostics
 
 | ID | Task | Done when | Status |
 |---|---|---|---|
-| G1 | Add bounded, non-destructive probes for the Phase 3 capabilities and report availability, compatibility, throttling, and partial-data conditions through the backend. | Diagnostics do not fetch bulk histories or mutate server state; CoreScope probes remain unchanged | todo |
-| G2 | Extend the existing diagnostics UI using the same sections and status rows as CoreScope. Add Beacon-only facts only where they help explain capability or health. | Both platforms present the same diagnostic conclusions with no false failures for unsupported features | todo |
+| G1 | Add bounded, non-destructive probes for the Phase 3 capabilities and report availability, compatibility, throttling, and partial-data conditions through the backend. | Diagnostics do not fetch bulk histories or mutate server state; CoreScope probes remain unchanged | done |
+| G2 | Extend the existing diagnostics UI using the same sections and status rows as CoreScope. Add Beacon-only facts only where they help explain capability or health. | Both platforms present the same diagnostic conclusions with no false failures for unsupported features | done |
 | G3 | Port and verify on Android. | iOS and Android reports agree against all three live servers | todo |
 
 ## Milestone H: cross-platform release gate

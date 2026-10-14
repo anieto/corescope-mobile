@@ -71,7 +71,7 @@ final class ObserversViewModel {
         guard let apiClient else { return }
         let loadID = UUID()
         activeLoadID = loadID
-        let cacheKey = "observers-\(cacheNamespace)"
+        let cacheKey = "observers-\(cacheNamespace)-\(apiClient.sourceSession.id)"
         if let cached: ObserversResponse = await APIResponseCache.shared.value(
             for: cacheKey,
             maximumAge: staleCacheLifetime
@@ -113,10 +113,10 @@ final class ObserversViewModel {
                 : String(localized: "Observer analytics is not available on this server.")
             return
         }
-        let cacheKey = "observer-analytics-\(cacheNamespace)-\(id.lowercased())"
+        let cacheKey = "observer-analytics-\(cacheNamespace)-\(apiClient.sourceSession.id)-\(id.lowercased())"
         if let cached: ObserverAnalyticsResponse = await APIResponseCache.shared.value(
             for: cacheKey,
-            maximumAge: 24 * 60 * 60
+            maximumAge: 5 * 60
         ) {
             let savedAt = await APIResponseCache.shared.savedAt(for: cacheKey)
             guard isCurrent(loadID, backend: apiClient) else { return }

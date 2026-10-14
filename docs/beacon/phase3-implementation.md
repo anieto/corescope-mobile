@@ -137,7 +137,7 @@ silently exceeding them.
 | Observer activity | 1 | Contract-bounded points | 5 minutes |
 | Observer telemetry | 1 | Contract-bounded points | 5 minutes |
 | Channels list | 10 | 2,000 channels at 200/page | 5 minutes |
-| Channel messages, initial view | 1 | 50 messages | 1 minute |
+| Channel messages, initial view | 1 | 20 messages | 1 minute |
 | Channel messages, user paging | 1 per explicit page | 20 pages per visit | 1 minute |
 | Diagnostics | 4 | One bounded probe per advertised Phase 3 family | No bulk cache |
 
@@ -176,9 +176,11 @@ in progress until side-by-side runtime review.
 ## 2026-10-13: iOS node analytics started
 
 Beacon node analytics now use one full-key identity lookup plus at most 19 pages of 200 observations,
-keeping the entire screen at or below 20 requests with no packet-detail fan-out. Pages must remain
-newest-first, cursors may not repeat, duplicate observation IDs are ignored, and obsolete source
-sessions cannot publish results. Results are cached for five minutes by source, node, and range.
+keeping the entire screen at or below 20 requests with no packet-detail fan-out. Cursors may not
+repeat, duplicate observation IDs are ignored, and obsolete source sessions cannot publish results.
+Beacon cursors are ordered by observation ID rather than strictly by `heardAt`; delayed ingestion can
+therefore produce valid timestamp inversions. The client accepts those inversions and sorts retained
+observations by time for presentation. Results are cached for five minutes by source, node, and range.
 
 The existing CoreScope analytics screen now accepts honest unknown summary values. Beacon fills the
 shared activity, observed-activity heatmap, signal, packet-type, and hop sections; counts and exports
@@ -186,3 +188,127 @@ say “observations,” not “packets.” Requests beyond seven days show the r
 partial. Availability, longest silence, signal grade, observer coverage, and peer interactions remain
 unknown with an explicit explanation because the node-history endpoint cannot support them. The
 CoreScope wire contract and labels remain unchanged.
+
+## 2026-10-14: iOS observer activity and telemetry started
+
+Beacon observer analytics now fetch the bounded 24-hour activity and telemetry endpoints concurrently
+for a total of two requests, then cache the combined source-scoped result for five minutes. Observer
+UUIDs are validated before any request, optional telemetry stays unknown when omitted, and empty
+activity or telemetry remains a successful empty result rather than an error.
+
+The existing observer-detail screen now reuses the CoreScope Packets Over Time and Packet Types card
+positions for Beacon observation counts. It explicitly explains that unique-node history, recent
+packet rows, and a true SNR distribution are unavailable from the bounded activity response instead
+of synthesizing those sections. Beacon-only telemetry follows the shared sections with the established
+card treatment: latest battery, noise floor, transmit/receive airtime, uptime, and receive errors,
+plus battery and noise-floor history charts. CoreScope decoding and presentation remain unchanged.
+
+The previously reported node-analytics pagination failure was traced against both live servers to
+valid delayed-ingestion timestamps. The map also now derives a whole-source viewport from Beacon IATA
+coordinates and reframes when those asynchronous coordinates arrive, so custom Beacon hosts do not
+depend on published community-source viewport metadata.
+
+The Xcode project builds successfully and all 216 iOS tests pass. E1–E3 remain in progress pending
+device review, additional cancellation/source-switch assertions, and the Android port.
+## 2026-10-14: iOS server-decrypted channel foundation
+
+- Added Beacon keyed-channel paging through `/channels?keyKnown=true`, using the authoritative opaque
+  `nextPageCursor` and a bounded ten-page walk.
+- Added Beacon channel-message mapping through `/channels/{id}/messages`. The compatibility adapter
+  walks Beacon cursors when the existing CoreScope UI requests an older offset; it does not invent
+  observer, hop, SNR, last-message, or message-count values that Beacon does not return.
+- Beacon channel identity is now the server integer ID within the selected source. Hash collisions no
+  longer merge list rows, cache entries, favorites, recents, or navigation state. Existing CoreScope
+  channels retain their hash identity and persisted decoding behavior.
+- Reused the CoreScope channel list and conversation UI. Beacon still displays a separate notice that
+  on-device monitored-channel decryption is unavailable; server-decrypted channels no longer show an
+  unsupported notice.
+- Added fixture tests for opaque list paging, source-scoped identity, and message projection. The full
+  iOS suite passes: 218 of 218 tests.
+- Remaining channel work: deeper message-cursor/error fixtures, live-server budgets, dropped-reference
+  UI review, and device review.
+
+### Channel reset recovery
+
+- A message 404 now performs one forced keyed-channel refresh on the same active source. Recovery is
+  allowed only when exactly one channel has the same case-sensitive name and the saved channel is
+  `Public` or a hashtag channel. Private names, renamed channels, ambiguous names, and hash matches
+  are rejected.
+- A successful recovery switches subsequent message paging to the replacement integer ID and moves
+  matching favorites and recent items to that identity. Favorite ordering and its original saved date
+  are preserved.
+- Legacy CoreScope channel snapshots without Beacon identity fields still decode and retain hash-based
+  identity. Reset, ambiguity, rename, private-channel, and legacy decoding tests are included.
+- The full iOS suite passes: 220 of 220 tests.
+
+## 2026-10-14: iOS diagnostics correction
+
+- Beacon diagnostics no longer report server-decrypted channels as unavailable. Nodes, channels,
+  observers, and regions reflect the capabilities of the verified Beacon adapter; map defaults remain
+  a warning with the documented region-coordinate fallback.
+- Diagnostics still make only the existing bounded `/info` request. Explicit rows now describe
+  neighbors, node analytics, observer activity, observer telemetry, and channel messages; live
+  per-capability endpoint probes remain in progress.
+- Missing/repeated channel-message cursors now fail as incomplete pagination, while a complete empty
+  channel remains a successful empty result. The full iOS suite passes: 222 of 222 tests.
+
+### Live channel acceptance and paging budget
+
+Nine bounded read-only requests checked `/info`, one keyed channel, and its first message page across
+the approved servers on October 14, 2026:
+
+| Server | Version | Keyed channel list (`limit=1`) | Messages (`limit=20`) |
+|---|---:|---:|---:|
+| `beacon.meshtexas.org` | 2.0.5 | 200 · 200 B · 145 ms | 200 · 4,251 B · 92 ms |
+| `map.meshcore.coloradomesh.org` | 2.0.3 | 200 · 202 B · 46 ms | 200 · 4,672 B · 44 ms |
+| `dev.meshcore.ca` | 2.0.5 | 200 · 200 B · 1,060 ms | 200 · 4,481 B · 276 ms |
+
+All three returned one keyed channel and a full 20-message page with `hasMore=true`. The reader now
+retains Beacon’s cursor for each loaded offset, so the normal explicit “Load older messages” action
+uses one request rather than replaying every earlier page. A bounded fallback walk remains for a
+missing in-memory cursor, such as restoration from an older cache entry.
+
+### iOS channel source-session hardening
+
+- Channel-list and channel-message cache keys now include the active source-session UUID in addition
+  to the analyzer URL and channel identity. Renewing a Beacon session at the same URL therefore
+  cannot reuse a completed response created by the previous session.
+- Cache loads reject a key whose session does not match the backend, while existing invalidation and
+  late-result checks continue to protect in-flight requests.
+- Milestone F1–F4 are complete on iOS. Android remains separately tracked as F5.
+- The Xcode project builds for testing and the complete iOS suite passes: 223 of 223 tests.
+
+### iOS bounded Phase 3 diagnostics
+
+- A supported Beacon diagnostic run now performs exactly four bounded, read-only requests: `/info`,
+  `/nodes?limit=1`, `/observers?limit=1`, and `/channels?limit=1&keyKnown=true`.
+- The three one-row family checks cover the Phase 3 node, observer, and server-channel capability
+  rows without fetching histories, details, messages, or additional pages. A failed family check is
+  shown as a warning rather than a false compatibility failure.
+- Unsupported versions and failed `/info` checks do not start the three browse-family requests.
+  CoreScope's existing diagnostics request contract is unchanged.
+- Milestone G1–G2 are complete on iOS; Android remains separately tracked as G3. The Xcode project
+  builds for testing and all 223 iOS tests pass.
+
+### iOS analytics source-session hardening
+
+- Node analytics, observer analytics, and observer-list cache namespaces now include the active
+  source-session UUID. Reconnecting or renewing the same server URL cannot briefly display cached
+  values from the previous session.
+- Late-result checks and request cancellation remain in place; a duplicate node-analytics current-
+  request guard was removed while auditing the path.
+- D1, E1, and the Phase 3 capability split B5 are complete on iOS. The complete suite remains green
+  at 223 of 223 tests.
+
+### iOS analytics UI parity audit
+
+- Beacon neighbor results now keep the same Links card position when the server returns an empty
+  collection, with an explicit "No Neighbors Reported" state instead of silently omitting the section.
+- A missing neighbor SNR is labeled "Signal unavailable" rather than incorrectly describing link
+  direction, which Beacon does not report.
+- Node and observer analytics now show explicit no-activity cards for successful empty histories.
+  Existing CoreScope/Beacon charts, ordering, card styling, range controls, and exports remain shared.
+- The Beacon telemetry summary now renders the latest sample time as an actual localized relative
+  date rather than literal placeholder text.
+- The iPhone Simulator build succeeds and the complete iOS suite passes: 223 of 223 tests. C2, D2,
+  E2, and E3 remain in review until the side-by-side visual acceptance pass is complete.

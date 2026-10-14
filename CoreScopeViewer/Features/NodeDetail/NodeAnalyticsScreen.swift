@@ -57,6 +57,12 @@ struct NodeAnalyticsScreen: View {
                         NodeAnalyticsCoverageNotice(explanation: explanation)
                     }
 
+                    if analytics.computedStats.totalPackets == 0,
+                       analytics.activityTimeline.isEmpty,
+                       analytics.snrTrend.isEmpty {
+                        NodeAnalyticsEmptyHistoryCard()
+                    }
+
                     NodeAnalyticsSummaryCard(
                         stats: analytics.computedStats,
                         countUnit: analytics.context?.countUnit ?? .packets
@@ -185,6 +191,19 @@ struct NodeAnalyticsScreen: View {
         exportContentType = format.contentType
         exportFilename = "node-\(nodeName)-\(viewModel.selectedRange.title)-analytics"
         isExporting = true
+    }
+}
+
+private struct NodeAnalyticsEmptyHistoryCard: View {
+    var body: some View {
+        ContentUnavailableView(
+            "No Activity in This Range",
+            systemImage: "chart.xyaxis.line",
+            description: Text("No node observations were recorded during the selected time range.")
+        )
+        .padding(.vertical, 24)
+        .frame(maxWidth: .infinity)
+        .instrumentCard()
     }
 }
 

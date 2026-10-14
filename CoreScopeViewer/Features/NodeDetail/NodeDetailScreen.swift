@@ -71,12 +71,16 @@ struct NodeDetailScreen: View {
                     }
                 }
 
-                if let neighbors = viewModel.neighbors, !neighbors.neighbors.isEmpty {
-                    NodeNeighborsCard(
-                        neighbors: neighbors.neighbors,
-                        nodesByPublicKey: linkedNodesByPublicKey,
-                        openNode: { selectedLinkedNode = $0 }
-                    )
+                if let neighbors = viewModel.neighbors {
+                    if neighbors.neighbors.isEmpty {
+                        NodeNeighborsEmptyCard()
+                    } else {
+                        NodeNeighborsCard(
+                            neighbors: neighbors.neighbors,
+                            nodesByPublicKey: linkedNodesByPublicKey,
+                            openNode: { selectedLinkedNode = $0 }
+                        )
+                    }
                 }
 
                 if let paths = viewModel.paths, !paths.paths.isEmpty {
@@ -527,6 +531,19 @@ private struct NodeNeighborsCard: View {
     }
 }
 
+private struct NodeNeighborsEmptyCard: View {
+    var body: some View {
+        NodeDetailCard(title: "Links", symbol: "link") {
+            ContentUnavailableView(
+                "No Neighbors Reported",
+                systemImage: "point.3.connected.trianglepath.dotted",
+                description: Text("Beacon has not recorded any neighboring nodes for this node yet.")
+            )
+            .frame(maxWidth: .infinity)
+        }
+    }
+}
+
 private struct NodeNeighborRow: View {
     let name: String?
     let displayPrefix: String?
@@ -548,7 +565,7 @@ private struct NodeNeighborRow: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 } else {
-                    Text("Direction unavailable")
+                    Text("Signal unavailable")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }

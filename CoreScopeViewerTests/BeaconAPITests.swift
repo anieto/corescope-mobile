@@ -199,7 +199,15 @@ struct BeaconAPITests {
 
     @Test @MainActor func beaconDiagnosticsUsesInfoWithoutCoreScopeCapabilityRequests() async throws {
         let settings = AnalyzerSettings()
-        let session = Self.session(targets: ["/api/v1/info"], body: #"{"serverVersion":"2.0.5","minAppVersion":"99.0.0"}"#)
+        let infoPath = "/api/v1/info"
+        let nodesPath = "/api/v1/nodes?limit=1"
+        let observersPath = "/api/v1/observers?limit=1"
+        let channelsPath = "/api/v1/channels?limit=1&keyKnown=true"
+        let routes = #"{"/api/v1/info":{"serverVersion":"2.0.5","minAppVersion":"99.0.0"},"/api/v1/nodes?limit=1":{"items":[]},"/api/v1/observers?limit=1":{"items":[]},"/api/v1/channels?limit=1&keyKnown=true":{"items":[]}}"#
+        let session = Self.session(
+            targets: [infoPath, nodesPath, observersPath, channelsPath],
+            routes: routes
+        )
         defer { session.invalidateAndCancel() }
         try settings.selectBeacon(verifiedServerInfo: .init(serverVersion: "2.0.3"), expectedSessionID: settings.sourceSession.id, session: session)
         let sourceID = settings.sourceSession.id
@@ -207,7 +215,13 @@ struct BeaconAPITests {
         #expect(report.backendType == "Beacon" && report.serverVersion == "2.0.5")
         #expect(report.connectionLevel == .success && report.compatibilityLevel == .success)
         #expect(report.capabilities.count == AnalyzerCapability.allCases.count)
-        #expect(report.capabilities.allSatisfy { $0.level == .warning })
+        #expect(report.capabilities.filter { $0.level == .success }.count == AnalyzerCapability.allCases.count - 1)
+        #expect(report.capabilities.first { $0.capability == .channels }?.level == .success)
+        #expect(report.capabilities.first { $0.capability == .nodeAnalytics }?.level == .success)
+        #expect(report.capabilities.first { $0.capability == .observerTelemetry }?.level == .success)
+        #expect(report.capabilities.first { $0.capability == .channelMessages }?.level == .success)
+        #expect(report.capabilities.first { $0.capability == .nodeAnalytics }?.detail.contains("family check passed") == true)
+        #expect(report.capabilities.first { $0.capability == .mapConfiguration }?.level == .warning)
         #expect(settings.sourceSession.id == sourceID)
         #expect(settings.beaconBackend?.serverInfo.serverVersion == "2.0.3")
     }
@@ -364,7 +378,7 @@ struct BeaconAPITests {
         #expect(pair.feed.observers === pair.backend.observerReader)
         #expect(pair.backend.sourceSession.id == client.sourceSession.id)
         #expect(pair.backend.cacheIdentifier == client.cacheIdentifier)
-        #expect(pair.backend.capabilities == [.neighbors, .nodeAnalytics])
+        #expect(pair.backend.capabilities == [.neighbors, .nodeAnalytics, .observerAnalytics, .serverChannels])
         let other = try BeaconObserverReader(client: Self.client(session), verifiedServerInfo: info)
         #expect(throws: APIError.self) {
             _ = try BeaconLiveFeed(client: client, verifiedServerInfo: info, transport: transport, observerReader: other)
@@ -411,9 +425,7 @@ struct BeaconAPITests {
         await #expect(throws: BeaconBackendError.self) { _ = try await backend.nodeHealth(publicKey: "node") }
         await #expect(throws: BeaconBackendError.self) { _ = try await backend.nodePaths(publicKey: "node") }
         await #expect(throws: BeaconBackendError.self) { _ = try await backend.nodeReach(publicKey: "node") }
-        await #expect(throws: BeaconBackendError.self) { _ = try await backend.observerAnalytics(id: "observer") }
-        await #expect(throws: BeaconBackendError.self) { _ = try await backend.channels(region: nil) }
-        await #expect(throws: BeaconBackendError.self) { _ = try await backend.channelMessages(id: "1", offset: 0) }
+        await #expect(throws: APIError.self) { _ = try await backend.observerAnalytics(id: "observer") }
         await #expect(throws: BeaconBackendError.self) { _ = try await backend.mapDefaults() }
         backend.sourceSession.invalidate()
         await #expect(throws: CancellationError.self) { _ = try await backend.nodes(region: nil) }
@@ -1082,6 +1094,85 @@ struct BeaconAPITests {
         #expect(history.observations.first?.heardAt == Date(timeIntervalSince1970: 1791666758.828))
     }
 
+    @Test func observerAnalyticsMapsActivityAndOptionalTelemetryInTwoRequests() async throws {
+        let observerID = "9549bfd5-d6de-87b4-a186-c26cef90587c"
+        let activityPath = "/api/v1/observers/\(observerID)/activity?range=24h&interval=15m"
+        let telemetryPath = "/api/v1/observers/\(observerID)/telemetry?range=24h&interval=1h"
+        let routes = String(decoding: try JSONSerialization.data(withJSONObject: [
+            activityPath: try Self.fixtureBody("observer-activity-24h"),
+            telemetryPath: try Self.fixtureBody("observer-telemetry-24h")
+        ]), as: UTF8.self)
+        let session = Self.session(targets: [activityPath, telemetryPath], routes: routes)
+        defer { session.invalidateAndCancel() }
+        let reader = try BeaconObserverAnalyticsReader(
+            client: Self.client(session),
+            verifiedServerInfo: .init(serverVersion: "2.0.5")
+        )
+
+        let analytics = try await reader.analytics(observerID: observerID)
+        #expect(analytics.context?.countUnit == .observations)
+        #expect(analytics.context?.completeness == .complete)
+        #expect(!analytics.timeline.isEmpty)
+        #expect(analytics.packetTypes["11"] == 7_837)
+        #expect(analytics.nodesTimeline.isEmpty)
+        #expect(analytics.snrDistribution.isEmpty)
+        #expect(analytics.recentPackets.isEmpty)
+        #expect(analytics.telemetry?.first?.batteryMillivolts == 4_221)
+        #expect(analytics.telemetry?.first?.noiseFloorDecibels == -112)
+    }
+
+    @Test func observerAnalyticsPreservesEmptyActivityAndTelemetry() async throws {
+        let observerID = "9549bfd5-d6de-87b4-a186-c26cef90587c"
+        let activityPath = "/api/v1/observers/\(observerID)/activity?range=24h&interval=15m"
+        let telemetryPath = "/api/v1/observers/\(observerID)/telemetry?range=24h&interval=1h"
+        let routes = String(decoding: try JSONSerialization.data(withJSONObject: [
+            activityPath: try Self.fixtureBody("observer-activity-empty"),
+            telemetryPath: try Self.fixtureBody("observer-telemetry-empty")
+        ]), as: UTF8.self)
+        let session = Self.session(targets: [activityPath, telemetryPath], routes: routes)
+        defer { session.invalidateAndCancel() }
+        let reader = try BeaconObserverAnalyticsReader(
+            client: Self.client(session),
+            verifiedServerInfo: .init(serverVersion: "2.0.3")
+        )
+
+        let analytics = try await reader.analytics(observerID: observerID)
+        #expect(analytics.timeline.isEmpty)
+        #expect(analytics.packetTypes.isEmpty)
+        #expect(analytics.telemetry?.isEmpty == true)
+    }
+
+    @Test func nodeObservationHistoryAcceptsDelayedIngestionTimestamps() async throws {
+        let node = try Self.fixtureBody("node-detail")
+        let key = try #require(node["publicKey"] as? String)
+        let identifier = try #require(node["id"] as? String)
+        let lookup = "/api/v1/nodes?pubkey=\(key)"
+        let observationsPath = "/api/v1/nodes/\(identifier)/observations?limit=200"
+        var page = try Self.fixtureBody("node-observations")
+        var items = try #require(page["items"] as? [[String: Any]])
+        let firstTime = try #require(items[0]["heardAt"] as? NSNumber)
+        let secondTime = try #require(items[1]["heardAt"] as? NSNumber)
+        items[0]["heardAt"] = secondTime
+        items[1]["heardAt"] = firstTime
+        page["items"] = items
+        let routes = String(decoding: try JSONSerialization.data(withJSONObject: [
+            lookup: try Self.fixtureBody("node-by-pubkey"),
+            observationsPath: page
+        ]), as: UTF8.self)
+        let session = Self.session(targets: [lookup, observationsPath], routes: routes)
+        defer { session.invalidateAndCancel() }
+        let reader = try BeaconNodeReader(
+            client: Self.client(session),
+            verifiedServerInfo: .init(serverVersion: "2.0.3")
+        )
+
+        let history = try #require(await reader.observationHistory(
+            publicKey: key,
+            since: Date(timeIntervalSince1970: 0)
+        ))
+        #expect(history.observations.map(\.heardAt) == history.observations.map(\.heardAt).sorted(by: >))
+    }
+
     @Test func beaconBackendDerivesNodeAnalyticsWithoutPacketFanout() async throws {
         let node = try Self.fixtureBody("node-detail")
         let key = try #require(node["publicKey"] as? String)
@@ -1119,6 +1210,159 @@ struct BeaconAPITests {
         let reader = try BeaconNodeReader(client: Self.client(session), verifiedServerInfo: .init(serverVersion: "2.0.3"))
         #expect(try await reader.nodeDetail(publicKey: key) == nil)
         await #expect(throws: APIError.self) { _ = try await reader.nodeDetail(publicKey: "ab") }
+    }
+
+    @Test func channelPagesUseOpaqueCursorAndSourceScopedIntegerIdentity() async throws {
+        let first = try Self.fixtureBody("channels-keyknown-page-1")
+        let second = try Self.fixtureBody("channels-keyknown-page-2")
+        let cursor = try #require(first["nextPageCursor"] as? String)
+        let firstPath = "/api/v1/channels?limit=2&keyKnown=true"
+        let encodedCursor = try #require(cursor.addingPercentEncoding(withAllowedCharacters: .alphanumerics))
+        let secondPath = firstPath + "&pageCursor=" + encodedCursor
+        let unescapedSecondPath = firstPath + "&pageCursor=" + cursor
+        let routes = String(decoding: try JSONSerialization.data(withJSONObject: [
+            firstPath: first,
+            secondPath: second,
+            unescapedSecondPath: second
+        ]), as: UTF8.self)
+        let session = Self.session(targets: [firstPath, secondPath, unescapedSecondPath], routes: routes)
+        defer { session.invalidateAndCancel() }
+        let reader = try BeaconChannelReader(
+            client: Self.client(session),
+            verifiedServerInfo: .init(serverVersion: "2.0.3")
+        )
+
+        let channels = try await reader.channels(pageSize: 2)
+        #expect(channels.map(\.serverID) == [58, 1958, 372, 3662])
+        #expect(channels.map(\.id) == ["beacon:58", "beacon:1958", "beacon:372", "beacon:3662"])
+        #expect(channels.allSatisfy { $0.messageCount == nil })
+    }
+
+    @Test func channelCachesAreScopedToSourceSession() {
+        let firstSessionID = UUID()
+        let secondSessionID = UUID()
+        let source = "beacon|https://beacon.invalid/api/v1/"
+
+        let firstList = ChannelListCache.Key(source: source, sessionID: firstSessionID, region: nil)
+        let secondList = ChannelListCache.Key(source: source, sessionID: secondSessionID, region: nil)
+        #expect(firstList != secondList)
+
+        let firstMessages = ChannelMessagesCache.Key(
+            source: source,
+            sessionID: firstSessionID,
+            hash: "beacon:58",
+            requestIdentifier: "58"
+        )
+        let secondMessages = ChannelMessagesCache.Key(
+            source: source,
+            sessionID: secondSessionID,
+            hash: "beacon:58",
+            requestIdentifier: "58"
+        )
+        #expect(firstMessages != secondMessages)
+    }
+
+    @Test func channelMessagesMapRecordedServerDataWithoutInventingRouteMetadata() async throws {
+        let path = "/api/v1/channels/58/messages?limit=20"
+        let session = Self.session(targets: [path], fixture: "channel-messages")
+        defer { session.invalidateAndCancel() }
+        let reader = try BeaconChannelReader(
+            client: Self.client(session),
+            verifiedServerInfo: .init(serverVersion: "2.0.3")
+        )
+
+        let response = try await reader.messages(channelID: "58", offset: 0)
+        #expect(response.messages.count == 4 && response.total == 5)
+        #expect(response.messages.first?.packetId == 12150)
+        #expect(response.messages.first?.sender == "Sender 049")
+        #expect(response.messages.first?.repeats == 1)
+        #expect(response.messages.allSatisfy { $0.observers.isEmpty && $0.hops == 0 && $0.snr == nil })
+    }
+
+    @Test func beaconChannelResetRecoveryIsExactUniqueAndRestricted() {
+        let savedPublic = MeshChannel(
+            hash: "old", name: "Public", lastMessage: nil, lastSender: nil,
+            messageCount: nil, lastActivity: .distantPast, serverID: 58, isHashtag: false
+        )
+        let replacement = MeshChannel(
+            hash: "new", name: "Public", lastMessage: nil, lastSender: nil,
+            messageCount: nil, lastActivity: .now, serverID: 99, isHashtag: false
+        )
+        #expect(savedPublic.beaconReplacement(in: [replacement])?.serverID == 99)
+        #expect(savedPublic.beaconReplacement(in: [replacement, replacement]) == nil)
+
+        let privateChannel = MeshChannel(
+            hash: "old", name: "Private", lastMessage: nil, lastSender: nil,
+            messageCount: nil, lastActivity: .distantPast, serverID: 12, isHashtag: false
+        )
+        let sameName = MeshChannel(
+            hash: "new", name: "Private", lastMessage: nil, lastSender: nil,
+            messageCount: nil, lastActivity: .now, serverID: 13, isHashtag: false
+        )
+        #expect(privateChannel.beaconReplacement(in: [sameName]) == nil)
+
+        let hashtag = MeshChannel(
+            hash: "collision", name: "#mesh", lastMessage: nil, lastSender: nil,
+            messageCount: nil, lastActivity: .distantPast, serverID: 20, isHashtag: true
+        )
+        let renamed = MeshChannel(
+            hash: "collision", name: "#renamed", lastMessage: nil, lastSender: nil,
+            messageCount: nil, lastActivity: .now, serverID: 21, isHashtag: true
+        )
+        #expect(hashtag.beaconReplacement(in: [renamed]) == nil)
+    }
+
+    @Test func channelMessagePagingRejectsMissingAndRepeatedContinuations() async throws {
+        let firstPath = "/api/v1/channels/58/messages?limit=20"
+        var missing = try Self.fixtureBody("channel-messages")
+        missing.removeValue(forKey: "nextCursor")
+        let missingSession = Self.session(
+            targets: [firstPath],
+            body: String(decoding: try JSONSerialization.data(withJSONObject: missing), as: UTF8.self)
+        )
+        let missingReader = try BeaconChannelReader(
+            client: Self.client(missingSession),
+            verifiedServerInfo: .init(serverVersion: "2.0.3")
+        )
+        await #expect(throws: BeaconAPIError.self) {
+            _ = try await missingReader.messages(channelID: "58", offset: 0)
+        }
+        missingSession.invalidateAndCancel()
+
+        let repeated = try Self.fixtureBody("channel-messages")
+        let cursor = try #require(repeated["nextCursor"] as? Int)
+        let secondPath = firstPath + "&cursor=\(cursor)"
+        let routes = String(decoding: try JSONSerialization.data(withJSONObject: [
+            firstPath: repeated,
+            secondPath: repeated
+        ]), as: UTF8.self)
+        let repeatedSession = Self.session(targets: [firstPath, secondPath], routes: routes)
+        defer { repeatedSession.invalidateAndCancel() }
+        let repeatedReader = try BeaconChannelReader(
+            client: Self.client(repeatedSession),
+            verifiedServerInfo: .init(serverVersion: "2.0.3")
+        )
+        await #expect(throws: BeaconAPIError.self) {
+            _ = try await repeatedReader.messages(channelID: "58", offset: 4)
+        }
+    }
+
+    @Test func emptyBeaconChannelIsSuccessfulAndComplete() async throws {
+        let path = "/api/v1/channels/58/messages?limit=20"
+        let session = Self.session(targets: [path], body: #"{"items":[],"hasMore":false}"#)
+        defer { session.invalidateAndCancel() }
+        let reader = try BeaconChannelReader(
+            client: Self.client(session),
+            verifiedServerInfo: .init(serverVersion: "2.0.3")
+        )
+        let response = try await reader.messages(channelID: "58", offset: 0)
+        #expect(response.messages.isEmpty && response.total == 0)
+    }
+
+    @Test func legacyCoreScopeChannelDecodingKeepsHashIdentity() throws {
+        let data = Data(#"{"hash":"11","name":"Public","lastMessage":null,"lastSender":null,"messageCount":4,"lastActivity":0}"#.utf8)
+        let channel = try JSONDecoder().decode(MeshChannel.self, from: data)
+        #expect(channel.id == "11" && channel.serverID == nil && channel.messageCount == 4)
     }
 
     @Test func nodePagesWalkRecordedCursorsWithoutTruncation() async throws {

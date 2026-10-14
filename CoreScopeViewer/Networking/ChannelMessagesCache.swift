@@ -8,8 +8,10 @@ actor ChannelMessagesCache {
 
     struct Key: Hashable, Sendable {
         let source: String
+        let sessionID: UUID
         let hash: String
         var offset: Int = 0
+        var requestIdentifier: String? = nil
     }
 
     private struct Entry: Sendable {
@@ -41,6 +43,7 @@ actor ChannelMessagesCache {
     ) async throws -> ChannelMessagesResponse {
         try apiClient.sourceSession.check()
         let generation = self.generation
+        guard key.sessionID == apiClient.sourceSession.id else { throw CancellationError() }
         let requestKey = RequestKey(key: key, sessionID: apiClient.sourceSession.id)
         if !forceRefresh,
            let entry = entries[key],
@@ -56,7 +59,10 @@ actor ChannelMessagesCache {
         }
 
         let load = Task { [apiClient] in
-            let response: ChannelMessagesResponse = try await apiClient.channelMessages(id: key.hash, offset: key.offset)
+            let response: ChannelMessagesResponse = try await apiClient.channelMessages(
+                id: key.requestIdentifier ?? key.hash,
+                offset: key.offset
+            )
             return response
         }
         inFlightLoads[requestKey] = load
