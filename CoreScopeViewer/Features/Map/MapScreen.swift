@@ -2006,10 +2006,33 @@ struct MapScreen: View {
         }
 
         guard !newPings.isEmpty else { return }
-        activePings.append(contentsOf: newPings)
-        if activePings.count > 100 {
-            activePings.removeFirst(activePings.count - 100)
+        // Admit complete routes atomically. Removing the oldest individual
+        // segments at the limit amputates routes that are still traveling.
+        // Under overload, preserve animations already on screen and skip a
+        // whole newly arriving route instead.
+        for route in Self.groupedLiveRoutes(newPings) {
+            guard activePings.count + route.count <= 100 else { continue }
+            activePings.append(contentsOf: route)
         }
+    }
+
+    nonisolated private static func groupedLiveRoutes(_ pings: [ActivePing]) -> [[ActivePing]] {
+        var groups: [[ActivePing]] = []
+        var groupIndexByRouteID: [String: Int] = [:]
+
+        for ping in pings {
+            guard let routeID = ping.routeID else {
+                groups.append([ping])
+                continue
+            }
+            if let index = groupIndexByRouteID[routeID] {
+                groups[index].append(ping)
+            } else {
+                groupIndexByRouteID[routeID] = groups.count
+                groups.append([ping])
+            }
+        }
+        return groups
     }
 
     private func rebuildPathsForCurrentFilters() {
@@ -2333,16 +2356,11 @@ private struct LiveMapTrafficLayer: View {
     }
 
     private func pingsForFrame(at date: Date) -> [ActivePing] {
-        let current = pings.filter { $0.hasStarted(at: date) && !$0.isExpired(at: date) }
-        let completed = current.filter { !$0.isPulse && $0.hasCompletedTravel(at: date) }.suffix(40)
-        let transient = current.filter {
-            $0.isPulse
-                || !$0.hasCompletedTravel(at: date)
-                || $0.arrivalPulseProgress(at: date) != nil
-        }.suffix(20)
-
-        var seen = Set<UUID>()
-        return (completed + transient).filter { seen.insert($0.id).inserted }
+        // Canvas is inexpensive enough to retain every live segment through
+        // its normal fade. Segment-count caps can evict one hop while the rest
+        // of its route is still visible, which looks like a random mid-route
+        // disappearance on dense analyzers.
+        pings.filter { $0.hasStarted(at: date) && !$0.isExpired(at: date) }
     }
 }
 
