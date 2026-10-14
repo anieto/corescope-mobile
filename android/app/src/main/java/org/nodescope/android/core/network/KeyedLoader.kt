@@ -39,6 +39,9 @@ class KeyedLoader<K, T>(
         val sameKey = current.key == key
         if (!force && sameKey && (current.loading ||
                 current.error == null && current.updatedAt?.let { clock() - it < maxAgeMillis } == true)) return
+        // A forced refresh never cancels the same key's in-flight request: live feeds force refreshes
+        // continuously (Beacon especially), and cancelling each one meant none ever finished.
+        if (force && sameKey && current.loading) return
         job?.cancel()
         var retained = if (sameKey) current else Loaded(key)
         mutable.value = retained.copy(loading = true, error = null)

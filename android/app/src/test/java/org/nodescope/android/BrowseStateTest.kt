@@ -41,6 +41,25 @@ class BrowseStateTest {
         assertEquals("fresh new", loader.state.value.value)
     }
 
+    /** Live feeds force refreshes continuously; a forced refresh must let the same key's request finish. */
+    @Test fun forcedRefreshDoesNotCancelTheSameKeysInFlightRequest() = runTest {
+        var started = 0
+        val loader = KeyedLoader(backgroundScope, 60_000, { currentTime }) { key: String ->
+            started++
+            delay(1_000)
+            "$key loaded"
+        }
+        loader.load("public")
+        runCurrent()
+        repeat(5) { advanceTimeBy(150); loader.load("public", force = true) }
+        advanceTimeBy(1_000); runCurrent()
+        assertEquals("public loaded", loader.state.value.value)
+        assertEquals(1, started)
+        loader.load("public", force = true) // once finished, a forced refresh fetches again
+        runCurrent()
+        assertEquals(2, started)
+    }
+
     @Test fun failedRefreshKeepsSameKeyDataAndCacheAgeIsRespected() = runTest {
         var calls = 0
         var fail = false

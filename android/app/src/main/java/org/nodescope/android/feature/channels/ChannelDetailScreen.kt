@@ -32,13 +32,16 @@ fun ChannelDetailScreen(
     favorite: Boolean = false, onFavorite: () -> Unit = {},
 ) {
     val monitoredChannels by model.monitor.channels.collectAsStateWithLifecycle()
-    val monitored = remember(monitoredChannels, channelId, channelName) { model.monitor.matching(channelId, channelName) }
+    val beacon = LocalBeaconSource.current
+    // On Beacon a server channel is never a phone-monitored one, even when the names match.
+    val monitored = remember(monitoredChannels, channelId, channelName, beacon) {
+        if (beacon && !channelId.startsWith("user:")) null else model.monitor.matching(channelId, channelName)
+    }
     val messageState by model.messages.state.collectAsStateWithLifecycle()
     val packetState by model.packets.state.collectAsStateWithLifecycle()
     val messageKey = selection.host to channelId
     val now = rememberNow()
 
-    val beacon = LocalBeaconSource.current
     fun refresh(force: Boolean) {
         // Beacon has no payloads to decrypt on the phone; its server-decrypted channels load normally.
         if (monitored != null) { if (!beacon) model.packets.load(selection, force) } else model.messages.load(messageKey, force)

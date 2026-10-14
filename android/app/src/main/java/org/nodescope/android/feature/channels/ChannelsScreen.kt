@@ -32,7 +32,7 @@ fun ChannelsScreen(
 ) {
     val channelState by model.channels.state.collectAsStateWithLifecycle()
     val packetState by model.packets.state.collectAsStateWithLifecycle()
-    val monitored by model.monitor.channels.collectAsStateWithLifecycle()
+    val stored by model.monitor.channels.collectAsStateWithLifecycle()
     var source by rememberSaveable { mutableStateOf(ChannelSource.ALL) }
     var activity by rememberSaveable { mutableStateOf(ChannelActivity.ALL) }
     var sort by rememberSaveable { mutableStateOf(ChannelSort.RECENT) }
@@ -40,8 +40,10 @@ fun ChannelsScreen(
     var searching by rememberSaveable { mutableStateOf(false) }
     var showFilters by remember { mutableStateOf(false) }
     val now = rememberNow()
-    // Beacon decrypts known channels on the server but exposes no payloads to decrypt here.
+    // Beacon decrypts known channels on the server but exposes no payloads to decrypt here, so
+    // phone-monitored channels are hidden (not removed) and never shadow a server channel.
     val beacon = LocalBeaconSource.current
+    val monitored = if (beacon) emptyList() else stored
 
     LaunchedEffect(selection, beacon) { model.channels.load(selection) }
     LaunchedEffect(selection, monitored.isNotEmpty()) { if (!beacon && monitored.isNotEmpty()) model.packets.load(selection) }
