@@ -92,6 +92,14 @@ struct MapScreen: View {
         }
     }
 
+    /// One hop of one packet. Every observer of a packet reports its path, and
+    /// most hops are shared, so each is drawn once rather than once per observer.
+    private struct PacketSegmentKey: Hashable, Sendable {
+        let packetHash: String
+        let from: CoordinateKey
+        let to: CoordinateKey
+    }
+
     private struct DisplayRegion: Sendable {
         let centerLatitude: Double
         let centerLongitude: Double
@@ -1939,6 +1947,13 @@ struct MapScreen: View {
     private func processIncomingEvents() {
         activePings.removeAll { $0.isExpired(at: .now) }
 
+        // On networks where dozens of observers hear each packet, drawing a hop
+        // per observation kept the map at its 100-segment cap and re-rendering
+        // continuously. A hop already shown for the same packet is skipped.
+        var drawnSegments = Set(activePings.compactMap { ping -> PacketSegmentKey? in
+            guard !ping.isPulse, let hash = ping.packetHash else { return nil }
+            return PacketSegmentKey(packetHash: hash, from: CoordinateKey(ping.start), to: CoordinateKey(ping.end))
+        })
         var newPings: [ActivePing] = []
         for event in liveFeed.recentEvents {
             guard event.type == "packet" else { continue }
@@ -1963,6 +1978,12 @@ struct MapScreen: View {
                         let p1 = subchain[index]
                         let p2 = subchain[index + 1]
                         if isValidHopDistance(from: p1, to: p2) {
+                            if let hash = event.data?.hash,
+                               !drawnSegments.insert(PacketSegmentKey(
+                                   packetHash: hash, from: CoordinateKey(p1), to: CoordinateKey(p2)
+                               )).inserted {
+                                continue
+                            }
                             let travelDuration = 0.66
                             let hopStart = observedAt.addingTimeInterval(Double(index) * travelDuration)
                             newPings.append(
