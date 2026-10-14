@@ -342,6 +342,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             // cannot jump particles.
             val clockOffset = System.currentTimeMillis() - System.nanoTime() / 1_000_000
             var previousRoutes: List<LiveRoute>? = null
+            var previousKeys: List<String>? = null
             var lastDrawnAt: Long? = null
             var lastFrame: RouteFrame? = null
             while (isActive) {
@@ -353,13 +354,18 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                     val animate = ValueAnimator.areAnimatorsEnabled()
                     observedPaths = latestPaths
                     val active = observedPaths.filter { it.isActive(now) }
-                    // Temporary route markers only change when routes enter or leave.
-                    val routesChanged = active != previousRoutes
-                    if (routesChanged) {
-                        traced("NodeScope:anchors") { drawing.setRouteAnchors(active.flatMap { it.anchors }.distinctBy { it.anchorId }) }
-                        previousRoutes = active
-                    }
-                    if (shouldDrawRouteFrame(now, lastDrawnAt, routesChanged, replayingNow)) {
+                    // A route entering or leaving draws at once. A route rebuilt because its packet
+                    // gained observations (dozens per packet on networks with many observers) waits
+                    // for the next capped redraw, which also refreshes its markers.
+                    val keys = active.map { it.key }
+                    val routesEnteredOrLeft = keys != previousKeys
+                    previousKeys = keys
+                    if (shouldDrawRouteFrame(now, lastDrawnAt, routesEnteredOrLeft, replayingNow)) {
+                        // Temporary route markers only change when the routes do.
+                        if (active != previousRoutes) {
+                            traced("NodeScope:anchors") { drawing.setRouteAnchors(active.flatMap { it.anchors }.distinctBy { it.anchorId }) }
+                            previousRoutes = active
+                        }
                         // Named sections show the route work in system traces (no cost when not tracing).
                         val frame = traced("NodeScope:frame") { routeFrame(active, now, animate) }
                         if (frame != lastFrame) traced("NodeScope:draw") { drawing.setRouteFrame(frame) }
