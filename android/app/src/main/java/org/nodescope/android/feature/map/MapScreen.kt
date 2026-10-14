@@ -334,6 +334,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         } else CameraMove.Center(points[0], maxOf(ready.zoom, REPLAY_POINT_ZOOM))
         withTimeoutOrNull(1_500) { ready.animateAndWait(update, 300) }
     }
+    val replayingNow by rememberUpdatedState(routeReplay != null)
     LaunchedEffect(overlays) {
         val drawing = overlays ?: return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -341,6 +342,8 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             // cannot jump particles.
             val clockOffset = System.currentTimeMillis() - System.nanoTime() / 1_000_000
             var previousRoutes: List<LiveRoute>? = null
+            var lastDrawnAt: Long? = null
+            var lastFrame: RouteFrame? = null
             while (isActive) {
                 var observedPaths = latestPaths
                 var now = 0L
@@ -351,13 +354,18 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                     observedPaths = latestPaths
                     val active = observedPaths.filter { it.isActive(now) }
                     // Temporary route markers only change when routes enter or leave.
-                    if (active != previousRoutes) {
+                    val routesChanged = active != previousRoutes
+                    if (routesChanged) {
                         traced("NodeScope:anchors") { drawing.setRouteAnchors(active.flatMap { it.anchors }.distinctBy { it.anchorId }) }
                         previousRoutes = active
                     }
-                    // Named sections show the route work in system traces (no cost when not tracing).
-                    val frame = traced("NodeScope:frame") { routeFrame(active, now, animate) }
-                    traced("NodeScope:draw") { drawing.setRouteFrame(frame) }
+                    if (shouldDrawRouteFrame(now, lastDrawnAt, routesChanged, replayingNow)) {
+                        // Named sections show the route work in system traces (no cost when not tracing).
+                        val frame = traced("NodeScope:frame") { routeFrame(active, now, animate) }
+                        if (frame != lastFrame) traced("NodeScope:draw") { drawing.setRouteFrame(frame) }
+                        lastFrame = frame
+                        lastDrawnAt = now
+                    }
                     anyActive = active.isNotEmpty()
                     // Keep drawing every frame while something is moving.
                     anyActive && animate

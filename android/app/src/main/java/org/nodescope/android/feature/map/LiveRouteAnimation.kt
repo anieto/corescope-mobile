@@ -24,6 +24,13 @@ internal object RouteTiming {
     const val REPLAY_FADE = 650L
     /** iOS keeps at most 40 anchored hops and 20 moving/pulsing ones during live traffic. */
     const val MAX_TRANSIENT_ROUTES = 20
+
+    /**
+     * Live routes redraw at most this often (~30 per second). Each redraw rebuilds the route
+     * sources on the main thread; at the display's full 60–120 Hz a busy network kept the CPU
+     * working continuously. Replays keep the full rate.
+     */
+    const val LIVE_FRAME_INTERVAL = 33L
 }
 
 internal class RouteHop(val start: Coordinate, val end: Coordinate, val startsAt: Long, val fadeStartsAt: Long, val fadeDuration: Long,
@@ -199,3 +206,12 @@ internal class LiveRouteBuilder {
         result
     }
 }
+
+/**
+ * Whether this display frame should rebuild the live route overlays. Routes entering or leaving
+ * always draw at once, and replays draw every frame; otherwise moving routes redraw at most every
+ * [RouteTiming.LIVE_FRAME_INTERVAL] ms.
+ */
+internal fun shouldDrawRouteFrame(now: Long, lastDrawnAt: Long?, routesChanged: Boolean, replaying: Boolean): Boolean =
+    routesChanged || replaying || lastDrawnAt == null || now - lastDrawnAt >= RouteTiming.LIVE_FRAME_INTERVAL
+
