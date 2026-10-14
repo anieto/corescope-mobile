@@ -114,7 +114,7 @@ fun NodeDetailScreen(
             item { ObserversCard(observers.sortedByDescending { it.packetCount }, onObserver) }
         }
         reachValue?.links?.takeIf { it.isNotEmpty() }?.let { links -> item { LinksCard(links, onNode) } }
-        neighborsValue?.neighbors?.takeIf { it.isNotEmpty() }?.let { list -> item { NeighborsCard(list, onNode) } }
+        neighborsValue?.neighbors?.let { list -> item { if (list.isEmpty()) NeighborsEmptyCard() else NeighborsCard(list, onNode) } }
         pathsValue?.takeIf { it.paths.isNotEmpty() }?.let { value -> item { PathsCard(value) } }
     }
 }
@@ -320,7 +320,7 @@ private fun NeighborsCard(neighbors: List<NeighborInsight>, onNode: (String) -> 
                     Column(Modifier.weight(1f)) {
                         Text(neighbor.name?.takeIf(String::isNotBlank) ?: neighbor.identity.displayPrefix ?: "Unknown node",
                             style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text(neighbor.signal.snr?.let { "SNR %.1f dB".format(it) } ?: "Direction unavailable",
+                        Text(neighbor.signal.snr?.let { "SNR %.1f dB".format(it) } ?: "Signal unavailable",
                             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     if (key != null) Icon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -328,6 +328,13 @@ private fun NeighborsCard(neighbors: List<NeighborInsight>, onNode: (String) -> 
             }
         }
         if (neighbors.size > 3) ExpandButton(expanded, neighbors.size, "links") { expanded = !expanded }
+    }
+}
+
+@Composable
+private fun NeighborsEmptyCard() {
+    DetailCard("Links", Icons.Outlined.Link) {
+        EmptyState(Icons.Outlined.Hub, "No neighbors reported", "Beacon has not recorded any neighboring nodes for this node yet.")
     }
 }
 

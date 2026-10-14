@@ -26,6 +26,15 @@ fun ChannelsListDetailScreen(
     var packet by rememberSaveable(selection.host, selection.region, selectedId) { mutableStateOf<List<String>?>(null) }
     val contentStates = rememberSaveableStateHolder()
     val channels by model.channels.state.collectAsStateWithLifecycle()
+    val messages by model.messages.state.collectAsStateWithLifecycle()
+    // A Beacon reset re-matched the open channel: follow it, and move its favorite and recent entry.
+    val recovered = messages.value?.recovered?.takeIf { messages.key == selection.host to selectedId }
+    LaunchedEffect(recovered) {
+        val replacement = recovered ?: return@LaunchedEffect
+        selectedId?.let { library.replaceChannel(it, replacement) }
+        selectedId = replacement.id
+        selectedName = replacement.name
+    }
     fun closeDetails() {
         if (packet != null) packet = null
         else if (onExit != null) onExit() else selectedId = null
@@ -41,8 +50,9 @@ fun ChannelsListDetailScreen(
                 selectedId = selectedId.takeIf { showSelection })
         },
         detailPane = { id ->
-            val known = channels.value.takeIf { channels.key == selection }?.firstOrNull { it.hash == id }
-                ?: MeshChannel(id, selectedName)
+            val known = channels.value.takeIf { channels.key == selection }?.firstOrNull { it.id == id }
+                ?: library.channel(id) ?: MeshChannel(id, selectedName)
+            model.remember(known)
             LaunchedEffect(id) { library.viewed(known) }
             val shownPacket = packet
             if (shownPacket == null) {

@@ -234,15 +234,17 @@ class BeaconApiTest {
         Unit
     }
 
-    @Test fun observationHistoryRejectsPagesOutOfOrder() {
+    /** Pages follow observation ids, so delayed ingestion inverts timestamps; results are sorted. */
+    @Test fun observationHistoryAcceptsDelayedIngestionTimestamps() = runBlocking {
         val items = body("node-observations.json").jsonObject.getValue("items").jsonArray.reversed().let(::JsonArray)
         val fake = FakeBeacon(mutableMapOf(
             "nodes?pubkey=$nodeKey" to Triple(200, body("node-by-pubkey.json").toString(), null),
             "nodes/$nodeId/observations?limit=200" to Triple(200, page(items), null),
         ))
-        assertThrows(BeaconApiException.MalformedPage::class.java) {
-            runBlocking { BeaconNodeReader(api(fake), info).observationHistory(nodeKey, since = 0) }
-        }
+        val history = checkNotNull(BeaconNodeReader(api(fake), info).observationHistory(nodeKey, since = 0))
+        val times = history.observations.map { it.heardAt }
+        assertEquals(times.sortedDescending(), times)
+        assertEquals(8, times.size)
     }
 
     @Test fun beaconBackendDerivesNodeAnalyticsWithoutPacketFanout() = runBlocking {
@@ -284,6 +286,142 @@ class BeaconApiTest {
         assertEquals(0.0, stats.relayPct!!, 0.0)
         assertEquals(inWindow.mapNotNull { it.snr }.average(), stats.snrMean!!, 1e-9)
         assertEquals(org.nodescope.android.core.model.AnalyticsCompleteness.COMPLETE, analytics.context?.completeness)
+    }
+
+    private val observerId = "9549bfd5-d6de-87b4-a186-c26cef90587c"
+    private fun observerRoutes(activity: String, telemetry: String, id: String = observerId) = mutableMapOf<String, Triple<Int, String, String?>>(
+        "observers/$id/activity?range=24h&interval=15m" to Triple(200, body(activity).toString(), null),
+        "observers/$id/telemetry?range=24h&interval=1h" to Triple(200, body(telemetry).toString(), null),
+    )
+
+    @Test fun observerAnalyticsMapsActivityAndOptionalTelemetryInTwoRequests() = runBlocking {
+        val fake = FakeBeacon(observerRoutes("observer-activity-24h.json", "observer-telemetry-24h.json"))
+        val analytics = BeaconObserverAnalyticsReader(api(fake), BeaconServerInfo("2.0.5")).analytics(observerId)
+        assertEquals(org.nodescope.android.core.model.AnalyticsCountUnit.OBSERVATIONS, analytics.context?.countUnit)
+        assertEquals(org.nodescope.android.core.model.AnalyticsCompleteness.COMPLETE, analytics.context?.completeness)
+        assertEquals(96, analytics.timeline.size)
+        assertEquals(7_837L, analytics.packetTypes["11"])
+        assertTrue(analytics.nodesTimeline.isEmpty() && analytics.snrDistribution.isEmpty() && analytics.recentPackets.isEmpty())
+        val telemetry = checkNotNull(analytics.telemetry).first()
+        assertEquals(4_221, telemetry.batteryMillivolts)
+        assertEquals(-112.0, telemetry.noiseFloorDecibels!!, 0.0)
+        assertEquals(2, fake.requests.size)
+    }
+
+    @Test fun observerAnalyticsPreservesEmptyActivityAndTelemetry() = runBlocking {
+        val id = "00000000-0000-0000-0000-000000000002"
+        val fake = FakeBeacon(observerRoutes("observer-activity-empty.json", "observer-telemetry-empty.json", id))
+        val analytics = BeaconObserverAnalyticsReader(api(fake), info).analytics(id)
+        assertTrue(analytics.timeline.isEmpty() && analytics.packetTypes.isEmpty())
+        assertEquals(emptyList<Any>(), analytics.telemetry)
+    }
+
+    @Test fun observerAnalyticsRejectsANonUuidWithoutRequests() {
+        val fake = FakeBeacon()
+        assertThrows(BeaconApiException.InvalidResponse::class.java) {
+            runBlocking { BeaconObserverAnalyticsReader(api(fake), info).analytics("observer") }
+        }
+        assertTrue(fake.requests.isEmpty())
+    }
+
+    @Test fun channelPagesUseOpaqueCursorAndSourceScopedIntegerIdentity() = runBlocking {
+        val first = body("channels-keyknown-page-1.json")
+        val cursor = first.jsonObject.getValue("nextPageCursor").jsonPrimitive.content
+        val fake = FakeBeacon(mutableMapOf(
+            "channels?limit=2&keyKnown=true" to Triple(200, first.toString(), null),
+            "channels?limit=2&keyKnown=true&pageCursor=$cursor" to Triple(200, body("channels-keyknown-page-2.json").toString(), null),
+            "channels?limit=2&keyKnown=true&pageCursor=${java.net.URLEncoder.encode(cursor, "UTF-8")}" to
+                Triple(200, body("channels-keyknown-page-2.json").toString(), null),
+        ))
+        val channels = BeaconChannelReader(api(fake), info).channels(pageSize = 2)
+        assertEquals(listOf(58, 1958, 372, 3662), channels.map { it.serverId })
+        assertEquals(listOf("beacon:58", "beacon:1958", "beacon:372", "beacon:3662"), channels.map { it.id })
+        assertTrue(channels.all { it.messageCount == null })
+        assertEquals(2, fake.requests.size)
+    }
+
+    @Test fun channelMessagesMapRecordedServerDataWithoutInventingRouteMetadata() = runBlocking {
+        val fake = FakeBeacon(mutableMapOf("channels/58/messages?limit=20" to Triple(200, body("channel-messages.json").toString(), null)))
+        val messages = BeaconChannelReader(api(fake), info).messages("beacon:58")
+        assertEquals(4, messages.size)
+        assertEquals(12150L, messages.first().packetId)
+        assertEquals("Sender 049", messages.first().sender)
+        assertEquals(1, messages.first().repeats)
+        assertTrue(messages.all { it.observers.isEmpty() && it.hops == null && it.snr == null })
+    }
+
+    @Test fun channelMessagePagesMustSayWhereTheyContinue() {
+        val missing = body("channel-messages.json").jsonObject.toMutableMap().apply { remove("nextCursor") }.let(::JsonObject)
+        val fake = FakeBeacon(mutableMapOf("channels/58/messages?limit=20" to Triple(200, missing.toString(), null)))
+        assertThrows(BeaconApiException.MalformedPage::class.java) {
+            runBlocking { BeaconChannelReader(api(fake), info).messages("58") }
+        }
+    }
+
+    @Test fun emptyBeaconChannelIsSuccessfulAndComplete() = runBlocking {
+        val fake = FakeBeacon(mutableMapOf("channels/58/messages?limit=20" to Triple(200, """{"items":[],"hasMore":false}""", null)))
+        assertTrue(BeaconChannelReader(api(fake), info).messages("beacon:58").isEmpty())
+    }
+
+    @Test fun beaconChannelResetRecoveryIsExactUniqueAndRestricted() {
+        fun channel(name: String, id: Int, hashtag: Boolean, hash: String = "h") =
+            org.nodescope.android.core.model.MeshChannel(hash, name, serverId = id, isHashtag = hashtag)
+        val savedPublic = channel("Public", 58, false, "old")
+        val replacement = channel("Public", 99, false, "new")
+        assertEquals(99, savedPublic.beaconReplacement(listOf(replacement))?.serverId)
+        assertNull("Ambiguous", savedPublic.beaconReplacement(listOf(replacement, replacement.copy(serverId = 100))))
+        assertNull("Private names never re-match", channel("Private", 12, false).beaconReplacement(listOf(channel("Private", 13, false))))
+        assertNull("Renamed or hash-only matches never count", channel("#mesh", 20, true, "collision")
+            .beaconReplacement(listOf(channel("#renamed", 21, true, "collision"))))
+        assertNull("CoreScope channels never recover", org.nodescope.android.core.model.MeshChannel("11", "Public")
+            .beaconReplacement(listOf(replacement)))
+    }
+
+    @Test fun legacyCoreScopeChannelDecodingKeepsHashIdentity() {
+        val channel = protocolJson.decodeFromString(org.nodescope.android.core.model.MeshChannel.serializer(),
+            """{"hash":"11","name":"Public","lastMessage":null,"lastSender":null,"messageCount":4,"lastActivity":"2026-10-01T00:00:00Z"}""")
+        assertEquals("11", channel.id)
+        assertNull(channel.serverId)
+        assertEquals(4, channel.messageCount)
+    }
+
+    private fun diagnosticRoutes(version: String = "2.0.5") = mutableMapOf<String, Triple<Int, String, String?>>(
+        "info" to Triple(200, """{"serverVersion":"$version","minAppVersion":"99.0.0"}""", null),
+        "nodes?limit=1" to Triple(200, """{"items":[],"hasMore":false}""", null),
+        "observers?limit=1" to Triple(200, """{"items":[],"hasMore":false}""", null),
+        "channels?limit=1&keyKnown=true" to Triple(200, """{"items":[],"hasMore":false}""", null),
+    )
+
+    @Test fun beaconDiagnosticsMakeFourBoundedRequestsAndNoFalseFailures() = runBlocking {
+        val fake = FakeBeacon(diagnosticRoutes())
+        val report = AnalyzerDiagnostics(client(fake)).runBeacon(host, BeaconBackend(api(fake), info))
+        assertEquals("Beacon" to "2.0.5", report.backendType to report.serverVersion)
+        assertEquals(DiagnosticLevel.SUCCESS, report.compatibilityLevel)
+        assertEquals(AnalyzerCapability.entries, report.capabilities.map { it.capability })
+        val byCapability = report.capabilities.associateBy { it.capability }
+        assertEquals(DiagnosticLevel.WARNING, byCapability.getValue(AnalyzerCapability.MAP_CONFIGURATION).level)
+        assertEquals(AnalyzerCapability.entries.size - 1, report.capabilities.count { it.level == DiagnosticLevel.SUCCESS })
+        assertTrue(byCapability.getValue(AnalyzerCapability.NODE_ANALYTICS).detail.contains("family check passed"))
+        assertEquals(setOf("info", "nodes?limit=1", "observers?limit=1", "channels?limit=1&keyKnown=true"), fake.requests.toSet())
+        assertEquals(4, fake.requests.size)
+    }
+
+    @Test fun beaconDiagnosticsReportAFailedFamilyAsAWarning() = runBlocking {
+        val fake = FakeBeacon(diagnosticRoutes().apply { remove("channels?limit=1&keyKnown=true") })
+        val report = AnalyzerDiagnostics(client(fake)).runBeacon(host, BeaconBackend(api(fake), info))
+        assertEquals(DiagnosticLevel.SUCCESS, report.compatibilityLevel)
+        val byCapability = report.capabilities.associateBy { it.capability }
+        for (capability in listOf(AnalyzerCapability.CHANNELS, AnalyzerCapability.CHANNEL_MESSAGES)) {
+            assertEquals(DiagnosticLevel.WARNING, byCapability.getValue(capability).level)
+        }
+        assertEquals(DiagnosticLevel.SUCCESS, byCapability.getValue(AnalyzerCapability.NODES).level)
+    }
+
+    @Test fun unsupportedBeaconVersionSkipsFamilyChecks() = runBlocking {
+        val fake = FakeBeacon(diagnosticRoutes("2.0.2"))
+        val report = AnalyzerDiagnostics(client(fake)).runBeacon(host, BeaconBackend(api(fake), info))
+        assertEquals(DiagnosticLevel.FAILURE, report.compatibilityLevel)
+        assertEquals(listOf("info"), fake.requests)
     }
 
     @Test fun missingNodeDoesNotScanOrFetchDetail() = runBlocking {
@@ -377,11 +515,10 @@ class BeaconApiTest {
     @Test fun backendRejectsUnsupportedEndpointsWithoutRequests() = runBlocking {
         val fake = FakeBeacon()
         val backend = BeaconBackend(api(fake), info)
-        assertEquals(setOf(BackendCapability.NEIGHBORS, BackendCapability.NODE_ANALYTICS), backend.capabilities)
+        assertEquals(setOf(BackendCapability.NEIGHBORS, BackendCapability.NODE_ANALYTICS, BackendCapability.OBSERVER_ANALYTICS,
+            BackendCapability.SERVER_CHANNELS), backend.capabilities)
         val calls: List<Pair<BackendCapability, suspend () -> Unit>> = listOf(
-            BackendCapability.SERVER_CHANNELS to { backend.channels(AnalyzerSelection(host, null)); Unit },
             BackendCapability.CHANNEL_DECRYPT_ON_PHONE to { backend.channelPackets(AnalyzerSelection(host, null)); Unit },
-            BackendCapability.OBSERVER_ANALYTICS to { backend.observerAnalytics(host, "x"); Unit },
             BackendCapability.NODE_HEALTH to { backend.nodeHealth(host, "x"); Unit },
             BackendCapability.NODE_REACH to { backend.nodeReach(host, "x"); Unit },
             BackendCapability.NODE_PATHS to { backend.nodePaths(host, "x"); Unit },

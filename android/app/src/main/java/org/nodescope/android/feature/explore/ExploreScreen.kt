@@ -389,7 +389,7 @@ private fun GlobalSearchSheet(nodes: List<MeshNode>, observers: List<MeshObserve
                             item { SectionLabel("Channels") }
                             items(results.channels, key = { "c-${it.hash}" }) { channel ->
                                 ResultRow(SavedKind.CHANNEL, null, channel.name, channel.lastSender ?: channel.lastMessage,
-                                    library.isFavorite(SavedKind.CHANNEL, channel.hash), { library.toggle(channel) }) { choose { actions.onChannel(channel.hash, channel.name) } }
+                                    library.isFavorite(SavedKind.CHANNEL, channel.id), { library.toggle(channel) }) { choose { actions.onChannel(channel.id, channel.name) } }
                             }
                         }
                         if (results.nodes.isNotEmpty()) {

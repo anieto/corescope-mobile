@@ -31,10 +31,15 @@ class BeaconBackend(val client: BeaconApiClient, val serverInfo: BeaconServerInf
     val observerReader: BeaconObserverReader
     val packetReader: BeaconPacketReader
     val regionReader: BeaconRegionReader
+    val observerAnalyticsReader: BeaconObserverAnalyticsReader
+    val channelReader: BeaconChannelReader
 
     val sourceSession: AnalyzerSourceSession get() = client.sourceSession
     val cacheIdentifier: String get() = client.cacheIdentifier
-    val capabilities: Set<BackendCapability> = setOf(BackendCapability.NEIGHBORS, BackendCapability.NODE_ANALYTICS)
+    val capabilities: Set<BackendCapability> = setOf(
+        BackendCapability.NEIGHBORS, BackendCapability.NODE_ANALYTICS, BackendCapability.OBSERVER_ANALYTICS,
+        BackendCapability.SERVER_CHANNELS,
+    )
 
     init {
         serverInfo.requireSupported()
@@ -42,6 +47,8 @@ class BeaconBackend(val client: BeaconApiClient, val serverInfo: BeaconServerInf
         observerReader = BeaconObserverReader(client, serverInfo)
         packetReader = BeaconPacketReader(client, serverInfo)
         regionReader = BeaconRegionReader(client, serverInfo)
+        observerAnalyticsReader = BeaconObserverAnalyticsReader(client, serverInfo)
+        channelReader = BeaconChannelReader(client, serverInfo)
     }
 
     /** Android repositories take the host on every call; a different host is a stale caller. */
@@ -108,10 +115,20 @@ class BeaconBackend(val client: BeaconApiClient, val serverInfo: BeaconServerInf
         throw BeaconUnsupportedException(capability)
     }
 
-    override suspend fun channels(selection: AnalyzerSelection): List<MeshChannel> = unavailable(BackendCapability.SERVER_CHANNELS)
-    override suspend fun channelMessages(host: String, hash: String): List<ChannelMessage> = unavailable(BackendCapability.SERVER_CHANNELS)
+    /** Keyed channels for the whole source: Beacon channels have no region. */
+    override suspend fun channels(selection: AnalyzerSelection): List<MeshChannel> {
+        requireHost(selection.host)
+        return channelReader.channels()
+    }
+    override suspend fun channelMessages(host: String, hash: String): List<ChannelMessage> {
+        requireHost(host)
+        return channelReader.messages(hash)
+    }
     override suspend fun channelPackets(selection: AnalyzerSelection): List<ChannelPacket> = unavailable(BackendCapability.CHANNEL_DECRYPT_ON_PHONE)
-    override suspend fun observerAnalytics(host: String, id: String): ObserverAnalytics = unavailable(BackendCapability.OBSERVER_ANALYTICS)
+    override suspend fun observerAnalytics(host: String, id: String): ObserverAnalytics {
+        requireHost(host)
+        return observerAnalyticsReader.analytics(id)
+    }
     override suspend fun nodeHealth(host: String, publicKey: String): NodeHealth = unavailable(BackendCapability.NODE_HEALTH)
     override suspend fun nodePaths(host: String, publicKey: String): NodePaths = unavailable(BackendCapability.NODE_PATHS)
     override suspend fun nodeReach(host: String, publicKey: String): NodeReach = unavailable(BackendCapability.NODE_REACH)

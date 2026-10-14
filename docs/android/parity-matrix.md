@@ -53,7 +53,9 @@ Beacon phase 3, 2026-10-14: Android ports C3 (neighbors) and D4 (node analytics)
 commits 0d90072, 0c4a320 and 8d12ef2: the same neutral models (`AnalyticsContext`,
 `NeighborInsight`), the `NEIGHBORS` capability, the Beacon neighbors and bounded observation-history
 readers, and the analytics builder. Shared fixtures produce the same aggregates on both platforms.
-E4, F5 and G3 wait for the iOS work to land. See [phase 3 tasks](../beacon/phase3-tasks.md).
+The same day Android also ported E4 (observer activity and telemetry), F5 (server-decrypted
+channels) and G3 (diagnostics) from the iOS working tree, which was not yet committed then. See
+[phase 3 tasks](../beacon/phase3-tasks.md) and the Android progress log for the deliberate differences.
 
 | Contract observed | Notes to preserve |
 |---|---|

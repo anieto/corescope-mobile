@@ -126,6 +126,29 @@ class NodeLibrary(document: String? = null, private val clock: () -> Long = Syst
 
     // endregion
 
+    /**
+     * After a Beacon reset re-matched a channel: favorites keep their position and saved date,
+     * recently viewed moves to the new identity (iOS `replaceChannel(from:with:)`).
+     */
+    fun replaceChannel(oldId: String, channel: MeshChannel) {
+        val replacement = channelItem(channel)
+        val favorite = state.favorites.indexOfFirst { it.kind == SavedKind.CHANNEL && it.entityId == oldId }
+        val favorites = if (favorite < 0) state.favorites else state.favorites.toMutableList().apply {
+            val at = this[favorite].at
+            removeAll { it.kind == SavedKind.CHANNEL && (it.entityId == oldId || it.entityId == channel.id) }
+            add(minOf(favorite, size), replacement.copy(at = at))
+        }
+        val wasRecent = state.recent.any { it.kind == SavedKind.CHANNEL && it.entityId == oldId }
+        val recent = if (!wasRecent) state.recent else (listOf(replacement.copy(at = clock())) +
+            state.recent.filterNot { it.kind == SavedKind.CHANNEL && (it.entityId == oldId || it.entityId == channel.id) }).take(MAX_RECENT)
+        if (favorite >= 0 || wasRecent) update(state.copy(favorites = favorites, recent = recent))
+    }
+
+    /** Any saved snapshot of a channel, keeping its Beacon identity when it isn't listed. */
+    fun channel(id: String): MeshChannel? = (state.favorites + state.recent).firstNotNullOfOrNull { item ->
+        item.channel?.takeIf { it.id == id }
+    }
+
     /** Any saved snapshot of a node, used to open it when it isn't in the current results. */
     fun node(publicKey: String): MeshNode? = (state.favorites + state.recent).firstNotNullOfOrNull { item ->
         item.node?.takeIf { it.publicKey.equals(publicKey, ignoreCase = true) }
@@ -141,7 +164,7 @@ class NodeLibrary(document: String? = null, private val clock: () -> Long = Syst
             node.role.replaceFirstChar { it.uppercase() }, node = node)
         fun observerItem(observer: MeshObserver) = SavedItem(SavedKind.OBSERVER, observer.id, observer.name?.takeIf(String::isNotBlank) ?: "Unnamed observer",
             observer.iata ?: observer.id.take(12), observer = observer)
-        fun channelItem(channel: MeshChannel) = SavedItem(SavedKind.CHANNEL, channel.hash, channel.name, channel.lastSender, channel = channel)
+        fun channelItem(channel: MeshChannel) = SavedItem(SavedKind.CHANNEL, channel.id, channel.name, channel.lastSender, channel = channel)
 
         fun forAnalyzer(context: Context, host: String): NodeLibrary {
             val preferences = context.applicationContext.getSharedPreferences("node-library", Context.MODE_PRIVATE)

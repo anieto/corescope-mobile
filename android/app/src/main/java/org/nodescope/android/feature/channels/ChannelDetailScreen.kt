@@ -40,19 +40,20 @@ fun ChannelDetailScreen(
 
     val beacon = LocalBeaconSource.current
     fun refresh(force: Boolean) {
-        if (beacon) return
-        if (monitored != null) model.packets.load(selection, force) else model.messages.load(messageKey, force)
+        // Beacon has no payloads to decrypt on the phone; its server-decrypted channels load normally.
+        if (monitored != null) { if (!beacon) model.packets.load(selection, force) } else model.messages.load(messageKey, force)
     }
-    LaunchedEffect(selection, channelId, monitored != null) { refresh(false) }
+    LaunchedEffect(selection, channelId, monitored != null, beacon) { refresh(false) }
     LiveChannelRefresh(feed) { refresh(true) }
 
     val loadState = if (monitored != null) packetState else messageState
     val raw = remember(monitored, packetState, messageState) {
         if (monitored != null) monitoredConversation(packetState.value.takeIf { packetState.key == selection }.orEmpty(), monitored)
-        else messageState.value.takeIf { messageState.key == messageKey }.orEmpty().map { it.toConversation() }
+        else messageState.value?.takeIf { messageState.key == messageKey }?.messages.orEmpty().map { it.toConversation() }
     }
-    // Monitored packets are already region-scoped by the server; server channel messages are not.
-    val regional = if (monitored != null) raw else regionFiltered(raw, selection.region, feed.observers)
+    // Monitored packets are already region-scoped by the server; CoreScope channel messages are not.
+    // Beacon messages name no observers, so no region filter can apply.
+    val regional = if (monitored != null || beacon) raw else regionFiltered(raw, selection.region, feed.observers)
     val conversation = remember(regional ?: raw) { chronological(regional ?: raw).asReversed() }
     var confirmRemove by remember { mutableStateOf(false) }
 
@@ -66,7 +67,7 @@ fun ChannelDetailScreen(
         Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("${conversation.size} message${if (conversation.size == 1) "" else "s"} · ${selection.region ?: "Entire network"}",
+                    Text("${conversation.size} message${if (conversation.size == 1) "" else "s"} · ${if (beacon) "Entire network" else selection.region ?: "Entire network"}",
                         style = MaterialTheme.typography.labelMedium)
                     Text(if (monitored != null) "Decrypted on this device from recent traffic" else "Monitored by the analyzer",
                         style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -78,13 +79,13 @@ fun ChannelDetailScreen(
                 }
                 ChannelActions(channelName, channelId, monitored != null, onRefresh = { refresh(true) }, onRemove = { confirmRemove = true })
             }
-            if (beacon) BeaconFeatureNotice(if (monitored != null) BackendCapability.CHANNEL_DECRYPT_ON_PHONE else BackendCapability.SERVER_CHANNELS)
+            if (beacon && monitored != null) BeaconFeatureNotice(BackendCapability.CHANNEL_DECRYPT_ON_PHONE)
             else LoadStatus(loadState, raw.isNotEmpty(), now) { refresh(true) }
             if (regional == null) Text("Observer regions are unavailable, so messages from every region are shown.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (conversation.isEmpty() && !loadState.loading && loadState.updatedAt != null) EmptyState(Icons.Outlined.ChatBubbleOutline,
-            if (selection.region == null) "No messages yet" else "No messages from this region",
+            if (selection.region == null || beacon) "No messages yet" else "No messages from this region",
             if (monitored != null) "Only recent traffic can be decrypted. New messages appear as the analyzer hears them." else "New messages appear as the analyzer hears them.")
         // Newest first with a reversed layout keeps the latest message at the bottom, like a chat.
         LazyColumn(Modifier.fillMaxSize(), reverseLayout = true, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

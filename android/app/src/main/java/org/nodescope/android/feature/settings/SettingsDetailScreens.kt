@@ -54,6 +54,11 @@ private fun AnalyzerCapability.icon(): ImageVector = when (this) {
     AnalyzerCapability.CHANNELS -> Icons.Outlined.Forum
     AnalyzerCapability.OBSERVERS -> Icons.Outlined.Sensors
     AnalyzerCapability.REGIONS -> Icons.Outlined.Public
+    AnalyzerCapability.NEIGHBORS -> Icons.Outlined.Hub
+    AnalyzerCapability.NODE_ANALYTICS -> Icons.Outlined.QueryStats
+    AnalyzerCapability.OBSERVER_ACTIVITY -> Icons.Outlined.MonitorHeart
+    AnalyzerCapability.OBSERVER_TELEMETRY -> Icons.Outlined.Speed
+    AnalyzerCapability.CHANNEL_MESSAGES -> Icons.Outlined.ChatBubbleOutline
 }
 
 /** iOS `AnalyzerDiagnosticsScreen`: read-only probes of the selected analyzer. */
@@ -103,7 +108,7 @@ fun DiagnosticsScreen(diagnostics: AnalyzerDiagnostics, host: String, connection
                 val current = report
                 when {
                     current != null -> current.capabilities.forEach { check -> DiagnosticRow(check.capability.title, check.detail, check.capability.icon(), check.level) }
-                    running -> AnalyzerCapability.entries.forEach { capability ->
+                    running -> (if (LocalBeaconSource.current) AnalyzerCapability.entries else AnalyzerCapability.coreScopeProbed).forEach { capability ->
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Icon(capability.icon(), null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(capability.title, Modifier.weight(1f))

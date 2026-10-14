@@ -14,14 +14,25 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 
 /** Same read-only probes as iOS `AnalyzerDiagnosticsService`. */
-enum class AnalyzerCapability(val title: String, internal val path: String, internal val query: Pair<String, String>? = null) {
+/** [path] is the CoreScope probe; the Beacon phase 3 rows have none and are reported for Beacon only. */
+enum class AnalyzerCapability(val title: String, internal val path: String? = null, internal val query: Pair<String, String>? = null) {
     MAP_CONFIGURATION("Map configuration", "api/config/map"),
     NODES("Nodes and routes", "api/nodes", "limit" to "1"),
     CHANNELS("Channels", "api/channels", "limit" to "1"),
     OBSERVERS("Observers", "api/observers", "limit" to "1"),
-    REGIONS("Region filtering", "api/config/regions");
+    REGIONS("Region filtering", "api/config/regions"),
+    NEIGHBORS("Node neighbors"),
+    NODE_ANALYTICS("Node analytics"),
+    OBSERVER_ACTIVITY("Observer activity"),
+    OBSERVER_TELEMETRY("Observer telemetry"),
+    CHANNEL_MESSAGES("Channel messages");
 
     val isRequired: Boolean get() = this == MAP_CONFIGURATION || this == NODES
+
+    companion object {
+        /** The rows a CoreScope check probes, in order; its request contract is unchanged. */
+        val coreScopeProbed: List<AnalyzerCapability> get() = entries.filter { it.path != null }
+    }
 }
 
 enum class DiagnosticLevel { SUCCESS, WARNING, FAILURE }
@@ -61,24 +72,25 @@ class AnalyzerDiagnostics(
         return run("https://${normalizeHost(host)}/".toHttpUrl(), host)
     }
 
-    /** Beacon has no CoreScope probes: recheck `/info` and report the adapter's coverage (iOS `runBeacon`). */
+    /**
+     * Beacon has no CoreScope probes: recheck `/info`, then (on a supported version) make three
+     * bounded one-row family checks for nodes, observers and keyed channels (iOS `runBeacon`).
+     * A failed family check is a warning, never a compatibility failure. Four requests at most.
+     */
     internal suspend fun runBeacon(host: String, backend: BeaconBackend): DiagnosticReport {
-        val checks = AnalyzerCapability.entries.map { capability ->
-            CapabilityCheck(capability, DiagnosticLevel.WARNING,
-                if (capability == AnalyzerCapability.CHANNELS || capability == AnalyzerCapability.MAP_CONFIGURATION)
-                    "Not available for Beacon sources in this release."
-                else "Supported by the Beacon adapter; endpoint not probed.")
-        }
+        val checks = AnalyzerCapability.entries.map { capability -> beaconDefault(capability, backend) }
         return try {
             val info = backend.client.serverInfo()
+            var reported = checks
             val (compatibility, detail) = try {
                 info.requireSupported()
-                DiagnosticLevel.SUCCESS to "Beacon version is supported. Browse endpoints were not probed."
+                reported = beaconFamilyChecks(backend, checks)
+                DiagnosticLevel.SUCCESS to "Beacon version and bounded browse-family checks completed."
             } catch (e: BeaconApiException) {
                 DiagnosticLevel.FAILURE to (e.message ?: "This Beacon version is not supported.")
             }
             DiagnosticReport(host, clock(), DiagnosticLevel.SUCCESS, "Beacon responded over HTTPS.", compatibility, detail,
-                checks, "Beacon", info.serverVersion)
+                reported, "Beacon", info.serverVersion)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -88,13 +100,55 @@ class AnalyzerDiagnostics(
         }
     }
 
+    private fun beaconDefault(capability: AnalyzerCapability, backend: BeaconBackend): CapabilityCheck {
+        if (capability == AnalyzerCapability.MAP_CONFIGURATION) return CapabilityCheck(capability, DiagnosticLevel.WARNING,
+            "Beacon does not provide map defaults; NodeScope uses region coordinates.")
+        val required = when (capability) {
+            AnalyzerCapability.NEIGHBORS -> BackendCapability.NEIGHBORS
+            AnalyzerCapability.NODE_ANALYTICS -> BackendCapability.NODE_ANALYTICS
+            AnalyzerCapability.OBSERVER_ACTIVITY, AnalyzerCapability.OBSERVER_TELEMETRY -> BackendCapability.OBSERVER_ANALYTICS
+            AnalyzerCapability.CHANNELS, AnalyzerCapability.CHANNEL_MESSAGES -> BackendCapability.SERVER_CHANNELS
+            else -> null
+        }
+        if (required != null && required !in backend.capabilities) return CapabilityCheck(capability, DiagnosticLevel.WARNING, required.beaconExplanation)
+        return CapabilityCheck(capability, DiagnosticLevel.SUCCESS, when (capability) {
+            AnalyzerCapability.NODE_ANALYTICS -> "Supported with Beacon’s seven-day observation-history limit; endpoint not probed."
+            AnalyzerCapability.OBSERVER_ACTIVITY -> "Supported with Beacon observation counts; endpoint not probed."
+            AnalyzerCapability.OBSERVER_TELEMETRY -> "Battery, airtime, and radio telemetry are supported; endpoint not probed."
+            AnalyzerCapability.CHANNELS, AnalyzerCapability.CHANNEL_MESSAGES -> "Server-decrypted keyed channels are supported; endpoint not probed."
+            else -> "Supported by the Beacon adapter; endpoint not probed."
+        })
+    }
+
+    @kotlinx.serialization.Serializable private data class ProbePage(val items: kotlinx.serialization.json.JsonArray)
+
+    private suspend fun beaconFamilyChecks(backend: BeaconBackend, defaults: List<CapabilityCheck>): List<CapabilityCheck> = coroutineScope {
+        suspend fun family(path: String, vararg query: Pair<String, String>) = runCatching {
+            backend.client.get(ProbePage.serializer(), listOf(path), listOf("limit" to "1") + query)
+        }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }.isSuccess
+        val nodes = async { family("nodes") }
+        val observers = async { family("observers") }
+        val channels = async { family("channels", "keyKnown" to "true") }
+        val results = mapOf("nodes" to nodes.await(), "observers" to observers.await(), "channels" to channels.await())
+        defaults.map { check ->
+            val group = when (check.capability) {
+                AnalyzerCapability.NODES, AnalyzerCapability.NEIGHBORS, AnalyzerCapability.NODE_ANALYTICS -> "nodes"
+                AnalyzerCapability.OBSERVERS, AnalyzerCapability.OBSERVER_ACTIVITY, AnalyzerCapability.OBSERVER_TELEMETRY -> "observers"
+                AnalyzerCapability.CHANNELS, AnalyzerCapability.CHANNEL_MESSAGES -> "channels"
+                else -> null
+            } ?: return@map check
+            if (results[group] != true) CapabilityCheck(check.capability, DiagnosticLevel.WARNING, "The bounded Beacon family check did not succeed.")
+            else check.copy(detail = check.detail.replace("; endpoint not probed", "; family check passed"))
+        }
+    }
+
     internal suspend fun run(base: HttpUrl, host: String): DiagnosticReport = coroutineScope {
-        val results = AnalyzerCapability.entries.map { capability -> async { capability to probe(base, capability) } }.awaitAll()
+        val results = AnalyzerCapability.coreScopeProbed.map { capability -> async { capability to probe(base, capability) } }.awaitAll()
         report(host, clock(), results)
     }
 
     private suspend fun probe(base: HttpUrl, capability: AnalyzerCapability): ProbeOutcome {
-        val url = base.newBuilder().addPathSegments(capability.path).apply { capability.query?.let { addQueryParameter(it.first, it.second) } }.build()
+        val url = base.newBuilder().addPathSegments(checkNotNull(capability.path)).apply { capability.query?.let { addQueryParameter(it.first, it.second) } }.build()
         val started = clock()
         return try {
             val body = http.read(url)
@@ -120,7 +174,7 @@ class AnalyzerDiagnostics(
 
         /** Mirrors the iOS classification of connection, compatibility and each capability. */
         fun report(host: String, checkedAt: Long, results: List<Pair<AnalyzerCapability, ProbeOutcome>>): DiagnosticReport {
-            val ordered = AnalyzerCapability.entries.mapNotNull { capability -> results.firstOrNull { it.first == capability } }
+            val ordered = AnalyzerCapability.coreScopeProbed.mapNotNull { capability -> results.firstOrNull { it.first == capability } }
             val responded = ordered.any { it.second !is ProbeOutcome.NetworkFailure }
             val authFailure = ordered.any { it.second is ProbeOutcome.AuthenticationRequired }
             val requiredAvailable = ordered.filter { it.first.isRequired }.all { it.second is ProbeOutcome.Available }

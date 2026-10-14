@@ -16,9 +16,28 @@ data class MeshChannel(
     val name: String,
     val lastMessage: String? = null,
     val lastSender: String? = null,
-    val messageCount: Int = 0,
+    /** Null when the server doesn't report it (Beacon), never shown as zero. */
+    val messageCount: Int? = null,
     val lastActivity: String? = null,
-)
+    /** Beacon's integer channel id within its source; null for CoreScope, which identifies by hash. */
+    val serverId: Int? = null,
+    val isHashtag: Boolean? = null,
+) {
+    /**
+     * Routes, favorites, recents and links use this. Beacon channel hashes collide, so a Beacon
+     * channel is `beacon:<id>`; CoreScope keeps its hash (port of iOS `MeshChannel.id`).
+     */
+    val id: String get() = serverId?.let { "beacon:$it" } ?: hash
+
+    /** After a Beacon database reset only `Public` and hashtag channels may be re-matched by name. */
+    val allowsBeaconResetRecovery: Boolean get() = serverId != null && (isHashtag == true || name == "Public")
+
+    /** The one same-named Beacon channel in [channels], or null when there is none or several. */
+    fun beaconReplacement(channels: List<MeshChannel>): MeshChannel? {
+        if (!allowsBeaconResetRecovery) return null
+        return channels.filter { it.serverId != null && it.name == name }.singleOrNull()
+    }
+}
 @Serializable data class ChannelsResponse(val channels: List<MeshChannel> = emptyList())
 
 /** GET /api/channels/{hash}/messages */
@@ -51,11 +70,28 @@ data class MonitoredChannel(
 /** GET /api/observers/{id}/analytics */
 @Serializable
 data class ObserverAnalytics(
+    /** Beacon activity counts observations and says what it covers; CoreScope responses have none. */
+    val context: AnalyticsContext? = null,
     val timeline: List<LabeledCount> = emptyList(),
     val packetTypes: Map<String, Long> = emptyMap(),
     val nodesTimeline: List<LabeledCount> = emptyList(),
     val snrDistribution: List<SnrBucket> = emptyList(),
     val recentPackets: List<ObserverRecentPacket> = emptyList(),
+    /** Beacon-only telemetry samples; null when the server has no telemetry concept. */
+    val telemetry: List<ObserverTelemetryPoint>? = null,
+)
+
+/** One Beacon telemetry sample. Null fields are unknown, not zero. [timestamp] is epoch ms. */
+@Serializable
+data class ObserverTelemetryPoint(
+    val timestamp: Long,
+    val batteryMillivolts: Int? = null,
+    val transmitAirtimeSeconds: Long? = null,
+    val receiveAirtimeSeconds: Long? = null,
+    val noiseFloorDecibels: Double? = null,
+    val uptimeSeconds: Long? = null,
+    val queueLength: Int? = null,
+    val receiveErrors: Long? = null,
 )
 @Serializable data class LabeledCount(val label: String, val count: Long)
 @Serializable data class SnrBucket(val range: String, val count: Long)

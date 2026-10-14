@@ -77,6 +77,9 @@ fun NodeAnalyticsScreen(model: NodeAnalyticsViewModel, host: String, publicKey: 
             analytics.context?.takeIf { it.completeness != AnalyticsCompleteness.COMPLETE }?.explanation?.let { text ->
                 item { CoverageNotice(text) }
             }
+            if (analytics.computedStats?.totalPackets == 0L && analytics.activityTimeline.all { it.count == 0L } && analytics.snrTrend.isEmpty()) item {
+                EmptyState(Icons.Outlined.QueryStats, "No activity in this range", "No node observations were recorded during the selected time range.")
+            }
             analytics.computedStats?.let { stats -> item { SummaryCard(stats, observations) } }
             val activity = analytics.activityTimeline.mapNotNull { point -> parseInstant(point.bucket)?.let { it.toEpochMilli() to point.count.toDouble() } }.sortedBy { it.first }
             dataDomain(activity.map { it.first })?.let { (from, to) -> item {

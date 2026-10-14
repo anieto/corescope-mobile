@@ -22,7 +22,7 @@ data class ChannelFilters(
 /** A list row for either a server channel or a channel monitored with a key on this device. */
 data class ChannelRow(
     val id: String, val name: String, val lastMessage: String?, val lastSender: String?,
-    val messageCount: Int, val lastActivity: Instant?, val monitored: Boolean,
+    val messageCount: Int?, val lastActivity: Instant?, val monitored: Boolean,
 )
 
 data class ChannelSummary(val messageCount: Int, val lastMessage: String?, val lastActivity: Instant?)
@@ -43,7 +43,7 @@ fun channelSections(
     val comparator: Comparator<ChannelRow> = when (filters.sort) {
         ChannelSort.RECENT -> compareByDescending<ChannelRow> { it.name.equals("Public", ignoreCase = true) }
             .thenByDescending { it.lastActivity ?: Instant.MIN }
-        ChannelSort.MESSAGES -> compareByDescending<ChannelRow> { it.messageCount }.thenByDescending { it.lastActivity ?: Instant.MIN }
+        ChannelSort.MESSAGES -> compareByDescending<ChannelRow> { it.messageCount ?: -1 }.thenByDescending { it.lastActivity ?: Instant.MIN }
         ChannelSort.NAME -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }
     }
     val monitoredRows = monitored.map { channel ->
@@ -53,7 +53,7 @@ fun channelSections(
     }
     val monitoredNames = monitored.map { it.channelName }.toSet()
     val serverRows = server.filter { it.name !in monitoredNames }.map {
-        ChannelRow(it.hash, it.name, it.lastMessage, it.lastSender, it.messageCount, parseInstant(it.lastActivity), monitored = false)
+        ChannelRow(it.id, it.name, it.lastMessage, it.lastSender, it.messageCount, parseInstant(it.lastActivity), monitored = false)
     }
     return ChannelSections(
         if (filters.source == ChannelSource.SERVER) emptyList() else monitoredRows.filter(::matches).sortedWith(comparator),

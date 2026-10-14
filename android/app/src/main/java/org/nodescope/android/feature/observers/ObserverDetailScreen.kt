@@ -20,8 +20,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.nodescope.android.core.design.*
 import org.nodescope.android.core.model.*
+import java.util.Locale
 import org.nodescope.android.core.network.LiveFeedState
-import org.nodescope.android.core.network.BackendCapability
 
 @Composable
 fun ObserverDetailScreen(model: ObserversViewModel, host: String, observerId: String, feed: LiveFeedState? = null, favorite: Boolean = false,
@@ -33,17 +33,18 @@ fun ObserverDetailScreen(model: ObserversViewModel, host: String, observerId: St
     val beacon = LocalBeaconSource.current
     val detailState by model.beaconDetail.state.collectAsStateWithLifecycle()
     if (beacon) LaunchedEffect(key) { model.beaconDetail.load(key) }
-    else {
-        LaunchedEffect(host) { model.observers.load(host) }
-        LaunchedEffect(key) { model.analytics.load(key) }
-    }
+    else LaunchedEffect(host) { model.observers.load(host) }
+    LaunchedEffect(key, beacon) { model.analytics.load(key) }
     val observer = if (beacon) {
         // The server record, with the list's online state and the newest live status (iOS `displayedObserver`).
         val listed = feed?.observers?.firstOrNull { it.id.equals(observerId, ignoreCase = true) }
         val detail = detailState.value?.takeIf { detailState.key == key }?.copy(online = listed?.online) ?: listed
         detail?.let { feed?.beacon?.observers?.get(it.id.lowercase())?.applying(it) ?: it }
     } else listState.value.takeIf { listState.key == host }?.firstOrNull { it.id == observerId }
-    val analytics = if (beacon) null else analyticsState.value.takeIf { analyticsState.key == key }
+    val analytics = analyticsState.value.takeIf { analyticsState.key == key }
+    // Beacon activity counts observations, not packets; labels say which.
+    val observations = analytics?.context?.countUnit == AnalyticsCountUnit.OBSERVATIONS
+    val noun = if (observations) "Observations" else "Packets"
     LaunchedEffect(observer?.id) { observer?.let(onViewed) }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -54,22 +55,29 @@ fun ObserverDetailScreen(model: ObserversViewModel, host: String, observerId: St
                 else -> Text("This observer is not in the current results for $host.", style = MaterialTheme.typography.bodyMedium)
             }
         }
-        if (beacon) {
-            if (detailState.key == key) item { LoadStatus(detailState, detailState.value != null, now) { model.beaconDetail.load(key, force = true) } }
-            item { BeaconFeatureNotice(BackendCapability.OBSERVER_ANALYTICS) }
-        } else item { LoadStatus(analyticsState, analytics != null, now) { model.analytics.load(key, force = true) } }
+        if (beacon && detailState.key == key) item {
+            LoadStatus(detailState, detailState.value != null, now) { model.beaconDetail.load(key, force = true) }
+        }
+        item { LoadStatus(analyticsState, analytics != null, now) { model.analytics.load(key, force = true) } }
         if (analytics != null) {
+            analytics.context?.explanation?.let { text -> item { AnalyticsNotice(text) } }
+            if (analytics.timeline.isEmpty() && analytics.packetTypes.isEmpty() && analytics.nodesTimeline.isEmpty() &&
+                analytics.snrDistribution.isEmpty() && analytics.recentPackets.isEmpty() && analytics.telemetry.isNullOrEmpty()) item {
+                EmptyState(Icons.Outlined.MonitorHeart, "No activity in this range", "No observer activity or telemetry was recorded during the selected time range.")
+            }
             if (analytics.timeline.isNotEmpty()) item {
-                AnalyticsCard("Packets over time", Icons.Outlined.BarChart) {
-                    BarChart("Packets over time", analytics.timeline.map { ChartPoint(it.label, it.count) }, MaterialTheme.colorScheme.primary)
+                AnalyticsCard("$noun over time", Icons.Outlined.BarChart) {
+                    BarChart("${if (observations) "Observations" else "Packets"} received over time", analytics.timeline.map { ChartPoint(it.label, it.count) }, MaterialTheme.colorScheme.primary)
                 }
             }
             if (analytics.packetTypes.isNotEmpty()) item {
-                AnalyticsCard("Packet types", Icons.Outlined.DonutLarge) {
+                val types = if (observations) "Observation types" else "Packet types"
+                AnalyticsCard(types, Icons.Outlined.DonutLarge) {
                     val slices = analytics.packetTypes.entries.sortedByDescending { it.value }
                         .map { ChartPoint(payloadTypeLabel(it.key.toIntOrNull()), it.value) }
                     val total = slices.sumOf { it.value }
-                    DonutChart("Packet types: " + slices.take(3).joinToString(", ") { "${it.label} ${percentOf(it.value, total)}" }, slices)
+                    DonutChart("$types: " + slices.take(3).joinToString(", ") { "${it.label} ${percentOf(it.value, total)}" }, slices,
+                        centerLabel = noun.lowercase())
                 }
             }
             if (analytics.nodesTimeline.isNotEmpty()) item {
@@ -86,6 +94,18 @@ fun ObserverDetailScreen(model: ObserversViewModel, host: String, observerId: St
                 AnalyticsCard("Recent packets", Icons.Outlined.Inventory2) {
                     analytics.recentPackets.take(25).forEach { RecentPacketRow(it, now) }
                 }
+            }
+            // Beacon-only telemetry follows the shared sections.
+            analytics.telemetry?.takeIf { it.isNotEmpty() }?.let { points ->
+                item { TelemetrySummaryCard(points, now) }
+                points.filter { it.batteryMillivolts != null }.takeIf { it.isNotEmpty() }?.let { battery -> item {
+                    TelemetryHistoryCard("Battery history", Icons.Outlined.BatteryFull, "Observer battery voltage over time", HealthyGreen,
+                        battery.map { it.timestamp to it.batteryMillivolts!! / 1_000.0 }) { String.format(Locale.US, "%.2f V", it) }
+                } }
+                points.filter { it.noiseFloorDecibels != null }.takeIf { it.isNotEmpty() }?.let { noise -> item {
+                    TelemetryHistoryCard("Noise floor history", Icons.Outlined.GraphicEq, "Observer noise floor over time", ActivityAmber,
+                        noise.map { it.timestamp to it.noiseFloorDecibels!! }) { String.format(Locale.US, "%.0f dB", it) }
+                } }
             }
         }
     }
@@ -155,6 +175,51 @@ internal fun ObserverIdentityCard(observer: MeshObserver, now: Long, favorite: B
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun AnalyticsNotice(message: String) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Icon(Icons.Outlined.Info, null, Modifier.size(18.dp), tint = SignalBlue)
+            Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** Latest Beacon telemetry; a field the sample omits reads "Unknown", never zero. */
+@Composable
+private fun TelemetrySummaryCard(points: List<ObserverTelemetryPoint>, now: Long) {
+    val latest = points.maxBy { it.timestamp }
+    fun duration(seconds: Long?): String? = seconds?.let {
+        val days = it / 86_400
+        val hours = it % 86_400 / 3_600
+        if (days > 0) "$days d $hours h" else "$hours h ${it % 3_600 / 60} min"
+    }
+    AnalyticsCard("Observer telemetry", Icons.Outlined.Sensors) {
+        MetricGrid(listOf(
+            "Battery" to (latest.batteryMillivolts?.let { String.format(Locale.US, "%.2f V", it / 1_000.0) } ?: "Unknown"),
+            "Noise floor" to (latest.noiseFloorDecibels?.let { String.format(Locale.US, "%.0f dB", it) } ?: "Unknown"),
+            "TX airtime" to (duration(latest.transmitAirtimeSeconds) ?: "Unknown"),
+            "RX airtime" to (duration(latest.receiveAirtimeSeconds) ?: "Unknown"),
+            "Uptime" to (duration(latest.uptimeSeconds) ?: "Unknown"),
+            "Receive errors" to (latest.receiveErrors?.toString() ?: "Unknown"),
+        ))
+        Text("Latest telemetry sample ${relativeTime(java.time.Instant.ofEpochMilli(latest.timestamp), now)}.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun TelemetryHistoryCard(title: String, icon: ImageVector, description: String, color: androidx.compose.ui.graphics.Color,
+    points: List<Pair<Long, Double>>, format: (Double) -> String) {
+    val sorted = points.sortedBy { it.first }
+    val from = sorted.first().first
+    val to = sorted.last().first.let { if (it > from) it else from + 3_600_000 }
+    AnalyticsCard(title, icon) {
+        TimeChart(description, listOf(TimeSeries(color, sorted)), from, to, area = false, zeroBased = false, formatValue = format,
+            formatTime = { org.nodescope.android.feature.nodes.analyticsTimeLabel(it, to - from) })
     }
 }
 

@@ -936,3 +936,31 @@ Ports of the iOS C and D milestones (`feature/beacon-phase-3`).
   (budget, repeated cursor, out-of-order), analytics without packet fan-out, and aggregates from
   the shared fixture. 233 JVM tests pass; not yet checked on a device.
 
+## Beacon phase 3: observers, channels and diagnostics — 2026-10-14
+
+Ports of iOS E1–E3, F1–F4 and G1–G2, read from the iOS working tree before it was committed.
+- Node history follow-up (matches iOS): Beacon pages follow observation ids, so delayed ingestion
+  can invert `heardAt`; only `hasMore` proves completion and results are sorted newest first.
+  Empty states: "No neighbors reported" in the Links card, "No activity in this range" on node
+  analytics. Rows with no SNR say "Signal unavailable".
+- E4 `BeaconObserverAnalyticsReader`: 24-hour activity (15 min) and telemetry (1 h) in two
+  concurrent requests, validated like iOS. Observer details on Beacon show "Observations over
+  time" and "Observation types" with an explanation of what Beacon can't provide, then
+  Beacon-only telemetry: latest battery, noise floor, TX/RX airtime, uptime and receive errors
+  ("Unknown" when omitted), plus battery and noise-floor history charts.
+- F5 `BeaconChannelReader`: keyed channels (`keyKnown=true`, opaque `pageCursor`, at most ten
+  pages) and one 20-message page per conversation. Beacon channels are identified as
+  `beacon:<id>` everywhere (routes, favorites, recents, links); CoreScope keeps its hash. Message
+  counts, observers, hops and SNR stay unknown. A 404 triggers one forced channel-list refresh and
+  re-matches only a unique, exact-name `Public` or hashtag channel; favorites keep their position
+  and date (`NodeLibrary.replaceChannel`). The on-phone decryption notice remains for monitored
+  channels on Beacon.
+- G3 diagnostics: five new rows (neighbors, node analytics, observer activity, telemetry, channel
+  messages). CoreScope still probes only its five endpoints. Beacon makes at most four requests:
+  `/info`, then one-row checks of nodes, observers and keyed channels; a failed family is a
+  warning, and an unsupported version skips them.
+- Differences from iOS: Android has never paged older channel messages (no "Load older messages"),
+  so Beacon conversations show the latest 20. The node-analytics empty state also appears when
+  every hourly bucket is zero (iOS checks for an empty timeline, which Beacon never returns).
+- 246 JVM tests pass; not yet checked on a device or against live servers.
+

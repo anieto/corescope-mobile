@@ -25,6 +25,27 @@ class NodeLibraryTest {
         assertFalse(library.isFavorite(SavedKind.OBSERVER, "OBS1"))
     }
 
+    /** A Beacon reset re-match keeps the favorite's position and saved date, and moves the recent entry. */
+    @Test fun replacingAChannelKeepsFavoriteOrderAndDate() {
+        var now = 100L
+        val library = NodeLibrary(null, { ++now })
+        val old = MeshChannel("11", "Public", serverId = 58, isHashtag = false)
+        val other = MeshChannel("cc", "#mesh", serverId = 7, isHashtag = true)
+        library.toggle(old)
+        library.toggle(other) // stored #mesh, Public
+        library.viewed(old)
+        val savedAt = library.state.favorites.first { it.entityId == "beacon:58" }.at
+
+        val replacement = MeshChannel("11", "Public", serverId = 99, isHashtag = false)
+        library.replaceChannel("beacon:58", replacement)
+
+        assertEquals(listOf("beacon:7", "beacon:99"), library.state.favorites.map { it.entityId })
+        assertEquals(savedAt, library.state.favorites.last().at)
+        assertEquals("beacon:99", library.state.recent.first().entityId)
+        assertFalse(library.isFavorite(SavedKind.CHANNEL, "beacon:58"))
+        assertEquals(replacement, library.channel("beacon:99"))
+    }
+
     @Test fun favoritesReorderWithinTheirKindOnly() {
         val library = NodeLibrary()
         listOf("a", "b", "c").forEach { library.toggle(node(it)) } // stored c, b, a

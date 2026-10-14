@@ -34,7 +34,9 @@ class DiagnosticsTest {
         assertEquals("Response format not recognized", byCapability.getValue(AnalyzerCapability.CHANNELS).detail)
         assertEquals("Not supported", byCapability.getValue(AnalyzerCapability.REGIONS).detail)
         assertTrue(byCapability.getValue(AnalyzerCapability.NODES).detail.startsWith("Available · "))
-        assertEquals(AnalyzerCapability.entries, report.capabilities.map { it.capability }) // stable order
+        // Stable order, and only the CoreScope probes: the Beacon-only rows are never requested here.
+        assertEquals(AnalyzerCapability.coreScopeProbed, report.capabilities.map { it.capability })
+        assertEquals(5, AnalyzerCapability.coreScopeProbed.size)
     }
 
     @Test fun authenticationAndIncompatibleServersAreExplained() {

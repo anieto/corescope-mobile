@@ -177,9 +177,10 @@ class BeaconNodeReader(val client: BeaconApiClient, verifiedServerInfo: BeaconSe
     }
 
     /**
-     * Newest-first observations back to [since] (epoch ms), at most [maximumPages] pages of 200
-     * (capped at 19, so the screen stays within 20 requests with the key lookup). Pages must stay
-     * newest-first and cursors may not repeat; duplicate observation ids are ignored.
+     * Observations back to [since] (epoch ms), newest first, from at most [maximumPages] pages of 200
+     * (capped at 19, so the screen stays within 20 requests with the key lookup). Cursors may not
+     * repeat and duplicate observation ids are ignored. Beacon pages follow observation ids, not
+     * heardAt, so delayed ingestion can invert timestamps: only `hasMore` proves completion.
      */
     suspend fun observationHistory(publicKey: String, since: Long, maximumPages: Int = 19): BeaconObservationHistory? {
         if (maximumPages <= 0) throw AnalyzerPagingException.InvalidPageSize()
@@ -188,7 +189,6 @@ class BeaconNodeReader(val client: BeaconApiClient, verifiedServerInfo: BeaconSe
         var cursor: String? = null
         val seenCursors = HashSet<String>()
         val seenIds = HashSet<Long>()
-        var previous: Long? = null
         var complete = false
         var pages = 0
         while (pages < minOf(maximumPages, 19)) {
@@ -196,13 +196,11 @@ class BeaconNodeReader(val client: BeaconApiClient, verifiedServerInfo: BeaconSe
             val page = client.get(BeaconRawPage.serializer(), listOf("nodes", node.id, "observations"), query)
             val items = decodeItems(page, BeaconObservation.serializer()).onEach { it.validate() }
             for (observation in items) {
-                if (previous != null && observation.heardAt > previous) throw BeaconApiException.MalformedPage()
-                previous = observation.heardAt
                 if (!seenIds.add(observation.id)) continue
                 if (observation.heardAt >= since) observations += observation
             }
             pages++
-            if (!page.hasMore || items.lastOrNull()?.let { it.heardAt < since } == true) {
+            if (!page.hasMore) {
                 complete = true
                 break
             }
@@ -211,7 +209,7 @@ class BeaconNodeReader(val client: BeaconApiClient, verifiedServerInfo: BeaconSe
             cursor = next
         }
         client.sourceSession.check()
-        return BeaconObservationHistory(node, observations, complete, pages + 1)
+        return BeaconObservationHistory(node, observations.sortedByDescending { it.heardAt }, complete, pages + 1)
     }
 }
 
