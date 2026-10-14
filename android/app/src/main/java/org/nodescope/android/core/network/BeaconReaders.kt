@@ -144,6 +144,17 @@ class BeaconNodeReader(val client: BeaconApiClient, verifiedServerInfo: BeaconSe
         }
 
     suspend fun nodeDetail(publicKey: String): BeaconNode? {
+        val summary = nodeSummary(publicKey) ?: return null
+        val key = publicKey.lowercase()
+        val detail = client.get(BeaconNode.serializer(), listOf("nodes", summary.id))
+        detail.validate()
+        if (detail.id != summary.id || detail.publicKey.lowercase() != key) throw BeaconApiException.InvalidResponse()
+        client.sourceSession.check()
+        return detail
+    }
+
+    /** One full-key lookup; null when the server doesn't know the node. */
+    suspend fun nodeSummary(publicKey: String): BeaconNode? {
         client.sourceSession.check()
         if (!isFullBeaconKey(publicKey)) throw BeaconApiException.InvalidResponse()
         val key = publicKey.lowercase()
@@ -153,13 +164,110 @@ class BeaconNodeReader(val client: BeaconApiClient, verifiedServerInfo: BeaconSe
         val summary = items.firstOrNull() ?: return null
         summary.validate()
         if (summary.publicKey.lowercase() != key) throw BeaconApiException.InvalidResponse()
-        val detail = client.get(BeaconNode.serializer(), listOf("nodes", summary.id))
-        detail.validate()
-        if (detail.id != summary.id || detail.publicKey.lowercase() != key) throw BeaconApiException.InvalidResponse()
         client.sourceSession.check()
-        return detail
+        return summary
+    }
+
+    suspend fun neighbors(publicKey: String): NeighborCollection? {
+        val summary = nodeSummary(publicKey) ?: return null
+        val records = client.get(ListSerializer(BeaconNeighbor.serializer()), listOf("nodes", summary.id, "neighbors"))
+        records.forEach { it.validate() }
+        client.sourceSession.check()
+        return NeighborCollection(records.map { it.insight() }, AnalyticsCompleteness.COMPLETE, null)
+    }
+
+    /**
+     * Newest-first observations back to [since] (epoch ms), at most [maximumPages] pages of 200
+     * (capped at 19, so the screen stays within 20 requests with the key lookup). Pages must stay
+     * newest-first and cursors may not repeat; duplicate observation ids are ignored.
+     */
+    suspend fun observationHistory(publicKey: String, since: Long, maximumPages: Int = 19): BeaconObservationHistory? {
+        if (maximumPages <= 0) throw AnalyzerPagingException.InvalidPageSize()
+        val node = nodeSummary(publicKey) ?: return null
+        val observations = mutableListOf<BeaconObservation>()
+        var cursor: String? = null
+        val seenCursors = HashSet<String>()
+        val seenIds = HashSet<Long>()
+        var previous: Long? = null
+        var complete = false
+        var pages = 0
+        while (pages < minOf(maximumPages, 19)) {
+            val query = mutableListOf("limit" to "200").apply { cursor?.let { add("cursor" to it) } }
+            val page = client.get(BeaconRawPage.serializer(), listOf("nodes", node.id, "observations"), query)
+            val items = decodeItems(page, BeaconObservation.serializer()).onEach { it.validate() }
+            for (observation in items) {
+                if (previous != null && observation.heardAt > previous) throw BeaconApiException.MalformedPage()
+                previous = observation.heardAt
+                if (!seenIds.add(observation.id)) continue
+                if (observation.heardAt >= since) observations += observation
+            }
+            pages++
+            if (!page.hasMore || items.lastOrNull()?.let { it.heardAt < since } == true) {
+                complete = true
+                break
+            }
+            val next = BeaconCursor.value(page.nextCursor)?.content
+            if (items.isEmpty() || next == null || !seenCursors.add(next)) throw BeaconApiException.MalformedPage()
+            cursor = next
+        }
+        client.sourceSession.check()
+        return BeaconObservationHistory(node, observations, complete, pages + 1)
     }
 }
+
+@Serializable
+data class BeaconNeighbor(
+    val id: String,
+    val name: String? = null,
+    val publicKey: String,
+    val nodeType: Int? = null,
+    val nodeTypeName: String? = null,
+    val lat: Double? = null,
+    val lng: Double? = null,
+    val observationCount: Int? = null,
+    val lastSeen: Long? = null,
+    val snr: Double? = null,
+) {
+    /** Beacon reports no direction or RSSI for a neighbor: both stay unknown. */
+    fun insight() = NeighborInsight(
+        identity = NeighborIdentity(publicKey.lowercase(), publicKey.take(8).lowercase(), id.lowercase()),
+        name = name, role = nodeTypeName, lastHeard = lastSeen, observationCount = observationCount,
+        signal = NeighborSignal(snr, null), direction = NeighborDirection.UNKNOWN, latitude = lat, longitude = lng,
+    )
+
+    fun validate() {
+        if (!isUuid(id) || !isFullBeaconKey(publicKey) || (observationCount ?: 0) < 0 ||
+            snr?.isFinite() == false || lat?.isFinite() == false || lng?.isFinite() == false) {
+            throw BeaconApiException.InvalidResponse()
+        }
+    }
+}
+
+/** One hearing of the node: there is no observer id, so per-observer analytics are unavailable. */
+@Serializable
+data class BeaconObservation(
+    val id: Long,
+    val packetHash: String,
+    val payloadType: Int,
+    val heardAt: Long,
+    val rssi: Double? = null,
+    val snr: Double? = null,
+    val hopCount: Int? = null,
+) {
+    fun validate() {
+        if (id < 0 || packetHash.isEmpty() || payloadType < 0 || rssi?.isFinite() == false ||
+            snr?.isFinite() == false || (hopCount ?: 0) < 0) {
+            throw BeaconApiException.InvalidResponse()
+        }
+    }
+}
+
+data class BeaconObservationHistory(
+    val node: BeaconNode,
+    val observations: List<BeaconObservation>,
+    val isComplete: Boolean,
+    val requestCount: Int,
+)
 
 @Serializable
 data class BeaconObserver(

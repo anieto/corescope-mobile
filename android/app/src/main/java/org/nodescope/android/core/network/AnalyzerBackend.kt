@@ -5,7 +5,7 @@ import org.nodescope.android.core.model.RegionCoordinate
 import org.nodescope.android.core.model.AnalyzerSelection
 
 enum class BackendCapability {
-    NODE_HEALTH, NODE_REACH, NODE_PATHS, NODE_ANALYTICS,
+    NEIGHBORS, NODE_HEALTH, NODE_REACH, NODE_PATHS, NODE_ANALYTICS,
     OBSERVER_ANALYTICS, CHANNEL_DECRYPT_ON_PHONE, SERVER_CHANNELS, MAP_DEFAULTS,
 }
 
@@ -37,6 +37,8 @@ class CapabilityBrowseRepository(
         requireCapability(BackendCapability.NODE_PATHS).let { delegate.nodePaths(host, publicKey) }
     override suspend fun nodeReach(host: String, publicKey: String) =
         requireCapability(BackendCapability.NODE_REACH).let { delegate.nodeReach(host, publicKey) }
+    override suspend fun neighbors(host: String, publicKey: String) =
+        requireCapability(BackendCapability.NEIGHBORS).let { delegate.neighbors(host, publicKey) }
     override suspend fun nodeAnalytics(host: String, publicKey: String, days: Int) =
         requireCapability(BackendCapability.NODE_ANALYTICS).let { delegate.nodeAnalytics(host, publicKey, days) }
 
@@ -50,7 +52,7 @@ class CoreScopeBackend(
     override val liveFeed: PacketSource,
 ) : AnalyzerBackend, AnalyzerRepository by analyzer, BrowseRepository by browse {
     override val capabilities: Set<BackendCapability> = setOf(
-        BackendCapability.NODE_HEALTH, BackendCapability.NODE_REACH,
+        BackendCapability.NEIGHBORS, BackendCapability.NODE_HEALTH, BackendCapability.NODE_REACH,
         BackendCapability.NODE_PATHS, BackendCapability.NODE_ANALYTICS,
         BackendCapability.OBSERVER_ANALYTICS, BackendCapability.CHANNEL_DECRYPT_ON_PHONE,
         BackendCapability.SERVER_CHANNELS, BackendCapability.MAP_DEFAULTS,

@@ -1,6 +1,5 @@
 package org.nodescope.android.feature.nodes
 
-import org.nodescope.android.core.network.BackendCapability
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Bitmap
@@ -78,25 +77,29 @@ fun NodeDetailScreen(
     val health = model?.health?.state?.collectAsStateWithLifecycle()?.value ?: Loaded()
     val reach = model?.reach?.state?.collectAsStateWithLifecycle()?.value ?: Loaded()
     val paths = model?.paths?.state?.collectAsStateWithLifecycle()?.value ?: Loaded()
+    val neighbors = model?.neighbors?.state?.collectAsStateWithLifecycle()?.value ?: Loaded()
     val key = host to publicKey
-    // Beacon has no health, reach or path statistics (iOS: capabilities disjoint → notice).
+    // Beacon has no health, reach or path statistics; it reports neighbors instead.
     val beacon = LocalBeaconSource.current
-    LaunchedEffect(model, key) { if (!beacon) model?.load(host, publicKey) }
+    LaunchedEffect(model, key, beacon) { model?.load(host, publicKey, beacon = beacon) }
     val now = rememberNow()
     // Never show another node's (or analyzer's) sections while this one loads.
-    val sections = listOf(health, reach, paths).map { if (it.key == key) it else Loaded(loading = model != null && !beacon) }
-    val healthValue = health.value?.takeIf { health.key == key }
-    val reachValue = reach.value?.takeIf { reach.key == key }
-    val pathsValue = paths.value?.takeIf { paths.key == key }
+    val sections = (if (beacon) listOf(neighbors) else listOf(health, reach, paths))
+        .map { if (it.key == key) it else Loaded(loading = model != null) }
+    val healthValue = health.value?.takeIf { health.key == key && !beacon }
+    val reachValue = reach.value?.takeIf { reach.key == key && !beacon }
+    val pathsValue = paths.value?.takeIf { paths.key == key && !beacon }
+    val neighborsValue = neighbors.value?.takeIf { neighbors.key == key && beacon }
     val node = healthValue?.node ?: initial
     // Nodes opened from links may only be known once health loads; record them for Recently Viewed.
     LaunchedEffect(node?.publicKey) { node?.let(onViewed) }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        if (beacon) item { BeaconFeatureNotice(BackendCapability.NODE_HEALTH) }
-        else if (model != null) item {
+        if (model != null) item {
             LoadStatus(combinedStatus(sections),
-                hasContent = healthValue != null || reachValue != null || pathsValue != null, now) { model.load(host, publicKey, force = true) }
+                hasContent = healthValue != null || reachValue != null || pathsValue != null || neighborsValue != null, now) {
+                model.load(host, publicKey, force = true, beacon = beacon)
+            }
         }
         item {
             if (node != null) IdentityCard(node, publicKey, favorite, now, onFavorite, onMap)
@@ -104,12 +107,14 @@ fun NodeDetailScreen(
             else Text("This node is not in the loaded results for $host.", style = MaterialTheme.typography.bodyMedium)
         }
         reachValue?.let { value -> item { ReachCard(value) } }
+            ?: neighborsValue?.let { value -> item { BeaconReachCard(value.neighbors.size) } }
         healthValue?.stats?.let { stats -> item { HealthCard(stats) } }
         onAnalytics?.let { open -> item { AnalyticsLinkCard(open) } }
         healthValue?.observers?.takeIf { it.isNotEmpty() }?.let { observers ->
             item { ObserversCard(observers.sortedByDescending { it.packetCount }, onObserver) }
         }
         reachValue?.links?.takeIf { it.isNotEmpty() }?.let { links -> item { LinksCard(links, onNode) } }
+        neighborsValue?.neighbors?.takeIf { it.isNotEmpty() }?.let { list -> item { NeighborsCard(list, onNode) } }
         pathsValue?.takeIf { it.paths.isNotEmpty() }?.let { value -> item { PathsCard(value) } }
     }
 }
@@ -219,6 +224,20 @@ private fun ReachCard(reach: NodeReach) {
     }
 }
 
+/** Beacon fills the Mesh reach card with what it reports: a neighbor count, not direction or observers. */
+@Composable
+private fun BeaconReachCard(neighborCount: Int) {
+    DetailCard("Mesh reach", Icons.Outlined.Hub) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MetricTile(neighborCount.toString(), "Neighbors", Modifier.weight(1f))
+            MetricTile("—", "Two-way links", Modifier.weight(1f))
+            MetricTile("—", "Observers", Modifier.weight(1f))
+        }
+        Text("Beacon reports nearby nodes, but not link direction or observer coverage.", style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
 @Composable
 private fun HealthCard(stats: NodeHealthStats) {
     DetailCard("Health", Icons.Outlined.MonitorHeart) {
@@ -283,6 +302,32 @@ private fun LinksCard(links: List<ReachLink>, onNode: (String) -> Unit) {
             }
         }
         if (links.size > 3) ExpandButton(expanded, links.size, "links") { expanded = !expanded }
+    }
+}
+
+/** Beacon neighbors in the Links card's place; only a full public key opens a node. */
+@Composable
+private fun NeighborsCard(neighbors: List<NeighborInsight>, onNode: (String) -> Unit) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    DetailCard("Links", Icons.Outlined.Link) {
+        Column {
+            neighbors.take(if (expanded) neighbors.size else 3).forEachIndexed { index, neighbor ->
+                if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                val key = neighbor.identity.linkablePublicKey
+                Row(Modifier.fillMaxWidth().let { if (key != null) it.clickable { onNode(key) } else it }.padding(vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Icon(Icons.AutoMirrored.Outlined.CallMade, null, tint = statusAccent(true))
+                    Column(Modifier.weight(1f)) {
+                        Text(neighbor.name?.takeIf(String::isNotBlank) ?: neighbor.identity.displayPrefix ?: "Unknown node",
+                            style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(neighbor.signal.snr?.let { "SNR %.1f dB".format(it) } ?: "Direction unavailable",
+                            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    if (key != null) Icon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        if (neighbors.size > 3) ExpandButton(expanded, neighbors.size, "links") { expanded = !expanded }
     }
 }
 

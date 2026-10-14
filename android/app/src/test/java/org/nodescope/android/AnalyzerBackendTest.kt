@@ -26,6 +26,7 @@ class AnalyzerBackendTest {
                 { browse.nodeHealth("fixture.example", "node"); Unit },
                 { browse.nodePaths("fixture.example", "node"); Unit },
                 { browse.nodeReach("fixture.example", "node"); Unit },
+                { browse.neighbors("fixture.example", "node"); Unit },
                 { browse.nodeAnalytics("fixture.example", "node", 7); Unit },
             )
             for (request in requests) {
@@ -41,6 +42,35 @@ class AnalyzerBackendTest {
             client.connectionPool.evictAll()
         }
     }
+    /** CoreScope neighbors are its reach links: same request, no invented signal or last-heard values. */
+    @Test fun neutralNeighborsReuseCoreScopeReachWithoutInventingSignal() = runBlocking {
+        val key = "ab".repeat(32)
+        val requests = mutableListOf<String>()
+        val client = OkHttpClient.Builder().addInterceptor { chain ->
+            requests += chain.request().url.encodedPath
+            val body = """{"window":{"days":7},"importance":{"neighbor_degree":1,"bidirectional_links":1,"direct_observers":0},
+                "direct_observers":[],"links":[{"pubkey":"$key","name":"Neighbor","role":"repeater","lat":30,"lon":-98,
+                "we_hear":2,"they_hear":3,"bidir":true,"distance_km":4.5}]}"""
+            Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).code(200).message("OK")
+                .body(body.toResponseBody("application/json".toMediaType())).build()
+        }.build()
+        try {
+            val result = AnalyzerBackendFactory.create(client).neighbors("fixture.example", "key/neutral")
+            assertEquals(listOf("/api/nodes/key%2Fneutral/reach"), requests)
+            val neighbor = result.neighbors.single()
+            assertEquals(key, neighbor.identity.linkablePublicKey)
+            assertEquals(org.nodescope.android.core.model.NeighborDirection.BIDIRECTIONAL, neighbor.direction)
+            assertNull(neighbor.signal.snr)
+            assertNull(neighbor.signal.rssi)
+            assertNull(neighbor.observationCount)
+            assertNull(neighbor.lastHeard)
+            assertTrue(neighbor.hasValidCoordinate)
+        } finally {
+            client.dispatcher.executorService.shutdown()
+            client.connectionPool.evictAll()
+        }
+    }
+
     @Test fun factoryPreservesBrowseLiveAndSnapshotContracts() = runBlocking {
         val requests = java.util.Collections.synchronizedList(mutableListOf<String>())
         val client = OkHttpClient.Builder().addInterceptor { chain ->

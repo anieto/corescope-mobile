@@ -70,6 +70,8 @@ data class ReachLink(
     @SerialName("they_hear") val theyHear: Int = 0,
     val bidir: Boolean = false,
     @SerialName("distance_km") val distanceKm: Double? = null,
+    val lat: Double? = null,
+    val lon: Double? = null,
 ) {
     val label: String get() = name?.takeIf(String::isNotBlank) ?: pubkey.take(12)
 }
@@ -79,6 +81,8 @@ data class ReachLink(
 data class NodeAnalytics(
     val node: MeshNode? = null,
     val timeRange: AnalyticsTimeRange? = null,
+    /** Beacon-derived analytics say what they cover; CoreScope responses have none. */
+    val context: AnalyticsContext? = null,
     val activityTimeline: List<ActivityPoint> = emptyList(),
     val snrTrend: List<SignalPoint> = emptyList(),
     val packetTypeBreakdown: List<PacketTypeCount> = emptyList(),

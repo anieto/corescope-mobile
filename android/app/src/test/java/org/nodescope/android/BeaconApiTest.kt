@@ -176,6 +176,116 @@ class BeaconApiTest {
         assertEquals(listOf("nodes?pubkey=$key", "nodes/$id"), fake.requests)
     }
 
+    private val nodeKey = "d077b9ec24d44ad069c03348ff01d88d0a86e35cee85d8d8c0a9e1ffb73fdfe3"
+    private val nodeId = "e28eb9e9-ab40-c112-32c5-50393ebb2359"
+
+    @Test fun nodeNeighborsResolveFullKeyAndPreserveUnknownDirection() = runBlocking {
+        val fake = FakeBeacon(mutableMapOf(
+            "nodes?pubkey=$nodeKey" to Triple(200, body("node-by-pubkey.json").toString(), null),
+            "nodes/$nodeId/neighbors" to Triple(200, body("node-neighbors.json").toString(), null),
+        ))
+        val result = checkNotNull(BeaconNodeReader(api(fake), info).neighbors(nodeKey.uppercase()))
+        val neighbor = result.neighbors.first()
+        assertEquals(org.nodescope.android.core.model.AnalyticsCompleteness.COMPLETE, result.completeness)
+        assertNotNull(neighbor.identity.linkablePublicKey)
+        assertEquals(8, neighbor.identity.displayPrefix?.length)
+        assertEquals(org.nodescope.android.core.model.NeighborDirection.UNKNOWN, neighbor.direction)
+        assertEquals(-5.75, neighbor.signal.snr!!, 0.0)
+        assertNull(neighbor.signal.rssi)
+        assertEquals(2, neighbor.observationCount)
+        assertEquals(listOf("nodes?pubkey=$nodeKey", "nodes/$nodeId/neighbors"), fake.requests)
+    }
+
+    @Test fun nodeObservationHistoryUsesBoundedPagesAndObservationSemantics() = runBlocking {
+        val fake = FakeBeacon(mutableMapOf(
+            "nodes?pubkey=$nodeKey" to Triple(200, body("node-by-pubkey.json").toString(), null),
+            "nodes/$nodeId/observations?limit=200" to Triple(200, body("node-observations.json").toString(), null),
+        ))
+        val history = checkNotNull(BeaconNodeReader(api(fake), info).observationHistory(nodeKey, since = 0))
+        assertTrue(history.isComplete)
+        assertEquals(2, history.requestCount)
+        assertEquals(8, history.observations.size)
+        assertTrue(history.observations.all { it.payloadType == 4 && it.hopCount == 0 })
+        assertEquals(1791666758828L, history.observations.first().heardAt)
+    }
+
+    @Test fun observationHistoryStopsAtTheRequestBudgetAndRejectsRepeatedCursors() = runBlocking {
+        val items = body("node-observations.json").jsonObject.getValue("items")
+        val first = items.jsonArray.take(4).let(::JsonArray)
+        val second = items.jsonArray.drop(4).let(::JsonArray)
+        val budget = FakeBeacon(mutableMapOf(
+            "nodes?pubkey=$nodeKey" to Triple(200, body("node-by-pubkey.json").toString(), null),
+            "nodes/$nodeId/observations?limit=200" to Triple(200, page(first, true, JsonPrimitive("c1")), null),
+            "nodes/$nodeId/observations?limit=200&cursor=c1" to Triple(200, page(second, true, JsonPrimitive("c2")), null),
+        ))
+        val partial = checkNotNull(BeaconNodeReader(api(budget), info).observationHistory(nodeKey, since = 0, maximumPages = 2))
+        assertFalse(partial.isComplete)
+        assertEquals(8, partial.observations.size)
+        assertEquals(3, budget.requests.size)
+
+        val repeating = FakeBeacon(mutableMapOf(
+            "nodes?pubkey=$nodeKey" to Triple(200, body("node-by-pubkey.json").toString(), null),
+            "nodes/$nodeId/observations?limit=200" to Triple(200, page(first, true, JsonPrimitive("c1")), null),
+            "nodes/$nodeId/observations?limit=200&cursor=c1" to Triple(200, page(second, true, JsonPrimitive("c1")), null),
+        ))
+        assertThrows(BeaconApiException.MalformedPage::class.java) {
+            runBlocking { BeaconNodeReader(api(repeating), info).observationHistory(nodeKey, since = 0) }
+        }
+        Unit
+    }
+
+    @Test fun observationHistoryRejectsPagesOutOfOrder() {
+        val items = body("node-observations.json").jsonObject.getValue("items").jsonArray.reversed().let(::JsonArray)
+        val fake = FakeBeacon(mutableMapOf(
+            "nodes?pubkey=$nodeKey" to Triple(200, body("node-by-pubkey.json").toString(), null),
+            "nodes/$nodeId/observations?limit=200" to Triple(200, page(items), null),
+        ))
+        assertThrows(BeaconApiException.MalformedPage::class.java) {
+            runBlocking { BeaconNodeReader(api(fake), info).observationHistory(nodeKey, since = 0) }
+        }
+    }
+
+    @Test fun beaconBackendDerivesNodeAnalyticsWithoutPacketFanout() = runBlocking {
+        val fake = FakeBeacon(mutableMapOf(
+            "nodes?pubkey=$nodeKey" to Triple(200, body("node-by-pubkey.json").toString(), null),
+            "nodes/$nodeId/observations?limit=200" to Triple(200, body("node-observations.json").toString(), null),
+        ))
+        val analytics = BeaconBackend(api(fake), info).nodeAnalytics(host, nodeKey, 30)
+        val context = checkNotNull(analytics.context)
+        assertEquals(org.nodescope.android.core.model.AnalyticsCountUnit.OBSERVATIONS, context.countUnit)
+        assertEquals(org.nodescope.android.core.model.AnalyticsCompleteness.PARTIAL, context.completeness)
+        assertEquals(7, analytics.timeRange?.days)
+        val stats = checkNotNull(analytics.computedStats)
+        assertNull(stats.availabilityPct)
+        assertNull(stats.signalGrade)
+        assertNull(stats.uniqueObservers)
+        assertNull(stats.longestSilenceMs)
+        assertEquals(4, analytics.packetTypeBreakdown.first().payloadType)
+        assertEquals("0", analytics.hopDistribution.first().hops)
+        assertTrue(analytics.observerCoverage.isEmpty() && analytics.peerInteractions.isEmpty())
+        assertTrue("No packet-detail requests", fake.requests.none { it.startsWith("packets") })
+        assertEquals(2, fake.requests.size)
+    }
+
+    /** Same fixture, same aggregates as iOS: one hourly bucket per hour, observations not packets. */
+    @Test fun beaconNodeAnalyticsAggregatesMatchTheFixture() {
+        val observations = body("node-observations.json").jsonObject.getValue("items").jsonArray.map {
+            protocolJson.decodeFromJsonElement(BeaconObservation.serializer(), it)
+        }
+        val node = protocolJson.decodeFromJsonElement(BeaconNode.serializer(), body("node-detail.json"))
+        val to = observations.first().heardAt + 1_000
+        val history = BeaconObservationHistory(node, observations, isComplete = true, requestCount = 2)
+        val analytics = BeaconNodeAnalyticsBuilder.build(history, 1, to - 86_400_000, to)
+        val stats = checkNotNull(analytics.computedStats)
+        val inWindow = observations.filter { it.heardAt >= to - 86_400_000 }
+        assertEquals(inWindow.size.toLong(), stats.totalPackets)
+        assertEquals(inWindow.size.toLong(), analytics.activityTimeline.sumOf { it.count })
+        assertEquals(inWindow.size.toLong(), analytics.uptimeHeatmap.sumOf { it.count })
+        assertEquals(0.0, stats.relayPct!!, 0.0)
+        assertEquals(inWindow.mapNotNull { it.snr }.average(), stats.snrMean!!, 1e-9)
+        assertEquals(org.nodescope.android.core.model.AnalyticsCompleteness.COMPLETE, analytics.context?.completeness)
+    }
+
     @Test fun missingNodeDoesNotScanOrFetchDetail() = runBlocking {
         val key = "a".repeat(64)
         val fake = FakeBeacon(mutableMapOf("nodes?pubkey=$key" to Triple(200, page(JsonArray(emptyList())), null)))
@@ -267,13 +377,14 @@ class BeaconApiTest {
     @Test fun backendRejectsUnsupportedEndpointsWithoutRequests() = runBlocking {
         val fake = FakeBeacon()
         val backend = BeaconBackend(api(fake), info)
-        assertTrue(backend.capabilities.isEmpty())
+        assertEquals(setOf(BackendCapability.NEIGHBORS, BackendCapability.NODE_ANALYTICS), backend.capabilities)
         val calls: List<Pair<BackendCapability, suspend () -> Unit>> = listOf(
             BackendCapability.SERVER_CHANNELS to { backend.channels(AnalyzerSelection(host, null)); Unit },
             BackendCapability.CHANNEL_DECRYPT_ON_PHONE to { backend.channelPackets(AnalyzerSelection(host, null)); Unit },
             BackendCapability.OBSERVER_ANALYTICS to { backend.observerAnalytics(host, "x"); Unit },
             BackendCapability.NODE_HEALTH to { backend.nodeHealth(host, "x"); Unit },
-            BackendCapability.NODE_ANALYTICS to { backend.nodeAnalytics(host, "x", 7); Unit },
+            BackendCapability.NODE_REACH to { backend.nodeReach(host, "x"); Unit },
+            BackendCapability.NODE_PATHS to { backend.nodePaths(host, "x"); Unit },
         )
         for ((capability, call) in calls) {
             try { call(); fail() } catch (e: BeaconUnsupportedException) {

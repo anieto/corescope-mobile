@@ -187,6 +187,8 @@ class RoutingAnalyzerBackend(
         on(host, { it.nodePaths(host, publicKey) }) { coreScope.nodePaths(host, publicKey) }
     override suspend fun nodeReach(host: String, publicKey: String) =
         on(host, { it.nodeReach(host, publicKey) }) { coreScope.nodeReach(host, publicKey) }
+    override suspend fun neighbors(host: String, publicKey: String) =
+        on(host, { it.neighbors(host, publicKey) }) { coreScope.neighbors(host, publicKey) }
     override suspend fun nodeAnalytics(host: String, publicKey: String, days: Int) =
         on(host, { it.nodeAnalytics(host, publicKey, days) }) { coreScope.nodeAnalytics(host, publicKey, days) }
     override suspend fun packetDetail(host: String, hash: String) =

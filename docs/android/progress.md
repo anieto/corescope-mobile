@@ -910,3 +910,29 @@ Suggested by a tester (CoderNemesis): the copied public key can't be imported in
 - Build 11 (2026-10-06): "Open in MeshCore" starts MeshCore in a new task. A tester found that
   without it MeshCore opened inside NodeScope's task: Back minimized it and relaunching NodeScope
   returned to MeshCore.
+
+## Beacon phase 3: neighbors and node analytics — 2026-10-14
+
+Ports of the iOS C and D milestones (`feature/beacon-phase-3`).
+- Neutral models: `AnalyticsContext` (complete / partial / unsupported, packets vs observations,
+  requested and covered time) and `NeighborInsight` (full key linkable, prefix display-only,
+  unknown signal and direction stay unknown). `NodeAnalytics.context` is null for CoreScope.
+- `BackendCapability.NEIGHBORS`. CoreScope derives neighbors from `/reach` links (same request,
+  `ReachLink` now keeps lat/lon); Beacon advertises `NEIGHBORS` and `NODE_ANALYTICS`.
+- `BeaconNodeReader`: `nodeSummary` (one full-key lookup), `neighbors`, and `observationHistory`:
+  at most 19 pages of 200, newest-first enforced, no repeated cursors, duplicate ids ignored, so a
+  screen makes at most 20 requests and never fetches packet detail.
+- `BeaconNodeAnalyticsBuilder`: hourly UTC activity, observed-activity heatmap, SNR readings,
+  packet types, hops, relay percentage, SNR mean and spread. Availability, longest silence,
+  signal grade, observer coverage and peers stay unknown. Ranges over seven days show the
+  retained week as partial; a budget cut-off says so.
+- Node detail on Beacon: no more "CoreScope only" notice. The Mesh reach card shows the neighbor
+  count with unknown two-way links and observers, and the Links card lists neighbors with SNR.
+  Only full keys open a node.
+- Node analytics on Beacon: loads like CoreScope, says "observations" instead of "packets",
+  shows a coverage notice when partial, a simple SNR-over-time chart (no observer identity), and
+  an "Unavailable from Beacon" note at the end.
+- Tests: neighbors from reach (CoreScope request unchanged), Beacon neighbors, observation paging
+  (budget, repeated cursor, out-of-order), analytics without packet fan-out, and aggregates from
+  the shared fixture. 233 JVM tests pass; not yet checked on a device.
+

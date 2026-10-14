@@ -1,6 +1,5 @@
 package org.nodescope.android.feature.nodes
 
-import org.nodescope.android.core.network.BackendCapability
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,6 +20,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -39,7 +39,7 @@ fun NodeAnalyticsScreen(model: NodeAnalyticsViewModel, host: String, publicKey: 
     val key = AnalyticsKey(host, publicKey, range.days)
     val state by model.analytics.state.collectAsStateWithLifecycle()
     val beacon = LocalBeaconSource.current
-    LaunchedEffect(key) { if (!beacon) model.analytics.load(key) }
+    LaunchedEffect(key, beacon) { model.analytics.load(key) }
     val observerState by model.observers.state.collectAsStateWithLifecycle()
     LaunchedEffect(host) { if (!beacon) model.observers.load(host) }
     val observerList = observerState.value.takeIf { observerState.key == host }.orEmpty()
@@ -47,6 +47,8 @@ fun NodeAnalyticsScreen(model: NodeAnalyticsViewModel, host: String, publicKey: 
     val result = state.value.takeIf { state.key == key }
     val analytics = (result as? AnalyticsResult.Available)?.analytics
     val node = analytics?.node ?: initial
+    // Beacon analytics count observations, not packets; labels say which.
+    val observations = analytics?.context?.countUnit == AnalyticsCountUnit.OBSERVATIONS
 
     AnalyticsLayout(range, onRange = { range = it }) {
         item {
@@ -63,8 +65,7 @@ fun NodeAnalyticsScreen(model: NodeAnalyticsViewModel, host: String, publicKey: 
                 }
             }
         }
-        if (beacon) item { BeaconFeatureNotice(BackendCapability.NODE_ANALYTICS) }
-        else if (result != AnalyticsResult.Unsupported) item {
+        if (result != AnalyticsResult.Unsupported) item {
             LoadStatus(state.takeIf { it.key == key } ?: org.nodescope.android.core.network.Loaded<AnalyticsKey, AnalyticsResult>(loading = true), analytics != null, now) {
                 model.analytics.load(key, force = true)
             }
@@ -73,16 +74,22 @@ fun NodeAnalyticsScreen(model: NodeAnalyticsViewModel, host: String, publicKey: 
             EmptyState(Icons.Outlined.QueryStats, "Analytics unavailable", "This analyzer does not currently provide node analytics.")
         }
         if (analytics != null) {
-            analytics.computedStats?.let { stats -> item { SummaryCard(stats) } }
+            analytics.context?.takeIf { it.completeness != AnalyticsCompleteness.COMPLETE }?.explanation?.let { text ->
+                item { CoverageNotice(text) }
+            }
+            analytics.computedStats?.let { stats -> item { SummaryCard(stats, observations) } }
             val activity = analytics.activityTimeline.mapNotNull { point -> parseInstant(point.bucket)?.let { it.toEpochMilli() to point.count.toDouble() } }.sortedBy { it.first }
             dataDomain(activity.map { it.first })?.let { (from, to) -> item {
-                ChartCard("Activity", "${compactCount(analytics.activityTimeline.sumOf { it.count })} packets", Icons.Outlined.MonitorHeart) {
-                    TimeChart("Packet activity over the last ${range.title}", listOf(TimeSeries(seriesColors[0], activity)), from, to,
+                val noun = if (observations) "observations" else "packets"
+                ChartCard("Activity", "${compactCount(analytics.activityTimeline.sumOf { it.count })} $noun", Icons.Outlined.MonitorHeart) {
+                    TimeChart("${if (observations) "Observation" else "Packet"} activity over the last ${range.title}", listOf(TimeSeries(seriesColors[0], activity)), from, to,
                         area = true, zeroBased = true, formatValue = { compactCount(it.toLong()) }, formatTime = { analyticsTimeLabel(it, to - from) })
                 }
             } }
-            if (analytics.uptimeHeatmap.isNotEmpty()) item { HeatmapCard(heatmapGrid(analytics.uptimeHeatmap)) }
-            if (analytics.snrTrend.isNotEmpty()) item { SignalCard(analytics.snrTrend, observerList, now) }
+            if (analytics.uptimeHeatmap.isNotEmpty()) item { HeatmapCard(heatmapGrid(analytics.uptimeHeatmap), observations) }
+            if (analytics.snrTrend.isNotEmpty()) item {
+                if (observations) BeaconSignalCard(analytics.snrTrend) else SignalCard(analytics.snrTrend, observerList, now)
+            }
             if (analytics.packetTypeBreakdown.isNotEmpty()) item {
                 // Same donut as an observer's packet types, so the two pages read alike.
                 ChartCard("Packet types", "Traffic reported by payload", Icons.Outlined.DonutLarge) {
@@ -109,6 +116,7 @@ fun NodeAnalyticsScreen(model: NodeAnalyticsViewModel, host: String, publicKey: 
                         "Last contact ${relativeTime(parseInstant(peer.lastContact), now)}", "${compactCount(peer.messageCount)} messages", null, null)
                 }
             }
+            if (observations) item { BeaconLimitationsNotice() }
         }
     }
 }
@@ -137,13 +145,49 @@ internal fun AnalyticsLayout(range: AnalyticsRange, onRange: (AnalyticsRange) ->
 }
 
 @Composable
-private fun SummaryCard(stats: ComputedStats) {
+private fun CoverageNotice(explanation: String) {
+    AnalyticsCard {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(Icons.Outlined.History, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(explanation, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun BeaconLimitationsNotice() {
+    AnalyticsCard {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.semantics { heading() }) {
+            Icon(Icons.Outlined.Info, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+            Text("Unavailable from Beacon", style = MaterialTheme.typography.titleMedium)
+        }
+        Text("Beacon node history does not identify observers or peers, so observer coverage, peer interactions, availability, longest silence, and signal grade cannot be calculated reliably.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** Beacon SNR readings over time; with no observer identity there is no per-observer breakdown. */
+@Composable
+private fun BeaconSignalCard(points: List<SignalPoint>) {
+    val readings = remember(points) {
+        points.mapNotNull { p -> p.snr?.let { snr -> parseInstant(p.timestamp)?.let { it.toEpochMilli() to snr } } }.sortedBy { it.first }
+    }
+    val (from, to) = dataDomain(readings.map { it.first }) ?: return
+    ChartCard("Signal", "Reported SNR over time; Beacon does not identify the observer", Icons.Outlined.GraphicEq) {
+        TimeChart("Reported SNR over time", listOf(TimeSeries(SignalBlue, readings)), from, to, area = false, zeroBased = false,
+            formatValue = { db(it) }, formatTime = { analyticsTimeLabel(it, to - from) })
+    }
+}
+
+@Composable
+private fun SummaryCard(stats: ComputedStats, observations: Boolean) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     fun percent(value: Double?) = value?.let { String.format(Locale.US, "%.0f%%", it) } ?: "—"
     val metrics = listOf(
         Triple(percent(stats.availabilityPct), "Availability", HealthyGreen),
         Triple(stats.signalGrade ?: "—", "Signal grade", SignalBlue),
-        Triple(stats.avgPacketsPerDay?.let { String.format(Locale.US, "%.0f", it) } ?: "—", "Packets / day", SignalBlue),
+        Triple(stats.avgPacketsPerDay?.let { String.format(Locale.US, "%.0f", it) } ?: "—", if (observations) "Observations / day" else "Packets / day", SignalBlue),
         Triple(percent(stats.relayPct), "Relayed", ActivityAmber),
         Triple(stats.uniqueObservers?.toString() ?: "—", "Observers", Color(0xFF5C8DFF)),
         Triple(stats.longestSilenceMs?.let(::formatSilence) ?: "—", "Longest silence", MaterialTheme.colorScheme.onSurfaceVariant),
@@ -174,13 +218,14 @@ private fun SummaryCard(stats: ComputedStats) {
 }
 
 @Composable
-private fun HeatmapCard(grid: Array<LongArray>) {
+private fun HeatmapCard(grid: Array<LongArray>, observations: Boolean) {
     val max = grid.maxOf { row -> row.max() }.coerceAtLeast(1)
     val busiest = grid.withIndex().flatMap { (day, row) -> row.withIndex().map { (hour, count) -> Triple(day, hour, count) } }.maxByOrNull { it.third }
     val empty = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.08f)
-    ChartCard("Activity by time", "Packet activity by weekday and hour, shown in UTC", Icons.Outlined.CalendarMonth) {
+    val noun = if (observations) "observations" else "packets"
+    ChartCard("Activity by time", "${if (observations) "Observed" else "Packet"} activity by weekday and hour, shown in UTC", Icons.Outlined.CalendarMonth) {
         Column(Modifier.semantics(mergeDescendants = true) {
-            contentDescription = busiest?.takeIf { it.third > 0 }?.let { "Busiest: ${dayNames[it.first]} at ${"%02d".format(it.second)}:00 UTC, ${it.third} packets" }
+            contentDescription = busiest?.takeIf { it.third > 0 }?.let { "Busiest: ${dayNames[it.first]} at ${"%02d".format(it.second)}:00 UTC, ${it.third} $noun" }
                 ?: "No activity recorded"
         }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row {

@@ -49,6 +49,12 @@ checks remain pending. See [phase 1 implementation](../beacon/phase1-implementat
 Beacon phase 2, 2026-10-12: Android now matches the iOS Beacon phase 2 work (detection, browse
 readers, live feed and screens). See the Android port checkpoint in [the Beacon plan](../beacon/plan.md).
 
+Beacon phase 3, 2026-10-14: Android ports C3 (neighbors) and D4 (node analytics) from the iOS
+commits 0d90072, 0c4a320 and 8d12ef2: the same neutral models (`AnalyticsContext`,
+`NeighborInsight`), the `NEIGHBORS` capability, the Beacon neighbors and bounded observation-history
+readers, and the analytics builder. Shared fixtures produce the same aggregates on both platforms.
+E4, F5 and G3 wait for the iOS work to land. See [phase 3 tasks](../beacon/phase3-tasks.md).
+
 | Contract observed | Notes to preserve |
 |---|---|
 | `GET /api/config/map` | Analyzer-provided camera defaults; use a documented fallback if unavailable |

@@ -26,6 +26,8 @@ interface BrowseRepository {
     suspend fun nodeHealth(host: String, publicKey: String): NodeHealth
     suspend fun nodePaths(host: String, publicKey: String): NodePaths
     suspend fun nodeReach(host: String, publicKey: String): NodeReach
+    /** Neutral neighbors: CoreScope derives them from reach; Beacon reads its neighbors endpoint. */
+    suspend fun neighbors(host: String, publicKey: String): NeighborCollection = nodeReach(host, publicKey).neighborCollection()
     suspend fun nodeAnalytics(host: String, publicKey: String, days: Int): NodeAnalytics
     suspend fun packetDetail(host: String, hash: String): PacketDetail
     /** Every node on the analyzer (no region), for Explore's search and dashboard. */
