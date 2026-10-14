@@ -6,7 +6,8 @@ without reproducing every desktop or operator control from CoreScope.
 
 Every feature and release closeout must be verified on both iPhone and iPad,
 including navigation, safe areas, adaptive layout, popovers/sheets, and toolbar
-content in portrait and landscape where applicable.
+content in portrait and landscape where applicable, and on Android phones,
+tablets, and foldables once Android has the feature.
 
 ## Completed foundation — 0.2.0 through 0.7.0
 
@@ -22,7 +23,24 @@ content in portrait and landscape where applicable.
 - Node Analytics with selectable time ranges, health and signal metrics, charts,
   observer coverage, peer interactions, exports, and graceful capability checks.
 
-## 0.8.0 — My Nodes and network awareness
+## 0.8.0 — Beacon support
+
+Make NodeScope work with Beacon servers as well as CoreScope, without changing
+the CoreScope experience. Planned and tracked in [the Beacon plan](docs/beacon/plan.md).
+
+- Phase 1: a backend abstraction so every screen talks to a CoreScope or Beacon
+  adapter, with no CoreScope behavior change.
+- Phase 2: Beacon detection, community sources with a server type, and browsing
+  of the map, nodes, observers, packets, packet details, routes, and the live feed.
+- Phase 3: Beacon neighbors, node analytics derived from observation history,
+  observer activity and telemetry, server-decrypted channels with database-reset
+  recovery, and expanded diagnostics. Implemented on iOS and Android; live
+  acceptance passed on three servers. Remaining: side-by-side device review,
+  channel upgrade and rollback drills, and beta builds ([phase 3 tasks](docs/beacon/phase3-tasks.md)).
+- Beacon screens reuse the CoreScope design. Data Beacon can't provide is shown
+  as unavailable or partial with an explanation, never as zero.
+
+## 0.9.0 — My Nodes and network awareness
 
 Turn favorites and Node Analytics into a useful daily health view without
 requiring users to inspect every node individually.
@@ -39,8 +57,11 @@ requiring users to inspect every node individually.
   demand justifies their lifecycle and delivery complexity.
 - Preserve analyzer scoping, cached-first loading, exports, Dynamic Type, and
   VoiceOver throughout the experience.
+- Work on both CoreScope and Beacon sources, using each backend's analytics and
+  explaining metrics a backend can't provide (Beacon has no availability or
+  observer coverage per node).
 
-## 0.9.0 — Field investigation
+## 0.10.0 — Field investigation
 
 Make NodeScope useful while deploying, locating, or troubleshooting physical
 mesh equipment without turning the phone into a source of RF telemetry.
@@ -97,6 +118,8 @@ These may be revisited after 1.0 if user demand justifies them.
 - Saved network-view presets.
 - Field survey breadcrumb recording and coverage heatmaps.
 - Route image generation.
+- Locally monitored (on-phone decrypted) channels on Beacon sources. Blocked until
+  Beacon can list channel payloads without one request per packet.
 
 ## Out of scope
 
@@ -110,13 +133,15 @@ These CoreScope features do not fit NodeScope's focused, read-only mobile role.
 
 ## Android implementation
 
-Android development is active alongside iOS. The initial prototype was replaced
-with a native Kotlin/Compose foundation following the [Android parity plan](docs/android/README.md).
-See [implementation progress](docs/android/progress.md) for completed work and
-remaining map, lifecycle, feature-parity and device-validation gates.
+Android ships alongside iOS on Google Play as a native Kotlin/Compose app
+following the [Android parity plan](docs/android/README.md). Features land on iOS
+first and are ported to Android before the next feature starts; Beacon phases 2
+and 3 are at parity. See [implementation progress](docs/android/progress.md).
 
 ## Current priority
 
-Build 0.8.0 My Nodes and network awareness on the completed Node Analytics
-foundation. Prioritize a concise answer to what changed, whether favorite nodes
-are healthy, and whether the configured analyzer data is current and complete.
+Finish the 0.8.0 Beacon release gate: device review of every phase 3 screen on
+iOS and Android, the channel upgrade and rollback drills, and beta builds. Then
+build 0.9.0 My Nodes and network awareness on the Node Analytics foundation,
+prioritizing a concise answer to what changed, whether favorite nodes are
+healthy, and whether the configured analyzer data is current and complete.
