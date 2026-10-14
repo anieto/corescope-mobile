@@ -29,7 +29,6 @@ struct MapScreen: View {
     @State private var displayedNodes: [MeshNode] = []
     @State private var displayCoordinatesByNodeID: [String: CLLocationCoordinate2D] = [:]
     @State private var nodeClusters: [NodeCluster] = []
-    @State private var visibleNodesByCoordinate: [CoordinateKey: MeshNode] = [:]
     @State private var iataCoordinates: [String: CLLocationCoordinate2D] = [:]
     @State private var iataRadiusKm: [String: Double] = [:]
     @State private var mapDisplayStyle = MapDisplayStyle.persisted
@@ -70,7 +69,6 @@ struct MapScreen: View {
         let id: String
         let coordinate: CLLocationCoordinate2D
         let count: Int
-        let memberCoordinates: Set<CoordinateKey>
     }
 
     private func updateLiveFeedDemand() {
@@ -117,7 +115,6 @@ struct MapScreen: View {
     private struct DisplayResult: Sendable {
         let nodes: [MeshNode]
         let clusters: [NodeCluster]
-        let nodesByCoordinate: [CoordinateKey: MeshNode]
         let displayCoordinatesByNodeID: [String: CLLocationCoordinate2D]
         let filteredCount: Int
     }
@@ -167,13 +164,19 @@ struct MapScreen: View {
     var body: some View {
         NavigationStack {
             GeometryReader { geometry in
-                TimelineView(
-                    .animation(
-                        minimumInterval: mapUpdateInterval,
-                        paused: !isTabActive || !pingsForDisplay.contains { !$0.isExpired() }
-                    )
-                ) { context in
-                    mapContent(at: context.date)
+                Group {
+                    if isReplayMode {
+                        TimelineView(
+                            .animation(
+                                minimumInterval: mapUpdateInterval,
+                                paused: !isTabActive || !pingsForDisplay.contains { !$0.isExpired() }
+                            )
+                        ) { context in
+                            mapContent(at: context.date)
+                        }
+                    } else {
+                        mapContent(at: .now)
+                    }
                 }
                 .onAppear { mapViewportSize = geometry.size }
                 .onChange(of: geometry.size) { _, size in
@@ -697,27 +700,24 @@ struct MapScreen: View {
 
     @ViewBuilder
     private func mapContent(at date: Date) -> some View {
-        let currentPings = pingsForDisplay.filter {
+        // Replay keeps its tuned MapKit rendering path. Live traffic is drawn
+        // entirely by the lightweight canvas overlay below, so its animation
+        // clock never invalidates the Map or its annotations.
+        let currentPings = isReplayMode ? pingsForDisplay.filter {
             $0.hasStarted(at: date) && !$0.isExpired(at: date)
-        }
+        } : []
         let completedPings = currentPings.filter {
             !$0.isPulse && $0.hasCompletedTravel(at: date)
         }
-        let anchoredPings = isReplayMode
-            ? completedPings
-            : Array(completedPings.suffix(40))
+        let anchoredPings = isReplayMode ? completedPings : []
         let routeCoordinates = Set(currentPings.flatMap {
             [CoordinateKey($0.start), CoordinateKey($0.end)]
         })
-        let routeNodes = routeCoordinates.compactMap { visibleNodesByCoordinate[$0] }
         let baseNodes = isReplayMode && showsReplayRouteOnly ? replayRouteNodes : displayedNodes
-        let mapNodes = Array(Dictionary(
-            baseNodes.map { ($0.id, $0) } + routeNodes.map { ($0.id, $0) },
-            uniquingKeysWith: { first, _ in first }
-        ).values)
+        let mapNodes = baseNodes
         let mapClusters = isReplayMode && showsReplayRouteOnly
             ? []
-            : nodeClusters.filter { $0.memberCoordinates.isDisjoint(with: routeCoordinates) }
+            : nodeClusters
         // MapKit's built-in annotation titles become expensive when hundreds
         // appear at once. Only render our lightweight labels when the map is
         // genuinely close and the visible marker count is bounded.
@@ -853,19 +853,28 @@ struct MapScreen: View {
                 updateDisplayedNodes(in: context.region)
             }
             .onTapGesture { screenPoint in
-                scheduleMapTap(at: screenPoint, using: proxy, date: date, nodes: mapNodes)
+                scheduleMapTap(at: screenPoint, using: proxy, date: .now, nodes: mapNodes)
             }
             .simultaneousGesture(
                 SpatialTapGesture(count: 2)
                     .onEnded { _ in cancelPendingMapTap() }
             )
             .overlay {
-                if !isMapCameraMoving {
+                if !isMapCameraMoving && isReplayMode {
                     MapTrafficCanvas(
                         pings: transientPings(from: currentPings, at: date),
                         date: date,
                         proxy: proxy,
-                        retainsCompletedPaths: isReplayMode
+                        retainsCompletedPaths: true,
+                        showsRouteAnchors: false
+                    )
+                    .allowsHitTesting(false)
+                } else if !isMapCameraMoving {
+                    LiveMapTrafficLayer(
+                        pings: pingsForDisplay,
+                        proxy: proxy,
+                        minimumInterval: mapUpdateInterval,
+                        isPaused: !isTabActive || !pingsForDisplay.contains { !$0.isExpired() }
                     )
                     .allowsHitTesting(false)
                 }
@@ -901,7 +910,6 @@ struct MapScreen: View {
             guard let result else { return }
             displayedNodes = result.nodes
             nodeClusters = result.clusters
-            visibleNodesByCoordinate = result.nodesByCoordinate
             displayCoordinatesByNodeID = result.displayCoordinatesByNodeID
             filteredNodeCount = result.filteredCount
         }
@@ -951,12 +959,6 @@ struct MapScreen: View {
             return DisplayResult(
                 nodes: validNodes,
                 clusters: [],
-                nodesByCoordinate: Dictionary(
-                    validNodes.compactMap { node in
-                        node.coordinate.map { (CoordinateKey($0), node) }
-                    },
-                    uniquingKeysWith: { first, _ in first }
-                ),
                 displayCoordinatesByNodeID: Dictionary(
                     uniqueKeysWithValues: validNodes.compactMap { node in
                         node.coordinate.map { (node.id, $0) }
@@ -986,12 +988,6 @@ struct MapScreen: View {
             return DisplayResult(
                 nodes: visibleNodes,
                 clusters: [],
-                nodesByCoordinate: Dictionary(
-                    visibleNodes.compactMap { node in
-                        node.coordinate.map { (CoordinateKey($0), node) }
-                    },
-                    uniquingKeysWith: { first, _ in first }
-                ),
                 displayCoordinatesByNodeID: spreadNearbyCoordinates(
                     for: visibleNodes,
                     region: region
@@ -1034,10 +1030,7 @@ struct MapScreen: View {
                         latitude: latitudeTotal / Double(cellNodes.count),
                         longitude: longitudeTotal / Double(cellNodes.count)
                     ),
-                    count: cellNodes.count,
-                    memberCoordinates: Set(cellNodes.compactMap { node in
-                        node.coordinate.map(CoordinateKey.init)
-                    })
+                    count: cellNodes.count
                 )
             )
         }
@@ -1045,12 +1038,6 @@ struct MapScreen: View {
         return DisplayResult(
             nodes: individualNodes,
             clusters: clusters.sorted { $0.id < $1.id },
-            nodesByCoordinate: Dictionary(
-                visibleNodes.compactMap { node in
-                    node.coordinate.map { (CoordinateKey($0), node) }
-                },
-                uniquingKeysWith: { first, _ in first }
-            ),
             displayCoordinatesByNodeID: Dictionary(
                 uniqueKeysWithValues: individualNodes.compactMap { node in
                     node.coordinate.map { (node.id, $0) }
@@ -2327,20 +2314,59 @@ struct MapScreen: View {
     }
 }
 
+private struct LiveMapTrafficLayer: View {
+    let pings: [ActivePing]
+    let proxy: MapProxy
+    let minimumInterval: TimeInterval
+    let isPaused: Bool
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: minimumInterval, paused: isPaused)) { context in
+            MapTrafficCanvas(
+                pings: pingsForFrame(at: context.date),
+                date: context.date,
+                proxy: proxy,
+                retainsCompletedPaths: true,
+                showsRouteAnchors: true
+            )
+        }
+    }
+
+    private func pingsForFrame(at date: Date) -> [ActivePing] {
+        let current = pings.filter { $0.hasStarted(at: date) && !$0.isExpired(at: date) }
+        let completed = current.filter { !$0.isPulse && $0.hasCompletedTravel(at: date) }.suffix(40)
+        let transient = current.filter {
+            $0.isPulse
+                || !$0.hasCompletedTravel(at: date)
+                || $0.arrivalPulseProgress(at: date) != nil
+        }.suffix(20)
+
+        var seen = Set<UUID>()
+        return (completed + transient).filter { seen.insert($0.id).inserted }
+    }
+}
+
 private struct MapTrafficCanvas: View {
     let pings: [ActivePing]
     let date: Date
     let proxy: MapProxy
     let retainsCompletedPaths: Bool
+    let showsRouteAnchors: Bool
 
     var body: some View {
         Canvas { context, _ in
+            var routeAnchors: [TrafficCoordinateKey: (CLLocationCoordinate2D, Color)] = [:]
             for ping in pings where ping.hasStarted(at: date) && !ping.isExpired(at: date) {
                 guard let start = proxy.convert(ping.start, to: .local) else { continue }
 
                 if ping.isPulse {
                     drawPulse(ping, at: start, in: &context)
                     continue
+                }
+
+                if showsRouteAnchors {
+                    routeAnchors[TrafficCoordinateKey(ping.start)] = (ping.start, ping.pathColor)
+                    routeAnchors[TrafficCoordinateKey(ping.end)] = (ping.end, ping.pathColor)
                 }
 
                 if !ping.hasCompletedTravel(at: date) {
@@ -2352,6 +2378,13 @@ private struct MapTrafficCanvas: View {
                 if let pulseProgress = ping.arrivalPulseProgress(at: date),
                    let end = proxy.convert(ping.end, to: .local) {
                     drawArrivalPulse(ping, progress: pulseProgress, at: end, in: &context)
+                }
+            }
+
+            if showsRouteAnchors {
+                for (coordinate, color) in routeAnchors.values {
+                    guard let point = proxy.convert(coordinate, to: .local) else { continue }
+                    drawRouteAnchor(at: point, color: color, in: &context)
                 }
             }
         }
@@ -2444,6 +2477,16 @@ private struct MapTrafficCanvas: View {
         )
     }
 
+    private func drawRouteAnchor(
+        at point: CGPoint,
+        color: Color,
+        in context: inout GraphicsContext
+    ) {
+        let marker = Path(ellipseIn: circleRect(center: point, diameter: 9))
+        context.fill(marker, with: .color(.white.opacity(0.95)))
+        context.stroke(marker, with: .color(color), lineWidth: 2)
+    }
+
     private func circleRect(center: CGPoint, diameter: CGFloat) -> CGRect {
         CGRect(
             x: center.x - diameter / 2,
@@ -2451,6 +2494,16 @@ private struct MapTrafficCanvas: View {
             width: diameter,
             height: diameter
         )
+    }
+}
+
+private struct TrafficCoordinateKey: Hashable {
+    let latitude: Double
+    let longitude: Double
+
+    init(_ coordinate: CLLocationCoordinate2D) {
+        latitude = coordinate.latitude
+        longitude = coordinate.longitude
     }
 }
 
