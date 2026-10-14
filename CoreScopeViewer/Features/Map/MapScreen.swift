@@ -1764,7 +1764,16 @@ struct MapScreen: View {
     }
 
     private var sourceRegionViewport: BeaconRegionReader.Frame? {
-        BeaconRegionReader.Frame.enclosing(Array(regionFilter.iataCoords.values))
+        let coordinates = regionFilter.options.compactMap { code -> IataCoordinate? in
+            if let published = regionFilter.iataCoords.first(where: {
+                $0.key.caseInsensitiveCompare(code) == .orderedSame
+            })?.value {
+                return published
+            }
+            guard let fallback = AirportCoordinates.coordinate(for: code) else { return nil }
+            return IataCoordinate(lat: fallback.latitude, lon: fallback.longitude, radiusKm: nil)
+        }
+        return BeaconRegionReader.Frame.enclosing(coordinates)
     }
 
     private var sourceRegionViewportSignature: String? {
