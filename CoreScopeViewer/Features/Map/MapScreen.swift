@@ -19,6 +19,7 @@ struct MapScreen: View {
     @Environment(AppNavigationStore.self) private var appNavigationStore
     @Environment(AnalyzerSourceRegistry.self) private var analyzerSourceRegistry
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var viewModel = MapViewModel()
     @State private var liveFeedConsumer = UUID()
     @State private var isVisible = false
@@ -161,6 +162,86 @@ struct MapScreen: View {
         }
     }
 
+    private struct WideMapHeader: View {
+        let isConnected: Bool
+        let isRefreshing: Bool
+        let togglePacketSidebar: (() -> Void)?
+        let retry: () -> Void
+        let search: () -> Void
+        @Binding var mapDisplayStyle: MapDisplayStyle
+
+        var body: some View {
+            HStack(alignment: .top) {
+                HStack(spacing: 8) {
+                    if let togglePacketSidebar {
+                        Button(action: togglePacketSidebar) {
+                            Image(systemName: "list.bullet.rectangle")
+                                .frame(width: 44, height: 44)
+                        }
+                        .buttonStyle(.plain)
+                        .nodeScopeFloatingGlass(cornerRadius: 18)
+                        .accessibilityLabel("Toggle live packets")
+                    }
+
+                    HStack(spacing: 7) {
+                        Circle()
+                            .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
+                            .frame(width: 7, height: 7)
+                        Text("Live Map")
+                            .font(.headline)
+                    }
+                    .padding(.horizontal, 14)
+                    .frame(height: 44)
+                    .nodeScopeFloatingGlass(cornerRadius: 18)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(isConnected ? "Live Map, connected" : "Live Map, reconnecting")
+                }
+
+                Spacer()
+
+                HStack(spacing: 2) {
+                    Button(action: retry) {
+                        Image(systemName: "arrow.clockwise")
+                            .frame(width: 44, height: 44)
+                    }
+                    .disabled(isRefreshing)
+                    .accessibilityLabel("Refresh map data")
+
+                    Button(action: search) {
+                        Image(systemName: "magnifyingglass")
+                            .frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel("Search nodes")
+
+                    Menu {
+                        ForEach(MapDisplayStyle.allCases) { style in
+                            Button {
+                                mapDisplayStyle = style
+                            } label: {
+                                if mapDisplayStyle == style {
+                                    Label(style.title, systemImage: "checkmark")
+                                } else {
+                                    Label(style.title, systemImage: style.systemImage)
+                                }
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "map")
+                            .frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel("Map style")
+                }
+                .buttonStyle(.plain)
+                .nodeScopeFloatingGlass(cornerRadius: 22)
+            }
+            .foregroundStyle(.primary)
+        }
+    }
+
+    private var usesWideMapHeader: Bool {
+        horizontalSizeClass == .regular
+    }
+
     var body: some View {
         NavigationStack {
             GeometryReader { geometry in
@@ -195,7 +276,7 @@ struct MapScreen: View {
                 .mapScope(mapScope)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    if isTabActive {
+                    if isTabActive && !usesWideMapHeader {
                         if #available(iOS 27.0, *), pinsPacketSidebarToggle,
                        let togglePacketSidebar {
                         ToolbarItem(placement: .topBarPinnedTrailing) {
@@ -259,8 +340,23 @@ struct MapScreen: View {
                     }
                     }
                 }
+                .toolbarVisibility(usesWideMapHeader ? .hidden : .automatic, for: .navigationBar)
                 .navigationDestination(item: $selectedNode) { node in
                     NodeDetailScreen(node: node)
+                }
+                .overlay(alignment: .top) {
+                    if isTabActive && usesWideMapHeader {
+                        WideMapHeader(
+                            isConnected: liveFeed.isConnected,
+                            isRefreshing: isRefreshingMap,
+                            togglePacketSidebar: togglePacketSidebar,
+                            retry: retryMapLoad,
+                            search: toggleMapSearch,
+                            mapDisplayStyle: $mapDisplayStyle
+                        )
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                    }
                 }
                 .overlay(alignment: .topLeading) {
                     VStack(alignment: .leading, spacing: 8) {
@@ -287,7 +383,7 @@ struct MapScreen: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.leading, 12)
-                    .padding(.top, 12)
+                    .padding(.top, usesWideMapHeader ? 60 : 12)
                 }
                 .overlay(alignment: .bottomLeading) {
                     VStack(spacing: 10) {
