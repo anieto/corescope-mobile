@@ -410,12 +410,14 @@ struct MapScreen: View {
                         .accessibilityLabel("Center on my location")
                     }
                     .padding(.leading, 12)
-                    .padding(.bottom, 12)
+                    // MapKit reserves the lower-left corner for its logo and
+                    // legal attribution on every device class.
+                    .padding(.bottom, 36)
                 }
                 .overlay(alignment: .bottomTrailing) {
                     zoomControl
                         .padding(.trailing, 12)
-                        .padding(.bottom, 12)
+                        .padding(.bottom, 36)
                 }
                 .overlay(alignment: .bottom) {
                     if packetReplayStore.isReplayActive || isReplayMode {
