@@ -47,7 +47,7 @@ class MyNodesUiTest {
                 compose.onAllNodesWithText("Recently heard").fetchSemanticsNodes().isNotEmpty()
             }
             compose.onNodeWithText("Recently heard").performScrollTo().assertIsDisplayed()
-            compose.onNodeWithText("Load More").assertDoesNotExist()
+            compose.onNodeWithText("Load more").assertDoesNotExist()
             compose.onNodeWithContentDescription("About activity").performClick()
             compose.onNodeWithText("Done").performClick()
             compose.onNodeWithText("Test repeater").performClick()

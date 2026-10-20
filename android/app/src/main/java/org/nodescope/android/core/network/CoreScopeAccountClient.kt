@@ -65,6 +65,9 @@ class CoreScopeAccountClient(
     }
     init { require(origin.isHttps && origin.username.isEmpty() && origin.password.isEmpty()) }
 
+    /** Whether a session was restored or created; without one there is nothing to validate. */
+    val hasSession: Boolean get() = cookie != null
+
     suspend fun supportsAccounts(): Boolean {
         val body = json.parseToJsonElement(request("api/config/client", authenticated = false)).jsonObject
         return body["userManagement"]?.jsonObject?.get("enabled")?.jsonPrimitive?.booleanOrNull == true

@@ -5,6 +5,21 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Login
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material.icons.outlined.WarningAmber
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
@@ -56,8 +71,11 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
         this.client = client
         supported = client.supportsAccounts()
         if (!supported) throw AccountException(AccountException.Kind.UNSUPPORTED)
-        user = client.me()
-        reconcile(false)
+        // Like iOS, only a restored session is validated; a first visit goes straight to sign-in.
+        if (client.hasSession) {
+            user = client.me()
+            reconcile(false)
+        } else store.deactivate(origin)
     }
 
     suspend fun login(email: String, password: String, library: NodeLibrary) = action {
@@ -250,76 +268,138 @@ fun CoreScopeAccountScreen(host: String, sourceName: String?, library: NodeLibra
         dismissButton = { TextButton(onClick = { showsImport = false }) { Text("Cancel") } })
     if (showsSignOut) AlertDialog(onDismissRequest = { showsSignOut = false },
         title = { Text("Sign out of CoreScope?") },
-        text = { Text("Account selections and pending edits will be removed from this device. Existing device favorites are preserved.") },
+        text = { Text("Downloaded account selections and pending account edits will be removed from this device. Existing device favorites are preserved.") },
         confirmButton = { Column {
-            TextButton(onClick = { showsSignOut = false; scope.launch { model.logout() } }) { Text("Sign out") }
+            TextButton(onClick = { showsSignOut = false; scope.launch { model.logout() } }) { Text("Sign out", color = MaterialTheme.colorScheme.error) }
             TextButton(onClick = { showsSignOut = false; scope.launch { model.logout(library) } }) { Text("Copy selections and sign out") }
         } },
         dismissButton = { TextButton(onClick = { showsSignOut = false }) { Text("Cancel") } })
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            Card {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    FavoriteSourceIdentity(host, sourceName)
-                    Text("Manage account node selections separately from favorites saved on this device.")
-                }
+            AccountCard("Account connection", Icons.Outlined.AccountCircle) {
+                FavoriteSourceIdentity(host, sourceName)
+                Text("Manage account node selections separately from favorites saved on this device.",
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        if (model.busy) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-        model.message?.let { message -> item { Text(message, style = MaterialTheme.typography.bodySmall) } }
+        if (model.busy || model.message != null) item {
+            AccountCard(null, null) {
+                if (model.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+                model.message?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+            }
+        }
         val user = model.user
-        if (user != null) item {
-            Card {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        val paused = model.resetDocument != null
+        if (user != null) {
+            item {
+                AccountCard("Signed in", Icons.Outlined.CheckCircle) {
                     Text(user.displayName.ifBlank { user.email }, style = MaterialTheme.typography.titleMedium)
-                    Text(user.email)
-                    if (model.resetDocument != null) {
-                        Text("Account settings were reset", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-                        Text("Sync is paused. Use the server’s selections or restore your saved account favorites.")
-                        Button(onClick = { scope.launch { model.resolveReset(false) } }, enabled = !model.busy) { Text("Use server selections") }
-                        OutlinedButton(onClick = { scope.launch { model.resolveReset(true) } }, enabled = !model.busy) { Text("Restore saved account favorites") }
-                    }
-                    Button(onClick = { scope.launch { model.sync(true) } }, enabled = !model.busy && model.resetDocument == null) { Text("Sync now") }
-                    OutlinedButton(onClick = { scope.launch { model.sync(false) } }, enabled = !model.busy) { Text("Refresh from account") }
-                    Text("Sync uploads only account edits. Device favorites stay local unless you import them.", style = MaterialTheme.typography.bodySmall)
-                    TextButton(onClick = { showsImport = true }, enabled = !model.busy && model.resetDocument == null) { Text("Import device node favorites") }
+                    if (user.displayName.isNotBlank() && user.displayName != user.email) Text(user.email,
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if (paused) item {
+                AccountCard("Account settings were reset", Icons.Outlined.WarningAmber) {
+                    Text("Sync is paused. Use the server’s selections or restore your saved account favorites. Device favorites are unaffected.",
+                        style = MaterialTheme.typography.bodyMedium)
+                    Button(onClick = { scope.launch { model.resolveReset(false) } }, enabled = !model.busy, modifier = Modifier.fillMaxWidth()) { Text("Use server selections") }
+                    OutlinedButton(onClick = { scope.launch { model.resolveReset(true) } }, enabled = !model.busy, modifier = Modifier.fillMaxWidth()) { Text("Restore saved account favorites") }
+                }
+            }
+            item {
+                AccountCard("Sync & device favorites", Icons.Outlined.Sync) {
+                    Text("Sync uploads only account edits. Device favorites stay local unless you import them.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Button(onClick = { scope.launch { model.sync(true) } }, enabled = !model.busy && !paused, modifier = Modifier.fillMaxWidth()) { Text("Sync now") }
+                    OutlinedButton(onClick = { scope.launch { model.sync(false) } }, enabled = !model.busy, modifier = Modifier.fillMaxWidth()) { Text("Refresh from account") }
+                    TextButton(onClick = { showsImport = true }, enabled = !model.busy && !paused) { Text("Import device node favorites") }
                     TextButton(onClick = { scope.launch { model.copyToDevice(library) } }, enabled = !model.busy) { Text("Copy account selections to device") }
-                    HorizontalDivider()
-                    Text("Account nodes", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-                    Text("${model.selection?.favorites?.size ?: 0} favorites · ${model.claimed.size} claimed nodes")
+                }
+            }
+            item {
+                AccountCard("Account nodes", Icons.Outlined.StarBorder) {
+                    Text("${model.selection?.favorites?.size ?: 0} favorites · ${model.claimed.size} claimed nodes",
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     model.selection?.favorites?.sorted()?.forEach { key ->
-                        Text(resolvedNames[key] ?: library.node(key)?.name?.takeIf { it.isNotBlank() } ?: "Name unavailable",
-                            style = MaterialTheme.typography.titleSmall)
-                        Text("${key.take(12)}…${key.takeLast(6)}", style = MaterialTheme.typography.bodySmall)
-                        TextButton(onClick = { scope.launch { model.removeFavorite(key) } }, modifier = Modifier.semantics { contentDescription = "Remove account favorite ${resolvedNames[key] ?: library.node(key)?.name ?: key}" }, enabled = !model.busy && model.resetDocument == null) { Text("Remove account favorite") }
-                    }
-                    if (model.claimed.isNotEmpty()) {
-                        Text("Claimed nodes are managed on CoreScope. Removing a favorite does not unclaim a node.", style = MaterialTheme.typography.bodySmall)
-                        model.claimed.toSortedMap().forEach { (key, name) ->
-                            Text(name.ifBlank { resolvedNames[key] ?: library.node(key)?.name ?: "Name unavailable" })
-                            Text("${key.take(12)}…${key.takeLast(6)}", style = MaterialTheme.typography.bodySmall)
+                        val name = resolvedNames[key] ?: library.node(key)?.name?.takeIf { it.isNotBlank() }
+                        AccountNodeRow(name, key) {
+                            TextButton(onClick = { scope.launch { model.removeFavorite(key) } }, enabled = !model.busy && !paused,
+                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                                modifier = Modifier.semantics { contentDescription = "Remove account favorite ${name ?: key}" }) { Text("Remove") }
                         }
                     }
-                    TextButton(onClick = { showsSignOut = true }, enabled = !model.busy) { Text("Sign out") }
+                    if (model.claimed.isNotEmpty()) {
+                        Text("Claimed nodes are managed on CoreScope. Removing an account favorite does not unclaim a node.",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        model.claimed.toSortedMap().forEach { (key, name) ->
+                            AccountNodeRow(name.ifBlank { resolvedNames[key] ?: library.node(key)?.name ?: "" }.takeIf { it.isNotBlank() }, key) {}
+                        }
+                    }
                 }
+            }
+            item {
+                OutlinedButton(onClick = { showsSignOut = true }, enabled = !model.busy,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Sign out") }
             }
         } else if (model.supported) item {
-            Card {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedTextField(email, { email = it }, label = { Text("Email") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), enabled = !model.busy, singleLine = true)
-                    OutlinedTextField(password, { password = it }, label = { Text("Password") },
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), enabled = !model.busy, singleLine = true)
-                    Button(onClick = {
-                        val secret = password
-                        password = ""
-                        scope.launch { model.login(email, secret, library) }
-                    }, enabled = !model.busy && email.isNotBlank() && password.isNotEmpty()) { Text("Sign in") }
-                    Text("Use an existing account on this source. Your password is not saved.", style = MaterialTheme.typography.bodySmall)
-                    TextButton(onClick = { uri.openUri("https://${normalizeHost(host)}") }) { Text("Open CoreScope") }
+            AccountCard("Sign in", Icons.AutoMirrored.Outlined.Login) {
+                OutlinedTextField(email, { email = it }, label = { Text("Email") },
+                    modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.Username },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrectEnabled = false, imeAction = ImeAction.Next),
+                    enabled = !model.busy, singleLine = true)
+                OutlinedTextField(password, { password = it }, label = { Text("Password") },
+                    modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.Password },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false, imeAction = ImeAction.Done),
+                    enabled = !model.busy, singleLine = true)
+                Button(onClick = {
+                    val secret = password
+                    password = ""
+                    scope.launch { model.login(email, secret, library) }
+                }, enabled = !model.busy && email.isNotBlank() && password.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text("Sign in") }
+                Text("Use an existing account on this source. Your password is not saved.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                TextButton(onClick = { uri.openUri("https://${normalizeHost(host)}") }) {
+                    Text("Open CoreScope")
+                    Spacer(Modifier.width(6.dp))
+                    Icon(Icons.AutoMirrored.Outlined.OpenInNew, "Opens in your browser", Modifier.size(18.dp))
                 }
             }
+        } else if (!model.busy) item {
+            OutlinedButton(onClick = { scope.launch { model.open(library) } }) {
+                Icon(Icons.Outlined.Refresh, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Try again")
+            }
         }
+    }
+}
+
+/** Settings-style panel: small primary icon and label heading a surface card. */
+@Composable
+private fun AccountCard(title: String?, icon: ImageVector?, content: @Composable ColumnScope.() -> Unit) {
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (title != null) Row(Modifier.semantics { heading() }, verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                icon?.let { Icon(it, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary) }
+                Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            content()
+        }
+    }
+}
+
+@Composable
+private fun AccountNodeRow(name: String?, key: String, trailing: @Composable RowScope.() -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(name ?: "Name unavailable", style = MaterialTheme.typography.titleSmall,
+                color = if (name == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
+            Text("${key.take(12)}…${key.takeLast(6)}", style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontFamily = FontFamily.Monospace,
+                modifier = Modifier.semantics { contentDescription = "Public key $key" })
+        }
+        trailing()
     }
 }

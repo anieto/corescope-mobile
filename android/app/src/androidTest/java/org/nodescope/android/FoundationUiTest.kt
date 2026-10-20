@@ -136,7 +136,7 @@ class FoundationUiTest {
             AppShell(AppPreferences(onboarded = true, destination = "EXPLORE"), SessionState(snapshot = snapshot), {}, {}, {}, {}, {}, nodeLibrary = library)
         } }
         compose.onNodeWithText("Favorites").performScrollTo().performClick()
-        compose.onNodeWithText("Add favorite node").performClick()
+        compose.onNodeWithContentDescription("Add favorite node").performClick()
         compose.onNodeWithText("Saved node").performClick()
         compose.onNodeWithText("Favorite Nodes").assertIsDisplayed()
         compose.onNodeWithText("Saved node").performClick()

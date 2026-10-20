@@ -3,13 +3,8 @@ package org.nodescope.android.feature.explore
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Sensors
 import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.graphics.Color
-import org.nodescope.android.feature.nodes.roleColor
-import org.nodescope.android.feature.nodes.roleIcon
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,6 +18,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
+import org.nodescope.android.core.design.EmptyState
+import org.nodescope.android.core.design.SectionLabel
 import org.nodescope.android.core.design.rememberNow
 import org.nodescope.android.core.model.*
 import org.nodescope.android.core.network.*
@@ -116,14 +113,19 @@ fun MyNodesScreen(host: String, library: NodeLibrary, acquire: () -> MyNodesRepo
                         }
                     }
                     if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-                    error?.let { Text(it) }
+                    error?.let {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(it, Modifier.weight(1f), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                            TextButton(onClick = { force = true; revision++ }, enabled = !loading) { Text("Retry") }
+                        }
+                    }
                 }
             }
         }
         if (nodes.isEmpty() && observers.isEmpty()) item {
-            Text("No favorites yet. Add nodes in Favorites or save observers from their detail pages to follow them here.")
+            EmptyState(Icons.Outlined.StarBorder, "No favorites yet", "Add nodes in Favorites or save observers from their detail pages to follow them here.")
         }
-        if (nodes.isNotEmpty()) item { Text("Nodes", style = MaterialTheme.typography.titleMedium) }
+        if (nodes.isNotEmpty()) item { SectionLabel("Nodes") }
         items(nodes, key = { it.key }) { item ->
             val row = rows[item.entityId.lowercase()]
             val snapshot = row?.snapshot
@@ -134,7 +136,7 @@ fun MyNodesScreen(host: String, library: NodeLibrary, acquire: () -> MyNodesRepo
             Card(onClick = { onNode(item.entityId) }, modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ActivityItemHeading(snapshot?.node?.name ?: item.title, snapshot?.node?.role ?: item.node?.role ?: "")
+                    ActivityItemHeading(snapshot?.node?.name ?: item.title) { KindIcon(SavedKind.NODE, snapshot?.node ?: item.node) }
                     Text(when (activity?.state) {
                         MyNodesActivityState.RECENTLY_HEARD -> "Recently heard"
                         MyNodesActivityState.NOT_RECENTLY_HEARD -> "Not recently heard"
@@ -150,7 +152,7 @@ fun MyNodesScreen(host: String, library: NodeLibrary, acquire: () -> MyNodesRepo
                         MyNodesBaseState.FETCHED -> "Updated"
                         MyNodesBaseState.CACHED -> "Cached"
                         MyNodesBaseState.UNAVAILABLE -> "Unavailable on this source"
-                        MyNodesBaseState.DEFERRED -> "Not checked yet · use Load More"
+                        MyNodesBaseState.DEFERRED -> "Not checked yet · use Load more"
                         MyNodesBaseState.FAILED -> "Update failed · retry with Refresh"
                         MyNodesBaseState.RATE_LIMITED -> "Server rate limit · try later"
                         null -> "Not checked yet"
@@ -159,17 +161,15 @@ fun MyNodesScreen(host: String, library: NodeLibrary, acquire: () -> MyNodesRepo
             }
         }
         if (!loading && nodes.any { rows[it.entityId.lowercase()]?.state in listOf(null, MyNodesBaseState.DEFERRED) }) item {
-            OutlinedButton(onClick = { force = false; revision++ }, enabled = !loading) { Text("Load More") }
+            OutlinedButton(onClick = { force = false; revision++ }, enabled = !loading) { Text("Load more") }
         }
-        if (observers.isNotEmpty()) item {
-            Text("Favorite observers", style = MaterialTheme.typography.titleMedium)
-        }
+        if (observers.isNotEmpty()) item { SectionLabel("Favorite observers") }
         items(observers, key = { it.key }) { item ->
             val record = catalog?.snapshot?.observers?.firstOrNull { it.id == item.entityId }
             Card(onClick = { onObserver(item.entityId, record?.name ?: item.title) }, modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ActivityItemHeading(record?.name ?: item.title, "observer")
+                    ActivityItemHeading(record?.name ?: item.title) { KindIcon(SavedKind.OBSERVER, null) }
                     val seen = record?.lastSeen?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
                     Text(seen?.let { "Last heard ${relativeActivityDate(it, now)}" } ?: "Activity unknown", style = MaterialTheme.typography.bodyMedium)
                     catalog?.snapshot?.let { Text("Checked ${relativeActivityDate(it.fetchedAt, now)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -199,14 +199,13 @@ internal fun FavoriteSourceIdentity(host: String, sourceName: String?) {
     }
 }
 
+/** Same icon treatment as saved rows on Favorites and Explore. */
 @Composable
-private fun ActivityItemHeading(title: String, role: String) {
+private fun ActivityItemHeading(title: String, icon: @Composable () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Icon(if (role == "observer") Icons.Outlined.Sensors else roleIcon(role), null,
-            Modifier.size(42.dp).background(if (role == "observer") MaterialTheme.colorScheme.primaryContainer else roleColor(role), CircleShape).padding(10.dp),
-            tint = if (role == "observer") MaterialTheme.colorScheme.onPrimaryContainer else Color(0xFF14243A))
+        icon()
         Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-        Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

@@ -1,5 +1,25 @@
 # Android implementation progress
 
+2026-10-20 — 0.9.0 Android review: account first visit, selection cache and UI consistency.
+
+Fixes: the CoreScope account screen called `/api/auth/me` without a saved session and showed
+"Sign in again" on a first visit; like iOS it now validates only a restored session and goes
+straight to sign-in. Added iOS's Try again when the screen can't load. `AccountSelectionStore`
+decodes each account selection once per save instead of on every `favorites` read, and caches
+claimed nodes per baseline (Favorites rows read both several times per recomposition).
+
+UI aligned with the rest of the app: Favorites uses an Add icon button in the header, Activity and
+CoreScope account as `NavigationRow`s in a surface card, `EmptyState`, the gold star for removal
+(menu only when a node is both a device and account favorite), and the membership label inside the
+row. Activity uses `KindIcon`, `SectionLabel`, `EmptyState` and an error line with Retry. The account
+screen is split into iOS's cards (connection, status, signed in, reset, sync, account nodes, sign in)
+with Settings-style headings, destructive Sign out/Remove, and autofill hints on the sign-in fields.
+The Explore Favorites card uses the surface card color and the app's gold outlined star.
+
+Validation: debug app and instrumented-test APKs build; all 330 JVM tests pass; lint unchanged
+(33 pre-existing dependency/style warnings). UI tests updated for "Add favorite node" (now a content
+description) and "Load more"; instrumented tests were not run.
+
 2026-10-16 — My Nodes analytics cache and scheduler.
 
 Ported `MyNodesAnalyticsRepository`: source/session isolation, original snapshot timestamps,

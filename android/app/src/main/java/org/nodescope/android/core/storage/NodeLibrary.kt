@@ -9,6 +9,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.nodescope.android.core.model.CoreScopeAccountSelectionState
+import org.nodescope.android.core.model.CoreScopeAccountSettings
 import org.nodescope.android.core.network.CoreScopeFavoriteMerge
 import org.nodescope.android.core.network.normalizeHost
 import org.nodescope.android.core.model.MeshChannel
@@ -70,9 +71,7 @@ class NodeLibrary(document: String? = null, private val clock: () -> Long = Syst
         val labels = mutableListOf<String>()
         if (isDeviceFavorite(item)) labels += "Device"
         if (isAccountFavorite(item)) labels += "Account"
-        if (item.kind == SavedKind.NODE && accountStore?.visible(host)?.let {
-            item.entityId.lowercase() in CoreScopeFavoriteMerge.selection(it.baseline).claimed
-        } == true) labels += "Claimed"
+        if (item.kind == SavedKind.NODE && accountStore?.claimed(host)?.containsKey(item.entityId.lowercase()) == true) labels += "Claimed"
         return labels.joinToString(" · ")
     }
     fun removeAccountFavorite(item: SavedItem) { accountStore?.removeFavorite(host, item.entityId) }
@@ -222,13 +221,32 @@ class AccountSelectionStore(
         runCatching { json.decodeFromString<Map<String, Long>>(it) }.getOrNull()
     }.orEmpty())
     private var snapshots by mutableStateOf<Map<String, MeshNode>>(emptyMap())
+    // Favorites rows read the active selection several times per recomposition; decode it once per save.
+    private val decoded = mutableMapOf<String, CoreScopeAccountSelectionState>()
+    private var claimedCache: Pair<CoreScopeAccountSettings, Map<String, String>>? = null
 
-    fun load(origin: String, id: Long): CoreScopeAccountSelectionState? =
-        read(CoreScopeAccountSelectionState.key(origin, id))?.let { json.decodeFromString(it) }
+    fun load(origin: String, id: Long): CoreScopeAccountSelectionState? {
+        val key = CoreScopeAccountSelectionState.key(origin, id)
+        synchronized(decoded) { decoded[key]?.let { return it } }
+        val state = read(key)?.let { json.decodeFromString<CoreScopeAccountSelectionState>(it) } ?: return null
+        synchronized(decoded) { decoded[key] = state }
+        return state
+    }
 
     fun save(origin: String, id: Long, state: CoreScopeAccountSelectionState) {
-        write(CoreScopeAccountSelectionState.key(origin, id), json.encodeToString(state))
+        val key = CoreScopeAccountSelectionState.key(origin, id)
+        write(key, json.encodeToString(state))
+        synchronized(decoded) { decoded[key] = state }
         revision++
+    }
+
+    /** Claimed nodes of the visible account, by lowercase key. */
+    fun claimed(host: String): Map<String, String> {
+        val baseline = visible(host)?.baseline ?: return emptyMap()
+        claimedCache?.let { (settings, claimed) -> if (settings === baseline) return claimed }
+        val claimed = runCatching { CoreScopeFavoriteMerge.selection(baseline).claimed }.getOrDefault(emptyMap())
+        claimedCache = baseline to claimed
+        return claimed
     }
 
     fun activate(origin: String, id: Long) {
@@ -246,6 +264,7 @@ class AccountSelectionStore(
     fun remove(origin: String, id: Long) {
         if (active[origin] == id) deactivate(origin)
         write(CoreScopeAccountSelectionState.key(origin, id), null)
+        synchronized(decoded) { decoded.remove(CoreScopeAccountSelectionState.key(origin, id)) }
         write("$origin|$id", null)
         revision++
     }
@@ -268,7 +287,7 @@ class AccountSelectionStore(
 
     fun overlay(device: List<SavedItem>, host: String): List<SavedItem> {
         val state = visible(host) ?: return device
-        val claimed = CoreScopeFavoriteMerge.selection(state.baseline).claimed
+        val claimed = claimed(host)
         val local = device.filter { it.kind == SavedKind.NODE }.map { it.entityId.lowercase() }.toSet()
         val extra = (state.favorites + claimed.keys - local).map { key ->
             val node = snapshots["${normalizeHost(host)}|$key"] ?: MeshNode(key,
