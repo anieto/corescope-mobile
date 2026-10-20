@@ -1,0 +1,2621 @@
+[
+  {
+    "name": "exact five dB",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000000,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -5,
+          "observerID": "a"
+        }
+      ]
+    },
+    "baseline": null,
+    "trend": 5,
+    "observers": 1,
+    "significant": true,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  },
+  {
+    "name": "less than threshold",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000000,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -5.001,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5.001,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5.001,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5.001,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -5.001,
+          "observerID": "a"
+        }
+      ]
+    },
+    "baseline": null,
+    "trend": 4.999,
+    "observers": 1,
+    "significant": false,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  },
+  {
+    "name": "negative delta",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000000,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -15,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -15,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -15,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -15,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -15,
+          "observerID": "a"
+        }
+      ]
+    },
+    "baseline": null,
+    "trend": -5,
+    "observers": 1,
+    "significant": true,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  },
+  {
+    "name": "four samples",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000000,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5,
+          "observerID": "a"
+        }
+      ]
+    },
+    "baseline": null,
+    "trend": null,
+    "observers": 0,
+    "significant": false,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  },
+  {
+    "name": "mixed observations caveat",
+    "current": {
+      "method": "mixedObservations",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000000,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -5,
+          "observerID": "a"
+        }
+      ]
+    },
+    "baseline": null,
+    "trend": 5,
+    "observers": 0,
+    "significant": false,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  },
+  {
+    "name": "unknown",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "unknown",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000000,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -5,
+          "observerID": "a"
+        }
+      ]
+    },
+    "baseline": null,
+    "trend": null,
+    "observers": 0,
+    "significant": false,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  },
+  {
+    "name": "partial",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "partial",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000000,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -5,
+          "observerID": "a"
+        }
+      ]
+    },
+    "baseline": null,
+    "trend": null,
+    "observers": 0,
+    "significant": false,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  },
+  {
+    "name": "unsupported",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "unsupported",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000000,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -5,
+          "observerID": "a"
+        }
+      ]
+    },
+    "baseline": null,
+    "trend": null,
+    "observers": 0,
+    "significant": false,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  },
+  {
+    "name": "coverage gap",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600001,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000000,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -5,
+          "observerID": "a"
+        }
+      ]
+    },
+    "baseline": null,
+    "trend": null,
+    "observers": 0,
+    "significant": false,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  },
+  {
+    "name": "stale fetch",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000900001,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -5,
+          "observerID": "a"
+        }
+      ]
+    },
+    "baseline": null,
+    "trend": null,
+    "observers": 0,
+    "significant": false,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  },
+  {
+    "name": "future fetch",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 999999999,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -5,
+          "observerID": "a"
+        }
+      ]
+    },
+    "baseline": null,
+    "trend": null,
+    "observers": 0,
+    "significant": false,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  },
+  {
+    "name": "not one day",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600001,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000000,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -5,
+          "observerID": "a"
+        }
+      ]
+    },
+    "baseline": null,
+    "trend": null,
+    "observers": 0,
+    "significant": false,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  },
+  {
+    "name": "receiver replacement",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000000,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -5,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -5,
+          "observerID": "b"
+        }
+      ]
+    },
+    "baseline": null,
+    "trend": null,
+    "observers": 0,
+    "significant": false,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  },
+  {
+    "name": "blank identities",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000000,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -10,
+          "observerID": "  "
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -10,
+          "observerID": "  "
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -10,
+          "observerID": "  "
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -10,
+          "observerID": "  "
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -10,
+          "observerID": "  "
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -5,
+          "observerID": "  "
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5,
+          "observerID": "  "
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5,
+          "observerID": "  "
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5,
+          "observerID": "  "
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -5,
+          "observerID": "  "
+        }
+      ]
+    },
+    "baseline": null,
+    "trend": null,
+    "observers": 0,
+    "significant": false,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  },
+  {
+    "name": "end excluded loses fifth sample",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000000,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 1000000000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -5,
+          "observerID": "a"
+        }
+      ]
+    },
+    "baseline": null,
+    "trend": null,
+    "observers": 0,
+    "significant": false,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  },
+  {
+    "name": "outside window loses fifth sample",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000000,
+      "samples": [
+        {
+          "timestamp": 827201000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -5,
+          "observerID": "a"
+        }
+      ]
+    },
+    "baseline": null,
+    "trend": null,
+    "observers": 0,
+    "significant": false,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  },
+  {
+    "name": "median of receiver deltas not pooled samples",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000000,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601000,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601005,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601006,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601007,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601008,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601009,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601010,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601011,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601012,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601013,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601014,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601015,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601016,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601017,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601018,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601019,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601020,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601021,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601022,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601023,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601024,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601025,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601026,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601027,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601028,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601029,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601030,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601031,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601032,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601033,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601034,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601035,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601036,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601037,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601038,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601039,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601040,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601041,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601042,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601043,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601044,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601045,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601046,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601047,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601048,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 913601049,
+          "snr": -100,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -85,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -85,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -85,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -85,
+          "observerID": "b"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -85,
+          "observerID": "b"
+        }
+      ]
+    },
+    "baseline": null,
+    "trend": 10,
+    "observers": 2,
+    "significant": true,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  },
+  {
+    "name": "nonoverlapping visits",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000000,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -5,
+          "observerID": "a"
+        }
+      ]
+    },
+    "baseline": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 913600000,
+        "requestedFrom": 827200000,
+        "requestedTo": 913600000,
+        "coveredFrom": 827200000,
+        "coveredTo": 913600000
+      },
+      "evaluatedAt": 913600000,
+      "samples": [
+        {
+          "timestamp": 827201000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400004,
+          "snr": -10,
+          "observerID": "a"
+        }
+      ]
+    },
+    "trend": 0,
+    "observers": 1,
+    "significant": false,
+    "visit": 5,
+    "visitObservers": 1,
+    "visitSignificant": true
+  },
+  {
+    "name": "visits too close",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000000,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -5,
+          "observerID": "a"
+        }
+      ]
+    },
+    "baseline": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 913600001,
+        "requestedFrom": 827200001,
+        "requestedTo": 913600001,
+        "coveredFrom": 827200001,
+        "coveredTo": 913600001
+      },
+      "evaluatedAt": 913600001,
+      "samples": [
+        {
+          "timestamp": 827201001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201005,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400005,
+          "snr": -10,
+          "observerID": "a"
+        }
+      ]
+    },
+    "trend": 0,
+    "observers": 1,
+    "significant": false,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  },
+  {
+    "name": "overlapping windows despite day apart",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000001,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -5,
+          "observerID": "a"
+        }
+      ]
+    },
+    "baseline": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 913600001,
+        "requestedFrom": 827200001,
+        "requestedTo": 913600001,
+        "coveredFrom": 827200001,
+        "coveredTo": 913600001
+      },
+      "evaluatedAt": 913600001,
+      "samples": [
+        {
+          "timestamp": 827201000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400004,
+          "snr": -10,
+          "observerID": "a"
+        }
+      ]
+    },
+    "trend": 0,
+    "observers": 1,
+    "significant": false,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  },
+  {
+    "name": "seven day visit boundary",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000000,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -5,
+          "observerID": "a"
+        }
+      ]
+    },
+    "baseline": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 395200000,
+        "requestedFrom": 308800000,
+        "requestedTo": 395200000,
+        "coveredFrom": 308800000,
+        "coveredTo": 395200000
+      },
+      "evaluatedAt": 395200000,
+      "samples": [
+        {
+          "timestamp": 308801000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 308801001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 308801002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 308801003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 308801004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 352000000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 352000001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 352000002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 352000003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 352000004,
+          "snr": -10,
+          "observerID": "a"
+        }
+      ]
+    },
+    "trend": 0,
+    "observers": 1,
+    "significant": false,
+    "visit": 5,
+    "visitObservers": 1,
+    "visitSignificant": true
+  },
+  {
+    "name": "expired visit",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000000,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -5,
+          "observerID": "a"
+        }
+      ]
+    },
+    "baseline": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 395199999,
+        "requestedFrom": 308799999,
+        "requestedTo": 395199999,
+        "coveredFrom": 308799999,
+        "coveredTo": 395199999
+      },
+      "evaluatedAt": 395199999,
+      "samples": [
+        {
+          "timestamp": 308800999,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 308801000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 308801001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 308801002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 308801003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 351999999,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 352000000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 352000001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 352000002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 352000003,
+          "snr": -10,
+          "observerID": "a"
+        }
+      ]
+    },
+    "trend": 0,
+    "observers": 1,
+    "significant": false,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  },
+  {
+    "name": "partial baseline",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000000,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -5,
+          "observerID": "a"
+        }
+      ]
+    },
+    "baseline": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "partial",
+        "fetchedAt": 913600000,
+        "requestedFrom": 827200000,
+        "requestedTo": 913600000,
+        "coveredFrom": 827200000,
+        "coveredTo": 913600000
+      },
+      "evaluatedAt": 913600000,
+      "samples": [
+        {
+          "timestamp": 827201000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400004,
+          "snr": -10,
+          "observerID": "a"
+        }
+      ]
+    },
+    "trend": 0,
+    "observers": 1,
+    "significant": false,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  },
+  {
+    "name": "method change",
+    "current": {
+      "method": "matchedObservers",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000000,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -5,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -5,
+          "observerID": "a"
+        }
+      ]
+    },
+    "baseline": {
+      "method": "mixedObservations",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 913600000,
+        "requestedFrom": 827200000,
+        "requestedTo": 913600000,
+        "coveredFrom": 827200000,
+        "coveredTo": 913600000
+      },
+      "evaluatedAt": 913600000,
+      "samples": [
+        {
+          "timestamp": 827201000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400004,
+          "snr": -10,
+          "observerID": "a"
+        }
+      ]
+    },
+    "trend": 0,
+    "observers": 1,
+    "significant": false,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  },
+  {
+    "name": "mixed visits no event",
+    "current": {
+      "method": "mixedObservations",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 1000000000,
+        "requestedFrom": 913600000,
+        "requestedTo": 1000000000,
+        "coveredFrom": 913600000,
+        "coveredTo": 1000000000
+      },
+      "evaluatedAt": 1000000000,
+      "samples": [
+        {
+          "timestamp": 913601000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 913601004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 956800004,
+          "snr": -10,
+          "observerID": "a"
+        }
+      ]
+    },
+    "baseline": {
+      "method": "mixedObservations",
+      "evidence": {
+        "completeness": "complete",
+        "fetchedAt": 913600000,
+        "requestedFrom": 827200000,
+        "requestedTo": 913600000,
+        "coveredFrom": 827200000,
+        "coveredTo": 913600000
+      },
+      "evaluatedAt": 913600000,
+      "samples": [
+        {
+          "timestamp": 827201000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 827201004,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400000,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400001,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400002,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400003,
+          "snr": -10,
+          "observerID": "a"
+        },
+        {
+          "timestamp": 870400004,
+          "snr": -10,
+          "observerID": "a"
+        }
+      ]
+    },
+    "trend": 0,
+    "observers": 0,
+    "significant": false,
+    "visit": null,
+    "visitObservers": 0,
+    "visitSignificant": false
+  }
+]

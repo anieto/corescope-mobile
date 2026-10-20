@@ -1,0 +1,134 @@
+[
+  {
+    "completeness": "complete",
+    "fetchedAt": 2000000,
+    "requestedFrom": 100000,
+    "requestedTo": 1900000,
+    "coveredFrom": 100000,
+    "coveredTo": 1900000,
+    "now": 2000000,
+    "expected": true,
+    "name": "complete"
+  },
+  {
+    "completeness": null,
+    "fetchedAt": 2000000,
+    "requestedFrom": 100000,
+    "requestedTo": 1900000,
+    "coveredFrom": 100000,
+    "coveredTo": 1900000,
+    "now": 2000000,
+    "expected": false,
+    "name": "missing-context"
+  },
+  {
+    "completeness": "partial",
+    "fetchedAt": 2000000,
+    "requestedFrom": 100000,
+    "requestedTo": 1900000,
+    "coveredFrom": 100000,
+    "coveredTo": 1900000,
+    "now": 2000000,
+    "expected": false,
+    "name": "partial"
+  },
+  {
+    "completeness": "unsupported",
+    "fetchedAt": 2000000,
+    "requestedFrom": 100000,
+    "requestedTo": 1900000,
+    "coveredFrom": 100000,
+    "coveredTo": 1900000,
+    "now": 2000000,
+    "expected": false,
+    "name": "unsupported"
+  },
+  {
+    "completeness": "complete",
+    "fetchedAt": 2000000,
+    "requestedFrom": 100000,
+    "requestedTo": 1900000,
+    "coveredFrom": null,
+    "coveredTo": 1900000,
+    "now": 2000000,
+    "expected": false,
+    "name": "missing-bound"
+  },
+  {
+    "completeness": "complete",
+    "fetchedAt": 2000000,
+    "requestedFrom": 100000,
+    "requestedTo": 1900000,
+    "coveredFrom": 100001,
+    "coveredTo": 1900000,
+    "now": 2000000,
+    "expected": false,
+    "name": "short-history"
+  },
+  {
+    "completeness": "complete",
+    "fetchedAt": 2000000,
+    "requestedFrom": 100000,
+    "requestedTo": 1900000,
+    "coveredFrom": 1950000,
+    "coveredTo": 1900000,
+    "now": 2000000,
+    "expected": false,
+    "name": "inverted-history"
+  },
+  {
+    "completeness": "complete",
+    "fetchedAt": 2000000,
+    "requestedFrom": 100000,
+    "requestedTo": 1900000,
+    "coveredFrom": 100000,
+    "coveredTo": 1900000,
+    "now": 2900000,
+    "expected": true,
+    "name": "freshness-boundary"
+  },
+  {
+    "completeness": "complete",
+    "fetchedAt": 2000000,
+    "requestedFrom": 100000,
+    "requestedTo": 1900000,
+    "coveredFrom": 100000,
+    "coveredTo": 1900000,
+    "now": 2900001,
+    "expected": false,
+    "name": "stale"
+  },
+  {
+    "completeness": "complete",
+    "fetchedAt": 2000000,
+    "requestedFrom": 100000,
+    "requestedTo": 1900000,
+    "coveredFrom": 100000,
+    "coveredTo": 1900000,
+    "now": 1999999,
+    "expected": false,
+    "name": "clock-rollback"
+  },
+  {
+    "completeness": "complete",
+    "fetchedAt": 2000000,
+    "requestedFrom": 100000,
+    "requestedTo": 2100000,
+    "coveredFrom": 100000,
+    "coveredTo": 2100000,
+    "now": 2000000,
+    "expected": false,
+    "name": "future-window"
+  },
+  {
+    "completeness": "complete",
+    "fetchedAt": 2000000,
+    "requestedFrom": 1900000,
+    "requestedTo": 1900000,
+    "coveredFrom": 100000,
+    "coveredTo": 1900000,
+    "now": 2000000,
+    "expected": false,
+    "name": "empty-window"
+  }
+]

@@ -16,3 +16,7 @@ local.properties
 *.keystore
 *.apk
 *.aab
+
+# Python contract-tool caches
+__pycache__/
+*.py[cod]

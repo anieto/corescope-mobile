@@ -20,6 +20,164 @@ import org.nodescope.android.core.network.*
 
 /** Mirrors iOS BeaconAPITests: REST client, readers, backend and source resolution. */
 class BeaconApiTest {
+    @Test fun myNodesBaseAdaptersUseOneExactLookupAndWarmCache() = runBlocking {
+        val coreFake = FakeBeacon(mutableMapOf("/api/nodes/$nodeKey" to
+            Triple(200, """{"node":{"public_key":"$nodeKey","role":"repeater"}}""", null),
+            "/api/observers" to Triple(200, """{"observers":[{"id":"remembered"}]}""", null)))
+        val core = MyNodesBaseRepository.coreScope("${java.util.UUID.randomUUID()}.invalid", client(coreFake), AnalyzerSourceSession())
+        assertEquals(MyNodesBaseState.FETCHED, core.load(listOf(nodeKey)).first().state)
+        assertEquals(MyNodesBaseState.CACHED, core.load(listOf(nodeKey)).first().state)
+        assertEquals(2, coreFake.requests.size)
+        assertEquals(MyNodesCatalogCompleteness.UNKNOWN, core.observers().snapshot?.completeness)
+        assertEquals(MyNodesBaseState.CACHED, core.observers().state)
+        val beaconFake = FakeBeacon(mutableMapOf("nodes?pubkey=$nodeKey" to Triple(200, body("node-by-pubkey.json").toString(), null),
+            "observers?limit=200" to Triple(200, body("observers-page.json").toString(), null)))
+        val beacon = MyNodesBaseRepository.beacon(api(beaconFake), info)
+        assertEquals(MyNodesBaseState.FETCHED, beacon.load(listOf(nodeKey)).first().state)
+        assertEquals(MyNodesBaseState.CACHED, beacon.load(listOf(nodeKey)).first().state)
+        assertEquals(2, beaconFake.requests.size)
+        assertEquals(MyNodesCatalogCompleteness.COMPLETE, beacon.observers().snapshot?.completeness)
+        assertEquals(MyNodesBaseState.CACHED, beacon.observers().state)
+    }
+
+    @Test fun myNodesBaseCoreScope404IsUnavailable() = runBlocking {
+        val fake = FakeBeacon(mutableMapOf("/api/nodes/$nodeKey" to Triple(404, "{}", null)))
+        val repository = MyNodesBaseRepository.coreScope("${java.util.UUID.randomUUID()}.invalid", client(fake), AnalyzerSourceSession())
+        assertEquals(MyNodesBaseState.UNAVAILABLE, repository.load(listOf(nodeKey)).first().state)
+    }
+
+    @Test fun myNodesBaseCoreScopeKeepsNewestValidActivity() = runBlocking {
+        val fake = FakeBeacon(mutableMapOf("/api/nodes/$nodeKey" to Triple(200,
+            """{"node":{"public_key":"$nodeKey","role":"repeater","last_seen":"2026-10-15T12:00:00Z","last_heard":"2026-10-16T12:00:00Z"}}""", null)))
+        val repository = MyNodesBaseRepository.coreScope("${java.util.UUID.randomUUID()}.invalid", client(fake), AnalyzerSourceSession())
+        assertEquals("2026-10-16T12:00:00Z", repository.load(listOf(nodeKey)).first().snapshot?.node?.lastSeen)
+    }
+
+    @Test fun myNodesCoreScopeRepositoryUsesDayEndpointAndWarmCache() = runBlocking {
+        val fake = FakeBeacon(mutableMapOf(
+            "/api/nodes/$nodeKey/analytics?days=1" to Triple(200, """{
+                "node":{"public_key":"$nodeKey","role":"repeater","last_seen":"2026-10-16T12:00:00Z"},
+                "timeRange":{"from":"2026-10-15T12:00:00Z","to":"2026-10-16T12:00:00Z","days":1},
+                "computedStats":{"totalPackets":0,"avgPacketsPerDay":0}}
+            """, null)))
+        val repository = MyNodesAnalyticsRepository.coreScope("${java.util.UUID.randomUUID()}.invalid", client(fake), AnalyzerSourceSession())
+        val first = repository.load(listOf(nodeKey)).first()
+        assertEquals(MyNodesAnalyticsState.FETCHED, first.state)
+        assertEquals(org.nodescope.android.core.model.MyNodesCompleteness.UNKNOWN, first.snapshot?.evidence?.completeness)
+        val second = repository.load(listOf(nodeKey)).first()
+        assertEquals(MyNodesAnalyticsState.CACHED, second.state)
+        assertEquals(first.snapshot?.evidence?.fetchedAt, second.snapshot?.evidence?.fetchedAt)
+        assertEquals(1, fake.requests.size)
+    }
+
+    @Test fun myNodesBeaconRepositoryUsesBoundedReaderAndWarmCache() = runBlocking {
+        val fake = FakeBeacon(mutableMapOf(
+            "nodes?pubkey=$nodeKey" to Triple(200, body("node-by-pubkey.json").toString(), null),
+            "nodes/$nodeId/observations?limit=200" to Triple(200, body("node-observations.json").toString(), null),
+        ))
+        val repository = MyNodesAnalyticsRepository.beacon(api(fake), info)
+        val first = repository.load(listOf(nodeKey)).first()
+        assertEquals(MyNodesAnalyticsState.FETCHED, first.state)
+        assertEquals(org.nodescope.android.core.model.AnalyticsCountUnit.OBSERVATIONS, first.snapshot?.analytics?.context?.countUnit)
+        assertEquals(MyNodesAnalyticsState.CACHED, repository.load(listOf(nodeKey)).first().state)
+        assertEquals(2, fake.requests.size)
+    }
+
+    @Test fun myNodesCoreScopeRetryAfterIsSharedAcrossBatches() = runBlocking {
+        val fake = FakeBeacon(mutableMapOf("test" to Triple(429, "{}", "300")))
+        val http = client(fake)
+        val testHost = "${java.util.UUID.randomUUID()}.invalid"
+        val first = http.myNodesBodies(MyNodesRequestBudget(), "abc")
+        val earliest = System.currentTimeMillis() + 290_000
+        val error = runCatching { first.read(endpoint(testHost, "api", "v1", "test")) }.exceptionOrNull()
+        assertTrue(error is BeaconApiException.RateLimited)
+        assertTrue((error as BeaconApiException.RateLimited).untilMillis >= earliest)
+        val budget = MyNodesRequestBudget()
+        val second = http.myNodesBodies(budget, "def")
+        assertTrue(runCatching { second.read(endpoint(testHost, "must-not-load")) }.exceptionOrNull() is BeaconApiException.RateLimited)
+        repeat(20) { assertTrue(budget.perform { true }) }
+        assertEquals(1, fake.requests.size)
+    }
+
+    @Test fun myNodesHistoryRetainsPartialPagesWithinBothLimits() = runBlocking {
+        for (maximumRequests in listOf(2, 20)) {
+            val items = body("node-observations.json").jsonObject.getValue("items")
+            val routes = mutableMapOf("nodes?pubkey=$nodeKey" to Triple(200, body("node-by-pubkey.json").toString(), null as String?))
+            repeat(3) { index ->
+                val path = "nodes/$nodeId/observations?limit=200" + if (index == 0) "" else "&cursor=page-$index"
+                routes[path] = Triple(200, page(items, true, JsonPrimitive("page-${index + 1}")), null)
+            }
+            val fake = FakeBeacon(routes)
+            val history = checkNotNull(BeaconNodeReader(api(fake), info).myNodesObservationHistory(
+                nodeKey, 0, MyNodesRequestBudget(maximumRequests = maximumRequests)))
+            assertFalse(history.isComplete)
+            assertEquals(minOf(maximumRequests, 4), history.requestCount)
+            assertEquals(minOf(maximumRequests, 4), fake.requests.size)
+            assertEquals(8, history.observations.size)
+        }
+    }
+
+
+    @Test fun myNodesBudgetCountsLookupAndPagesAndSurvivesSessionReplacement() = runBlocking {
+        val fake = FakeBeacon(mutableMapOf(
+            "nodes?pubkey=$nodeKey" to Triple(200, body("node-by-pubkey.json").toString(), null),
+            "nodes/$nodeId/observations?limit=200" to Triple(200, body("node-observations.json").toString(), null),
+        ))
+        val budget = MyNodesRequestBudget(maximumRequests = 2)
+        val scoped = api(fake).budgetingRequests(budget, nodeKey)
+        val history = checkNotNull(BeaconNodeReader(scoped, info).observationHistory(nodeKey, 0, maximumPages = 3))
+        assertTrue(history.isComplete)
+        assertEquals(2, fake.requests.size)
+        val failure = runCatching { scoped.replacingSourceSession(AnalyzerSourceSession()).serverInfo() }.exceptionOrNull()
+        assertEquals(MyNodesBudgetFailure.EXHAUSTED, (failure as MyNodesBudgetException).reason)
+        assertEquals(2, fake.requests.size)
+    }
+
+    @Test fun myNodesHTTPFailuresConsumeAllowanceWithoutChangingNormalClients() = runBlocking {
+        val fake = FakeBeacon(mutableMapOf("test" to Triple(503, "{}", null)))
+        val http = client(fake)
+        val scoped = http.myNodesBodies(MyNodesRequestBudget(maximumPerNode = 2), "abc")
+        val url = endpoint(host, "api", "v1", "test")
+        repeat(2) { assertTrue(runCatching { scoped.read(url) }.exceptionOrNull() is HttpFailure) }
+        val failure = runCatching { scoped.read(url) }.exceptionOrNull() as MyNodesBudgetException
+        assertEquals(MyNodesBudgetFailure.NODE_EXHAUSTED, failure.reason)
+        assertEquals(2, fake.requests.size)
+        assertTrue(runCatching { http.read(url) }.exceptionOrNull() is HttpFailure)
+        assertEquals(3, fake.requests.size)
+    }
+
+    @Test fun myNodesCooldownDoesNotSpendAnotherRequest() = runBlocking {
+        val fake = FakeBeacon(mutableMapOf("info" to Triple(429, "{}", "60")))
+        val budget = MyNodesRequestBudget(maximumRequests = 2)
+        val scoped = api(fake).budgetingRequests(budget, "abc")
+        repeat(2) { assertTrue(runCatching { scoped.serverInfo() }.exceptionOrNull() is BeaconApiException.RateLimited) }
+        assertEquals(1, fake.requests.size)
+        assertTrue(budget.perform { true })
+        val failure = runCatching { budget.perform { true } }.exceptionOrNull() as MyNodesBudgetException
+        assertEquals(MyNodesBudgetFailure.EXHAUSTED, failure.reason)
+    }
+
+    @Test fun myNodesInvalidationPreventsHTTP() = runBlocking {
+        val fake = FakeBeacon()
+        val budget = MyNodesRequestBudget()
+        val scoped = client(fake).myNodesBodies(budget, "abc")
+        budget.invalidate()
+        val failure = runCatching { scoped.read(endpoint(host, "must-not-load")) }.exceptionOrNull() as MyNodesBudgetException
+        assertEquals(MyNodesBudgetFailure.INVALIDATED, failure.reason)
+        assertTrue(fake.requests.isEmpty())
+    }
+
+    @Test fun myNodesTransportDisablesImplicitFollowups() {
+        val base = OkHttpClient()
+        val scoped = base.forMyNodes()
+        assertFalse(scoped.followRedirects)
+        assertFalse(scoped.followSslRedirects)
+        assertFalse(scoped.retryOnConnectionFailure)
+        assertNull(scoped.cache)
+        assertSame(okhttp3.Authenticator.NONE, scoped.authenticator)
+        assertTrue(base.followRedirects)
+    }
+
     private val host = "beacon.example"
     private val info = BeaconServerInfo("2.0.3")
 
@@ -308,7 +466,10 @@ class BeaconApiTest {
             "nodes?pubkey=$nodeKey" to Triple(200, body("node-by-pubkey.json").toString(), null),
             "nodes/$nodeId/observations?limit=200" to Triple(200, body("node-observations.json").toString(), null),
         ))
-        val analytics = BeaconBackend(api(fake), info).nodeAnalytics(host, nodeKey, 30)
+        // Keep the retention window anchored to the fixture, independent of the test date.
+        val fixtureNow = body("node-observations.json").jsonObject.getValue("items").jsonArray
+            .maxOf { it.jsonObject.getValue("heardAt").jsonPrimitive.long } + 1_000
+        val analytics = BeaconBackend(api(fake), info, now = { fixtureNow }).nodeAnalytics(host, nodeKey, 30)
         val context = checkNotNull(analytics.context)
         assertEquals(org.nodescope.android.core.model.AnalyticsCountUnit.OBSERVATIONS, context.countUnit)
         assertEquals(org.nodescope.android.core.model.AnalyticsCompleteness.PARTIAL, context.completeness)

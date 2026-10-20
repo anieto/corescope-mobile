@@ -37,6 +37,14 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     val monitoredChannels: MonitoredChannelStore get() = container.monitoredChannels
     val diagnostics: AnalyzerDiagnostics get() = container.diagnostics
     val cacheStorage: CacheStorage get() = container.cacheStorage
+    val myNodesSnapshots get() = container.myNodesStorage.snapshots
+    fun myNodesRepositories(): MyNodesRepositories {
+        val selected = sourceStatus.value
+        check(selected.ready)
+        selected.session.checkCurrent()
+        return selected.beacon?.let { container.myNodesStorage.beacon(it.client, it.serverInfo) }
+            ?: container.myNodesStorage.coreScope(checkNotNull(selected.host), container.client, selected.session)
+    }
     val sourceIcons: org.nodescope.android.core.storage.SourceIcons get() = container.sourceIcons
     private val linkState = MutableStateFlow<PendingLink?>(null)
     /** A `nodescope://` link waiting to be opened; kept until the app shell is ready (after onboarding). */

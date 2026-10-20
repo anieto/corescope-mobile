@@ -159,16 +159,16 @@ fun StorageScreen(storage: CacheStorage, onCleared: () -> Unit) {
     var confirm by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { usage = storage.usage(); busy = false }
     if (confirm) AlertDialog(onDismissRequest = { confirm = false }, title = { Text("Clear cached data?") },
-        text = { Text("Downloaded map tiles and temporary files will be removed. Favorites, monitored channels and keys, recent items, appearance, and analyzer settings will be kept.") },
+        text = { Text("Downloaded map tiles, temporary files, and Favorites activity comparison snapshots will be removed. Favorites, monitored channels and keys, recent items, appearance, and analyzer settings will be kept.") },
         confirmButton = {
             TextButton(onClick = {
                 confirm = false
                 busy = true
                 scope.launch {
-                    error = storage.clear()?.let { "Map tiles couldn't be fully cleared: $it" }
+                    error = storage.clear()
                     onCleared()
                     usage = storage.usage()
-                    clearedAt = System.currentTimeMillis()
+                    clearedAt = if (error == null) System.currentTimeMillis() else null
                     busy = false
                 }
             }) { Text("Clear cached data", color = MaterialTheme.colorScheme.error) }
@@ -192,6 +192,7 @@ fun StorageScreen(storage: CacheStorage, onCleared: () -> Unit) {
             Section("What is cached", footer = "Favorites, monitored-channel keys, recent items, app preferences, and your selected analyzer are stored separately and are never removed here.") {
                 ContentRow("Map tiles", "Basemap tiles, fonts and styles downloaded while you use the map", Icons.Outlined.Map)
                 ContentRow("Temporary files", "Short-lived data the app and system keep to speed things up", Icons.Outlined.Autorenew)
+                ContentRow("Favorites activity snapshots", "Saved comparisons reset when you clear cached data", Icons.Outlined.Autorenew)
                 ContentRow("Analyzer responses", "Kept in memory while the app is open and refreshed when you clear", Icons.Outlined.Dns)
             }
         }

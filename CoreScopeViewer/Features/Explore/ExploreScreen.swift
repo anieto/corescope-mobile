@@ -20,7 +20,6 @@ struct ExploreScreen: View {
     @State private var observerViewModel = ObserversViewModel()
     @State private var channelViewModel = ChannelsViewModel()
     @State private var searchPackets: [Packet] = []
-    @State private var isAddFavoritePresented = false
     @State private var isSearchPresented = false
     @State private var lastHandledNavigationRequestID: UUID?
 
@@ -33,9 +32,7 @@ struct ExploreScreen: View {
                     List {
                 ExploreHeader(
                     count: visibleItems.count,
-                    canReorder: canReorder,
-                    search: { isSearchPresented = true },
-                    addFavorite: { isAddFavoritePresented = true }
+                    search: { isSearchPresented = true }
                 )
                     .favoritesListRow(top: 18, bottom: 10)
 
@@ -48,12 +45,7 @@ struct ExploreScreen: View {
                     isLoading: searchIsLoading,
                     showActiveNodes: appNavigationStore.showActiveNodes,
                     showActiveObservers: appNavigationStore.showActiveObservers,
-                    showLivePackets: { navigationPath.append(ExploreDestination.livePackets) },
-                    showFavorites: {
-                        withAnimation {
-                            proxy.scrollTo(ExploreScrollTarget.favorites, anchor: .top)
-                        }
-                    }
+                    showLivePackets: { navigationPath.append(ExploreDestination.livePackets) }
                 )
                 .favoritesListRow(top: 0, bottom: 8)
 
@@ -63,6 +55,32 @@ struct ExploreScreen: View {
                     hasContent: !nodeViewModel.nodes.isEmpty,
                     retry: { Task { await refreshFavoriteNodes() } }
                 )
+                .favoritesListRow(top: 0, bottom: 16)
+
+                Button {
+                    navigationPath.append(ExploreDestination.favorites)
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "star.fill")
+                            .font(.title3)
+                            .foregroundStyle(NodeScopeStyle.signal)
+                            .accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("Favorites").font(.headline).foregroundStyle(.primary)
+                            Text("\(visibleItems.count) saved items · View activity")
+                                .font(.subheadline).foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                            .accessibilityHidden(true)
+                    }
+                    .padding(16)
+                    .instrumentCard()
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
                 .favoritesListRow(top: 0, bottom: 14)
 
                 if visibleItems.isEmpty && visibleRecentItems.isEmpty {
@@ -75,9 +93,6 @@ struct ExploreScreen: View {
                     .favoritesListRow(top: 0, bottom: 14)
                 }
 
-                favoriteSection(kind: .channel, title: "Channels")
-                favoriteSection(kind: .node, title: "Nodes")
-                favoriteSection(kind: .observer, title: "Observers")
                 recentSection
             }
             .scrollContentBackground(.hidden)
@@ -103,19 +118,15 @@ struct ExploreScreen: View {
                 switch destination {
                 case .livePackets:
                     PacketFeedScreen()
+                case .favorites:
+                    FavoritesScreen(items: visibleItems, nodes: nodeViewModel.nodes,
+                        isLoading: nodeViewModel.isLoading, errorMessage: nodeViewModel.errorMessage)
+                case .activity:
+                    MyNodesScreen(isTabActive: isTabActive).id(settings.sourceSession.id)
                 }
             }
                 }
             }
-        }
-        .sheet(isPresented: $isAddFavoritePresented) {
-            FavoriteNodeFinder(
-                nodes: nodeViewModel.nodes,
-                isLoading: nodeViewModel.isLoading,
-                errorMessage: nodeViewModel.errorMessage
-            )
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isSearchPresented) {
             GlobalSearchSheet(
@@ -134,7 +145,6 @@ struct ExploreScreen: View {
         }
         .onChange(of: resetID) {
             navigationPath = NavigationPath()
-            isAddFavoritePresented = false
             isSearchPresented = false
         }
         .onChange(of: settings.sourceSession.id) { updateVisibleItems() }
@@ -168,6 +178,7 @@ struct ExploreScreen: View {
                     return
                 }
                 guard !Task.isCancelled else { return }
+                guard navigationPath.isEmpty else { continue }
                 await refreshFavoriteNodes()
             }
         }
@@ -194,51 +205,6 @@ struct ExploreScreen: View {
                     .textCase(nil)
                 }
             }
-        }
-    }
-
-    @ViewBuilder
-    private func favoriteSection(kind: FavoriteKind, title: LocalizedStringKey) -> some View {
-        let items = visibleItems.filter { $0.kind == kind }
-        if !items.isEmpty {
-            Section {
-                ForEach(items) { item in
-                    favoriteRow(item)
-                        .id(scrollTarget(for: item))
-                }
-                .onMove { source, destination in
-                    moveFavorites(items, kind: kind, from: source, to: destination)
-                }
-            } header: {
-                Text(title)
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func favoriteRow(_ item: FavoriteItem) -> some View {
-        if let node = item.node {
-            NavigationLink(value: node) {
-                FavoriteRow(item: item)
-            }
-            .favoriteRowStyle(remove: { favoritesStore.remove(item) })
-            .nodeQuickActions(node)
-        } else if let observer = item.observer {
-            NavigationLink(value: observer) {
-                FavoriteRow(item: item)
-            }
-            .favoriteRowStyle(remove: { favoritesStore.remove(item) })
-        } else if let channel = item.channel {
-            NavigationLink(value: channel) {
-                FavoriteRow(item: item)
-            }
-            .favoriteRowStyle(remove: { favoritesStore.remove(item) })
-        } else {
-            FavoriteRow(item: item)
-                .favoriteRowStyle(remove: { favoritesStore.remove(item) })
         }
     }
 
@@ -342,19 +308,6 @@ struct ExploreScreen: View {
         )
     }
 
-    private var firstFavoriteID: String? {
-        for kind in [FavoriteKind.channel, .node, .observer] {
-            if let item = visibleItems.first(where: { $0.kind == kind }) {
-                return item.id
-            }
-        }
-        return nil
-    }
-
-    private func scrollTarget(for item: FavoriteItem) -> ExploreScrollTarget {
-        item.id == firstFavoriteID ? .favorites : .favorite(item.id)
-    }
-
     private var activeSource: String {
         AnalyzerSettings.normalizedHost(settings.host)
     }
@@ -384,9 +337,119 @@ struct ExploreScreen: View {
         }
     }
 
+
+}
+
+
+private struct FavoritesScreen: View {
+    let items: [FavoriteItem]
+    let nodes: [MeshNode]
+    let isLoading: Bool
+    let errorMessage: String?
+    @Environment(AnalyzerSettings.self) private var settings
+    @Environment(FavoritesStore.self) private var favoritesStore
+    @State private var isAddFavoritePresented = false
+
+    private var visibleItems: [FavoriteItem] { items }
+
+    var body: some View {
+        List {
+            Section {
+                FavoriteSourceIdentity(host: settings.host)
+                Text("Device favorites and account nodes on this source. Account removals are uploaded with Sync now.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+                if settings.beaconBackend == nil {
+                    NavigationLink { CoreScopeAccountScreen().id(settings.sourceSession.id) } label: {
+                        Label("CoreScope account", systemImage: "person.crop.circle")
+                    }
+                }
+                NavigationLink(value: ExploreDestination.activity) {
+                    Label("Activity", systemImage: "waveform.path")
+                }
+            }
+            if items.isEmpty {
+                ContentUnavailableView("No favorites yet", systemImage: "star",
+                    description: Text("Add a node here, or save observers and channels from their detail pages."))
+            }
+            favoriteSection(kind: .channel, title: "Channels")
+            favoriteSection(kind: .node, title: "Nodes")
+            favoriteSection(kind: .observer, title: "Observers")
+        }
+        .navigationTitle("Favorites")
+        .toolbar(.visible, for: .navigationBar)
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if canReorder { EditButton() }
+                Button("Add favorite node", systemImage: "plus") { isAddFavoritePresented = true }
+            }
+        }
+        .sheet(isPresented: $isAddFavoritePresented) {
+            FavoriteNodeFinder(nodes: nodes, isLoading: isLoading, errorMessage: errorMessage)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+    }
+
+    @ViewBuilder
+    private func favoriteSection(kind: FavoriteKind, title: LocalizedStringKey) -> some View {
+        let items = visibleItems.filter { $0.kind == kind }
+        if !items.isEmpty {
+            Section {
+                ForEach(items) { item in
+                    favoriteRow(item)
+                        .moveDisabled(!favoritesStore.isDeviceFavorite(item))
+                }
+                .onMove { source, destination in
+                    moveFavorites(items, kind: kind, from: source, to: destination)
+                }
+            } header: {
+                Text(title)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .textCase(nil)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func favoriteRow(_ item: FavoriteItem) -> some View {
+        if let node = item.node {
+            NavigationLink(value: node) {
+                VStack(alignment: .leading, spacing: 4) {
+                    FavoriteRow(item: item)
+                    Text(favoritesStore.membershipLabel(item)).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .buttonStyle(.plain)
+            .favoritesListRow()
+            .swipeActions {
+                if favoritesStore.isDeviceFavorite(item) {
+                    Button("Remove from device", role: .destructive) { favoritesStore.remove(item) }
+                }
+                if favoritesStore.isAccountFavorite(item) {
+                    Button("Remove from account", role: .destructive) { favoritesStore.removeAccountFavorite(item) }
+                }
+            }
+            .nodeQuickActions(node)
+        } else if let observer = item.observer {
+            NavigationLink(value: observer) {
+                FavoriteRow(item: item)
+            }
+            .favoriteRowStyle(remove: { favoritesStore.remove(item) })
+        } else if let channel = item.channel {
+            NavigationLink(value: channel) {
+                FavoriteRow(item: item)
+            }
+            .favoriteRowStyle(remove: { favoritesStore.remove(item) })
+        } else {
+            FavoriteRow(item: item)
+                .favoriteRowStyle(remove: { favoritesStore.remove(item) })
+        }
+    }
+
     private var canReorder: Bool {
         FavoriteKind.allCases.contains { kind in
-            visibleItems.lazy.filter { $0.kind == kind }.dropFirst().isEmpty == false
+            visibleItems.lazy.filter { $0.kind == kind && favoritesStore.isDeviceFavorite($0) }.dropFirst().isEmpty == false
         }
     }
 
@@ -399,7 +462,7 @@ struct ExploreScreen: View {
         var reorderedItems = items
         reorderedItems.move(fromOffsets: source, toOffset: destination)
         favoritesStore.reorder(
-            reorderedItems,
+            reorderedItems.filter { favoritesStore.isDeviceFavorite($0) },
             kind: kind,
             source: AnalyzerSettings.normalizedHost(settings.host)
         )
@@ -407,12 +470,7 @@ struct ExploreScreen: View {
 }
 
 private enum ExploreDestination: Hashable {
-    case livePackets
-}
-
-private enum ExploreScrollTarget: Hashable {
-    case favorites
-    case favorite(String)
+    case livePackets, favorites, activity
 }
 
 private struct ExploreEmptyGuidance: View {
@@ -448,7 +506,6 @@ private struct NetworkAtAGlanceCard: View {
     let showActiveNodes: () -> Void
     let showActiveObservers: () -> Void
     let showLivePackets: () -> Void
-    let showFavorites: () -> Void
     @State private var metricOrder = GlanceMetricKind.allCases
     @State private var hiddenMetrics: Set<GlanceMetricKind> = []
     @State private var isCustomizationPresented = false
@@ -519,27 +576,7 @@ private struct NetworkAtAGlanceCard: View {
                 }
             }
 
-            Divider()
 
-            Button(action: showFavorites) {
-                HStack(spacing: 10) {
-                    Image(systemName: "star.fill")
-                        .foregroundStyle(.yellow)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(favoriteSummary)
-                            .font(.subheadline.weight(.semibold))
-                        Text(favoriteBreakdown)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.down")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityHint("Scrolls to your saved items")
         }
         .padding(16)
         .instrumentCard()
@@ -665,13 +702,6 @@ private struct NetworkAtAGlanceCard: View {
             }
             return false
         }
-    }
-
-    private var favoriteSummary: String {
-        if favorites.isEmpty {
-            return "No favorites saved yet"
-        }
-        return "\(activeFavoriteCount) active favorite\(activeFavoriteCount == 1 ? "" : "s")"
     }
 
     private var favoriteBreakdown: String {
@@ -929,9 +959,7 @@ private struct GlanceMetricButtonStyle: ButtonStyle {
 
 private struct ExploreHeader: View {
     let count: Int
-    let canReorder: Bool
     let search: () -> Void
-    let addFavorite: () -> Void
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
@@ -972,25 +1000,7 @@ private struct ExploreHeader: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Search the network")
 
-            if canReorder {
-                EditButton()
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(NodeScopeStyle.signal)
-                    .padding(.horizontal, 12)
-                    .frame(minHeight: 40)
-                    .nodeScopeFloatingGlass(cornerRadius: 20)
-                    .accessibilityHint("Reorder favorites within each section")
-            }
 
-            Button(action: addFavorite) {
-                Image(systemName: "plus")
-                    .font(.body.weight(.bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 40, height: 40)
-                    .background(NodeScopeStyle.signal, in: Circle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Add favorite node")
         }
     }
 }
@@ -1013,7 +1023,7 @@ private struct FavoriteRow: View {
                     Text(subtitle)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
 

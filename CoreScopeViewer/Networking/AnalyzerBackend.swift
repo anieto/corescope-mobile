@@ -154,14 +154,16 @@ struct BeaconBackend: AnalyzerBackend {
     private let regionReader: BeaconRegionReader
     private let observerAnalyticsReader: BeaconObserverAnalyticsReader
     private let channelReader: BeaconChannelReader
+    private let now: @Sendable () -> Date
 
     var sourceSession: AnalyzerSourceSession { client.sourceSession }
     var cacheIdentifier: String { client.cacheIdentifier }
     let capabilities: Set<BackendCapability> = [.neighbors, .nodeAnalytics, .observerAnalytics, .serverChannels]
 
-    init(client: BeaconAPIClient, verifiedServerInfo: BeaconServerInfo) throws {
+    init(client: BeaconAPIClient, verifiedServerInfo: BeaconServerInfo, now: @escaping @Sendable () -> Date = { .now }) throws {
         try verifiedServerInfo.requireSupported()
         self.client = client
+        self.now = now
         serverInfo = verifiedServerInfo
         nodeReader = try BeaconNodeReader(client: client, verifiedServerInfo: verifiedServerInfo)
         observerReader = try BeaconObserverReader(client: client, verifiedServerInfo: verifiedServerInfo)
@@ -221,7 +223,7 @@ struct BeaconBackend: AnalyzerBackend {
     func nodeAnalytics(publicKey: String, days: Int) async throws -> NodeAnalyticsResponse {
         try sourceSession.check()
         let safeDays = max(1, days)
-        let requestedTo = Date.now
+        let requestedTo = now()
         let requestedFrom = requestedTo.addingTimeInterval(-Double(safeDays) * 24 * 60 * 60)
         let retainedFrom = max(requestedFrom, requestedTo.addingTimeInterval(-7 * 24 * 60 * 60))
         guard let history = try await nodeReader.observationHistory(

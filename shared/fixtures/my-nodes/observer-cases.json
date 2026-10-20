@@ -1,0 +1,395 @@
+[
+  {
+    "name": "explicit offline change",
+    "current": {
+      "explicitOnline": false,
+      "statusAt": 1000000000,
+      "lastSeen": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "state": "inactive",
+    "method": "explicit",
+    "eligible": true,
+    "baseline": {
+      "explicitOnline": true,
+      "statusAt": 999999000,
+      "lastSeen": null,
+      "fetchedAt": 999999000,
+      "evaluatedAt": 999999000,
+      "successfulRecord": true
+    },
+    "changed": true
+  },
+  {
+    "name": "explicit unchanged",
+    "current": {
+      "explicitOnline": true,
+      "statusAt": 1000000000,
+      "lastSeen": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "state": "active",
+    "method": "explicit",
+    "eligible": true,
+    "baseline": {
+      "explicitOnline": true,
+      "statusAt": 999999000,
+      "lastSeen": null,
+      "fetchedAt": 999999000,
+      "evaluatedAt": 999999000,
+      "successfulRecord": true
+    },
+    "changed": false
+  },
+  {
+    "name": "explicit stale measurement",
+    "current": {
+      "explicitOnline": false,
+      "statusAt": 999699999,
+      "lastSeen": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "state": "inactive",
+    "method": "explicit",
+    "eligible": false,
+    "baseline": {
+      "explicitOnline": true,
+      "statusAt": 999999000,
+      "lastSeen": null,
+      "fetchedAt": 999999000,
+      "evaluatedAt": 999999000,
+      "successfulRecord": true
+    },
+    "changed": false
+  },
+  {
+    "name": "explicit freshness boundary",
+    "current": {
+      "explicitOnline": true,
+      "statusAt": 999700000,
+      "lastSeen": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "state": "active",
+    "method": "explicit",
+    "eligible": true,
+    "baseline": null,
+    "changed": false
+  },
+  {
+    "name": "explicit future measurement",
+    "current": {
+      "explicitOnline": false,
+      "statusAt": 1000000001,
+      "lastSeen": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "state": "unknown",
+    "method": "explicit",
+    "eligible": false,
+    "baseline": {
+      "explicitOnline": true,
+      "statusAt": 999999000,
+      "lastSeen": null,
+      "fetchedAt": 999999000,
+      "evaluatedAt": 999999000,
+      "successfulRecord": true
+    },
+    "changed": false
+  },
+  {
+    "name": "explicit old contradictory measurement",
+    "current": {
+      "explicitOnline": false,
+      "statusAt": 999999000,
+      "lastSeen": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "state": "inactive",
+    "method": "explicit",
+    "eligible": true,
+    "baseline": {
+      "explicitOnline": true,
+      "statusAt": 999999000,
+      "lastSeen": null,
+      "fetchedAt": 999999000,
+      "evaluatedAt": 999999000,
+      "successfulRecord": true
+    },
+    "changed": false
+  },
+  {
+    "name": "failed catalog",
+    "current": {
+      "explicitOnline": false,
+      "statusAt": 1000000000,
+      "lastSeen": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": false
+    },
+    "state": "unknown",
+    "method": "explicit",
+    "eligible": false,
+    "baseline": {
+      "explicitOnline": true,
+      "statusAt": 999999000,
+      "lastSeen": null,
+      "fetchedAt": 999999000,
+      "evaluatedAt": 999999000,
+      "successfulRecord": true
+    },
+    "changed": false
+  },
+  {
+    "name": "coverage omission is unknown",
+    "current": {
+      "explicitOnline": null,
+      "statusAt": null,
+      "lastSeen": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "state": "unknown",
+    "method": "recentlySeen",
+    "eligible": false,
+    "baseline": {
+      "explicitOnline": true,
+      "statusAt": 999999000,
+      "lastSeen": null,
+      "fetchedAt": 999999000,
+      "evaluatedAt": 999999000,
+      "successfulRecord": true
+    },
+    "changed": false
+  },
+  {
+    "name": "explicit to inferred is not comparable",
+    "current": {
+      "explicitOnline": null,
+      "statusAt": null,
+      "lastSeen": 999100000,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "state": "inactive",
+    "method": "recentlySeen",
+    "eligible": true,
+    "baseline": {
+      "explicitOnline": true,
+      "statusAt": 999999000,
+      "lastSeen": null,
+      "fetchedAt": 999999000,
+      "evaluatedAt": 999999000,
+      "successfulRecord": true
+    },
+    "changed": false
+  },
+  {
+    "name": "untimestamped explicit uses recency",
+    "current": {
+      "explicitOnline": false,
+      "statusAt": null,
+      "lastSeen": 1000000000,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "state": "active",
+    "method": "recentlySeen",
+    "eligible": true,
+    "baseline": null,
+    "changed": false
+  },
+  {
+    "name": "confirmed inferred silence",
+    "current": {
+      "explicitOnline": null,
+      "statusAt": null,
+      "lastSeen": 999100000,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "state": "inactive",
+    "method": "recentlySeen",
+    "eligible": true,
+    "baseline": {
+      "explicitOnline": null,
+      "statusAt": null,
+      "lastSeen": 999100000,
+      "fetchedAt": 999800000,
+      "evaluatedAt": 999800000,
+      "successfulRecord": true
+    },
+    "changed": true
+  },
+  {
+    "name": "timer inferred silence",
+    "current": {
+      "explicitOnline": null,
+      "statusAt": null,
+      "lastSeen": 999100000,
+      "fetchedAt": 999800000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "state": "inactive",
+    "method": "recentlySeen",
+    "eligible": true,
+    "baseline": {
+      "explicitOnline": null,
+      "statusAt": null,
+      "lastSeen": 999100000,
+      "fetchedAt": 999800000,
+      "evaluatedAt": 999800000,
+      "successfulRecord": true
+    },
+    "changed": false
+  },
+  {
+    "name": "confirmed inferred active",
+    "current": {
+      "explicitOnline": null,
+      "statusAt": null,
+      "lastSeen": 1000000000,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "state": "active",
+    "method": "recentlySeen",
+    "eligible": true,
+    "baseline": {
+      "explicitOnline": null,
+      "statusAt": null,
+      "lastSeen": 998200000,
+      "fetchedAt": 999999000,
+      "evaluatedAt": 999999000,
+      "successfulRecord": true
+    },
+    "changed": true
+  },
+  {
+    "name": "inferred to explicit is not comparable",
+    "current": {
+      "explicitOnline": true,
+      "statusAt": 1000000000,
+      "lastSeen": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "state": "active",
+    "method": "explicit",
+    "eligible": true,
+    "baseline": {
+      "explicitOnline": null,
+      "statusAt": null,
+      "lastSeen": 998200000,
+      "fetchedAt": 999999000,
+      "evaluatedAt": 999999000,
+      "successfulRecord": true
+    },
+    "changed": false
+  },
+  {
+    "name": "unknown establishes baseline",
+    "current": {
+      "explicitOnline": true,
+      "statusAt": 1000000000,
+      "lastSeen": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "state": "active",
+    "method": "explicit",
+    "eligible": true,
+    "baseline": {
+      "explicitOnline": null,
+      "statusAt": null,
+      "lastSeen": null,
+      "fetchedAt": 999999000,
+      "evaluatedAt": 999999000,
+      "successfulRecord": true
+    },
+    "changed": false
+  },
+  {
+    "name": "expired explicit baseline",
+    "current": {
+      "explicitOnline": false,
+      "statusAt": 1000000000,
+      "lastSeen": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "state": "inactive",
+    "method": "explicit",
+    "eligible": true,
+    "baseline": {
+      "explicitOnline": true,
+      "statusAt": 395199999,
+      "lastSeen": null,
+      "fetchedAt": 395199999,
+      "evaluatedAt": 395199999,
+      "successfulRecord": true
+    },
+    "changed": false
+  },
+  {
+    "name": "clock rollback",
+    "current": {
+      "explicitOnline": false,
+      "statusAt": 1000000000,
+      "lastSeen": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "state": "inactive",
+    "method": "explicit",
+    "eligible": true,
+    "baseline": {
+      "explicitOnline": true,
+      "statusAt": 1000000001,
+      "lastSeen": null,
+      "fetchedAt": 1000000001,
+      "evaluatedAt": 1000000001,
+      "successfulRecord": true
+    },
+    "changed": false
+  },
+  {
+    "name": "stale fetch",
+    "current": {
+      "explicitOnline": false,
+      "statusAt": 1000000000,
+      "lastSeen": null,
+      "fetchedAt": 999699999,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "state": "inactive",
+    "method": "explicit",
+    "eligible": false,
+    "baseline": null,
+    "changed": false
+  }
+]

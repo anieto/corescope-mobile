@@ -55,7 +55,8 @@ class AppContainer(application: Application) {
     val diagnostics = AnalyzerDiagnostics(client) { host ->
         (sourceRouter.route(host) as? AnalyzerSourceRouter.Route.Beacon)?.backend
     }
-    val cacheStorage = org.nodescope.android.core.storage.CacheStorage(application)
+    val myNodesStorage = org.nodescope.android.core.storage.MyNodesStorage(application.cacheDir)
+    val cacheStorage = org.nodescope.android.core.storage.CacheStorage(application, myNodesStorage)
     val sourceIcons = org.nodescope.android.core.storage.SourceIcons(application, client)
     /** Opened on first use: reading sealed channel keys touches the Android Keystore. */
     val monitoredChannels by lazy { MonitoredChannelStore.forDevice(application) }

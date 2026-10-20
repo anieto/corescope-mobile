@@ -1,5 +1,24 @@
 # iOS → Android feature parity
 
+0.9.0 repository checkpoint (2026-10-16): source-bound 24h analytics memory caches, 15-minute
+reuse, coalesced two-worker batches, explicit deferred results and consumer/source cancellation
+now match. Both backend factories and CoreScope Retry-After behavior have fixture coverage.
+Dashboard lifecycle/UI, shared detail cache and persistent comparison baselines remain open.
+
+0.9.0 transport checkpoint (2026-10-16): both platforms have opt-in budgeted HTTP clients
+and a Beacon My Nodes history loader capped at one lookup plus three pages. Batch exhaustion
+retains partial history. Cache/coalescing, dashboard UI and on-wire measurement remain open.
+
+0.9.0 evidence checkpoint (2026-10-16): `MyNodesEvidence` and `MyNodesRequestBudget` now match
+Swift behavior. Twelve shared evidence cases and budget/cancellation scenarios pass in five JVM
+tests. HTTP integration followed in the transport checkpoint above; dashboard UI is still pending.
+
+0.9.0 checkpoint (2026-10-16): optional CoreScope account wire models are at parity on Swift
+and Kotlin. Both platforms consume the same populated/empty settings fixtures and pass four
+contract tests covering raw-string preservation, category capability checks, generation consistency,
+unknown schemas and malformed values. Login, sync and My Nodes UI are not implemented yet.
+See [0.9.0 implementation progress](../my-nodes/implementation.md).
+
 Baseline: iOS `cd98f8e`, inspected 2026-09-21. All rows below are **observed in
 source**, not claims that every iOS behavior has been exercised on a device.
 All Android parity statuses begin **unverified**; the earlier node-browser
@@ -84,3 +103,120 @@ parity. Existing raw packet inspection and individual replay remain in scope.
 
 Server administration, MQTT configuration, write APIs, packet injection, radio
 transmission, and uploading location tracks remain out of scope.
+
+
+### 0.9.0 activity foundation — 2026-10-17
+
+Swift and Kotlin activity assessment/change rules pass the same 22 synthetic fixture cases,
+including the exact recency/freshness/skew boundaries, successful-fetch confirmation, expired
+baselines, clock rollback and net-state comparison. This is foundation parity only; the dashboard,
+visit persistence and signal/observer comparisons are still pending.
+
+
+### 0.9.0 signal and observer foundation — 2026-10-17
+
+Swift/Kotlin pure comparison rules pass the same 25 signal and 18 observer fixtures, plus
+nonfinite SNR checks and the 22 existing activity cases. Matched-receiver medians, complete-history
+gates, nonoverlapping visit windows, mixed-observation suppression and explicit-versus-inferred
+observer status agree. Persisted summaries, event identity and dashboard integration remain pending.
+
+
+### 0.9.0 compact baselines and visit storage — 2026-10-17
+
+Swift and Kotlin now use compact signal summaries and deterministic event IDs, and read the same
+version-1 millisecond snapshot fixture. Twelve targeted tests pass per platform, including eight
+store tests for recovery, window interleaving, stale/late writes, removal, reset, observer limits,
+namespace isolation and I/O failure. App-level store ownership, cache controls and dashboard lifecycle
+are still pending; this checkpoint establishes model/store parity only.
+
+
+### 0.9.0 snapshot cache ownership — 2026-10-17
+
+Both apps now own a shared snapshot store and include its files in cache usage/clear. Android's
+application container injects the owner into cache controls; broad cache cleanup skips the snapshot
+directory to preserve store serialization. Storage screens disclose snapshot reset and show deletion
+failure without a success timestamp. Ten Swift / eleven Android targeted tests pass. Dashboard,
+source-session and background lifecycle integration remains pending.
+
+
+### 0.9.0 foreground visit owner — 2026-10-17
+
+Both platforms have a source-bound visit owner that rejects obsolete results/writes and cancels
+only its analytics waiter. Store clear now cancels attached visit work. Three lifecycle tests per
+platform pass alongside persistence/cache regressions (13 Swift, 14 Android total). Actual dashboard
+navigation/background hooks and shared live-feed demand are not connected yet.
+
+
+### 0.9.0 selected-node metadata repository — 2026-10-17
+
+Swift/Kotlin bounded base repositories now support source-scoped catalog seeding, five-minute reuse,
+progressive exact-key rows, joined refreshes and explicit unavailable/deferred/error states. CoreScope
+and Beacon adapters use budgeted HTTP. Ten Swift / eleven Android targeted tests pass, including the
+0/1/20/100/500 matrix. Observer catalog loading must still share the base budget; production cache
+seeding/ownership and dashboard UI integration remain pending.
+
+
+### 0.9.0 shared observer catalog allowance — 2026-10-17
+
+Swift/Kotlin base repositories share one 20-attempt budget between observer catalogs and node metadata.
+Beacon traversal stops after four pages with explicit partial completeness; CoreScope completeness
+remains unknown. Both preserve timestamps on warm reuse/failure, support observer-only batches and
+stop node scheduling on catalog 429. Ten Swift and fourteen Android targeted tests pass. Dashboard
+rendering, catalog continuation UI and production ownership/cache seeding remain pending.
+
+
+### 0.9.0 application-owned My Nodes repositories — 2026-10-17
+
+Both storage owners now share base/analytics pairs per source session and provide CoreScope/Beacon
+factories. Settings cache clear invalidates these disposable generations, rejects late results and
+allows fresh acquisition without invalidating the shared source/feed lifetime. Seven Swift and eight
+Android ownership/visit tests pass. Dashboard acquisition, cache seeding and UI lifecycle hooks remain
+pending.
+
+
+### 0.9.0 initial activity dashboard — 2026-10-18
+
+Explore opens a source-scoped My Nodes activity screen on both platforms, with node recency, original
+fetch times, explicit cache/error/deferred states, observer catalog evidence, Refresh/Load More and
+existing detail navigation. Lifecycle-owned waiters and visible cache-clear invalidation use the
+shared repositories. Thirteen Android base/ownership tests pass and Android UI tests compile; the
+new warm-cache/cache-clear UI test awaits a connected device. iOS build and empty-state simulator
+navigation checks pass. Visit comparisons, analytics, exports and full screen acceptance remain open.
+
+
+### 0.9.0 reviewed comparison states — 2026-10-18
+
+Swift/Kotlin snapshot stores and visit sessions distinguish unavailable, first-visit, expired,
+unchanged and changed comparison results while preserving fresh-render persistence rules. Sixteen
+tests pass per platform, including shared signal evidence and fixed-baseline visit regressions.
+The Changes UI and visible-row/navigation lifecycle integration remain pending.
+
+### Dedicated Favorites navigation — 2026-10-18
+
+Explore now opens a dedicated Favorites page. Saved channels, nodes, and observers, adding nodes, removal, and reordering moved to that page. Activity opens from Favorites. Existing source-scoped storage remains intact. CoreScope account sync and a Changes UI remain unimplemented. iOS build-for-testing and Android instrumentation compilation passed.
+
+### Favorites Changes — 2026-10-19
+
+Both platforms provide a dedicated Changes page for node and saved-observer recency, fixed foreground-visit baselines, visible-only review persistence, and explicit unavailable/first-visit/expired/unchanged/changed states. Android Pixel 10 instrumentation passed for visible-only persistence and Favorites add/open/remove. Account sync and signal comparison UI remain pending.
+
+### Activity simplification — 2026-10-19
+
+Separate Changes navigation removed on both platforms; comparison groundwork retained. Activity now uses a compact source header, role-colored icons, whole-card navigation, primary last-heard text, secondary freshness details, About activity help, and conditional Load More.
+
+### 2026-10-19 account isolation follow-up
+
+Account selections now use a separate source/user namespace on both platforms. Device favorites
+are imported or copied only by explicit actions; logout purges account state and offers an explicit
+copy. Server generation changes pause sync for a user choice. Favorite/claimed categories remain
+independent, pending edits survive refresh/conflicts, and settings writes use a shared one-minute
+throttle with the existing CoreScope cooldown. Android account JVM tests (14), debug build and
+instrumentation compilation pass; account device validation and controlled-server writes remain open.
+The iOS account page also adopts the app's existing background/card design.
+
+### 2026-10-19 combined account nodes
+
+Favorites and Activity now project device plus active-account favorites/claims on both platforms.
+Storage and removal memberships remain separate; account-only rows follow device order. Account
+node names and shortened-key presentation are now implemented on Android. Account/settings/library
+JVM suites pass 23 tests; debug build and instrumentation compilation pass. User-owned device checks
+and controlled-server account acceptance remain open. The narrowed release scope is in plan.md.

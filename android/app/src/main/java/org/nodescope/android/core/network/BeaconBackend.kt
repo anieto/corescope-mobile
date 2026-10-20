@@ -26,7 +26,11 @@ val BackendCapability.beaconExplanation: String get() = when (this) {
 class BeaconUnsupportedException(val capability: BackendCapability) : IllegalStateException(capability.beaconExplanation)
 class BeaconNodeUnavailableException : IllegalStateException("This node is not available on this server.")
 
-class BeaconBackend(val client: BeaconApiClient, val serverInfo: BeaconServerInfo) : AnalyzerRepository, BrowseRepository {
+class BeaconBackend(
+    val client: BeaconApiClient,
+    val serverInfo: BeaconServerInfo,
+    private val now: () -> Long = System::currentTimeMillis,
+) : AnalyzerRepository, BrowseRepository {
     val nodeReader: BeaconNodeReader
     val observerReader: BeaconObserverReader
     val packetReader: BeaconPacketReader
@@ -145,7 +149,7 @@ class BeaconBackend(val client: BeaconApiClient, val serverInfo: BeaconServerInf
         requireHost(host)
         sourceSession.check()
         val safeDays = maxOf(1, days)
-        val requestedTo = System.currentTimeMillis()
+        val requestedTo = now()
         val requestedFrom = requestedTo - safeDays * DAY_MILLIS
         val retainedFrom = maxOf(requestedFrom, requestedTo - 7 * DAY_MILLIS)
         val history = nodeReader.observationHistory(publicKey, retainedFrom) ?: throw BeaconNodeUnavailableException()

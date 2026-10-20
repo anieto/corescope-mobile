@@ -94,6 +94,7 @@ struct BeaconAPIClient: Sendable {
     private let session: URLSession
     private let rateLimit: BeaconRateLimit
     private let now: @Sendable () -> Date
+    private var requestAllowance: MyNodesRequestAllowance?
 
     init(
         baseURL: URL,
@@ -123,7 +124,15 @@ struct BeaconAPIClient: Sendable {
     var cacheIdentifier: String { "beacon|\(baseURL.absoluteString)" }
 
     func replacingSourceSession(_ sourceSession: AnalyzerSourceSession) throws -> BeaconAPIClient {
-        try BeaconAPIClient(baseURL: baseURL, sourceSession: sourceSession, session: session, rateLimit: rateLimit, now: now)
+        var copy = try BeaconAPIClient(baseURL: baseURL, sourceSession: sourceSession, session: session, rateLimit: rateLimit, now: now)
+        copy.requestAllowance = requestAllowance
+        return copy
+    }
+
+    func budgetingRequests(_ budget: MyNodesRequestBudget, node: String) -> BeaconAPIClient {
+        var copy = self
+        copy.requestAllowance = MyNodesRequestAllowance(budget: budget, node: node)
+        return copy
     }
 
     func checkCooldown() async throws {
@@ -158,7 +167,12 @@ struct BeaconAPIClient: Sendable {
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         let requestCopy = request
-        let task = Task { try await session.data(for: requestCopy) }
+        let task = Task {
+            if let requestAllowance {
+                return try await requestAllowance.data(for: requestCopy, session: session)
+            }
+            return try await session.data(for: requestCopy)
+        }
         let cancellationID = sourceSession.registerCancellation { task.cancel() }
         defer { sourceSession.removeCancellation(cancellationID) }
         do {

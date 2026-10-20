@@ -1,5 +1,43 @@
 # Android implementation progress
 
+2026-10-16 — My Nodes analytics cache and scheduler.
+
+Ported `MyNodesAnalyticsRepository`: source/session isolation, original snapshot timestamps,
+15-minute reuse, coalesced refreshes, two concurrent node loads under a shared 20-attempt budget,
+explicit deferred rows, and per-caller cancellation. Source changes and clear reject late writes.
+CoreScope/Beacon factories use the budgeted adapters; CoreScope Retry-After persists across batches.
+New keys joining an active batch are deferred to an explicit later batch. No dashboard UI or
+persistent baseline store is enabled yet. Details and measurement limits are in
+[the shared implementation log](../my-nodes/implementation.md).
+
+Validation: all 70 targeted JVM tests pass (57 Beacon API, five foundation, eight repository).
+The repository size matrix covers 0, 1, 20, 100 and 500 selections; adapter fixtures verify cache
+reuse without another HTTP call and a 300-second Retry-After shared across batches.
+
+2026-10-16 — My Nodes HTTP integration and bounded Beacon history.
+
+Ported the Swift transport allowance into the Beacon client and CoreScope `BodySource` factory.
+The dashboard history entry point spends at most four calls per node, retains partial pages on
+batch exhaustion, preserves allowance across session replacement and respects Beacon cooldowns.
+Scoped OkHttp clients disable implicit redirects/retries and HTTP caching. Repository cache,
+coalescing, batch scheduling and UI wiring remain open; see the shared implementation log.
+Validation: 54 Beacon API tests and five foundation tests pass, including six new integration tests.
+
+2026-10-16 — My Nodes evidence and request gate.
+
+Ported the per-metric history comparison gate and batch request limiter from Swift. All five
+targeted JVM tests pass, including 12 shared evidence cases, up to 500 favorites, failed-attempt
+accounting, concurrency, cancellation and stale-result rejection. At this checkpoint production HTTP wiring was still
+pending; see the shared implementation log for the boundary and remaining A2 work.
+
+2026-10-16 — 0.9.0 account contract foundation.
+
+Added `CoreScopeAccountSettings` and matching shared-fixture tests after the iOS contract model.
+Raw settings values and unknown item fields stay intact; unsupported schema/allowlist shapes do
+not enable sync. All four targeted JVM tests pass. Login, persistence, sync and dashboard work
+remain pending. See [the shared 0.9.0 log](../my-nodes/implementation.md) for the upstream pin,
+merge oracle, measured request costs and next tasks.
+
 2026-09-21 — first foundation increment.
 
 The user authorized deleting the earlier prototype and beginning implementation.
@@ -976,4 +1014,3 @@ Checked against iOS `0bfb2de` after Codex committed it.
 - Map framing for a Beacon source with no region already matched iOS (trusted region centers).
 - Not ported: session-scoped cache keys (see phase3-implementation.md).
 - 249 JVM tests pass; not yet checked on a device.
-

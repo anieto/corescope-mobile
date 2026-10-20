@@ -1,0 +1,33 @@
+[
+  {
+    "components": [
+      "a|b",
+      "c"
+    ],
+    "expected": "3:a|b1:c"
+  },
+  {
+    "components": [
+      "a",
+      "b|c"
+    ],
+    "expected": "1:a3:b|c"
+  },
+  {
+    "components": [
+      "é",
+      "📻",
+      ""
+    ],
+    "expected": "2:é4:📻0:"
+  },
+  {
+    "components": [
+      "30:https://example.test:8443/base9:corescope5:local1:1",
+      "4:node64:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "activity",
+      "00000000-0000-0000-0000-000000000001"
+    ],
+    "expected": "54:30:https://example.test:8443/base9:corescope5:local1:173:4:node64:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa8:activity36:00000000-0000-0000-0000-000000000001"
+  }
+]

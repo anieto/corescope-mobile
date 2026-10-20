@@ -98,6 +98,201 @@ private actor BeaconObserverRecoveryProbe {
 }
 
 struct BeaconAPITests {
+    @Test func myNodesBaseAdaptersUseOneExactLookupAndWarmCache() async throws {
+        let key = String(repeating: "a", count: 64)
+        let coreRoutes = String(decoding: try JSONSerialization.data(withJSONObject: [
+            "/api/nodes/\(key)": ["node": ["public_key": key, "role": "repeater"]],
+            "/api/observers": ["observers": [["id": "remembered"]]]
+        ]), as: UTF8.self)
+        let session = Self.session(targets: ["/api/nodes/\(key)", "/api/observers"], routes: coreRoutes)
+        defer { session.invalidateAndCancel() }
+        let core = MyNodesBaseRepository.coreScope(
+            client: APIClient(baseURL: try #require(URL(string: "https://\(UUID().uuidString).invalid")), session: session),
+            session: AnalyzerSourceSession())
+        #expect(try await core.load(publicKeys: [key]).first?.state == .fetched)
+        #expect(try await core.load(publicKeys: [key]).first?.state == .cached)
+        #expect(try await core.observers().state == .cached)
+        #expect(try await core.observers().snapshot?.completeness == .unknown)
+        let node = try Self.fixtureBody("node-detail")
+        let beaconKey = try #require(node["publicKey"] as? String)
+        let lookup = "/api/v1/nodes?pubkey=\(beaconKey)"
+        let routes = String(decoding: try JSONSerialization.data(withJSONObject: [
+            lookup: try Self.fixtureBody("node-by-pubkey"),
+            "/api/v1/observers?limit=200": try Self.fixtureBody("observers-page")
+        ]), as: UTF8.self)
+        let beaconSession = Self.session(targets: [lookup, "/api/v1/observers?limit=200"], routes: routes)
+        defer { beaconSession.invalidateAndCancel() }
+        let beacon = try MyNodesBaseRepository.beacon(client: Self.client(beaconSession),
+                                                       serverInfo: .init(serverVersion: "2.0.3"))
+        #expect(try await beacon.load(publicKeys: [beaconKey]).first?.state == .fetched)
+        #expect(try await beacon.load(publicKeys: [beaconKey]).first?.state == .cached)
+        #expect(try await beacon.observers().state == .cached)
+        #expect(try await beacon.observers().snapshot?.completeness == .complete)
+    }
+
+    @Test func myNodesBaseCoreScope404IsUnavailable() async throws {
+        let key = String(repeating: "a", count: 64)
+        let session = Self.session(targets: ["/api/nodes/\(key)"], status: 404)
+        defer { session.invalidateAndCancel() }
+        let repository = MyNodesBaseRepository.coreScope(
+            client: APIClient(baseURL: try #require(URL(string: "https://\(UUID().uuidString).invalid")), session: session),
+            session: AnalyzerSourceSession())
+        #expect(try await repository.load(publicKeys: [key]).first?.state == .unavailable)
+    }
+    @Test func myNodesCoreScopeRepositoryUsesDayEndpointAndWarmCache() async throws {
+        let key = String(repeating: "a", count: 64)
+        let body = """
+        {"node":{"public_key":"\(key)","role":"repeater"},
+         "timeRange":{"from":"2026-10-15T12:00:00Z","to":"2026-10-16T12:00:00Z","days":1},
+         "computedStats":{"totalPackets":0,"avgPacketsPerDay":0}}
+        """
+        // Fixture bodies travel in a test header, which cannot contain literal newlines.
+        let session = Self.session(targets: ["/api/nodes/\(key)/analytics?days=1"], body: body.replacingOccurrences(of: "\n", with: ""))
+        defer { session.invalidateAndCancel() }
+        let client = APIClient(baseURL: try #require(URL(string: "https://\(UUID().uuidString).invalid")), session: session)
+        let repository = MyNodesAnalyticsRepository.coreScope(client: client, session: AnalyzerSourceSession())
+        let first = try #require(await repository.load(publicKeys: [key]).first)
+        #expect(first.state == .fetched)
+        #expect(first.snapshot?.evidence.completeness == .unknown)
+        let second = try #require(await repository.load(publicKeys: [key]).first)
+        #expect(second.state == .cached)
+        #expect(second.snapshot?.evidence.fetchedAt == first.snapshot?.evidence.fetchedAt)
+    }
+
+    @Test func myNodesBeaconRepositoryUsesBoundedReaderAndWarmCache() async throws {
+        let node = try Self.fixtureBody("node-detail")
+        let key = try #require(node["publicKey"] as? String)
+        let identifier = try #require(node["id"] as? String)
+        let lookup = "/api/v1/nodes?pubkey=\(key)"
+        let observations = "/api/v1/nodes/\(identifier)/observations?limit=200"
+        let routes = String(decoding: try JSONSerialization.data(withJSONObject: [
+            lookup: try Self.fixtureBody("node-by-pubkey"), observations: try Self.fixtureBody("node-observations")
+        ]), as: UTF8.self)
+        let session = Self.session(targets: [lookup, observations], routes: routes)
+        defer { session.invalidateAndCancel() }
+        let repository = try MyNodesAnalyticsRepository.beacon(client: Self.client(session), serverInfo: .init(serverVersion: "2.0.3"))
+        let first = try #require(await repository.load(publicKeys: [key]).first)
+        #expect(first.state == .fetched)
+        #expect(first.snapshot?.analytics.context?.countUnit == .observations)
+        #expect(try await repository.load(publicKeys: [key]).first?.state == .cached)
+    }
+
+    @Test func myNodesCoreScopeRetryAfterIsSharedAcrossBatches() async throws {
+        let session = Self.session(targets: ["/api/test"], status: 429, retryAfter: "300")
+        defer { session.invalidateAndCancel() }
+        let base = APIClient(baseURL: try #require(URL(string: "https://\(UUID().uuidString).invalid")), session: session)
+        let first = base.budgetingRequests(MyNodesRequestBudget(), node: "abc")
+        let earliest = Date.now.addingTimeInterval(290)
+        do {
+            let _: [String: String] = try await first.get("/api/test")
+            Issue.record("Expected rate limit")
+        } catch BeaconAPIError.rateLimited(let until) {
+            #expect(until >= earliest)
+        }
+        let budget = MyNodesRequestBudget()
+        let second = base.budgetingRequests(budget, node: "def")
+        await #expect(throws: BeaconAPIError.self) {
+            let _: [String: String] = try await second.get("/must-not-load")
+        }
+        for _ in 0..<20 { #expect(try await budget.perform { true }) }
+    }
+
+
+    @Test(arguments: [2, 20])
+    func myNodesHistoryRetainsPartialPagesWithinBothLimits(maximumRequests: Int) async throws {
+        let node = try Self.fixtureBody("node-detail")
+        let key = try #require(node["publicKey"] as? String)
+        let identifier = try #require(node["id"] as? String)
+        let lookup = "/api/v1/nodes?pubkey=\(key)"
+        let observations = "/api/v1/nodes/\(identifier)/observations?limit=200"
+        var routes: [String: Any] = [lookup: try Self.fixtureBody("node-by-pubkey")]
+        for index in 0..<3 {
+            var page = try Self.fixtureBody("node-observations")
+            page["hasMore"] = true
+            page["nextCursor"] = "page-\(index + 1)"
+            let path = observations + (index == 0 ? "" : "&cursor=page-\(index)")
+            routes[path] = page
+        }
+        let session = Self.session(targets: Array(routes.keys),
+            routes: String(decoding: try JSONSerialization.data(withJSONObject: routes), as: UTF8.self))
+        defer { session.invalidateAndCancel() }
+        let reader = try BeaconNodeReader(client: Self.client(session), verifiedServerInfo: .init(serverVersion: "2.0.3"))
+        let history = try #require(await reader.myNodesObservationHistory(
+            publicKey: key, since: .distantPast, budget: MyNodesRequestBudget(maximumRequests: maximumRequests)
+        ))
+        #expect(!history.isComplete)
+        #expect(history.requestCount == min(maximumRequests, 4))
+        #expect(history.observations.count == 8)
+    }
+
+
+    @Test func myNodesBudgetCountsLookupAndEachObservationPage() async throws {
+        let node = try Self.fixtureBody("node-detail")
+        let key = try #require(node["publicKey"] as? String)
+        let identifier = try #require(node["id"] as? String)
+        let lookup = "/api/v1/nodes?pubkey=\(key)"
+        let observations = "/api/v1/nodes/\(identifier)/observations?limit=200"
+        let routes = String(decoding: try JSONSerialization.data(withJSONObject: [
+            lookup: try Self.fixtureBody("node-by-pubkey"),
+            observations: try Self.fixtureBody("node-observations")
+        ]), as: UTF8.self)
+        let session = Self.session(targets: [lookup, observations], routes: routes)
+        defer { session.invalidateAndCancel() }
+        let budget = MyNodesRequestBudget(maximumRequests: 2)
+        let client = try Self.client(session).budgetingRequests(budget, node: key)
+        let reader = try BeaconNodeReader(client: client, verifiedServerInfo: .init(serverVersion: "2.0.3"))
+        let history = try #require(await reader.observationHistory(publicKey: key, since: .distantPast, maximumPages: 3))
+        #expect(history.isComplete)
+        #expect(history.requestCount == 2)
+        await #expect(throws: MyNodesBudgetError.exhausted) {
+            try await client.replacingSourceSession(AnalyzerSourceSession()).serverInfo()
+        }
+    }
+
+    @Test func myNodesFailedHTTPAttemptsConsumeAllowance() async throws {
+        let session = Self.session(targets: ["/api/test"], status: 503)
+        defer { session.invalidateAndCancel() }
+        let base = APIClient(baseURL: try #require(URL(string: "https://corescope.invalid")), session: session)
+        let client = base.budgetingRequests(MyNodesRequestBudget(maximumPerNode: 2), node: "abc")
+        for _ in 0..<2 {
+            await #expect(throws: APIError.self) {
+                let _: [String: String] = try await client.get("/api/test")
+            }
+        }
+        await #expect(throws: MyNodesBudgetError.nodeExhausted) {
+            let _: [String: String] = try await client.get("/api/test")
+        }
+        // The normal client retains its independent detail-screen behavior.
+        await #expect(throws: APIError.self) {
+            let _: [String: String] = try await base.get("/api/test")
+        }
+    }
+
+    @Test func myNodesCooldownDoesNotSpendAnotherRequest() async throws {
+        let session = Self.session(targets: ["/api/v1/info"], status: 429, retryAfter: "60")
+        defer { session.invalidateAndCancel() }
+        let budget = MyNodesRequestBudget(maximumRequests: 2)
+        let client = try Self.client(session).budgetingRequests(budget, node: "abc")
+        for _ in 0..<2 {
+            await #expect(throws: BeaconAPIError.self) { try await client.serverInfo() }
+        }
+        // The 429 spends one attempt; the second call is rejected before transport.
+        #expect(try await budget.perform { true })
+        await #expect(throws: MyNodesBudgetError.exhausted) { try await budget.perform { true } }
+    }
+
+    @Test func myNodesInvalidationPreventsHTTP() async throws {
+        let session = Self.session(targets: [])
+        defer { session.invalidateAndCancel() }
+        let budget = MyNodesRequestBudget()
+        await budget.invalidate()
+        let client = APIClient(baseURL: try #require(URL(string: "https://corescope.invalid")), session: session)
+            .budgetingRequests(budget, node: "abc")
+        await #expect(throws: MyNodesBudgetError.invalidated) {
+            let _: [String: String] = try await client.get("/must-not-load")
+        }
+    }
+
     @Test @MainActor func listedBeaconNeverFallsBackToCoreScope() async throws {
         let suite = "ListedBeacon-\(UUID())"
         let defaults = try #require(UserDefaults(suiteName: suite))
@@ -1185,9 +1380,15 @@ struct BeaconAPITests {
         ]), as: UTF8.self)
         let session = Self.session(targets: [lookup, observationsPath], routes: routes)
         defer { session.invalidateAndCancel() }
+        // Keep the retention window anchored to the fixture instead of the test date.
+        let observations = try #require(Self.fixtureBody("node-observations")["items"] as? [[String: Any]])
+        let timestamps = observations.compactMap { ($0["heardAt"] as? NSNumber)?.doubleValue }
+        let newest = try #require(timestamps.max())
+        let fixtureNow = Date(timeIntervalSince1970: newest / 1_000 + 1)
         let backend = try BeaconBackend(
             client: Self.client(session),
-            verifiedServerInfo: .init(serverVersion: "2.0.3")
+            verifiedServerInfo: .init(serverVersion: "2.0.3"),
+            now: { fixtureNow }
         )
 
         let analytics = try await backend.nodeAnalytics(publicKey: key, days: 30)

@@ -35,7 +35,7 @@ fun endpoint(host: String, vararg segments: String): HttpUrl =
         segments.forEach(::addPathSegment)
     }.build()
 
-class HttpFailure(val status: Int) : IOException("Analyzer returned HTTP $status.")
+class HttpFailure(val status: Int, val retryAfter: String? = null) : IOException("Analyzer returned HTTP $status.")
 
 /** Cancellation closes the actual HTTP call, including while reading the body. */
 suspend fun OkHttpClient.read(url: HttpUrl): String = suspendCancellableCoroutine { continuation ->
@@ -48,7 +48,7 @@ suspend fun OkHttpClient.read(url: HttpUrl): String = suspendCancellableCoroutin
         override fun onResponse(call: Call, response: Response) {
             try {
                 val text = response.use {
-                    if (!it.isSuccessful) throw HttpFailure(it.code)
+                    if (!it.isSuccessful) throw HttpFailure(it.code, it.header("Retry-After"))
                     it.body?.string() ?: throw IOException("Empty analyzer response.")
                 }
                 continuation.resume(text)

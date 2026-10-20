@@ -117,6 +117,9 @@ enum class Destination(val title: Int, val icon: ImageVector, val route: TopLeve
 @Serializable data object PacketRoute
 @Serializable data class PacketDetailRoute(val groupId: String)
 @Serializable data object DiagnosticsRoute
+@Serializable data object CoreScopeAccountRoute
+@Serializable data object FavoritesRoute
+@Serializable data object MyNodesRoute
 @Serializable data object StorageRoute
 @Serializable data object AboutRoute
 @Serializable data class MessagePacketRoute(val hash: String, val sender: String = "", val text: String = "")
@@ -164,8 +167,11 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
                 sourceScreen = { onDone -> SourceScreen(sources, preferences.host, saving, error, { host -> model.selectSource(host, onDone) }, model.sourceIcons) },
                 feed = live, onReconnect = model::reconnectLive, browse = model.browse, monitoredChannels = { model.monitoredChannels },
                 onLiveFeedDemand = model::setLiveFeedDemand,
-                diagnostics = model.diagnostics, cacheStorage = model.cacheStorage, sourceChangedAt = sourceChangedAt,
+                diagnostics = model.diagnostics, cacheStorage = model.cacheStorage, myNodesRepositories = model::myNodesRepositories, myNodesSnapshots = model.myNodesSnapshots, sourceChangedAt = sourceChangedAt,
                 pendingLink = pendingLink, onLinkHandled = model::linkHandled, onDistanceUnit = model::setDistanceUnit,
+                sourceName = sources.firstOrNull { source ->
+                    runCatching { org.nodescope.android.core.network.normalizeHost(source.host) }.getOrNull().equals(preferences.host, true)
+                }?.name,
                 sourceViewport = sources.firstOrNull { source ->
                     runCatching { org.nodescope.android.core.network.normalizeHost(source.host) }.getOrNull().equals(preferences.host, true)
                 }?.viewport)
@@ -207,8 +213,11 @@ internal fun AppShell(
     feed: () -> LiveFeedState = { LiveFeedState() }, onReconnect: () -> Unit = {}, nodeLibrary: NodeLibrary? = null,
     browse: BrowseRepository? = null, monitoredChannels: () -> MonitoredChannelStore? = { null },
     sourceViewport: org.nodescope.android.core.model.RegionCoordinate? = null,
+    sourceName: String? = null,
     diagnostics: org.nodescope.android.core.network.AnalyzerDiagnostics? = null,
     cacheStorage: org.nodescope.android.core.storage.CacheStorage? = null, sourceChangedAt: Long? = null,
+    myNodesRepositories: (() -> org.nodescope.android.core.storage.MyNodesRepositories)? = null,
+    myNodesSnapshots: org.nodescope.android.core.storage.MyNodesSnapshotStore? = null,
     pendingLink: PendingLink? = null, onLinkHandled: (Long) -> Unit = {},
     onDistanceUnit: (org.nodescope.android.core.storage.DistanceUnit) -> Unit = {},
     onLiveFeedDemand: (java.util.UUID, String, org.nodescope.android.core.network.LiveFeedDemand?) -> Unit = { _, _, _ -> },
@@ -352,6 +361,9 @@ internal fun AppShell(
                             isRoot -> stringResource(Destination.valueOf(currentTab).title)
                             destination?.hasRoute<ChannelRoute>() == true -> entry!!.toRoute<ChannelRoute>().name
                             destination?.hasRoute<ObserverRoute>() == true -> "Observer details"
+                            destination?.hasRoute<MyNodesRoute>() == true -> "Activity"
+                            destination?.hasRoute<CoreScopeAccountRoute>() == true -> "CoreScope account"
+                            destination?.hasRoute<FavoritesRoute>() == true -> "Favorites"
                             else -> stringResource(when {
                                 destination?.hasRoute<SourceRoute>() == true -> R.string.analyzer
                                 destination?.hasRoute<MapLabRoute>() == true -> R.string.map_lab
@@ -478,6 +490,7 @@ internal fun AppShell(
                             val monitoredList = monitoredChannels()?.channels?.collectAsStateWithLifecycle()?.value.orEmpty()
                             ExploreScreen(browse?.let { repository -> viewModel(backStack) { ExploreViewModel(repository) } }, preferences.host,
                                 state.snapshot, currentFeed, library, monitoredList, ExploreActions(
+                                    onFavorites = { nav.navigate(FavoritesRoute) },
                                     onNode = ::openNode,
                                     onObserver = { id, name -> nav.navigate(ObserverRoute(id, name)) },
                                     onChannel = { id, name -> nav.navigate(ChannelRoute(id, name)) },
@@ -567,6 +580,25 @@ internal fun AppShell(
                                 onSupport = { runCatching { uriHandler.openUri(SUPPORT_URL) } }, onDistanceUnit = onDistanceUnit)
                         }
                         screen<DiagnosticsRoute> { diagnostics?.let { DiagnosticsScreen(it, preferences.host, currentFeed.connection) } }
+                        screen<FavoritesRoute> { backStack ->
+                            org.nodescope.android.feature.explore.FavoritesScreen(
+                                browse?.let { repository -> viewModel(backStack) { ExploreViewModel(repository) } },
+                                preferences.host, state.snapshot, library, ExploreActions(
+                                    onActivity = { nav.navigate(MyNodesRoute) },
+                                    onAccount = { nav.navigate(CoreScopeAccountRoute) },
+                                    onNode = ::openNode,
+                                    onObserver = { id, name -> nav.navigate(ObserverRoute(id, name)) },
+                                    onChannel = { id, name -> nav.navigate(ChannelRoute(id, name)) }), sourceName = sourceName)
+                        }
+                        screen<CoreScopeAccountRoute> {
+                            org.nodescope.android.feature.explore.CoreScopeAccountScreen(preferences.host, sourceName, library, myNodesRepositories)
+                        }
+                        screen<MyNodesRoute> {
+                            myNodesRepositories?.let { acquire ->
+                                org.nodescope.android.feature.explore.MyNodesScreen(preferences.host, library, acquire,
+                                    ::openNode, { id, name -> nav.navigate(ObserverRoute(id, name)) }, sourceName = sourceName)
+                            }
+                        }
                         screen<StorageRoute> { cacheStorage?.let { StorageScreen(it) { onRefresh() } } }
                         screen<AboutRoute> { AboutScreen() }
                         screen<NodeRoute> { backStack ->

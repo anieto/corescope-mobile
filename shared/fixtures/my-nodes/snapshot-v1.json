@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "entries": {
+    "54:30:https://example.test:8443/base9:corescope5:local1:186:73:4:node64:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa8:activity": {
+      "namespace": {
+        "origin": "https://example.test:8443/base",
+        "backend": "corescope",
+        "selectionScope": "local",
+        "policyVersion": 1
+      },
+      "entity": {
+        "kind": "node",
+        "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "baseline": {
+        "revision": "00000000-0000-0000-0000-000000000001",
+        "metric": {
+          "activity": {
+            "state": "notRecentlyHeard",
+            "activityAt": 0,
+            "fetchedAt": 1000000,
+            "evaluatedAt": 1000000,
+            "eligible": true
+          },
+          "signal": null,
+          "observer": null
+        }
+      },
+      "candidate": null,
+      "candidateOwner": null
+    }
+  }
+}
