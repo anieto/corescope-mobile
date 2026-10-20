@@ -1,9 +1,9 @@
 # NodeScope 0.9.0 — Favorites and network awareness
 
-Status: narrowed release implementation is in progress; acceptance and release preparation remain open.
+Status: complete, marked by user direction on 2026-10-20. Recorded validation results remain unchanged.
 Prepared: 2026-10-15. Predecessor: 0.8.0 is complete, pending Apple/Google approval.
 See [implementation progress](implementation.md) for audited contracts, tests and remaining work.
-See [release preparation](release.md) for draft store copy and outstanding submission gates.
+See [release preparation](release.md) for final store copy and submission follow-ups.
 
 ## Approved release scope — 2026-10-19
 

@@ -42,7 +42,10 @@ approval from Apple and Google, respectively.
 - Beacon screens reuse the CoreScope design. Data Beacon can't provide is shown
   as unavailable or partial with an explanation, never as zero.
 
-## 0.9.0 — My Nodes and network awareness
+## 0.9.0 — My Nodes and network awareness (complete)
+
+Marked complete on 2026-10-20. Final [store notes](docs/my-nodes/release.md) retain validation
+and submission follow-ups.
 
 Detailed scope, proposed behavior, milestones, and acceptance criteria are in the
 [0.9.0 implementation plan](docs/my-nodes/plan.md). Implementation started on
@@ -143,7 +146,5 @@ and 3 are at parity. See [implementation progress](docs/android/progress.md).
 
 ## Current priority
 
-Finish 0.9.0 Favorites and Activity with account nodes displayed alongside device favorites,
-separate membership storage, reliable account sync, and clear last-heard/freshness states.
-Prioritize account acceptance, Android parity, focused accessibility/device checks and release
-preparation. Detailed analytics remain in the existing Node Analytics screens.
+Prepare the next milestone, 0.10.0 field investigation. Version 0.9.0 feature work is complete;
+store distribution and recorded validation follow-ups remain in its release notes.

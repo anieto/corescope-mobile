@@ -1,5 +1,9 @@
 # 0.9.0 implementation progress
 
+Release marked complete by user direction on 2026-10-20. Entries below retain historical
+implementation and validation evidence; unrun checks are not retroactively marked passed.
+Final store copy and submission follow-ups are in [release notes](release.md).
+
 ## 2026-10-16 — Milestone A contract audit started
 
 Branch: `0.9.0`. This increment adds reproducible contract tooling, shared synthetic account

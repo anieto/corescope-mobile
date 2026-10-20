@@ -1,10 +1,12 @@
-# NodeScope 0.9.0 release preparation
+# NodeScope 0.9.0 release notes
 
-Status: draft, 2026-10-20. Not ready for submission; acceptance gates below remain open.
+Status: complete, marked by user direction on 2026-10-20. Store submission/approval is not recorded.
+Unchecked follow-ups below preserve the actual validation and distribution record; completion
+does not imply those checks were executed.
 Scope: Favorites, Activity, optional CoreScope account node sync. Deferred analytics dashboard,
 Changes UI, exports and live Activity updates are not advertised in this release.
 
-## Draft What's New
+## App Store — What's New
 
 Keep your saved nodes together in Favorites and follow their recent activity. Activity shows
 when a node was last heard and when its information was checked, including saved or incomplete data.
@@ -14,7 +16,7 @@ favorites. Node names and membership labels help you distinguish them. Import de
 copy account nodes explicitly, and sync account edits when you're ready. Device favorites remain
 available when you sign out. Browsing does not require an account.
 
-## Draft Google Play notes
+## Google Play — What's New
 
 Follow saved nodes in Favorites and Activity, with last-heard times and clear data freshness.
 Optionally connect a CoreScope account to see account favorites and claimed nodes alongside device
@@ -28,7 +30,7 @@ personal account favorites on their selected server. It does not manage node own
 configuration. Registration, account recovery and claimed-node management remain on the server website.
 Supply approved reviewer access separately if needed; never place credentials in repository docs.
 
-## Submission gates
+## Recorded validation and submission follow-ups
 
 - [ ] Complete [controlled-server account acceptance](account-acceptance.md) on both platforms.
 - [ ] Record user-owned simulator/device smoke tests, including Import/Sign out popup placement.
@@ -44,7 +46,7 @@ Supply approved reviewer access separately if needed; never place credentials in
 - [ ] Finalize store copy, version/build numbers, signing, archives and distribution artifacts.
 
 Source versions are iOS 0.9.0 (build 4) and Android 0.9.0 (code 14), prepared for the
-0.9.0 repository checkpoint. Store uploads and acceptance gates remain pending.
+0.9.0 repository checkpoint. Store uploads and unchecked follow-ups remain unrecorded.
 
 ## Verification evidence
 
