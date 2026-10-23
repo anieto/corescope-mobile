@@ -4,7 +4,7 @@ NodeScope should remain a fast, native, read-only mesh observability tool. New
 features should make live and historical network behavior easier to understand
 without reproducing every desktop or operator control from CoreScope.
 
-Every feature and release closeout must be verified on both iPhone and iPad,
+Every feature and release closeout must be verified on iPhone, iPhone Duo and iPad,
 including navigation, safe areas, adaptive layout, popovers/sheets, and toolbar
 content in portrait and landscape where applicable, and on Android phones,
 tablets, and foldables once Android has the feature.
@@ -66,13 +66,18 @@ Defer the Changes summary, dashboard signal/availability/coverage/telemetry, liv
 extra drill-down controls and dashboard exports. Detailed Node Analytics and its exports remain
 available. Background notifications remain out of scope.
 
-## 0.10.0 — Field investigation
+## 0.10.0 — Field Tools
 
 Make NodeScope useful while deploying, locating, or troubleshooting physical
 mesh equipment without turning the phone into a source of RF telemetry.
 
-- Add an optional Field Mode from the map and node details rather than another
-  permanent primary tab.
+Detailed product behavior, architecture, milestones, tests and release gates are in the
+[0.10.0 implementation plan](docs/field/plan.md). Track observed contracts and progress in
+[the implementation record](docs/field/implementation.md).
+
+- Add a dedicated full-screen Field Tools workspace from Map, Explore and contextual
+  detail actions rather than another permanent primary tab. Use **Nearby** for deployed
+  equipment and **Plan** for proposed sites.
 - Show nearby nodes and observers relative to the current location or a manually
   selected reference point.
 - Show distance, bearing, last-heard state, recent signal quality, observer
@@ -83,11 +88,15 @@ mesh equipment without turning the phone into a source of RF telemetry.
   observers, timestamps, and analyzer source for sharing or export.
 - Support public-key QR scanning and presentation for quick node lookup and
   favoriting in the field.
+- Allow a proposed-site pin with MeshCore radio, antenna, receiver and installation
+  assumptions; estimate terrain-aware coverage and point-to-point links.
+- Rank analyzer-known nodes and observers that may receive the proposed site, while
+  clearly separating modeled predictions from observed network evidence.
 - Keep location use foreground-only, on-device, and optional. Do not upload or
   persist the user's location history, and clearly distinguish stale reported
   coordinates from a device's current physical location.
 - Treat lightweight historical context around a selected incident as optional;
-  do not require continuous map playback for the initial Field Mode.
+  do not require continuous map playback for Field Tools.
 
 ## 1.0.0 — Investigation depth and product maturity
 
@@ -121,7 +130,7 @@ These may be revisited after 1.0 if user demand justifies them.
 - Spotlight indexing and App Shortcuts.
 - Favorite-node activity or stale-state background notifications.
 - Saved network-view presets.
-- Field survey breadcrumb recording and coverage heatmaps.
+- Field survey breadcrumb recording.
 - Route image generation.
 - Locally monitored (on-phone decrypted) channels on Beacon sources. Blocked until
   Beacon can list channel payloads without one request per packet.
@@ -146,5 +155,5 @@ and 3 are at parity. See [implementation progress](docs/android/progress.md).
 
 ## Current priority
 
-Prepare the next milestone, 0.10.0 field investigation. Version 0.9.0 feature work is complete;
+Prepare the next milestone, 0.10.0 Field Tools. Version 0.9.0 feature work is complete;
 store distribution and recorded validation follow-ups remain in its release notes.
