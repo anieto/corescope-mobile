@@ -7,6 +7,21 @@ assumptions that still require a controlled backend fixture or a product decisio
 
 ## Contract audit
 
+### Pinned evidence
+
+- CoreScope release `v3.14.0`, commit `9dbc287579a237ffa744dd0c91fa7227d09763ac`, with the
+  existing sanitized node, observer and analytics payloads in `shared/fixtures/`. The currently
+  committed fixture set does not contain a standalone CoreScope live-message capture, so that part
+  of the gate remains open.
+- Beacon minimum supported server `2.0.3`, with sanitized HTTP and WebSocket fixtures in
+  `shared/fixtures/beacon/`. The matching released API contract is beacon-docs commit
+  `9d1dae3bf989`; the newer audited contract is commit `541bc238a9d6b7c527d1362d47417446d91cb6e9`.
+- Beacon 2.0.5 compatibility was previously measured for the contract additions used by NodeScope;
+  Field Tools does not promote a newer-only field into its required contract.
+
+These are repository-pinned compatibility fixtures, not a claim that every configured public source
+runs the same build today.
+
 | Source/entity | Position | Activity evidence | Position timestamp | Field Tools rule |
 |---|---|---|---|---|
 | CoreScope node | `lat`/`lon` in the node model | `lastSeen`, `lastHeard`, and first-seen/advert metadata | Not present in the observed model | Activity may be labeled; position age is **Unknown** |
@@ -118,7 +133,8 @@ changing the privacy default.
 
 ## Remaining Milestone A gates
 
-- Capture sanitized, versioned CoreScope and Beacon payload/live fixtures and exact server versions.
+- Add a sanitized CoreScope live-message fixture to complete the already pinned v3.14.0 catalog and
+  analytics fixture set.
 - Complete the remaining catalog, pinned-evidence and planning projections around the implemented
   source-qualified identity, snapshot v1 and QR v1 contracts.
 - Complete cache/live-feed cancellation audit and measurable request limits.

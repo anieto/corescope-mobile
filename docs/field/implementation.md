@@ -21,8 +21,9 @@ existence alone is not completion.
 
 ## A — Contract, architecture and field baseline
 
-- [ ] Record CoreScope version/commit and node/observer/analytics/live fixtures.
-- [ ] Record Beacon version/commit and corresponding fixtures.
+- [ ] Record CoreScope version/commit and node/observer/analytics/live fixtures. CoreScope v3.14.0
+  catalog/analytics fixtures are pinned; a sanitized live-message fixture remains.
+- [x] Record Beacon version/commit and corresponding fixtures.
 - [x] Determine whether coordinate-update timestamps exist and document exact semantics.
 - [x] Record missing/null/zero-coordinate behavior for both backends.
 - [ ] Audit source-session cancellation, caches, live-feed reuse and request budgets.
