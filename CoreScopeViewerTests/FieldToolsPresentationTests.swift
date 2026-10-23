@@ -1,4 +1,5 @@
 import Foundation
+import MapKit
 import Testing
 @testable import CoreScopeViewer
 
@@ -55,6 +56,36 @@ struct FieldToolsPresentationTests {
         model.nodes = response.nodes
 
         #expect(model.visibleItems.map(\.id) == ["node:a", "node:b"])
+    }
+
+    @Test func mapItemsAreViewportLimitedAndRetainTheActiveTarget() throws {
+        let response = try APIClient.makeDecoder().decode(NodesResponse.self, from: Data("""
+        {
+          "nodes": [
+            {"public_key":"near-a","name":"Near A","role":"repeater","lat":30.0,"lon":-97.0},
+            {"public_key":"near-b","name":"Near B","role":"repeater","lat":30.001,"lon":-97.0},
+            {"public_key":"far","name":"Far","role":"repeater","lat":40.0,"lon":-120.0}
+          ],
+          "total":3,"counts":{"repeaters":3,"rooms":0,"companions":0,"sensors":0}
+        }
+        """.utf8))
+        let items = response.nodes.map(FieldCatalogItem.node)
+        let center = MKMapPoint(CLLocationCoordinate2D(latitude: 30.0, longitude: -97.0))
+        let viewport = MKMapRect(
+            x: center.x - 10_000,
+            y: center.y - 10_000,
+            width: 20_000,
+            height: 20_000
+        )
+
+        let displayed = FieldToolsViewModel.mapItems(
+            from: items,
+            visibleMapRect: viewport,
+            limit: 1,
+            retainingIDs: ["node:far"]
+        )
+
+        #expect(displayed.map(\.id) == ["node:near-a", "node:far"])
     }
 
     @Test func targetEvidenceProjectsOnlyCatalogFactsWithProvenance() throws {

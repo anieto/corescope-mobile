@@ -308,6 +308,30 @@ final class FieldToolsViewModel {
         }
     }
 
+    static func mapItems(
+        from items: [FieldCatalogItem],
+        visibleMapRect: MKMapRect?,
+        limit: Int,
+        retainingIDs: Set<String>
+    ) -> [FieldCatalogItem] {
+        let candidates = if let visibleMapRect {
+            items.filter { item in
+                item.coordinate.map {
+                    visibleMapRect.contains(MKMapPoint($0.clLocationCoordinate))
+                } == true
+            }
+        } else {
+            items
+        }
+
+        var result = Array(candidates.prefix(limit))
+        let includedIDs = Set(result.map(\.id))
+        result.append(contentsOf: items.filter { item in
+            retainingIDs.contains(item.id) && !includedIDs.contains(item.id)
+        })
+        return result
+    }
+
     private func recomputeVisibleItems() {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         let items = locatedItems
@@ -343,6 +367,8 @@ final class FieldToolsViewModel {
 }
 
 struct FieldToolsScreen: View {
+    private static let maximumMapAnnotations = 150
+
     let initialReference: FieldCoordinate?
 
     @Environment(AnalyzerSettings.self) private var settings
@@ -362,6 +388,8 @@ struct FieldToolsScreen: View {
     @State private var showsCoordinateEntry = false
     @State private var activeSourceSessionID: UUID?
     @State private var showsCompactCanvas = false
+    @State private var displayedMapItems: [FieldCatalogItem] = []
+    @State private var visibleMapRect: MKMapRect?
 
     init(
         initialReference: FieldCoordinate? = nil,
@@ -421,10 +449,18 @@ struct FieldToolsScreen: View {
             ))
         }
         .onChange(of: model.visibleItems) { _, items in
-            guard let pinnedItem,
-                  let refreshed = items.first(where: { $0.id == pinnedItem.id }) else { return }
-            self.pinnedItem = refreshed
-            if selectedItem?.id == refreshed.id { selectedItem = refreshed }
+            if let pinnedItem,
+               let refreshed = items.first(where: { $0.id == pinnedItem.id }) {
+                self.pinnedItem = refreshed
+                if selectedItem?.id == refreshed.id { selectedItem = refreshed }
+            }
+            updateDisplayedMapItems(from: items)
+        }
+        .onChange(of: selectedItem?.id) {
+            updateDisplayedMapItems(from: model.visibleItems)
+        }
+        .onChange(of: pinnedItem?.id) {
+            updateDisplayedMapItems(from: model.visibleItems)
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active, usesDeviceReference {
@@ -637,7 +673,7 @@ struct FieldToolsScreen: View {
                     }
 
                     if !accessibilityVoiceOverEnabled {
-                        ForEach(model.visibleItems) { item in
+                        ForEach(displayedMapItems) { item in
                             if let coordinate = item.coordinate {
                                 Annotation(item.name, coordinate: coordinate.clLocationCoordinate) {
                                     Button {
@@ -659,6 +695,10 @@ struct FieldToolsScreen: View {
                 }
                 .mapStyle(.standard(elevation: .realistic))
                 .accessibilityHidden(true)
+                .onMapCameraChange(frequency: .onEnd) { context in
+                    visibleMapRect = context.rect
+                    updateDisplayedMapItems(from: model.visibleItems)
+                }
                 .onTapGesture { point in
                     guard activity == .nearby,
                           let coordinate = proxy.convert(point, from: .local),
@@ -751,6 +791,20 @@ struct FieldToolsScreen: View {
             showsCompactCanvas = true
         } else {
             preferredCompactColumn = .detail
+        }
+    }
+
+    private func updateDisplayedMapItems(from items: [FieldCatalogItem]) {
+        let retainedIDs = Set([selectedItem?.id, pinnedItem?.id].compactMap { $0 })
+        let nextItems = FieldToolsViewModel.mapItems(
+            from: items,
+            visibleMapRect: visibleMapRect,
+            limit: Self.maximumMapAnnotations,
+            retainingIDs: retainedIDs
+        )
+
+        if displayedMapItems != nextItems {
+            displayedMapItems = nextItems
         }
     }
 }
