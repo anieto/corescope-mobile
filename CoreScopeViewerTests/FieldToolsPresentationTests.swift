@@ -125,5 +125,31 @@ struct FieldToolsPresentationTests {
         #expect(evidence.latestRssi == -92)
         #expect(evidence.strongestReceiverName == "East")
         #expect(evidence.strongestReceiverSnr == 8)
+        #expect(evidence.latestPacketHash == nil)
+    }
+
+    @Test func observerAnalyticsExposesOnlyAnExactLatestPacketReference() throws {
+        let older = try #require(ISO8601DateFormatter().date(from: "2026-10-23T11:00:00Z"))
+        let newer = try #require(ISO8601DateFormatter().date(from: "2026-10-23T11:30:00Z"))
+        let analytics = ObserverAnalyticsResponse(
+            context: nil,
+            timeline: [.init(label: "11:00", count: 2), .init(label: "11:30", count: 3)],
+            packetTypes: [:],
+            nodesTimeline: [],
+            snrDistribution: [],
+            recentPackets: [
+                .init(id: 1, hash: "older-hash", timestamp: older, payloadType: 4,
+                      snr: 2, rssi: -100, direction: nil),
+                .init(id: 2, hash: "latest-hash", timestamp: newer, payloadType: 4,
+                      snr: 6, rssi: -90, direction: nil)
+            ]
+        )
+
+        let evidence = FieldTargetAnalyticsEvidence(observer: analytics)
+
+        #expect(evidence.activityCount == 5)
+        #expect(evidence.latestPacketHash == "latest-hash")
+        #expect(evidence.latestPacketTimestamp == newer)
+        #expect(evidence.latestSnr == 6)
     }
 }

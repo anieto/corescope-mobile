@@ -12,6 +12,8 @@ struct FieldTargetAnalyticsEvidence: Codable, Equatable, Sendable {
     let latestObservedAt: Date?
     let latestSnr: Double?
     let latestRssi: Double?
+    let latestPacketHash: String?
+    let latestPacketTimestamp: Date?
     let strongestReceiverName: String?
     let strongestReceiverSnr: Double?
 
@@ -23,6 +25,8 @@ struct FieldTargetAnalyticsEvidence: Codable, Equatable, Sendable {
         latestObservedAt = latest?.timestamp
         latestSnr = latest?.snr
         latestRssi = latest?.rssi
+        latestPacketHash = nil
+        latestPacketTimestamp = nil
         let strongest = analytics.observerCoverage
             .filter { $0.avgSnr?.isFinite == true }
             .max { ($0.avgSnr ?? -.infinity) < ($1.avgSnr ?? -.infinity) }
@@ -38,6 +42,8 @@ struct FieldTargetAnalyticsEvidence: Codable, Equatable, Sendable {
         latestObservedAt = latest?.timestamp
         latestSnr = latest?.snr
         latestRssi = latest?.rssi
+        latestPacketHash = latest?.hash.isEmpty == false ? latest?.hash : nil
+        latestPacketTimestamp = latest?.timestamp
         strongestReceiverName = nil
         strongestReceiverSnr = nil
     }

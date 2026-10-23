@@ -3,11 +3,36 @@ import UIKit
 
 struct PacketDetailScreen: View {
     let message: ChannelMessage
+    private let summaryObservationCount: Int?
+    private let summaryHops: Int?
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(PacketReplayStore.self) private var replayStore
     @Environment(RecentItemsStore.self) private var recentItemsStore
     @State private var viewModel = PacketDetailViewModel()
     @State private var selectedRouteIndex = 0
+
+    init(message: ChannelMessage) {
+        self.message = message
+        summaryObservationCount = message.repeats
+        summaryHops = message.hops
+    }
+
+    init(packetHash: String, timestamp: Date, snr: Double?) {
+        message = ChannelMessage(
+            sender: "",
+            text: "",
+            timestamp: timestamp,
+            senderTimestamp: nil,
+            packetId: nil,
+            packetHash: packetHash,
+            repeats: 0,
+            observers: [],
+            hops: 0,
+            snr: snr
+        )
+        summaryObservationCount = nil
+        summaryHops = nil
+    }
 
     var body: some View {
         ScrollViewReader { scroller in
@@ -32,8 +57,8 @@ struct PacketDetailScreen: View {
                 PacketIdentityCard(
                     hash: message.packetHash,
                     type: viewModel.detail?.packet.payloadTypeName,
-                    observationCount: viewModel.detail?.observationCount ?? message.repeats,
-                    hops: message.hops,
+                    observationCount: viewModel.detail?.observationCount ?? summaryObservationCount,
+                    hops: summaryHops,
                     snr: message.snr
                 )
 
@@ -167,8 +192,8 @@ private struct PacketMessageCard: View {
 private struct PacketIdentityCard: View {
     let hash: String
     let type: String?
-    let observationCount: Int
-    let hops: Int
+    let observationCount: Int?
+    let hops: Int?
     let snr: Double?
 
     var body: some View {
@@ -191,8 +216,8 @@ private struct PacketIdentityCard: View {
             }
 
             HStack(spacing: 8) {
-                PacketMetricTile(value: observationCount.formatted(), label: "Observations", symbol: "ear.fill")
-                PacketMetricTile(value: hops.formatted(), label: "Hops", symbol: "point.3.connected.trianglepath.dotted")
+                PacketMetricTile(value: observationCount?.formatted() ?? "—", label: "Observations", symbol: "ear.fill")
+                PacketMetricTile(value: hops?.formatted() ?? "—", label: "Hops", symbol: "point.3.connected.trianglepath.dotted")
                 PacketMetricTile(
                     value: snr.map { String(format: "%.1f", $0) } ?? "—",
                     label: "SNR dB",

@@ -145,6 +145,7 @@ final class FieldToolsViewModel {
     private(set) var targetEvidenceItemID: String?
     private(set) var isLoadingTargetEvidence = false
     private(set) var targetEvidenceError: String?
+    private(set) var capabilities: Set<BackendCapability> = []
 
     private var backend: (any AnalyzerBackend)?
     private var loadID = UUID()
@@ -172,6 +173,7 @@ final class FieldToolsViewModel {
             clearTargetEvidence()
         }
         backend = next
+        capabilities = next.capabilities
     }
 
     func loadEvidence(for item: FieldCatalogItem, forceRefresh: Bool = false) async {
@@ -631,6 +633,12 @@ struct FieldToolsScreen: View {
                                 && model.isLoadingTargetEvidence,
                                analyticsError: model.targetEvidenceItemID == target.id
                                 ? model.targetEvidenceError : nil)
+                            FieldTargetQuickActions(
+                                item: target,
+                                capabilities: model.capabilities,
+                                analytics: model.targetEvidenceItemID == target.id
+                                    ? model.targetEvidence?.evidence : nil
+                            )
                         }
                         FieldTargetSummary(
                             name: target.name,
@@ -925,6 +933,59 @@ private struct FieldAnalyticsEvidenceSection: View {
         case .cached: "Saved evidence"
         case .staleFallback: "Saved fallback"
         }
+    }
+}
+
+private struct FieldTargetQuickActions: View {
+    let item: FieldCatalogItem
+    let capabilities: Set<BackendCapability>
+    let analytics: FieldTargetAnalyticsEvidence?
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) { actions }
+            VStack(spacing: 8) { actions }
+        }
+        .buttonStyle(.bordered)
+        .frame(maxWidth: 520)
+        .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private var actions: some View {
+        switch item {
+        case .node(let node):
+            NavigationLink {
+                NodeDetailScreen(node: node)
+            } label: {
+                Label("Node Details", systemImage: "info.circle")
+            }
+            if capabilities.contains(.nodeAnalytics) {
+                NavigationLink {
+                    NodeAnalyticsScreen(node: node)
+                } label: {
+                    Label("Analytics", systemImage: "chart.xyaxis.line")
+                }
+            }
+        case .observer(let observer):
+            NavigationLink {
+                ObserverDetailScreen(observer: observer)
+            } label: {
+                Label(observerActionTitle, systemImage: "info.circle")
+            }
+            if let hash = analytics?.latestPacketHash,
+               let timestamp = analytics?.latestPacketTimestamp {
+                NavigationLink {
+                    PacketDetailScreen(packetHash: hash, timestamp: timestamp, snr: analytics?.latestSnr)
+                } label: {
+                    Label("Latest Packet & Route", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
+                }
+            }
+        }
+    }
+
+    private var observerActionTitle: LocalizedStringResource {
+        capabilities.contains(.observerAnalytics) ? "Details & Analytics" : "Observer Details"
     }
 }
 
