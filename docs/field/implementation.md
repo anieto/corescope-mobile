@@ -13,7 +13,7 @@ existence alone is not completion.
 | Milestone | Status | Evidence |
 |---|---|---|
 | A — Contract, architecture and field baseline | In progress | Contract audit, geometry v1 and shared catalog repository recorded |
-| B — Workspace and Nearby, iOS then Android | Not started | — |
+| B — Workspace and Nearby, iOS then Android | In progress | iOS adaptive workspace shell and shared catalogs |
 | C — Guidance and evidence, iOS then Android | Not started | — |
 | D — Deployment planner, iOS then Android | Not started | — |
 | E — Snapshots and QR, iOS then Android | Not started | — |
@@ -59,7 +59,7 @@ observations, projection rules and remaining fixture work are recorded in
 
 ## B — Workspace and Nearby, iOS then Android
 
-- [ ] Field Tools routing from Map and Explore without a sixth root tab.
+- [x] Field Tools routing from Map and Explore without a sixth root tab.
 - [ ] Eligible node and observer detail entry.
 - [ ] Manual map-point and entered-coordinate references.
 - [ ] Foreground device-location session with timestamp/accuracy.
@@ -70,6 +70,12 @@ observations, projection rules and remaining fixture work are recorded in
 - [ ] Android-native workspace, reference, nearby, maps and adaptive layouts.
 - [ ] Shared identity/coordinate/distance/ordering/filter/session fixtures pass on both platforms.
 - [ ] Cross-platform parity gate recorded before guidance work begins.
+
+The initial iOS workspace shell now composes the existing adaptive list/detail and Duo arrangement,
+background, instrument-card and floating-glass primitives. Map supplies its visible center as the
+initial manual reference; Explore opens the same destination from a dedicated card. Nearby displays
+source-catalog nodes and observers with usable analyzer coordinates, and Plan is present as an
+explicitly incomplete activity pending the propagation-model slice.
 
 ## C — Guidance and evidence, iOS then Android
 
@@ -136,6 +142,7 @@ observations, projection rules and remaining fixture work are recorded in
 | 2026-10-23 | Android JVM | API 26+ source contract | Shared CoreScope live fixture | Passed |
 | 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Shared Field catalog repository and coalescing tests | 2 passed; build-for-testing passed |
 | 2026-10-23 | Android JVM | API 26+ source contract | Shared Field catalog repository tests | 2 passed |
+| 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Field Tools adaptive workspace and Map/Explore routing | Build-for-testing passed; repository tests 2 passed |
 
 ## Known limitations
 

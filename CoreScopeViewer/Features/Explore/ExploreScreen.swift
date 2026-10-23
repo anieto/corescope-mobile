@@ -49,6 +49,11 @@ struct ExploreScreen: View {
                 )
                 .favoritesListRow(top: 0, bottom: 8)
 
+                FieldToolsExploreCard {
+                    navigationPath.append(ExploreDestination.fieldTools)
+                }
+                .favoritesListRow(top: 0, bottom: 8)
+
                 DataLoadStatusView(
                     lastUpdatedAt: nodeViewModel.lastUpdatedAt,
                     errorMessage: nodeViewModel.errorMessage,
@@ -123,6 +128,8 @@ struct ExploreScreen: View {
                         isLoading: nodeViewModel.isLoading, errorMessage: nodeViewModel.errorMessage)
                 case .activity:
                     MyNodesScreen(isTabActive: isTabActive).id(settings.sourceSession.id)
+                case .fieldTools:
+                    FieldToolsScreen()
                 }
             }
                 }
@@ -470,7 +477,7 @@ private struct FavoritesScreen: View {
 }
 
 private enum ExploreDestination: Hashable {
-    case livePackets, favorites, activity
+    case livePackets, favorites, activity, fieldTools
 }
 
 private struct ExploreEmptyGuidance: View {
@@ -1002,6 +1009,43 @@ private struct ExploreHeader: View {
 
 
         }
+    }
+}
+
+private struct FieldToolsExploreCard: View {
+    let open: () -> Void
+
+    var body: some View {
+        Button(action: open) {
+            HStack(spacing: 12) {
+                Image(systemName: "location.viewfinder")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(NodeScopeStyle.signal, in: Circle())
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Field Tools")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text("Nearby equipment and deployment planning")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
+            }
+            .padding(16)
+            .instrumentCard()
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Opens nearby equipment and deployment planning tools")
     }
 }
 

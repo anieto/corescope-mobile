@@ -65,6 +65,8 @@ struct MapScreen: View {
     @State private var lastHandledNavigationRequestID: UUID?
     @State private var isMapCameraMoving = false
     @State private var mapViewportSize = CGSize.zero
+    @State private var showsFieldTools = false
+    @State private var fieldToolsReference: FieldCoordinate?
 
     private struct NodeCluster: Identifiable, Sendable {
         let id: String
@@ -168,6 +170,7 @@ struct MapScreen: View {
         let togglePacketSidebar: (() -> Void)?
         let retry: () -> Void
         let search: () -> Void
+        let openFieldTools: () -> Void
         @Binding var mapDisplayStyle: MapDisplayStyle
 
         var body: some View {
@@ -213,6 +216,12 @@ struct MapScreen: View {
                     }
                     .accessibilityLabel("Search nodes")
 
+                    Button(action: openFieldTools) {
+                        Image(systemName: "location.viewfinder")
+                            .frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel("Open Field Tools")
+
                     Menu {
                         ForEach(MapDisplayStyle.allCases) { style in
                             Button {
@@ -240,6 +249,13 @@ struct MapScreen: View {
 
     private var usesWideMapHeader: Bool {
         horizontalSizeClass == .regular
+    }
+
+    private func openFieldTools() {
+        fieldToolsReference = visibleRegion.flatMap {
+            FieldCoordinate(latitude: $0.center.latitude, longitude: $0.center.longitude)
+        }
+        showsFieldTools = true
     }
 
     var body: some View {
@@ -321,6 +337,11 @@ struct MapScreen: View {
                         }
                         .accessibilityLabel("Search nodes")
 
+                        Button(action: openFieldTools) {
+                            Image(systemName: "location.viewfinder")
+                        }
+                        .accessibilityLabel("Open Field Tools")
+
                         Menu {
                             ForEach(MapDisplayStyle.allCases) { style in
                                 Button {
@@ -344,6 +365,9 @@ struct MapScreen: View {
                 .navigationDestination(item: $selectedNode) { node in
                     NodeDetailScreen(node: node)
                 }
+                .navigationDestination(isPresented: $showsFieldTools) {
+                    FieldToolsScreen(initialReference: fieldToolsReference)
+                }
                 .overlay(alignment: .top) {
                     if isTabActive && usesWideMapHeader {
                         WideMapHeader(
@@ -352,6 +376,7 @@ struct MapScreen: View {
                             togglePacketSidebar: togglePacketSidebar,
                             retry: retryMapLoad,
                             search: toggleMapSearch,
+                            openFieldTools: openFieldTools,
                             mapDisplayStyle: $mapDisplayStyle
                         )
                         .padding(.horizontal, 12)
