@@ -60,9 +60,9 @@ observations, projection rules and remaining fixture work are recorded in
 ## B — Workspace and Nearby, iOS then Android
 
 - [x] Field Tools routing from Map and Explore without a sixth root tab.
-- [ ] Eligible node and observer detail entry.
-- [ ] Manual map-point and entered-coordinate references.
-- [ ] Foreground device-location session with timestamp/accuracy.
+- [x] Eligible node and observer detail entry.
+- [x] Manual map-point and entered-coordinate references.
+- [x] Foreground device-location session with timestamp/accuracy.
 - [ ] Cached-first node/observer catalog and refresh/error states.
 - [ ] Distance ordering, filters and search without per-row network work.
 - [ ] Adaptive iPhone, iPhone Duo outer/expanded/transition and iPad structure and map overlays.
@@ -76,6 +76,12 @@ background, instrument-card and floating-glass primitives. Map supplies its visi
 initial manual reference; Explore opens the same destination from a dedicated card. Nearby displays
 source-catalog nodes and observers with usable analyzer coordinates, and Plan is present as an
 explicitly incomplete activity pending the propagation-model slice.
+
+The reference controls now support map taps, bounded latitude/longitude entry and an explicitly
+explained When-In-Use device-location session. Device samples retain and display timestamp and
+horizontal accuracy, stop when the scene leaves the foreground or the workspace closes, and never
+request Always authorization. Eligible node and observer details open the workspace with that
+entity selected; zero/zero analyzer sentinel positions do not expose the action.
 
 ## C — Guidance and evidence, iOS then Android
 
@@ -143,6 +149,7 @@ explicitly incomplete activity pending the propagation-model slice.
 | 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Shared Field catalog repository and coalescing tests | 2 passed; build-for-testing passed |
 | 2026-10-23 | Android JVM | API 26+ source contract | Shared Field catalog repository tests | 2 passed |
 | 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Field Tools adaptive workspace and Map/Explore routing | Build-for-testing passed; repository tests 2 passed |
+| 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Field reference controls, foreground location lifecycle and detail routing | Build-for-testing passed |
 
 ## Known limitations
 

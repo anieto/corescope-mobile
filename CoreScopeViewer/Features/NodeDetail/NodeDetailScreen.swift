@@ -14,6 +14,12 @@ struct NodeDetailScreen: View {
     @State private var selectedLinkedNode: MeshNode?
     @State private var meshCoreContact: MeshCoreContactLink?
 
+    private var hasFieldCoordinate: Bool {
+        guard let latitude = displayedNode.lat, let longitude = displayedNode.lon else { return false }
+        return !(latitude == 0 && longitude == 0)
+            && FieldCoordinate(latitude: latitude, longitude: longitude) != nil
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -100,6 +106,16 @@ struct NodeDetailScreen: View {
             recentItemsStore.record(node: node, source: favoriteSource)
         }
         .toolbar {
+            if hasFieldCoordinate {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        FieldToolsScreen(initialNode: displayedNode)
+                    } label: {
+                        Image(systemName: "location.viewfinder")
+                    }
+                    .accessibilityLabel("Guide to Node in Field Tools")
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 favoriteButton
             }

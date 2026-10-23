@@ -169,16 +169,27 @@ struct FieldToolsScreen: View {
 
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(RegionFilterStore.self) private var regionFilter
+    @Environment(\.scenePhase) private var scenePhase
     @State private var model = FieldToolsViewModel()
+    @State private var locationSession = FieldLocationSession()
     @State private var activity = FieldToolsActivity.nearby
     @State private var selectedItem: FieldCatalogItem?
     @State private var reference: FieldCoordinate?
     @State private var preferredCompactColumn = NavigationSplitViewColumn.sidebar
     @State private var position: MapCameraPosition = .automatic
+    @State private var usesDeviceReference = false
+    @State private var showsLocationExplanation = false
+    @State private var showsCoordinateEntry = false
 
-    init(initialReference: FieldCoordinate? = nil) {
+    init(
+        initialReference: FieldCoordinate? = nil,
+        initialNode: MeshNode? = nil,
+        initialObserver: MeshObserver? = nil
+    ) {
         self.initialReference = initialReference
         _reference = State(initialValue: initialReference)
+        _selectedItem = State(initialValue: initialNode.map(FieldCatalogItem.node)
+            ?? initialObserver.map(FieldCatalogItem.observer))
     }
 
     var body: some View {
@@ -194,6 +205,38 @@ struct FieldToolsScreen: View {
         .task(id: settings.sourceSession.id) {
             model.configure(settings: settings)
             await model.load()
+        }
+        .onChange(of: locationSession.sample) { _, sample in
+            guard usesDeviceReference, let sample else { return }
+            reference = sample.coordinate
+            position = .region(MKCoordinateRegion(
+                center: sample.coordinate.clLocationCoordinate,
+                span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
+            ))
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active, usesDeviceReference {
+                locationSession.start()
+            } else if phase != .active {
+                locationSession.stop()
+            }
+        }
+        .onDisappear {
+            locationSession.stop()
+        }
+        .alert("Use Your Location?", isPresented: $showsLocationExplanation) {
+            Button("Not Now", role: .cancel) {}
+            Button("Continue") {
+                usesDeviceReference = true
+                locationSession.start()
+            }
+        } message: {
+            Text("Field Tools uses your location only while this workspace is open and active. It does not record a trail or run in the background.")
+        }
+        .sheet(isPresented: $showsCoordinateEntry) {
+            FieldCoordinateEntrySheet(initialCoordinate: usesDeviceReference ? nil : reference) { coordinate in
+                useManualReference(coordinate)
+            }
         }
     }
 
@@ -238,10 +281,33 @@ struct FieldToolsScreen: View {
                     Label("Choose Reference on Map", systemImage: "mappin.and.ellipse")
                 }
             } else {
-                Label("Manual map reference", systemImage: "location")
+                Label(referenceDescription, systemImage: usesDeviceReference ? "location.fill" : "location")
                     .foregroundStyle(NodeScopeStyle.signal)
                 Button("Clear Reference", role: .destructive) {
                     reference = nil
+                    usesDeviceReference = false
+                    locationSession.stop()
+                }
+            }
+
+            Button {
+                showsLocationExplanation = true
+            } label: {
+                Label("Use My Location", systemImage: "location.circle")
+            }
+
+            Button {
+                showsCoordinateEntry = true
+            } label: {
+                Label("Enter Coordinates", systemImage: "number")
+            }
+
+            if usesDeviceReference {
+                FieldLocationStatusLabel(status: locationSession.status)
+                if let sample = locationSession.sample {
+                    Text("Location updated \(sample.timestamp, format: .relative(presentation: .named))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
@@ -353,7 +419,7 @@ struct FieldToolsScreen: View {
                             latitude: coordinate.latitude,
                             longitude: coordinate.longitude
                           ) else { return }
-                    reference = fieldCoordinate
+                    useManualReference(fieldCoordinate)
                 }
             }
 
@@ -371,6 +437,105 @@ struct FieldToolsScreen: View {
     private func geometry(for item: FieldCatalogItem) -> FieldGeometryResult? {
         guard let reference, let coordinate = item.coordinate else { return nil }
         return FieldGeometry.geometry(from: reference, to: coordinate)
+    }
+
+    private var referenceDescription: String {
+        guard usesDeviceReference, let sample = locationSession.sample else {
+            return String(localized: "Manual reference")
+        }
+        let accuracy = Measurement(value: sample.horizontalAccuracyMeters, unit: UnitLength.meters)
+            .formatted(.measurement(width: .abbreviated))
+        return String(localized: "Device location · ±\(accuracy)")
+    }
+
+    private func useManualReference(_ coordinate: FieldCoordinate) {
+        locationSession.stop()
+        usesDeviceReference = false
+        reference = coordinate
+        position = .region(MKCoordinateRegion(
+            center: coordinate.clLocationCoordinate,
+            span: MKCoordinateSpan(latitudeDelta: 0.2, longitudeDelta: 0.2)
+        ))
+    }
+}
+
+private struct FieldLocationStatusLabel: View {
+    let status: FieldLocationStatus
+
+    var body: some View {
+        switch status {
+        case .idle, .requestingPermission, .locating:
+            Label("Finding your location…", systemImage: "location.magnifyingglass")
+                .foregroundStyle(.secondary)
+        case .active:
+            Label("Foreground location active", systemImage: "location.fill")
+                .foregroundStyle(NodeScopeStyle.healthy)
+        case .denied:
+            Label("Location access is denied. Use a manual reference instead.", systemImage: "location.slash")
+                .foregroundStyle(NodeScopeStyle.activity)
+        case .unavailable:
+            Label("Location services are unavailable.", systemImage: "location.slash")
+                .foregroundStyle(NodeScopeStyle.activity)
+        case .failed(let message):
+            Label(message, systemImage: "exclamationmark.triangle")
+                .foregroundStyle(NodeScopeStyle.activity)
+        }
+    }
+}
+
+private struct FieldCoordinateEntrySheet: View {
+    let save: (FieldCoordinate) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var latitude: String
+    @State private var longitude: String
+
+    init(initialCoordinate: FieldCoordinate?, save: @escaping (FieldCoordinate) -> Void) {
+        self.save = save
+        _latitude = State(initialValue: initialCoordinate.map { String($0.latitude) } ?? "")
+        _longitude = State(initialValue: initialCoordinate.map { String($0.longitude) } ?? "")
+    }
+
+    private var coordinate: FieldCoordinate? {
+        guard let latitude = Double(latitude.trimmingCharacters(in: .whitespacesAndNewlines)),
+              let longitude = Double(longitude.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+            return nil
+        }
+        return FieldCoordinate(latitude: latitude, longitude: longitude)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Reference Coordinate") {
+                    TextField("Latitude", text: $latitude)
+                        .keyboardType(.numbersAndPunctuation)
+                    TextField("Longitude", text: $longitude)
+                        .keyboardType(.numbersAndPunctuation)
+                }
+
+                Section {
+                    Text("Latitude must be between −90 and 90. Longitude must be between −180 and 180.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle("Enter Coordinates")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Use Coordinate") {
+                        guard let coordinate else { return }
+                        save(coordinate)
+                        dismiss()
+                    }
+                    .disabled(coordinate == nil)
+                }
+            }
+        }
     }
 }
 
