@@ -103,6 +103,7 @@
 		31DFA7E1308BA9DF00B8C681 /* FieldToolsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7E0308BA9DF00B8C681 /* FieldToolsScreen.swift */; };
 		31DFA7E3308BAC6B00B8C681 /* FieldLocationSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7E2308BAC6B00B8C681 /* FieldLocationSession.swift */; };
 		31DFA7E5308BB15800B8C681 /* FieldToolsPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7E4308BB15800B8C681 /* FieldToolsPresentationTests.swift */; };
+		31DFA7E7308BBDEE00B8C681 /* FieldEvidenceRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7E6308BBDEE00B8C681 /* FieldEvidenceRepository.swift */; };
 		31E24AAD307DB13E00C096A7 /* sources-v2.json in Resources */ = {isa = PBXBuildFile; fileRef = 31E24AAC307DB13E00C096A7 /* sources-v2.json */; };
 		367D92626A31391FE48F86D8 /* DistanceFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235873A5D91CB7811DDE491B /* DistanceFormat.swift */; };
 		37EEBAD9BA7B400246063847 /* NodeDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75CDCA22232763038FF030C6 /* NodeDetailViewModel.swift */; };
@@ -261,6 +262,7 @@
 		31DFA7E0308BA9DF00B8C681 /* FieldToolsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldToolsScreen.swift; sourceTree = "<group>"; };
 		31DFA7E2308BAC6B00B8C681 /* FieldLocationSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldLocationSession.swift; sourceTree = "<group>"; };
 		31DFA7E4308BB15800B8C681 /* FieldToolsPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldToolsPresentationTests.swift; sourceTree = "<group>"; };
+		31DFA7E6308BBDEE00B8C681 /* FieldEvidenceRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldEvidenceRepository.swift; sourceTree = "<group>"; };
 		31E24AAC307DB13E00C096A7 /* sources-v2.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "sources-v2.json"; sourceTree = "<group>"; };
 		32A0B4E835C764626FE71370 /* AnalyzerSourceLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerSourceLogo.swift; sourceTree = "<group>"; };
 		33B9A5F539B49B860F434D81 /* Channel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Channel.swift; sourceTree = "<group>"; };
@@ -600,6 +602,7 @@
 				311510B330842BDD00199D51 /* MyNodesBaseRepository.swift */,
 				311510BD30869BF200199D51 /* CoreScopeAccountClient.swift */,
 				31DFA7DB308BA2EF00B8C681 /* FieldCatalogRepository.swift */,
+				31DFA7E6308BBDEE00B8C681 /* FieldEvidenceRepository.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -792,6 +795,7 @@
 				EACC350C9F65CBA27A0B4D24 /* Channel.swift in Sources */,
 				311D6C8B307C473800E2EB70 /* BeaconLiveFeed.swift in Sources */,
 				316FE0183060985200FBA3B4 /* NodeAnalyticsViewModel.swift in Sources */,
+				31DFA7E7308BBDEE00B8C681 /* FieldEvidenceRepository.swift in Sources */,
 				317433B030828A610060A385 /* MyNodesRequestBudget.swift in Sources */,
 				311510BE30869BF200199D51 /* CoreScopeAccountClient.swift in Sources */,
 				3D366579F73DA99203CE929F /* ChannelDetailScreen.swift in Sources */,

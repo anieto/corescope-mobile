@@ -141,9 +141,14 @@ final class FieldToolsViewModel {
     var isLoading = false
     var errorMessage: String?
     var lastUpdatedAt: Date?
+    private(set) var targetEvidence: FieldEvidenceValue?
+    private(set) var targetEvidenceItemID: String?
+    private(set) var isLoadingTargetEvidence = false
+    private(set) var targetEvidenceError: String?
 
     private var backend: (any AnalyzerBackend)?
     private var loadID = UUID()
+    private var evidenceLoadID = UUID()
 
     init(reference: FieldCoordinate?) {
         self.reference = reference
@@ -164,8 +169,51 @@ final class FieldToolsViewModel {
             observers = []
             errorMessage = nil
             lastUpdatedAt = nil
+            clearTargetEvidence()
         }
         backend = next
+    }
+
+    func loadEvidence(for item: FieldCatalogItem, forceRefresh: Bool = false) async {
+        guard let backend, backend.sourceSession.isCurrent else { return }
+        let currentLoadID = UUID()
+        evidenceLoadID = currentLoadID
+        if targetEvidenceItemID != item.id {
+            targetEvidence = nil
+            targetEvidenceError = nil
+        }
+        targetEvidenceItemID = item.id
+        isLoadingTargetEvidence = targetEvidence == nil
+
+        do {
+            let value = try await FieldEvidenceRepository.shared.load(
+                item: item,
+                from: backend,
+                forceRefresh: forceRefresh
+            )
+            guard evidenceLoadID == currentLoadID,
+                  backend.sourceSession.isCurrent,
+                  targetEvidenceItemID == item.id,
+                  !Task.isCancelled else { return }
+            targetEvidence = value
+            targetEvidenceError = value.freshness == .staleFallback
+                ? String(localized: "Refresh failed. Showing saved target evidence.") : nil
+            isLoadingTargetEvidence = false
+        } catch is CancellationError {
+            if evidenceLoadID == currentLoadID { isLoadingTargetEvidence = false }
+        } catch {
+            guard evidenceLoadID == currentLoadID, targetEvidenceItemID == item.id else { return }
+            targetEvidenceError = error.localizedDescription
+            isLoadingTargetEvidence = false
+        }
+    }
+
+    func clearTargetEvidence() {
+        evidenceLoadID = UUID()
+        targetEvidence = nil
+        targetEvidenceItemID = nil
+        targetEvidenceError = nil
+        isLoadingTargetEvidence = false
     }
 
     func load(region: String?, forceRefresh: Bool = false) async {
@@ -323,6 +371,14 @@ struct FieldToolsScreen: View {
             model.configure(settings: settings)
             await model.load(region: regionFilter.selectedRegion)
         }
+        .task(id: "\(settings.sourceSession.id)|\(pinnedItem?.id ?? "none")") {
+            model.configure(settings: settings)
+            guard let pinnedItem else {
+                model.clearTargetEvidence()
+                return
+            }
+            await model.loadEvidence(for: pinnedItem)
+        }
         .onChange(of: locationSession.sample) { _, sample in
             guard usesDeviceReference, let sample else { return }
             model.reference = sample.coordinate
@@ -383,6 +439,9 @@ struct FieldToolsScreen: View {
         .adaptiveSidebarListStyle()
         .refreshable {
             await model.load(region: regionFilter.selectedRegion, forceRefresh: true)
+            if let pinnedItem {
+                await model.loadEvidence(for: pinnedItem, forceRefresh: true)
+            }
         }
     }
 
@@ -566,7 +625,12 @@ struct FieldToolsScreen: View {
                                 item: target,
                                 catalogFetchedAt: model.lastUpdatedAt,
                                 sourceHost: settings.host
-                            ))
+                            ), analytics: model.targetEvidenceItemID == target.id
+                                ? model.targetEvidence : nil,
+                               isLoadingAnalytics: model.targetEvidenceItemID == target.id
+                                && model.isLoadingTargetEvidence,
+                               analyticsError: model.targetEvidenceItemID == target.id
+                                ? model.targetEvidenceError : nil)
                         }
                         FieldTargetSummary(
                             name: target.name,
@@ -723,6 +787,9 @@ private struct FieldTargetSummary: View {
 
 private struct FieldTargetEvidenceCard: View {
     let evidence: FieldTargetEvidence
+    let analytics: FieldEvidenceValue?
+    let isLoadingAnalytics: Bool
+    let analyticsError: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -760,6 +827,12 @@ private struct FieldTargetEvidenceCard: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
+            FieldAnalyticsEvidenceSection(
+                value: analytics,
+                isLoading: isLoadingAnalytics,
+                errorMessage: analyticsError
+            )
+
             if let fetchedAt = evidence.catalogFetchedAt {
                 Text("Analyzer catalog · \(evidence.sourceHost) · fetched \(fetchedAt, format: .relative(presentation: .named))")
                     .font(.caption2)
@@ -775,6 +848,83 @@ private struct FieldTargetEvidenceCard: View {
         .frame(maxWidth: 520)
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
+    }
+}
+
+private struct FieldAnalyticsEvidenceSection: View {
+    let value: FieldEvidenceValue?
+    let isLoading: Bool
+    let errorMessage: String?
+
+    var body: some View {
+        if let value {
+            Divider()
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text(title(value.evidence.kind))
+                        .font(.caption.weight(.semibold))
+                    Spacer()
+                    Text(freshnessText(value.freshness))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                Text(summary(value.evidence))
+                    .font(.caption)
+                if let receiver = value.evidence.strongestReceiverName,
+                   let snr = value.evidence.strongestReceiverSnr {
+                    Text("Strongest average receiver: \(receiver) · \(snr, format: .number.precision(.fractionLength(1))) dB SNR")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if let latestObservedAt = value.evidence.latestObservedAt {
+                    Text("Latest observation \(latestObservedAt, format: .relative(presentation: .named))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } else if isLoading {
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Loading observed signal and receiver evidence…")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+
+        if let errorMessage {
+            Label(errorMessage, systemImage: "exclamationmark.triangle")
+                .font(.caption)
+                .foregroundStyle(NodeScopeStyle.activity)
+        }
+    }
+
+    private func summary(_ evidence: FieldTargetAnalyticsEvidence) -> String {
+        var parts = [String(localized: "\(evidence.activityCount) recorded packets")]
+        if let receiverCount = evidence.receiverCount {
+            parts.append(String(localized: "\(receiverCount) receivers"))
+        }
+        if let snr = evidence.latestSnr {
+            parts.append(String(localized: "latest \(snr.formatted(.number.precision(.fractionLength(1)))) dB SNR"))
+        }
+        if let rssi = evidence.latestRssi {
+            parts.append(String(localized: "\(rssi.formatted(.number.precision(.fractionLength(0)))) dBm RSSI"))
+        }
+        return parts.formatted()
+    }
+
+    private func title(_ kind: FieldTargetAnalyticsEvidence.Kind) -> LocalizedStringResource {
+        switch kind {
+        case .node: "Observed over the last 24 hours"
+        case .observer: "Recent observer evidence"
+        }
+    }
+
+    private func freshnessText(_ freshness: FieldEvidenceValue.Freshness) -> LocalizedStringResource {
+        switch freshness {
+        case .fetched: "Updated now"
+        case .cached: "Saved evidence"
+        case .staleFallback: "Saved fallback"
+        }
     }
 }
 

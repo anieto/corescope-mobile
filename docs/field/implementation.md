@@ -95,7 +95,7 @@ additional network work.
 - [x] Pin/switch/unpin target flows.
 - [x] Numeric true bearing and cardinal guidance.
 - [x] Optional heading-relative compass with accuracy/failure states.
-- [ ] Pinned target signal/coverage/activity evidence and provenance.
+- [x] Pinned target signal/coverage/activity evidence and provenance.
 - [ ] Detail, analytics, packet and route quick actions.
 - [ ] Cancellation, source/region changes, cached fallback and rate limits.
 - [ ] VoiceOver, Dynamic Type, Reduce Motion and physical-session validation.
@@ -114,8 +114,16 @@ Pinned targets also have an initial catalog-evidence card. It projects only fiel
 in the cached node or observer record: latest reported activity and, when supplied, advertisement
 count, explicit observer status, packets in the last hour and noise floor. The card identifies the
 analyzer host and catalog fetch time, and explicitly says that signal and receiver coverage are not
-part of the catalog record. Target-specific analytics loading and measured receiver coverage remain
-open under this milestone; this catalog layer makes no RF direction or coverage inference.
+part of the catalog record. This catalog layer makes no RF direction or coverage inference.
+
+The target-specific layer loads one day of node analytics or the source's recent observer analytics
+for only the pinned target. Node evidence reports recorded packet count, distinct receivers, latest
+SNR/RSSI and the strongest average receiver when those measured values exist; observer evidence
+reports its recorded traffic and latest measured signal values. Responses use a
+source-and-target-qualified shared cache with a five-minute fresh lifetime, in-flight request
+coalescing and seven-day stale fallback. Target/source task identity prevents late results from
+crossing selections. The UI labels fetched, saved and stale-fallback states and continues to avoid
+turning analyzer observations into direction-finding or predicted coverage claims.
 
 ## D — Deployment planner, iOS then Android
 
@@ -175,6 +183,7 @@ open under this milestone; this catalog layer makes no RF direction or coverage 
 | 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Numeric true-bearing and heading-relative target guidance | 6 geometry tests passed; build-for-testing passed |
 | 2026-10-23 | Android JVM | API 26+ source contract | Relative true-heading rotation parity | 6 geometry tests passed |
 | 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Pinned-target catalog evidence and provenance projection | 4 presentation tests passed; build-for-testing passed |
+| 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Target analytics evidence, receiver observations and cached fallback states | 5 presentation tests passed; build-for-testing passed |
 
 ## Known limitations
 

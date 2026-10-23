@@ -97,4 +97,33 @@ struct FieldToolsPresentationTests {
         #expect(evidence.activityAt == nil)
         #expect(evidence.facts == [.init(kind: .packetsLastHour, value: "7")])
     }
+
+    @Test func analyticsEvidenceProjectsMeasuredReceiverFacts() throws {
+        let response = try APIClient.makeDecoder().decode(NodeAnalyticsResponse.self, from: Data("""
+        {
+          "node":{"public_key":"node-1","role":"repeater"},
+          "timeRange":{"from":"2026-10-22T12:00:00Z","to":"2026-10-23T12:00:00Z","days":1},
+          "snrTrend":[
+            {"timestamp":"2026-10-23T11:00:00Z","snr":4.0,"rssi":-100,"observer_id":"west"},
+            {"timestamp":"2026-10-23T11:30:00Z","snr":7.5,"rssi":-92,"observer_id":"east"}
+          ],
+          "observerCoverage":[
+            {"observer_id":"west","observer_name":"West","packetCount":3,"avgSnr":4.0,
+             "firstSeen":"2026-10-23T09:00:00Z","lastSeen":"2026-10-23T11:00:00Z"},
+            {"observer_id":"east","observer_name":"East","packetCount":5,"avgSnr":8.0,
+             "firstSeen":"2026-10-23T09:00:00Z","lastSeen":"2026-10-23T11:30:00Z"}
+          ],
+          "computedStats":{"totalPackets":8,"uniqueObservers":2,"avgPacketsPerDay":8}
+        }
+        """.utf8))
+
+        let evidence = FieldTargetAnalyticsEvidence(node: response)
+
+        #expect(evidence.activityCount == 8)
+        #expect(evidence.receiverCount == 2)
+        #expect(evidence.latestSnr == 7.5)
+        #expect(evidence.latestRssi == -92)
+        #expect(evidence.strongestReceiverName == "East")
+        #expect(evidence.strongestReceiverSnr == 8)
+    }
 }
