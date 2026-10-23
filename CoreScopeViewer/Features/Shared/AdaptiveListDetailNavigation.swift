@@ -46,8 +46,8 @@ struct AdaptiveListDetailNavigation<Sidebar: View, Detail: View>: View {
                     .id(detailNavigationID)
                 }
                 .navigationSplitViewStyle(.balanced)
-                .opacity(isHingedDevice == nil ? 0 : 1)
-                .accessibilityHidden(isHingedDevice == nil)
+                .opacity(horizontalSizeClass == .regular && isHingedDevice == nil ? 0 : 1)
+                .accessibilityHidden(horizontalSizeClass == .regular && isHingedDevice == nil)
                 .transition(.opacity)
             }
         }

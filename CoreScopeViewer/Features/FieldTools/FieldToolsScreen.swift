@@ -348,6 +348,8 @@ struct FieldToolsScreen: View {
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.accessibilityVoiceOverEnabled) private var accessibilityVoiceOverEnabled
     @State private var model: FieldToolsViewModel
     @State private var locationSession = FieldLocationSession()
     @State private var activity = FieldToolsActivity.nearby
@@ -359,6 +361,7 @@ struct FieldToolsScreen: View {
     @State private var showsLocationExplanation = false
     @State private var showsCoordinateEntry = false
     @State private var activeSourceSessionID: UUID?
+    @State private var showsCompactCanvas = false
 
     init(
         initialReference: FieldCoordinate? = nil,
@@ -373,15 +376,24 @@ struct FieldToolsScreen: View {
     }
 
     var body: some View {
-        AdaptiveListDetailNavigation(
-            preferredCompactColumn: $preferredCompactColumn,
-            detailNavigationID: selectedItem?.id
-        ) {
-            toolsPanel
-        } detail: {
-            canvas
+        Group {
+            if horizontalSizeClass == .compact {
+                toolsPanel
+            } else {
+                AdaptiveListDetailNavigation(
+                    preferredCompactColumn: $preferredCompactColumn,
+                    detailNavigationID: selectedItem?.id
+                ) {
+                    toolsPanel
+                } detail: {
+                    canvas
+                }
+            }
         }
         .navigationTitle("Field Tools")
+        .navigationDestination(isPresented: $showsCompactCanvas) {
+            canvas
+        }
         .task(id: "\(settings.sourceSession.id)|\(regionFilter.selectedRegion ?? "")") {
             if let activeSourceSessionID, activeSourceSessionID != settings.sourceSession.id {
                 selectedItem = nil
@@ -443,13 +455,28 @@ struct FieldToolsScreen: View {
     private var toolsPanel: some View {
         List {
             Section {
-                Picker("Activity", selection: $activity) {
+                HStack(spacing: 4) {
                     ForEach(FieldToolsActivity.allCases) { activity in
-                        Label(activity.title, systemImage: activity.symbol)
-                            .tag(activity)
+                        Button {
+                            self.activity = activity
+                        } label: {
+                            Label(activity.title, systemImage: activity.symbol)
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                                .foregroundStyle(self.activity == activity ? NodeScopeStyle.deepNavy : .primary)
+                                .background(
+                                    self.activity == activity ? NodeScopeStyle.signal : Color.clear,
+                                    in: RoundedRectangle(cornerRadius: 9)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(activity.title)
+                        .accessibilityAddTraits(self.activity == activity ? .isSelected : [])
                     }
                 }
-                .pickerStyle(.segmented)
+                .padding(3)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
                 .listRowBackground(Color.clear)
             }
 
@@ -479,7 +506,7 @@ struct FieldToolsScreen: View {
             Label(regionFilter.selectedRegion ?? String(localized: "All regions"), systemImage: "scope")
             if model.reference == nil {
                 Button {
-                    preferredCompactColumn = .detail
+                    showCanvas()
                 } label: {
                     Label("Choose Reference on Map", systemImage: "mappin.and.ellipse")
                 }
@@ -545,7 +572,7 @@ struct FieldToolsScreen: View {
                                 span: MKCoordinateSpan(latitudeDelta: 0.2, longitudeDelta: 0.2)
                             ))
                         }
-                        preferredCompactColumn = .detail
+                        showCanvas()
                     } label: {
                         FieldCatalogRow(
                             item: item,
@@ -575,15 +602,18 @@ struct FieldToolsScreen: View {
 
     private var planSection: some View {
         Section {
-            ContentUnavailableView {
+            VStack(alignment: .leading, spacing: 12) {
                 Label("Deployment Planning", systemImage: "antenna.radiowaves.left.and.right")
-            } description: {
+                    .font(.headline)
                 Text("Choose a proposed site on the map. Radio, antenna, terrain, and receiver assumptions are added in the next planning slice.")
-            } actions: {
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
                 Button("Choose Proposed Site") {
-                    preferredCompactColumn = .detail
+                    showCanvas()
                 }
                 .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .listRowBackground(Color.clear)
         }
@@ -606,25 +636,29 @@ struct FieldToolsScreen: View {
                             .stroke(NodeScopeStyle.activity, style: StrokeStyle(lineWidth: 3, dash: [7, 5]))
                     }
 
-                    ForEach(model.visibleItems) { item in
-                        if let coordinate = item.coordinate {
-                            Annotation(item.name, coordinate: coordinate.clLocationCoordinate) {
-                                Button {
-                                    selectedItem = item
-                                } label: {
-                                    FieldMapMarker(
-                                        symbol: item.symbol,
-                                        color: item.id == pinnedItem?.id || item.id == selectedItem?.id
-                                            ? NodeScopeStyle.activity : NodeScopeStyle.signal
-                                    )
+                    if !accessibilityVoiceOverEnabled {
+                        ForEach(model.visibleItems) { item in
+                            if let coordinate = item.coordinate {
+                                Annotation(item.name, coordinate: coordinate.clLocationCoordinate) {
+                                    Button {
+                                        selectedItem = item
+                                    } label: {
+                                        FieldMapMarker(
+                                            symbol: item.symbol,
+                                            color: item.id == pinnedItem?.id || item.id == selectedItem?.id
+                                                ? NodeScopeStyle.activity : NodeScopeStyle.signal
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                    .frame(minWidth: 44, minHeight: 44)
+                                    .accessibilityLabel(item.name)
                                 }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel(item.name)
                             }
                         }
                     }
                 }
                 .mapStyle(.standard(elevation: .realistic))
+                .accessibilityHidden(true)
                 .onTapGesture { point in
                     guard activity == .nearby,
                           let coordinate = proxy.convert(point, from: .local),
@@ -711,6 +745,14 @@ struct FieldToolsScreen: View {
             span: MKCoordinateSpan(latitudeDelta: 0.2, longitudeDelta: 0.2)
         ))
     }
+
+    private func showCanvas() {
+        if horizontalSizeClass == .compact {
+            showsCompactCanvas = true
+        } else {
+            preferredCompactColumn = .detail
+        }
+    }
 }
 
 private struct FieldNearbyControls: View {
@@ -721,13 +763,30 @@ private struct FieldNearbyControls: View {
             TextField("Search located equipment", text: $model.searchText)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
+                .padding(.vertical, 11)
 
-            Picker("Equipment", selection: $model.filter) {
+            HStack(spacing: 4) {
                 ForEach(FieldCatalogFilter.allCases) { filter in
-                    Text(filter.title).tag(filter)
+                    Button {
+                        model.filter = filter
+                    } label: {
+                        Text(filter.title)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .foregroundStyle(model.filter == filter ? NodeScopeStyle.deepNavy : .primary)
+                            .background(
+                                model.filter == filter ? NodeScopeStyle.signal : Color.clear,
+                                in: RoundedRectangle(cornerRadius: 9)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(filter.title)
+                    .accessibilityAddTraits(model.filter == filter ? .isSelected : [])
                 }
             }
-            .pickerStyle(.segmented)
+            .padding(3)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
         }
         .padding(.vertical, 4)
     }
@@ -782,7 +841,7 @@ private struct FieldTargetSummary: View {
         VStack(alignment: .leading, spacing: 3) {
             Text(name)
                 .font(.headline)
-                .lineLimit(1)
+                .fixedSize(horizontal: false, vertical: true)
             Text(subtitle)
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -814,7 +873,9 @@ private struct FieldTargetSummary: View {
             Label(isPinned ? "Unpin" : "Pin Target", systemImage: isPinned ? "pin.slash" : "pin")
         }
         .buttonStyle(.borderedProminent)
+        .controlSize(.large)
         .tint(isPinned ? NodeScopeStyle.activity : NodeScopeStyle.signal)
+        .foregroundStyle(NodeScopeStyle.deepNavy)
     }
 }
 
@@ -972,6 +1033,7 @@ private struct FieldTargetQuickActions: View {
             VStack(spacing: 8) { actions }
         }
         .buttonStyle(.bordered)
+        .controlSize(.large)
         .frame(maxWidth: 520)
         .frame(maxWidth: .infinity)
     }
@@ -1017,6 +1079,7 @@ private struct FieldTargetQuickActions: View {
 private struct FieldEvidenceFactView: View {
     let kind: FieldTargetEvidence.FactKind
     let value: String
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Label {
@@ -1024,7 +1087,7 @@ private struct FieldEvidenceFactView: View {
                 .font(.caption)
         } icon: {
             Image(systemName: symbol)
-                .foregroundStyle(NodeScopeStyle.signal)
+                .foregroundStyle(NodeScopeStyle.signal.readableForeground(for: colorScheme))
         }
     }
 
@@ -1051,6 +1114,7 @@ private struct FieldCompassGuidance: View {
     let trueBearingDegrees: Double?
     let headingSample: FieldHeadingSample?
     let status: FieldHeadingStatus
+    @Environment(\.colorScheme) private var colorScheme
 
     private var rotation: Double? {
         guard let trueBearingDegrees, let headingSample else { return nil }
@@ -1065,7 +1129,7 @@ private struct FieldCompassGuidance: View {
             VStack(spacing: 2) {
                 Image(systemName: "location.north.fill")
                     .font(.title3.weight(.semibold))
-                    .foregroundStyle(NodeScopeStyle.signal)
+                    .foregroundStyle(NodeScopeStyle.signal.readableForeground(for: colorScheme))
                     .rotationEffect(.degrees(rotation))
                     .accessibilityHidden(true)
                 Text("±\(headingSample.accuracyDegrees, format: .number.precision(.fractionLength(0)))°")
@@ -1176,7 +1240,7 @@ private struct FieldCatalogRow: View {
         HStack(spacing: 12) {
             Image(systemName: item.symbol)
                 .font(.body.weight(.semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(NodeScopeStyle.deepNavy)
                 .frame(width: 40, height: 40)
                 .background(NodeScopeStyle.signal, in: Circle())
                 .accessibilityHidden(true)
@@ -1217,7 +1281,7 @@ private struct FieldMapMarker: View {
     var body: some View {
         Image(systemName: symbol)
             .font(.caption.weight(.bold))
-            .foregroundStyle(.white)
+            .foregroundStyle(NodeScopeStyle.deepNavy)
             .frame(width: 34, height: 34)
             .background(color, in: Circle())
             .overlay {
@@ -1231,6 +1295,7 @@ private struct FieldCanvasHeader: View {
     let activity: FieldToolsActivity
     let referenceIsSet: Bool
     let selectedName: String?
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
@@ -1257,8 +1322,8 @@ private struct FieldCanvasHeader: View {
         if let selectedName {
             Text(selectedName)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(NodeScopeStyle.signal)
-                .lineLimit(1)
+                .foregroundStyle(NodeScopeStyle.signal.readableForeground(for: colorScheme))
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

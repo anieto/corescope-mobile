@@ -27,8 +27,8 @@ existence alone is not completion.
 - [x] Record missing/null/zero-coordinate behavior for both backends.
 - [x] Audit source-session cancellation, caches, live-feed reuse and request budgets.
 - [x] Capture existing Map/Explore/detail visual patterns and shared UI primitives.
-- [ ] Prototype compact iPhone, Duo outer/expanded and iPad Field Tools layouts using real shared components.
-- [ ] Record design review confirming navigation, pane ordering, cards, map controls, colors,
+- [x] Prototype compact iPhone, Duo outer/expanded and iPad Field Tools layouts using real shared components.
+- [x] Record design review confirming navigation, pane ordering, cards, map controls, colors,
   typography, spacing, loading/error states and accessibility match the current app.
 - [x] Confirm iOS and Android deployment targets and scanner/location API availability.
 - [ ] Define neutral models and source-qualified identities. Source/entity identity and snapshot
@@ -65,7 +65,7 @@ observations, projection rules and remaining fixture work are recorded in
 - [x] Foreground device-location session with timestamp/accuracy.
 - [x] Cached-first node/observer catalog and refresh/error states.
 - [x] Distance ordering, filters and search without per-row network work.
-- [ ] Adaptive iPhone, iPhone Duo outer/expanded/transition and iPad structure and map overlays.
+- [x] Adaptive iPhone, iPhone Duo outer/expanded/transition and iPad structure and map overlays.
 - [ ] Unit/model/repository and permission-independent UI tests.
 - [ ] Android-native workspace, reference, nearby, maps and adaptive layouts.
 - [ ] Shared identity/coordinate/distance/ordering/filter/session fixtures pass on both platforms.
@@ -102,6 +102,21 @@ additional network work.
 - [ ] Android-native guidance, compass, evidence, accessibility and lifecycle behavior.
 - [ ] Shared geometry/freshness/capability/provenance fixtures pass on both platforms.
 - [ ] Matching scripted iOS/Android physical-field results recorded before planning work begins.
+
+The Field Tools source audit passes the VoiceOver, Dynamic Type and sufficient-contrast criteria.
+All text uses scalable text styles, multi-line identity text is not artificially truncated, compact
+controls use 44-point targets, meaningful controls have human-readable labels, decorative symbols
+are hidden, and accent foregrounds use contrast-safe variants. When VoiceOver is active, the dense
+MapKit annotation layer is omitted and the Nearby list remains the complete linear target-selection
+path. Hinge transitions honor Reduce Motion. Physical-device VoiceOver and large-content-size runs
+remain open, so the combined physical-session release gate above is intentionally unchecked.
+
+Simulator review covered compact iPhone, the fixed Duo posture with asymmetric trailing rail, and
+iPad portrait/landscape. Compact uses its parent navigation stack rather than nesting a collapsed
+split view; Duo keeps content out of the navigation rail; iPad holds a 340-point sidebar while the
+map pane expands. The Plan action remains present at constrained heights. One iPad Map-to-Explore
+tab transition crashed once and did not reproduce after relaunch; retain it as a regression watch
+item for the physical-session pass.
 
 Pinned iOS targets now show localized distance, numeric initial true bearing and cardinal direction.
 When the person explicitly uses the foreground device reference, a narrowly scoped compass view
@@ -201,6 +216,10 @@ distinct user-facing rate-limit states instead of appearing as generic failures.
 | 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Target analytics evidence, receiver observations and cached fallback states | 5 presentation tests passed; build-for-testing passed |
 | 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Capability-aware detail/analytics and exact packet/route quick actions | 6 presentation tests passed; build-for-testing passed |
 | 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Evidence source/target lifecycle, coalescing, fallback and rate-limit classification | 9 focused tests passed; build-for-testing passed |
+| 2026-10-23 | iPhone 17 simulator / iOS 27.2 | Runtime hierarchy and screenshots | Compact Field Tools Nearby, Plan and map navigation | Passed after compact split-navigation fix; no clipping or overlap |
+| 2026-10-23 | iPhone Duo simulator / iOS 27.1 | Fixed posture hierarchy and screenshots | Asymmetric pane/rail layout, Nearby, Plan and map | Passed; system rail Back control remains OS-owned |
+| 2026-10-23 | iPad Air 11-inch simulator / iOS 27.2 | Portrait and landscape hierarchy/screenshots | Sidebar/map reflow and Plan action | Passed; one non-reproducible tab-transition crash retained for regression watch |
+| 2026-10-23 | iOS source audit / Xcode 27.1 | Field Tools and shared adaptive primitives | VoiceOver, Dynamic Type, contrast, Reduce Motion and resizability | PASS; 7 focused tests and build-for-testing passed |
 
 ## Known limitations
 

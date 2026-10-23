@@ -4,6 +4,7 @@ import SwiftUI
 /// Width alone cannot distinguish iPhone Duo from iPad or a resizable window.
 private struct DuoHingeObserver: ViewModifier {
     @Binding var isHingedDevice: Bool?
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
 
     @ViewBuilder
     func body(content: Content) -> some View {
@@ -13,6 +14,8 @@ private struct DuoHingeObserver: ViewModifier {
                     let newValue = newContext.hinge != nil
                     if isHingedDevice == nil {
                         // Resolve the initial posture without animating an incorrect layout.
+                        isHingedDevice = newValue
+                    } else if accessibilityReduceMotion {
                         isHingedDevice = newValue
                     } else {
                         withAnimation(.easeInOut(duration: 0.32)) {
