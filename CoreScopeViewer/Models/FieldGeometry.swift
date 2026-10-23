@@ -78,6 +78,15 @@ enum FieldGeometry {
         let index = Int((normalized + 11.25) / 22.5) % FieldCardinalDirection.allCases.count
         return FieldCardinalDirection.allCases[index]
     }
+
+    static func relativeHeadingRotation(
+        trueBearingDegrees: Double,
+        deviceTrueHeadingDegrees: Double
+    ) -> Double? {
+        guard trueBearingDegrees.isFinite, deviceTrueHeadingDegrees.isFinite else { return nil }
+        return ((trueBearingDegrees - deviceTrueHeadingDegrees).truncatingRemainder(dividingBy: 360) + 360)
+            .truncatingRemainder(dividingBy: 360)
+    }
 }
 
 private extension Double {

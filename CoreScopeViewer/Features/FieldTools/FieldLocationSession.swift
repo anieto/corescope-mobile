@@ -7,6 +7,19 @@ struct FieldLocationSample: Equatable, Sendable {
     let horizontalAccuracyMeters: Double
 }
 
+struct FieldHeadingSample: Equatable, Sendable {
+    let trueHeadingDegrees: Double
+    let accuracyDegrees: Double
+    let timestamp: Date
+}
+
+enum FieldHeadingStatus: Equatable, Sendable {
+    case idle
+    case unavailable
+    case calibrating
+    case active
+}
+
 enum FieldLocationStatus: Equatable, Sendable {
     case idle
     case requestingPermission
@@ -22,6 +35,8 @@ enum FieldLocationStatus: Equatable, Sendable {
 final class FieldLocationSession: NSObject, @preconcurrency CLLocationManagerDelegate {
     private(set) var sample: FieldLocationSample?
     private(set) var status: FieldLocationStatus = .idle
+    private(set) var headingSample: FieldHeadingSample?
+    private(set) var headingStatus: FieldHeadingStatus = .idle
 
     private let manager: CLLocationManager
     private var wantsUpdates = false
@@ -32,6 +47,7 @@ final class FieldLocationSession: NSObject, @preconcurrency CLLocationManagerDel
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyBest
         manager.distanceFilter = 5
+        manager.headingFilter = 2
     }
 
     func start() {
@@ -57,6 +73,9 @@ final class FieldLocationSession: NSObject, @preconcurrency CLLocationManagerDel
     func stop() {
         wantsUpdates = false
         manager.stopUpdatingLocation()
+        manager.stopUpdatingHeading()
+        headingSample = nil
+        headingStatus = .idle
         if status == .locating || status == .active {
             status = .idle
         }
@@ -93,6 +112,19 @@ final class FieldLocationSession: NSObject, @preconcurrency CLLocationManagerDel
         status = .active
     }
 
+    func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+        guard wantsUpdates,
+              newHeading.trueHeading >= 0,
+              newHeading.headingAccuracy >= 0 else { return }
+
+        headingSample = FieldHeadingSample(
+            trueHeadingDegrees: newHeading.trueHeading,
+            accuracyDegrees: newHeading.headingAccuracy,
+            timestamp: newHeading.timestamp
+        )
+        headingStatus = .active
+    }
+
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         guard wantsUpdates else { return }
         if let locationError = error as? CLError, locationError.code == .denied {
@@ -105,5 +137,11 @@ final class FieldLocationSession: NSObject, @preconcurrency CLLocationManagerDel
     private func beginUpdates() {
         status = sample == nil ? .locating : .active
         manager.startUpdatingLocation()
+        if CLLocationManager.headingAvailable() {
+            headingStatus = headingSample == nil ? .calibrating : .active
+            manager.startUpdatingHeading()
+        } else {
+            headingStatus = .unavailable
+        }
     }
 }

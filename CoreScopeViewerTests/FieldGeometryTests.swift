@@ -48,4 +48,11 @@ struct FieldGeometryTests {
         #expect(FieldGeometry.cardinalDirection(for: -90) == .west)
         #expect(FieldGeometry.cardinalDirection(for: 360) == .north)
     }
+
+    @Test func rotatesTrueBearingRelativeToDeviceHeading() {
+        #expect(FieldGeometry.relativeHeadingRotation(trueBearingDegrees: 20, deviceTrueHeadingDegrees: 350) == 30)
+        #expect(FieldGeometry.relativeHeadingRotation(trueBearingDegrees: 350, deviceTrueHeadingDegrees: 20) == 330)
+        #expect(FieldGeometry.relativeHeadingRotation(trueBearingDegrees: 90, deviceTrueHeadingDegrees: 90) == 0)
+        #expect(FieldGeometry.relativeHeadingRotation(trueBearingDegrees: .nan, deviceTrueHeadingDegrees: 0) == nil)
+    }
 }

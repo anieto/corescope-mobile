@@ -55,4 +55,11 @@ class FieldGeometryTest {
         assertEquals(FieldCardinalDirection.WEST, FieldGeometry.cardinalDirection(-90.0))
         assertEquals(FieldCardinalDirection.NORTH, FieldGeometry.cardinalDirection(360.0))
     }
+
+    @Test fun rotatesTrueBearingRelativeToDeviceHeading() {
+        assertEquals(30.0, requireNotNull(FieldGeometry.relativeHeadingRotation(20.0, 350.0)), 0.0)
+        assertEquals(330.0, requireNotNull(FieldGeometry.relativeHeadingRotation(350.0, 20.0)), 0.0)
+        assertEquals(0.0, requireNotNull(FieldGeometry.relativeHeadingRotation(90.0, 90.0)), 0.0)
+        assertNull(FieldGeometry.relativeHeadingRotation(Double.NaN, 0.0))
+    }
 }

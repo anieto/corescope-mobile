@@ -515,6 +515,12 @@ struct FieldToolsScreen: View {
                         name: target.name,
                         subtitle: target.subtitle,
                         geometry: geometry(for: target),
+                        headingSample: usesDeviceReference && pinnedItem?.id == target.id
+                            ? locationSession.headingSample
+                            : nil,
+                        headingStatus: usesDeviceReference && pinnedItem?.id == target.id
+                            ? locationSession.headingStatus
+                            : .idle,
                         isPinned: pinnedItem?.id == target.id,
                         pin: { pinnedItem = target },
                         unpin: { pinnedItem = nil }
@@ -576,6 +582,8 @@ private struct FieldTargetSummary: View {
     let name: String
     let subtitle: String
     let geometry: FieldGeometryResult?
+    let headingSample: FieldHeadingSample?
+    let headingStatus: FieldHeadingStatus
     let isPinned: Bool
     let pin: () -> Void
     let unpin: () -> Void
@@ -585,6 +593,11 @@ private struct FieldTargetSummary: View {
             HStack(spacing: 12) {
                 identity
                 Spacer(minLength: 8)
+                FieldCompassGuidance(
+                    trueBearingDegrees: geometry?.initialBearingDegrees,
+                    headingSample: headingSample,
+                    status: headingStatus
+                )
                 distance
                 pinButton
             }
@@ -592,6 +605,11 @@ private struct FieldTargetSummary: View {
             VStack(alignment: .leading, spacing: 10) {
                 identity
                 HStack {
+                    FieldCompassGuidance(
+                        trueBearingDegrees: geometry?.initialBearingDegrees,
+                        headingSample: headingSample,
+                        status: headingStatus
+                    )
                     distance
                     Spacer()
                     pinButton
@@ -624,7 +642,7 @@ private struct FieldTargetSummary: View {
                      format: .measurement(width: .abbreviated, usage: .road))
                     .font(.subheadline.weight(.semibold))
                 if let direction = geometry.cardinalDirection {
-                    Text("True bearing · \(direction.rawValue)")
+                    Text("\(geometry.initialBearingDegrees ?? 0, format: .number.precision(.fractionLength(0)))° true · \(direction.rawValue)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -642,6 +660,46 @@ private struct FieldTargetSummary: View {
         }
         .buttonStyle(.borderedProminent)
         .tint(isPinned ? NodeScopeStyle.activity : NodeScopeStyle.signal)
+    }
+}
+
+private struct FieldCompassGuidance: View {
+    let trueBearingDegrees: Double?
+    let headingSample: FieldHeadingSample?
+    let status: FieldHeadingStatus
+
+    private var rotation: Double? {
+        guard let trueBearingDegrees, let headingSample else { return nil }
+        return FieldGeometry.relativeHeadingRotation(
+            trueBearingDegrees: trueBearingDegrees,
+            deviceTrueHeadingDegrees: headingSample.trueHeadingDegrees
+        )
+    }
+
+    var body: some View {
+        if let rotation, let headingSample {
+            VStack(spacing: 2) {
+                Image(systemName: "location.north.fill")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(NodeScopeStyle.signal)
+                    .rotationEffect(.degrees(rotation))
+                    .accessibilityHidden(true)
+                Text("±\(headingSample.accuracyDegrees, format: .number.precision(.fractionLength(0)))°")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Target direction")
+            .accessibilityValue("\(rotation, format: .number.precision(.fractionLength(0))) degrees clockwise from the top of the device, accuracy plus or minus \(headingSample.accuracyDegrees, format: .number.precision(.fractionLength(0))) degrees")
+        } else if status == .calibrating {
+            ProgressView()
+                .controlSize(.small)
+                .accessibilityLabel("Calibrating compass")
+        } else if status == .unavailable {
+            Image(systemName: "location.slash")
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("Compass unavailable")
+        }
     }
 }
 

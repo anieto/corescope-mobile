@@ -14,7 +14,7 @@ existence alone is not completion.
 |---|---|---|
 | A — Contract, architecture and field baseline | In progress | Contract audit, geometry v1 and shared catalog repository recorded |
 | B — Workspace and Nearby, iOS then Android | In progress | iOS adaptive workspace shell and shared catalogs |
-| C — Guidance and evidence, iOS then Android | Not started | — |
+| C — Guidance and evidence, iOS then Android | In progress | iOS true-bearing and foreground true-heading guidance; shared rotation fixture |
 | D — Deployment planner, iOS then Android | Not started | — |
 | E — Snapshots and QR, iOS then Android | Not started | — |
 | F — Joint release hardening | Not started | — |
@@ -92,9 +92,9 @@ additional network work.
 
 ## C — Guidance and evidence, iOS then Android
 
-- [ ] Pin/switch/unpin target flows.
-- [ ] Numeric true bearing and cardinal guidance.
-- [ ] Optional heading-relative compass with accuracy/failure states.
+- [x] Pin/switch/unpin target flows.
+- [x] Numeric true bearing and cardinal guidance.
+- [x] Optional heading-relative compass with accuracy/failure states.
 - [ ] Pinned target signal/coverage/activity evidence and provenance.
 - [ ] Detail, analytics, packet and route quick actions.
 - [ ] Cancellation, source/region changes, cached fallback and rate limits.
@@ -102,6 +102,13 @@ additional network work.
 - [ ] Android-native guidance, compass, evidence, accessibility and lifecycle behavior.
 - [ ] Shared geometry/freshness/capability/provenance fixtures pass on both platforms.
 - [ ] Matching scripted iOS/Android physical-field results recorded before planning work begins.
+
+Pinned iOS targets now show localized distance, numeric initial true bearing and cardinal direction.
+When the person explicitly uses the foreground device reference, a narrowly scoped compass view
+rotates the target arrow relative to a valid Core Location true-heading sample and reports heading
+accuracy. It never substitutes magnetic heading. Unsupported hardware and pending calibration have
+explicit fallback states, while numeric guidance remains available for manual references and when
+heading is unavailable. Location and heading updates stop together on background or workspace exit.
 
 ## D — Deployment planner, iOS then Android
 
@@ -158,6 +165,8 @@ additional network work.
 | 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Field Tools adaptive workspace and Map/Explore routing | Build-for-testing passed; repository tests 2 passed |
 | 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Field reference controls, foreground location lifecycle and detail routing | Build-for-testing passed |
 | 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Nearby ordering, local search/filter and target selection/pinning | 9 focused tests passed; build-for-testing passed |
+| 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Numeric true-bearing and heading-relative target guidance | 6 geometry tests passed; build-for-testing passed |
+| 2026-10-23 | Android JVM | API 26+ source contract | Relative true-heading rotation parity | 6 geometry tests passed |
 
 ## Known limitations
 

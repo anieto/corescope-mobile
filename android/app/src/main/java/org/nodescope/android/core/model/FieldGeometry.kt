@@ -77,4 +77,9 @@ object FieldGeometry {
         val index = ((normalized + 11.25) / 22.5).toInt() % FieldCardinalDirection.entries.size
         return FieldCardinalDirection.entries[index]
     }
+
+    fun relativeHeadingRotation(trueBearingDegrees: Double, deviceTrueHeadingDegrees: Double): Double? {
+        if (!trueBearingDegrees.isFinite() || !deviceTrueHeadingDegrees.isFinite()) return null
+        return ((trueBearingDegrees - deviceTrueHeadingDegrees) % 360.0 + 360.0) % 360.0
+    }
 }
