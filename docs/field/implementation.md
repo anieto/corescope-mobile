@@ -63,8 +63,8 @@ observations, projection rules and remaining fixture work are recorded in
 - [x] Eligible node and observer detail entry.
 - [x] Manual map-point and entered-coordinate references.
 - [x] Foreground device-location session with timestamp/accuracy.
-- [ ] Cached-first node/observer catalog and refresh/error states.
-- [ ] Distance ordering, filters and search without per-row network work.
+- [x] Cached-first node/observer catalog and refresh/error states.
+- [x] Distance ordering, filters and search without per-row network work.
 - [ ] Adaptive iPhone, iPhone Duo outer/expanded/transition and iPad structure and map overlays.
 - [ ] Unit/model/repository and permission-independent UI tests.
 - [ ] Android-native workspace, reference, nearby, maps and adaptive layouts.
@@ -82,6 +82,13 @@ explained When-In-Use device-location session. Device samples retain and display
 horizontal accuracy, stop when the scene leaves the foreground or the workspace closes, and never
 request Always authorization. Eligible node and observer details open the workspace with that
 entity selected; zero/zero analyzer sentinel positions do not expose the action.
+
+Nearby now prepares its visible collection in the observable model: distance-first when a reference
+exists, deterministic name ordering otherwise, with local node/observer filters and search. The
+selected region is applied to the node catalog request and observer IATA metadata before display.
+Selection and pinning use stable source entity IDs; a pinned target adds a distinct dashed geometric
+line and compact summary with distance/cardinal direction, and can be switched or unpinned without
+additional network work.
 
 ## C — Guidance and evidence, iOS then Android
 
@@ -150,6 +157,7 @@ entity selected; zero/zero analyzer sentinel positions do not expose the action.
 | 2026-10-23 | Android JVM | API 26+ source contract | Shared Field catalog repository tests | 2 passed |
 | 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Field Tools adaptive workspace and Map/Explore routing | Build-for-testing passed; repository tests 2 passed |
 | 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Field reference controls, foreground location lifecycle and detail routing | Build-for-testing passed |
+| 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Nearby ordering, local search/filter and target selection/pinning | 9 focused tests passed; build-for-testing passed |
 
 ## Known limitations
 

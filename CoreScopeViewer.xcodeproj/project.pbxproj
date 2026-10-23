@@ -102,6 +102,7 @@
 		31DFA7DE308BA35700B8C681 /* FieldCatalogRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7DD308BA35700B8C681 /* FieldCatalogRepositoryTests.swift */; };
 		31DFA7E1308BA9DF00B8C681 /* FieldToolsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7E0308BA9DF00B8C681 /* FieldToolsScreen.swift */; };
 		31DFA7E3308BAC6B00B8C681 /* FieldLocationSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7E2308BAC6B00B8C681 /* FieldLocationSession.swift */; };
+		31DFA7E5308BB15800B8C681 /* FieldToolsPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7E4308BB15800B8C681 /* FieldToolsPresentationTests.swift */; };
 		31E24AAD307DB13E00C096A7 /* sources-v2.json in Resources */ = {isa = PBXBuildFile; fileRef = 31E24AAC307DB13E00C096A7 /* sources-v2.json */; };
 		367D92626A31391FE48F86D8 /* DistanceFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235873A5D91CB7811DDE491B /* DistanceFormat.swift */; };
 		37EEBAD9BA7B400246063847 /* NodeDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75CDCA22232763038FF030C6 /* NodeDetailViewModel.swift */; };
@@ -259,6 +260,7 @@
 		31DFA7DD308BA35700B8C681 /* FieldCatalogRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldCatalogRepositoryTests.swift; sourceTree = "<group>"; };
 		31DFA7E0308BA9DF00B8C681 /* FieldToolsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldToolsScreen.swift; sourceTree = "<group>"; };
 		31DFA7E2308BAC6B00B8C681 /* FieldLocationSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldLocationSession.swift; sourceTree = "<group>"; };
+		31DFA7E4308BB15800B8C681 /* FieldToolsPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldToolsPresentationTests.swift; sourceTree = "<group>"; };
 		31E24AAC307DB13E00C096A7 /* sources-v2.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "sources-v2.json"; sourceTree = "<group>"; };
 		32A0B4E835C764626FE71370 /* AnalyzerSourceLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerSourceLogo.swift; sourceTree = "<group>"; };
 		33B9A5F539B49B860F434D81 /* Channel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Channel.swift; sourceTree = "<group>"; };
@@ -630,6 +632,7 @@
 				31DFA7D5308B044900B8C681 /* FieldContractsTests.swift */,
 				31DFA7D9308B052700B8C681 /* FieldSnapshotTests.swift */,
 				31DFA7DD308BA35700B8C681 /* FieldCatalogRepositoryTests.swift */,
+				31DFA7E4308BB15800B8C681 /* FieldToolsPresentationTests.swift */,
 			);
 			path = CoreScopeViewerTests;
 			sourceTree = "<group>";
@@ -729,6 +732,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				31DFA7E5308BB15800B8C681 /* FieldToolsPresentationTests.swift in Sources */,
 				3BE961FDCF2336382895F4C3 /* ModelDecodingTests.swift in Sources */,
 				036ACF59063991FAB8B4D9A0 /* URLPathEncodingTests.swift in Sources */,
 				31DFA7DA308B052700B8C681 /* FieldSnapshotTests.swift in Sources */,
