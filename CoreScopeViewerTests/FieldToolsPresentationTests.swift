@@ -56,4 +56,45 @@ struct FieldToolsPresentationTests {
 
         #expect(model.visibleItems.map(\.id) == ["node:a", "node:b"])
     }
+
+    @Test func targetEvidenceProjectsOnlyCatalogFactsWithProvenance() throws {
+        let decoder = APIClient.makeDecoder()
+        let nodes = try decoder.decode(NodesResponse.self, from: Data("""
+        {
+          "nodes": [{
+            "public_key":"node-1","name":"Relay","role":"repeater","lat":30.0,"lon":-97.0,
+            "last_seen":"2026-10-23T12:00:00Z","advert_count":42
+          }],
+          "total":1,"counts":{"repeaters":1,"rooms":0,"companions":0,"sensors":0}
+        }
+        """.utf8))
+        let fetchedAt = try #require(ISO8601DateFormatter().date(from: "2026-10-23T12:05:00Z"))
+
+        let evidence = FieldTargetEvidence(
+            item: .node(try #require(nodes.nodes.first)),
+            catalogFetchedAt: fetchedAt,
+            sourceHost: "example.test"
+        )
+
+        #expect(evidence.activityAt != nil)
+        #expect(evidence.catalogFetchedAt == fetchedAt)
+        #expect(evidence.sourceHost == "example.test")
+        #expect(evidence.facts == [.init(kind: .advertisements, value: "42")])
+    }
+
+    @Test func observerEvidenceDoesNotInventMissingSignalOrStatus() throws {
+        let decoder = APIClient.makeDecoder()
+        let response = try decoder.decode(ObserversResponse.self, from: Data("""
+        {"observers":[{"id":"observer-1","lat":30.0,"lon":-97.0,"packetsLastHour":7}]}
+        """.utf8))
+
+        let evidence = FieldTargetEvidence(
+            item: .observer(try #require(response.observers.first)),
+            catalogFetchedAt: nil,
+            sourceHost: "example.test"
+        )
+
+        #expect(evidence.activityAt == nil)
+        #expect(evidence.facts == [.init(kind: .packetsLastHour, value: "7")])
+    }
 }

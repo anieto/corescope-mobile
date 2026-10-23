@@ -110,6 +110,13 @@ accuracy. It never substitutes magnetic heading. Unsupported hardware and pendin
 explicit fallback states, while numeric guidance remains available for manual references and when
 heading is unavailable. Location and heading updates stop together on background or workspace exit.
 
+Pinned targets also have an initial catalog-evidence card. It projects only fields already present
+in the cached node or observer record: latest reported activity and, when supplied, advertisement
+count, explicit observer status, packets in the last hour and noise floor. The card identifies the
+analyzer host and catalog fetch time, and explicitly says that signal and receiver coverage are not
+part of the catalog record. Target-specific analytics loading and measured receiver coverage remain
+open under this milestone; this catalog layer makes no RF direction or coverage inference.
+
 ## D — Deployment planner, iOS then Android
 
 - [ ] Propagation-engine and terrain-provider license/architecture decision.
@@ -167,6 +174,7 @@ heading is unavailable. Location and heading updates stop together on background
 | 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Nearby ordering, local search/filter and target selection/pinning | 9 focused tests passed; build-for-testing passed |
 | 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Numeric true-bearing and heading-relative target guidance | 6 geometry tests passed; build-for-testing passed |
 | 2026-10-23 | Android JVM | API 26+ source contract | Relative true-heading rotation parity | 6 geometry tests passed |
+| 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Pinned-target catalog evidence and provenance projection | 4 presentation tests passed; build-for-testing passed |
 
 ## Known limitations
 

@@ -80,6 +80,55 @@ enum FieldCatalogFilter: String, CaseIterable, Identifiable {
     }
 }
 
+struct FieldTargetEvidence: Equatable {
+    enum FactKind: String, Equatable {
+        case advertisements
+        case observerStatus
+        case packetsLastHour
+        case noiseFloor
+    }
+
+    struct Fact: Equatable, Identifiable {
+        let kind: FactKind
+        let value: String
+
+        var id: FactKind { kind }
+    }
+
+    let activityAt: Date?
+    let catalogFetchedAt: Date?
+    let sourceHost: String
+    let facts: [Fact]
+
+    init(item: FieldCatalogItem, catalogFetchedAt: Date?, sourceHost: String) {
+        self.catalogFetchedAt = catalogFetchedAt
+        self.sourceHost = sourceHost
+        switch item {
+        case .node(let node):
+            activityAt = node.latestActivity
+            facts = node.advertCount.map {
+                [Fact(kind: .advertisements, value: $0.formatted())]
+            } ?? []
+        case .observer(let observer):
+            activityAt = observer.lastSeen
+            facts = [
+                observer.online.map {
+                    Fact(kind: .observerStatus, value: String(localized: $0 ? "Online" : "Offline"))
+                },
+                observer.packetsLastHour.map {
+                    Fact(kind: .packetsLastHour, value: $0.formatted())
+                },
+                observer.noiseFloor.map {
+                    Fact(
+                        kind: .noiseFloor,
+                        value: "\($0.formatted(.number.precision(.fractionLength(0)))) dB"
+                    )
+                }
+            ].compactMap { $0 }
+        }
+    }
+}
+
 @MainActor
 @Observable
 final class FieldToolsViewModel {
@@ -511,20 +560,29 @@ struct FieldToolsScreen: View {
             if let target = pinnedItem ?? selectedItem {
                 VStack {
                     Spacer()
-                    FieldTargetSummary(
-                        name: target.name,
-                        subtitle: target.subtitle,
-                        geometry: geometry(for: target),
-                        headingSample: usesDeviceReference && pinnedItem?.id == target.id
-                            ? locationSession.headingSample
-                            : nil,
-                        headingStatus: usesDeviceReference && pinnedItem?.id == target.id
-                            ? locationSession.headingStatus
-                            : .idle,
-                        isPinned: pinnedItem?.id == target.id,
-                        pin: { pinnedItem = target },
-                        unpin: { pinnedItem = nil }
-                    )
+                    VStack(spacing: 8) {
+                        if pinnedItem?.id == target.id {
+                            FieldTargetEvidenceCard(evidence: FieldTargetEvidence(
+                                item: target,
+                                catalogFetchedAt: model.lastUpdatedAt,
+                                sourceHost: settings.host
+                            ))
+                        }
+                        FieldTargetSummary(
+                            name: target.name,
+                            subtitle: target.subtitle,
+                            geometry: geometry(for: target),
+                            headingSample: usesDeviceReference && pinnedItem?.id == target.id
+                                ? locationSession.headingSample
+                                : nil,
+                            headingStatus: usesDeviceReference && pinnedItem?.id == target.id
+                                ? locationSession.headingStatus
+                                : .idle,
+                            isPinned: pinnedItem?.id == target.id,
+                            pin: { pinnedItem = target },
+                            unpin: { pinnedItem = nil }
+                        )
+                    }
                     .padding(12)
                 }
             }
@@ -660,6 +718,96 @@ private struct FieldTargetSummary: View {
         }
         .buttonStyle(.borderedProminent)
         .tint(isPinned ? NodeScopeStyle.activity : NodeScopeStyle.signal)
+    }
+}
+
+private struct FieldTargetEvidenceCard: View {
+    let evidence: FieldTargetEvidence
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("Observed Evidence", systemImage: "waveform.path.ecg")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                if let activityAt = evidence.activityAt {
+                    Text(activityAt, format: .relative(presentation: .named))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Activity unknown")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if !evidence.facts.isEmpty {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 16) {
+                        ForEach(evidence.facts) { fact in
+                            FieldEvidenceFactView(kind: fact.kind, value: fact.value)
+                        }
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(evidence.facts) { fact in
+                            FieldEvidenceFactView(kind: fact.kind, value: fact.value)
+                        }
+                    }
+                }
+            }
+
+            Label("Signal and receiver coverage aren’t included in this catalog record.", systemImage: "info.circle")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            if let fetchedAt = evidence.catalogFetchedAt {
+                Text("Analyzer catalog · \(evidence.sourceHost) · fetched \(fetchedAt, format: .relative(presentation: .named))")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            } else {
+                Text("Analyzer catalog · \(evidence.sourceHost) · fetch time unknown")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(14)
+        .instrumentCard()
+        .frame(maxWidth: 520)
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .contain)
+    }
+}
+
+private struct FieldEvidenceFactView: View {
+    let kind: FieldTargetEvidence.FactKind
+    let value: String
+
+    var body: some View {
+        Label {
+            Text("\(title): \(value)")
+                .font(.caption)
+        } icon: {
+            Image(systemName: symbol)
+                .foregroundStyle(NodeScopeStyle.signal)
+        }
+    }
+
+    private var title: LocalizedStringResource {
+        switch kind {
+        case .advertisements: "Advertisements"
+        case .observerStatus: "Status"
+        case .packetsLastHour: "Packets last hour"
+        case .noiseFloor: "Noise floor"
+        }
+    }
+
+    private var symbol: String {
+        switch kind {
+        case .advertisements: "megaphone"
+        case .observerStatus: "dot.radiowaves.left.and.right"
+        case .packetsLastHour: "envelope"
+        case .noiseFloor: "waveform"
+        }
     }
 }
 
