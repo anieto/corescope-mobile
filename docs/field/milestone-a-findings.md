@@ -94,7 +94,7 @@ Primary references:
 - [Meshtastic site planner GPLv3 license](https://github.com/meshtastic/meshtastic-site-planner/blob/main/LICENSE)
 - [AWS Terrain Tiles registry entry](https://registry.opendata.aws/terrain-tiles/)
 
-## First implemented contract
+## Implemented shared contracts
 
 `geometry-v1.json` fixes the shared Earth radius, Haversine distance, true initial bearing, date-line
 behavior, coincident-point behavior and 16-point cardinal mapping. iOS and Android implementations
@@ -103,10 +103,24 @@ and tests use the same values. A coincident point has zero distance and no meani
 This geometry is guidance, not RF direction finding. Heading-relative UI will be a separate transform
 that incorporates device heading accuracy and never changes the true bearing stored in evidence.
 
+`identity-qr-v1.json` fixes source-qualified identity encoding and the accepted Field QR surface.
+Persistent identities include backend, canonical analyzer origin, entity kind and normalized backend
+key; the ephemeral source-session UUID remains a cancellation guard and is never exported. QR input
+is limited to 2,048 UTF-8 bytes and accepts only a full 64-hex public key, an exact NodeScope
+node/observer link or an exact MeshCore contact link. Unsupported destinations, duplicate query
+fields, arbitrary URLs and source configuration are rejected.
+
+`snapshot-v1.json` fixes the initial nearby snapshot envelope, including source, target timestamps,
+true geometry, completeness and limitations. Reference coordinates are absent by default and are
+encoded only after explicit per-export opt-in. Decoders tolerate unknown additive fields but reject
+unknown schema versions. Evidence and planner-specific nested records can evolve additively without
+changing the privacy default.
+
 ## Remaining Milestone A gates
 
 - Capture sanitized, versioned CoreScope and Beacon payload/live fixtures and exact server versions.
-- Define and fixture source-qualified identity, snapshot v1 and QR v1 contracts.
+- Complete the remaining catalog, pinned-evidence and planning projections around the implemented
+  source-qualified identity, snapshot v1 and QR v1 contracts.
 - Complete cache/live-feed cancellation audit and measurable request limits.
 - Produce and review the six component-based adaptive layouts using existing UI primitives.
 - Measure catalog/map and 30-minute foreground sensor performance on representative devices.

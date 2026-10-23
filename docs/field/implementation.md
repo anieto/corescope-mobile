@@ -31,9 +31,9 @@ existence alone is not completion.
 - [ ] Record design review confirming navigation, pane ordering, cards, map controls, colors,
   typography, spacing, loading/error states and accessibility match the current app.
 - [x] Confirm iOS and Android deployment targets and scanner/location API availability.
-- [ ] Define neutral models and source-qualified identities.
-- [ ] Commit cross-platform geometry, QR and snapshot v1 fixtures. Geometry v1 is implemented;
-  QR and snapshot fixtures remain.
+- [ ] Define neutral models and source-qualified identities. Source/entity identity and snapshot
+  envelope are implemented; catalog/evidence/planning projections remain.
+- [x] Commit cross-platform geometry, QR and snapshot v1 fixtures.
 - [ ] Measure small/large catalog and 30-minute sensor baselines on representative devices.
 - [ ] Resolve every open decision in the plan with rationale.
 
@@ -51,6 +51,11 @@ observations, projection rules and remaining fixture work are recorded in
 - Return no bearing for coincident coordinates; a fabricated north bearing would be misleading.
 - Keep zero/zero valid in geometry/manual input and reject analyzer sentinel zero/zero only while
   projecting backend data.
+- Qualify persistent field identities with backend, canonical analyzer origin, entity kind and
+  normalized backend key. Keep ephemeral source-session UUIDs out of exported identity.
+- Accept only bounded full public keys, exact NodeScope node/observer links and exact MeshCore
+  contact links as Field QR input. Scanned input never configures a source or opens arbitrary URLs.
+- Omit reference coordinates from snapshot v1 unless the person explicitly opts in for that export.
 
 ## B — Workspace and Nearby, iOS then Android
 
@@ -123,6 +128,10 @@ observations, projection rules and remaining fixture work are recorded in
 | 2026-10-22 | Android JVM | API 26+ source contract | Field geometry parity tests | 5 passed |
 | 2026-10-22 | iOS / Xcode 27.1 | Active Xcode destination | Build for testing | Passed |
 | 2026-10-22 | iOS / Xcode 27.1 | Active Xcode destination | Field geometry parity tests | 5 passed |
+| 2026-10-22 | iOS / Xcode 27.1 | Active Xcode destination | Field identity and QR contract tests | 6 passed |
+| 2026-10-22 | Android JVM | API 26+ source contract | Field identity and QR contract tests | 6 passed |
+| 2026-10-22 | iOS / Xcode 27.1 | Active Xcode destination | Field snapshot v1 tests | 3 passed |
+| 2026-10-22 | Android JVM | API 26+ source contract | Field snapshot v1 tests | 3 passed |
 
 ## Known limitations
 
