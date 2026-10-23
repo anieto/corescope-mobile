@@ -1,7 +1,8 @@
 # NodeScope 0.10.0 — Field Tools implementation
 
-Status: not started. Plan approved for implementation preparation on 2026-10-22.
+Status: in progress. Implementation began on 2026-10-22.
 Product scope and acceptance criteria are in [plan.md](plan.md).
+Milestone A evidence is in [milestone-a-findings.md](milestone-a-findings.md).
 
 This document records observed contracts, completed work, validation evidence, deviations and
 remaining release gates. A checked item means its evidence is linked or summarized here; code
@@ -11,7 +12,7 @@ existence alone is not completion.
 
 | Milestone | Status | Evidence |
 |---|---|---|
-| A — Contract, architecture and field baseline | Not started | — |
+| A — Contract, architecture and field baseline | In progress | Contract audit and geometry v1 recorded |
 | B — Workspace and Nearby, iOS then Android | Not started | — |
 | C — Guidance and evidence, iOS then Android | Not started | — |
 | D — Deployment planner, iOS then Android | Not started | — |
@@ -22,26 +23,34 @@ existence alone is not completion.
 
 - [ ] Record CoreScope version/commit and node/observer/analytics/live fixtures.
 - [ ] Record Beacon version/commit and corresponding fixtures.
-- [ ] Determine whether coordinate-update timestamps exist and document exact semantics.
-- [ ] Record missing/null/zero-coordinate behavior for both backends.
+- [x] Determine whether coordinate-update timestamps exist and document exact semantics.
+- [x] Record missing/null/zero-coordinate behavior for both backends.
 - [ ] Audit source-session cancellation, caches, live-feed reuse and request budgets.
-- [ ] Capture existing Map/Explore/detail visual patterns and shared UI primitives.
+- [x] Capture existing Map/Explore/detail visual patterns and shared UI primitives.
 - [ ] Prototype compact iPhone, Duo outer/expanded and iPad Field Tools layouts using real shared components.
 - [ ] Record design review confirming navigation, pane ordering, cards, map controls, colors,
   typography, spacing, loading/error states and accessibility match the current app.
-- [ ] Confirm iOS and Android deployment targets and scanner/location API availability.
+- [x] Confirm iOS and Android deployment targets and scanner/location API availability.
 - [ ] Define neutral models and source-qualified identities.
-- [ ] Commit cross-platform geometry, QR and snapshot v1 fixtures.
+- [ ] Commit cross-platform geometry, QR and snapshot v1 fixtures. Geometry v1 is implemented;
+  QR and snapshot fixtures remain.
 - [ ] Measure small/large catalog and 30-minute sensor baselines on representative devices.
 - [ ] Resolve every open decision in the plan with rationale.
 
 ### Contract observations
 
-Not yet recorded. Do not infer coordinate age from node/observer activity timestamps.
+The current CoreScope and Beacon models expose coordinates and entity/observation activity, but no
+verified coordinate-update timestamp. Field Tools therefore reports position age as unknown. Full
+observations, projection rules and remaining fixture work are recorded in
+[milestone-a-findings.md](milestone-a-findings.md).
 
 ### Approved decisions and deviations
 
-None yet.
+- Use the IUGG mean Earth radius (6,371,008.8 meters), Haversine distance and true initial bearing
+  as the cross-platform geometry v1 contract.
+- Return no bearing for coincident coordinates; a fabricated north bearing would be misleading.
+- Keep zero/zero valid in geometry/manual input and reject analyzer sentinel zero/zero only while
+  projecting backend data.
 
 ## B — Workspace and Nearby, iOS then Android
 
@@ -111,7 +120,9 @@ None yet.
 
 | Date | Platform/device | Build/source | Scenario | Result/evidence |
 |---|---|---|---|---|
-| — | — | — | — | — |
+| 2026-10-22 | Android JVM | API 26+ source contract | Field geometry parity tests | 5 passed |
+| 2026-10-22 | iOS source | Swift 6 compiler | `FieldGeometry.swift` type check | Passed |
+| 2026-10-22 | iOS project | Active Xcode destination | Build for testing | Blocked by existing iOS 27 Duo API availability in `DuoLayoutContext.swift`; no Field Tools error reported |
 
 ## Known limitations
 
