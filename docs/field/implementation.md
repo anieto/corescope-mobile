@@ -121,8 +121,8 @@ observations, projection rules and remaining fixture work are recorded in
 | Date | Platform/device | Build/source | Scenario | Result/evidence |
 |---|---|---|---|---|
 | 2026-10-22 | Android JVM | API 26+ source contract | Field geometry parity tests | 5 passed |
-| 2026-10-22 | iOS source | Swift 6 compiler | `FieldGeometry.swift` type check | Passed |
-| 2026-10-22 | iOS project | Active Xcode destination | Build for testing | Blocked by existing iOS 27 Duo API availability in `DuoLayoutContext.swift`; no Field Tools error reported |
+| 2026-10-22 | iOS / Xcode 27.1 | Active Xcode destination | Build for testing | Passed |
+| 2026-10-22 | iOS / Xcode 27.1 | Active Xcode destination | Field geometry parity tests | 5 passed |
 
 ## Known limitations
 

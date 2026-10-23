@@ -92,6 +92,8 @@
 		31CCA84D306D984400D01155 /* DuoLayoutContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31CCA84C306D984400D01155 /* DuoLayoutContext.swift */; };
 		31CCA84F306DBC7A00D01155 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 31CCA84E306DBC7A00D01155 /* LaunchScreen.storyboard */; };
 		31DC215B3064091D00F0E9C5 /* SupportDevelopmentScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DC215A3064091D00F0E9C5 /* SupportDevelopmentScreen.swift */; };
+		31DFA7D0308AFEDF00B8C681 /* FieldGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7CF308AFEDF00B8C681 /* FieldGeometry.swift */; };
+		31DFA7D2308AFEDF00B8C681 /* FieldGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7D1308AFEDF00B8C681 /* FieldGeometryTests.swift */; };
 		31E24AAD307DB13E00C096A7 /* sources-v2.json in Resources */ = {isa = PBXBuildFile; fileRef = 31E24AAC307DB13E00C096A7 /* sources-v2.json */; };
 		367D92626A31391FE48F86D8 /* DistanceFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235873A5D91CB7811DDE491B /* DistanceFormat.swift */; };
 		37EEBAD9BA7B400246063847 /* NodeDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75CDCA22232763038FF030C6 /* NodeDetailViewModel.swift */; };
@@ -239,6 +241,8 @@
 		31CCA84E306DBC7A00D01155 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		31DC215A3064091D00F0E9C5 /* SupportDevelopmentScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportDevelopmentScreen.swift; sourceTree = "<group>"; };
 		31DC215C30640E6A00F0E9C5 /* NodeScope.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = NodeScope.storekit; sourceTree = "<group>"; };
+		31DFA7CF308AFEDF00B8C681 /* FieldGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldGeometry.swift; sourceTree = "<group>"; };
+		31DFA7D1308AFEDF00B8C681 /* FieldGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldGeometryTests.swift; sourceTree = "<group>"; };
 		31E24AAC307DB13E00C096A7 /* sources-v2.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "sources-v2.json"; sourceTree = "<group>"; };
 		32A0B4E835C764626FE71370 /* AnalyzerSourceLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerSourceLogo.swift; sourceTree = "<group>"; };
 		33B9A5F539B49B860F434D81 /* Channel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Channel.swift; sourceTree = "<group>"; };
@@ -425,6 +429,7 @@
 				311510A13083DC7100199D51 /* MyNodesSignal.swift */,
 				311510A33083DC7100199D51 /* MyNodesObserverStatus.swift */,
 				311510A73083DDFB00199D51 /* MyNodesSnapshot.swift */,
+				31DFA7CF308AFEDF00B8C681 /* FieldGeometry.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -592,6 +597,7 @@
 				311510B530842C5300199D51 /* MyNodesBaseRepositoryTests.swift */,
 				311510BB3086592800199D51 /* FavoriteChangesTests.swift */,
 				311510C130869D9600199D51 /* CoreScopeAccountSyncTests.swift */,
+				31DFA7D1308AFEDF00B8C681 /* FieldGeometryTests.swift */,
 			);
 			path = CoreScopeViewerTests;
 			sourceTree = "<group>";
@@ -701,6 +707,7 @@
 				311510AC3083DE9100199D51 /* MyNodesSnapshotTests.swift in Sources */,
 				311510A63083DCE600199D51 /* MyNodesComparisonTests.swift in Sources */,
 				317433AC30827FFE0060A385 /* CoreScopeAccountSettingsTests.swift in Sources */,
+				31DFA7D2308AFEDF00B8C681 /* FieldGeometryTests.swift in Sources */,
 				A742196194F327F868B0E61C /* AirportCoordinatesTests.swift in Sources */,
 				311510B630842C5300199D51 /* MyNodesBaseRepositoryTests.swift in Sources */,
 				312714C4307AE6C000829346 /* CoreScopeBackendTests.swift in Sources */,
@@ -753,6 +760,7 @@
 				311510BA3086578200199D51 /* FavoriteChangesScreen.swift in Sources */,
 				90D4CE6F2C401B52C0B93D79 /* ChannelListCache.swift in Sources */,
 				3144E9F7305B2A4300B57F18 /* InstrumentSearchField.swift in Sources */,
+				31DFA7D0308AFEDF00B8C681 /* FieldGeometry.swift in Sources */,
 				31A2B0043070000100FBA3B4 /* RoutePicker.swift in Sources */,
 				16CC334CE0E2AE894A6E2811 /* ChannelMessagesCache.swift in Sources */,
 				F82F20C851C52EAC49BC3931 /* ChannelMonitorStore.swift in Sources */,

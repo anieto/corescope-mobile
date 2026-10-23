@@ -46,6 +46,10 @@ The first request budget is deliberately simple:
 The iOS target is iOS 18, Swift 6, and supports iPhone and iPad. The Android app compiles against
 API 36 and supports API 26 and later.
 
+The target uses `LaunchScreen.storyboard`, the iPad orientation declaration includes all four
+orientations and the app does not opt out of resizing. These project-level prerequisites are ready
+for iPhone Duo and other resizable iOS 27 scenes.
+
 Field Tools will reuse these existing presentation contracts:
 
 - `AdaptiveListDetailNavigation` for compact/split navigation.
