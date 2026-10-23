@@ -97,7 +97,7 @@ additional network work.
 - [x] Optional heading-relative compass with accuracy/failure states.
 - [x] Pinned target signal/coverage/activity evidence and provenance.
 - [x] Detail, analytics, packet and route quick actions.
-- [ ] Cancellation, source/region changes, cached fallback and rate limits.
+- [x] Cancellation, source/region changes, cached fallback and rate limits.
 - [ ] VoiceOver, Dynamic Type, Reduce Motion and physical-session validation.
 - [ ] Android-native guidance, compass, evidence, accessibility and lifecycle behavior.
 - [ ] Shared geometry/freshness/capability/provenance fixtures pass on both platforms.
@@ -131,6 +131,14 @@ combined detail/analytics destination. If and only if observer analytics returns
 hash, Field Tools offers the latest packet and its recorded route in the existing packet detail
 screen. Unknown observation and hop counts remain visibly unknown until packet detail loads; Field
 Tools does not synthesize packet or route identifiers for node analytics that do not provide them.
+
+Evidence lifecycle hardening now binds every result to both source-session and target identity.
+Changing analyzers clears the selected target and all evidence before the replacement source loads;
+catalog/region refreshes replace an existing pinned target only with the refreshed record carrying
+the same stable identity. SwiftUI task cancellation plus model load tokens reject late target
+responses. Fresh cached evidence avoids a request, matching requests coalesce in the shared cache,
+and failed refreshes retain bounded stale evidence. HTTP 429 and Beacon retry deadlines have
+distinct user-facing rate-limit states instead of appearing as generic failures.
 
 ## D — Deployment planner, iOS then Android
 
@@ -192,6 +200,7 @@ Tools does not synthesize packet or route identifiers for node analytics that do
 | 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Pinned-target catalog evidence and provenance projection | 4 presentation tests passed; build-for-testing passed |
 | 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Target analytics evidence, receiver observations and cached fallback states | 5 presentation tests passed; build-for-testing passed |
 | 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Capability-aware detail/analytics and exact packet/route quick actions | 6 presentation tests passed; build-for-testing passed |
+| 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Evidence source/target lifecycle, coalescing, fallback and rate-limit classification | 9 focused tests passed; build-for-testing passed |
 
 ## Known limitations
 

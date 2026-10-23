@@ -198,8 +198,7 @@ final class FieldToolsViewModel {
                   targetEvidenceItemID == item.id,
                   !Task.isCancelled else { return }
             targetEvidence = value
-            targetEvidenceError = value.freshness == .staleFallback
-                ? String(localized: "Refresh failed. Showing saved target evidence.") : nil
+            targetEvidenceError = fallbackMessage(value.fallbackReason)
             isLoadingTargetEvidence = false
         } catch is CancellationError {
             if evidenceLoadID == currentLoadID { isLoadingTargetEvidence = false }
@@ -216,6 +215,19 @@ final class FieldToolsViewModel {
         targetEvidenceItemID = nil
         targetEvidenceError = nil
         isLoadingTargetEvidence = false
+    }
+
+    private func fallbackMessage(_ reason: FieldEvidenceValue.FallbackReason?) -> String? {
+        switch reason {
+        case .none: nil
+        case .refreshFailed: String(localized: "Refresh failed. Showing saved target evidence.")
+        case .rateLimited(let until):
+            if let until {
+                String(localized: "The analyzer is rate limiting requests until \(until.formatted(date: .omitted, time: .standard)). Showing saved target evidence.")
+            } else {
+                String(localized: "The analyzer is rate limiting requests. Showing saved target evidence.")
+            }
+        }
     }
 
     func load(region: String?, forceRefresh: Bool = false) async {
@@ -346,6 +358,7 @@ struct FieldToolsScreen: View {
     @State private var usesDeviceReference = false
     @State private var showsLocationExplanation = false
     @State private var showsCoordinateEntry = false
+    @State private var activeSourceSessionID: UUID?
 
     init(
         initialReference: FieldCoordinate? = nil,
@@ -370,6 +383,12 @@ struct FieldToolsScreen: View {
         }
         .navigationTitle("Field Tools")
         .task(id: "\(settings.sourceSession.id)|\(regionFilter.selectedRegion ?? "")") {
+            if let activeSourceSessionID, activeSourceSessionID != settings.sourceSession.id {
+                selectedItem = nil
+                pinnedItem = nil
+                model.clearTargetEvidence()
+            }
+            activeSourceSessionID = settings.sourceSession.id
             model.configure(settings: settings)
             await model.load(region: regionFilter.selectedRegion)
         }
@@ -388,6 +407,12 @@ struct FieldToolsScreen: View {
                 center: sample.coordinate.clLocationCoordinate,
                 span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
             ))
+        }
+        .onChange(of: model.visibleItems) { _, items in
+            guard let pinnedItem,
+                  let refreshed = items.first(where: { $0.id == pinnedItem.id }) else { return }
+            self.pinnedItem = refreshed
+            if selectedItem?.id == refreshed.id { selectedItem = refreshed }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active, usesDeviceReference {

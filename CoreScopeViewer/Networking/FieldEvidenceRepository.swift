@@ -56,9 +56,15 @@ struct FieldEvidenceValue: Equatable, Sendable {
         case staleFallback
     }
 
+    enum FallbackReason: Equatable, Sendable {
+        case refreshFailed
+        case rateLimited(until: Date?)
+    }
+
     let evidence: FieldTargetAnalyticsEvidence
     let fetchedAt: Date
     let freshness: Freshness
+    let fallbackReason: FallbackReason?
 }
 
 actor FieldEvidenceRepository {
@@ -86,7 +92,12 @@ actor FieldEvidenceRepository {
         let cachedAt = await cache.savedAt(for: key)
         if !forceRefresh, let cached, let cachedAt,
            now().timeIntervalSince(cachedAt) < FieldRequestBudget.pinnedEvidenceFreshLifetime {
-            return FieldEvidenceValue(evidence: cached, fetchedAt: cachedAt, freshness: .cached)
+            return FieldEvidenceValue(
+                evidence: cached,
+                fetchedAt: cachedAt,
+                freshness: .cached,
+                fallbackReason: nil
+            )
         }
 
         do {
@@ -117,14 +128,23 @@ actor FieldEvidenceRepository {
             return FieldEvidenceValue(
                 evidence: evidence,
                 fetchedAt: await cache.savedAt(for: key) ?? now(),
-                freshness: .fetched
+                freshness: .fetched,
+                fallbackReason: nil
             )
         } catch is CancellationError {
             throw CancellationError()
         } catch {
             try backend.sourceSession.check()
             if let cached, let cachedAt {
-                return FieldEvidenceValue(evidence: cached, fetchedAt: cachedAt, freshness: .staleFallback)
+                return FieldEvidenceValue(
+                    evidence: cached,
+                    fetchedAt: cachedAt,
+                    freshness: .staleFallback,
+                    fallbackReason: Self.fallbackReason(for: error)
+                )
+            }
+            if case .rateLimited = Self.fallbackReason(for: error) {
+                throw FieldEvidenceError.rateLimited
             }
             throw error
         }
@@ -133,14 +153,26 @@ actor FieldEvidenceRepository {
     private func cacheKey(item: FieldCatalogItem, backend: any AnalyzerBackend) -> String {
         "field-evidence-\(backend.cacheIdentifier)-\(item.id)"
     }
+
+    nonisolated static func fallbackReason(for error: Error) -> FieldEvidenceValue.FallbackReason {
+        if case BeaconAPIError.rateLimited(let until) = error {
+            return .rateLimited(until: until)
+        }
+        if case APIError.http(429) = error {
+            return .rateLimited(until: nil)
+        }
+        return .refreshFailed
+    }
 }
 
 enum FieldEvidenceError: LocalizedError {
     case unsupported(BackendCapability)
+    case rateLimited
 
     var errorDescription: String? {
         switch self {
         case .unsupported(let capability): capability.beaconExplanation
+        case .rateLimited: "This analyzer is rate limiting target evidence. Try again later."
         }
     }
 }

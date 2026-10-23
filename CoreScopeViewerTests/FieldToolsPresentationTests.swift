@@ -152,4 +152,15 @@ struct FieldToolsPresentationTests {
         #expect(evidence.latestPacketTimestamp == newer)
         #expect(evidence.latestSnr == 6)
     }
+
+    @Test func evidenceFallbackDistinguishesRateLimitsFromOtherFailures() throws {
+        let retryAt = try #require(ISO8601DateFormatter().date(from: "2026-10-23T12:30:00Z"))
+
+        #expect(FieldEvidenceRepository.fallbackReason(for: APIError.http(429)) == .rateLimited(until: nil))
+        #expect(
+            FieldEvidenceRepository.fallbackReason(for: BeaconAPIError.rateLimited(until: retryAt))
+                == .rateLimited(until: retryAt)
+        )
+        #expect(FieldEvidenceRepository.fallbackReason(for: APIError.http(503)) == .refreshFailed)
+    }
 }
