@@ -280,7 +280,7 @@ struct ExploreScreen: View {
 
     private func refreshExploreData() async {
         async let nodes: Void = nodeViewModel.loadNodes(region: nil, forceRefresh: true)
-        async let observers: Void = observerViewModel.loadObservers()
+        async let observers: Void = observerViewModel.loadObservers(forceRefresh: true)
         async let channels: Void = channelViewModel.loadChannels(region: nil, forceRefresh: true)
         async let packets: Void = loadSearchPackets()
         _ = await (nodes, observers, channels, packets)

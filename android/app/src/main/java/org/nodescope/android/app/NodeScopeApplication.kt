@@ -52,6 +52,7 @@ class AppContainer(application: Application) {
     val repository: AnalyzerRepository = backend
     val packetSource: PacketSource = backend.liveFeed
     val browse: BrowseRepository = org.nodescope.android.core.network.CapabilityBrowseRepository(backend) { backend.capabilities }
+    val fieldCatalog = FieldCatalogRepository(browse)
     val diagnostics = AnalyzerDiagnostics(client) { host ->
         (sourceRouter.route(host) as? AnalyzerSourceRouter.Route.Beacon)?.backend
     }

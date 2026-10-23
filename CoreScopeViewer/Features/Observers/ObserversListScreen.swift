@@ -168,7 +168,7 @@ struct ObserversListScreen: View {
             if liveFeed.usesBrowseSnapshots {
                 liveFeed.refreshObservers()
             } else {
-                await viewModel.loadObservers()
+                await viewModel.loadObservers(forceRefresh: true)
             }
             updateVisibleObservers()
         }
@@ -230,7 +230,7 @@ struct ObserversListScreen: View {
             if liveFeed.usesBrowseSnapshots {
                 liveFeed.refreshObservers()
             } else {
-                await viewModel.loadObservers()
+                await viewModel.loadObservers(forceRefresh: true)
             }
             updateVisibleObservers()
         }

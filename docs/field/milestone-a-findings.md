@@ -81,6 +81,12 @@ repository that can accept an already-loaded map snapshot, consume shared Beacon
 become the single owner of Field Tools refresh/coalescing. Android must use its existing full-URL
 response cache and shared `LiveFeed` state under the same logical budget.
 
+That repository foundation is now implemented on both platforms. iOS Map and Observers use the
+shared actor and persistent response cache directly; explicit refresh continues to bypass the
+30-second automatic-refresh floor. Android exposes the matching application-scoped repository over
+its existing routed `BrowseRepository`. Both implementations accept already-loaded node/observer
+snapshots and coalesce simultaneous consumers without opening another live connection.
+
 ## Platform and design inventory
 
 The iOS target is iOS 18, Swift 6, and supports iPhone and iPad. The Android app compiles against

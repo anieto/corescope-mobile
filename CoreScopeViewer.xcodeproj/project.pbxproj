@@ -98,6 +98,8 @@
 		31DFA7D6308B044900B8C681 /* FieldContractsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7D5308B044900B8C681 /* FieldContractsTests.swift */; };
 		31DFA7D8308B052600B8C681 /* FieldSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7D7308B052600B8C681 /* FieldSnapshot.swift */; };
 		31DFA7DA308B052700B8C681 /* FieldSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7D9308B052700B8C681 /* FieldSnapshotTests.swift */; };
+		31DFA7DC308BA2EF00B8C681 /* FieldCatalogRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7DB308BA2EF00B8C681 /* FieldCatalogRepository.swift */; };
+		31DFA7DE308BA35700B8C681 /* FieldCatalogRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7DD308BA35700B8C681 /* FieldCatalogRepositoryTests.swift */; };
 		31E24AAD307DB13E00C096A7 /* sources-v2.json in Resources */ = {isa = PBXBuildFile; fileRef = 31E24AAC307DB13E00C096A7 /* sources-v2.json */; };
 		367D92626A31391FE48F86D8 /* DistanceFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235873A5D91CB7811DDE491B /* DistanceFormat.swift */; };
 		37EEBAD9BA7B400246063847 /* NodeDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75CDCA22232763038FF030C6 /* NodeDetailViewModel.swift */; };
@@ -251,6 +253,8 @@
 		31DFA7D5308B044900B8C681 /* FieldContractsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldContractsTests.swift; sourceTree = "<group>"; };
 		31DFA7D7308B052600B8C681 /* FieldSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldSnapshot.swift; sourceTree = "<group>"; };
 		31DFA7D9308B052700B8C681 /* FieldSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldSnapshotTests.swift; sourceTree = "<group>"; };
+		31DFA7DB308BA2EF00B8C681 /* FieldCatalogRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldCatalogRepository.swift; sourceTree = "<group>"; };
+		31DFA7DD308BA35700B8C681 /* FieldCatalogRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldCatalogRepositoryTests.swift; sourceTree = "<group>"; };
 		31E24AAC307DB13E00C096A7 /* sources-v2.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "sources-v2.json"; sourceTree = "<group>"; };
 		32A0B4E835C764626FE71370 /* AnalyzerSourceLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerSourceLogo.swift; sourceTree = "<group>"; };
 		33B9A5F539B49B860F434D81 /* Channel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Channel.swift; sourceTree = "<group>"; };
@@ -579,6 +583,7 @@
 				311510AF3083EBFD00199D51 /* MyNodesVisitSession.swift */,
 				311510B330842BDD00199D51 /* MyNodesBaseRepository.swift */,
 				311510BD30869BF200199D51 /* CoreScopeAccountClient.swift */,
+				31DFA7DB308BA2EF00B8C681 /* FieldCatalogRepository.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -610,6 +615,7 @@
 				31DFA7D1308AFEDF00B8C681 /* FieldGeometryTests.swift */,
 				31DFA7D5308B044900B8C681 /* FieldContractsTests.swift */,
 				31DFA7D9308B052700B8C681 /* FieldSnapshotTests.swift */,
+				31DFA7DD308BA35700B8C681 /* FieldCatalogRepositoryTests.swift */,
 			);
 			path = CoreScopeViewerTests;
 			sourceTree = "<group>";
@@ -718,6 +724,7 @@
 				C9442265B47B2D20E681223B /* AnalyzerSourceLogoTests.swift in Sources */,
 				311510A03083DBAF00199D51 /* MyNodesActivityTests.swift in Sources */,
 				311510AC3083DE9100199D51 /* MyNodesSnapshotTests.swift in Sources */,
+				31DFA7DE308BA35700B8C681 /* FieldCatalogRepositoryTests.swift in Sources */,
 				311510A63083DCE600199D51 /* MyNodesComparisonTests.swift in Sources */,
 				317433AC30827FFE0060A385 /* CoreScopeAccountSettingsTests.swift in Sources */,
 				31DFA7D2308AFEDF00B8C681 /* FieldGeometryTests.swift in Sources */,
@@ -778,6 +785,7 @@
 				31A2B0043070000100FBA3B4 /* RoutePicker.swift in Sources */,
 				16CC334CE0E2AE894A6E2811 /* ChannelMessagesCache.swift in Sources */,
 				F82F20C851C52EAC49BC3931 /* ChannelMonitorStore.swift in Sources */,
+				31DFA7DC308BA2EF00B8C681 /* FieldCatalogRepository.swift in Sources */,
 				DE7EBA2547154396308F7F57 /* ChannelsListScreen.swift in Sources */,
 				0C8DD2E83491E4744AEA1380 /* ChannelsViewModel.swift in Sources */,
 				316FE001305C6EA300FBA3B4 /* AppNavigationStore.swift in Sources */,

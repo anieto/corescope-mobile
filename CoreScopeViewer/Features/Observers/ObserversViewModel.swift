@@ -67,33 +67,29 @@ final class ObserversViewModel {
         cacheNamespace = backend.cacheIdentifier
     }
 
-    func loadObservers() async {
+    func loadObservers(forceRefresh: Bool = false) async {
         guard let apiClient else { return }
         let loadID = UUID()
         activeLoadID = loadID
-        let cacheKey = "observers-\(cacheNamespace)-\(apiClient.sourceSession.id)"
-        if let cached: ObserversResponse = await APIResponseCache.shared.value(
-            for: cacheKey,
-            maximumAge: staleCacheLifetime
-        ) {
-            let savedAt = await APIResponseCache.shared.savedAt(for: cacheKey)
+        if let cached = await FieldCatalogRepository.shared.cachedObservers(for: apiClient) {
             guard isCurrent(loadID, backend: apiClient) else { return }
-            observers = cached.observers
-            lastUpdatedAt = savedAt
+            observers = cached.value.observers
+            lastUpdatedAt = cached.savedAt
             errorMessage = nil
         }
         guard isCurrent(loadID, backend: apiClient) else { return }
+        guard await FieldCatalogRepository.shared.observersNeedRefresh(
+            for: apiClient, force: forceRefresh
+        ) else { return }
         isLoading = observers.isEmpty
         defer {
             if activeLoadID == loadID, apiClient.sourceSession.isCurrent { isLoading = false }
         }
         do {
-            let response: ObserversResponse = try await APIResponseCache.shared.refresh(for: cacheKey, session: apiClient.sourceSession) {
-                try await apiClient.observers()
-            }
+            let catalog = try await FieldCatalogRepository.shared.refreshObservers(for: apiClient)
             guard isCurrent(loadID, backend: apiClient) else { return }
-            observers = response.observers
-            lastUpdatedAt = .now
+            observers = catalog.value.observers
+            lastUpdatedAt = catalog.savedAt
             errorMessage = nil
         } catch {
             guard isCurrent(loadID, backend: apiClient), !(error is CancellationError) else { return }

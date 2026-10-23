@@ -12,7 +12,7 @@ existence alone is not completion.
 
 | Milestone | Status | Evidence |
 |---|---|---|
-| A — Contract, architecture and field baseline | In progress | Contract audit and geometry v1 recorded |
+| A — Contract, architecture and field baseline | In progress | Contract audit, geometry v1 and shared catalog repository recorded |
 | B — Workspace and Nearby, iOS then Android | Not started | — |
 | C — Guidance and evidence, iOS then Android | Not started | — |
 | D — Deployment planner, iOS then Android | Not started | — |
@@ -134,6 +134,8 @@ observations, projection rules and remaining fixture work are recorded in
 | 2026-10-22 | Android JVM | API 26+ source contract | Field snapshot v1 tests | 3 passed |
 | 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Shared CoreScope live fixture | Passed |
 | 2026-10-23 | Android JVM | API 26+ source contract | Shared CoreScope live fixture | Passed |
+| 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Shared Field catalog repository and coalescing tests | 2 passed; build-for-testing passed |
+| 2026-10-23 | Android JVM | API 26+ source contract | Shared Field catalog repository tests | 2 passed |
 
 ## Known limitations
 

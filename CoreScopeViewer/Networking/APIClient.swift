@@ -51,6 +51,16 @@ actor APIResponseCache {
         return entry.savedAt
     }
 
+    func store<Value: Codable & Sendable>(
+        _ value: Value,
+        for key: String,
+        savedAt: Date = .now
+    ) {
+        guard let data = try? JSONEncoder().encode(Entry(savedAt: savedAt, value: value)) else { return }
+        memoryData[key] = data
+        try? data.write(to: fileURL(for: key), options: .atomic)
+    }
+
     func refresh<Value: Codable & Sendable>(
         for key: String,
         session: AnalyzerSourceSession? = nil,

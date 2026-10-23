@@ -31,7 +31,7 @@ enum BackendCapability: String, CaseIterable, Sendable {
     }
 }
 
-protocol AnalyzerBackend: Sendable {
+protocol AnalyzerBackend: FieldCatalogBackend {
     var sourceSession: AnalyzerSourceSession { get }
     var cacheIdentifier: String { get }
     var capabilities: Set<BackendCapability> { get }
