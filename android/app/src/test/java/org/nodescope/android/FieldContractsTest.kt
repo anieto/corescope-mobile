@@ -6,6 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 import org.nodescope.android.core.model.FieldEntityId
 import org.nodescope.android.core.model.FieldQrCode
+import org.nodescope.android.core.model.FieldRequestBudget
 import org.nodescope.android.core.model.FieldSourceId
 import org.nodescope.android.core.model.MeshCoreContactLink
 
@@ -56,5 +57,14 @@ class FieldContractsTest {
 
     @Test fun meshCoreNamesAreBoundedByUtf8Bytes() {
         assertNull(MeshCoreContactLink.from("é".repeat(65), key, 2))
+    }
+
+    @Test fun requestBudgetsMatchTheSharedPlatformContract() {
+        assertEquals(30_000L, FieldRequestBudget.AUTOMATIC_CATALOG_REFRESH_INTERVAL_MILLIS)
+        assertEquals(604_800_000L, FieldRequestBudget.STALE_CATALOG_LIFETIME_MILLIS)
+        assertEquals(300_000L, FieldRequestBudget.PINNED_EVIDENCE_FRESH_LIFETIME_MILLIS)
+        assertEquals(20, FieldRequestBudget.MAXIMUM_BEACON_CATALOG_PAGES_PER_KIND)
+        assertEquals(200, FieldRequestBudget.MAXIMUM_LIVE_PACKETS)
+        assertEquals(1_000, FieldRequestBudget.MAXIMUM_LIVE_METADATA_ENTRIES)
     }
 }

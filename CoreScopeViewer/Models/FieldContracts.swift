@@ -103,3 +103,12 @@ enum FieldQRCode: Equatable, Sendable {
         return normalized
     }
 }
+
+enum FieldRequestBudget {
+    static let automaticCatalogRefreshInterval: TimeInterval = 30
+    static let staleCatalogLifetime: TimeInterval = 7 * 24 * 60 * 60
+    static let pinnedEvidenceFreshLifetime: TimeInterval = 5 * 60
+    static let maximumBeaconCatalogPagesPerKind = 20
+    static let maximumLivePackets = 200
+    static let maximumLiveMetadataEntries = 1_000
+}

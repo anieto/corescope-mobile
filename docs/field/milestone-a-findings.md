@@ -9,10 +9,9 @@ assumptions that still require a controlled backend fixture or a product decisio
 
 ### Pinned evidence
 
-- CoreScope release `v3.14.0`, commit `9dbc287579a237ffa744dd0c91fa7227d09763ac`, with the
-  existing sanitized node, observer and analytics payloads in `shared/fixtures/`. The currently
-  committed fixture set does not contain a standalone CoreScope live-message capture, so that part
-  of the gate remains open.
+- CoreScope release `v3.14.0`, commit `9dbc287579a237ffa744dd0c91fa7227d09763ac`, with sanitized
+  node, observer, analytics and live payloads in `shared/fixtures/`. The live fixture preserves
+  heartbeat, missing-decoded, `observer_id`, observation-count and nullable resolved-hop behavior.
 - Beacon minimum supported server `2.0.3`, with sanitized HTTP and WebSocket fixtures in
   `shared/fixtures/beacon/`. The matching released API contract is beacon-docs commit
   `9d1dae3bf989`; the newer audited contract is commit `541bc238a9d6b7c527d1362d47417446d91cb6e9`.
@@ -55,6 +54,32 @@ The first request budget is deliberately simple:
 3. Perform geometry, search, filtering and ordering locally; no row may initiate network work.
 4. Load analytics, packets or routes only for the pinned target, with coalescing and cancellation.
 5. Reuse the existing live transport; Field Tools must not create a second socket.
+
+### Audited cache and request budget
+
+Both apps already isolate cached HTTP data by analyzer and endpoint, retain list/catalog responses
+for up to seven days as stale fallback, cancel/reject work when the source session changes and merge
+all visible live consumers into one connection. iOS coalesces identical `APIResponseCache` refreshes;
+Android keys response bodies by backend and full URL. Both live stores bound packets to 200 and
+Beacon metadata to 1,000 entries.
+
+The Field Tools v1 budget is now fixed in `FieldRequestBudget` on both platforms:
+
+- do not automatically refresh a catalog more often than every 30 seconds;
+- retain last successful catalogs for seven days as clearly labeled fallback;
+- reuse pinned evidence for five minutes unless the person explicitly refreshes;
+- permit at most one logical node collection and one logical observer collection per catalog refresh;
+- CoreScope therefore uses at most two catalog HTTP requests per refresh;
+- Beacon collection reuses the shared live recovery and its existing hard ceiling of 20 pages per
+  entity kind. Reaching the ceiling is an error, never a silently complete or partial catalog;
+- no per-row requests, no second WebSocket and only the pinned target may trigger detail evidence.
+
+The iOS map node cache is currently private to `MapViewModel`, while observer data uses the general
+response cache. Field Tools must not copy those private cache files or create another competing
+catalog owner. The first Milestone B implementation task is therefore a shared field catalog
+repository that can accept an already-loaded map snapshot, consume shared Beacon recovery state and
+become the single owner of Field Tools refresh/coalescing. Android must use its existing full-URL
+response cache and shared `LiveFeed` state under the same logical budget.
 
 ## Platform and design inventory
 
@@ -133,11 +158,10 @@ changing the privacy default.
 
 ## Remaining Milestone A gates
 
-- Add a sanitized CoreScope live-message fixture to complete the already pinned v3.14.0 catalog and
-  analytics fixture set.
+- Measure the worst observed Beacon catalog page counts and bytes on representative sources; the
+  existing 20-page safety ceiling is not a performance target.
 - Complete the remaining catalog, pinned-evidence and planning projections around the implemented
   source-qualified identity, snapshot v1 and QR v1 contracts.
-- Complete cache/live-feed cancellation audit and measurable request limits.
 - Produce and review the six component-based adaptive layouts using existing UI primitives.
 - Measure catalog/map and 30-minute foreground sensor performance on representative devices.
 - Select scanner architecture and propagation/terrain licensing approach.

@@ -96,3 +96,12 @@ sealed interface FieldQrCode {
         }
     }
 }
+
+object FieldRequestBudget {
+    const val AUTOMATIC_CATALOG_REFRESH_INTERVAL_MILLIS = 30_000L
+    const val STALE_CATALOG_LIFETIME_MILLIS = 7 * 24 * 60 * 60_000L
+    const val PINNED_EVIDENCE_FRESH_LIFETIME_MILLIS = 5 * 60_000L
+    const val MAXIMUM_BEACON_CATALOG_PAGES_PER_KIND = 20
+    const val MAXIMUM_LIVE_PACKETS = 200
+    const val MAXIMUM_LIVE_METADATA_ENTRIES = 1_000
+}

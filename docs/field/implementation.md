@@ -21,12 +21,11 @@ existence alone is not completion.
 
 ## A — Contract, architecture and field baseline
 
-- [ ] Record CoreScope version/commit and node/observer/analytics/live fixtures. CoreScope v3.14.0
-  catalog/analytics fixtures are pinned; a sanitized live-message fixture remains.
+- [x] Record CoreScope version/commit and node/observer/analytics/live fixtures.
 - [x] Record Beacon version/commit and corresponding fixtures.
 - [x] Determine whether coordinate-update timestamps exist and document exact semantics.
 - [x] Record missing/null/zero-coordinate behavior for both backends.
-- [ ] Audit source-session cancellation, caches, live-feed reuse and request budgets.
+- [x] Audit source-session cancellation, caches, live-feed reuse and request budgets.
 - [x] Capture existing Map/Explore/detail visual patterns and shared UI primitives.
 - [ ] Prototype compact iPhone, Duo outer/expanded and iPad Field Tools layouts using real shared components.
 - [ ] Record design review confirming navigation, pane ordering, cards, map controls, colors,
@@ -133,6 +132,8 @@ observations, projection rules and remaining fixture work are recorded in
 | 2026-10-22 | Android JVM | API 26+ source contract | Field identity and QR contract tests | 6 passed |
 | 2026-10-22 | iOS / Xcode 27.1 | Active Xcode destination | Field snapshot v1 tests | 3 passed |
 | 2026-10-22 | Android JVM | API 26+ source contract | Field snapshot v1 tests | 3 passed |
+| 2026-10-23 | iOS / Xcode 27.1 | Active Xcode destination | Shared CoreScope live fixture | Passed |
+| 2026-10-23 | Android JVM | API 26+ source contract | Shared CoreScope live fixture | Passed |
 
 ## Known limitations
 

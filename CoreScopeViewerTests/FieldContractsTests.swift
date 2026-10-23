@@ -60,4 +60,13 @@ struct FieldContractsTests {
         #expect(longName.utf8.count == 130)
         #expect(MeshCoreContactLink(name: longName, publicKey: key, type: 2) == nil)
     }
+
+    @Test func requestBudgetsMatchTheSharedPlatformContract() {
+        #expect(FieldRequestBudget.automaticCatalogRefreshInterval == 30)
+        #expect(FieldRequestBudget.staleCatalogLifetime == 604_800)
+        #expect(FieldRequestBudget.pinnedEvidenceFreshLifetime == 300)
+        #expect(FieldRequestBudget.maximumBeaconCatalogPagesPerKind == 20)
+        #expect(FieldRequestBudget.maximumLivePackets == 200)
+        #expect(FieldRequestBudget.maximumLiveMetadataEntries == 1_000)
+    }
 }
