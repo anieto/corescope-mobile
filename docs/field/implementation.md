@@ -12,12 +12,11 @@ existence alone is not completion.
 | Milestone | Status | Evidence |
 |---|---|---|
 | A — Contract, architecture and field baseline | Not started | — |
-| B — iOS reference and nearby foundation | Not started | — |
-| C — iOS pinned guidance and evidence | Not started | — |
-| D — iOS deployment planner | Not started | — |
-| E — Snapshots and QR on iOS | Not started | — |
-| F — Android parity | Not started | — |
-| G — Release hardening | Not started | — |
+| B — Workspace and Nearby, iOS then Android | Not started | — |
+| C — Guidance and evidence, iOS then Android | Not started | — |
+| D — Deployment planner, iOS then Android | Not started | — |
+| E — Snapshots and QR, iOS then Android | Not started | — |
+| F — Joint release hardening | Not started | — |
 
 ## A — Contract, architecture and field baseline
 
@@ -44,7 +43,7 @@ Not yet recorded. Do not infer coordinate age from node/observer activity timest
 
 None yet.
 
-## B — iOS reference and nearby foundation
+## B — Workspace and Nearby, iOS then Android
 
 - [ ] Field Tools routing from Map and Explore without a sixth root tab.
 - [ ] Eligible node and observer detail entry.
@@ -54,8 +53,11 @@ None yet.
 - [ ] Distance ordering, filters and search without per-row network work.
 - [ ] Adaptive iPhone, iPhone Duo outer/expanded/transition and iPad structure and map overlays.
 - [ ] Unit/model/repository and permission-independent UI tests.
+- [ ] Android-native workspace, reference, nearby, maps and adaptive layouts.
+- [ ] Shared identity/coordinate/distance/ordering/filter/session fixtures pass on both platforms.
+- [ ] Cross-platform parity gate recorded before guidance work begins.
 
-## C — iOS pinned guidance and evidence
+## C — Guidance and evidence, iOS then Android
 
 - [ ] Pin/switch/unpin target flows.
 - [ ] Numeric true bearing and cardinal guidance.
@@ -64,8 +66,11 @@ None yet.
 - [ ] Detail, analytics, packet and route quick actions.
 - [ ] Cancellation, source/region changes, cached fallback and rate limits.
 - [ ] VoiceOver, Dynamic Type, Reduce Motion and physical-session validation.
+- [ ] Android-native guidance, compass, evidence, accessibility and lifecycle behavior.
+- [ ] Shared geometry/freshness/capability/provenance fixtures pass on both platforms.
+- [ ] Matching scripted iOS/Android physical-field results recorded before planning work begins.
 
-## D — iOS deployment planner
+## D — Deployment planner, iOS then Android
 
 - [ ] Propagation-engine and terrain-provider license/architecture decision.
 - [ ] Validated MeshCore profiles and editable planning parameters.
@@ -74,8 +79,11 @@ None yet.
 - [ ] Coverage heatmap/contours with model and dataset provenance.
 - [ ] Existing-node/observer receiver assumptions, ranking and point-to-point detail.
 - [ ] Numerical golden fixtures, cancellation and resource/device baselines.
+- [ ] Android planning UI and Google Maps/MapLibre prediction overlays.
+- [ ] Identical cross-platform coverage/point-to-point numerical fixtures pass.
+- [ ] Cross-platform planner parity gate recorded before snapshot/QR work begins.
 
-## E — Snapshots and QR on iOS
+## E — Snapshots and QR, iOS then Android
 
 - [ ] Snapshot v1 model, builder and golden files.
 - [ ] Privacy preview and default reference-coordinate exclusion.
@@ -84,19 +92,11 @@ None yet.
 - [ ] QR presentation with text/copy/share alternative.
 - [ ] Scanner and camera permission lifecycle.
 - [ ] Valid, invalid, denied, not-found and duplicate-detection tests.
+- [ ] Android-native share/export, QR and permission behavior.
+- [ ] Snapshot and QR fixtures round-trip between physical iOS and Android devices.
+- [ ] Cross-platform parity gate recorded before release hardening.
 
-## F — Android parity
-
-- [ ] Shared fixtures pass unchanged.
-- [ ] Reference/location and nearby experience.
-- [ ] Pinned guidance/evidence experience.
-- [ ] Deployment planning and predicted-link parity.
-- [ ] Snapshot/share/export experience.
-- [ ] QR scan/presentation experience.
-- [ ] Google Maps and MapLibre validation.
-- [ ] Phone, tablet and foldable adaptive/accessibility validation.
-
-## G — Release hardening
+## F — Joint release hardening
 
 - [ ] CoreScope and Beacon regression matrix.
 - [ ] Offline/cache/source-switch/live-feed matrix.

@@ -44,7 +44,7 @@ accuracy, stale analyzer data, partial backend capability and intermittent conne
 | QR | Scan and present interoperable node identifiers using existing NodeScope and MeshCore contact formats; no new proprietary payload is required |
 | Planning | Drop a proposed-site pin, configure radio/antenna/installation assumptions, estimate terrain-aware coverage and rank deployed nodes that may hear it |
 | Persistence | Preserve only lightweight user choices such as last sort/filter if useful; do not restore a live field session, active target, device coordinate or heading after exit/relaunch |
-| Platforms | Define shared calculations and fixtures first; implement and validate iOS, then Android parity before release closeout |
+| Platforms | Define shared contracts and fixtures first; for each vertical slice, stabilize iOS and bring Android to parity before starting the next slice |
 | Monetization | Preserve existing access rules; no new entitlement or paywall behavior |
 
 Required for 0.10.0: device/manual reference, nearby list and map context, node and observer
@@ -482,6 +482,22 @@ new scope; the pinned target remains visible long enough to explain the mismatch
 
 ## Milestones and execution order
 
+### Cross-platform delivery cadence
+
+iOS leads product and interaction design for each vertical slice because NodeScope's established
+visual system and iPhone Duo behavior live there. Android follows immediately after that slice is
+reviewed and stable enough to port; it does not wait for the complete iOS feature set. The next
+slice starts only after the current one meets its cross-platform parity gate.
+
+Parity means the same capabilities, terminology, calculations, classifications, privacy behavior,
+snapshot/QR contracts and supported-versus-unavailable evidence. It does not require pixel-identical
+screens. Navigation, permissions, maps and adaptive layout remain platform-native.
+
+This deliberate one-slice lead avoids duplicating early UI churn while preventing months of drift,
+iOS-shaped contracts and late discovery of Android map, lifecycle or foldable constraints. Shared
+fixtures are authored before either platform UI depends on them, and Android findings can revise the
+slice on both platforms before the next one begins.
+
 ### A — Contract, architecture and field baseline
 
 - Capture CoreScope and Beacon fixtures for node/observer coordinates, activity, analytics and live
@@ -500,7 +516,7 @@ new scope; the pinned target remains visible long enough to explain the mismatch
 Exit: fixtures are committed, unsupported facts are identified, shared contracts are reviewable,
 and no screen assumes a coordinate timestamp or backend field that was not observed.
 
-### B — iOS reference and nearby foundation
+### B — Workspace and Nearby, iOS then Android
 
 - Add Field Tools routing from Map, Explore and eligible detail screens, including **Nearby** and
   **Plan** activity state without a sixth root tab.
@@ -509,21 +525,29 @@ and no screen assumes a coordinate timestamp or backend field that was not obser
 - Build adaptive compact iPhone/iPhone Duo outer, expanded Duo two-/three-region and iPad structure
   with state-preserving reflow, plus map annotations without target analytics.
 - Add pure/model/repository tests and focused UI automation for permission-independent flows.
+- After iOS review, implement the same capability on Android with native location/permission,
+  Google Maps/MapLibre and phone/tablet/foldable behavior.
+- Pass shared identity, coordinate, distance, ordering, filtering and session-cancellation fixtures
+  unchanged on both platforms before Milestone C.
 
 Exit: a person can use either reference type, browse honest nearby results and survive source,
-region, scene and layout changes without leaked sensor work or stale cross-source results.
+region, scene and layout changes without leaked sensor work or stale cross-source results on both
+platforms.
 
-### C — iOS pinned guidance and evidence
+### C — Guidance and evidence, iOS then Android
 
 - Add target pinning, true-bearing/numeric guidance and optional heading-relative compass.
 - Add accuracy/freshness/unsupported states and quick links to details, analytics, packets/routes.
 - Load one target's evidence with coalescing, cancellation, rate limiting and cached fallback.
 - Validate motion/accessibility behavior and a 30-minute physical-device session.
+- After iOS review, implement Android guidance/evidence using the same geometry, freshness,
+  capability and provenance fixtures, with platform-native compass and lifecycle behavior.
+- Run the same scripted physical-field exercise on representative iOS and Android devices.
 
 Exit: guidance remains truthful across good, reduced, stale and unavailable data, and sensor/network
-work stays within measured budgets.
+work stays within measured budgets on both platforms.
 
-### D — iOS deployment planner
+### D — Deployment planner, iOS then Android
 
 - Add proposed pin and editable, validated MeshCore radio/antenna/receiver/environment assumptions.
 - Integrate the audited terrain repository and cancellable propagation engine.
@@ -531,31 +555,25 @@ work stays within measured budgets.
 - Evaluate analyzer-known nodes/observers, rank predicted links and show point-to-point detail.
 - Support in-memory candidate comparison, cached terrain, incomplete/offline states and storage clear.
 - Add numerical golden fixtures, engine cancellation/resource tests and physical-device baselines.
+- After iOS interaction review, implement Android planning and both map-engine overlays without
+  changing the shared model, terrain provenance or predicted-link classifications.
+- Compare coverage grids/contours and point-to-point results against identical numerical fixtures.
 
 Exit: a person can model a proposed site and understand likely/marginal/unknown existing-node links
-without confusing predictions with observations or detected remote-node settings.
+without confusing predictions with observations or detected remote-node settings on either platform.
 
-### E — Snapshots and QR on iOS
+### E — Snapshots and QR, iOS then Android
 
 - Implement versioned snapshot builder, preview, text share and JSON export with privacy toggles.
 - Implement strict QR parse/generate, scanner permission lifecycle, fallback entry and target actions.
 - Add schema/golden-file/parser/privacy tests and UI automation for valid/error/denied paths.
+- After iOS review, implement Android share/export, QR scanning/presentation and permission behavior.
+- Round-trip the same snapshot files and QR fixtures between iOS and Android physical devices.
 
 Exit: exported fixtures round-trip, no device location leaks by default, and QR flows interoperate
 with existing NodeScope/MeshCore links on physical devices.
 
-### F — Android parity
-
-- Port the approved shared contracts and fixtures before platform UI.
-- Implement reference/location, nearby, pinned guidance/evidence, deployment planning, snapshots and
-  QR with platform-native permission and adaptive-layout behavior.
-- Validate Google Maps and MapLibre engines, phones, tablets and at least one foldable posture.
-- Compare output against shared geometry, ordering, QR and snapshot fixtures.
-
-Exit: supported facts and limitations match iOS; platform differences are documented rather than
-hidden behind divergent calculations.
-
-### G — Release hardening
+### F — Joint release hardening
 
 - CoreScope and Beacon regression, offline/cache, source switching and live-feed coexistence.
 - Compact iPhone, iPhone Duo outer/expanded/transition/rotation, iPad multitasking and Android
