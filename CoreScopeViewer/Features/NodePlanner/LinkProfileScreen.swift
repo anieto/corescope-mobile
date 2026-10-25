@@ -20,19 +20,25 @@ struct LinkProfileScreen: View {
         Group {
             if usesDuoWorkspace {
                 GeometryReader { geometry in
+                    let trailingInset = geometry.safeAreaInsets.trailing
+                    let paneWidth = (geometry.size.width - trailingInset) / 2
+
                     DuoTwoPaneLayout {
                         LinkProfileEditor(
                             model: model,
                             chooseOnMap: { endpointPicker = $0 }
                         )
-                        .frame(width: geometry.size.width / 2, alignment: .leading)
+                        .frame(width: paneWidth, alignment: .leading)
+                        .frame(maxHeight: .infinity)
                         .clipped()
                     } secondary: {
                         LinkProfileWorkspace(model: model)
-                            .frame(width: geometry.size.width / 2)
+                            .frame(width: paneWidth + trailingInset)
+                            .frame(maxHeight: .infinity)
                             .clipped()
                     }
                 }
+                .ignoresSafeArea(.container, edges: [.bottom, .trailing])
             } else {
                 LinkProfileSingleColumn(
                     model: model,
