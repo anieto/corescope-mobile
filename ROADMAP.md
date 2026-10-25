@@ -66,37 +66,28 @@ Defer the Changes summary, dashboard signal/availability/coverage/telemetry, liv
 extra drill-down controls and dashboard exports. Detailed Node Analytics and its exports remain
 available. Background notifications remain out of scope.
 
-## 0.10.0 — Field Tools
+## 0.10.0 — Node Planner
 
-Make NodeScope useful while deploying, locating, or troubleshooting physical
-mesh equipment without turning the phone into a source of RF telemetry.
+Help people evaluate proposed mesh deployments before installing hardware. The normal map shows
+where deployed nodes are; Node Planner estimates what a new node at a candidate site might reach.
 
-Detailed product behavior, architecture, milestones, tests and release gates are in the
-[0.10.0 implementation plan](docs/field/plan.md). Track observed contracts and progress in
-[the implementation record](docs/field/implementation.md).
+Detailed product behavior, analysis contracts, architecture, milestones, tests and release gates
+are in the [0.10.0 Node Planner plan](docs/node-planner/plan.md). The previous Field Tools plan and
+implementation record are retained as prototype history, not the release contract.
 
-- Add a dedicated full-screen Field Tools workspace from Map, Explore and contextual
-  detail actions rather than another permanent primary tab. Use **Nearby** for deployed
-  equipment and **Plan** for proposed sites.
-- Show nearby nodes and observers relative to the current location or a manually
-  selected reference point.
-- Show distance, bearing, last-heard state, recent signal quality, observer
-  coverage, coordinate age, GPS accuracy, and network-data freshness.
-- Allow one node or observer to be pinned as the active target with compact
-  compass-style guidance and direct access to its analytics, packets, and routes.
-- Add investigation snapshots that package the relevant packet, route, nodes,
-  observers, timestamps, and analyzer source for sharing or export.
-- Support public-key QR scanning and presentation for quick node lookup and
-  favoriting in the field.
-- Allow a proposed-site pin with MeshCore radio, antenna, receiver and installation
-  assumptions; estimate terrain-aware coverage and point-to-point links.
-- Rank analyzer-known nodes and observers that may receive the proposed site, while
-  clearly separating modeled predictions from observed network evidence.
-- Keep location use foreground-only, on-device, and optional. Do not upload or
-  persist the user's location history, and clearly distinguish stale reported
-  coordinates from a device's current physical location.
-- Treat lightweight historical context around a selected incident as optional;
-  do not require continuous map playback for Field Tools.
+- Create locally saved deployment plans with one or more candidate sites.
+- Configure explicit radio, modem, antenna, cable, receiver and installation assumptions.
+- Use audited elevation data and a reviewed propagation engine for terrain-aware analysis.
+- Analyze point-to-point paths to known nodes with terrain profile, line of sight, Fresnel context,
+  predicted receive level, link margin and visible provenance.
+- Include a secondary **Link Profile** tool for analyzing any two nodes or map points, built on the
+  same terrain and RF foundation as planned potential-link analysis.
+- Rank **Potential Links** without equating proximity with reachability.
+- Render clearly labeled **Estimated Coverage** that cannot be confused with observed network data.
+- Compare candidate sites or configurations and export an assumption-rich planning summary.
+- Keep plans local, location optional and foreground-only, and cached/offline limitations explicit.
+- Deliver matching calculations and terminology across iOS and Android with adaptive layouts for
+  iPhone, iPhone Duo, iPad and Android foldables.
 
 ## 1.0.0 — Investigation depth and product maturity
 
@@ -155,5 +146,5 @@ and 3 are at parity. See [implementation progress](docs/android/progress.md).
 
 ## Current priority
 
-Prepare the next milestone, 0.10.0 Field Tools. Version 0.9.0 feature work is complete;
+Prepare the next milestone, 0.10.0 Node Planner. Version 0.9.0 feature work is complete;
 store distribution and recorded validation follow-ups remain in its release notes.

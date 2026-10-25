@@ -1,4 +1,8 @@
-# NodeScope 0.10.0 — Field Tools
+# NodeScope 0.10.0 — Field Tools (Superseded)
+
+> This plan was superseded on 2026-10-24 by the
+> [Node Planner plan](../node-planner/plan.md). It is retained as prototype history and is not the
+> current 0.10.0 release contract.
 
 Status: planned. Prepared: 2026-10-22. Predecessor: 0.9.0 feature work is complete.
 See [implementation progress](implementation.md) for milestone status and recorded evidence.

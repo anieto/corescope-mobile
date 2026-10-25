@@ -1,4 +1,8 @@
-# NodeScope 0.10.0 — Field Tools implementation
+# NodeScope 0.10.0 — Field Tools prototype implementation
+
+> Node Planner replaced Field Tools as the 0.10.0 product direction on 2026-10-24. See the
+> [current plan](../node-planner/plan.md). This record remains useful for identifying reusable
+> prototype work and discarded scope.
 
 Status: in progress. Implementation began on 2026-10-22.
 Product scope and acceptance criteria are in [plan.md](plan.md).
