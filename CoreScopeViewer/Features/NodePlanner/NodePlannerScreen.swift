@@ -3,6 +3,10 @@ import SwiftUI
 struct NodePlannerScreen: View {
     let closeAction: (() -> Void)?
 
+    @Environment(TabBarContextActionStore.self) private var contextAction
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var isHingedDevice: Bool?
+
     init(closeAction: (() -> Void)? = nil) {
         self.closeAction = closeAction
     }
@@ -23,7 +27,7 @@ struct NodePlannerScreen: View {
             .navigationTitle("Node Planner")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                if let closeAction {
+                if !usesDuoLayout, let closeAction {
                     ToolbarItem(placement: .cancellationAction) {
                         Button(action: closeAction) {
                             Image(systemName: "xmark")
@@ -32,6 +36,29 @@ struct NodePlannerScreen: View {
                     }
                 }
             }
+        }
+        .observesDuoHinge($isHingedDevice)
+        .onAppear(perform: updateContextAction)
+        .onChange(of: isHingedDevice) { updateContextAction() }
+        .onDisappear {
+            if usesDuoLayout {
+                contextAction.clear()
+            }
+        }
+    }
+
+    private var usesDuoLayout: Bool {
+        isHingedDevice == true && horizontalSizeClass == .regular
+    }
+
+    private func updateContextAction() {
+        guard usesDuoLayout, let closeAction else {
+            contextAction.clear()
+            return
+        }
+        contextAction.set(.close) {
+            contextAction.clear()
+            closeAction()
         }
     }
 }

@@ -5,6 +5,7 @@ import SwiftUI
 struct LinkProfileScreen: View {
     let closeAction: (() -> Void)?
 
+    @Environment(TabBarContextActionStore.self) private var contextAction
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var model = LinkProfileModel()
@@ -18,15 +19,19 @@ struct LinkProfileScreen: View {
     var body: some View {
         Group {
             if usesDuoWorkspace {
-                DuoTwoPaneLayout {
-                    LinkProfileEditor(
-                        model: model,
-                        chooseOnMap: { endpointPicker = $0 },
-                        goBack: { dismiss() },
-                        closeAction: closeAction
-                    )
-                } secondary: {
-                    LinkProfileWorkspace(model: model)
+                GeometryReader { geometry in
+                    DuoTwoPaneLayout {
+                        LinkProfileEditor(
+                            model: model,
+                            chooseOnMap: { endpointPicker = $0 }
+                        )
+                        .frame(width: geometry.size.width / 2, alignment: .leading)
+                        .clipped()
+                    } secondary: {
+                        LinkProfileWorkspace(model: model)
+                            .frame(width: geometry.size.width / 2)
+                            .clipped()
+                    }
                 }
             } else {
                 LinkProfileSingleColumn(
@@ -39,16 +44,6 @@ struct LinkProfileScreen: View {
         .navigationTitle("Link Profile")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(usesDuoWorkspace ? .hidden : .visible, for: .navigationBar)
-        .toolbar {
-            if !usesDuoWorkspace, let closeAction {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: closeAction) {
-                        Image(systemName: "xmark")
-                    }
-                    .accessibilityLabel("Close Node Planner")
-                }
-            }
-        }
         .sheet(item: $endpointPicker) { endpoint in
             LinkProfileMapPicker(
                 endpoint: endpoint,
@@ -59,10 +54,29 @@ struct LinkProfileScreen: View {
             }
         }
         .observesDuoHinge($isHingedDevice)
+        .onAppear(perform: updateContextAction)
+        .onChange(of: isHingedDevice) { updateContextAction() }
+        .onDisappear(perform: restorePlannerContextAction)
     }
 
     private var usesDuoWorkspace: Bool {
         isHingedDevice == true && horizontalSizeClass == .regular
+    }
+
+    private func updateContextAction() {
+        guard usesDuoWorkspace else { return }
+        contextAction.set(.back) { dismiss() }
+    }
+
+    private func restorePlannerContextAction() {
+        guard usesDuoWorkspace, let closeAction else {
+            contextAction.clear()
+            return
+        }
+        contextAction.set(.close) {
+            contextAction.clear()
+            closeAction()
+        }
     }
 }
 
@@ -95,16 +109,12 @@ private struct LinkProfileSingleColumn: View {
 private struct LinkProfileEditor: View {
     @Bindable var model: LinkProfileModel
     let chooseOnMap: (LinkProfileEndpoint) -> Void
-    let goBack: () -> Void
-    let closeAction: (() -> Void)?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                LinkProfileDuoHeader(
-                    goBack: goBack,
-                    closeAction: closeAction
-                )
+                Text("Link Profile")
+                    .font(.headline)
                 LinkProfileIntroduction()
                 LinkProfileEndpointCard(
                     title: "Point A",
@@ -130,33 +140,6 @@ private struct LinkProfileEditor: View {
         }
         .safeAreaPadding(.bottom, 20)
         .clipped()
-    }
-}
-
-private struct LinkProfileDuoHeader: View {
-    let goBack: () -> Void
-    let closeAction: (() -> Void)?
-
-    var body: some View {
-        HStack {
-            Button(action: goBack) {
-                Image(systemName: "chevron.backward")
-            }
-            .accessibilityLabel("Back to Node Planner")
-
-            Text("Link Profile")
-                .font(.headline)
-
-            Spacer()
-
-            if let closeAction {
-                Button(action: closeAction) {
-                    Image(systemName: "xmark")
-                }
-                .accessibilityLabel("Close Node Planner")
-            }
-        }
-        .buttonStyle(.bordered)
     }
 }
 
