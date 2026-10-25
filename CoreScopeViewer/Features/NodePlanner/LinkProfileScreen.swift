@@ -32,7 +32,23 @@ struct LinkProfileScreen: View {
                         .frame(maxHeight: .infinity)
                         .clipped()
                     } secondary: {
-                        LinkProfileWorkspace(model: model)
+                        Group {
+                            if let endpointPicker {
+                                LinkProfileInlineMapPicker(
+                                    endpoint: endpointPicker,
+                                    pointA: model.coordinateA,
+                                    pointB: model.coordinateB,
+                                    cancel: { self.endpointPicker = nil },
+                                    select: { coordinate in
+                                        model.set(coordinate, for: endpointPicker)
+                                        self.endpointPicker = nil
+                                    }
+                                )
+                                .id(endpointPicker.id)
+                            } else {
+                                LinkProfileWorkspace(model: model)
+                            }
+                        }
                             .frame(width: paneWidth + trailingInset)
                             .frame(maxHeight: .infinity)
                             .clipped()
@@ -44,24 +60,25 @@ struct LinkProfileScreen: View {
                     model: model,
                     chooseOnMap: { endpointPicker = $0 }
                 )
+                .sheet(item: $endpointPicker) { endpoint in
+                    LinkProfileMapPicker(
+                        endpoint: endpoint,
+                        pointA: model.coordinateA,
+                        pointB: model.coordinateB
+                    ) { coordinate in
+                        model.set(coordinate, for: endpoint)
+                    }
+                }
             }
         }
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationTitle("Link Profile")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(usesDuoWorkspace ? .hidden : .visible, for: .navigationBar)
-        .sheet(item: $endpointPicker) { endpoint in
-            LinkProfileMapPicker(
-                endpoint: endpoint,
-                pointA: model.coordinateA,
-                pointB: model.coordinateB
-            ) { coordinate in
-                model.set(coordinate, for: endpoint)
-            }
-        }
         .observesDuoHinge($isHingedDevice)
         .onAppear(perform: updateContextAction)
         .onChange(of: isHingedDevice) { updateContextAction() }
+        .onChange(of: endpointPicker) { updateContextAction() }
         .onDisappear(perform: restorePlannerContextAction)
     }
 
@@ -71,7 +88,13 @@ struct LinkProfileScreen: View {
 
     private func updateContextAction() {
         guard usesDuoWorkspace else { return }
-        contextAction.set(.back) { dismiss() }
+        contextAction.set(.back) {
+            if endpointPicker != nil {
+                endpointPicker = nil
+            } else {
+                dismiss()
+            }
+        }
     }
 
     private func restorePlannerContextAction() {
@@ -477,6 +500,80 @@ private struct LinkProfileMapPicker: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+    }
+}
+
+private struct LinkProfileInlineMapPicker: View {
+    let endpoint: LinkProfileEndpoint
+    let pointA: CLLocationCoordinate2D
+    let pointB: CLLocationCoordinate2D
+    let cancel: () -> Void
+    let select: (CLLocationCoordinate2D) -> Void
+
+    @State private var selectedCoordinate: CLLocationCoordinate2D
+    @State private var position: MapCameraPosition = .automatic
+
+    init(
+        endpoint: LinkProfileEndpoint,
+        pointA: CLLocationCoordinate2D,
+        pointB: CLLocationCoordinate2D,
+        cancel: @escaping () -> Void,
+        select: @escaping (CLLocationCoordinate2D) -> Void
+    ) {
+        self.endpoint = endpoint
+        self.pointA = pointA
+        self.pointB = pointB
+        self.cancel = cancel
+        self.select = select
+        _selectedCoordinate = State(initialValue: endpoint == .pointA ? pointA : pointB)
+    }
+
+    var body: some View {
+        MapReader { proxy in
+            Map(position: $position) {
+                Marker("Point A", coordinate: pointA)
+                    .tint(endpoint == .pointA ? Color.secondary : Color.blue)
+                Marker("Point B", coordinate: pointB)
+                    .tint(endpoint == .pointB ? Color.secondary : Color.orange)
+                Annotation("Selected location", coordinate: selectedCoordinate) {
+                    Image(systemName: "mappin.circle.fill")
+                        .font(.largeTitle)
+                        .foregroundStyle(NodeScopeStyle.signal)
+                        .background(.background, in: Circle())
+                        .accessibilityLabel("Selected location")
+                }
+            }
+            .mapStyle(.standard(elevation: .realistic))
+            .mapControls {
+                MapCompass()
+                MapScaleView()
+            }
+            .simultaneousGesture(
+                SpatialTapGesture()
+                    .onEnded { value in
+                        if let coordinate = proxy.convert(value.location, from: .local) {
+                            selectedCoordinate = coordinate
+                        }
+                    }
+            )
+            .overlay(alignment: .topLeading) {
+                Label(endpoint.title, systemImage: "mappin.and.ellipse")
+                    .font(.headline)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding()
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                LinkProfileMapSelectionBar(
+                    endpointTitle: endpoint.title,
+                    coordinate: selectedCoordinate,
+                    cancel: cancel,
+                    confirm: { select(selectedCoordinate) }
+                )
+                .padding(.trailing, 96)
+            }
+        }
     }
 }
 
