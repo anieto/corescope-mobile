@@ -66,7 +66,6 @@ struct MapScreen: View {
     @State private var isMapCameraMoving = false
     @State private var mapViewportSize = CGSize.zero
     @State private var showsFieldTools = false
-    @State private var fieldToolsReference: FieldCoordinate?
 
     private struct NodeCluster: Identifiable, Sendable {
         let id: String
@@ -198,6 +197,14 @@ struct MapScreen: View {
                     .nodeScopeFloatingGlass(cornerRadius: 18)
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel(isConnected ? "Live Map, connected" : "Live Map, reconnecting")
+
+                    Button(action: openFieldTools) {
+                        Image(systemName: "location.viewfinder")
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .nodeScopeFloatingGlass(cornerRadius: 18)
+                    .accessibilityLabel("Open Node Planner")
                 }
 
                 Spacer()
@@ -215,12 +222,6 @@ struct MapScreen: View {
                             .frame(width: 44, height: 44)
                     }
                     .accessibilityLabel("Search nodes")
-
-                    Button(action: openFieldTools) {
-                        Image(systemName: "location.viewfinder")
-                            .frame(width: 44, height: 44)
-                    }
-                    .accessibilityLabel("Open Field Tools")
 
                     Menu {
                         ForEach(MapDisplayStyle.allCases) { style in
@@ -252,15 +253,16 @@ struct MapScreen: View {
     }
 
     private func openFieldTools() {
-        fieldToolsReference = visibleRegion.flatMap {
-            FieldCoordinate(latitude: $0.center.latitude, longitude: $0.center.longitude)
-        }
         showsFieldTools = true
     }
 
     var body: some View {
-        NavigationStack {
-            GeometryReader { geometry in
+        Group {
+            if showsFieldTools {
+                NodePlannerScreen(closeAction: { showsFieldTools = false })
+            } else {
+                NavigationStack {
+                    GeometryReader { geometry in
                 Group {
                     if isReplayMode {
                         TimelineView(
@@ -365,9 +367,6 @@ struct MapScreen: View {
                 .navigationDestination(item: $selectedNode) { node in
                     NodeDetailScreen(node: node)
                 }
-                .navigationDestination(isPresented: $showsFieldTools) {
-                    FieldToolsScreen(initialReference: fieldToolsReference)
-                }
                 .overlay(alignment: .top) {
                     if isTabActive && usesWideMapHeader {
                         WideMapHeader(
@@ -379,8 +378,8 @@ struct MapScreen: View {
                             openFieldTools: openFieldTools,
                             mapDisplayStyle: $mapDisplayStyle
                         )
-                        .padding(.horizontal, 12)
-                        .padding(.top, 8)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 32)
                     }
                 }
                 .overlay(alignment: .topLeading) {
@@ -407,8 +406,8 @@ struct MapScreen: View {
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.leading, 12)
-                    .padding(.top, usesWideMapHeader ? 60 : 12)
+                    .padding(.leading, usesWideMapHeader ? 20 : 12)
+                    .padding(.top, usesWideMapHeader ? 84 : 12)
                 }
                 .overlay(alignment: .bottomLeading) {
                     VStack(spacing: 10) {
@@ -530,6 +529,8 @@ struct MapScreen: View {
                         .padding(.top, 8)
                     }
                 }
+                }
+            }
         }
         .sheet(isPresented: $isSearchPresented) {
             MapNodeSearchSheet(nodes: viewModel.nodes, selectNode: focusOnSearchedNode)
@@ -561,6 +562,7 @@ struct MapScreen: View {
             isMapFiltersPresented = false
             selectedRouteDetails = nil
             highlightedNodeID = nil
+            showsFieldTools = false
         }
         .onAppear {
             isVisible = true

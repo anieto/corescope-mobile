@@ -21,11 +21,16 @@ struct ExploreScreen: View {
     @State private var channelViewModel = ChannelsViewModel()
     @State private var searchPackets: [Packet] = []
     @State private var isSearchPresented = false
+    @State private var showsFieldTools = false
     @State private var lastHandledNavigationRequestID: UUID?
 
     var body: some View {
-        NavigationStack(path: $navigationPath) {
-            ZStack {
+        Group {
+            if showsFieldTools {
+                NodePlannerScreen(closeAction: { showsFieldTools = false })
+            } else {
+                NavigationStack(path: $navigationPath) {
+                    ZStack {
                 NodeScopeBackground()
 
                 ScrollViewReader { proxy in
@@ -50,7 +55,7 @@ struct ExploreScreen: View {
                 .favoritesListRow(top: 0, bottom: 8)
 
                 FieldToolsExploreCard {
-                    navigationPath.append(ExploreDestination.fieldTools)
+                    showsFieldTools = true
                 }
                 .favoritesListRow(top: 0, bottom: 8)
 
@@ -128,10 +133,10 @@ struct ExploreScreen: View {
                         isLoading: nodeViewModel.isLoading, errorMessage: nodeViewModel.errorMessage)
                 case .activity:
                     MyNodesScreen(isTabActive: isTabActive).id(settings.sourceSession.id)
-                case .fieldTools:
-                    FieldToolsScreen()
                 }
             }
+                }
+                    }
                 }
             }
         }
@@ -153,6 +158,7 @@ struct ExploreScreen: View {
         .onChange(of: resetID) {
             navigationPath = NavigationPath()
             isSearchPresented = false
+            showsFieldTools = false
         }
         .onChange(of: settings.sourceSession.id) { updateVisibleItems() }
         .onChange(of: favoritesStore.items) { updateVisibleItems() }
@@ -477,7 +483,7 @@ private struct FavoritesScreen: View {
 }
 
 private enum ExploreDestination: Hashable {
-    case livePackets, favorites, activity, fieldTools
+    case livePackets, favorites, activity
 }
 
 private struct ExploreEmptyGuidance: View {
@@ -1026,10 +1032,10 @@ private struct FieldToolsExploreCard: View {
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Field Tools")
+                    Text("Node Planner")
                         .font(.headline)
                         .foregroundStyle(.primary)
-                    Text("Nearby equipment and deployment planning")
+                    Text("Evaluate proposed sites and point-to-point terrain paths")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
