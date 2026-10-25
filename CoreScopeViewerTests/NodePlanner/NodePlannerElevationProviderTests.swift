@@ -22,7 +22,7 @@ struct NodePlannerElevationProviderTests {
         let coordinates = try (0..<101).map {
             try NodePlannerCoordinate(latitude: Double($0) / 10, longitude: -100)
         }
-        let provider = OpenMeteoElevationProvider(session: fixtureSession())
+        let provider = OpenMeteoElevationProvider(session: fixtureSession(), persistentCache: nil)
 
         let profile = try await provider.elevations(for: coordinates)
 
@@ -40,7 +40,7 @@ struct NodePlannerElevationProviderTests {
             try NodePlannerCoordinate(latitude: 30, longitude: -97),
             try NodePlannerCoordinate(latitude: 31, longitude: -98)
         ]
-        let provider = OpenMeteoElevationProvider(session: fixtureSession())
+        let provider = OpenMeteoElevationProvider(session: fixtureSession(), persistentCache: nil)
 
         let first = try await provider.elevations(for: coordinates)
         let second = try await provider.elevations(for: coordinates)
@@ -57,7 +57,7 @@ struct NodePlannerElevationProviderTests {
             try NodePlannerCoordinate(latitude: 30, longitude: -97),
             try NodePlannerCoordinate(latitude: 31, longitude: -98)
         ]
-        let provider = OpenMeteoElevationProvider(session: fixtureSession())
+        let provider = OpenMeteoElevationProvider(session: fixtureSession(), persistentCache: nil)
 
         await #expect(throws: NodePlannerElevationError.invalidResponse) {
             try await provider.elevations(for: coordinates)

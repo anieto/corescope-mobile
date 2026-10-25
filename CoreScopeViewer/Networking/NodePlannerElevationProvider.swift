@@ -107,17 +107,20 @@ actor OpenMeteoElevationProvider: NodePlannerElevationProviding {
     private let endpoint: URL
     private let cacheLifetime: TimeInterval
     private let now: @Sendable () -> Date
+    private let persistentCache: (any NodePlannerElevationCaching)?
     private var cache: [NodePlannerCoordinate: CacheEntry] = [:]
 
     init(
         session: URLSession = .shared,
         endpoint: URL = URL(string: "https://api.open-meteo.com/v1/elevation")!,
         cacheLifetime: TimeInterval = 30 * 24 * 60 * 60,
+        persistentCache: (any NodePlannerElevationCaching)? = NodePlannerElevationDiskCache(),
         now: @escaping @Sendable () -> Date = Date.init
     ) {
         self.session = session
         self.endpoint = endpoint
         self.cacheLifetime = cacheLifetime
+        self.persistentCache = persistentCache
         self.now = now
     }
 
@@ -125,11 +128,16 @@ actor OpenMeteoElevationProvider: NodePlannerElevationProviding {
         guard coordinates.count >= 2 else { throw NodePlannerElevationError.insufficientCoordinates }
 
         let requestTime = now()
+        let cacheCutoff = requestTime.addingTimeInterval(-cacheLifetime)
         var resolved: [NodePlannerCoordinate: CacheEntry] = [:]
         var missing: [NodePlannerCoordinate] = []
 
         for coordinate in coordinates {
             if let entry = cache[coordinate], requestTime.timeIntervalSince(entry.fetchedAt) <= cacheLifetime {
+                resolved[coordinate] = entry
+            } else if let record = await persistentCache?.elevation(for: coordinate, newerThan: cacheCutoff) {
+                let entry = CacheEntry(elevationMeters: record.elevationMeters, fetchedAt: record.fetchedAt)
+                cache[coordinate] = entry
                 resolved[coordinate] = entry
             } else {
                 missing.append(coordinate)
@@ -141,12 +149,21 @@ actor OpenMeteoElevationProvider: NodePlannerElevationProviding {
             let batchEnd = min(batchStart + Self.maximumBatchSize, missing.count)
             let batch = Array(missing[batchStart..<batchEnd])
             let elevations = try await fetch(batch)
+            var storedElevations: [NodePlannerCachedElevation] = []
 
             for (coordinate, elevation) in zip(batch, elevations) {
                 let entry = CacheEntry(elevationMeters: elevation, fetchedAt: requestTime)
                 cache[coordinate] = entry
                 resolved[coordinate] = entry
+                storedElevations.append(
+                    NodePlannerCachedElevation(
+                        coordinate: coordinate,
+                        elevationMeters: elevation,
+                        fetchedAt: requestTime
+                    )
+                )
             }
+            await persistentCache?.store(storedElevations)
         }
 
         let samples = try coordinates.map { coordinate in

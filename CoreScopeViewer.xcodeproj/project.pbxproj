@@ -110,6 +110,8 @@
 		31DFA7F1308E9FFF00B8C681 /* NodePlannerElevationProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7F0308E9FFF00B8C681 /* NodePlannerElevationProviderTests.swift */; };
 		31DFA7F3308EA0CB00B8C681 /* NodePlannerLinkAnalyzerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7F2308EA0CB00B8C681 /* NodePlannerLinkAnalyzerTests.swift */; };
 		31DFA7F5308EA0CB00B8C681 /* NodePlannerLinkAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7F4308EA0CB00B8C681 /* NodePlannerLinkAnalyzer.swift */; };
+		31DFA7F7308EA1B800B8C681 /* NodePlannerElevationCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7F6308EA1B800B8C681 /* NodePlannerElevationCacheTests.swift */; };
+		31DFA7F9308EA1B800B8C681 /* NodePlannerElevationCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7F8308EA1B800B8C681 /* NodePlannerElevationCache.swift */; };
 		31E24AAD307DB13E00C096A7 /* sources-v2.json in Resources */ = {isa = PBXBuildFile; fileRef = 31E24AAC307DB13E00C096A7 /* sources-v2.json */; };
 		367D92626A31391FE48F86D8 /* DistanceFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235873A5D91CB7811DDE491B /* DistanceFormat.swift */; };
 		37EEBAD9BA7B400246063847 /* NodeDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75CDCA22232763038FF030C6 /* NodeDetailViewModel.swift */; };
@@ -275,6 +277,8 @@
 		31DFA7F0308E9FFF00B8C681 /* NodePlannerElevationProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodePlannerElevationProviderTests.swift; sourceTree = "<group>"; };
 		31DFA7F2308EA0CB00B8C681 /* NodePlannerLinkAnalyzerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodePlannerLinkAnalyzerTests.swift; sourceTree = "<group>"; };
 		31DFA7F4308EA0CB00B8C681 /* NodePlannerLinkAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodePlannerLinkAnalyzer.swift; sourceTree = "<group>"; };
+		31DFA7F6308EA1B800B8C681 /* NodePlannerElevationCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodePlannerElevationCacheTests.swift; sourceTree = "<group>"; };
+		31DFA7F8308EA1B800B8C681 /* NodePlannerElevationCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodePlannerElevationCache.swift; sourceTree = "<group>"; };
 		31E24AAC307DB13E00C096A7 /* sources-v2.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "sources-v2.json"; sourceTree = "<group>"; };
 		32A0B4E835C764626FE71370 /* AnalyzerSourceLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerSourceLogo.swift; sourceTree = "<group>"; };
 		33B9A5F539B49B860F434D81 /* Channel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Channel.swift; sourceTree = "<group>"; };
@@ -400,6 +404,7 @@
 				31DFA7EC308E9F4E00B8C681 /* NodePlannerRFEngineTests.swift */,
 				31DFA7F0308E9FFF00B8C681 /* NodePlannerElevationProviderTests.swift */,
 				31DFA7F2308EA0CB00B8C681 /* NodePlannerLinkAnalyzerTests.swift */,
+				31DFA7F6308EA1B800B8C681 /* NodePlannerElevationCacheTests.swift */,
 			);
 			path = NodePlanner;
 			sourceTree = "<group>";
@@ -636,6 +641,7 @@
 				31DFA7DB308BA2EF00B8C681 /* FieldCatalogRepository.swift */,
 				31DFA7E6308BBDEE00B8C681 /* FieldEvidenceRepository.swift */,
 				31DFA7EE308E9FD700B8C681 /* NodePlannerElevationProvider.swift */,
+				31DFA7F8308EA1B800B8C681 /* NodePlannerElevationCache.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -790,6 +796,7 @@
 				A742196194F327F868B0E61C /* AirportCoordinatesTests.swift in Sources */,
 				311510B630842C5300199D51 /* MyNodesBaseRepositoryTests.swift in Sources */,
 				312714C4307AE6C000829346 /* CoreScopeBackendTests.swift in Sources */,
+				31DFA7F7308EA1B800B8C681 /* NodePlannerElevationCacheTests.swift in Sources */,
 				311510BC3086592800199D51 /* FavoriteChangesTests.swift in Sources */,
 				317433B6308300BE0060A385 /* MyNodesRepositoryTests.swift in Sources */,
 				311510AE3083E87C00199D51 /* MyNodesCacheOwnershipTests.swift in Sources */,
@@ -864,6 +871,7 @@
 				BE866EEEF408BDB6C8E103D8 /* MapViewModel.swift in Sources */,
 				316FE006305D930300FBA3B4 /* StatisticsExport.swift in Sources */,
 				316FE0163060985200FBA3B4 /* NodeAnalytics.swift in Sources */,
+				31DFA7F9308EA1B800B8C681 /* NodePlannerElevationCache.swift in Sources */,
 				524F4D5E1EF00C2775837C6C /* MonitorChannelSheet.swift in Sources */,
 				EF6E45CEC2D585AC27B07648 /* MonitoredChannel.swift in Sources */,
 				318BF7D7307EBCF900C8BFAD /* AnalyticsContext.swift in Sources */,
