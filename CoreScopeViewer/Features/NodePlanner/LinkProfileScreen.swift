@@ -3,8 +3,68 @@ import MapKit
 import SwiftUI
 
 struct LinkProfileScreen: View {
+    let closeAction: (() -> Void)?
+
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var model = LinkProfileModel()
     @State private var endpointPicker: LinkProfileEndpoint?
+    @State private var isHingedDevice: Bool?
+
+    init(closeAction: (() -> Void)? = nil) {
+        self.closeAction = closeAction
+    }
+
+    var body: some View {
+        Group {
+            if usesDuoWorkspace {
+                DuoTwoPaneLayout {
+                    LinkProfileEditor(
+                        model: model,
+                        chooseOnMap: { endpointPicker = $0 }
+                    )
+                } secondary: {
+                    LinkProfileWorkspace(model: model)
+                }
+            } else {
+                LinkProfileSingleColumn(
+                    model: model,
+                    chooseOnMap: { endpointPicker = $0 }
+                )
+            }
+        }
+        .background(Color(uiColor: .systemGroupedBackground))
+        .navigationTitle("Link Profile")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let closeAction {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: closeAction) {
+                        Image(systemName: "xmark")
+                    }
+                    .accessibilityLabel("Close Node Planner")
+                }
+            }
+        }
+        .sheet(item: $endpointPicker) { endpoint in
+            LinkProfileMapPicker(
+                endpoint: endpoint,
+                pointA: model.coordinateA,
+                pointB: model.coordinateB
+            ) { coordinate in
+                model.set(coordinate, for: endpoint)
+            }
+        }
+        .observesDuoHinge($isHingedDevice)
+    }
+
+    private var usesDuoWorkspace: Bool {
+        isHingedDevice == true && horizontalSizeClass == .regular
+    }
+}
+
+private struct LinkProfileSingleColumn: View {
+    let model: LinkProfileModel
+    let chooseOnMap: (LinkProfileEndpoint) -> Void
 
     var body: some View {
         ScrollView {
@@ -12,7 +72,7 @@ struct LinkProfileScreen: View {
                 LinkProfileIntroduction()
                 LinkProfileEndpointLayout(
                     model: model,
-                    chooseOnMap: { endpointPicker = $0 }
+                    chooseOnMap: chooseOnMap
                 )
                 LinkProfileRadioSettings(model: model)
                 LinkProfilePrivacyNotice()
@@ -25,18 +85,80 @@ struct LinkProfileScreen: View {
             .padding()
             .frame(maxWidth: .infinity)
         }
-        .background(Color(uiColor: .systemGroupedBackground))
-        .navigationTitle("Link Profile")
-        .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $endpointPicker) { endpoint in
-            LinkProfileMapPicker(
-                endpoint: endpoint,
+    }
+}
+
+private struct LinkProfileEditor: View {
+    let model: LinkProfileModel
+    let chooseOnMap: (LinkProfileEndpoint) -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                LinkProfileIntroduction()
+                LinkProfileEndpointLayout(
+                    model: model,
+                    chooseOnMap: chooseOnMap
+                )
+                LinkProfileRadioSettings(model: model)
+                LinkProfilePrivacyNotice()
+                LinkProfileAction(model: model)
+            }
+            .padding()
+        }
+    }
+}
+
+private struct LinkProfileWorkspace: View {
+    let model: LinkProfileModel
+
+    var body: some View {
+        VStack(spacing: 0) {
+            LinkProfileRouteMap(
                 pointA: model.coordinateA,
                 pointB: model.coordinateB
-            ) { coordinate in
-                model.set(coordinate, for: endpoint)
+            )
+            .frame(maxHeight: .infinity)
+
+            Divider()
+
+            ScrollView {
+                if let result = model.result {
+                    LinkProfileResultCard(result: result)
+                } else {
+                    ContentUnavailableView {
+                        Label("Ready to analyze", systemImage: "chart.xyaxis.line")
+                    } description: {
+                        Text("Choose both endpoints and analyze the link to see terrain clearance and path-loss estimates.")
+                    }
+                }
             }
+            .contentMargins(16, for: .scrollContent)
+            .frame(minHeight: 190, idealHeight: 240, maxHeight: 320)
+            .background(Color(uiColor: .systemGroupedBackground))
         }
+    }
+}
+
+private struct LinkProfileRouteMap: View {
+    let pointA: CLLocationCoordinate2D
+    let pointB: CLLocationCoordinate2D
+
+    var body: some View {
+        Map {
+            Marker("Point A", coordinate: pointA)
+                .tint(.blue)
+            Marker("Point B", coordinate: pointB)
+                .tint(.orange)
+            MapPolyline(coordinates: [pointA, pointB])
+                .stroke(NodeScopeStyle.signal, lineWidth: 3)
+        }
+        .mapStyle(.standard(elevation: .realistic))
+        .mapControls {
+            MapCompass()
+            MapScaleView()
+        }
+        .accessibilityLabel("Map of the proposed link from Point A to Point B")
     }
 }
 
