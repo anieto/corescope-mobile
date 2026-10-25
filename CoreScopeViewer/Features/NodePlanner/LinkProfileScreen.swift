@@ -1,14 +1,19 @@
 import Observation
+import MapKit
 import SwiftUI
 
 struct LinkProfileScreen: View {
     @State private var model = LinkProfileModel()
+    @State private var endpointPicker: LinkProfileEndpoint?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 LinkProfileIntroduction()
-                LinkProfileEndpointLayout(model: model)
+                LinkProfileEndpointLayout(
+                    model: model,
+                    chooseOnMap: { endpointPicker = $0 }
+                )
                 LinkProfileRadioSettings(model: model)
                 LinkProfilePrivacyNotice()
                 LinkProfileAction(model: model)
@@ -23,6 +28,29 @@ struct LinkProfileScreen: View {
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationTitle("Link Profile")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $endpointPicker) { endpoint in
+            LinkProfileMapPicker(
+                endpoint: endpoint,
+                pointA: model.coordinateA,
+                pointB: model.coordinateB
+            ) { coordinate in
+                model.set(coordinate, for: endpoint)
+            }
+        }
+    }
+}
+
+private enum LinkProfileEndpoint: String, Identifiable {
+    case pointA
+    case pointB
+
+    var id: String { rawValue }
+
+    var title: LocalizedStringResource {
+        switch self {
+        case .pointA: "Point A"
+        case .pointB: "Point B"
+        }
     }
 }
 
@@ -41,6 +69,14 @@ private final class LinkProfileModel {
     var errorMessage: LocalizedStringResource?
 
     private let analyzer: NodePlannerLinkAnalyzer
+
+    var coordinateA: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: latitudeA, longitude: longitudeA)
+    }
+
+    var coordinateB: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: latitudeB, longitude: longitudeB)
+    }
 
     init(analyzer: NodePlannerLinkAnalyzer = NodePlannerLinkAnalyzer(
         elevationProvider: OpenMeteoElevationProvider()
@@ -80,6 +116,19 @@ private final class LinkProfileModel {
             errorMessage = "The link could not be analyzed with these settings."
         }
     }
+
+    func set(_ coordinate: CLLocationCoordinate2D, for endpoint: LinkProfileEndpoint) {
+        switch endpoint {
+        case .pointA:
+            latitudeA = coordinate.latitude
+            longitudeA = coordinate.longitude
+        case .pointB:
+            latitudeB = coordinate.latitude
+            longitudeB = coordinate.longitude
+        }
+        result = nil
+        errorMessage = nil
+    }
 }
 
 private struct LinkProfileIntroduction: View {
@@ -95,6 +144,7 @@ private struct LinkProfileIntroduction: View {
 
 private struct LinkProfileEndpointLayout: View {
     @Bindable var model: LinkProfileModel
+    let chooseOnMap: (LinkProfileEndpoint) -> Void
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
@@ -103,13 +153,15 @@ private struct LinkProfileEndpointLayout: View {
                     title: "Point A",
                     latitude: $model.latitudeA,
                     longitude: $model.longitudeA,
-                    height: $model.heightA
+                    height: $model.heightA,
+                    chooseOnMap: { chooseOnMap(.pointA) }
                 )
                 LinkProfileEndpointCard(
                     title: "Point B",
                     latitude: $model.latitudeB,
                     longitude: $model.longitudeB,
-                    height: $model.heightB
+                    height: $model.heightB,
+                    chooseOnMap: { chooseOnMap(.pointB) }
                 )
             }
             VStack(spacing: 16) {
@@ -117,13 +169,15 @@ private struct LinkProfileEndpointLayout: View {
                     title: "Point A",
                     latitude: $model.latitudeA,
                     longitude: $model.longitudeA,
-                    height: $model.heightA
+                    height: $model.heightA,
+                    chooseOnMap: { chooseOnMap(.pointA) }
                 )
                 LinkProfileEndpointCard(
                     title: "Point B",
                     latitude: $model.latitudeB,
                     longitude: $model.longitudeB,
-                    height: $model.heightB
+                    height: $model.heightB,
+                    chooseOnMap: { chooseOnMap(.pointB) }
                 )
             }
         }
@@ -135,6 +189,7 @@ private struct LinkProfileEndpointCard: View {
     @Binding var latitude: Double
     @Binding var longitude: Double
     @Binding var height: Double
+    let chooseOnMap: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -159,10 +214,125 @@ private struct LinkProfileEndpointCard: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            Button(action: chooseOnMap) {
+                Label("Choose on Map", systemImage: "map")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background, in: RoundedRectangle(cornerRadius: 16))
+    }
+}
+
+private struct LinkProfileMapPicker: View {
+    let endpoint: LinkProfileEndpoint
+    let pointA: CLLocationCoordinate2D
+    let pointB: CLLocationCoordinate2D
+    let select: (CLLocationCoordinate2D) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedCoordinate: CLLocationCoordinate2D
+    @State private var position: MapCameraPosition = .automatic
+
+    init(
+        endpoint: LinkProfileEndpoint,
+        pointA: CLLocationCoordinate2D,
+        pointB: CLLocationCoordinate2D,
+        select: @escaping (CLLocationCoordinate2D) -> Void
+    ) {
+        self.endpoint = endpoint
+        self.pointA = pointA
+        self.pointB = pointB
+        self.select = select
+        _selectedCoordinate = State(initialValue: endpoint == .pointA ? pointA : pointB)
+    }
+
+    var body: some View {
+        NavigationStack {
+            MapReader { proxy in
+                Map(position: $position) {
+                    Marker("Point A", coordinate: pointA)
+                        .tint(endpoint == .pointA ? Color.secondary : Color.blue)
+                    Marker("Point B", coordinate: pointB)
+                        .tint(endpoint == .pointB ? Color.secondary : Color.orange)
+                    Annotation("Selected location", coordinate: selectedCoordinate) {
+                        Image(systemName: "mappin.circle.fill")
+                            .font(.largeTitle)
+                            .foregroundStyle(NodeScopeStyle.signal)
+                            .background(.background, in: Circle())
+                            .accessibilityLabel("Selected location")
+                    }
+                }
+                .mapStyle(.standard(elevation: .realistic))
+                .mapControls {
+                    MapCompass()
+                    MapScaleView()
+                }
+                .simultaneousGesture(
+                    SpatialTapGesture()
+                        .onEnded { value in
+                            if let coordinate = proxy.convert(value.location, from: .local) {
+                                selectedCoordinate = coordinate
+                            }
+                        }
+                )
+                .safeAreaInset(edge: .bottom) {
+                    LinkProfileMapSelectionBar(
+                        endpointTitle: endpoint.title,
+                        coordinate: selectedCoordinate,
+                        cancel: { dismiss() },
+                        confirm: {
+                            select(selectedCoordinate)
+                            dismiss()
+                        }
+                    )
+                }
+            }
+            .navigationTitle("Choose \(endpoint.title)")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+}
+
+private struct LinkProfileMapSelectionBar: View {
+    let endpointTitle: LocalizedStringResource
+    let coordinate: CLLocationCoordinate2D
+    let cancel: () -> Void
+    let confirm: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Tap the map to position \(endpointTitle).")
+                .font(.subheadline)
+            Text("\(coordinate.latitude, format: .number.precision(.fractionLength(5))), \(coordinate.longitude, format: .number.precision(.fractionLength(5)))")
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
+            ViewThatFits(in: .horizontal) {
+                HStack { actions }
+                VStack { actions }
+            }
+        }
+        .padding()
+        .background(.regularMaterial)
+    }
+
+    @ViewBuilder
+    private var actions: some View {
+        Button("Cancel", action: cancel)
+            .buttonStyle(.bordered)
+            .frame(maxWidth: .infinity)
+        Button("Use This Location", action: confirm)
+            .buttonStyle(.borderedProminent)
+            .frame(maxWidth: .infinity)
     }
 }
 
