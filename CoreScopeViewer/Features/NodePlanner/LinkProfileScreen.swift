@@ -132,13 +132,14 @@ private struct LinkProfileEditor: View {
                 )
                 LinkProfileRadioSettings(model: model)
                 LinkProfilePrivacyNotice()
-                LinkProfileAction(model: model)
             }
             .padding(.leading)
             .padding(.vertical)
             .padding(.trailing, 32)
         }
-        .safeAreaPadding(.bottom, 20)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            LinkProfilePinnedAction(model: model)
+        }
         .clipped()
     }
 }
@@ -147,32 +148,44 @@ private struct LinkProfileWorkspace: View {
     let model: LinkProfileModel
 
     var body: some View {
-        VStack(spacing: 0) {
+        ZStack(alignment: .bottom) {
             LinkProfileRouteMap(
                 pointA: model.coordinateA,
                 pointB: model.coordinateB
             )
-            .frame(maxHeight: .infinity)
+            .ignoresSafeArea(.container, edges: .bottom)
 
-            Divider()
-
-            ScrollView {
+            VStack {
+                Spacer()
                 if let result = model.result {
-                    LinkProfileResultCard(result: result)
-                } else {
-                    ContentUnavailableView {
-                        Label("Ready to analyze", systemImage: "chart.xyaxis.line")
-                    } description: {
-                        Text("Choose both endpoints and analyze the link to see terrain clearance and path-loss estimates.")
+                    ScrollView {
+                        LinkProfileResultCard(result: result)
                     }
+                    .frame(maxHeight: 300)
+                } else {
+                    LinkProfileReadyOverlay()
                 }
             }
-            .contentMargins(.leading, 16, for: .scrollContent)
-            .contentMargins(.trailing, 96, for: .scrollContent)
-            .contentMargins(.vertical, 16, for: .scrollContent)
-            .frame(minHeight: 190, idealHeight: 240, maxHeight: 320)
-            .background(Color(uiColor: .systemGroupedBackground))
+            .frame(maxWidth: 480)
+            .padding(.leading, 20)
+            .padding(.trailing, 96)
+            .padding(.bottom, 20)
         }
+    }
+}
+
+private struct LinkProfileReadyOverlay: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Ready to analyze", systemImage: "chart.xyaxis.line")
+                .font(.headline)
+            Text("Choose both endpoints, then analyze the link to estimate terrain clearance and path loss.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
     }
 }
 
@@ -529,6 +542,21 @@ private struct LinkProfilePrivacyNotice: View {
         .font(.caption)
         .foregroundStyle(.secondary)
         .accessibilityElement(children: .combine)
+    }
+}
+
+private struct LinkProfilePinnedAction: View {
+    let model: LinkProfileModel
+
+    var body: some View {
+        LinkProfileAction(model: model)
+            .padding(.leading)
+            .padding(.trailing, 32)
+            .padding(.vertical, 12)
+            .background(.bar)
+            .overlay(alignment: .top) {
+                Divider()
+            }
     }
 }
 
