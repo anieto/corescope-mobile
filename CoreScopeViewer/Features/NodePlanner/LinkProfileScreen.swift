@@ -5,6 +5,7 @@ import SwiftUI
 struct LinkProfileScreen: View {
     let closeAction: (() -> Void)?
 
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var model = LinkProfileModel()
     @State private var endpointPicker: LinkProfileEndpoint?
@@ -20,7 +21,9 @@ struct LinkProfileScreen: View {
                 DuoTwoPaneLayout {
                     LinkProfileEditor(
                         model: model,
-                        chooseOnMap: { endpointPicker = $0 }
+                        chooseOnMap: { endpointPicker = $0 },
+                        goBack: { dismiss() },
+                        closeAction: closeAction
                     )
                 } secondary: {
                     LinkProfileWorkspace(model: model)
@@ -35,8 +38,9 @@ struct LinkProfileScreen: View {
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationTitle("Link Profile")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(usesDuoWorkspace ? .hidden : .visible, for: .navigationBar)
         .toolbar {
-            if let closeAction {
+            if !usesDuoWorkspace, let closeAction {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: closeAction) {
                         Image(systemName: "xmark")
@@ -89,23 +93,70 @@ private struct LinkProfileSingleColumn: View {
 }
 
 private struct LinkProfileEditor: View {
-    let model: LinkProfileModel
+    @Bindable var model: LinkProfileModel
     let chooseOnMap: (LinkProfileEndpoint) -> Void
+    let goBack: () -> Void
+    let closeAction: (() -> Void)?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
+                LinkProfileDuoHeader(
+                    goBack: goBack,
+                    closeAction: closeAction
+                )
                 LinkProfileIntroduction()
-                LinkProfileEndpointLayout(
-                    model: model,
-                    chooseOnMap: chooseOnMap
+                LinkProfileEndpointCard(
+                    title: "Point A",
+                    latitude: $model.latitudeA,
+                    longitude: $model.longitudeA,
+                    height: $model.heightA,
+                    chooseOnMap: { chooseOnMap(.pointA) }
+                )
+                LinkProfileEndpointCard(
+                    title: "Point B",
+                    latitude: $model.latitudeB,
+                    longitude: $model.longitudeB,
+                    height: $model.heightB,
+                    chooseOnMap: { chooseOnMap(.pointB) }
                 )
                 LinkProfileRadioSettings(model: model)
                 LinkProfilePrivacyNotice()
                 LinkProfileAction(model: model)
             }
-            .padding()
+            .padding(.leading)
+            .padding(.vertical)
+            .padding(.trailing, 32)
         }
+        .safeAreaPadding(.bottom, 20)
+        .clipped()
+    }
+}
+
+private struct LinkProfileDuoHeader: View {
+    let goBack: () -> Void
+    let closeAction: (() -> Void)?
+
+    var body: some View {
+        HStack {
+            Button(action: goBack) {
+                Image(systemName: "chevron.backward")
+            }
+            .accessibilityLabel("Back to Node Planner")
+
+            Text("Link Profile")
+                .font(.headline)
+
+            Spacer()
+
+            if let closeAction {
+                Button(action: closeAction) {
+                    Image(systemName: "xmark")
+                }
+                .accessibilityLabel("Close Node Planner")
+            }
+        }
+        .buttonStyle(.bordered)
     }
 }
 
@@ -133,7 +184,9 @@ private struct LinkProfileWorkspace: View {
                     }
                 }
             }
-            .contentMargins(16, for: .scrollContent)
+            .contentMargins(.leading, 16, for: .scrollContent)
+            .contentMargins(.trailing, 96, for: .scrollContent)
+            .contentMargins(.vertical, 16, for: .scrollContent)
             .frame(minHeight: 190, idealHeight: 240, maxHeight: 320)
             .background(Color(uiColor: .systemGroupedBackground))
         }
