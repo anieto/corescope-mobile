@@ -104,6 +104,10 @@
 		31DFA7E3308BAC6B00B8C681 /* FieldLocationSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7E2308BAC6B00B8C681 /* FieldLocationSession.swift */; };
 		31DFA7E5308BB15800B8C681 /* FieldToolsPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7E4308BB15800B8C681 /* FieldToolsPresentationTests.swift */; };
 		31DFA7E7308BBDEE00B8C681 /* FieldEvidenceRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7E6308BBDEE00B8C681 /* FieldEvidenceRepository.swift */; };
+		31DFA7EB308E9F4E00B8C681 /* NodePlannerRFEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7EA308E9F4E00B8C681 /* NodePlannerRFEngine.swift */; };
+		31DFA7ED308E9F4E00B8C681 /* NodePlannerRFEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7EC308E9F4E00B8C681 /* NodePlannerRFEngineTests.swift */; };
+		31DFA7EF308E9FD700B8C681 /* NodePlannerElevationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7EE308E9FD700B8C681 /* NodePlannerElevationProvider.swift */; };
+		31DFA7F1308E9FFF00B8C681 /* NodePlannerElevationProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA7F0308E9FFF00B8C681 /* NodePlannerElevationProviderTests.swift */; };
 		31E24AAD307DB13E00C096A7 /* sources-v2.json in Resources */ = {isa = PBXBuildFile; fileRef = 31E24AAC307DB13E00C096A7 /* sources-v2.json */; };
 		367D92626A31391FE48F86D8 /* DistanceFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235873A5D91CB7811DDE491B /* DistanceFormat.swift */; };
 		37EEBAD9BA7B400246063847 /* NodeDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75CDCA22232763038FF030C6 /* NodeDetailViewModel.swift */; };
@@ -263,6 +267,10 @@
 		31DFA7E2308BAC6B00B8C681 /* FieldLocationSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldLocationSession.swift; sourceTree = "<group>"; };
 		31DFA7E4308BB15800B8C681 /* FieldToolsPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldToolsPresentationTests.swift; sourceTree = "<group>"; };
 		31DFA7E6308BBDEE00B8C681 /* FieldEvidenceRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FieldEvidenceRepository.swift; sourceTree = "<group>"; };
+		31DFA7EA308E9F4E00B8C681 /* NodePlannerRFEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodePlannerRFEngine.swift; sourceTree = "<group>"; };
+		31DFA7EC308E9F4E00B8C681 /* NodePlannerRFEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodePlannerRFEngineTests.swift; sourceTree = "<group>"; };
+		31DFA7EE308E9FD700B8C681 /* NodePlannerElevationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodePlannerElevationProvider.swift; sourceTree = "<group>"; };
+		31DFA7F0308E9FFF00B8C681 /* NodePlannerElevationProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodePlannerElevationProviderTests.swift; sourceTree = "<group>"; };
 		31E24AAC307DB13E00C096A7 /* sources-v2.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "sources-v2.json"; sourceTree = "<group>"; };
 		32A0B4E835C764626FE71370 /* AnalyzerSourceLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerSourceLogo.swift; sourceTree = "<group>"; };
 		33B9A5F539B49B860F434D81 /* Channel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Channel.swift; sourceTree = "<group>"; };
@@ -382,6 +390,23 @@
 			path = FieldTools;
 			sourceTree = "<group>";
 		};
+		31DFA7E8308E9DB300B8C681 /* NodePlanner */ = {
+			isa = PBXGroup;
+			children = (
+				31DFA7EC308E9F4E00B8C681 /* NodePlannerRFEngineTests.swift */,
+				31DFA7F0308E9FFF00B8C681 /* NodePlannerElevationProviderTests.swift */,
+			);
+			path = NodePlanner;
+			sourceTree = "<group>";
+		};
+		31DFA7E9308E9DB300B8C681 /* NodePlanner */ = {
+			isa = PBXGroup;
+			children = (
+				31DFA7EA308E9F4E00B8C681 /* NodePlannerRFEngine.swift */,
+			);
+			path = NodePlanner;
+			sourceTree = "<group>";
+		};
 		34F851437983B18C6D3E010B /* Onboarding */ = {
 			isa = PBXGroup;
 			children = (
@@ -462,6 +487,7 @@
 				31DFA7CF308AFEDF00B8C681 /* FieldGeometry.swift */,
 				31DFA7D3308B044900B8C681 /* FieldContracts.swift */,
 				31DFA7D7308B052600B8C681 /* FieldSnapshot.swift */,
+				31DFA7E9308E9DB300B8C681 /* NodePlanner */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -603,6 +629,7 @@
 				311510BD30869BF200199D51 /* CoreScopeAccountClient.swift */,
 				31DFA7DB308BA2EF00B8C681 /* FieldCatalogRepository.swift */,
 				31DFA7E6308BBDEE00B8C681 /* FieldEvidenceRepository.swift */,
+				31DFA7EE308E9FD700B8C681 /* NodePlannerElevationProvider.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -636,6 +663,7 @@
 				31DFA7D9308B052700B8C681 /* FieldSnapshotTests.swift */,
 				31DFA7DD308BA35700B8C681 /* FieldCatalogRepositoryTests.swift */,
 				31DFA7E4308BB15800B8C681 /* FieldToolsPresentationTests.swift */,
+				31DFA7E8308E9DB300B8C681 /* NodePlanner */,
 			);
 			path = CoreScopeViewerTests;
 			sourceTree = "<group>";
@@ -740,9 +768,11 @@
 				036ACF59063991FAB8B4D9A0 /* URLPathEncodingTests.swift in Sources */,
 				31DFA7DA308B052700B8C681 /* FieldSnapshotTests.swift in Sources */,
 				318BF7DB307EBE7000C8BFAD /* NeighborInsightTests.swift in Sources */,
+				31DFA7F1308E9FFF00B8C681 /* NodePlannerElevationProviderTests.swift in Sources */,
 				311D6C7D307BBA6500E2EB70 /* BeaconAPITests.swift in Sources */,
 				317433B230828A9F0060A385 /* MyNodesFoundationTests.swift in Sources */,
 				C9442265B47B2D20E681223B /* AnalyzerSourceLogoTests.swift in Sources */,
+				31DFA7ED308E9F4E00B8C681 /* NodePlannerRFEngineTests.swift in Sources */,
 				311510A03083DBAF00199D51 /* MyNodesActivityTests.swift in Sources */,
 				311510AC3083DE9100199D51 /* MyNodesSnapshotTests.swift in Sources */,
 				31DFA7DE308BA35700B8C681 /* FieldCatalogRepositoryTests.swift in Sources */,
@@ -804,6 +834,7 @@
 				90D4CE6F2C401B52C0B93D79 /* ChannelListCache.swift in Sources */,
 				3144E9F7305B2A4300B57F18 /* InstrumentSearchField.swift in Sources */,
 				31DFA7D0308AFEDF00B8C681 /* FieldGeometry.swift in Sources */,
+				31DFA7EB308E9F4E00B8C681 /* NodePlannerRFEngine.swift in Sources */,
 				31A2B0043070000100FBA3B4 /* RoutePicker.swift in Sources */,
 				16CC334CE0E2AE894A6E2811 /* ChannelMessagesCache.swift in Sources */,
 				F82F20C851C52EAC49BC3931 /* ChannelMonitorStore.swift in Sources */,
@@ -820,6 +851,7 @@
 				317433B43083000B0060A385 /* MyNodesAnalyticsRepository.swift in Sources */,
 				720AC3BF3F9FAFDCD5C48C40 /* LoadingIndicator.swift in Sources */,
 				6444F2623473A5D38104F233 /* MapLocationManager.swift in Sources */,
+				31DFA7EF308E9FD700B8C681 /* NodePlannerElevationProvider.swift in Sources */,
 				311D6C79307BB9BB00E2EB70 /* BeaconAPIClient.swift in Sources */,
 				A062762334B67CCF1DBD2BF2 /* MapScreen.swift in Sources */,
 				BE866EEEF408BDB6C8E103D8 /* MapViewModel.swift in Sources */,

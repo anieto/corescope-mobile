@@ -33,6 +33,14 @@ Every substantially derived Swift or Kotlin file must identify MeshCore One, Avi
 commit, the GPLv3 license and NodeScope modifications. Record the final imported subset here when
 implementation begins.
 
+### NodeScope files derived as of 2026-10-25
+
+- `CoreScopeViewer/Models/NodePlanner/NodePlannerRFEngine.swift`
+
+The initial Swift implementation derives the RF formulas, thresholds and analysis behavior from
+the seven upstream RF-domain files listed above. It does not copy the upstream SwiftUI workspace or
+elevation networking implementation.
+
 ## Do not copy in the first engine milestone
 
 - `MC1/Views/Tools/LineOfSight/`: its SwiftUI presentation is coupled to MeshCore One's workspace.

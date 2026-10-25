@@ -103,6 +103,22 @@ struct AboutScreen: View {
                     }
                 }
             }
+
+            Section("Acknowledgements") {
+                if let meshCoreOneURL = URL(string: "https://github.com/Avi0n/MeshCoreOne") {
+                    Link(destination: meshCoreOneURL) {
+                        ProjectLinkRow(icon: "antenna.radiowaves.left.and.right", title: "MeshCore One by Avi0n")
+                    }
+                }
+                if let openMeteoURL = URL(string: "https://open-meteo.com/en/docs/elevation-api") {
+                    Link(destination: openMeteoURL) {
+                        ProjectLinkRow(icon: "mountain.2.fill", title: "Open-Meteo & Copernicus Elevation Data")
+                    }
+                }
+                Text("Line-of-sight calculations include modified GPLv3 work from MeshCore One. Terrain data uses Copernicus DEM 2021 GLO-90 through Open-Meteo.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .adaptiveContentWidth()
         .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
