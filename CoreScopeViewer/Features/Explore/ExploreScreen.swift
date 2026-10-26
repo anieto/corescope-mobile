@@ -21,15 +21,10 @@ struct ExploreScreen: View {
     @State private var channelViewModel = ChannelsViewModel()
     @State private var searchPackets: [Packet] = []
     @State private var isSearchPresented = false
-    @State private var showsFieldTools = false
     @State private var lastHandledNavigationRequestID: UUID?
 
     var body: some View {
-        Group {
-            if showsFieldTools {
-                NodePlannerScreen(closeAction: { showsFieldTools = false })
-            } else {
-                NavigationStack(path: $navigationPath) {
+        NavigationStack(path: $navigationPath) {
                     ZStack {
                 MeshBackground(subdued: true).ignoresSafeArea()
 
@@ -55,7 +50,7 @@ struct ExploreScreen: View {
                 .favoritesListRow(top: 0, bottom: 8)
 
                 FieldToolsExploreCard {
-                    showsFieldTools = true
+                    navigationPath.append(ExploreDestination.nodePlanner)
                 }
                 .favoritesListRow(top: 0, bottom: 8)
 
@@ -133,12 +128,12 @@ struct ExploreScreen: View {
                         isLoading: nodeViewModel.isLoading, errorMessage: nodeViewModel.errorMessage)
                 case .activity:
                     MyNodesScreen(isTabActive: isTabActive).id(settings.sourceSession.id)
+                case .nodePlanner:
+                    NodePlannerScreen()
                 }
             }
                 }
                     }
-                }
-            }
         }
         .sheet(isPresented: $isSearchPresented) {
             GlobalSearchSheet(
@@ -158,7 +153,6 @@ struct ExploreScreen: View {
         .onChange(of: resetID) {
             navigationPath = NavigationPath()
             isSearchPresented = false
-            showsFieldTools = false
         }
         .onChange(of: settings.sourceSession.id) { updateVisibleItems() }
         .onChange(of: favoritesStore.items) { updateVisibleItems() }
@@ -484,7 +478,7 @@ private struct FavoritesScreen: View {
 }
 
 private enum ExploreDestination: Hashable {
-    case livePackets, favorites, activity
+    case livePackets, favorites, activity, nodePlanner
 }
 
 private struct ExploreEmptyGuidance: View {

@@ -3,21 +3,13 @@ import MapKit
 import SwiftUI
 
 struct LinkProfileScreen: View {
-    let closeAction: (() -> Void)?
-
-    @Environment(TabBarContextActionStore.self) private var contextAction
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(RegionFilterStore.self) private var regionFilter
-    @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var model = LinkProfileModel()
     @State private var catalog = FieldToolsViewModel(reference: nil)
     @State private var endpointPicker: LinkProfileEndpoint? = .pointA
     @State private var isHingedDevice: Bool?
-
-    init(closeAction: (() -> Void)? = nil) {
-        self.closeAction = closeAction
-    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -70,58 +62,17 @@ struct LinkProfileScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color(uiColor: .systemGroupedBackground), for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
-        .navigationBarBackButtonHidden(usesWideStandardNavigation)
-        .toolbar(usesDuoWorkspace ? .hidden : .visible, for: .navigationBar)
-        .toolbar {
-            if usesWideStandardNavigation {
-                ToolbarItem(placement: .navigation) {
-                    Button("Node Planner", systemImage: "chevron.backward") {
-                        dismiss()
-                    }
-                    .accessibilityLabel("Back to Node Planner")
-                }
-            }
-        }
         .observesDuoHinge($isHingedDevice)
         .task(id: "\(settings.sourceSession.id)|\(regionFilter.selectedRegion ?? "")") {
             catalog.configure(settings: settings)
             await catalog.load(region: regionFilter.selectedRegion)
         }
-        .onAppear(perform: updateContextAction)
-        .onChange(of: isHingedDevice) { updateContextAction() }
-        .onChange(of: endpointPicker) { updateContextAction() }
-        .onDisappear(perform: restorePlannerContextAction)
     }
 
     private var usesDuoWorkspace: Bool {
         isHingedDevice == true && horizontalSizeClass == .regular
     }
 
-    private var usesWideStandardNavigation: Bool {
-        isHingedDevice != true && horizontalSizeClass == .regular
-    }
-
-    private func updateContextAction() {
-        guard usesDuoWorkspace else { return }
-        contextAction.set(.back) {
-            if endpointPicker != nil {
-                endpointPicker = nil
-            } else {
-                dismiss()
-            }
-        }
-    }
-
-    private func restorePlannerContextAction() {
-        guard usesDuoWorkspace, let closeAction else {
-            contextAction.clear()
-            return
-        }
-        contextAction.set(.close) {
-            contextAction.clear()
-            closeAction()
-        }
-    }
 }
 
 private struct LinkProfileCompactWorkspace: View {

@@ -1,63 +1,20 @@
 import SwiftUI
 
 struct NodePlannerScreen: View {
-    let closeAction: (() -> Void)?
-
-    @Environment(TabBarContextActionStore.self) private var contextAction
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var isHingedDevice: Bool?
-
-    init(closeAction: (() -> Void)? = nil) {
-        self.closeAction = closeAction
-    }
-
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    NodePlannerWelcome()
-                    NodePlannerToolGrid(closeAction: closeAction)
-                    NodePlannerLimitations()
-                }
-                .frame(maxWidth: 900, alignment: .leading)
-                .padding()
-                .frame(maxWidth: .infinity)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                NodePlannerWelcome()
+                NodePlannerToolGrid()
+                NodePlannerLimitations()
             }
-            .meshPageBackground()
-            .navigationTitle("Node Planner")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                if !usesDuoLayout, let closeAction {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Close", action: closeAction)
-                        .accessibilityLabel("Close Node Planner")
-                    }
-                }
-            }
+            .frame(maxWidth: 900, alignment: .leading)
+            .padding()
+            .frame(maxWidth: .infinity)
         }
-        .observesDuoHinge($isHingedDevice)
-        .onAppear(perform: updateContextAction)
-        .onChange(of: isHingedDevice) { updateContextAction() }
-        .onDisappear {
-            if usesDuoLayout {
-                contextAction.clear()
-            }
-        }
-    }
-
-    private var usesDuoLayout: Bool {
-        isHingedDevice == true && horizontalSizeClass == .regular
-    }
-
-    private func updateContextAction() {
-        guard usesDuoLayout, let closeAction else {
-            contextAction.clear()
-            return
-        }
-        contextAction.set(.close) {
-            contextAction.clear()
-            closeAction()
-        }
+        .meshPageBackground()
+        .navigationTitle("Node Planner")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -73,16 +30,14 @@ private struct NodePlannerWelcome: View {
 }
 
 private struct NodePlannerToolGrid: View {
-    let closeAction: (() -> Void)?
-
     var body: some View {
         ViewThatFits(in: .horizontal) {
             HStack(alignment: .top, spacing: 16) {
-                LinkProfileToolCard(closeAction: closeAction)
+                LinkProfileToolCard()
                 CandidateSitesToolCard()
             }
             VStack(spacing: 16) {
-                LinkProfileToolCard(closeAction: closeAction)
+                LinkProfileToolCard()
                 CandidateSitesToolCard()
             }
         }
@@ -90,11 +45,9 @@ private struct NodePlannerToolGrid: View {
 }
 
 private struct LinkProfileToolCard: View {
-    let closeAction: (() -> Void)?
-
     var body: some View {
         NavigationLink {
-            LinkProfileScreen(closeAction: closeAction)
+            LinkProfileScreen()
         } label: {
             NodePlannerToolCard(
                 icon: "point.topleft.down.to.point.bottomright.curvepath",

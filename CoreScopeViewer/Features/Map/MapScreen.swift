@@ -65,7 +65,6 @@ struct MapScreen: View {
     @State private var lastHandledNavigationRequestID: UUID?
     @State private var isMapCameraMoving = false
     @State private var mapViewportSize = CGSize.zero
-    @State private var showsFieldTools = false
     @State private var isHingedDevice: Bool?
 
     private struct NodeCluster: Identifiable, Sendable {
@@ -170,7 +169,6 @@ struct MapScreen: View {
         let togglePacketSidebar: (() -> Void)?
         let retry: () -> Void
         let search: () -> Void
-        let openFieldTools: () -> Void
         @Binding var mapDisplayStyle: MapDisplayStyle
 
         var body: some View {
@@ -199,13 +197,6 @@ struct MapScreen: View {
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel(isConnected ? "Live Map, connected" : "Live Map, reconnecting")
 
-                    Button(action: openFieldTools) {
-                        Image(systemName: "location.viewfinder")
-                            .frame(width: 44, height: 44)
-                    }
-                    .buttonStyle(.plain)
-                    .nodeScopeFloatingGlass(cornerRadius: 18)
-                    .accessibilityLabel("Open Node Planner")
                 }
 
                 Spacer()
@@ -261,16 +252,8 @@ struct MapScreen: View {
         isHingedDevice == true ? 84 : 60
     }
 
-    private func openFieldTools() {
-        showsFieldTools = true
-    }
-
     var body: some View {
-        Group {
-            if showsFieldTools {
-                NodePlannerScreen(closeAction: { showsFieldTools = false })
-            } else {
-                NavigationStack {
+        NavigationStack {
                     GeometryReader { geometry in
                 Group {
                     if isReplayMode {
@@ -348,11 +331,6 @@ struct MapScreen: View {
                         }
                         .accessibilityLabel("Search nodes")
 
-                        Button(action: openFieldTools) {
-                            Image(systemName: "location.viewfinder")
-                        }
-                        .accessibilityLabel("Open Field Tools")
-
                         Menu {
                             ForEach(MapDisplayStyle.allCases) { style in
                                 Button {
@@ -384,7 +362,6 @@ struct MapScreen: View {
                             togglePacketSidebar: togglePacketSidebar,
                             retry: retryMapLoad,
                             search: toggleMapSearch,
-                            openFieldTools: openFieldTools,
                             mapDisplayStyle: $mapDisplayStyle
                         )
                         .padding(.horizontal, 20)
@@ -538,8 +515,6 @@ struct MapScreen: View {
                         .padding(.top, 8)
                     }
                 }
-                }
-            }
         }
         .observesDuoHinge($isHingedDevice)
         .sheet(isPresented: $isSearchPresented) {
@@ -572,7 +547,6 @@ struct MapScreen: View {
             isMapFiltersPresented = false
             selectedRouteDetails = nil
             highlightedNodeID = nil
-            showsFieldTools = false
         }
         .onAppear {
             isVisible = true
