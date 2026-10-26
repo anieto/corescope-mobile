@@ -57,7 +57,8 @@ struct LinkProfileScreen: View {
                     LinkProfileCompactWorkspace(
                         model: model,
                         nodes: catalog.nodes,
-                        activeEndpoint: $endpointPicker
+                        activeEndpoint: $endpointPicker,
+                        promptLeadingClearance: showsOverlayBackButton ? 60 : 0
                     )
                 }
             }
@@ -65,7 +66,7 @@ struct LinkProfileScreen: View {
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationTitle("Link Profile")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar(usesWideWorkspace ? .hidden : .visible, for: .navigationBar)
+        .toolbar(.hidden, for: .navigationBar)
         .toolbarBackground(Color(uiColor: .systemGroupedBackground), for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .overlay(alignment: .topLeading) {
@@ -78,13 +79,13 @@ struct LinkProfileScreen: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Back")
             .padding()
-            .padding(.top, showsOverlayBackButton ? 56 : 0)
+            .padding(.top, overlayBackTopPadding)
             .opacity(showsOverlayBackButton ? 1 : 0)
             .allowsHitTesting(showsOverlayBackButton)
         }
         .observesDuoHinge($isHingedDevice)
         .onChange(of: isHingedDevice, initial: true) { _, isHingedDevice in
-            if isHingedDevice == true && horizontalSizeClass == .regular {
+            if isHingedDevice == true {
                 tabBarContextAction.set(.back) { dismiss() }
             } else {
                 tabBarContextAction.clear()
@@ -108,7 +109,11 @@ struct LinkProfileScreen: View {
     }
 
     private var showsOverlayBackButton: Bool {
-        usesWideWorkspace && isHingedDevice == false
+        isHingedDevice == false
+    }
+
+    private var overlayBackTopPadding: CGFloat {
+        usesWideWorkspace && showsOverlayBackButton ? 56 : 0
     }
 
 }
@@ -117,11 +122,17 @@ private struct LinkProfileCompactWorkspace: View {
     let model: LinkProfileModel
     let nodes: [MeshNode]
     @Binding var activeEndpoint: LinkProfileEndpoint?
+    let promptLeadingClearance: CGFloat
     @State private var isPanelExpanded = false
 
     var body: some View {
         GeometryReader { geometry in
-            LinkProfilePersistentMap(model: model, nodes: nodes, activeEndpoint: $activeEndpoint)
+            LinkProfilePersistentMap(
+                model: model,
+                nodes: nodes,
+                activeEndpoint: $activeEndpoint,
+                promptLeadingClearance: promptLeadingClearance
+            )
                 .safeAreaInset(edge: .bottom, spacing: 8) {
                     if activeEndpoint == nil {
                         VStack(spacing: 0) {
