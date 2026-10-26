@@ -6,10 +6,13 @@ struct LinkProfileScreen: View {
     let closeAction: (() -> Void)?
 
     @Environment(TabBarContextActionStore.self) private var contextAction
+    @Environment(AnalyzerSettings.self) private var settings
+    @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var model = LinkProfileModel()
-    @State private var endpointPicker: LinkProfileEndpoint?
+    @State private var catalog = FieldToolsViewModel(reference: nil)
+    @State private var endpointPicker: LinkProfileEndpoint? = .pointA
     @State private var isHingedDevice: Bool?
 
     init(closeAction: (() -> Void)? = nil) {
@@ -17,57 +20,50 @@ struct LinkProfileScreen: View {
     }
 
     var body: some View {
-        Group {
-            if usesDuoWorkspace {
-                GeometryReader { geometry in
+        GeometryReader { geometry in
+            Group {
+                if usesDuoWorkspace {
                     let trailingInset = geometry.safeAreaInsets.trailing
                     let paneWidth = (geometry.size.width - trailingInset) / 2
 
                     DuoTwoPaneLayout {
-                        LinkProfileEditor(
+                        LinkProfilePersistentMap(
                             model: model,
-                            chooseOnMap: { endpointPicker = $0 }
+                            nodes: catalog.nodes,
+                            activeEndpoint: $endpointPicker
                         )
                         .frame(width: paneWidth, alignment: .leading)
                         .frame(maxHeight: .infinity)
                         .clipped()
                     } secondary: {
-                        Group {
-                            if let endpointPicker {
-                                LinkProfileInlineMapPicker(
-                                    endpoint: endpointPicker,
-                                    pointA: model.coordinateA,
-                                    pointB: model.coordinateB,
-                                    cancel: { self.endpointPicker = nil },
-                                    select: { coordinate in
-                                        model.set(coordinate, for: endpointPicker)
-                                        self.endpointPicker = nil
-                                    }
-                                )
-                                .id(endpointPicker.id)
-                            } else {
-                                LinkProfileWorkspace(model: model)
-                            }
-                        }
-                            .frame(width: paneWidth + trailingInset)
+                        LinkProfileEditor(
+                            model: model,
+                            chooseOnMap: { endpointPicker = $0 }
+                        )
+                            .frame(width: paneWidth + trailingInset, alignment: .leading)
                             .frame(maxHeight: .infinity)
                             .clipped()
                     }
-                }
-                .ignoresSafeArea(.container, edges: [.bottom, .trailing])
-            } else {
-                LinkProfileSingleColumn(
-                    model: model,
-                    chooseOnMap: { endpointPicker = $0 }
-                )
-                .sheet(item: $endpointPicker) { endpoint in
-                    LinkProfileMapPicker(
-                        endpoint: endpoint,
-                        pointA: model.coordinateA,
-                        pointB: model.coordinateB
-                    ) { coordinate in
-                        model.set(coordinate, for: endpoint)
+                    .ignoresSafeArea(.container, edges: [.bottom, .trailing])
+                } else if geometry.size.width >= 900 {
+                    HStack(spacing: 0) {
+                        LinkProfilePersistentMap(
+                            model: model,
+                            nodes: catalog.nodes,
+                            activeEndpoint: $endpointPicker
+                        )
+                        LinkProfileEditor(
+                            model: model,
+                            chooseOnMap: { endpointPicker = $0 }
+                        )
+                        .frame(width: min(420, max(340, geometry.size.width * 0.34)))
                     }
+                } else {
+                    LinkProfileCompactWorkspace(
+                        model: model,
+                        nodes: catalog.nodes,
+                        activeEndpoint: $endpointPicker
+                    )
                 }
             }
         }
@@ -87,6 +83,10 @@ struct LinkProfileScreen: View {
             }
         }
         .observesDuoHinge($isHingedDevice)
+        .task(id: "\(settings.sourceSession.id)|\(regionFilter.selectedRegion ?? "")") {
+            catalog.configure(settings: settings)
+            await catalog.load(region: regionFilter.selectedRegion)
+        }
         .onAppear(perform: updateContextAction)
         .onChange(of: isHingedDevice) { updateContextAction() }
         .onChange(of: endpointPicker) { updateContextAction() }
@@ -124,29 +124,34 @@ struct LinkProfileScreen: View {
     }
 }
 
-private struct LinkProfileSingleColumn: View {
+private struct LinkProfileCompactWorkspace: View {
     let model: LinkProfileModel
-    let chooseOnMap: (LinkProfileEndpoint) -> Void
+    let nodes: [MeshNode]
+    @Binding var activeEndpoint: LinkProfileEndpoint?
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                LinkProfileIntroduction()
-                LinkProfileEndpointLayout(
-                    model: model,
-                    chooseOnMap: chooseOnMap
-                )
-                LinkProfileRadioSettings(model: model)
-                LinkProfilePrivacyNotice()
-                LinkProfileAction(model: model)
-                if let result = model.result {
-                    LinkProfileResultCard(result: result)
+        LinkProfilePersistentMap(model: model, nodes: nodes, activeEndpoint: $activeEndpoint)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if activeEndpoint == nil {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 12) {
+                            LinkProfileEndpointLayout(
+                                model: model,
+                                chooseOnMap: { activeEndpoint = $0 }
+                            )
+                            LinkProfileRadioSettings(model: model)
+                            LinkProfileAction(model: model)
+                            if let result = model.result {
+                                LinkProfileResultCard(result: result)
+                            }
+                        }
+                        .padding()
+                    }
+                    .frame(maxHeight: 330)
+                    .background(.regularMaterial)
+                    .clipShape(UnevenRoundedRectangle(topLeadingRadius: 22, topTrailingRadius: 22))
                 }
             }
-            .frame(maxWidth: 900, alignment: .leading)
-            .padding()
-            .frame(maxWidth: .infinity)
-        }
     }
 }
 
@@ -176,6 +181,9 @@ private struct LinkProfileEditor: View {
                 )
                 LinkProfileRadioSettings(model: model)
                 LinkProfilePrivacyNotice()
+                if let result = model.result {
+                    LinkProfileResultCard(result: result)
+                }
             }
             .padding(.leading)
             .padding(.vertical)
@@ -188,76 +196,108 @@ private struct LinkProfileEditor: View {
     }
 }
 
-private struct LinkProfileWorkspace: View {
+private struct LinkProfilePersistentMap: View {
     let model: LinkProfileModel
+    let nodes: [MeshNode]
+    @Binding var activeEndpoint: LinkProfileEndpoint?
+    @State private var tentativeCoordinate: CLLocationCoordinate2D?
+    @State private var position: MapCameraPosition = .automatic
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            LinkProfileRouteMap(
-                pointA: model.coordinateA,
-                pointB: model.coordinateB
-            )
-            .ignoresSafeArea(.container, edges: .bottom)
-
-            VStack {
-                Spacer()
-                if let result = model.result {
-                    ScrollView {
-                        LinkProfileResultCard(result: result)
+        MapReader { proxy in
+            Map(position: $position) {
+                ForEach(Array(nodesWithCoordinates.prefix(200)), id: \.id) { node in
+                    if let coordinate = node.coordinate {
+                        Annotation(node.name ?? "Known node", coordinate: coordinate) {
+                            Button {
+                                guard activeEndpoint != nil else { return }
+                                tentativeCoordinate = coordinate
+                            } label: {
+                                Image(systemName: "antenna.radiowaves.left.and.right.circle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(NodeScopeStyle.signal)
+                                    .background(.background, in: Circle())
+                            }
+                            .buttonStyle(.plain)
+                            .frame(minWidth: 44, minHeight: 44)
+                            .accessibilityLabel(node.name ?? String(localized: "Known node"))
+                            .accessibilityHint("Use as the selected link endpoint")
+                        }
                     }
-                    .frame(maxHeight: 300)
-                } else {
-                    LinkProfileReadyOverlay()
+                }
+                if let pointA = model.coordinateA {
+                    Marker("Point A", coordinate: pointA).tint(.blue)
+                }
+                if let pointB = model.coordinateB {
+                    Marker("Point B", coordinate: pointB).tint(.orange)
+                }
+                if let pointA = model.coordinateA, let pointB = model.coordinateB {
+                    MapPolyline(coordinates: [pointA, pointB])
+                        .stroke(NodeScopeStyle.signal, lineWidth: 3)
+                }
+                if let tentativeCoordinate {
+                    Annotation("Tentative location", coordinate: tentativeCoordinate) {
+                        Image(systemName: "mappin.circle.fill")
+                            .font(.largeTitle)
+                            .foregroundStyle(.secondary)
+                            .background(.background, in: Circle())
+                    }
                 }
             }
-            .frame(maxWidth: 480)
-            .padding(.leading, 20)
-            .padding(.trailing, 96)
-            .padding(.bottom, 20)
+            .mapStyle(.standard(elevation: .realistic))
+            .mapControls {
+                MapCompass()
+                MapScaleView()
+            }
+            .simultaneousGesture(
+                SpatialTapGesture().onEnded { value in
+                    guard activeEndpoint != nil,
+                          let coordinate = proxy.convert(value.location, from: .local) else { return }
+                    tentativeCoordinate = coordinate
+                }
+            )
+            .overlay(alignment: .topLeading) {
+                Label(promptTitle, systemImage: activeEndpoint == nil ? "checkmark.circle" : "mappin.and.ellipse")
+                    .font(.headline)
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 44)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding()
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if let activeEndpoint {
+                    LinkProfileMapSelectionBar(
+                        endpointTitle: activeEndpoint.title,
+                        coordinate: tentativeCoordinate,
+                        cancel: {
+                            tentativeCoordinate = nil
+                            self.activeEndpoint = nil
+                        },
+                        confirm: { commit(tentativeCoordinate, for: activeEndpoint) }
+                    )
+                }
+            }
         }
+        .accessibilityLabel("Map for selecting Point A and Point B")
+        .onChange(of: activeEndpoint) { _, _ in tentativeCoordinate = nil }
     }
-}
 
-private struct LinkProfileReadyOverlay: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label("Ready to analyze", systemImage: "chart.xyaxis.line")
-                .font(.headline)
-            Text("Choose both endpoints, then analyze the link to estimate terrain clearance and path loss.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+    private var nodesWithCoordinates: [MeshNode] {
+        nodes.filter { $0.coordinate != nil }
     }
-}
 
-private struct LinkProfileRouteMap: View {
-    let pointA: CLLocationCoordinate2D?
-    let pointB: CLLocationCoordinate2D?
+    private var promptTitle: LocalizedStringResource {
+        if let activeEndpoint { return "Choose \(activeEndpoint.title)" }
+        if model.coordinateA != nil && model.coordinateB != nil { return "Endpoints selected" }
+        if model.coordinateA == nil { return "Choose Point A" }
+        return "Choose Point B"
+    }
 
-    var body: some View {
-        Map {
-            if let pointA {
-                Marker("Point A", coordinate: pointA)
-                    .tint(.blue)
-            }
-            if let pointB {
-                Marker("Point B", coordinate: pointB)
-                    .tint(.orange)
-            }
-            if let pointA, let pointB {
-                MapPolyline(coordinates: [pointA, pointB])
-                    .stroke(NodeScopeStyle.signal, lineWidth: 3)
-            }
-        }
-        .mapStyle(.standard(elevation: .realistic))
-        .mapControls {
-            MapCompass()
-            MapScaleView()
-        }
-        .accessibilityLabel("Map of the proposed link from Point A to Point B")
+    private func commit(_ coordinate: CLLocationCoordinate2D?, for endpoint: LinkProfileEndpoint) {
+        guard let coordinate else { return }
+        model.set(coordinate, for: endpoint)
+        tentativeCoordinate = nil
+        activeEndpoint = endpoint == .pointA && model.coordinateB == nil ? .pointB : nil
     }
 }
 
@@ -274,20 +314,6 @@ private enum LinkProfileEndpoint: String, Identifiable {
         }
     }
 
-    static func initialPickerPosition(
-        endpoint: LinkProfileEndpoint,
-        pointA: CLLocationCoordinate2D?,
-        pointB: CLLocationCoordinate2D?
-    ) -> MapCameraPosition {
-        let otherEndpoint = endpoint == .pointA ? pointB : pointA
-        guard let otherEndpoint else {
-            return .userLocation(fallback: .automatic)
-        }
-        return .region(MKCoordinateRegion(
-            center: otherEndpoint,
-            span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
-        ))
-    }
 }
 
 @MainActor
@@ -470,185 +496,6 @@ private struct LinkProfileEndpointCard: View {
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background, in: RoundedRectangle(cornerRadius: 16))
-    }
-}
-
-private struct LinkProfileMapPicker: View {
-    let endpoint: LinkProfileEndpoint
-    let pointA: CLLocationCoordinate2D?
-    let pointB: CLLocationCoordinate2D?
-    let select: (CLLocationCoordinate2D) -> Void
-
-    @Environment(\.dismiss) private var dismiss
-    @State private var selectedCoordinate: CLLocationCoordinate2D?
-    @State private var position: MapCameraPosition = .automatic
-
-    init(
-        endpoint: LinkProfileEndpoint,
-        pointA: CLLocationCoordinate2D?,
-        pointB: CLLocationCoordinate2D?,
-        select: @escaping (CLLocationCoordinate2D) -> Void
-    ) {
-        self.endpoint = endpoint
-        self.pointA = pointA
-        self.pointB = pointB
-        self.select = select
-        _selectedCoordinate = State(initialValue: nil)
-        _position = State(initialValue: LinkProfileEndpoint.initialPickerPosition(
-            endpoint: endpoint,
-            pointA: pointA,
-            pointB: pointB
-        ))
-    }
-
-    var body: some View {
-        NavigationStack {
-            MapReader { proxy in
-                Map(position: $position) {
-                    if endpoint != .pointA, let pointA {
-                        Marker("Point A", coordinate: pointA)
-                            .tint(.blue)
-                    }
-                    if endpoint != .pointB, let pointB {
-                        Marker("Point B", coordinate: pointB)
-                            .tint(.orange)
-                    }
-                    if let selectedCoordinate {
-                        Annotation("Selected location", coordinate: selectedCoordinate) {
-                            Image(systemName: "mappin.circle.fill")
-                                .font(.largeTitle)
-                                .foregroundStyle(NodeScopeStyle.signal)
-                                .background(.background, in: Circle())
-                                .accessibilityLabel("Selected location")
-                        }
-                    }
-                }
-                .mapStyle(.standard(elevation: .realistic))
-                .mapControls {
-                    MapCompass()
-                    MapScaleView()
-                }
-                .simultaneousGesture(
-                    SpatialTapGesture()
-                        .onEnded { value in
-                            if let coordinate = proxy.convert(value.location, from: .local) {
-                                selectedCoordinate = coordinate
-                            }
-                        }
-                )
-                .safeAreaInset(edge: .bottom) {
-                    LinkProfileMapSelectionBar(
-                        endpointTitle: endpoint.title,
-                        coordinate: selectedCoordinate,
-                        cancel: { dismiss() },
-                        confirm: {
-                            if let selectedCoordinate {
-                                select(selectedCoordinate)
-                                dismiss()
-                            }
-                        }
-                    )
-                }
-            }
-            .navigationTitle("Choose \(endpoint.title)")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-    }
-}
-
-private struct LinkProfileInlineMapPicker: View {
-    let endpoint: LinkProfileEndpoint
-    let pointA: CLLocationCoordinate2D?
-    let pointB: CLLocationCoordinate2D?
-    let cancel: () -> Void
-    let select: (CLLocationCoordinate2D) -> Void
-
-    @State private var selectedCoordinate: CLLocationCoordinate2D?
-    @State private var position: MapCameraPosition = .automatic
-
-    init(
-        endpoint: LinkProfileEndpoint,
-        pointA: CLLocationCoordinate2D?,
-        pointB: CLLocationCoordinate2D?,
-        cancel: @escaping () -> Void,
-        select: @escaping (CLLocationCoordinate2D) -> Void
-    ) {
-        self.endpoint = endpoint
-        self.pointA = pointA
-        self.pointB = pointB
-        self.cancel = cancel
-        self.select = select
-        _selectedCoordinate = State(initialValue: nil)
-        _position = State(initialValue: LinkProfileEndpoint.initialPickerPosition(
-            endpoint: endpoint,
-            pointA: pointA,
-            pointB: pointB
-        ))
-    }
-
-    var body: some View {
-        MapReader { proxy in
-            Map(position: $position) {
-                if endpoint != .pointA, let pointA {
-                    Marker("Point A", coordinate: pointA)
-                        .tint(.blue)
-                }
-                if endpoint != .pointB, let pointB {
-                    Marker("Point B", coordinate: pointB)
-                        .tint(.orange)
-                }
-                if let selectedCoordinate {
-                    Annotation("Selected location", coordinate: selectedCoordinate) {
-                        Image(systemName: "mappin.circle.fill")
-                            .font(.largeTitle)
-                            .foregroundStyle(NodeScopeStyle.signal)
-                            .background(.background, in: Circle())
-                            .accessibilityLabel("Selected location")
-                    }
-                }
-            }
-            .mapStyle(.standard(elevation: .realistic))
-            .mapControls {
-                MapCompass()
-                MapScaleView()
-            }
-            .simultaneousGesture(
-                SpatialTapGesture()
-                    .onEnded { value in
-                        if let coordinate = proxy.convert(value.location, from: .local) {
-                            selectedCoordinate = coordinate
-                        }
-                    }
-            )
-            .overlay(alignment: .topLeading) {
-                Label(endpoint.title, systemImage: "mappin.and.ellipse")
-                    .font(.headline)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(.regularMaterial, in: Capsule())
-                    .padding()
-            }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                LinkProfileMapSelectionBar(
-                    endpointTitle: endpoint.title,
-                    coordinate: selectedCoordinate,
-                    cancel: cancel,
-                    confirm: {
-                        if let selectedCoordinate {
-                            select(selectedCoordinate)
-                        }
-                    }
-                )
-                .padding(.trailing, 96)
-            }
-        }
     }
 }
 
