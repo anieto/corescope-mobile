@@ -36,15 +36,31 @@ implementation begins.
 ### NodeScope files derived as of 2026-10-25
 
 - `CoreScopeViewer/Models/NodePlanner/NodePlannerRFEngine.swift`
+- `CoreScopeViewer/Features/NodePlanner/LinkProfileScreen.swift` — the
+  `LinkProfileTerrainCanvas` section only
 
 The initial Swift implementation derives the RF formulas, thresholds and analysis behavior from
 the seven upstream RF-domain files listed above. It does not copy the upstream SwiftUI workspace or
 elevation networking implementation.
 
-## Do not copy in the first engine milestone
+The terrain-profile renderer subsequently adapts the drawing approach from:
 
-- `MC1/Views/Tools/LineOfSight/`: its SwiftUI presentation is coupled to MeshCore One's workspace.
-  NodeScope will implement its own adaptive Node Planner UI from the product plan.
+- `MC1/Views/Tools/LineOfSight/TerrainProfileCanvas.swift`
+- `MC1/Views/Tools/LineOfSight/ChartCoordinateSpace.swift`
+
+NodeScope replaces MeshCore One's view model, map framework, repeater workflow, theme, localization
+surface and surrounding layout. The adapted section consumes NodeScope analysis types and retains
+only the purpose-built profile concepts needed for terrain fill, Fresnel bands, obstruction marks,
+line of sight, endpoint markers, axes and scaling.
+
+## UI reuse boundary
+
+- Do not copy the complete `MC1/Views/Tools/LineOfSight/` workspace. Its navigation, sheets, map,
+  contact/repeater state and editing workflow are coupled to MeshCore One. NodeScope implements its
+  own persistent-map workspace and adaptive iPhone, iPad and Duo composition.
+- Purpose-built components may be adapted when they outperform a generic NodeScope prototype. Each
+  adapted upstream file and NodeScope destination must be added to this audit, carry source-level
+  attribution when substantially derived and remain inside the approved GPLv3 distribution model.
 - `MC1/Services/ElevationService.swift`: it combines Open-Meteo networking, retry policy, sampling
   and Core Location types. NodeScope needs an explicit provider boundary, cache provenance and the
   same behavior on iOS and Android before choosing an elevation provider.

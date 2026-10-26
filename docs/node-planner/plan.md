@@ -148,6 +148,18 @@ The inspector groups the complete workflow without hiding modeled assumptions:
 Presets populate reviewed values but every value remains inspectable. Advanced values can be edited
 without forcing a novice to configure the complete link budget manually.
 
+### MeshCore One component-reuse policy
+
+NodeScope may adapt approved MeshCore One components when their specialized implementation is more
+usable, reliable or maintainable than a generic replacement. Reuse is decided component by
+component rather than copying the complete LOS workspace. The RF kernel and terrain-profile Canvas
+renderer are approved adaptations; NodeScope continues to own navigation, map integration,
+analyzer-known-node loading, session state, accessibility behavior and adaptive composition.
+
+Every additional adaptation must update the source audit with the pinned upstream file and
+NodeScope destination, carry source-level credit when substantially derived, document material
+modifications and comply with the GPLv3/App Store distribution permission in the reuse record.
+
 MeshCore One publicly licenses its source under GPLv3. Avi0n has approved the explicit request to
 modify the LOS/RF source, translate relevant portions to Kotlin, distribute the derived work through
 the App Store and Google Play, and apply NodeScope's Application Store Distribution Exception,

@@ -1,5 +1,4 @@
 import Observation
-import Charts
 import MapKit
 import SwiftUI
 
@@ -788,7 +787,7 @@ private struct LinkProfileResultCard: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
-            LinkProfileTerrainChart(analysis: result)
+            LinkProfileTerrainCanvas(analysis: result)
             Grid(alignment: .leading, horizontalSpacing: 20, verticalSpacing: 8) {
                 LinkProfileMetricRow(
                     label: "Distance",
@@ -832,21 +831,46 @@ private struct LinkProfileResultCard: View {
     }
 }
 
-private struct LinkProfileTerrainChart: View {
+// This terrain-profile renderer is adapted from MeshCore One by Avi0n:
+// https://github.com/Avi0n/MeshCoreOne
+// Upstream commit: 9fba8e45ca14c38f4ed20e5ede157944fa1c246d
+// Source: MC1/Views/Tools/LineOfSight/TerrainProfileCanvas.swift and
+// MC1/Views/Tools/LineOfSight/ChartCoordinateSpace.swift
+// Licensed under GNU GPL v3.0. Modified for NodeScope's analysis types,
+// styling, accessibility, endpoint-only workflow, and adaptive layouts.
+private struct LinkProfileTerrainCanvas: View {
     let analysis: NodePlannerLinkAnalysis
 
-    private struct ProfilePoint: Identifiable {
-        let id: Int
-        let distanceKilometers: Double
+    private struct Sample {
+        let distanceMeters: Double
         let terrainMeters: Double
         let lineOfSightMeters: Double
-        let fresnelLowerMeters: Double
-        let fresnelUpperMeters: Double
-        let fresnelLower60Meters: Double
-        let fresnelUpper60Meters: Double
+        let fresnelRadiusMeters: Double
 
-        var isObstructed: Bool {
-            terrainMeters > fresnelLower60Meters
+        var fresnelTop: Double { lineOfSightMeters + fresnelRadiusMeters }
+        var fresnelBottom: Double { lineOfSightMeters - fresnelRadiusMeters }
+        var fresnelTop60: Double { lineOfSightMeters + fresnelRadiusMeters * 0.6 }
+        var fresnelBottom60: Double { lineOfSightMeters - fresnelRadiusMeters * 0.6 }
+        var visibleFresnelBottom: Double { min(max(terrainMeters, fresnelBottom), fresnelTop) }
+        var visibleFresnelBottom60: Double { min(max(terrainMeters, fresnelBottom60), fresnelTop60) }
+        var isObstructed: Bool { terrainMeters > fresnelBottom60 }
+    }
+
+    private struct Coordinates {
+        let size: CGSize
+        let insets = EdgeInsets(top: 22, leading: 42, bottom: 28, trailing: 14)
+        let xRange: ClosedRange<Double>
+        let yRange: ClosedRange<Double>
+
+        func point(x: Double, y: Double) -> CGPoint {
+            let width = max(1, size.width - insets.leading - insets.trailing)
+            let height = max(1, size.height - insets.top - insets.bottom)
+            let xFraction = (x - xRange.lowerBound) / max(1, xRange.upperBound - xRange.lowerBound)
+            let yFraction = (y - yRange.lowerBound) / max(1, yRange.upperBound - yRange.lowerBound)
+            return CGPoint(
+                x: insets.leading + width * xFraction,
+                y: size.height - insets.bottom - height * yFraction
+            )
         }
     }
 
@@ -855,174 +879,184 @@ private struct LinkProfileTerrainChart: View {
             Text("Terrain profile")
                 .font(.subheadline.weight(.semibold))
 
-            Chart {
-                ForEach(profilePoints) { point in
-                    AreaMark(
-                        x: .value("Distance", point.distanceKilometers),
-                        yStart: .value("Fresnel lower", point.fresnelLowerMeters),
-                        yEnd: .value("Fresnel upper", point.fresnelUpperMeters)
-                    )
-                    .foregroundStyle(.teal.opacity(0.18))
-                }
-
-                ForEach(profilePoints) { point in
-                    AreaMark(
-                        x: .value("Distance", point.distanceKilometers),
-                        yStart: .value("60% Fresnel lower", point.fresnelLower60Meters),
-                        yEnd: .value("60% Fresnel upper", point.fresnelUpper60Meters)
-                    )
-                    .foregroundStyle(.teal.opacity(0.34))
-                }
-
-                ForEach(profilePoints) { point in
-                    AreaMark(
-                        x: .value("Distance", point.distanceKilometers),
-                        yStart: .value("Chart floor", yDomain.lowerBound),
-                        yEnd: .value("Terrain", point.terrainMeters)
-                    )
-                    .foregroundStyle(Color.brown.opacity(0.32))
-                }
-
-                ForEach(profilePoints) { point in
-                    LineMark(
-                        x: .value("Distance", point.distanceKilometers),
-                        y: .value("Terrain", point.terrainMeters)
-                    )
-                    .foregroundStyle(.brown)
-                    .lineStyle(StrokeStyle(lineWidth: 2))
-                }
-
-                ForEach(profilePoints) { point in
-                    LineMark(
-                        x: .value("Distance", point.distanceKilometers),
-                        y: .value("Line of sight", point.lineOfSightMeters)
-                    )
-                    .foregroundStyle(.primary)
-                    .lineStyle(StrokeStyle(lineWidth: 2))
-                }
-
-                ForEach(profilePoints.filter(\.isObstructed)) { point in
-                    PointMark(
-                        x: .value("Obstruction distance", point.distanceKilometers),
-                        y: .value("Obstructing terrain", point.terrainMeters)
-                    )
-                    .foregroundStyle(.red)
-                    .symbolSize(22)
-                }
-
-                if let first = profilePoints.first {
-                    PointMark(
-                        x: .value("Point A distance", first.distanceKilometers),
-                        y: .value("Point A antenna", first.lineOfSightMeters)
-                    )
-                    .foregroundStyle(.blue)
-                    .symbolSize(70)
-                    .annotation(position: .topTrailing) {
-                        Text("A")
-                            .font(.caption.bold())
-                    }
-                }
-
-                if let last = profilePoints.last {
-                    PointMark(
-                        x: .value("Point B distance", last.distanceKilometers),
-                        y: .value("Point B antenna", last.lineOfSightMeters)
-                    )
-                    .foregroundStyle(.orange)
-                    .symbolSize(70)
-                    .annotation(position: .topLeading) {
-                        Text("B")
-                            .font(.caption.bold())
-                    }
-                }
-
-                if let worstObstructionPoint {
-                    PointMark(
-                        x: .value("Worst obstruction", worstObstructionPoint.distanceKilometers),
-                        y: .value("Worst obstruction elevation", worstObstructionPoint.terrainMeters)
-                    )
-                    .foregroundStyle(.red)
-                    .symbolSize(52)
-                        .annotation(position: .top, alignment: .leading) {
-                            Text("Worst clearance")
-                                .font(.caption2)
-                                .foregroundStyle(.red)
-                        }
-                }
+            Canvas { context, size in
+                let coordinates = Coordinates(size: size, xRange: xRange, yRange: yRange)
+                drawGrid(context: context, coordinates: coordinates)
+                drawFresnel(context: context, coordinates: coordinates)
+                drawTerrain(context: context, coordinates: coordinates)
+                drawObstructions(context: context, coordinates: coordinates)
+                drawLineOfSight(context: context, coordinates: coordinates)
+                drawEndpoints(context: context, coordinates: coordinates)
             }
-            .chartYScale(domain: yDomain)
-            .chartXAxisLabel("Distance (km)")
-            .chartYAxisLabel("Elevation (m)")
-            .frame(minHeight: 220)
-            .accessibilityLabel("Terrain elevation, line of sight, and first Fresnel zone profile")
+            .frame(height: 240)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Terrain elevation, line of sight, first Fresnel zone, and obstructed regions")
+            .accessibilityValue(accessibilitySummary)
 
             HStack(spacing: 16) {
                 LinkProfileChartLegend(color: .brown, title: "Terrain")
                 LinkProfileChartLegend(color: .primary, title: "Line of sight")
-                LinkProfileChartLegend(color: .teal.opacity(0.45), title: "Fresnel zone")
+                LinkProfileChartLegend(color: .teal.opacity(0.55), title: "Fresnel zone")
+                LinkProfileChartLegend(color: .red.opacity(0.7), title: "Obstructed")
             }
             .font(.caption)
         }
     }
 
-    private var profilePoints: [ProfilePoint] {
-        let samples = analysis.terrain.samples
-        guard let first = samples.first, let last = samples.last, samples.count > 1 else { return [] }
-
+    private var samples: [Sample] {
+        let terrain = analysis.terrain.samples
+        guard let first = terrain.first, let last = terrain.last, terrain.count > 1 else { return [] }
         let totalDistance = analysis.result.distanceMeters
         let startHeight = first.elevationMeters + analysis.request.heightAMeters
         let endHeight = last.elevationMeters + analysis.request.heightBMeters
         var distance = 0.0
 
-        return samples.enumerated().map { index, sample in
+        return terrain.enumerated().map { index, point in
             if index > 0 {
-                distance += NodePlannerLinkAnalyzer.distance(
-                    from: samples[index - 1].coordinate,
-                    to: sample.coordinate
-                )
+                distance += NodePlannerLinkAnalyzer.distance(from: terrain[index - 1].coordinate, to: point.coordinate)
             }
+            let distanceToEnd = max(0, totalDistance - distance)
             let fraction = totalDistance > 0 ? distance / totalDistance : 0
             let lineOfSight = startHeight + fraction * (endHeight - startHeight)
-            let distanceToB = max(0, totalDistance - distance)
-            let fresnelRadius = NodePlannerRFEngine.fresnelRadius(
+            let radius = NodePlannerRFEngine.fresnelRadius(
                 frequencyMHz: analysis.request.frequencyMHz,
                 distanceToAMeters: distance,
-                distanceToBMeters: distanceToB
+                distanceToBMeters: distanceToEnd
             )
-            let effectiveTerrain = sample.elevationMeters + NodePlannerRFEngine.earthBulge(
+            let terrainHeight = point.elevationMeters + NodePlannerRFEngine.earthBulge(
                 distanceToAMeters: distance,
-                distanceToBMeters: distanceToB,
+                distanceToBMeters: distanceToEnd,
                 refractionK: analysis.request.refractionK
             )
-            return ProfilePoint(
-                id: index,
-                distanceKilometers: distance / 1_000,
-                terrainMeters: effectiveTerrain,
+            return Sample(
+                distanceMeters: distance,
+                terrainMeters: terrainHeight,
                 lineOfSightMeters: lineOfSight,
-                fresnelLowerMeters: lineOfSight - fresnelRadius,
-                fresnelUpperMeters: lineOfSight + fresnelRadius,
-                fresnelLower60Meters: lineOfSight - fresnelRadius * 0.6,
-                fresnelUpper60Meters: lineOfSight + fresnelRadius * 0.6
+                fresnelRadiusMeters: radius
             )
         }
     }
 
-    private var yDomain: ClosedRange<Double> {
-        guard !profilePoints.isEmpty else { return 0...100 }
-        let minimum = profilePoints.map(\.terrainMeters).min() ?? 0
-        let maximum = profilePoints.map(\.fresnelUpperMeters).max() ?? minimum + 100
-        let span = max(10, maximum - minimum)
-        return (minimum - span * 0.12)...(maximum + span * 0.18)
+    private var xRange: ClosedRange<Double> {
+        0...max(1, samples.last?.distanceMeters ?? 1)
     }
 
-    private var worstObstructionPoint: ProfilePoint? {
-        guard let obstruction = analysis.result.obstructions.min(by: { lhs, rhs in
-            lhs.fresnelClearancePercent < rhs.fresnelClearancePercent
-        }) else { return nil }
-        return profilePoints.min { lhs, rhs in
-            abs(lhs.distanceKilometers * 1_000 - obstruction.distanceFromAMeters)
-                < abs(rhs.distanceKilometers * 1_000 - obstruction.distanceFromAMeters)
+    private var yRange: ClosedRange<Double> {
+        guard !samples.isEmpty else { return 0...100 }
+        let minimum = samples.map(\.terrainMeters).min() ?? 0
+        let maximum = samples.map(\.fresnelTop).max() ?? minimum + 100
+        let span = max(10, maximum - minimum)
+        return (minimum - span * 0.12)...(maximum + span * 0.2)
+    }
+
+    private func drawGrid(context: GraphicsContext, coordinates: Coordinates) {
+        for index in 0...4 {
+            let fraction = Double(index) / 4
+            let y = yRange.lowerBound + (yRange.upperBound - yRange.lowerBound) * fraction
+            var path = Path()
+            path.move(to: coordinates.point(x: xRange.lowerBound, y: y))
+            path.addLine(to: coordinates.point(x: xRange.upperBound, y: y))
+            context.stroke(path, with: .color(.secondary.opacity(0.22)), style: StrokeStyle(lineWidth: 0.5, dash: [4, 4]))
+            context.draw(
+                Text("\(Int(y))").font(.system(size: 9)).foregroundStyle(.secondary),
+                at: coordinates.point(x: xRange.lowerBound, y: y),
+                anchor: .trailing
+            )
         }
+        for index in 0...4 {
+            let fraction = Double(index) / 4
+            let x = xRange.upperBound * fraction
+            let label = (x / 1_000).formatted(.number.precision(.fractionLength(xRange.upperBound < 10_000 ? 1 : 0)))
+            context.draw(
+                Text(index == 4 ? "\(label) km" : label).font(.system(size: 9)).foregroundStyle(.secondary),
+                at: coordinates.point(x: x, y: yRange.lowerBound),
+                anchor: .top
+            )
+        }
+    }
+
+    private func drawFresnel(context: GraphicsContext, coordinates: Coordinates) {
+        fillBand(upper: \.fresnelTop, lower: \.visibleFresnelBottom, color: .teal.opacity(0.2), context: context, coordinates: coordinates)
+        fillBand(upper: \.fresnelTop60, lower: \.visibleFresnelBottom60, color: .teal.opacity(0.42), context: context, coordinates: coordinates)
+        strokeLine(value: \.fresnelTop, color: .teal.opacity(0.65), dashed: true, context: context, coordinates: coordinates)
+        strokeLine(value: \.fresnelBottom, color: .teal.opacity(0.65), dashed: true, context: context, coordinates: coordinates)
+    }
+
+    private func drawTerrain(context: GraphicsContext, coordinates: Coordinates) {
+        guard let first = samples.first, let last = samples.last else { return }
+        var fill = Path()
+        fill.move(to: coordinates.point(x: first.distanceMeters, y: yRange.lowerBound))
+        for sample in samples { fill.addLine(to: coordinates.point(x: sample.distanceMeters, y: sample.terrainMeters)) }
+        fill.addLine(to: coordinates.point(x: last.distanceMeters, y: yRange.lowerBound))
+        fill.closeSubpath()
+        context.fill(fill, with: .color(.brown.opacity(0.35)))
+        strokeLine(value: \.terrainMeters, color: .brown, context: context, coordinates: coordinates)
+    }
+
+    private func drawObstructions(context: GraphicsContext, coordinates: Coordinates) {
+        for sample in samples where sample.isObstructed {
+            let point = coordinates.point(x: sample.distanceMeters, y: sample.terrainMeters)
+            context.fill(Path(ellipseIn: CGRect(x: point.x - 2.5, y: point.y - 2.5, width: 5, height: 5)), with: .color(.red))
+        }
+    }
+
+    private func drawLineOfSight(context: GraphicsContext, coordinates: Coordinates) {
+        strokeLine(value: \.lineOfSightMeters, color: .primary, lineWidth: 2, context: context, coordinates: coordinates)
+    }
+
+    private func drawEndpoints(context: GraphicsContext, coordinates: Coordinates) {
+        guard let first = samples.first, let last = samples.last else { return }
+        drawEndpoint("A", sample: first, color: .blue, context: context, coordinates: coordinates)
+        drawEndpoint("B", sample: last, color: .orange, context: context, coordinates: coordinates)
+    }
+
+    private func drawEndpoint(_ label: String, sample: Sample, color: Color, context: GraphicsContext, coordinates: Coordinates) {
+        let ground = coordinates.point(x: sample.distanceMeters, y: sample.terrainMeters)
+        let antenna = coordinates.point(x: sample.distanceMeters, y: sample.lineOfSightMeters)
+        var tower = Path()
+        tower.move(to: ground)
+        tower.addLine(to: antenna)
+        context.stroke(tower, with: .color(color), lineWidth: 2)
+        context.fill(Path(ellipseIn: CGRect(x: antenna.x - 7, y: antenna.y - 7, width: 14, height: 14)), with: .color(color))
+        context.draw(Text(label).font(.system(size: 8, weight: .bold)).foregroundStyle(.white), at: antenna)
+    }
+
+    private func fillBand(
+        upper: KeyPath<Sample, Double>,
+        lower: KeyPath<Sample, Double>,
+        color: Color,
+        context: GraphicsContext,
+        coordinates: Coordinates
+    ) {
+        guard let first = samples.first else { return }
+        var path = Path()
+        path.move(to: coordinates.point(x: first.distanceMeters, y: first[keyPath: upper]))
+        for sample in samples.dropFirst() { path.addLine(to: coordinates.point(x: sample.distanceMeters, y: sample[keyPath: upper])) }
+        for sample in samples.reversed() { path.addLine(to: coordinates.point(x: sample.distanceMeters, y: sample[keyPath: lower])) }
+        path.closeSubpath()
+        context.fill(path, with: .color(color))
+    }
+
+    private func strokeLine(
+        value: KeyPath<Sample, Double>,
+        color: Color,
+        lineWidth: CGFloat = 1,
+        dashed: Bool = false,
+        context: GraphicsContext,
+        coordinates: Coordinates
+    ) {
+        guard let first = samples.first else { return }
+        var path = Path()
+        path.move(to: coordinates.point(x: first.distanceMeters, y: first[keyPath: value]))
+        for sample in samples.dropFirst() { path.addLine(to: coordinates.point(x: sample.distanceMeters, y: sample[keyPath: value])) }
+        context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: lineWidth, dash: dashed ? [4, 3] : []))
+    }
+
+    private var accessibilitySummary: String {
+        let distance = Measurement(value: analysis.result.distanceMeters, unit: UnitLength.meters)
+            .formatted(.measurement(width: .abbreviated, usage: .road))
+        let clearance = analysis.result.worstClearancePercent.formatted(.number.precision(.fractionLength(0)))
+        return "Distance \(distance). Worst Fresnel clearance \(clearance) percent."
     }
 }
 
