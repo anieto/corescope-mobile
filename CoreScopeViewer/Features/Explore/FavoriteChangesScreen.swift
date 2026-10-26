@@ -176,7 +176,7 @@ struct FavoriteChangesScreen: View {
 
     var body: some View {
         ZStack {
-            NodeScopeBackground()
+            MeshBackground(subdued: true).ignoresSafeArea()
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: 12) {

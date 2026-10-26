@@ -131,7 +131,7 @@ struct AnalyzerSourcePickerScreen: View {
             .refreshable {
                 await sourceRegistry.refresh()
             }
-            .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
+            .meshPageBackground()
             .navigationTitle("Analyzer Source")
             .navigationBarTitleDisplayMode(.inline)
             .task {

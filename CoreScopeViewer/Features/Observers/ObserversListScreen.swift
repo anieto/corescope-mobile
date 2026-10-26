@@ -115,7 +115,7 @@ struct ObserversListScreen: View {
                         .textCase(.uppercase)
                 }
             }
-            .adaptiveSidebarListStyle()
+            .adaptiveSidebarListStyle(meshBackground: true)
             .adaptiveScrollContentWidth()
             .toolbar(.hidden, for: .navigationBar)
             .overlay {
@@ -134,7 +134,7 @@ struct ObserversListScreen: View {
                     systemImage: "antenna.radiowaves.left.and.right",
                     description: Text("Choose an observer to see its activity and signal data.")
                 )
-                .background(NodeScopeBackground())
+                .background(MeshBackground(subdued: true).ignoresSafeArea())
             }
         }
         .sheet(isPresented: $isFiltersPresented) {
@@ -500,6 +500,7 @@ private struct ObserverFiltersSheet: View {
                     }
                 }
             }
+            .meshPageBackground()
             .navigationTitle("Observer Filters")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

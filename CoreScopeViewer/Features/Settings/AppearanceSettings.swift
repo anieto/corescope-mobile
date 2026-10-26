@@ -33,6 +33,8 @@ final class AppearanceSettings {
         }
     }
 
+    static let backgroundTextureDefaultsKey = "backgroundTextureEnabled"
+
     private static let defaultsKey = "appearanceMode"
 
     var mode: Mode {

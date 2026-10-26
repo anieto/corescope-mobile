@@ -34,6 +34,7 @@ struct StorageSettingsScreen: View {
                 Text("Current content can remain visible while NodeScope fetches fresh data. New requests will no longer use cached responses.")
             }
         }
+        .meshPageBackground()
         .navigationTitle("Storage")
         .navigationBarTitleDisplayMode(.inline)
         .task {

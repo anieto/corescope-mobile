@@ -42,7 +42,7 @@ struct MonitorChannelSheet: View {
                 .padding(20)
                 .adaptiveContentWidth(720)
             }
-            .background(NodeScopeBackground())
+            .background(MeshBackground(subdued: true).ignoresSafeArea())
             .navigationTitle("Add Channel")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

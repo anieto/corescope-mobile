@@ -24,7 +24,7 @@ struct MyNodesScreen: View {
 
     var body: some View {
         ZStack {
-            NodeScopeBackground()
+            MeshBackground(subdued: true).ignoresSafeArea()
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 16) {
                     ActivitySourceCard(host: settings.host, loading: loading, error: error)
@@ -84,6 +84,7 @@ struct MyNodesScreen: View {
                         Text("Missing observers have unknown activity. Some sources return an incomplete observer list.")
                     }.padding()
                 }
+                .meshPageBackground()
                 .navigationTitle("About activity")
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showsActivityHelp = false } } }
             }

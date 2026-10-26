@@ -59,7 +59,7 @@ struct ChannelDetailScreen: View {
                 scrollToBottom(proxy: proxy, animated: false)
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .meshPageBackground()
         .navigationTitle(channel.name)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {

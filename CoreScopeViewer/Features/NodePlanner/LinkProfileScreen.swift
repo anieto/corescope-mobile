@@ -148,7 +148,7 @@ private struct LinkProfileCompactWorkspace: View {
                         .padding()
                     }
                     .frame(maxHeight: 330)
-                    .background(.regularMaterial)
+                    .meshPageBackground()
                     .clipShape(UnevenRoundedRectangle(topLeadingRadius: 22, topTrailingRadius: 22))
                 }
             }
@@ -195,6 +195,7 @@ private struct LinkProfileEditor: View {
                 }
             }
         }
+        .meshPageBackground()
         .clipped()
     }
 }
@@ -876,7 +877,8 @@ private struct LinkProfileResultCard: View {
             }
         }
         .padding()
-        .instrumentCard()
+        .instrumentCard(fillOpacity: 1)
+        .background(Color(uiColor: .systemBackground), in: RoundedRectangle(cornerRadius: NodeScopeStyle.cornerRadius))
     }
 
     private var statusTitle: LocalizedStringResource {

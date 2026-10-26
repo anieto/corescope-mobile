@@ -526,7 +526,7 @@ struct FieldToolsScreen: View {
             }
         }
         .navigationTitle("Field Tools")
-        .adaptiveSidebarListStyle()
+        .adaptiveSidebarListStyle(meshBackground: true)
         .refreshable {
             await model.load(region: regionFilter.selectedRegion, forceRefresh: true)
             if let pinnedItem {
@@ -1266,6 +1266,7 @@ private struct FieldCoordinateEntrySheet: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .meshPageBackground()
             .navigationTitle("Enter Coordinates")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

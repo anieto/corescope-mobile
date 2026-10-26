@@ -291,7 +291,7 @@ private struct BeaconPacketSidebar: View {
                 }
             }
         }
-        .adaptiveSidebarListStyle()
+        .adaptiveSidebarListStyle(meshBackground: true)
         .navigationTitle("Live Packets")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: packetDetailsPresented) {
@@ -442,6 +442,7 @@ private struct BeaconPacketSummary: View {
                 }
             }
         }
+        .meshPageBackground()
         .navigationTitle("Packet Details")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -624,7 +625,7 @@ private struct CoreScopeMapLivePacketSidebar: View {
                     .textCase(.uppercase)
             }
         }
-        .adaptiveSidebarListStyle()
+        .adaptiveSidebarListStyle(meshBackground: true)
         .navigationTitle("Live Packets")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: packetDetailsPresented) {
@@ -816,7 +817,7 @@ struct PacketFeedScreen: View {
             }
         }
         .scrollContentBackground(.hidden)
-        .background(NodeScopeBackground())
+        .background(MeshBackground(subdued: true).ignoresSafeArea())
         .listStyle(.plain)
         .adaptiveContentWidth()
         .navigationTitle("Live Packets")
@@ -1225,6 +1226,7 @@ private struct LivePacketFiltersSheet: View {
                     }
                 }
             }
+            .meshPageBackground()
             .navigationTitle("Live Packet Filters")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1378,6 +1380,7 @@ private struct LivePacketDetailScreen: View {
             }
         }
         }
+        .meshPageBackground()
         .navigationTitle("Packet Details")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

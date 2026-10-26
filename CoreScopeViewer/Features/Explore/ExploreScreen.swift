@@ -31,7 +31,7 @@ struct ExploreScreen: View {
             } else {
                 NavigationStack(path: $navigationPath) {
                     ZStack {
-                NodeScopeBackground()
+                MeshBackground(subdued: true).ignoresSafeArea()
 
                 ScrollViewReader { proxy in
                     List {
@@ -388,6 +388,7 @@ private struct FavoritesScreen: View {
             favoriteSection(kind: .node, title: "Nodes")
             favoriteSection(kind: .observer, title: "Observers")
         }
+        .meshPageBackground()
         .navigationTitle("Favorites")
         .toolbar(.visible, for: .navigationBar)
         .toolbar {
@@ -866,6 +867,7 @@ private struct GlanceCustomizationSheet: View {
                 }
             }
             .environment(\.editMode, .constant(.active))
+            .meshPageBackground()
             .navigationTitle("Customize Dashboard")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1243,6 +1245,7 @@ private struct FavoriteNodeFinder: View {
                 }
             }
             .padding(.top, 8)
+            .meshPageBackground()
             .navigationTitle("Add Favorite Node")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1397,6 +1400,7 @@ private struct GlobalSearchSheet: View {
                 }
             }
             .padding(.top, 8)
+            .meshPageBackground()
             .navigationTitle("Search")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

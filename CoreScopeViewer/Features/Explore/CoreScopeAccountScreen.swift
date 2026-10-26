@@ -229,7 +229,7 @@ struct CoreScopeAccountScreen: View {
 
     var body: some View {
         ZStack {
-            NodeScopeBackground()
+            MeshBackground(subdued: true).ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     AccountSourceCard(host: settings.host)

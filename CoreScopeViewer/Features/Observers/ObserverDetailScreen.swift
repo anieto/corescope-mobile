@@ -95,7 +95,7 @@ struct ObserverDetailScreen: View {
             .padding(16)
             .adaptiveContentWidth()
         }
-        .background(NodeScopeBackground())
+        .background(MeshBackground(subdued: true).ignoresSafeArea())
         .navigationTitle(isCurrentSource ? displayedObserver.name ?? "Observer" : "Observer")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -708,6 +708,6 @@ private struct ObserverAnalyticsCard<Content: View>: View {
             content
         }
         .padding(16)
-        .instrumentCard()
+        .instrumentCard(fillOpacity: 1)
     }
 }

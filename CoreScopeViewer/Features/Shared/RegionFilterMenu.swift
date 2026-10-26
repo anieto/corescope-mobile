@@ -65,6 +65,7 @@ struct RegionFilterSelectionScreen: View {
                 }
             }
         }
+        .meshPageBackground()
         .navigationTitle("Region")
         .navigationBarTitleDisplayMode(.inline)
     }

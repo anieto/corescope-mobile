@@ -24,6 +24,8 @@ struct OnboardingScreen: View {
                     overview
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .meshPageBackground()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if step == .overview {

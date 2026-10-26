@@ -89,13 +89,14 @@ struct MeshRouteActivityIndicator: View {
 
 struct InstrumentCardModifier: ViewModifier {
     let isSelected: Bool
+    var fillOpacity: Double = 0.80
     @Environment(\.colorScheme) private var colorScheme
 
     func body(content: Content) -> some View {
         content
             .background {
                 RoundedRectangle(cornerRadius: NodeScopeStyle.cornerRadius, style: .continuous)
-                    .fill(colorScheme == .dark ? NodeScopeStyle.slate.opacity(0.94) : Color.white.opacity(0.9))
+                    .fill((colorScheme == .dark ? NodeScopeStyle.slate : Color.white).opacity(fillOpacity))
                     .overlay {
                         if isSelected {
                             RoundedRectangle(cornerRadius: NodeScopeStyle.cornerRadius, style: .continuous)
@@ -131,6 +132,8 @@ private struct AdaptiveScrollContentWidthModifier: ViewModifier {
 }
 
 private struct AdaptiveSidebarListModifier: ViewModifier {
+    var meshBackground = false
+
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     @ViewBuilder
@@ -141,22 +144,32 @@ private struct AdaptiveSidebarListModifier: ViewModifier {
                 .listStyle(.insetGrouped)
                 .contentMargins(.top, 0, for: .scrollContent)
                 .background {
-                    Rectangle()
-                        .fill(.thinMaterial)
-                        .ignoresSafeArea(.container, edges: .top)
+                    if meshBackground {
+                        MeshBackground(subdued: true).ignoresSafeArea()
+                    } else {
+                        Rectangle()
+                            .fill(.thinMaterial)
+                            .ignoresSafeArea(.container, edges: .top)
+                    }
                 }
         } else {
             content
                 .scrollContentBackground(.hidden)
                 .listStyle(.plain)
-                .background(NodeScopeBackground())
+                .background {
+                    if meshBackground {
+                        MeshBackground(subdued: true).ignoresSafeArea()
+                    } else {
+                        NodeScopeBackground()
+                    }
+                }
         }
     }
 }
 
 extension View {
-    func instrumentCard(isSelected: Bool = false) -> some View {
-        modifier(InstrumentCardModifier(isSelected: isSelected))
+    func instrumentCard(isSelected: Bool = false, fillOpacity: Double = 0.80) -> some View {
+        modifier(InstrumentCardModifier(isSelected: isSelected, fillOpacity: fillOpacity))
     }
 
     /// Keeps information-dense phone layouts readable on iPad while naturally
@@ -174,8 +187,8 @@ extension View {
 
     /// Uses native inset grouping and material when horizontal space is regular,
     /// while preserving the edge-to-edge presentation in compact layouts.
-    func adaptiveSidebarListStyle() -> some View {
-        modifier(AdaptiveSidebarListModifier())
+    func adaptiveSidebarListStyle(meshBackground: Bool = false) -> some View {
+        modifier(AdaptiveSidebarListModifier(meshBackground: meshBackground))
     }
 
 

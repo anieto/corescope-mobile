@@ -96,7 +96,7 @@ struct NodeDetailScreen: View {
             .padding(16)
             .adaptiveContentWidth()
         }
-        .background(NodeScopeBackground())
+        .background(MeshBackground(subdued: true).ignoresSafeArea())
         .refreshable {
             await refreshNodeData(forceCatalogRefresh: true)
         }
@@ -865,6 +865,7 @@ private struct MeshCoreContactSheet: View {
                 .padding(20)
                 .frame(maxWidth: .infinity)
             }
+            .meshPageBackground()
             .navigationTitle("Add to MeshCore")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

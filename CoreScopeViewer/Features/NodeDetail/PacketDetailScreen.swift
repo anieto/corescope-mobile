@@ -100,7 +100,7 @@ struct PacketDetailScreen: View {
             .adaptiveContentWidth()
         }
         }
-        .background(NodeScopeBackground())
+        .background(MeshBackground(subdued: true).ignoresSafeArea())
         .navigationTitle("Packet")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

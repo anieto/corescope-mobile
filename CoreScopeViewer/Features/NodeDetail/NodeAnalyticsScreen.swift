@@ -654,7 +654,7 @@ private struct NodeUptimeHeatmapCard: View {
             }
         }
         .padding(16)
-        .instrumentCard()
+        .instrumentCard(fillOpacity: 1)
     }
 
 }
@@ -1306,7 +1306,7 @@ private struct NodeAnalyticsChartCard<Content: View>: View {
             content
         }
         .padding(16)
-        .instrumentCard()
+        .instrumentCard(fillOpacity: 1)
     }
 }
 

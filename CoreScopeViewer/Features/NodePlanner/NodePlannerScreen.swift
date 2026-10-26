@@ -23,7 +23,7 @@ struct NodePlannerScreen: View {
                 .padding()
                 .frame(maxWidth: .infinity)
             }
-            .background(Color(uiColor: .systemGroupedBackground))
+            .meshPageBackground()
             .navigationTitle("Node Planner")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

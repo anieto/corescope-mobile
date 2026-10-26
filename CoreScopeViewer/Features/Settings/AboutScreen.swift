@@ -120,8 +120,12 @@ struct AboutScreen: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .scrollContentBackground(.hidden)
         .adaptiveContentWidth()
-        .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
+        .background {
+            MeshBackground()
+                .ignoresSafeArea()
+        }
         .navigationTitle("About")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -149,6 +153,20 @@ struct AboutScreen: View {
     }
 }
 
+#Preview("About · Light") {
+    NavigationStack {
+        AboutScreen()
+    }
+    .preferredColorScheme(.light)
+}
+
+#Preview("About · Dark") {
+    NavigationStack {
+        AboutScreen()
+    }
+    .preferredColorScheme(.dark)
+}
+
 private struct ProjectLinkRow: View {
     let icon: String
     let title: String
@@ -157,16 +175,14 @@ private struct ProjectLinkRow: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.body)
-                .foregroundStyle(.secondary)
                 .frame(width: 24)
             Text(title)
                 .font(.subheadline)
             Spacer()
             Image(systemName: "arrow.up.right")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
         }
-        .foregroundStyle(.secondary)
+        .foregroundStyle(Color(uiColor: .link))
     }
 }
 

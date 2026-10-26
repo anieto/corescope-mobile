@@ -2830,6 +2830,7 @@ private struct MapRouteDetailsSheet: View {
                     }
                 }
             }
+            .meshPageBackground()
             .navigationTitle("Route Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -3060,6 +3061,7 @@ private struct MapNodeFilterSheet: View {
                     }
                 }
             }
+            .meshPageBackground()
             .navigationTitle("Map Filters")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -3282,6 +3284,7 @@ private struct MapObserverPickerSheet: View {
                     }
                 }
             }
+            .meshPageBackground()
             .navigationTitle("Route Observer")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $query, prompt: "Name, ID, or region")
@@ -3385,6 +3388,7 @@ private struct MapNodeSearchSheet: View {
                 }
             }
             .padding(.top, 8)
+            .meshPageBackground()
             .navigationTitle("Search Nodes")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

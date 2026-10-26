@@ -109,7 +109,7 @@ struct ChannelsListScreen: View {
                     }
                 }
             }
-            .adaptiveSidebarListStyle()
+            .adaptiveSidebarListStyle(meshBackground: true)
             .adaptiveScrollContentWidth()
             .toolbar(.hidden, for: .navigationBar)
             .overlay {
@@ -130,7 +130,7 @@ struct ChannelsListScreen: View {
                     systemImage: "bubble.left.and.bubble.right",
                     description: Text("Choose a channel to read its messages.")
                 )
-                .background(NodeScopeBackground())
+                .background(MeshBackground(subdued: true).ignoresSafeArea())
             }
         }
         .onChange(of: resetID) {
@@ -585,6 +585,7 @@ private struct ChannelFiltersSheet: View {
                 }
             }
             }
+            .meshPageBackground()
             .navigationTitle("Channel Filters")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
