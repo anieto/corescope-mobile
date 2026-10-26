@@ -66,6 +66,7 @@ struct MapScreen: View {
     @State private var isMapCameraMoving = false
     @State private var mapViewportSize = CGSize.zero
     @State private var showsFieldTools = false
+    @State private var isHingedDevice: Bool?
 
     private struct NodeCluster: Identifiable, Sendable {
         let id: String
@@ -252,6 +253,14 @@ struct MapScreen: View {
         horizontalSizeClass == .regular
     }
 
+    private var wideMapHeaderTopPadding: CGFloat {
+        isHingedDevice == true ? 32 : 8
+    }
+
+    private var wideMapStatusTopPadding: CGFloat {
+        isHingedDevice == true ? 84 : 60
+    }
+
     private func openFieldTools() {
         showsFieldTools = true
     }
@@ -379,7 +388,7 @@ struct MapScreen: View {
                             mapDisplayStyle: $mapDisplayStyle
                         )
                         .padding(.horizontal, 20)
-                        .padding(.top, 32)
+                        .padding(.top, wideMapHeaderTopPadding)
                     }
                 }
                 .overlay(alignment: .topLeading) {
@@ -407,7 +416,7 @@ struct MapScreen: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.leading, usesWideMapHeader ? 20 : 12)
-                    .padding(.top, usesWideMapHeader ? 84 : 12)
+                    .padding(.top, usesWideMapHeader ? wideMapStatusTopPadding : 12)
                 }
                 .overlay(alignment: .bottomLeading) {
                     VStack(spacing: 10) {
@@ -532,6 +541,7 @@ struct MapScreen: View {
                 }
             }
         }
+        .observesDuoHinge($isHingedDevice)
         .sheet(isPresented: $isSearchPresented) {
             MapNodeSearchSheet(nodes: viewModel.nodes, selectNode: focusOnSearchedNode)
                 .presentationDetents([.medium, .large])
