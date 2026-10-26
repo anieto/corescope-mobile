@@ -23,28 +23,20 @@ struct LinkProfileScreen: View {
         GeometryReader { geometry in
             Group {
                 if usesDuoWorkspace {
-                    let trailingInset = geometry.safeAreaInsets.trailing
-                    let paneWidth = (geometry.size.width - trailingInset) / 2
-
                     DuoTwoPaneLayout {
                         LinkProfilePersistentMap(
                             model: model,
                             nodes: catalog.nodes,
                             activeEndpoint: $endpointPicker
                         )
-                        .frame(width: paneWidth, alignment: .leading)
-                        .frame(maxHeight: .infinity)
-                        .clipped()
                     } secondary: {
                         LinkProfileEditor(
                             model: model,
-                            chooseOnMap: { endpointPicker = $0 }
+                            chooseOnMap: { endpointPicker = $0 },
+                            trailingPadding: 112
                         )
-                            .frame(width: paneWidth + trailingInset, alignment: .leading)
-                            .frame(maxHeight: .infinity)
-                            .clipped()
                     }
-                    .ignoresSafeArea(.container, edges: [.bottom, .trailing])
+                    .ignoresSafeArea(.container, edges: .bottom)
                 } else if geometry.size.width >= 900 {
                     HStack(spacing: 0) {
                         LinkProfilePersistentMap(
@@ -70,6 +62,8 @@ struct LinkProfileScreen: View {
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationTitle("Link Profile")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color(uiColor: .systemGroupedBackground), for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .navigationBarBackButtonHidden(usesWideStandardNavigation)
         .toolbar(usesDuoWorkspace ? .hidden : .visible, for: .navigationBar)
         .toolbar {
@@ -158,12 +152,11 @@ private struct LinkProfileCompactWorkspace: View {
 private struct LinkProfileEditor: View {
     @Bindable var model: LinkProfileModel
     let chooseOnMap: (LinkProfileEndpoint) -> Void
+    var trailingPadding: CGFloat = 16
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                Text("Link Profile")
-                    .font(.headline)
                 LinkProfileIntroduction()
                 LinkProfileEndpointCard(
                     title: "Point A",
@@ -187,10 +180,11 @@ private struct LinkProfileEditor: View {
             }
             .padding(.leading)
             .padding(.vertical)
-            .padding(.trailing, 32)
+            .padding(.trailing, trailingPadding)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             LinkProfilePinnedAction(model: model)
+                .padding(.trailing, max(0, trailingPadding - 32))
         }
         .clipped()
     }
@@ -201,7 +195,7 @@ private struct LinkProfilePersistentMap: View {
     let nodes: [MeshNode]
     @Binding var activeEndpoint: LinkProfileEndpoint?
     @State private var tentativeCoordinate: CLLocationCoordinate2D?
-    @State private var position: MapCameraPosition = .automatic
+    @State private var position: MapCameraPosition = .userLocation(fallback: .automatic)
 
     var body: some View {
         MapReader { proxy in
@@ -264,7 +258,7 @@ private struct LinkProfilePersistentMap: View {
                     .background(.regularMaterial, in: Capsule())
                     .padding()
             }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
+            .overlay(alignment: .bottom) {
                 if let activeEndpoint {
                     LinkProfileMapSelectionBar(
                         endpointTitle: activeEndpoint.title,
@@ -275,6 +269,8 @@ private struct LinkProfilePersistentMap: View {
                         },
                         confirm: { commit(tentativeCoordinate, for: activeEndpoint) }
                     )
+                    .frame(maxWidth: 560)
+                    .padding()
                 }
             }
         }
@@ -524,7 +520,7 @@ private struct LinkProfileMapSelectionBar: View {
             }
         }
         .padding()
-        .background(.regularMaterial)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
     }
 
     @ViewBuilder
