@@ -74,7 +74,18 @@ struct LinkProfileScreen: View {
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationTitle("Link Profile")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(usesWideStandardNavigation)
         .toolbar(usesDuoWorkspace ? .hidden : .visible, for: .navigationBar)
+        .toolbar {
+            if usesWideStandardNavigation {
+                ToolbarItem(placement: .navigation) {
+                    Button("Node Planner", systemImage: "chevron.backward") {
+                        dismiss()
+                    }
+                    .accessibilityLabel("Back to Node Planner")
+                }
+            }
+        }
         .observesDuoHinge($isHingedDevice)
         .onAppear(perform: updateContextAction)
         .onChange(of: isHingedDevice) { updateContextAction() }
@@ -84,6 +95,10 @@ struct LinkProfileScreen: View {
 
     private var usesDuoWorkspace: Bool {
         isHingedDevice == true && horizontalSizeClass == .regular
+    }
+
+    private var usesWideStandardNavigation: Bool {
+        isHingedDevice != true && horizontalSizeClass == .regular
     }
 
     private func updateContextAction() {

@@ -29,9 +29,7 @@ struct NodePlannerScreen: View {
             .toolbar {
                 if !usesDuoLayout, let closeAction {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button(action: closeAction) {
-                            Image(systemName: "xmark")
-                        }
+                        Button("Close", action: closeAction)
                         .accessibilityLabel("Close Node Planner")
                     }
                 }
