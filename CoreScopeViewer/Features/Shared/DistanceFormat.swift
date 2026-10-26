@@ -38,8 +38,8 @@ enum DistanceUnit: String, CaseIterable, Identifiable {
 
     var antennaHeightRange: ClosedRange<Double> {
         switch self {
-        case .imperial: 0...300
-        case .metric: 0...100
+        case .imperial: 0...100
+        case .metric: 0...30
         }
     }
 

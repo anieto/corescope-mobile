@@ -12,6 +12,17 @@ struct NodePlannerLinkAnalyzerTests {
         #expect(NodePlannerLinkAnalyzer.recommendedSampleCount(distanceMeters: 20_000) == 100)
     }
 
+    @Test func calculatesInitialTrueBearing() throws {
+        let origin = try NodePlannerCoordinate(latitude: 0, longitude: 0)
+        let north = try NodePlannerCoordinate(latitude: 1, longitude: 0)
+        let east = try NodePlannerCoordinate(latitude: 0, longitude: 1)
+        let west = try NodePlannerCoordinate(latitude: 0, longitude: -1)
+
+        #expect(abs(NodePlannerLinkAnalyzer.initialBearing(from: origin, to: north) - 0) < 1e-9)
+        #expect(abs(NodePlannerLinkAnalyzer.initialBearing(from: origin, to: east) - 90) < 1e-9)
+        #expect(abs(NodePlannerLinkAnalyzer.initialBearing(from: origin, to: west) - 270) < 1e-9)
+    }
+
     @Test func analyzesProviderTerrainAndPreservesProvenance() async throws {
         let pointA = try NodePlannerCoordinate(latitude: 30, longitude: -97)
         let pointB = try NodePlannerCoordinate(latitude: 30.05, longitude: -97)

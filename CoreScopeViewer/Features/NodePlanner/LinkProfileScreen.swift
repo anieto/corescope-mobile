@@ -327,6 +327,65 @@ private enum LinkProfileEndpoint: String, Identifiable {
 
 }
 
+private enum LinkProfileRadioPreset: String, CaseIterable, Identifiable {
+    case unitedStatesNarrow
+    case europeNarrow
+    case custom
+
+    var id: String { rawValue }
+
+    var title: LocalizedStringResource {
+        switch self {
+        case .unitedStatesNarrow: "US/Canada Narrow"
+        case .europeNarrow: "EU/UK Narrow"
+        case .custom: "Custom"
+        }
+    }
+
+    var frequencyMHz: Double? {
+        switch self {
+        case .unitedStatesNarrow: 910.525
+        case .europeNarrow: 869.618
+        case .custom: nil
+        }
+    }
+
+    var bandwidthKHz: Double? {
+        switch self {
+        case .unitedStatesNarrow, .europeNarrow: 62.5
+        case .custom: nil
+        }
+    }
+
+    var spreadingFactor: Int? {
+        switch self {
+        case .unitedStatesNarrow: 7
+        case .europeNarrow: 8
+        case .custom: nil
+        }
+    }
+
+    var codingRate: Int? {
+        self == .custom ? nil : 5
+    }
+
+    var transmitPowerDBm: Double? {
+        switch self {
+        case .unitedStatesNarrow: 22
+        case .europeNarrow: 14
+        case .custom: nil
+        }
+    }
+
+    var receiverSensitivityDBm: Double? {
+        switch self {
+        case .unitedStatesNarrow: -128
+        case .europeNarrow: -130
+        case .custom: nil
+        }
+    }
+}
+
 @MainActor
 @Observable
 private final class LinkProfileModel {
@@ -336,7 +395,17 @@ private final class LinkProfileModel {
     var longitudeB: Double?
     var heightA = 10.0
     var heightB = 10.0
-    var frequencyMHz = 915.0
+    var radioPreset = LinkProfileRadioPreset.unitedStatesNarrow
+    var frequencyMHz = 910.525
+    var bandwidthKHz = 62.5
+    var spreadingFactor = 7
+    var codingRate = 5
+    var transmitPowerDBm = 22.0
+    var gainADB = 2.15
+    var gainBDB = 2.15
+    var lossADB = 1.0
+    var lossBDB = 1.0
+    var receiverSensitivityDBm = -128.0
     var groundElevationA: Double?
     var groundElevationB: Double?
     var isLoadingElevationA = false
@@ -392,7 +461,14 @@ private final class LinkProfileModel {
                     heightBMeters: heightB,
                     frequencyMHz: frequencyMHz,
                     refractionK: 4.0 / 3.0,
-                    linkBudget: nil,
+                    linkBudget: NodePlannerLinkBudget(
+                        transmitPowerDBm: transmitPowerDBm,
+                        gainADB: gainADB,
+                        gainBDB: gainBDB,
+                        lossADB: lossADB,
+                        lossBDB: lossBDB,
+                        receiverSensitivityDBm: receiverSensitivityDBm
+                    ),
                     sampleCount: nil
                 )
             )
@@ -461,6 +537,17 @@ private final class LinkProfileModel {
     func configurationChanged() {
         result = nil
         errorMessage = nil
+    }
+
+    func applyRadioPreset(_ preset: LinkProfileRadioPreset) {
+        radioPreset = preset
+        if let value = preset.frequencyMHz { frequencyMHz = value }
+        if let value = preset.bandwidthKHz { bandwidthKHz = value }
+        if let value = preset.spreadingFactor { spreadingFactor = value }
+        if let value = preset.codingRate { codingRate = value }
+        if let value = preset.transmitPowerDBm { transmitPowerDBm = value }
+        if let value = preset.receiverSensitivityDBm { receiverSensitivityDBm = value }
+        configurationChanged()
     }
 
     private func scheduleElevationLookup(for endpoint: LinkProfileEndpoint) {
@@ -781,22 +868,122 @@ private struct LinkProfileRadioSettings: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Radio settings")
                 .font(.headline)
+
+            Picker("Preset", selection: presetSelection) {
+                ForEach(LinkProfileRadioPreset.allCases) { preset in
+                    Text(preset.title).tag(preset)
+                }
+            }
+
             LabeledContent("Frequency") {
                 HStack(spacing: 4) {
-                    TextField("Frequency", value: $model.frequencyMHz, format: .number.precision(.fractionLength(0...3)))
+                    TextField(
+                        "Frequency",
+                        value: numericBinding(\.frequencyMHz),
+                        format: .number.precision(.fractionLength(0...3))
+                    )
                         .multilineTextAlignment(.trailing)
                         .keyboardType(.decimalPad)
                     Text("MHz")
                         .foregroundStyle(.secondary)
                 }
             }
-            .onChange(of: model.frequencyMHz) { _, _ in model.configurationChanged() }
-            Text("Standard atmospheric refraction (k = 4/3) is used for this first version.")
+
+            DisclosureGroup("Advanced assumptions") {
+                VStack(spacing: 10) {
+                    LinkProfileNumericSetting(title: "Bandwidth", value: numericBinding(\.bandwidthKHz), unit: "kHz")
+                    LinkProfileIntegerSetting(title: "Spreading factor", value: integerBinding(\.spreadingFactor))
+                    LinkProfileIntegerSetting(title: "Coding rate", value: integerBinding(\.codingRate), prefix: "4/")
+                    LinkProfileNumericSetting(title: "Transmit power", value: numericBinding(\.transmitPowerDBm), unit: "dBm")
+                    LinkProfileNumericSetting(title: "Point A antenna gain", value: numericBinding(\.gainADB), unit: "dBi")
+                    LinkProfileNumericSetting(title: "Point A system loss", value: numericBinding(\.lossADB), unit: "dB")
+                    LinkProfileNumericSetting(title: "Point B antenna gain", value: numericBinding(\.gainBDB), unit: "dBi")
+                    LinkProfileNumericSetting(title: "Point B system loss", value: numericBinding(\.lossBDB), unit: "dB")
+                    LinkProfileNumericSetting(
+                        title: "Receiver sensitivity",
+                        value: numericBinding(\.receiverSensitivityDBm),
+                        unit: "dBm"
+                    )
+                }
+                .padding(.top, 8)
+            }
+
+            Text("Preset values are planning assumptions, not detected hardware settings. Standard atmospheric refraction (k = 4/3) is used.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
         .padding()
         .instrumentCard()
+    }
+
+    private var presetSelection: Binding<LinkProfileRadioPreset> {
+        Binding(
+            get: { model.radioPreset },
+            set: { model.applyRadioPreset($0) }
+        )
+    }
+
+    private func numericBinding(_ keyPath: ReferenceWritableKeyPath<LinkProfileModel, Double>) -> Binding<Double> {
+        Binding(
+            get: { model[keyPath: keyPath] },
+            set: {
+                model[keyPath: keyPath] = $0
+                model.radioPreset = .custom
+                model.configurationChanged()
+            }
+        )
+    }
+
+    private func integerBinding(_ keyPath: ReferenceWritableKeyPath<LinkProfileModel, Int>) -> Binding<Int> {
+        Binding(
+            get: { model[keyPath: keyPath] },
+            set: {
+                model[keyPath: keyPath] = $0
+                model.radioPreset = .custom
+                model.configurationChanged()
+            }
+        )
+    }
+}
+
+private struct LinkProfileNumericSetting: View {
+    let title: LocalizedStringResource
+    @Binding var value: Double
+    let unit: String
+
+    var body: some View {
+        LabeledContent {
+            HStack(spacing: 4) {
+                TextField(title, value: $value, format: .number.precision(.fractionLength(0...2)))
+                    .multilineTextAlignment(.trailing)
+                    .keyboardType(.numbersAndPunctuation)
+                Text(unit)
+                    .foregroundStyle(.secondary)
+            }
+        } label: {
+            Text(title)
+        }
+    }
+}
+
+private struct LinkProfileIntegerSetting: View {
+    let title: LocalizedStringResource
+    @Binding var value: Int
+    var prefix = ""
+
+    var body: some View {
+        LabeledContent {
+            HStack(spacing: 0) {
+                Text(prefix)
+                    .foregroundStyle(.secondary)
+                TextField(title, value: $value, format: .number)
+                    .multilineTextAlignment(.trailing)
+                    .keyboardType(.numberPad)
+                    .frame(minWidth: 40)
+            }
+        } label: {
+            Text(title)
+        }
     }
 }
 
@@ -862,10 +1049,31 @@ private struct LinkProfileResultCard: View {
                     label: "Distance",
                     value: distanceUnit.format(kilometers: result.result.distanceMeters / 1_000)
                 )
+                LinkProfileMetricRow(label: "Initial bearing", value: bearingText)
                 LinkProfileMetricRow(
-                    label: "Path loss",
+                    label: "Free-space path loss",
+                    value: result.result.freeSpacePathLossDB.formatted(.number.precision(.fractionLength(1))) + " dB"
+                )
+                LinkProfileMetricRow(
+                    label: "Diffraction loss",
+                    value: result.result.peakDiffractionLossDB.formatted(.number.precision(.fractionLength(1))) + " dB"
+                )
+                LinkProfileMetricRow(
+                    label: "Total path loss",
                     value: result.result.totalPathLossDB.formatted(.number.precision(.fractionLength(1))) + " dB"
                 )
+                if let receivePower = result.result.receivePowerDBm {
+                    LinkProfileMetricRow(
+                        label: "Predicted receive level",
+                        value: receivePower.formatted(.number.precision(.fractionLength(1))) + " dBm"
+                    )
+                }
+                if let linkMargin = result.result.linkMarginDB {
+                    LinkProfileMetricRow(
+                        label: "Link margin",
+                        value: linkMargin.formatted(.number.precision(.fractionLength(1))) + " dB"
+                    )
+                }
                 LinkProfileMetricRow(
                     label: "Worst Fresnel clearance",
                     value: result.result.worstClearancePercent.formatted(.number.precision(.fractionLength(0))) + "%"
@@ -874,7 +1082,15 @@ private struct LinkProfileResultCard: View {
                     label: "Terrain source",
                     value: "Copernicus GLO-90 · Open-Meteo"
                 )
+                LinkProfileMetricRow(label: "Calculated", value: result.calculatedAt.formatted(date: .abbreviated, time: .shortened))
             }
+
+            Divider()
+            Text("Assumptions")
+                .font(.subheadline.weight(.semibold))
+            Text(assumptionsSummary)
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
         .padding()
         .instrumentCard(fillOpacity: 1)
@@ -897,6 +1113,23 @@ private struct LinkProfileResultCard: View {
         case .partialObstruction: "circle.lefthalf.filled"
         case .blocked: "xmark.octagon.fill"
         }
+    }
+
+    private var bearingText: String {
+        let bearing = NodePlannerLinkAnalyzer.initialBearing(
+            from: result.request.pointA,
+            to: result.request.pointB
+        )
+        return bearing.formatted(.number.precision(.fractionLength(0))) + "° true"
+    }
+
+    private var assumptionsSummary: String {
+        guard let budget = result.request.linkBudget else {
+            return String(localized: "No complete link budget was supplied.")
+        }
+        return String(
+            localized: "TX power \(budget.transmitPowerDBm.formatted(.number.precision(.fractionLength(1)))) dBm; antenna gains \(budget.gainADB.formatted(.number.precision(.fractionLength(1))))/\(budget.gainBDB.formatted(.number.precision(.fractionLength(1)))) dBi; system losses \(budget.lossADB.formatted(.number.precision(.fractionLength(1))))/\(budget.lossBDB.formatted(.number.precision(.fractionLength(1)))) dB; receiver sensitivity \(budget.receiverSensitivityDBm.formatted(.number.precision(.fractionLength(1)))) dBm; k = \(result.request.refractionK.formatted(.number.precision(.fractionLength(2))))."
+        )
     }
 }
 

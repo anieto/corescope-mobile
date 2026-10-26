@@ -133,4 +133,15 @@ struct NodePlannerLinkAnalyzer: Sendable {
         let angularDistance = 2 * atan2(sqrt(haversine), sqrt(max(0, 1 - haversine)))
         return NodePlannerRFEngine.earthRadiusMeters * angularDistance
     }
+
+    static func initialBearing(from start: NodePlannerCoordinate, to end: NodePlannerCoordinate) -> Double {
+        let latitudeA = start.latitude * .pi / 180
+        let latitudeB = end.latitude * .pi / 180
+        let longitudeDelta = (end.longitude - start.longitude) * .pi / 180
+        let y = sin(longitudeDelta) * cos(latitudeB)
+        let x = cos(latitudeA) * sin(latitudeB)
+            - sin(latitudeA) * cos(latitudeB) * cos(longitudeDelta)
+        let degrees = atan2(y, x) * 180 / .pi
+        return degrees.truncatingRemainder(dividingBy: 360) + (degrees < 0 ? 360 : 0)
+    }
 }
