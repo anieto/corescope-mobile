@@ -1,4 +1,5 @@
 import Observation
+import Charts
 import MapKit
 import SwiftUI
 
@@ -787,6 +788,7 @@ private struct LinkProfileResultCard: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
+            LinkProfileTerrainChart(analysis: result)
             Grid(alignment: .leading, horizontalSpacing: 20, verticalSpacing: 8) {
                 LinkProfileMetricRow(
                     label: "Distance",
@@ -826,6 +828,134 @@ private struct LinkProfileResultCard: View {
         case .marginal: "exclamationmark.circle.fill"
         case .partialObstruction: "circle.lefthalf.filled"
         case .blocked: "xmark.octagon.fill"
+        }
+    }
+}
+
+private struct LinkProfileTerrainChart: View {
+    let analysis: NodePlannerLinkAnalysis
+
+    private struct ProfilePoint: Identifiable {
+        let id: Int
+        let distanceKilometers: Double
+        let terrainMeters: Double
+        let lineOfSightMeters: Double
+        let fresnelLowerMeters: Double
+        let fresnelUpperMeters: Double
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Terrain profile")
+                .font(.subheadline.weight(.semibold))
+
+            Chart {
+                ForEach(profilePoints) { point in
+                    AreaMark(
+                        x: .value("Distance", point.distanceKilometers),
+                        yStart: .value("Fresnel lower", point.fresnelLowerMeters),
+                        yEnd: .value("Fresnel upper", point.fresnelUpperMeters)
+                    )
+                    .foregroundStyle(NodeScopeStyle.signal.opacity(0.14))
+
+                    LineMark(
+                        x: .value("Distance", point.distanceKilometers),
+                        y: .value("Terrain", point.terrainMeters)
+                    )
+                    .foregroundStyle(.brown)
+                    .lineStyle(StrokeStyle(lineWidth: 2))
+
+                    LineMark(
+                        x: .value("Distance", point.distanceKilometers),
+                        y: .value("Line of sight", point.lineOfSightMeters)
+                    )
+                    .foregroundStyle(NodeScopeStyle.signal)
+                    .lineStyle(StrokeStyle(lineWidth: 2, dash: [6, 4]))
+                }
+
+                if let worstObstruction {
+                    RuleMark(x: .value("Worst obstruction", worstObstruction.distanceFromAMeters / 1_000))
+                        .foregroundStyle(.red)
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                        .annotation(position: .top, alignment: .leading) {
+                            Text("Worst clearance")
+                                .font(.caption2)
+                                .foregroundStyle(.red)
+                        }
+                }
+            }
+            .chartXAxisLabel("Distance (km)")
+            .chartYAxisLabel("Elevation (m)")
+            .frame(minHeight: 220)
+            .accessibilityLabel("Terrain elevation, line of sight, and first Fresnel zone profile")
+
+            HStack(spacing: 16) {
+                LinkProfileChartLegend(color: .brown, title: "Terrain")
+                LinkProfileChartLegend(color: NodeScopeStyle.signal, title: "Line of sight")
+                LinkProfileChartLegend(color: NodeScopeStyle.signal.opacity(0.25), title: "Fresnel zone")
+            }
+            .font(.caption)
+        }
+    }
+
+    private var profilePoints: [ProfilePoint] {
+        let samples = analysis.terrain.samples
+        guard let first = samples.first, let last = samples.last, samples.count > 1 else { return [] }
+
+        let totalDistance = analysis.result.distanceMeters
+        let startHeight = first.elevationMeters + analysis.request.heightAMeters
+        let endHeight = last.elevationMeters + analysis.request.heightBMeters
+        var distance = 0.0
+
+        return samples.enumerated().map { index, sample in
+            if index > 0 {
+                distance += NodePlannerLinkAnalyzer.distance(
+                    from: samples[index - 1].coordinate,
+                    to: sample.coordinate
+                )
+            }
+            let fraction = totalDistance > 0 ? distance / totalDistance : 0
+            let lineOfSight = startHeight + fraction * (endHeight - startHeight)
+            let distanceToB = max(0, totalDistance - distance)
+            let fresnelRadius = NodePlannerRFEngine.fresnelRadius(
+                frequencyMHz: analysis.request.frequencyMHz,
+                distanceToAMeters: distance,
+                distanceToBMeters: distanceToB
+            )
+            let effectiveTerrain = sample.elevationMeters + NodePlannerRFEngine.earthBulge(
+                distanceToAMeters: distance,
+                distanceToBMeters: distanceToB,
+                refractionK: analysis.request.refractionK
+            )
+            return ProfilePoint(
+                id: index,
+                distanceKilometers: distance / 1_000,
+                terrainMeters: effectiveTerrain,
+                lineOfSightMeters: lineOfSight,
+                fresnelLowerMeters: lineOfSight - fresnelRadius,
+                fresnelUpperMeters: lineOfSight + fresnelRadius
+            )
+        }
+    }
+
+    private var worstObstruction: NodePlannerObstruction? {
+        analysis.result.obstructions.min { lhs, rhs in
+            lhs.fresnelClearancePercent < rhs.fresnelClearancePercent
+        }
+    }
+}
+
+private struct LinkProfileChartLegend: View {
+    let color: Color
+    let title: LocalizedStringResource
+
+    var body: some View {
+        Label {
+            Text(title)
+        } icon: {
+            Capsule()
+                .fill(color)
+                .frame(width: 18, height: 4)
         }
     }
 }
