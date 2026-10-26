@@ -29,6 +29,8 @@ struct LinkProfileScreen: View {
                             nodes: catalog.nodes,
                             activeEndpoint: $endpointPicker
                         )
+                        .safeAreaPadding(.trailing)
+                        .clipped()
                     } secondary: {
                         LinkProfileEditor(
                             model: model,
@@ -153,28 +155,35 @@ private struct LinkProfileEditor: View {
     @Bindable var model: LinkProfileModel
     let chooseOnMap: (LinkProfileEndpoint) -> Void
     var trailingPadding: CGFloat = 16
+    private let resultAnchor = "link-profile-result"
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                LinkProfileIntroduction()
-                LinkProfileEndpointLayout(
-                    model: model,
-                    chooseOnMap: chooseOnMap
-                )
-                LinkProfileRadioSettings(model: model)
-                LinkProfilePrivacyNotice()
-                if let result = model.result {
-                    LinkProfileResultCard(result: result)
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    LinkProfileIntroduction()
+                    LinkProfileEndpointLayout(
+                        model: model,
+                        chooseOnMap: chooseOnMap
+                    )
+                    LinkProfileRadioSettings(model: model)
+                    LinkProfilePrivacyNotice()
+                    LinkProfileAction(model: model)
+                    if let result = model.result {
+                        LinkProfileResultCard(result: result)
+                            .id(resultAnchor)
+                    }
+                }
+                .padding(.leading, 20)
+                .padding(.vertical, 20)
+                .padding(.trailing, trailingPadding)
+            }
+            .onChange(of: model.result) { _, result in
+                guard result != nil else { return }
+                withAnimation(.easeInOut) {
+                    proxy.scrollTo(resultAnchor, anchor: .top)
                 }
             }
-            .padding(.leading)
-            .padding(.vertical)
-            .padding(.trailing, trailingPadding)
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            LinkProfilePinnedAction(model: model)
-                .padding(.trailing, max(0, trailingPadding - 32))
         }
         .clipped()
     }
@@ -259,7 +268,7 @@ private struct LinkProfilePersistentMap: View {
                         },
                         confirm: { commit(tentativeCoordinate, for: activeEndpoint) }
                     )
-                    .frame(maxWidth: 560)
+                    .frame(maxWidth: 480)
                     .padding()
                 }
             }
@@ -782,21 +791,6 @@ private struct LinkProfilePrivacyNotice: View {
         .font(.caption)
         .foregroundStyle(.secondary)
         .accessibilityElement(children: .combine)
-    }
-}
-
-private struct LinkProfilePinnedAction: View {
-    let model: LinkProfileModel
-
-    var body: some View {
-        LinkProfileAction(model: model)
-            .padding(.leading)
-            .padding(.trailing, 32)
-            .padding(.vertical, 12)
-            .background(.bar)
-            .overlay(alignment: .top) {
-                Divider()
-            }
     }
 }
 
