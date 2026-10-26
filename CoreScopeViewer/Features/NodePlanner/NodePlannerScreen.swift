@@ -155,8 +155,8 @@ private struct NodePlannerToolCard: View {
         }
         .padding()
         .frame(maxWidth: .infinity, minHeight: 190, alignment: .topLeading)
-        .background(.background, in: RoundedRectangle(cornerRadius: 16))
-        .contentShape(RoundedRectangle(cornerRadius: 16))
+        .instrumentCard()
+        .contentShape(RoundedRectangle(cornerRadius: NodeScopeStyle.cornerRadius, style: .continuous))
     }
 }
 
