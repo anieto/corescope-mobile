@@ -23,22 +23,27 @@ struct LinkProfileScreen: View {
         GeometryReader { geometry in
             Group {
                 if usesDuoWorkspace {
-                    DuoTwoPaneLayout {
+                    HStack(spacing: 0) {
                         LinkProfilePersistentMap(
                             model: model,
                             nodes: catalog.nodes,
                             activeEndpoint: $endpointPicker
                         )
-                        .safeAreaPadding(.trailing)
+                        .frame(width: geometry.size.width / 2)
                         .clipped()
-                    } secondary: {
+
                         LinkProfileEditor(
                             model: model,
                             chooseOnMap: { endpointPicker = $0 },
-                            trailingPadding: 112
+                            trailingPadding: 112,
+                            usesCompactHeader: true
                         )
+                        .frame(width: geometry.size.width / 2)
+                        .background(Color(uiColor: .systemGroupedBackground))
+                        .clipped()
                     }
-                    .ignoresSafeArea(.container, edges: .bottom)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                    .ignoresSafeArea(.container, edges: [.bottom, .trailing])
                 } else if geometry.size.width >= 900 {
                     HStack(spacing: 0) {
                         LinkProfilePersistentMap(
@@ -155,13 +160,19 @@ private struct LinkProfileEditor: View {
     @Bindable var model: LinkProfileModel
     let chooseOnMap: (LinkProfileEndpoint) -> Void
     var trailingPadding: CGFloat = 16
+    var usesCompactHeader = false
     private let resultAnchor = "link-profile-result"
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    LinkProfileIntroduction()
+                    if usesCompactHeader {
+                        Label("Link Profile", systemImage: "point.topleft.down.to.point.bottomright.curvepath")
+                            .font(.title2.bold())
+                    } else {
+                        LinkProfileIntroduction()
+                    }
                     LinkProfileEndpointLayout(
                         model: model,
                         chooseOnMap: chooseOnMap
