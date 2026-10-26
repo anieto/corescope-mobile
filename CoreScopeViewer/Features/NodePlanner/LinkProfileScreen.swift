@@ -158,19 +158,9 @@ private struct LinkProfileEditor: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 LinkProfileIntroduction()
-                LinkProfileEndpointCard(
-                    title: "Point A",
-                    latitude: $model.latitudeA,
-                    longitude: $model.longitudeA,
-                    height: $model.heightA,
-                    chooseOnMap: { chooseOnMap(.pointA) }
-                )
-                LinkProfileEndpointCard(
-                    title: "Point B",
-                    latitude: $model.latitudeB,
-                    longitude: $model.longitudeB,
-                    height: $model.heightB,
-                    chooseOnMap: { chooseOnMap(.pointB) }
+                LinkProfileEndpointLayout(
+                    model: model,
+                    chooseOnMap: chooseOnMap
                 )
                 LinkProfileRadioSettings(model: model)
                 LinkProfilePrivacyNotice()
@@ -398,6 +388,27 @@ private final class LinkProfileModel {
         result = nil
         errorMessage = nil
     }
+
+    func clear(_ endpoint: LinkProfileEndpoint) {
+        switch endpoint {
+        case .pointA:
+            latitudeA = nil
+            longitudeA = nil
+        case .pointB:
+            latitudeB = nil
+            longitudeB = nil
+        }
+        result = nil
+        errorMessage = nil
+    }
+
+    func swapEndpoints() {
+        (latitudeA, latitudeB) = (latitudeB, latitudeA)
+        (longitudeA, longitudeB) = (longitudeB, longitudeA)
+        (heightA, heightB) = (heightB, heightA)
+        result = nil
+        errorMessage = nil
+    }
 }
 
 private struct LinkProfileIntroduction: View {
@@ -416,64 +427,88 @@ private struct LinkProfileEndpointLayout: View {
     let chooseOnMap: (LinkProfileEndpoint) -> Void
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .top, spacing: 16) {
-                LinkProfileEndpointCard(
-                    title: "Point A",
-                    latitude: $model.latitudeA,
-                    longitude: $model.longitudeA,
-                    height: $model.heightA,
-                    chooseOnMap: { chooseOnMap(.pointA) }
-                )
-                LinkProfileEndpointCard(
-                    title: "Point B",
-                    latitude: $model.latitudeB,
-                    longitude: $model.longitudeB,
-                    height: $model.heightB,
-                    chooseOnMap: { chooseOnMap(.pointB) }
-                )
-            }
-            VStack(spacing: 16) {
-                LinkProfileEndpointCard(
-                    title: "Point A",
-                    latitude: $model.latitudeA,
-                    longitude: $model.longitudeA,
-                    height: $model.heightA,
-                    chooseOnMap: { chooseOnMap(.pointA) }
-                )
-                LinkProfileEndpointCard(
-                    title: "Point B",
-                    latitude: $model.latitudeB,
-                    longitude: $model.longitudeB,
-                    height: $model.heightB,
-                    chooseOnMap: { chooseOnMap(.pointB) }
-                )
+        VStack(spacing: 12) {
+            endpointCards
+
+            if model.coordinateA != nil && model.coordinateB != nil {
+                Button {
+                    model.swapEndpoints()
+                } label: {
+                    Label("Swap A and B", systemImage: "arrow.up.arrow.down")
+                }
+                .buttonStyle(.bordered)
             }
         }
+    }
+
+    @ViewBuilder
+    private var endpointCards: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 12) { cards }
+            VStack(spacing: 12) { cards }
+        }
+    }
+
+    @ViewBuilder
+    private var cards: some View {
+        LinkProfileEndpointCard(
+            endpoint: .pointA,
+            latitude: $model.latitudeA,
+            longitude: $model.longitudeA,
+            height: $model.heightA,
+            relocate: { chooseOnMap(.pointA) },
+            clear: { model.clear(.pointA) }
+        )
+        LinkProfileEndpointCard(
+            endpoint: .pointB,
+            latitude: $model.latitudeB,
+            longitude: $model.longitudeB,
+            height: $model.heightB,
+            relocate: { chooseOnMap(.pointB) },
+            clear: { model.clear(.pointB) }
+        )
     }
 }
 
 private struct LinkProfileEndpointCard: View {
-    let title: LocalizedStringResource
+    let endpoint: LinkProfileEndpoint
     @Binding var latitude: Double?
     @Binding var longitude: Double?
     @Binding var height: Double
-    let chooseOnMap: () -> Void
+    let relocate: () -> Void
+    let clear: () -> Void
+    @State private var showsCoordinateEntry = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.headline)
-            LabeledContent("Latitude") {
-                TextField("Latitude", value: $latitude, format: .number.precision(.fractionLength(0...6)))
-                    .multilineTextAlignment(.trailing)
-                    .keyboardType(.numbersAndPunctuation)
+            HStack {
+                Label(endpoint.title, systemImage: endpoint == .pointA ? "a.circle.fill" : "b.circle.fill")
+                    .font(.headline)
+                    .foregroundStyle(endpoint == .pointA ? .blue : .orange)
+                Spacer()
+                Menu("Endpoint actions", systemImage: "ellipsis.circle") {
+                    Button("Relocate on Map", systemImage: "mappin.and.ellipse", action: relocate)
+                    Button("Enter Coordinates", systemImage: "number") {
+                        showsCoordinateEntry.toggle()
+                    }
+                    if hasCoordinate {
+                        Button("Clear Endpoint", systemImage: "trash", role: .destructive, action: clear)
+                    }
+                }
+                .labelStyle(.iconOnly)
             }
-            LabeledContent("Longitude") {
-                TextField("Longitude", value: $longitude, format: .number.precision(.fractionLength(0...6)))
-                    .multilineTextAlignment(.trailing)
-                    .keyboardType(.numbersAndPunctuation)
+
+            if hasCoordinate {
+                Text(coordinateSummary)
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            } else {
+                Text("Not selected")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
+
             LabeledContent("Antenna height") {
                 HStack(spacing: 4) {
                     TextField("Height", value: $height, format: .number.precision(.fractionLength(0...1)))
@@ -483,15 +518,36 @@ private struct LinkProfileEndpointCard: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            Button(action: chooseOnMap) {
-                Label("Choose on Map", systemImage: "map")
-                    .frame(maxWidth: .infinity)
+
+            if showsCoordinateEntry {
+                Divider()
+                LabeledContent("Latitude") {
+                    TextField("Latitude", value: $latitude, format: .number.precision(.fractionLength(0...6)))
+                        .multilineTextAlignment(.trailing)
+                        .keyboardType(.numbersAndPunctuation)
+                }
+                LabeledContent("Longitude") {
+                    TextField("Longitude", value: $longitude, format: .number.precision(.fractionLength(0...6)))
+                        .multilineTextAlignment(.trailing)
+                        .keyboardType(.numbersAndPunctuation)
+                }
+            } else if !hasCoordinate {
+                Button("Select on Map", systemImage: "mappin.and.ellipse", action: relocate)
+                    .buttonStyle(.borderedProminent)
             }
-            .buttonStyle(.bordered)
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var hasCoordinate: Bool {
+        latitude != nil && longitude != nil
+    }
+
+    private var coordinateSummary: String {
+        guard let latitude, let longitude else { return String(localized: "Not selected") }
+        return "\(latitude.formatted(.number.precision(.fractionLength(5)))), \(longitude.formatted(.number.precision(.fractionLength(5))))"
     }
 }
 
