@@ -42,13 +42,16 @@ struct LinkProfileScreen: View {
                         LinkProfilePersistentMap(
                             model: model,
                             nodes: catalog.nodes,
-                            activeEndpoint: $endpointPicker
+                            activeEndpoint: $endpointPicker,
+                            promptLeadingClearance: 60,
+                            promptTopClearance: 56
                         )
                         LinkProfileEditor(
                             model: model,
                             chooseOnMap: { endpointPicker = $0 }
                         )
                         .frame(width: min(420, max(340, geometry.size.width * 0.34)))
+                        .safeAreaPadding(.top, 56)
                     }
                 } else {
                     LinkProfileCompactWorkspace(
@@ -75,6 +78,7 @@ struct LinkProfileScreen: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Back")
             .padding()
+            .padding(.top, showsOverlayBackButton ? 56 : 0)
             .opacity(showsOverlayBackButton ? 1 : 0)
             .allowsHitTesting(showsOverlayBackButton)
         }
@@ -190,6 +194,8 @@ private struct LinkProfilePersistentMap: View {
     let nodes: [MeshNode]
     @Binding var activeEndpoint: LinkProfileEndpoint?
     var selectionTrailingClearance: CGFloat = 0
+    var promptLeadingClearance: CGFloat = 0
+    var promptTopClearance: CGFloat = 0
     @State private var tentativeCoordinate: CLLocationCoordinate2D?
     @State private var position: MapCameraPosition = .userLocation(fallback: .automatic)
 
@@ -253,6 +259,8 @@ private struct LinkProfilePersistentMap: View {
                     .frame(minHeight: 44)
                     .background(.regularMaterial, in: Capsule())
                     .padding()
+                    .padding(.leading, promptLeadingClearance)
+                    .padding(.top, promptTopClearance)
             }
             .overlay(alignment: .bottom) {
                 if let activeEndpoint {
