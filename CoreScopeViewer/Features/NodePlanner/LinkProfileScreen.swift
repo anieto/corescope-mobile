@@ -281,7 +281,7 @@ private struct LinkProfilePersistentMap: View {
                             },
                             confirm: { commit(tentativeCoordinate, for: activeEndpoint) }
                         )
-                        .frame(maxWidth: 280)
+                        .frame(maxWidth: 360)
                         Spacer(minLength: 16 + selectionTrailingClearance)
                     }
                     .padding(.vertical, 16)
