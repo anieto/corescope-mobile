@@ -27,7 +27,8 @@ struct LinkProfileScreen: View {
                         LinkProfilePersistentMap(
                             model: model,
                             nodes: catalog.nodes,
-                            activeEndpoint: $endpointPicker
+                            activeEndpoint: $endpointPicker,
+                            selectionTrailingClearance: 48
                         )
                         .safeAreaPadding(.trailing)
                         .clipped()
@@ -202,6 +203,7 @@ private struct LinkProfilePersistentMap: View {
     let model: LinkProfileModel
     let nodes: [MeshNode]
     @Binding var activeEndpoint: LinkProfileEndpoint?
+    var selectionTrailingClearance: CGFloat = 0
     @State private var tentativeCoordinate: CLLocationCoordinate2D?
     @State private var position: MapCameraPosition = .userLocation(fallback: .automatic)
 
@@ -268,17 +270,21 @@ private struct LinkProfilePersistentMap: View {
             }
             .overlay(alignment: .bottom) {
                 if let activeEndpoint {
-                    LinkProfileMapSelectionBar(
-                        endpointTitle: activeEndpoint.title,
-                        coordinate: tentativeCoordinate,
-                        cancel: {
-                            tentativeCoordinate = nil
-                            self.activeEndpoint = nil
-                        },
-                        confirm: { commit(tentativeCoordinate, for: activeEndpoint) }
-                    )
-                    .frame(maxWidth: 480)
-                    .padding()
+                    HStack(spacing: 0) {
+                        Spacer(minLength: 16)
+                        LinkProfileMapSelectionBar(
+                            endpointTitle: activeEndpoint.title,
+                            coordinate: tentativeCoordinate,
+                            cancel: {
+                                tentativeCoordinate = nil
+                                self.activeEndpoint = nil
+                            },
+                            confirm: { commit(tentativeCoordinate, for: activeEndpoint) }
+                        )
+                        .frame(maxWidth: 480)
+                        Spacer(minLength: 16 + selectionTrailingClearance)
+                    }
+                    .padding(.vertical, 16)
                 }
             }
         }
