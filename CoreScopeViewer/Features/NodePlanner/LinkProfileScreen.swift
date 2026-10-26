@@ -679,7 +679,10 @@ private struct LinkProfileEndpointCard: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.background, in: RoundedRectangle(cornerRadius: 16))
+        .instrumentCard()
+        .contentShape(
+            RoundedRectangle(cornerRadius: NodeScopeStyle.cornerRadius, style: .continuous)
+        )
     }
 
     private var hasCoordinate: Bool {
@@ -792,7 +795,7 @@ private struct LinkProfileRadioSettings: View {
                 .foregroundStyle(.secondary)
         }
         .padding()
-        .background(.background, in: RoundedRectangle(cornerRadius: 16))
+        .instrumentCard()
     }
 }
 
@@ -873,7 +876,7 @@ private struct LinkProfileResultCard: View {
             }
         }
         .padding()
-        .background(.background, in: RoundedRectangle(cornerRadius: 16))
+        .instrumentCard()
     }
 
     private var statusTitle: LocalizedStringResource {
