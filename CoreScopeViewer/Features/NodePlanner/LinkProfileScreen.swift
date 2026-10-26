@@ -117,30 +117,73 @@ private struct LinkProfileCompactWorkspace: View {
     let model: LinkProfileModel
     let nodes: [MeshNode]
     @Binding var activeEndpoint: LinkProfileEndpoint?
+    @State private var isPanelExpanded = false
 
     var body: some View {
-        LinkProfilePersistentMap(model: model, nodes: nodes, activeEndpoint: $activeEndpoint)
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                if activeEndpoint == nil {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 12) {
-                            LinkProfileEndpointLayout(
-                                model: model,
-                                chooseOnMap: { activeEndpoint = $0 }
-                            )
-                            LinkProfileRadioSettings(model: model)
-                            LinkProfileAction(model: model)
-                            if let result = model.result {
-                                LinkProfileResultCard(result: result)
+        GeometryReader { geometry in
+            LinkProfilePersistentMap(model: model, nodes: nodes, activeEndpoint: $activeEndpoint)
+                .safeAreaInset(edge: .bottom, spacing: 8) {
+                    if activeEndpoint == nil {
+                        VStack(spacing: 0) {
+                            if model.result != nil {
+                                LinkProfileCompactPanelHeader(isExpanded: isPanelExpanded) {
+                                    withAnimation(.easeInOut) {
+                                        isPanelExpanded.toggle()
+                                    }
+                                }
+                            }
+                            ScrollView {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    LinkProfileEndpointLayout(
+                                        model: model,
+                                        chooseOnMap: { activeEndpoint = $0 }
+                                    )
+                                    LinkProfileRadioSettings(model: model)
+                                    LinkProfileAction(model: model)
+                                    if let result = model.result {
+                                        LinkProfileResultCard(result: result)
+                                    }
+                                }
+                                .padding()
                             }
                         }
-                        .padding()
+                        .frame(height: panelHeight(in: geometry.size.height))
+                        .meshPageBackground()
+                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        .padding(.horizontal, 8)
                     }
-                    .frame(maxHeight: 330)
-                    .meshPageBackground()
-                    .clipShape(UnevenRoundedRectangle(topLeadingRadius: 22, topTrailingRadius: 22))
                 }
+        }
+    }
+
+    private func panelHeight(in availableHeight: CGFloat) -> CGFloat {
+        guard model.result != nil, isPanelExpanded else { return min(330, availableHeight * 0.44) }
+        return min(620, availableHeight * 0.72)
+    }
+}
+
+private struct LinkProfileCompactPanelHeader: View {
+    let isExpanded: Bool
+    let toggle: () -> Void
+
+    var body: some View {
+        HStack {
+            Capsule()
+                .fill(.secondary.opacity(0.35))
+                .frame(width: 36, height: 5)
+            Spacer()
+            Button(action: toggle) {
+                Label(
+                    isExpanded ? "Show More Map" : "Show More Results",
+                    systemImage: isExpanded ? "chevron.down" : "chevron.up"
+                )
+                .font(.subheadline.weight(.semibold))
             }
+            .buttonStyle(.bordered)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
+        .padding(.bottom, 4)
     }
 }
 
