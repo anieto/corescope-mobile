@@ -81,7 +81,8 @@ implementation record are retained as prototype history, not the release contrac
 - Analyze point-to-point paths to known nodes with terrain profile, line of sight, Fresnel context,
   predicted receive level, link margin and visible provenance.
 - Include a secondary **Link Profile** tool for analyzing any two nodes or map points, built on the
-  same terrain and RF foundation as planned potential-link analysis.
+  same terrain and RF foundation as planned potential-link analysis. Use one persistent map for
+  selecting both endpoints, nearby known-node context, configuration and synchronized results.
 - Rank **Potential Links** without equating proximity with reachability.
 - Render clearly labeled **Estimated Coverage** that cannot be confused with observed network data.
 - Compare candidate sites or configurations and export an assumption-rich planning summary.

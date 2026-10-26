@@ -1,6 +1,7 @@
 # NodeScope 0.10.0 — Node Planner
 
-Status: planned. Prepared: 2026-10-24. Supersedes the 0.10.0 Field Tools plan.
+Status: active implementation. Prepared: 2026-10-24. Updated: 2026-10-25. Supersedes the 0.10.0
+Field Tools plan.
 
 ## Product thesis
 
@@ -111,6 +112,42 @@ A Link Profile can be used ephemerally, shared as an estimate, or promoted into 
 by turning either endpoint into a Candidate Site. Opening a Potential Link from a plan uses this
 same detail presentation with its endpoints and configuration prefilled.
 
+### Link Profile workspace and selection contract
+
+Link Profile uses one persistent map and one session for endpoint selection, configuration,
+analysis and results. It does not present a separate map for Point A and then recreate another map
+for Point B. Camera position, visible known nodes and endpoint state survive every inspector,
+result and adaptive-layout transition.
+
+- The initial map displays analyzer-known nodes with valid coordinates in the current bounded
+  region. Their presence indicates reported location only, never predicted reachability.
+- The empty state prompts for Point A. Selecting a known-node marker or an empty map location
+  assigns Point A and advances the same workspace to Point B.
+- Selecting Point B keeps Point A, the known-node context and the current camera visible. Once both
+  endpoints exist, the map fits the proposed path without discarding the person's camera history.
+- Confirmed endpoints have unambiguous A/B markers distinct from ordinary known-node markers. A
+  tentative map location is visually different and is not committed until confirmed.
+- Both endpoints can be relocated, swapped or cleared. When both are already set, selecting an
+  unrelated node or location asks which endpoint to replace rather than silently replacing one.
+- Coordinates can also be entered manually, and current location remains an explicit foreground
+  action rather than an automatic persisted endpoint.
+- Analysis is explicit. Endpoint or configuration changes invalidate the visible result and expose
+  what changed; they never silently analyze with stale assumptions.
+- The analyzed path, clearance classification and obstruction locations return to the same map.
+  Terrain-profile inspection can highlight the corresponding map coordinate and vice versa.
+
+The inspector groups the complete workflow without hiding modeled assumptions:
+
+1. **Points:** A/B identity, coordinates, source, antenna height, relocate, swap and clear.
+2. **Radio setup:** region/frequency, modem preset, transmit power, endpoint antenna gains,
+   endpoint cable/system losses, receiver sensitivity and refraction/model assumptions.
+3. **Analysis:** primary analyze/cancel action, progress, stale-input state, failures and provenance.
+4. **Results:** classification, distance/bearing, terrain/LOS/Fresnel profile, path-loss breakdown,
+   receive level, link margin, obstruction details and limitations.
+
+Presets populate reviewed values but every value remains inspectable. Advanced values can be edited
+without forcing a novice to configure the complete link budget manually.
+
 MeshCore One publicly licenses its source under GPLv3. Avi0n has approved the explicit request to
 modify the LOS/RF source, translate relevant portions to Kotlin, distribute the derived work through
 the App Store and Google Play, and apply NodeScope's Application Store Distribution Exception,
@@ -169,8 +206,14 @@ analysis, discard endpoint edits or change the selected candidate/link.
 
 - Choose composition from the current container proposal, safe areas, corner insets and system-
   reported fold/obscured geometry. Hinge presence or horizontal size class alone is insufficient.
-- Default to a hinge-safe two-region layout: configuration/results in the leading usable region and
-  map in the trailing usable region. Either region can become primary through an explicit control.
+- Default to a hinge-safe two-region layout: the persistent map occupies the leading usable region,
+  while the endpoint/configuration/results inspector occupies the trailing usable region alongside
+  the app's vertical rail. This matches NodeScope's other Duo map workspaces, keeps the cleaner and
+  larger region available to map content and places editable controls closer to the likely hand.
+- The trailing inspector accounts for the rail in its own safe content width. The map does not
+  reserve rail clearance that belongs to the other region.
+- The terrain profile is part of the trailing results inspector by default. It may temporarily
+  expand within one unobscured region, but it never spans the hinge.
 - Never place a title, toolbar group, chart label, sheet grabber or primary action beneath or across
   the hinge. No visual element uses negative safe-area padding to bridge panes.
 - In a partially folded posture where either usable region falls below its minimum width, collapse
@@ -182,10 +225,10 @@ analysis, discard endpoint edits or change the selected candidate/link.
 
 ### iPad and wide resizable windows
 
-- Use a two-region composition: a 320–420 point configurable sidebar and a flexible map/detail area.
-- The sidebar switches between Plan, Configuration and Results without nesting permanent columns.
-- Link Profile keeps endpoint/configuration controls in the sidebar and shows the map or terrain
-  profile in detail; the person can switch detail modes without losing either endpoint.
+- Use a two-region composition: a flexible persistent map and a 320–420 point trailing inspector.
+- The inspector switches between Plan, Configuration and Results without nesting permanent columns.
+- Link Profile retains the map while the trailing inspector moves between endpoint selection,
+  radio setup, analysis state, terrain profile and result detail.
 - A transient inspector or bottom panel may show a selected link breakdown, but three simultaneous
   columns are not required for v0.10.0.
 - iPad multitasking and Stage Manager collapse through the same measured-width rules as iPhone; the
