@@ -842,6 +842,12 @@ private struct LinkProfileTerrainChart: View {
         let lineOfSightMeters: Double
         let fresnelLowerMeters: Double
         let fresnelUpperMeters: Double
+        let fresnelLower60Meters: Double
+        let fresnelUpper60Meters: Double
+
+        var isObstructed: Bool {
+            terrainMeters > fresnelLower60Meters
+        }
     }
 
     var body: some View {
@@ -856,27 +862,87 @@ private struct LinkProfileTerrainChart: View {
                         yStart: .value("Fresnel lower", point.fresnelLowerMeters),
                         yEnd: .value("Fresnel upper", point.fresnelUpperMeters)
                     )
-                    .foregroundStyle(NodeScopeStyle.signal.opacity(0.14))
+                    .foregroundStyle(.teal.opacity(0.18))
+                }
 
+                ForEach(profilePoints) { point in
+                    AreaMark(
+                        x: .value("Distance", point.distanceKilometers),
+                        yStart: .value("60% Fresnel lower", point.fresnelLower60Meters),
+                        yEnd: .value("60% Fresnel upper", point.fresnelUpper60Meters)
+                    )
+                    .foregroundStyle(.teal.opacity(0.34))
+                }
+
+                ForEach(profilePoints) { point in
+                    AreaMark(
+                        x: .value("Distance", point.distanceKilometers),
+                        yStart: .value("Chart floor", yDomain.lowerBound),
+                        yEnd: .value("Terrain", point.terrainMeters)
+                    )
+                    .foregroundStyle(Color.brown.opacity(0.32))
+                }
+
+                ForEach(profilePoints) { point in
                     LineMark(
                         x: .value("Distance", point.distanceKilometers),
                         y: .value("Terrain", point.terrainMeters)
                     )
                     .foregroundStyle(.brown)
                     .lineStyle(StrokeStyle(lineWidth: 2))
+                }
 
+                ForEach(profilePoints) { point in
                     LineMark(
                         x: .value("Distance", point.distanceKilometers),
                         y: .value("Line of sight", point.lineOfSightMeters)
                     )
-                    .foregroundStyle(NodeScopeStyle.signal)
-                    .lineStyle(StrokeStyle(lineWidth: 2, dash: [6, 4]))
+                    .foregroundStyle(.primary)
+                    .lineStyle(StrokeStyle(lineWidth: 2))
                 }
 
-                if let worstObstruction {
-                    RuleMark(x: .value("Worst obstruction", worstObstruction.distanceFromAMeters / 1_000))
-                        .foregroundStyle(.red)
-                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                ForEach(profilePoints.filter(\.isObstructed)) { point in
+                    PointMark(
+                        x: .value("Obstruction distance", point.distanceKilometers),
+                        y: .value("Obstructing terrain", point.terrainMeters)
+                    )
+                    .foregroundStyle(.red)
+                    .symbolSize(22)
+                }
+
+                if let first = profilePoints.first {
+                    PointMark(
+                        x: .value("Point A distance", first.distanceKilometers),
+                        y: .value("Point A antenna", first.lineOfSightMeters)
+                    )
+                    .foregroundStyle(.blue)
+                    .symbolSize(70)
+                    .annotation(position: .topTrailing) {
+                        Text("A")
+                            .font(.caption.bold())
+                    }
+                }
+
+                if let last = profilePoints.last {
+                    PointMark(
+                        x: .value("Point B distance", last.distanceKilometers),
+                        y: .value("Point B antenna", last.lineOfSightMeters)
+                    )
+                    .foregroundStyle(.orange)
+                    .symbolSize(70)
+                    .annotation(position: .topLeading) {
+                        Text("B")
+                            .font(.caption.bold())
+                    }
+                }
+
+                if let worstObstructionPoint {
+                    PointMark(
+                        x: .value("Worst obstruction", worstObstructionPoint.distanceKilometers),
+                        y: .value("Worst obstruction elevation", worstObstructionPoint.terrainMeters)
+                    )
+                    .foregroundStyle(.red)
+                    .symbolSize(52)
                         .annotation(position: .top, alignment: .leading) {
                             Text("Worst clearance")
                                 .font(.caption2)
@@ -884,6 +950,7 @@ private struct LinkProfileTerrainChart: View {
                         }
                 }
             }
+            .chartYScale(domain: yDomain)
             .chartXAxisLabel("Distance (km)")
             .chartYAxisLabel("Elevation (m)")
             .frame(minHeight: 220)
@@ -891,8 +958,8 @@ private struct LinkProfileTerrainChart: View {
 
             HStack(spacing: 16) {
                 LinkProfileChartLegend(color: .brown, title: "Terrain")
-                LinkProfileChartLegend(color: NodeScopeStyle.signal, title: "Line of sight")
-                LinkProfileChartLegend(color: NodeScopeStyle.signal.opacity(0.25), title: "Fresnel zone")
+                LinkProfileChartLegend(color: .primary, title: "Line of sight")
+                LinkProfileChartLegend(color: .teal.opacity(0.45), title: "Fresnel zone")
             }
             .font(.caption)
         }
@@ -933,14 +1000,28 @@ private struct LinkProfileTerrainChart: View {
                 terrainMeters: effectiveTerrain,
                 lineOfSightMeters: lineOfSight,
                 fresnelLowerMeters: lineOfSight - fresnelRadius,
-                fresnelUpperMeters: lineOfSight + fresnelRadius
+                fresnelUpperMeters: lineOfSight + fresnelRadius,
+                fresnelLower60Meters: lineOfSight - fresnelRadius * 0.6,
+                fresnelUpper60Meters: lineOfSight + fresnelRadius * 0.6
             )
         }
     }
 
-    private var worstObstruction: NodePlannerObstruction? {
-        analysis.result.obstructions.min { lhs, rhs in
+    private var yDomain: ClosedRange<Double> {
+        guard !profilePoints.isEmpty else { return 0...100 }
+        let minimum = profilePoints.map(\.terrainMeters).min() ?? 0
+        let maximum = profilePoints.map(\.fresnelUpperMeters).max() ?? minimum + 100
+        let span = max(10, maximum - minimum)
+        return (minimum - span * 0.12)...(maximum + span * 0.18)
+    }
+
+    private var worstObstructionPoint: ProfilePoint? {
+        guard let obstruction = analysis.result.obstructions.min(by: { lhs, rhs in
             lhs.fresnelClearancePercent < rhs.fresnelClearancePercent
+        }) else { return nil }
+        return profilePoints.min { lhs, rhs in
+            abs(lhs.distanceKilometers * 1_000 - obstruction.distanceFromAMeters)
+                < abs(rhs.distanceKilometers * 1_000 - obstruction.distanceFromAMeters)
         }
     }
 }
