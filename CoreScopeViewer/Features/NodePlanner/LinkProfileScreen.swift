@@ -48,10 +48,10 @@ struct LinkProfileScreen: View {
                         )
                         LinkProfileEditor(
                             model: model,
-                            chooseOnMap: { endpointPicker = $0 }
+                            chooseOnMap: { endpointPicker = $0 },
+                            topInset: 56
                         )
                         .frame(width: min(420, max(340, geometry.size.width * 0.34)))
-                        .safeAreaPadding(.top, 56)
                     }
                 } else {
                     LinkProfileCompactWorkspace(
@@ -149,6 +149,7 @@ private struct LinkProfileEditor: View {
     let chooseOnMap: (LinkProfileEndpoint) -> Void
     var trailingPadding: CGFloat = 16
     var usesCompactHeader = false
+    var topInset: CGFloat = 0
     private let resultAnchor = "link-profile-result"
 
     var body: some View {
@@ -176,6 +177,9 @@ private struct LinkProfileEditor: View {
                 .padding(.leading, 20)
                 .padding(.vertical, 20)
                 .padding(.trailing, trailingPadding)
+            }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                Color.clear.frame(height: topInset)
             }
             .onChange(of: model.result) { _, result in
                 guard result != nil else { return }
