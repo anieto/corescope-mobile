@@ -189,7 +189,6 @@ private struct LinkProfileEditor: View {
             }
         }
         .meshPageBackground()
-        .clipped()
     }
 }
 
