@@ -35,4 +35,37 @@ enum DistanceUnit: String, CaseIterable, Identifiable {
             return String(format: "%.1f km", locale: Locale(identifier: "en_US_POSIX"), km)
         }
     }
+
+    var antennaHeightRange: ClosedRange<Double> {
+        switch self {
+        case .imperial: 0...300
+        case .metric: 0...100
+        }
+    }
+
+    var heightSymbol: String {
+        switch self {
+        case .imperial: "ft"
+        case .metric: "m"
+        }
+    }
+
+    func displayHeight(meters: Double) -> Double {
+        switch self {
+        case .imperial: meters * 3.28084
+        case .metric: meters
+        }
+    }
+
+    func meters(fromDisplayedHeight value: Double) -> Double {
+        switch self {
+        case .imperial: value / 3.28084
+        case .metric: value
+        }
+    }
+
+    func formatHeight(meters: Double) -> String {
+        let value = displayHeight(meters: meters)
+        return "\(value.formatted(.number.precision(.fractionLength(0)))) \(heightSymbol)"
+    }
 }

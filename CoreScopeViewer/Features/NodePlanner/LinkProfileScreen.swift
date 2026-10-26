@@ -312,11 +312,18 @@ private final class LinkProfileModel {
     var heightA = 10.0
     var heightB = 10.0
     var frequencyMHz = 915.0
+    var groundElevationA: Double?
+    var groundElevationB: Double?
+    var isLoadingElevationA = false
+    var isLoadingElevationB = false
     var isAnalyzing = false
     var result: NodePlannerLinkAnalysis?
     var errorMessage: LocalizedStringResource?
 
     private let analyzer: NodePlannerLinkAnalyzer
+    private let elevationProvider: any NodePlannerElevationProviding
+    @ObservationIgnored private var elevationTaskA: Task<Void, Never>?
+    @ObservationIgnored private var elevationTaskB: Task<Void, Never>?
 
     var coordinateA: CLLocationCoordinate2D? {
         guard let latitudeA, let longitudeA else { return nil }
@@ -332,10 +339,9 @@ private final class LinkProfileModel {
         coordinateA != nil && coordinateB != nil && !isAnalyzing
     }
 
-    init(analyzer: NodePlannerLinkAnalyzer = NodePlannerLinkAnalyzer(
-        elevationProvider: OpenMeteoElevationProvider()
-    )) {
-        self.analyzer = analyzer
+    init(elevationProvider: any NodePlannerElevationProviding = OpenMeteoElevationProvider()) {
+        self.elevationProvider = elevationProvider
+        analyzer = NodePlannerLinkAnalyzer(elevationProvider: elevationProvider)
     }
 
     func analyze() async {
@@ -353,7 +359,7 @@ private final class LinkProfileModel {
         do {
             let pointA = try NodePlannerCoordinate(latitude: latitudeA, longitude: longitudeA)
             let pointB = try NodePlannerCoordinate(latitude: latitudeB, longitude: longitudeB)
-            result = try await analyzer.analyze(
+            let analysis = try await analyzer.analyze(
                 NodePlannerLinkAnalysisRequest(
                     pointA: pointA,
                     pointB: pointB,
@@ -365,6 +371,9 @@ private final class LinkProfileModel {
                     sampleCount: nil
                 )
             )
+            result = analysis
+            groundElevationA = analysis.terrain.samples.first?.elevationMeters
+            groundElevationB = analysis.terrain.samples.last?.elevationMeters
         } catch is CancellationError {
             errorMessage = "Analysis was cancelled."
         } catch NodePlannerElevationError.invalidCoordinate {
@@ -387,16 +396,23 @@ private final class LinkProfileModel {
         }
         result = nil
         errorMessage = nil
+        scheduleElevationLookup(for: endpoint)
     }
 
     func clear(_ endpoint: LinkProfileEndpoint) {
         switch endpoint {
         case .pointA:
+            elevationTaskA?.cancel()
             latitudeA = nil
             longitudeA = nil
+            groundElevationA = nil
+            isLoadingElevationA = false
         case .pointB:
+            elevationTaskB?.cancel()
             latitudeB = nil
             longitudeB = nil
+            groundElevationB = nil
+            isLoadingElevationB = false
         }
         result = nil
         errorMessage = nil
@@ -406,8 +422,88 @@ private final class LinkProfileModel {
         (latitudeA, latitudeB) = (latitudeB, latitudeA)
         (longitudeA, longitudeB) = (longitudeB, longitudeA)
         (heightA, heightB) = (heightB, heightA)
+        (groundElevationA, groundElevationB) = (groundElevationB, groundElevationA)
         result = nil
         errorMessage = nil
+    }
+
+    func endpointCoordinatesChanged(_ endpoint: LinkProfileEndpoint) {
+        result = nil
+        errorMessage = nil
+        scheduleElevationLookup(for: endpoint)
+    }
+
+    func configurationChanged() {
+        result = nil
+        errorMessage = nil
+    }
+
+    private func scheduleElevationLookup(for endpoint: LinkProfileEndpoint) {
+        let coordinate = endpoint == .pointA ? coordinateA : coordinateB
+        guard let coordinate,
+              let plannerCoordinate = try? NodePlannerCoordinate(
+                latitude: coordinate.latitude,
+                longitude: coordinate.longitude
+              ) else {
+            switch endpoint {
+            case .pointA:
+                elevationTaskA?.cancel()
+                groundElevationA = nil
+            case .pointB:
+                elevationTaskB?.cancel()
+                groundElevationB = nil
+            }
+            setElevationLoading(false, for: endpoint)
+            return
+        }
+
+        setElevationLoading(true, for: endpoint)
+        let task = Task { [weak self, elevationProvider] in
+            try? await Task.sleep(for: .milliseconds(350))
+            guard !Task.isCancelled else { return }
+            do {
+                let profile = try await elevationProvider.elevations(
+                    for: [plannerCoordinate, plannerCoordinate]
+                )
+                guard !Task.isCancelled, let elevation = profile.samples.first?.elevationMeters else { return }
+                self?.applyElevation(elevation, coordinate: coordinate, for: endpoint)
+            } catch {
+                guard !Task.isCancelled else { return }
+                self?.setElevationLoading(false, for: endpoint)
+            }
+        }
+        switch endpoint {
+        case .pointA:
+            elevationTaskA?.cancel()
+            elevationTaskA = task
+        case .pointB:
+            elevationTaskB?.cancel()
+            elevationTaskB = task
+        }
+    }
+
+    private func applyElevation(
+        _ elevation: Double,
+        coordinate: CLLocationCoordinate2D,
+        for endpoint: LinkProfileEndpoint
+    ) {
+        let current = endpoint == .pointA ? coordinateA : coordinateB
+        guard current?.latitude == coordinate.latitude,
+              current?.longitude == coordinate.longitude else { return }
+        switch endpoint {
+        case .pointA:
+            groundElevationA = elevation
+        case .pointB:
+            groundElevationB = elevation
+        }
+        setElevationLoading(false, for: endpoint)
+    }
+
+    private func setElevationLoading(_ isLoading: Bool, for endpoint: LinkProfileEndpoint) {
+        switch endpoint {
+        case .pointA: isLoadingElevationA = isLoading
+        case .pointB: isLoadingElevationB = isLoading
+        }
     }
 }
 
@@ -456,16 +552,24 @@ private struct LinkProfileEndpointLayout: View {
             latitude: $model.latitudeA,
             longitude: $model.longitudeA,
             height: $model.heightA,
+            groundElevationMeters: model.groundElevationA,
+            isLoadingElevation: model.isLoadingElevationA,
             relocate: { chooseOnMap(.pointA) },
-            clear: { model.clear(.pointA) }
+            clear: { model.clear(.pointA) },
+            coordinatesChanged: { model.endpointCoordinatesChanged(.pointA) },
+            heightChanged: model.configurationChanged
         )
         LinkProfileEndpointCard(
             endpoint: .pointB,
             latitude: $model.latitudeB,
             longitude: $model.longitudeB,
             height: $model.heightB,
+            groundElevationMeters: model.groundElevationB,
+            isLoadingElevation: model.isLoadingElevationB,
             relocate: { chooseOnMap(.pointB) },
-            clear: { model.clear(.pointB) }
+            clear: { model.clear(.pointB) },
+            coordinatesChanged: { model.endpointCoordinatesChanged(.pointB) },
+            heightChanged: model.configurationChanged
         )
     }
 }
@@ -475,9 +579,14 @@ private struct LinkProfileEndpointCard: View {
     @Binding var latitude: Double?
     @Binding var longitude: Double?
     @Binding var height: Double
+    let groundElevationMeters: Double?
+    let isLoadingElevation: Bool
     let relocate: () -> Void
     let clear: () -> Void
+    let coordinatesChanged: () -> Void
+    let heightChanged: () -> Void
     @State private var showsCoordinateEntry = false
+    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -509,14 +618,20 @@ private struct LinkProfileEndpointCard: View {
                     .foregroundStyle(.secondary)
             }
 
-            LabeledContent("Antenna height") {
-                HStack(spacing: 4) {
-                    TextField("Height", value: $height, format: .number.precision(.fractionLength(0...1)))
-                        .multilineTextAlignment(.trailing)
-                        .keyboardType(.decimalPad)
-                    Text("m")
+            elevationSummary
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("Additional antenna height")
+                    Spacer()
+                    Text(distanceUnit.formatHeight(meters: height))
+                        .monospacedDigit()
                         .foregroundStyle(.secondary)
                 }
+                Slider(value: displayedHeight, in: distanceUnit.antennaHeightRange, step: 1)
+                    .accessibilityLabel("Additional antenna height")
+                    .accessibilityValue(distanceUnit.formatHeight(meters: height))
+                    .onChange(of: height) { _, _ in heightChanged() }
             }
 
             if showsCoordinateEntry {
@@ -531,6 +646,8 @@ private struct LinkProfileEndpointCard: View {
                         .multilineTextAlignment(.trailing)
                         .keyboardType(.numbersAndPunctuation)
                 }
+                .onChange(of: latitude) { _, _ in coordinatesChanged() }
+                .onChange(of: longitude) { _, _ in coordinatesChanged() }
             } else if !hasCoordinate {
                 Button("Select on Map", systemImage: "mappin.and.ellipse", action: relocate)
                     .buttonStyle(.borderedProminent)
@@ -548,6 +665,44 @@ private struct LinkProfileEndpointCard: View {
     private var coordinateSummary: String {
         guard let latitude, let longitude else { return String(localized: "Not selected") }
         return "\(latitude.formatted(.number.precision(.fractionLength(5)))), \(longitude.formatted(.number.precision(.fractionLength(5))))"
+    }
+
+    @ViewBuilder
+    private var elevationSummary: some View {
+        Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 5) {
+            GridRow {
+                Text("Ground elevation")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if isLoadingElevation {
+                    ProgressView().controlSize(.small)
+                } else if let groundElevationMeters {
+                    Text(distanceUnit.formatHeight(meters: groundElevationMeters))
+                        .monospacedDigit()
+                } else {
+                    Text("Unavailable").foregroundStyle(.secondary)
+                }
+            }
+            GridRow {
+                Text("Total height")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if let groundElevationMeters {
+                    Text(distanceUnit.formatHeight(meters: groundElevationMeters + height))
+                        .monospacedDigit()
+                } else {
+                    Text("—").foregroundStyle(.secondary)
+                }
+            }
+        }
+        .font(.subheadline)
+    }
+
+    private var displayedHeight: Binding<Double> {
+        Binding(
+            get: { distanceUnit.displayHeight(meters: height) },
+            set: { height = distanceUnit.meters(fromDisplayedHeight: $0) }
+        )
     }
 }
 
@@ -607,6 +762,7 @@ private struct LinkProfileRadioSettings: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .onChange(of: model.frequencyMHz) { _, _ in model.configurationChanged() }
             Text("Standard atmospheric refraction (k = 4/3) is used for this first version.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -675,6 +831,7 @@ private struct LinkProfileAction: View {
 
 private struct LinkProfileResultCard: View {
     let result: NodePlannerLinkAnalysis
+    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -690,8 +847,7 @@ private struct LinkProfileResultCard: View {
             Grid(alignment: .leading, horizontalSpacing: 20, verticalSpacing: 8) {
                 LinkProfileMetricRow(
                     label: "Distance",
-                    value: Measurement(value: result.result.distanceMeters, unit: UnitLength.meters)
-                        .formatted(.measurement(width: .abbreviated, usage: .road))
+                    value: distanceUnit.format(kilometers: result.result.distanceMeters / 1_000)
                 )
                 LinkProfileMetricRow(
                     label: "Path loss",
@@ -739,6 +895,7 @@ private struct LinkProfileResultCard: View {
 // styling, accessibility, endpoint-only workflow, and adaptive layouts.
 private struct LinkProfileTerrainCanvas: View {
     let analysis: NodePlannerLinkAnalysis
+    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
 
     private struct Sample {
         let distanceMeters: Double
@@ -856,8 +1013,11 @@ private struct LinkProfileTerrainCanvas: View {
             path.move(to: coordinates.point(x: xRange.lowerBound, y: y))
             path.addLine(to: coordinates.point(x: xRange.upperBound, y: y))
             context.stroke(path, with: .color(.secondary.opacity(0.22)), style: StrokeStyle(lineWidth: 0.5, dash: [4, 4]))
+            let displayElevation = distanceUnit.displayHeight(meters: y)
             context.draw(
-                Text("\(Int(y))").font(.system(size: 9)).foregroundStyle(.secondary),
+                Text(index == 4 ? "\(Int(displayElevation)) \(distanceUnit.heightSymbol)" : "\(Int(displayElevation))")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.secondary),
                 at: coordinates.point(x: xRange.lowerBound, y: y),
                 anchor: .trailing
             )
@@ -865,9 +1025,11 @@ private struct LinkProfileTerrainCanvas: View {
         for index in 0...4 {
             let fraction = Double(index) / 4
             let x = xRange.upperBound * fraction
-            let label = (x / 1_000).formatted(.number.precision(.fractionLength(xRange.upperBound < 10_000 ? 1 : 0)))
+            let displayDistance = distanceUnit == .imperial ? x / 1_609.344 : x / 1_000
+            let unit = distanceUnit == .imperial ? "mi" : "km"
+            let label = displayDistance.formatted(.number.precision(.fractionLength(xRange.upperBound < 10_000 ? 1 : 0)))
             context.draw(
-                Text(index == 4 ? "\(label) km" : label).font(.system(size: 9)).foregroundStyle(.secondary),
+                Text(index == 4 ? "\(label) \(unit)" : label).font(.system(size: 9)).foregroundStyle(.secondary),
                 at: coordinates.point(x: x, y: yRange.lowerBound),
                 anchor: .top
             )
@@ -952,8 +1114,7 @@ private struct LinkProfileTerrainCanvas: View {
     }
 
     private var accessibilitySummary: String {
-        let distance = Measurement(value: analysis.result.distanceMeters, unit: UnitLength.meters)
-            .formatted(.measurement(width: .abbreviated, usage: .road))
+        let distance = distanceUnit.format(kilometers: analysis.result.distanceMeters / 1_000)
         let clearance = analysis.result.worstClearancePercent.formatted(.number.precision(.fractionLength(0)))
         return "Distance \(distance). Worst Fresnel clearance \(clearance) percent."
     }
