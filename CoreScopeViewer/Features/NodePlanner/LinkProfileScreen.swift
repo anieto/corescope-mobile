@@ -23,27 +23,25 @@ struct LinkProfileScreen: View {
         GeometryReader { geometry in
             Group {
                 if usesDuoWorkspace {
-                    HStack(spacing: 0) {
+                    DuoTwoPaneLayout {
                         LinkProfilePersistentMap(
                             model: model,
                             nodes: catalog.nodes,
                             activeEndpoint: $endpointPicker
                         )
-                        .frame(width: geometry.size.width / 2)
+                        .safeAreaPadding(.trailing)
                         .clipped()
-
+                    } secondary: {
                         LinkProfileEditor(
                             model: model,
                             chooseOnMap: { endpointPicker = $0 },
                             trailingPadding: 112,
                             usesCompactHeader: true
                         )
-                        .frame(width: geometry.size.width / 2)
                         .background(Color(uiColor: .systemGroupedBackground))
                         .clipped()
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                    .ignoresSafeArea(.container, edges: [.bottom, .trailing])
+                    .ignoresSafeArea(.container, edges: .bottom)
                 } else if geometry.size.width >= 900 {
                     HStack(spacing: 0) {
                         LinkProfilePersistentMap(
