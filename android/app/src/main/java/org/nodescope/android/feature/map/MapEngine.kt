@@ -104,7 +104,15 @@ internal interface MapOverlays {
     fun setSamplePacket(point: Coordinate?)
     /** Labelled place pins (Link Profile endpoints), drawn above everything and never tappable as nodes. */
     fun setPins(pins: List<MapPin>) {}
+    /** A planned link (Link Profile), each stretch in its own colour and dashed where [PathStretch.dashed]. */
+    fun setLinkPath(stretches: List<PathStretch>) {}
 }
+
+/** One stretch of a planned link; [color] is ARGB. */
+internal data class PathStretch(val points: List<Coordinate>, val color: Int, val dashed: Boolean)
+
+/** ARGB as the "#RRGGBB" string MapLibre expressions take. */
+internal fun Int.hexColor(): String = String.format("#%06X", this and 0xFFFFFF)
 
 /** A dropped pin, styled apart from node markers so a chosen place never reads as a node. */
 internal data class MapPin(val coordinate: Coordinate, val kind: Kind, val name: String) {

@@ -143,6 +143,34 @@ which cut off south San Antonio. It now combines each region's full single-regio
 fetches and observer pages race for a shared 20-request budget, so the count is
 interleaving-dependent.
 
+2026-10-27 — Link Profile path coloured by clearance (both platforms).
+After Analyze, the map's A–B line and the chart's line of sight are split into stretches by
+Fresnel clearance, using the result card's bands: green clear (80% and up), orange marginal
+(60–80%), red obstructed (below 60%, which includes blocked). Obstructed stretches are also
+dashed, so they read without colour. Each gap between samples takes the worse of its two ends,
+and the endpoint samples carry no clearance, as in the engine (`clearanceStretches`; Android by
+distance, iOS by sample index so the map follows the sampled coordinates). The line is blue
+until analyzed and returns to blue when an edit clears the result. Map lines get a casing so
+they read on every basemap and between dashes (MapLibre: separate solid and dashed layers,
+since a dash pattern cannot vary per feature; Google: a polyline pair per stretch). A legend
+sits on the map while a result is shown, and the chart legend drops "Line of sight" for the
+same three entries. Validation: JVM suite 370 tests, zero failures, one skipped; iOS app and
+tests build. Not yet checked on a device.
+Follow-up after the first device check: the whole analyzed path is now dashed (shorter dashes),
+with colour alone giving clearance; the unanalyzed line stays solid blue. The chart's line of
+sight keeps one dash phase across colour changes. Start Over (both platforms) clears A, B and
+the result, keeps heights and radio settings, and returns to choosing Point A. Once both
+endpoints are set and none is being chosen, the map fits the whole path: Android fits the bounds
+inside insets clear of the legend and pins, and remembers the fitted pair so a rotation does not
+re-fit; iOS pads the path's bounds (20% each side, 45% above for the prompt, legend and pins)
+and relies on Map keeping its camera inside the safe area. A first iOS version also subtracted
+the safe-area insets from the map's size, but that size already excludes them, so the visible
+height went negative and the fit zoomed out to the whole region. The iOS dashes were then
+slimmed, then the casing was dropped on iOS (it filled the gaps with white and looked heavy)
+and both platforms moved to a shorter dash period at the same weight: iOS 3.5 pt line with
+3.5/2.5 dashes, MapLibre 0.9/0.65 line widths, Google 3.5/2.5 dp. iOS then got back a faint outline
+(5 pt, white at 55%) dashed in step with the line, so it edges the dashes without filling gaps.
+
 2026-10-20 — 0.9.0 Android review: account first visit, selection cache and UI consistency.
 
 Fixes: the CoreScope account screen called `/api/auth/me` without a saved session and showed

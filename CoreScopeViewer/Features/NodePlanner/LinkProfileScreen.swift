@@ -293,7 +293,21 @@ private struct LinkProfilePersistentMap: View {
                 if let pointB = model.coordinateB {
                     Marker("Point B", coordinate: pointB).tint(.orange)
                 }
-                if let pointA = model.coordinateA, let pointB = model.coordinateB {
+                if let result = model.result {
+                    // Dashed throughout and coloured by clearance along the sampled path, so a
+                    // result never reads as the solid unanalyzed line. The faint outline is dashed
+                    // in step with the line, so it edges each dash without filling the gaps.
+                    let samples = result.terrain.samples
+                    ForEach(Array(result.clearanceStretches.enumerated()), id: \.offset) { _, stretch in
+                        let coordinates = samples[stretch.startIndex...stretch.endIndex].map {
+                            CLLocationCoordinate2D(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude)
+                        }
+                        MapPolyline(coordinates: coordinates)
+                            .stroke(.white.opacity(0.55), style: StrokeStyle(lineWidth: 5, dash: [3.5, 2.5]))
+                        MapPolyline(coordinates: coordinates)
+                            .stroke(stretch.clearance.color, style: StrokeStyle(lineWidth: 3.5, dash: [3.5, 2.5]))
+                    }
+                } else if let pointA = model.coordinateA, let pointB = model.coordinateB {
                     MapPolyline(coordinates: [pointA, pointB])
                         .stroke(NodeScopeStyle.signal, lineWidth: 3)
                 }
@@ -319,11 +333,24 @@ private struct LinkProfilePersistentMap: View {
                 }
             )
             .overlay(alignment: .topLeading) {
-                Label(promptTitle, systemImage: activeEndpoint == nil ? "checkmark.circle" : "mappin.and.ellipse")
-                    .font(.headline)
-                    .padding(.horizontal, 14)
-                    .frame(minHeight: 44)
-                    .background(.regularMaterial, in: Capsule())
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(promptTitle, systemImage: activeEndpoint == nil ? "checkmark.circle" : "mappin.and.ellipse")
+                        .font(.headline)
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 44)
+                        .background(.regularMaterial, in: Capsule())
+                    if model.result != nil, activeEndpoint == nil {
+                        HStack(spacing: 10) {
+                            ForEach(NodePlannerPathClearance.allCases, id: \.self) { clearance in
+                                LinkProfileClearanceLegend(clearance: clearance)
+                            }
+                        }
+                        .font(.caption)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(.regularMaterial, in: Capsule())
+                    }
+                }
                     .padding()
                     .padding(.leading, promptLeadingClearance)
                     .padding(.top, promptTopClearance)
@@ -350,6 +377,11 @@ private struct LinkProfilePersistentMap: View {
         }
         .accessibilityLabel("Map for selecting Point A and Point B")
         .onChange(of: activeEndpoint) { _, _ in tentativeCoordinate = nil }
+        // Once both endpoints are chosen, show the whole path.
+        .onChange(of: fittedEndpoints) { _, endpoints in
+            guard endpoints != nil else { return }
+            fitEndpoints()
+        }
         // Region centers can arrive after the screen opens; frame once, and never over endpoints.
         .task(id: "\(regionFilter.selectedRegion ?? "all")|\(regionFilter.iataCoords.count)|\(regionFilter.options.count)") {
             guard !hasFramedRegion, model.coordinateA == nil, model.coordinateB == nil,
@@ -359,6 +391,32 @@ private struct LinkProfilePersistentMap: View {
             position = .region(region)
             hasFramedRegion = true
         }
+    }
+
+    /// Both endpoints while no endpoint is being chosen; a change of this pair re-fits the map.
+    private var fittedEndpoints: [Double]? {
+        guard activeEndpoint == nil, let pointA = model.coordinateA, let pointB = model.coordinateB else { return nil }
+        return [pointA.latitude, pointA.longitude, pointB.latitude, pointB.longitude]
+    }
+
+    /// Frames A and B with room around them, more above for the prompt, legend and pins. The map
+    /// already keeps its camera inside the safe area, so the compact results panel needs nothing extra.
+    private func fitEndpoints() {
+        guard let pointA = model.coordinateA, let pointB = model.coordinateB else { return }
+        let a = MKMapPoint(pointA)
+        let b = MKMapPoint(pointB)
+        // No tighter than about 400 m across, so two close points do not zoom to street level.
+        let minimum = 400 * MKMapPointsPerMeterAtLatitude((pointA.latitude + pointB.latitude) / 2)
+        let width = max(abs(a.x - b.x), minimum)
+        let height = max(abs(a.y - b.y), minimum)
+        let rect = MKMapRect(
+            x: min(a.x, b.x) - (width - abs(a.x - b.x)) / 2 - width * 0.2,
+            y: min(a.y, b.y) - (height - abs(a.y - b.y)) / 2 - height * 0.45,
+            width: width * 1.4,
+            height: height * 1.65
+        )
+        hasFramedRegion = true
+        withAnimation(.easeInOut) { position = .rect(rect) }
     }
 
     private var nodesWithCoordinates: [MeshNode] {
@@ -587,6 +645,12 @@ private final class LinkProfileModel {
         errorMessage = nil
     }
 
+    /// Clears both endpoints and the result; heights and radio settings are kept.
+    func startOver() {
+        clear(.pointA)
+        clear(.pointB)
+    }
+
     func swapEndpoints() {
         (latitudeA, latitudeB) = (latitudeB, latitudeA)
         (longitudeA, longitudeB) = (longitudeB, longitudeA)
@@ -706,13 +770,25 @@ private struct LinkProfileEndpointLayout: View {
         VStack(spacing: 12) {
             endpointCards
 
-            if model.coordinateA != nil && model.coordinateB != nil {
-                Button {
-                    model.swapEndpoints()
-                } label: {
-                    Label("Swap A and B", systemImage: "arrow.up.arrow.down")
+            HStack(spacing: 12) {
+                if model.coordinateA != nil && model.coordinateB != nil {
+                    Button {
+                        model.swapEndpoints()
+                    } label: {
+                        Label("Swap A and B", systemImage: "arrow.up.arrow.down")
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.bordered)
+                if model.coordinateA != nil || model.coordinateB != nil {
+                    Button {
+                        model.startOver()
+                        chooseOnMap(.pointA)
+                    } label: {
+                        Label("Start Over", systemImage: "arrow.counterclockwise")
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(model.isAnalyzing)
+                }
             }
         }
     }
@@ -1266,9 +1342,14 @@ private struct LinkProfileTerrainCanvas: View {
 
             HStack(spacing: 16) {
                 LinkProfileChartLegend(color: .brown, title: "Terrain")
-                LinkProfileChartLegend(color: .primary, title: "Line of sight")
                 LinkProfileChartLegend(color: .teal.opacity(0.55), title: "Fresnel zone")
-                LinkProfileChartLegend(color: .red.opacity(0.7), title: "Obstructed")
+            }
+            .font(.caption)
+            // The line of sight's three clearances, matching the map.
+            HStack(spacing: 16) {
+                ForEach(NodePlannerPathClearance.allCases, id: \.self) { clearance in
+                    LinkProfileClearanceLegend(clearance: clearance)
+                }
             }
             .font(.caption)
         }
@@ -1376,8 +1457,22 @@ private struct LinkProfileTerrainCanvas: View {
         }
     }
 
+    /// Dashed and coloured by clearance, as on the map; one dash phase runs across colour changes.
     private func drawLineOfSight(context: GraphicsContext, coordinates: Coordinates) {
-        strokeLine(value: \.lineOfSightMeters, color: .primary, lineWidth: 2, context: context, coordinates: coordinates)
+        let samples = samples
+        guard let first = samples.first else { return }
+        let origin = coordinates.point(x: first.distanceMeters, y: first.lineOfSightMeters)
+        for stretch in analysis.clearanceStretches where stretch.endIndex < samples.count {
+            let start = coordinates.point(x: samples[stretch.startIndex].distanceMeters, y: samples[stretch.startIndex].lineOfSightMeters)
+            var path = Path()
+            path.move(to: start)
+            path.addLine(to: coordinates.point(x: samples[stretch.endIndex].distanceMeters, y: samples[stretch.endIndex].lineOfSightMeters))
+            context.stroke(
+                path,
+                with: .color(stretch.clearance.color),
+                style: StrokeStyle(lineWidth: 2.5, dash: [5, 3], dashPhase: hypot(start.x - origin.x, start.y - origin.y))
+            )
+        }
     }
 
     private func drawEndpoints(context: GraphicsContext, coordinates: Coordinates) {
@@ -1432,6 +1527,43 @@ private struct LinkProfileTerrainCanvas: View {
         let distance = distanceUnit.format(kilometers: analysis.result.distanceMeters / 1_000)
         let clearance = analysis.result.worstClearancePercent.formatted(.number.precision(.fractionLength(0)))
         return "Distance \(distance). Worst Fresnel clearance \(clearance) percent."
+    }
+}
+
+extension NodePlannerPathClearance {
+    var color: Color {
+        switch self {
+        case .clear: .green
+        case .marginal: .orange
+        case .obstructed: .red
+        }
+    }
+
+    var title: LocalizedStringResource {
+        switch self {
+        case .clear: "Clear"
+        case .marginal: "Marginal"
+        case .obstructed: "Obstructed"
+        }
+    }
+}
+
+/// A short dashed line in the clearance's colour, then its name.
+private struct LinkProfileClearanceLegend: View {
+    let clearance: NodePlannerPathClearance
+
+    var body: some View {
+        Label {
+            Text(clearance.title)
+        } icon: {
+            Canvas { context, size in
+                var path = Path()
+                path.move(to: CGPoint(x: 0, y: size.height / 2))
+                path.addLine(to: CGPoint(x: size.width, y: size.height / 2))
+                context.stroke(path, with: .color(clearance.color), style: StrokeStyle(lineWidth: size.height, dash: [4, 2]))
+            }
+            .frame(width: 18, height: 4)
+        }
     }
 }
 

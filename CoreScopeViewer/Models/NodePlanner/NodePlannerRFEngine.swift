@@ -13,6 +13,23 @@ enum NodePlannerClearanceStatus: String, Codable, Sendable {
     case blocked
 }
 
+/// One sample's clearance of the first Fresnel zone, in `analyze`'s bands. Ordered best to worst,
+/// so the worse of two is their maximum.
+enum NodePlannerPathClearance: Int, Comparable, CaseIterable, Sendable {
+    case clear
+    case marginal
+    case obstructed
+
+    static func < (lhs: Self, rhs: Self) -> Bool { lhs.rawValue < rhs.rawValue }
+}
+
+/// A run of the path, from one profile sample to another, with one clearance throughout.
+struct NodePlannerClearanceStretch: Equatable, Sendable {
+    let startIndex: Int
+    let endIndex: Int
+    let clearance: NodePlannerPathClearance
+}
+
 struct NodePlannerElevationPoint: Codable, Equatable, Sendable {
     let distanceMeters: Double
     let elevationMeters: Double
@@ -150,62 +167,34 @@ enum NodePlannerRFEngine {
     static func analyze(_ request: NodePlannerPathRequest) throws -> NodePlannerPathResult {
         try validate(request)
 
-        let first = request.profile[0]
-        let last = request.profile[request.profile.count - 1]
-        let distanceOrigin = first.distanceMeters
-        let lengthMeters = last.distanceMeters - distanceOrigin
-        let antennaStartHeight = first.elevationMeters + request.heightAMeters
-        let antennaEndHeight = last.elevationMeters + request.heightBMeters
+        let lengthMeters = request.profile[request.profile.count - 1].distanceMeters - request.profile[0].distanceMeters
         let freeSpacePathLoss = pathLoss(distanceMeters: lengthMeters, frequencyMHz: request.frequencyMHz)
 
         var worstClearancePercent = Double.infinity
         var peakDiffractionLoss = 0.0
         var obstructions: [NodePlannerObstruction] = []
 
-        for point in request.profile {
-            let distanceFromStart = point.distanceMeters - distanceOrigin
-            let distanceToEnd = lengthMeters - distanceFromStart
+        for sample in sampleClearances(request).compactMap({ $0 }) {
+            worstClearancePercent = min(worstClearancePercent, sample.clearancePercent)
 
-            guard distanceFromStart > endpointSkipMarginMeters,
-                  distanceToEnd > endpointSkipMarginMeters else { continue }
-
-            let fraction = distanceFromStart / lengthMeters
-            let lineOfSightHeight = antennaStartHeight
-                + fraction * (antennaEndHeight - antennaStartHeight)
-            let effectiveTerrainHeight = point.elevationMeters + earthBulge(
-                distanceToAMeters: distanceFromStart,
-                distanceToBMeters: distanceToEnd,
-                refractionK: request.refractionK
-            )
-            let radius = fresnelRadius(
-                frequencyMHz: request.frequencyMHz,
-                distanceToAMeters: distanceFromStart,
-                distanceToBMeters: distanceToEnd
-            )
-            let clearance = lineOfSightHeight - effectiveTerrainHeight
-            let clearancePercent = radius > 0 ? clearance / radius * 100 : (clearance > 0 ? 100 : 0)
-
-            worstClearancePercent = min(worstClearancePercent, clearancePercent)
-
-            let obstructionHeight = effectiveTerrainHeight - lineOfSightHeight
-            if obstructionHeight > -radius {
+            if sample.obstructionHeight > -sample.radius {
                 peakDiffractionLoss = max(
                     peakDiffractionLoss,
                     diffractionLoss(
-                        obstructionHeightMeters: obstructionHeight,
-                        distanceToAMeters: distanceFromStart,
-                        distanceToBMeters: distanceToEnd,
+                        obstructionHeightMeters: sample.obstructionHeight,
+                        distanceToAMeters: sample.distanceFromStart,
+                        distanceToBMeters: sample.distanceToEnd,
                         frequencyMHz: request.frequencyMHz
                     )
                 )
             }
 
-            if clearancePercent < marginalClearanceThreshold {
+            if sample.clearancePercent < marginalClearanceThreshold {
                 obstructions.append(
                     NodePlannerObstruction(
-                        distanceFromAMeters: point.distanceMeters,
-                        obstructionHeightMeters: obstructionHeight,
-                        fresnelClearancePercent: clearancePercent
+                        distanceFromAMeters: sample.point.distanceMeters,
+                        obstructionHeightMeters: sample.obstructionHeight,
+                        fresnelClearancePercent: sample.clearancePercent
                     )
                 )
             }
@@ -239,6 +228,88 @@ enum NodePlannerRFEngine {
             receivePowerDBm: receivePower,
             linkMarginDB: linkMargin
         )
+    }
+
+    static func clearance(forPercent percent: Double) -> NodePlannerPathClearance {
+        if percent >= clearClearanceThreshold {
+            .clear
+        } else if percent >= marginalClearanceThreshold {
+            .marginal
+        } else {
+            .obstructed
+        }
+    }
+
+    /// The path split into stretches of one clearance, for colouring the map line and the chart's
+    /// line of sight. Each gap between samples takes the worse of its two ends; the endpoints carry
+    /// no clearance of their own, as in `analyze`.
+    static func clearanceStretches(_ request: NodePlannerPathRequest) -> [NodePlannerClearanceStretch] {
+        guard request.profile.count >= 2 else { return [] }
+        let bands = sampleClearances(request).map { $0.map { clearance(forPercent: $0.clearancePercent) } }
+        var stretches: [NodePlannerClearanceStretch] = []
+        for index in 0..<(request.profile.count - 1) {
+            let band = [bands[index], bands[index + 1]].compactMap { $0 }.max() ?? .clear
+            if let previous = stretches.last, previous.clearance == band {
+                stretches[stretches.count - 1] = NodePlannerClearanceStretch(
+                    startIndex: previous.startIndex,
+                    endIndex: index + 1,
+                    clearance: band
+                )
+            } else {
+                stretches.append(NodePlannerClearanceStretch(startIndex: index, endIndex: index + 1, clearance: band))
+            }
+        }
+        return stretches
+    }
+
+    private struct SampleClearance {
+        let point: NodePlannerElevationPoint
+        let distanceFromStart: Double
+        let distanceToEnd: Double
+        let obstructionHeight: Double
+        let radius: Double
+        let clearancePercent: Double
+    }
+
+    /// Each terrain sample against the line of sight; nil at the endpoints, which are not obstructions.
+    private static func sampleClearances(_ request: NodePlannerPathRequest) -> [SampleClearance?] {
+        let first = request.profile[0]
+        let last = request.profile[request.profile.count - 1]
+        let distanceOrigin = first.distanceMeters
+        let lengthMeters = last.distanceMeters - distanceOrigin
+        let antennaStartHeight = first.elevationMeters + request.heightAMeters
+        let antennaEndHeight = last.elevationMeters + request.heightBMeters
+
+        return request.profile.map { point in
+            let distanceFromStart = point.distanceMeters - distanceOrigin
+            let distanceToEnd = lengthMeters - distanceFromStart
+
+            guard distanceFromStart > endpointSkipMarginMeters,
+                  distanceToEnd > endpointSkipMarginMeters else { return nil }
+
+            let fraction = distanceFromStart / lengthMeters
+            let lineOfSightHeight = antennaStartHeight
+                + fraction * (antennaEndHeight - antennaStartHeight)
+            let effectiveTerrainHeight = point.elevationMeters + earthBulge(
+                distanceToAMeters: distanceFromStart,
+                distanceToBMeters: distanceToEnd,
+                refractionK: request.refractionK
+            )
+            let radius = fresnelRadius(
+                frequencyMHz: request.frequencyMHz,
+                distanceToAMeters: distanceFromStart,
+                distanceToBMeters: distanceToEnd
+            )
+            let clearance = lineOfSightHeight - effectiveTerrainHeight
+            return SampleClearance(
+                point: point,
+                distanceFromStart: distanceFromStart,
+                distanceToEnd: distanceToEnd,
+                obstructionHeight: effectiveTerrainHeight - lineOfSightHeight,
+                radius: radius,
+                clearancePercent: radius > 0 ? clearance / radius * 100 : (clearance > 0 ? 100 : 0)
+            )
+        }
     }
 
     private static func validate(_ request: NodePlannerPathRequest) throws {

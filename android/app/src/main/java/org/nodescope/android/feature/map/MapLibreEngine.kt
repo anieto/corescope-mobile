@@ -44,6 +44,7 @@ private const val ROUTE = "nodescope-route"
 private const val PACKET = "nodescope-packet"
 private const val USER_LOCATION = "nodescope-user-location"
 private const val PINS = "nodescope-pins"
+private const val LINK_PATH = "nodescope-link-path"
 private val emptyFeatures get() = FeatureCollection.fromFeatures(emptyList<Feature>())
 
 /** CARTO basemap styles, in the order of the layers menu (Standard, Light, Dark). */
@@ -285,6 +286,14 @@ private data class MapLibreOverlays(val style: Style) : MapOverlays {
     override fun setSamplePacket(point: Coordinate?) {
         source(PACKET)?.setGeoJson(if (point == null) emptyFeatures else FeatureCollection.fromFeatures(listOf(Feature.fromGeometry(point.point))))
     }
+    override fun setLinkPath(stretches: List<PathStretch>) {
+        source(LINK_PATH)?.setGeoJson(FeatureCollection.fromFeatures(stretches.filter { it.points.size > 1 }.map { stretch ->
+            Feature.fromGeometry(LineString.fromLngLats(stretch.points.map { it.point })).apply {
+                addStringProperty("color", stretch.color.hexColor())
+                addBooleanProperty("dashed", stretch.dashed)
+            }
+        }))
+    }
     override fun setPins(pins: List<MapPin>) {
         source(PINS)?.setGeoJson(FeatureCollection.fromFeatures(pins.map { pin ->
             Feature.fromGeometry(pin.coordinate.point).apply {
@@ -371,6 +380,15 @@ private fun addOverlays(style: Style, dark: Boolean) {
         .withFilter(all(eq(get("role"), literal("observer")), has("name"))).withProperties(visibility(Property.VISIBLE)))
     style.addSource(GeoJsonSource(ROUTE, emptyFeatures))
     style.addLayer(LineLayer("nodescope-route-line", ROUTE).withProperties(lineColor("#299EFF"), lineWidth(4f)))
+    // A planned link: a casing so it reads on any basemap (and shows between dashes), then the
+    // coloured stretches. Dash patterns cannot vary per feature, so dashed stretches get a layer.
+    style.addSource(GeoJsonSource(LINK_PATH, emptyFeatures))
+    style.addLayer(LineLayer("nodescope-link-casing", LINK_PATH).withProperties(
+        lineColor(if (dark) "#000000" else "#FFFFFF"), lineOpacity(0.75f), lineWidth(7f), lineCap(Property.LINE_CAP_ROUND)))
+    style.addLayer(LineLayer("nodescope-link-solid", LINK_PATH).withFilter(eq(get("dashed"), literal(false)))
+        .withProperties(lineColor(get("color")), lineWidth(4f), lineCap(Property.LINE_CAP_ROUND)))
+    style.addLayer(LineLayer("nodescope-link-dashed", LINK_PATH).withFilter(eq(get("dashed"), literal(true)))
+        .withProperties(lineColor(get("color")), lineWidth(4f), lineDasharray(arrayOf(0.9f, 0.65f))))
     style.addSource(GeoJsonSource(PACKET, emptyFeatures))
     style.addLayer(CircleLayer("nodescope-packet-dot", PACKET).withProperties(
         circleRadius(9f), circleColor("#00BCD4"), circleStrokeWidth(1f), circleStrokeColor("#C5E4FA")))

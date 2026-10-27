@@ -15,6 +15,10 @@ data class PathRequest(
     val frequencyMHz: Double, val refractionK: Double = 4.0 / 3.0, val linkBudget: LinkBudget? = null,
 )
 enum class ClearanceStatus { CLEAR, MARGINAL, PARTIAL_OBSTRUCTION, BLOCKED }
+/** Ordered best to worst, so the worse of two is their maximum. */
+enum class PathClearance { CLEAR, MARGINAL, OBSTRUCTED }
+/** A stretch of the path, in meters along it from A, with one clearance throughout. */
+data class ClearanceStretch(val startMeters: Double, val endMeters: Double, val clearance: PathClearance)
 data class Obstruction(val distanceFromAMeters: Double, val obstructionHeightMeters: Double, val fresnelClearancePercent: Double)
 data class PathResult(
     val distanceMeters: Double, val freeSpacePathLossDB: Double, val peakDiffractionLossDB: Double,
@@ -64,29 +68,14 @@ object LinkProfileEngine {
             require(listOf(it.transmitPowerDBm, it.gainADB, it.gainBDB, it.lossADB, it.lossBDB, it.receiverSensitivityDBm).all(Double::isFinite))
             require(it.lossADB >= 0 && it.lossBDB >= 0) { "System losses must be nonnegative" }
         }
-        val first = request.profile.first()
-        val last = request.profile.last()
-        val length = last.distanceMeters - first.distanceMeters
-        val startHeight = first.elevationMeters + request.heightAMeters
-        val endHeight = last.elevationMeters + request.heightBMeters
+        val length = request.profile.last().distanceMeters - request.profile.first().distanceMeters
         var worst = Double.POSITIVE_INFINITY
         var peak = 0.0
         val obstructions = mutableListOf<Obstruction>()
-        request.profile.forEach { point ->
-            val a = point.distanceMeters - first.distanceMeters
-            val b = length - a
-            // Endpoint samples do not represent an intervening obstruction.
-            if (a > 1 && b > 1) {
-                val sight = startHeight + a / length * (endHeight - startHeight)
-                val terrain = point.elevationMeters + earthBulge(a, b, request.refractionK)
-                val radius = fresnelRadius(request.frequencyMHz, a, b)
-                val clearance = sight - terrain
-                val percent = if (radius > 0) clearance / radius * 100 else if (clearance > 0) 100.0 else 0.0
-                worst = min(worst, percent)
-                val height = terrain - sight
-                if (height > -radius) peak = max(peak, diffractionLoss(height, a, b, request.frequencyMHz))
-                if (percent < 60) obstructions += Obstruction(point.distanceMeters, height, percent)
-            }
+        samples(request).filterNotNull().forEach { sample ->
+            worst = min(worst, sample.percent)
+            if (sample.height > -sample.radius) peak = max(peak, diffractionLoss(sample.height, sample.a, sample.b, request.frequencyMHz))
+            if (sample.percent < 60) obstructions += Obstruction(sample.point.distanceMeters, sample.height, sample.percent)
         }
         if (worst == Double.POSITIVE_INFINITY) worst = 100.0
         val freeSpace = pathLoss(length, request.frequencyMHz)
@@ -100,5 +89,55 @@ object LinkProfileEngine {
         }
         return PathResult(length, freeSpace, peak, total, worst, status, obstructions.toList(), request.frequencyMHz,
             request.refractionK, receive, receive?.let { it - requireNotNull(request.linkBudget).receiverSensitivityDBm })
+    }
+
+    /** [analyze]'s bands for one sample: 80% and up clear, 60–80% marginal, below 60% obstructed. */
+    fun clearance(percent: Double): PathClearance = when {
+        percent >= 80 -> PathClearance.CLEAR
+        percent >= 60 -> PathClearance.MARGINAL
+        else -> PathClearance.OBSTRUCTED
+    }
+
+    /**
+     * The path split into stretches of one clearance, for colouring the map line and the chart's
+     * line of sight. Each gap between samples takes the worse of its two ends; the endpoints carry
+     * no clearance of their own, as in [analyze].
+     */
+    fun clearanceStretches(request: PathRequest): List<ClearanceStretch> {
+        val profile = request.profile
+        if (profile.size < 2) return emptyList()
+        val bands = samples(request).map { sample -> sample?.let { clearance(it.percent) } }
+        val stretches = mutableListOf<ClearanceStretch>()
+        for (index in 0 until profile.lastIndex) {
+            val band = listOfNotNull(bands[index], bands[index + 1]).maxOrNull() ?: PathClearance.CLEAR
+            val end = profile[index + 1].distanceMeters
+            val previous = stretches.lastOrNull()
+            if (previous?.clearance == band) stretches[stretches.lastIndex] = previous.copy(endMeters = end)
+            else stretches += ClearanceStretch(profile[index].distanceMeters, end, band)
+        }
+        return stretches
+    }
+
+    private class Sample(val point: ElevationPoint, val a: Double, val b: Double, val height: Double, val radius: Double, val percent: Double)
+
+    /** Each terrain sample against the line of sight; null at the endpoints, which are not obstructions. */
+    private fun samples(request: PathRequest): List<Sample?> {
+        val first = request.profile.first()
+        val last = request.profile.last()
+        val length = last.distanceMeters - first.distanceMeters
+        val startHeight = first.elevationMeters + request.heightAMeters
+        val endHeight = last.elevationMeters + request.heightBMeters
+        return request.profile.map { point ->
+            val a = point.distanceMeters - first.distanceMeters
+            val b = length - a
+            if (a > 1 && b > 1) {
+                val sight = startHeight + a / length * (endHeight - startHeight)
+                val terrain = point.elevationMeters + earthBulge(a, b, request.refractionK)
+                val radius = fresnelRadius(request.frequencyMHz, a, b)
+                val clearance = sight - terrain
+                val percent = if (radius > 0) clearance / radius * 100 else if (clearance > 0) 100.0 else 0.0
+                Sample(point, a, b, terrain - sight, radius, percent)
+            } else null
+        }
     }
 }

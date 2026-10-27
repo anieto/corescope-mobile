@@ -254,6 +254,7 @@ internal class GoogleOverlays(private val context: Context, private val map: Goo
     private var items: List<NodeItem> = emptyList()
     private var userMarker: Marker? = null
     private var sampleRoute: Polyline? = null
+    private var linkPath: List<Polyline> = emptyList()
     private var samplePacket: Marker? = null
     private var pins: List<Marker> = emptyList()
 
@@ -329,6 +330,19 @@ internal class GoogleOverlays(private val context: Context, private val map: Goo
         sampleRoute?.remove()
         sampleRoute = if (route.size > 1) map.addPolyline(PolylineOptions().addAll(route.map { LatLng(it.latitude, it.longitude) })
             .width(4 * screenDensity).color(0xFF299EFF.toInt())) else null
+    }
+
+    /** A white casing under each stretch, as on CARTO, so the line reads on every map type and between dashes. */
+    override fun setLinkPath(stretches: List<PathStretch>) {
+        linkPath.forEach { it.remove() }
+        linkPath = stretches.filter { it.points.size > 1 }.flatMap { stretch ->
+            val points = stretch.points.map { LatLng(it.latitude, it.longitude) }
+            val casing = map.addPolyline(PolylineOptions().addAll(points).width(7 * screenDensity)
+                .color(0xBFFFFFFF.toInt()).startCap(RoundCap()).endCap(RoundCap()).zIndex(1f))
+            val line = map.addPolyline(PolylineOptions().addAll(points).width(4 * screenDensity).color(stretch.color).zIndex(2f)
+                .apply { if (stretch.dashed) pattern(listOf(Dash(3.5f * screenDensity), Gap(2.5f * screenDensity))) })
+            listOf(casing, line)
+        }
     }
 
     override fun setSamplePacket(point: Coordinate?) {

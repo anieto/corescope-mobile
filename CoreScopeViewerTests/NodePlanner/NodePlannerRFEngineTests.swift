@@ -104,6 +104,31 @@ struct NodePlannerRFEngineTests {
         }
     }
 
+    @Test func splitsPathIntoClearanceStretches() {
+        let ridge = NodePlannerPathRequest(
+            profile: [0, 2_500, 5_000, 7_500, 10_000].map {
+                NodePlannerElevationPoint(distanceMeters: $0, elevationMeters: $0 == 5_000 ? 60 : 0)
+            },
+            heightAMeters: 50,
+            heightBMeters: 50,
+            frequencyMHz: 915,
+            refractionK: 4.0 / 3.0,
+            linkBudget: nil
+        )
+        // The ridge darkens both gaps beside it; the ends next to A and B stay clear.
+        #expect(NodePlannerRFEngine.clearanceStretches(ridge) == [
+            NodePlannerClearanceStretch(startIndex: 0, endIndex: 1, clearance: .clear),
+            NodePlannerClearanceStretch(startIndex: 1, endIndex: 3, clearance: .obstructed),
+            NodePlannerClearanceStretch(startIndex: 3, endIndex: 4, clearance: .clear)
+        ])
+        #expect(NodePlannerRFEngine.clearanceStretches(request(midpointElevation: 0, antennaHeight: 20)) == [
+            NodePlannerClearanceStretch(startIndex: 0, endIndex: 2, clearance: .marginal)
+        ])
+        #expect(NodePlannerRFEngine.clearance(forPercent: 80) == .clear)
+        #expect(NodePlannerRFEngine.clearance(forPercent: 60) == .marginal)
+        #expect(NodePlannerRFEngine.clearance(forPercent: 59.9) == .obstructed)
+    }
+
     private func request(
         midpointElevation: Double,
         antennaHeight: Double,

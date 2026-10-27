@@ -41,6 +41,19 @@ class LinkProfileEngineTest {
         assertNull(result.linkMarginDB)
     }
 
+    @Test fun splitsPathIntoClearanceStretches() {
+        val ridge = request(height = 50.0).copy(profile = listOf(0.0, 2_500.0, 5_000.0, 7_500.0, 10_000.0)
+            .map { ElevationPoint(it, if (it == 5_000.0) 60.0 else 0.0) })
+        // The ridge darkens both gaps beside it; the ends next to A and B stay clear.
+        assertEquals(listOf(ClearanceStretch(0.0, 2_500.0, PathClearance.CLEAR), ClearanceStretch(2_500.0, 7_500.0, PathClearance.OBSTRUCTED),
+            ClearanceStretch(7_500.0, 10_000.0, PathClearance.CLEAR)), LinkProfileEngine.clearanceStretches(ridge))
+        assertEquals(listOf(ClearanceStretch(0.0, 10_000.0, PathClearance.MARGINAL)), LinkProfileEngine.clearanceStretches(request(height = 20.0)))
+        assertEquals(listOf(ClearanceStretch(0.0, 10_000.0, PathClearance.CLEAR)), LinkProfileEngine.clearanceStretches(request()))
+        assertEquals(PathClearance.MARGINAL, LinkProfileEngine.clearance(60.0))
+        assertEquals(PathClearance.OBSTRUCTED, LinkProfileEngine.clearance(59.9))
+        assertEquals(PathClearance.CLEAR, LinkProfileEngine.clearance(80.0))
+    }
+
     @Test fun rejectsInvalidInputs() {
         val valid = request()
         listOf(

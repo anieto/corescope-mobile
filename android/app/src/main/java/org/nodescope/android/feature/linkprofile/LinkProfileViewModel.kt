@@ -76,6 +76,11 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         if (key == "Latitude A" || key == "Longitude A") scheduleElevation("A")
         if (key == "Latitude B" || key == "Longitude B") scheduleElevation("B")
     }
+    /** Start over: both endpoints and the result are cleared; heights and radio settings are kept. */
+    fun startOver() = listOf("A", "B").forEach { endpoint ->
+        edit("Latitude $endpoint", "")
+        edit("Longitude $endpoint", "")
+    }
     fun preset(name: String) {
         job?.cancel()
         val eu = name == "EU/UK Narrow"

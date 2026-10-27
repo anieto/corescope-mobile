@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Contrast
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -27,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.stateDescription
@@ -70,6 +72,7 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
     val currentSnapshot by rememberUpdatedState(snapshot)
     val currentRegion by rememberUpdatedState(selectedRegion)
     val currentViewport by rememberUpdatedState(sourceViewport)
+    val currentAnalysis by rememberUpdatedState(state.result)
     // One map instance moves between layouts on a live posture change instead of being rebuilt.
     val map = remember {
         movableContentOf { modifier: Modifier ->
@@ -79,7 +82,7 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
                     model.edit("Longitude $endpoint", point.longitude.toString())
                     selecting = if (endpoint == "A" && coordinate("B") == null) "B" else null
                 }
-            }, modifier, mapState, currentSnapshot, currentRegion, currentViewport)
+            }, modifier, mapState, currentSnapshot, currentRegion, currentViewport, currentAnalysis)
         }
     }
     val fold = rememberFoldSplit()
@@ -116,6 +119,18 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
                                 TextButton(onClick = { model.edit("Latitude $endpoint", ""); model.edit("Longitude $endpoint", "") }) { Text("Clear") }
                             }
                         }
+                    }
+                }
+                if (listOf("Latitude A", "Longitude A", "Latitude B", "Longitude B").any { state.fields.getValue(it).isNotBlank() }) {
+                    OutlinedButton(onClick = {
+                        model.startOver()
+                        mapState.tentative.value = null
+                        mapState.fittedPath.value = null
+                        if (BuildConfig.MAPS_CONFIGURED) selecting = "A"
+                    }, Modifier.fillMaxWidth()) {
+                        Icon(Icons.Filled.Refresh, contentDescription = null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Start Over")
                     }
                 }
                 Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
@@ -262,7 +277,6 @@ private class ChartSample(val distanceMeters: Double, val terrainMeters: Double,
 
 private val TerrainBrown = Color(0xFFA2845E)
 private val FresnelTeal = Color(0xFF30B0C7)
-private val ObstructedRed = Color(0xFFFF3B30)
 private val PointABlue = Color(0xFF007AFF)
 private val PointBOrange = Color(0xFFFF9500)
 
@@ -271,6 +285,7 @@ private fun TerrainChart(analysis: LinkAnalysis, distanceUnit: DistanceUnit) {
     val points = analysis.terrain.points
     val request = analysis.request
     val length = analysis.result.distanceMeters
+    val stretches = remember(analysis) { LinkProfileEngine.clearanceStretches(request) }
     val samples = remember(analysis) {
         val start = points.first().elevationMeters + request.heightAMeters
         val end = points.last().elevationMeters + request.heightBMeters
@@ -288,7 +303,7 @@ private fun TerrainChart(analysis: LinkAnalysis, distanceUnit: DistanceUnit) {
     val low = minimum - span * 0.12
     val high = maximum + span * 0.2
     val xMax = maxOf(1.0, samples.last().distanceMeters)
-    val ink = MaterialTheme.colorScheme.onSurface
+    val dark = MaterialTheme.colorScheme.background.luminance() < 0.3f
     val secondary = MaterialTheme.colorScheme.onSurfaceVariant
     val measurer = rememberTextMeasurer()
     val axisStyle = TextStyle(fontSize = 9.sp, color = secondary)
@@ -345,8 +360,20 @@ private fun TerrainChart(analysis: LinkAnalysis, distanceUnit: DistanceUnit) {
             }, TerrainBrown.copy(alpha = 0.35f))
             drawPath(terrain, TerrainBrown, style = Stroke(1.dp.toPx()))
             // Terrain reaching into the 60% zone.
-            samples.filter { it.isObstructed }.forEach { drawCircle(ObstructedRed, 2.5.dp.toPx(), point(it.distanceMeters, it.terrainMeters)) }
-            drawPath(line { it.lineOfSightMeters }, ink, style = Stroke(2.dp.toPx()))
+            val obstructedRed = Color(PathClearance.OBSTRUCTED.argb(dark))
+            samples.filter { it.isObstructed }.forEach { drawCircle(obstructedRed, 2.5.dp.toPx(), point(it.distanceMeters, it.terrainMeters)) }
+            // Line of sight dashed and coloured by clearance, as on the map.
+            val sightStart = samples.first().lineOfSightMeters
+            val sightEnd = samples.last().lineOfSightMeters
+            fun sight(meters: Double) = sightStart + (meters / xMax).coerceIn(0.0, 1.0) * (sightEnd - sightStart)
+            // One dash pattern along the whole line, so the dashes run on across colour changes.
+            val sightDash = floatArrayOf(5.dp.toPx(), 3.dp.toPx())
+            stretches.forEach { stretch ->
+                val phase = (point(stretch.startMeters, 0.0).x - point(0.0, 0.0).x) % (sightDash[0] + sightDash[1])
+                drawLine(Color(stretch.clearance.argb(dark)), point(stretch.startMeters, sight(stretch.startMeters)),
+                    point(stretch.endMeters, sight(stretch.endMeters)), 2.5.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(sightDash, phase))
+            }
             // Antenna masts from the ground to the line of sight, lettered as on the map.
             listOf(Triple("A", samples.first(), PointABlue), Triple("B", samples.last(), PointBOrange)).forEach { (name, sample, color) ->
                 val ground = point(sample.distanceMeters, sample.terrainMeters)
@@ -359,9 +386,9 @@ private fun TerrainChart(analysis: LinkAnalysis, distanceUnit: DistanceUnit) {
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             ChartLegend(TerrainBrown, "Terrain")
-            ChartLegend(ink, "Line of sight")
             ChartLegend(FresnelTeal.copy(alpha = 0.55f), "Fresnel zone")
-            ChartLegend(ObstructedRed.copy(alpha = 0.7f), "Obstructed")
+            // The line of sight's three clearances, matching the map.
+            PathClearance.entries.forEach { ClearanceSwatch(Color(it.argb(dark)), it.title) }
         }
     }
 }

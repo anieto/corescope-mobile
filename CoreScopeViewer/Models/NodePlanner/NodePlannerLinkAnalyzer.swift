@@ -20,6 +20,30 @@ struct NodePlannerLinkAnalysis: Equatable, Sendable {
     let engineVersion: Int
 }
 
+extension NodePlannerLinkAnalysis {
+    /// The analyzed path in stretches of one clearance, indexed into `terrain.samples`.
+    var clearanceStretches: [NodePlannerClearanceStretch] {
+        let samples = terrain.samples
+        var distance = 0.0
+        let profile = samples.indices.map { index in
+            if index > 0 {
+                distance += NodePlannerLinkAnalyzer.distance(from: samples[index - 1].coordinate, to: samples[index].coordinate)
+            }
+            return NodePlannerElevationPoint(distanceMeters: distance, elevationMeters: samples[index].elevationMeters)
+        }
+        return NodePlannerRFEngine.clearanceStretches(
+            NodePlannerPathRequest(
+                profile: profile,
+                heightAMeters: request.heightAMeters,
+                heightBMeters: request.heightBMeters,
+                frequencyMHz: request.frequencyMHz,
+                refractionK: request.refractionK,
+                linkBudget: request.linkBudget
+            )
+        )
+    }
+}
+
 enum NodePlannerLinkAnalysisError: Error, Equatable, Sendable {
     case identicalEndpoints
     case invalidSampleCount
