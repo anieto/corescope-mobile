@@ -1,5 +1,7 @@
 package org.nodescope.android.app
 
+import androidx.lifecycle.createSavedStateHandle
+
 import androidx.compose.ui.draw.clip
 import org.nodescope.android.core.design.meshPageBackground
 import org.nodescope.android.core.design.paneCanvasColor
@@ -88,7 +90,7 @@ private inline fun <reified T : Any> NavGraphBuilder.screen(noinline content: @C
     composable<T> { entry ->
         val scope = this
         val background = when (T::class) {
-            MapRoute::class, MapLabRoute::class, NodeAnalyticsRoute::class -> Modifier.background(MaterialTheme.colorScheme.background)
+            MapRoute::class, MapLabRoute::class, NodeAnalyticsRoute::class, LinkProfileRoute::class -> Modifier.background(MaterialTheme.colorScheme.background)
             SettingsRoute::class, AboutRoute::class -> Modifier.meshPageBackground(subdued = false)
             else -> Modifier.meshPageBackground()
         }
@@ -103,7 +105,7 @@ private inline fun <reified T : Any> NavGraphBuilder.screen(noinline content: @C
  * screen changes get a short fade instead of Navigation's 700 ms default.
  */
 private fun NavBackStackEntry.isTab() = Destination.entries.any { destination.hasRoute(it.route::class) }
-private fun NavBackStackEntry.isMap() = destination.hasRoute(MapRoute::class)
+private fun NavBackStackEntry.isMap() = destination.hasRoute(MapRoute::class) || destination.hasRoute(LinkProfileRoute::class)
 private fun instant(from: NavBackStackEntry, to: NavBackStackEntry) = (from.isTab() && to.isTab()) || from.isMap() || to.isMap()
 private fun screenEnter(from: NavBackStackEntry, to: NavBackStackEntry): EnterTransition =
     if (instant(from, to)) EnterTransition.None else fadeIn(tween(180))
@@ -119,6 +121,8 @@ enum class Destination(val title: Int, val icon: ImageVector, val route: TopLeve
 }
 @Serializable data class NodeRoute(val publicKey: String)
 @Serializable data class NodeAnalyticsRoute(val publicKey: String)
+@Serializable data object NodePlannerRoute
+@Serializable data object LinkProfileRoute
 @Serializable data object SourceRoute
 @Serializable data object PacketRoute
 @Serializable data class PacketDetailRoute(val groupId: String)
@@ -371,6 +375,8 @@ internal fun AppShell(
                             destination?.hasRoute<MyNodesRoute>() == true -> "Activity"
                             destination?.hasRoute<CoreScopeAccountRoute>() == true -> "CoreScope account"
                             destination?.hasRoute<FavoritesRoute>() == true -> "Favorites"
+                            destination?.hasRoute<NodePlannerRoute>() == true -> "Node Planner"
+                            destination?.hasRoute<LinkProfileRoute>() == true -> "Link Profile"
                             else -> stringResource(when {
                                 destination?.hasRoute<SourceRoute>() == true -> R.string.analyzer
                                 destination?.hasRoute<MapLabRoute>() == true -> R.string.map_lab
@@ -498,6 +504,7 @@ internal fun AppShell(
                             ExploreScreen(browse?.let { repository -> viewModel(backStack) { ExploreViewModel(repository) } }, preferences.host,
                                 state.snapshot, currentFeed, library, monitoredList, ExploreActions(
                                     onFavorites = { nav.navigate(FavoritesRoute) },
+                                    onNodePlanner = { nav.navigate(NodePlannerRoute) },
                                     onNode = ::openNode,
                                     onObserver = { id, name -> nav.navigate(ObserverRoute(id, name)) },
                                     onChannel = { id, name -> nav.navigate(ChannelRoute(id, name)) },
@@ -508,6 +515,18 @@ internal fun AppShell(
                                     onChannels = { selectTab(Destination.CHANNELS) },
                                     onObservers = { activeOnly -> if (activeOnly) observerActiveRequest = System.nanoTime(); selectTab(Destination.OBSERVERS) },
                                 ))
+                        }
+                        screen<NodePlannerRoute> {
+                            org.nodescope.android.feature.linkprofile.NodePlannerScreen { nav.navigate(LinkProfileRoute) }
+                        }
+                        screen<LinkProfileRoute> { backStack ->
+                            val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
+                            val profileModel = viewModel<org.nodescope.android.feature.linkprofile.LinkProfileViewModel>(backStack) {
+                                org.nodescope.android.feature.linkprofile.LinkProfileViewModel(
+                                    org.nodescope.android.feature.linkprofile.LinkTerrainProvider(java.io.File(context.cacheDir, "link-profile/elevations.json")),
+                                    createSavedStateHandle())
+                            }
+                            org.nodescope.android.feature.linkprofile.LinkProfileScreen(profileModel, preferences.distanceUnit, state.snapshot?.nodes.orEmpty())
                         }
                         screen<PacketRoute> {
                             if (org.nodescope.android.core.design.LocalBeaconSource.current)

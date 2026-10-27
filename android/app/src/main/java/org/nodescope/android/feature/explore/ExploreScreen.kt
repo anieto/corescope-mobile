@@ -48,6 +48,7 @@ import org.nodescope.android.feature.settings.NavigationRow
 
 /** Where Explore can take the person; wired by the app shell. */
 class ExploreActions(
+    val onNodePlanner: () -> Unit = {},
     val onFavorites: () -> Unit = {},
     val onActivity: () -> Unit = {},
     val onAccount: () -> Unit = {},
@@ -146,6 +147,13 @@ fun ExploreScreen(model: ExploreViewModel?, host: String, snapshot: AnalyzerSnap
                     onCustomize = { customizing = true },
                     onExportCsv = { pendingExport = glanceCsv(metrics, activeFavorites, favoriteBreakdown(favorites)); csvLauncher.launch("network-summary.csv") },
                     onExportJson = { pendingExport = glanceJson(host, System.currentTimeMillis(), metrics, activeFavorites, favorites.size); jsonLauncher.launch("network-summary.json") })
+            }
+            item {
+                Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
+                    Column(Modifier.padding(16.dp)) {
+                        NavigationRow("Node Planner", "Evaluate proposed sites and point-to-point terrain paths", Icons.Outlined.GraphicEq, actions.onNodePlanner)
+                    }
+                }
             }
             networkStatus?.let { state ->
                 item { LoadStatus(state, nodes.isNotEmpty(), now) { model?.load(host, force = true) } }

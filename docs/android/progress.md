@@ -1,5 +1,68 @@
 # Android implementation progress
 
+2026-10-26 — Link Profile: calculation and interactive editor increment.
+
+Explore now opens Link Profile with manual or CARTO map endpoint selection, antenna heights,
+US/Canada and EU/UK radio presets, custom radio/link-budget fields, and terrain analysis.
+The responsive workspace keeps the map beside the editor on wide windows and above
+scrolling controls on phones. Results include terrain, line of sight, Fresnel zone, clearance, path loss, receive power,
+link margin, bearing, source timestamps, and attribution. Input edits cancel active requests and
+invalidate prior results; inputs survive recreation through SavedStateHandle.
+
+The RF engine matches iOS golden values. Open-Meteo uses the same 20/50/80/100 sampling
+thresholds and shortest-longitude interpolation, with cancellable HTTP, strict response counts,
+and a bounded 30-day disk cache. Endpoint coordinates are sent for elevation previews;
+sampled path coordinates are sent when Analyze is selected.
+
+2026-10-27 — Node Planner navigation and persistent Link Profile workspace.
+Explore opens the Node Planner landing page, with Link Profile available and Candidate Sites
+marked Coming next, matching iOS. Link Profile keeps the map beside the editor on wide windows
+and above compact expandable controls on phones. Point A confirmation advances to Point B;
+tentative selection can be cancelled, and known analyzer nodes are selectable endpoints.
+The editor/result viewport carries the subdued mesh while the map stays undecorated.
+
+2026-10-27 — Endpoint elevation previews and iOS card opacity.
+Endpoint cards show ground elevation and total height in feet or meters according to the app
+preference. Coordinate edits debounce lookups for 350 ms, cancel superseded work, clear stale
+values, and handle unavailable terrain independently for each endpoint. Restored endpoints
+reload previews; analysis reuses the same cache and refreshes endpoint heights from its profile.
+The planner and endpoint/radio cards use the shared iOS-matched 80% white/slate fill. The terrain
+result card remains fully opaque. Map/editor copy explains when coordinates go to Open-Meteo.
+
+2026-10-27 — Settings-aware antenna height controls and chart units.
+Antenna heights use one-unit sliders matching iOS: 0–100 feet or 0–30 meters. Inputs remain
+stored in meters; changing the display unit does not mutate physical heights or invalidate an
+existing result. The Settings preference is passed into the planner, and the screen default uses
+the shared LocalDistanceUnit. Ground heights, chart elevation bounds, distance labels, chart
+accessibility description, and displayed terrain resolution all use the selected units. Result
+and chart distances reuse the application's short-distance feet/meters formatting. A manual
+Pixel 10 compact-light check confirmed the default 32.81 ft label, the 0–100 ft range, and a
+slider tap updating to 50 ft without overlap; Imperial settings were retained.
+
+Remaining parity: hinge-aware pane placement and finer chart presentation. The planner map currently uses CARTO regardless of the main map's provider
+preference. Selection and layout validation for this increment is recorded below. Native map transitions
+are immediate to avoid surface ghosting. The native map tap callback reads current endpoint
+state so selecting Point B works after confirming Point A.
+
+Validation: debug APK builds; the full JVM suite passed with 363 tests, zero failures, one skipped.
+Five preview/view-model tests cover debounce, independent endpoint failures, and cancellation,
+including a late analysis failure after editing.
+Lint is blocked by the existing API-33 URLDecoder overload in FieldContracts.kt:91 (minimum API 26).
+2026-10-27 validation: debug and instrumentation APKs rebuild successfully. All five focused
+Compose tests pass on the Pixel 10 emulator: light compact, dark wide, enlarged text, and
+Explore → Node Planner → Link Profile navigation, and selecting units in Settings before opening
+the planner. Unit-switching checks confirm unchanged physical inputs/results, converted result
+labels, and slider edits converted back to meters. Coverage includes cached elevation previews and total heights in meters/feet, cached analysis,
+compact panel expansion, cancellation of initial selection, and clearing stale results after edits. Manual verification of the final APK confirmed Explore navigation, sequential A/B map
+selection and confirmation, both endpoint markers and their connecting line, and the compact
+editor in light mode without visible overlaps or transition ghosting. A separate visual pass
+confirmed translucent landing/endpoint cards and readable elevation placeholders in both light
+and dark compact portrait; Appearance was restored to System. Populated elevations, wide
+layout and enlarged text were covered by the automated checks rather than that visual pass.
+Exhaustive visual checks of
+foldables, rotation, nested navigation, and map sheets in both themes remain outstanding.
+
+
 2026-10-20 — 0.9.0 Android review: account first visit, selection cache and UI consistency.
 
 Fixes: the CoreScope account screen called `/api/auth/me` without a saved session and showed
