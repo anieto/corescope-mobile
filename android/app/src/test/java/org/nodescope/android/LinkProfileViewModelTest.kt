@@ -67,15 +67,19 @@ class LinkProfileViewModelTest {
     @Test fun restoredEndpointsLoadIndependentlyAndFailureDoesNotBlockAnalysisInputs() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         try {
+            // Only A's own lookup fails; the path analysis that restored endpoints start still runs.
             val model = LinkProfileViewModel(LinkTerrainProviding { points ->
-                if (points.first().latitude == 40.0) throw java.io.IOException("Offline")
+                if (points.size == 2 && points.first().latitude == 40.0) throw java.io.IOException("Offline")
                 profile(points, 80.0)
             }, SavedStateHandle(mapOf("Latitude A" to "40", "Longitude A" to "-90", "Latitude B" to "41", "Longitude B" to "-90")))
-            advanceUntilIdle()
+            advanceTimeBy(500)
+            runCurrent()
             assertNull(model.state.value.elevations.getValue("A").meters)
             assertFalse(model.state.value.elevations.getValue("A").loading)
             assertEquals(80.0, model.state.value.elevations.getValue("B").meters!!, 0.0)
             assertNull(model.state.value.error)
+            advanceUntilIdle()
+            assertNotNull(model.state.value.result)
             assertEquals("40", model.state.value.fields["Latitude A"])
         } finally { Dispatchers.resetMain() }
     }
@@ -98,8 +102,9 @@ class LinkProfileViewModelTest {
     @Test fun cancelledAnalysisFailureCannotOverwriteEditedState() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         try {
+            var analyses = 0
             val model = LinkProfileViewModel(LinkTerrainProviding { points ->
-                if (points.size > 2) withContext(NonCancellable) {
+                if (points.size > 2 && analyses++ == 0) withContext(NonCancellable) {
                     delay(1000)
                     throw java.io.IOException("Late failure")
                 }
@@ -109,11 +114,46 @@ class LinkProfileViewModelTest {
             runCurrent()
             model.edit("Height A (m)", "20")
             advanceUntilIdle()
+            // The edit's own analysis replaces the cancelled one; its late failure never shows.
             assertNull(model.state.value.error)
-            assertNull(model.state.value.result)
+            assertEquals(20.0, model.state.value.result!!.request.heightAMeters, 0.0)
             assertFalse(model.state.value.loading)
             assertEquals("20", model.state.value.fields["Height A (m)"])
         } finally { Dispatchers.resetMain() }
     }
 
+
+    @Test fun analysisRunsOnItsOwnOnceBothPointsAreSetAndAfterEditsSettle() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        try {
+            var analyses = 0
+            val model = LinkProfileViewModel(LinkTerrainProviding { points ->
+                if (points.size > 2) analyses++
+                profile(points, 100.0)
+            }, SavedStateHandle())
+            model.place("A", ProfileCoordinate(40.0, -90.0), "Hilltop")
+            advanceUntilIdle()
+            assertEquals(0, analyses)
+            assertFalse(model.state.value.loading)
+            model.place("B", ProfileCoordinate(40.1, -90.0), null)
+            assertTrue(model.state.value.loading)
+            advanceTimeBy(300)
+            model.edit("Height A (m)", "20")
+            advanceTimeBy(599)
+            runCurrent()
+            assertEquals(0, analyses)
+            advanceUntilIdle()
+            assertEquals(1, analyses)
+            assertNotNull(model.state.value.result)
+            assertEquals(mapOf("A" to "Hilltop"), model.state.value.names)
+            // Typing over a node's coordinates makes it a plain point.
+            model.edit("Latitude A", "40.01")
+            assertTrue(model.state.value.names.isEmpty())
+            model.startOver()
+            advanceUntilIdle()
+            assertNull(model.state.value.result)
+            assertFalse(model.state.value.loading)
+            assertEquals("20", model.state.value.fields["Height A (m)"])
+        } finally { Dispatchers.resetMain() }
+    }
 }

@@ -524,7 +524,7 @@ internal fun AppShell(
                             val profileModel = viewModel<org.nodescope.android.feature.linkprofile.LinkProfileViewModel>(backStack) {
                                 org.nodescope.android.feature.linkprofile.LinkProfileViewModel(
                                     org.nodescope.android.feature.linkprofile.LinkTerrainProvider(java.io.File(context.cacheDir, "link-profile/elevations.json")),
-                                    createSavedStateHandle())
+                                    createSavedStateHandle(), preferences.distanceUnit)
                             }
                             org.nodescope.android.feature.linkprofile.LinkProfileScreen(profileModel, preferences.distanceUnit, state.snapshot?.nodes.orEmpty(),
                                 state.snapshot, preferences.region, sourceViewport)

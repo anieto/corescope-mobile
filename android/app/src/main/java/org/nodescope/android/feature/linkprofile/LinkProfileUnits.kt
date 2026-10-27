@@ -13,6 +13,7 @@ internal fun profileHeightMeters(value: Double, unit: DistanceUnit): Double =
 internal fun profileHeightMaximum(unit: DistanceUnit): Float =
     if (unit == DistanceUnit.IMPERIAL) 100f else 30f
 
+/** Whole feet or metres: the terrain is ~90 m data and the slider moves in whole units. */
 internal fun formatProfileHeight(meters: Double, unit: DistanceUnit): String =
-    String.format(Locale.getDefault(), "%.2f %s", profileDisplayHeight(meters, unit),
+    String.format(Locale.getDefault(), "%.0f %s", profileDisplayHeight(meters, unit),
         if (unit == DistanceUnit.IMPERIAL) "ft" else "m")

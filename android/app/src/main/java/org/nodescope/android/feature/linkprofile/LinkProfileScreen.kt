@@ -1,6 +1,11 @@
 package org.nodescope.android.feature.linkprofile
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -51,18 +56,18 @@ import org.nodescope.android.BuildConfig
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = LocalDistanceUnit.current, nodes: List<org.nodescope.android.core.model.MeshNode> = emptyList(),
     snapshot: org.nodescope.android.core.model.AnalyzerSnapshot? = null, selectedRegion: String? = null,
     sourceViewport: org.nodescope.android.core.model.RegionCoordinate? = null) {
     val state by model.state.collectAsStateWithLifecycle()
-    var advanced by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     var selecting by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(if (state.fields.getValue("Latitude A").isBlank() && BuildConfig.MAPS_CONFIGURED) "A" else null) }
     fun coordinate(endpoint: String): ProfileCoordinate? = runCatching {
         ProfileCoordinate(state.fields.getValue("Latitude $endpoint").toDouble(), state.fields.getValue("Longitude $endpoint").toDouble())
     }.getOrNull()
-    var expanded by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     androidx.activity.compose.BackHandler(enabled = selecting != null) { selecting = null }
     // Held here, above the layout branches below, so folding, rotating or changing posture keeps
     // the camera, an unconfirmed tap and the scroll position (rememberSaveable restores by position).
@@ -73,17 +78,36 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
     val currentRegion by rememberUpdatedState(selectedRegion)
     val currentViewport by rememberUpdatedState(sourceViewport)
     val currentAnalysis by rememberUpdatedState(state.result)
+    val currentSelecting by rememberUpdatedState(selecting)
+    var mapInset by remember { mutableStateOf(0.dp) }
     // One map instance moves between layouts on a live posture change instead of being rebuilt.
     val map = remember {
         movableContentOf { modifier: Modifier ->
-            LinkProfileMap(selecting, coordinate("A"), coordinate("B"), currentNodes, { selecting = null }, { point ->
-                selecting?.let { endpoint ->
-                    model.edit("Latitude $endpoint", point.latitude.toString())
-                    model.edit("Longitude $endpoint", point.longitude.toString())
-                    selecting = if (endpoint == "A" && coordinate("B") == null) "B" else null
-                }
-            }, modifier, mapState, currentSnapshot, currentRegion, currentViewport, currentAnalysis)
+            LinkProfileMap(currentSelecting, coordinate("A"), coordinate("B"), currentNodes, modifier, mapState,
+                currentSnapshot, currentRegion, currentViewport, currentAnalysis, mapInset)
         }
+    }
+    fun choose(endpoint: String) {
+        mapState.tentative.value = null
+        selecting = endpoint
+    }
+    val header: @Composable () -> Unit = {
+        LinkHeader(state, selecting, mapState.tentative.value?.takeIf { it.endpoint == selecting }, distanceUnit,
+            onChoose = ::choose,
+            onCancel = { mapState.tentative.value = null; selecting = null },
+            onUse = { tap ->
+                model.place(tap.endpoint, ProfileCoordinate(tap.latitude, tap.longitude), tap.name)
+                mapState.tentative.value = null
+                selecting = if (tap.endpoint == "A" && coordinate("B") == null) "B" else null
+            },
+            onRetry = model::analyze)
+    }
+    val details: @Composable () -> Unit = {
+        LinkDetails(model, state, distanceUnit, onMove = ::choose, onStartOver = {
+            model.startOver()
+            mapState.fittedPath.value = null
+            if (BuildConfig.MAPS_CONFIGURED) choose("A") else selecting = null
+        })
     }
     val fold = rememberFoldSplit()
     val tabletop = rememberTabletopSplit()
@@ -92,105 +116,245 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
         // Unfolded: the panes meet at the crease, the gap between them sitting on the hinge.
         val editorAtFold = fold.firstPaneWidth(maxWidth, 280.dp)?.minus(PaneGap / 2)
         val mapAboveFold = tabletop.offset?.takeIf { it >= 160.dp && maxHeight - it >= 160.dp }?.minus(PaneGap / 2)
-        val editor: @Composable () -> Unit = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Compare terrain clearance and modeled path loss between two locations. Planning estimates do not prove a radio link will work.")
-                Text("Selecting or entering endpoints sends their coordinates to Open-Meteo for elevation previews. Analyze sends sampled path coordinates. Cached elevations are retained for 30 days.", style = MaterialTheme.typography.bodySmall)
-                listOf("A", "B").forEach { endpoint ->
-                    Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Point $endpoint", style = MaterialTheme.typography.titleMedium)
-                            listOf("Latitude $endpoint", "Longitude $endpoint").forEach { key -> ProfileField(key, state.fields.getValue(key)) { model.edit(key, it) } }
-                            val meters = state.fields.getValue("Height $endpoint (m)").toDoubleOrNull() ?: 0.0
-                            ProfileHeightControl(endpoint, meters, distanceUnit) { value ->
-                                model.edit("Height $endpoint (m)", value.toString())
-                            }
-                            val elevation = state.elevations[endpoint]
-                            Text(when {
-                                elevation?.loading == true -> "Ground elevation: Loading…"
-                                elevation?.meters != null -> "Ground elevation: ${formatProfileHeight(elevation.meters, distanceUnit)}"
-                                else -> "Ground elevation: Unavailable"
-                            }, style = MaterialTheme.typography.bodyMedium)
-                            val height = state.fields.getValue("Height $endpoint (m)").toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }
-                            val total = elevation?.meters?.let { ground -> height?.let { ground + it } }
-                            Text("Total height: ${total?.let { formatProfileHeight(it, distanceUnit) } ?: "—"}", style = MaterialTheme.typography.bodyMedium)
-                            Row {
-                                if (BuildConfig.MAPS_CONFIGURED) TextButton(onClick = { selecting = endpoint }) { Text("Choose on map") }
-                                TextButton(onClick = { model.edit("Latitude $endpoint", ""); model.edit("Longitude $endpoint", "") }) { Text("Clear") }
-                            }
-                        }
-                    }
-                }
-                if (listOf("Latitude A", "Longitude A", "Latitude B", "Longitude B").any { state.fields.getValue(it).isNotBlank() }) {
-                    OutlinedButton(onClick = {
-                        model.startOver()
-                        mapState.tentative.value = null
-                        mapState.fittedPath.value = null
-                        if (BuildConfig.MAPS_CONFIGURED) selecting = "A"
-                    }, Modifier.fillMaxWidth()) {
-                        Icon(Icons.Filled.Refresh, contentDescription = null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Start Over")
-                    }
-                }
-                Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Radio settings", style = MaterialTheme.typography.titleMedium)
-                        listOf("US/Canada Narrow", "EU/UK Narrow", "Custom").forEach { name ->
-                            FilterChip(selected = state.preset == name, onClick = { model.preset(name) }, label = { Text(name) })
-                        }
-                        ProfileField("Frequency (MHz)", state.fields.getValue("Frequency (MHz)")) { model.edit("Frequency (MHz)", it) }
-                        TextButton(onClick = { advanced = !advanced }) { Text(if (advanced) "Hide advanced assumptions" else "Advanced assumptions") }
-                        if (advanced) state.fields.keys.drop(7).forEach { key -> ProfileField(key, state.fields.getValue(key)) { model.edit(key, it) } }
-                        Text("Preset values are planning assumptions. Standard atmospheric refraction (k = 4/3) is used.", style = MaterialTheme.typography.bodySmall)
-                        Text("Bandwidth, spreading factor and coding rate describe your radio. Sensitivity is entered explicitly; changing those settings does not calculate a new sensitivity.", style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-                Text("Terrain does not account for buildings, foliage or interference.", style = MaterialTheme.typography.bodySmall)
-                Button(onClick = model::analyze, enabled = !state.loading, modifier = Modifier.fillMaxWidth()) { Text(if (state.loading) "Analyzing…" else "Analyze Link") }
-                if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-                state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            }
-        }
-        val controls: @Composable () -> Unit = {
-            Column(Modifier.fillMaxSize().meshPageBackground().verticalScroll(scroll).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                editor()
-                state.result?.let { ProfileResult(it, distanceUnit) }
+        // Side and lower panels: the header stays put while everything under it scrolls.
+        val panel: @Composable (Modifier) -> Unit = { modifier ->
+            Column(modifier.meshPageBackground()) {
+                Box(Modifier.padding(16.dp)) { header() }
+                Column(Modifier.weight(1f).verticalScroll(scroll).padding(horizontal = 16.dp).padding(bottom = 16.dp)) { details() }
             }
         }
         if (!BuildConfig.MAPS_CONFIGURED) {
-            controls()
+            SideEffect { mapInset = 0.dp }
+            panel(Modifier.fillMaxSize())
         } else if (editorAtFold != null) {
+            SideEffect { mapInset = 0.dp }
             // Editor before the hinge, map after it; the editor is not squeezed into a side column.
             Row(Modifier.fillMaxSize()) {
-                Box(Modifier.width(editorAtFold).fillMaxHeight()) { controls() }
+                panel(Modifier.width(editorAtFold).fillMaxHeight())
                 Spacer(Modifier.width(PaneGap))
                 map(Modifier.weight(1f).fillMaxHeight())
             }
         } else if (mapAboveFold != null) {
+            SideEffect { mapInset = 0.dp }
             // Tabletop: map on the upper half, controls on the lower, nothing under the crease.
             Column(Modifier.fillMaxSize()) {
                 map(Modifier.height(mapAboveFold).fillMaxWidth())
                 Spacer(Modifier.height(PaneGap))
-                Box(Modifier.weight(1f).fillMaxWidth()) { controls() }
+                panel(Modifier.weight(1f).fillMaxWidth())
             }
         } else if (wide) {
+            SideEffect { mapInset = 0.dp }
             // Tablets and wide windows: the editor first, sized as on iPad; the map takes the larger right side.
             val editorWidth = (maxWidth * 0.34f).coerceIn(340.dp, 420.dp)
             Row(Modifier.fillMaxSize()) {
-                Box(Modifier.width(editorWidth).fillMaxHeight()) { controls() }
+                panel(Modifier.width(editorWidth).fillMaxHeight())
                 map(Modifier.weight(1f).fillMaxHeight())
             }
         } else {
-            val panelHeight = if (expanded && state.result != null) (maxHeight * 0.72f).coerceAtMost(620.dp) else (maxHeight * 0.44f).coerceAtMost(330.dp)
-            Column(Modifier.fillMaxSize()) {
-                map(Modifier.weight(1f).fillMaxWidth())
-                if (selecting == null) Column(Modifier.fillMaxWidth().height(panelHeight).meshPageBackground()) {
-                    if (state.result != null) TextButton(onClick = { expanded = !expanded }) {
-                        Text(if (expanded) "Show More Map" else "Show More Results")
+            // Phones: the map fills the screen under a sheet. Collapsed, the sheet is just its
+            // header (the prompt, or the verdict); pulled up, it holds the points, radio and results.
+            val sheet = rememberBottomSheetScaffoldState()
+            val scope = rememberCoroutineScope()
+            val density = LocalDensity.current
+            var headerHeight by remember { mutableStateOf(0.dp) }
+            val peek = headerHeight + 48.dp
+            val sheetMax = maxHeight - 48.dp
+            SideEffect { mapInset = peek }
+            // Choosing a point needs the map: lower the sheet out of the way.
+            LaunchedEffect(selecting) { if (selecting != null) sheet.bottomSheetState.partialExpand() }
+            // The peek follows the header, which is only measured after the first frame; a
+            // collapsed sheet does not move to a new peek by itself, so settle it again.
+            LaunchedEffect(peek) {
+                if (sheet.bottomSheetState.currentValue == SheetValue.PartiallyExpanded) sheet.bottomSheetState.partialExpand()
+            }
+            // The sheet carries the page's mesh, as the side panels and iOS's panel do; the
+            // header stays pinned while the points, radio and results scroll under it.
+            BottomSheetScaffold(
+                scaffoldState = sheet,
+                sheetPeekHeight = peek,
+                sheetContainerColor = Color.Transparent,
+                sheetShadowElevation = 8.dp,
+                sheetDragHandle = null,
+                sheetContent = {
+                    Column(Modifier.fillMaxWidth().heightIn(max = sheetMax)
+                        .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)).meshPageBackground()) {
+                        // Drawn here so it sits on the mesh; tapping it expands or collapses the
+                        // sheet, as the scaffold's own handle would.
+                        val expanded = sheet.bottomSheetState.currentValue == SheetValue.Expanded
+                        Box(Modifier.fillMaxWidth().clickable(onClickLabel = if (expanded) "Collapse" else "Expand") {
+                            scope.launch { if (expanded) sheet.bottomSheetState.partialExpand() else sheet.bottomSheetState.expand() }
+                        }.semantics { contentDescription = if (expanded) "Collapse results" else "Expand results" },
+                            contentAlignment = Alignment.Center) { BottomSheetDefaults.DragHandle() }
+                        Box(Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp)
+                            .onSizeChanged { headerHeight = with(density) { it.height.toDp() + 12.dp } }) { header() }
+                        Column(Modifier.weight(1f, fill = false).verticalScroll(scroll).padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
+                            details()
+                        }
                     }
-                    Box(Modifier.weight(1f)) { controls() }
+                },
+            ) { map(Modifier.fillMaxSize()) }
+        }
+    }
+}
+
+/**
+ * The sheet's always-visible line: what to do next while points are being placed, then the
+ * verdict. Choosing a point is confirmed here, so the map stays clear.
+ */
+@Composable
+private fun LinkHeader(state: LinkProfileViewModel.State, selecting: String?, tentative: LinkProfileMapState.Tentative?,
+    distanceUnit: DistanceUnit, onChoose: (String) -> Unit, onCancel: () -> Unit,
+    onUse: (LinkProfileMapState.Tentative) -> Unit, onRetry: () -> Unit) {
+    fun placed(endpoint: String) = state.fields.getValue("Latitude $endpoint").isNotBlank() && state.fields.getValue("Longitude $endpoint").isNotBlank()
+    val secondary = MaterialTheme.colorScheme.onSurfaceVariant
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        val result = state.result
+        when {
+            selecting != null -> {
+                Text("Choose Point $selecting", style = MaterialTheme.typography.titleMedium)
+                Text(when {
+                    tentative == null -> "Tap the map or a known node."
+                    tentative.name != null -> tentative.name
+                    else -> "Dropped pin"
+                }, color = secondary)
+                Text("Confirming sends its coordinates to Open-Meteo for elevation.", style = MaterialTheme.typography.bodySmall, color = secondary)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = onCancel) { Text("Cancel") }
+                    Button(onClick = { tentative?.let(onUse) }, enabled = tentative != null) { Text("Use Point $selecting") }
                 }
+            }
+            !placed("A") || !placed("B") -> {
+                val next = if (!placed("A")) "A" else "B"
+                Text("Place Point A and Point B to analyze the link.", style = MaterialTheme.typography.titleMedium)
+                if (BuildConfig.MAPS_CONFIGURED) Button(onClick = { onChoose(next) }) { Text("Choose Point $next") }
+            }
+            state.loading -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                Text("Analyzing link…", style = MaterialTheme.typography.titleMedium)
+            }
+            state.error != null -> {
+                Text(state.error, color = MaterialTheme.colorScheme.error)
+                TextButton(onClick = onRetry) { Text("Try Again") }
+            }
+            result != null -> {
+                val (title, icon) = verdict(result.result.clearanceStatus)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(icon, null, Modifier.size(22.dp), tint = Color(result.result.clearanceStatus.pathClearance.argb(
+                        MaterialTheme.colorScheme.background.luminance() < 0.3f)))
+                    Text(title, style = MaterialTheme.typography.titleMedium)
+                }
+                val margin = result.result.linkMarginDB?.let { "Link margin ${String.format(Locale.getDefault(), "%.1f", it)} dB · " }.orEmpty()
+                Text(margin + formatDistance(result.result.distanceMeters / 1000, distanceUnit), color = secondary)
+            }
+            else -> Text("Analyzing link…", style = MaterialTheme.typography.titleMedium)
+        }
+    }
+}
+
+internal fun verdict(status: ClearanceStatus) = when (status) {
+    ClearanceStatus.CLEAR -> "Clear terrain path" to Icons.Filled.CheckCircle
+    ClearanceStatus.MARGINAL -> "Marginal clearance" to Icons.Filled.Error
+    ClearanceStatus.PARTIAL_OBSTRUCTION -> "Partially obstructed" to Icons.Filled.Contrast
+    ClearanceStatus.BLOCKED -> "Blocked by terrain" to Icons.Filled.Block
+}
+
+/** The verdict's colour, matching the path: both obstructed statuses read as obstructed. */
+private val ClearanceStatus.pathClearance get() = when (this) {
+    ClearanceStatus.CLEAR -> PathClearance.CLEAR
+    ClearanceStatus.MARGINAL -> PathClearance.MARGINAL
+    ClearanceStatus.PARTIAL_OBSTRUCTION, ClearanceStatus.BLOCKED -> PathClearance.OBSTRUCTED
+}
+
+/** Everything under the header: the two points, the radio, the full result, and Start Over. */
+@Composable
+private fun LinkDetails(model: LinkProfileViewModel, state: LinkProfileViewModel.State, distanceUnit: DistanceUnit,
+    onMove: (String) -> Unit, onStartOver: () -> Unit) {
+    var customizing by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        listOf("A", "B").forEach { endpoint -> PointCard(model, state, endpoint, distanceUnit, onMove) }
+        Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Radio settings", style = MaterialTheme.typography.titleMedium)
+                // Editing a value below makes the radio custom; neither preset is then selected.
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("US/Canada Narrow", "EU/UK Narrow").forEach { name ->
+                        FilterChip(selected = state.preset == name, onClick = { model.preset(name) }, label = { Text(name) })
+                    }
+                }
+                TextButton(onClick = { customizing = !customizing }) {
+                    Text(when {
+                        customizing -> "Hide radio values"
+                        state.preset == "Custom" -> "Customize radio · edited"
+                        else -> "Customize radio"
+                    })
+                }
+                if (customizing) LinkProfileViewModel.presetKeys.forEach { key -> ProfileField(key, state.fields.getValue(key)) { model.edit(key, it) } }
+            }
+        }
+        state.result?.let { ProfileResult(it, distanceUnit) }
+        if (listOf("Latitude A", "Longitude A", "Latitude B", "Longitude B").any { state.fields.getValue(it).isNotBlank() }) {
+            // A primary-coloured outline: the tonal fill nearly vanished on the light mesh.
+            OutlinedButton(onClick = onStartOver, Modifier.fillMaxWidth(),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary)) {
+                Icon(Icons.Filled.Refresh, contentDescription = null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Start Over")
+            }
+        }
+        Text("Planning estimates only: terrain does not account for buildings, foliage or interference. Placing points sends their coordinates to Open-Meteo for elevation; cached elevations are kept for 30 days.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/**
+ * One endpoint: its name (the known node, or a dropped pin), ground elevation and antenna height.
+ * Tapping opens the antenna settings, moving the point, and typed coordinates.
+ */
+@Composable
+private fun PointCard(model: LinkProfileViewModel, state: LinkProfileViewModel.State, endpoint: String, distanceUnit: DistanceUnit, onMove: (String) -> Unit) {
+    var expanded by androidx.compose.runtime.saveable.rememberSaveable(endpoint) { mutableStateOf(false) }
+    // Without a map, typing is the only way to place a point.
+    var coordinatesShown by androidx.compose.runtime.saveable.rememberSaveable(endpoint) { mutableStateOf(!BuildConfig.MAPS_CONFIGURED) }
+    val placed = state.fields.getValue("Latitude $endpoint").isNotBlank() && state.fields.getValue("Longitude $endpoint").isNotBlank()
+    val meters = state.fields.getValue("Height $endpoint (m)").toDoubleOrNull() ?: 0.0
+    val elevation = state.elevations[endpoint]
+    val secondary = MaterialTheme.colorScheme.onSurfaceVariant
+    Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth().clickable { expanded = !expanded }.semantics(mergeDescendants = true) {
+                stateDescription = if (expanded) "Expanded" else "Collapsed"
+            }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(Modifier.size(28.dp).background(if (endpoint == "A") PointABlue else PointBOrange, androidx.compose.foundation.shape.CircleShape),
+                    contentAlignment = Alignment.Center) {
+                    Text(endpoint, color = Color.White, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(when {
+                        !placed -> "Point $endpoint not placed"
+                        else -> state.names[endpoint] ?: "Dropped pin"
+                    }, style = MaterialTheme.typography.titleMedium)
+                    val ground = when {
+                        elevation?.loading == true -> "Ground elevation: Loading…"
+                        elevation?.meters != null -> "Ground elevation: ${formatProfileHeight(elevation.meters, distanceUnit)}"
+                        placed -> "Ground elevation: Unavailable"
+                        else -> null
+                    }
+                    Text(listOfNotNull(ground, "Antenna ${formatProfileHeight(meters, distanceUnit)}").joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall, color = secondary)
+                }
+                Icon(if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null)
+            }
+            if (expanded) {
+                ProfileHeightControl(endpoint, meters, distanceUnit) { model.edit("Height $endpoint (m)", it.toString()) }
+                val height = state.fields.getValue("Height $endpoint (m)").toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }
+                val total = elevation?.meters?.let { ground -> height?.let { ground + it } }
+                Text("Total height: ${total?.let { formatProfileHeight(it, distanceUnit) } ?: "—"}", style = MaterialTheme.typography.bodyMedium)
+                listOf("Gain $endpoint (dBi)", "Loss $endpoint (dB)").forEach { key -> ProfileField(key, state.fields.getValue(key)) { model.edit(key, it) } }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (BuildConfig.MAPS_CONFIGURED) TextButton(onClick = { onMove(endpoint) }) { Text(if (placed) "Move on map" else "Choose on map") }
+                    TextButton(onClick = { coordinatesShown = !coordinatesShown }) { Text(if (coordinatesShown) "Hide coordinates" else "Enter coordinates") }
+                }
+                if (coordinatesShown) listOf("Latitude $endpoint", "Longitude $endpoint").forEach { key -> ProfileField(key, state.fields.getValue(key)) { model.edit(key, it) } }
             }
         }
     }
@@ -209,17 +373,6 @@ private fun ProfileResult(analysis: LinkAnalysis, distanceUnit: DistanceUnit) {
     fun dB(value: Double, digits: Int = 1) = String.format(Locale.getDefault(), "%.${digits}f", value)
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = meshCardColor().copy(alpha = 1f))) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                val (title, icon) = when (result.clearanceStatus) {
-                    ClearanceStatus.CLEAR -> "Clear terrain path" to Icons.Filled.CheckCircle
-                    ClearanceStatus.MARGINAL -> "Marginal clearance" to Icons.Filled.Error
-                    ClearanceStatus.PARTIAL_OBSTRUCTION -> "Partially obstructed" to Icons.Filled.Contrast
-                    ClearanceStatus.BLOCKED -> "Blocked by terrain" to Icons.Filled.Block
-                }
-                Icon(icon, null, Modifier.size(20.dp))
-                Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                Text("Estimate", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
             TerrainChart(analysis, distanceUnit)
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 MetricRow("Distance", formatDistance(result.distanceMeters / 1000, distanceUnit))
@@ -239,7 +392,7 @@ private fun ProfileResult(analysis: LinkAnalysis, distanceUnit: DistanceUnit) {
             Text(request.linkBudget?.let { budget ->
                 "TX power ${dB(budget.transmitPowerDBm)} dBm; antenna gains ${dB(budget.gainADB)}/${dB(budget.gainBDB)} dBi; " +
                     "system losses ${dB(budget.lossADB)}/${dB(budget.lossBDB)} dB; receiver sensitivity ${dB(budget.receiverSensitivityDBm)} dBm; " +
-                    "k = ${dB(request.refractionK, 2)}."
+                    "standard atmospheric refraction (k = 4/3)."
             } ?: "No complete link budget was supplied.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("Model: ${LinkProfileEngine.ENGINE_ID} v${LinkProfileEngine.ENGINE_VERSION}.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             val uri = androidx.compose.ui.platform.LocalUriHandler.current

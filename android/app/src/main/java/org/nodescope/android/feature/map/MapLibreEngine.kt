@@ -200,7 +200,10 @@ internal fun MapLibreEngineHost(engine: MapLibreEngine, styleMode: Int, retry: I
         engine.style = null
         val name = cartoStyles[styleMode]
         ready.setStyle("https://basemaps.cartocdn.com/gl/$name-gl-style/style.json") { loaded ->
-            if (!view.isDestroyed) { addOverlays(loaded, dark = name == "dark-matter"); autoRetries[0] = 0; engine.style = loaded }
+            if (!view.isDestroyed) {
+                if (name == "dark-matter") tintDarkMatter(loaded)
+                addOverlays(loaded, dark = name == "dark-matter"); autoRetries[0] = 0; engine.style = loaded
+            }
         }
     }
     // Keyed so a replacement MapView is attached (the factory only runs once per key).
@@ -290,6 +293,8 @@ private data class MapLibreOverlays(val style: Style) : MapOverlays {
         source(LINK_PATH)?.setGeoJson(FeatureCollection.fromFeatures(stretches.filter { it.points.size > 1 }.map { stretch ->
             Feature.fromGeometry(LineString.fromLngLats(stretch.points.map { it.point })).apply {
                 addStringProperty("color", stretch.color.hexColor())
+                addStringProperty("casing", stretch.casing.hexColor())
+                addNumberProperty("casingOpacity", (stretch.casing ushr 24) / 255f)
                 addBooleanProperty("dashed", stretch.dashed)
             }
         }))
@@ -302,6 +307,47 @@ private data class MapLibreOverlays(val style: Style) : MapOverlays {
             }
         }))
     }
+}
+
+/**
+ * CARTO's Dark Matter is near-black, which reads as another app next to the navy dark theme and
+ * Google's dark map, and its roads and water barely show. Land, water, roads and boundaries are
+ * recoloured toward the theme by layer id; labels are left as CARTO draws them.
+ */
+private fun tintDarkMatter(style: Style) {
+    style.layers.forEach { layer ->
+        val id = layer.id
+        when (layer) {
+            is BackgroundLayer -> layer.setProperties(backgroundColor(DARK_LAND))
+            is FillLayer -> when {
+                id == "water" -> "#0C1925"
+                id == "building-top" -> "#202C37"
+                id == "landuse_residential" -> "#16202A"
+                id == "landcover" || id == "landuse" || id.startsWith("park_") -> DARK_LAND
+                else -> null
+            }?.let { layer.setProperties(fillColor(it)) }
+            is LineLayer -> darkMatterLine(id)?.let { layer.setProperties(lineColor(it)) }
+        }
+    }
+}
+
+private const val DARK_LAND = "#18232D"
+
+private fun darkMatterLine(id: String): String? = when {
+    id == "waterway" -> "#23415A"
+    id.startsWith("boundary_county") -> "#2B3946"
+    id.startsWith("boundary_") -> "#4D5F70"
+    id.startsWith("aeroway") -> "#24323E"
+    id.endsWith("rail_dash") -> DARK_LAND
+    id.endsWith("rail") -> "#2B3743"
+    !(id.startsWith("road_") || id.startsWith("tunnel_") || id.startsWith("bridge_")) -> null
+    // Casings sit just darker than the land so the fills read as raised lines.
+    "_case" in id -> "#111921"
+    "_path" in id -> "#25313C"
+    "mot_" in id || "trunk_" in id -> "#4E6276"
+    "pri_" in id -> "#43566A"
+    "sec_" in id -> "#38495A"
+    else -> "#2D3B49"
 }
 
 private fun pinImage(kind: MapPin.Kind) = "nodescope-pin-${kind.name.lowercase()}"
@@ -380,14 +426,19 @@ private fun addOverlays(style: Style, dark: Boolean) {
         .withFilter(all(eq(get("role"), literal("observer")), has("name"))).withProperties(visibility(Property.VISIBLE)))
     style.addSource(GeoJsonSource(ROUTE, emptyFeatures))
     style.addLayer(LineLayer("nodescope-route-line", ROUTE).withProperties(lineColor("#299EFF"), lineWidth(4f)))
-    // A planned link: a casing so it reads on any basemap (and shows between dashes), then the
-    // coloured stretches. Dash patterns cannot vary per feature, so dashed stretches get a layer.
+    // A planned link: a faint casing so it reads on any basemap, then the coloured stretches.
+    // Dash patterns cannot vary per feature, so dashed stretches get their own layers, and their
+    // casing is dashed in step (dash lengths are in line widths: 4 × 0.9 = 6 × 0.6).
     style.addSource(GeoJsonSource(LINK_PATH, emptyFeatures))
-    style.addLayer(LineLayer("nodescope-link-casing", LINK_PATH).withProperties(
-        lineColor(if (dark) "#000000" else "#FFFFFF"), lineOpacity(0.75f), lineWidth(7f), lineCap(Property.LINE_CAP_ROUND)))
-    style.addLayer(LineLayer("nodescope-link-solid", LINK_PATH).withFilter(eq(get("dashed"), literal(false)))
+    val solid = eq(get("dashed"), literal(false))
+    val dashed = eq(get("dashed"), literal(true))
+    style.addLayer(LineLayer("nodescope-link-casing", LINK_PATH).withFilter(solid).withProperties(
+        lineColor(get("casing")), lineOpacity(get("casingOpacity")), lineWidth(6f), lineCap(Property.LINE_CAP_ROUND)))
+    style.addLayer(LineLayer("nodescope-link-dashed-casing", LINK_PATH).withFilter(dashed).withProperties(
+        lineColor(get("casing")), lineOpacity(get("casingOpacity")), lineWidth(6f), lineDasharray(arrayOf(0.6f, 0.4333f))))
+    style.addLayer(LineLayer("nodescope-link-solid", LINK_PATH).withFilter(solid)
         .withProperties(lineColor(get("color")), lineWidth(4f), lineCap(Property.LINE_CAP_ROUND)))
-    style.addLayer(LineLayer("nodescope-link-dashed", LINK_PATH).withFilter(eq(get("dashed"), literal(true)))
+    style.addLayer(LineLayer("nodescope-link-dashed", LINK_PATH).withFilter(dashed)
         .withProperties(lineColor(get("color")), lineWidth(4f), lineDasharray(arrayOf(0.9f, 0.65f))))
     style.addSource(GeoJsonSource(PACKET, emptyFeatures))
     style.addLayer(CircleLayer("nodescope-packet-dot", PACKET).withProperties(

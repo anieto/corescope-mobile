@@ -46,34 +46,32 @@ class LinkProfileUiTest {
             }
         }
         compose.waitUntil(10_000) { model.state.value.elevations.values.count { it.meters == 100.0 } == 2 }
-        val ground = if (unit == DistanceUnit.IMPERIAL) "Ground elevation: 328.08 ft" else "Ground elevation: 100.00 m"
-        val total = if (unit == DistanceUnit.IMPERIAL) "Total height: 360.89 ft" else "Total height: 110.00 m"
-        compose.onAllNodesWithText(ground).onFirst().performScrollTo().assertIsDisplayed()
-        compose.onAllNodesWithText(total).onFirst().performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Analyze Link").performScrollTo().performClick()
+        // Both points restored: the analysis runs on its own and the header shows the verdict.
         compose.waitUntil(10_000) { model.state.value.result != null || model.state.value.error != null }
         compose.runOnIdle { assertNull(model.state.value.error) }
-        if (density == 3f && BuildConfig.MAPS_CONFIGURED) {
-            compose.onNodeWithText("Show More Results").performClick()
-            compose.onNodeWithText("Show More Map").assertIsDisplayed()
-        }
-        compose.onNodeWithText("Clear terrain path").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Clear terrain path").assertIsDisplayed()
+        val ground = if (unit == DistanceUnit.IMPERIAL) "Ground elevation: 328 ft" else "Ground elevation: 100 m"
+        compose.onAllNodesWithText(ground, substring = true).onFirst().performScrollTo().assertIsDisplayed()
         val resultBeforeSwitch = model.state.value.result
         val nextUnit = if (unit == DistanceUnit.METRIC) DistanceUnit.IMPERIAL else DistanceUnit.METRIC
         compose.runOnIdle { selectedUnit.value = nextUnit }
         compose.runOnIdle {
             assertSame(resultBeforeSwitch, model.state.value.result)
-            assertEquals("10", model.state.value.fields["Height A (m)"])
+            assertEquals("6", model.state.value.fields["Height A (m)"])
         }
         // Result values follow the unit without recalculating (the Distance row, as on iOS).
         val distanceResult = org.nodescope.android.core.design.formatDistance(resultBeforeSwitch!!.result.distanceMeters / 1000, nextUnit)
         compose.onNodeWithText(distanceResult).performScrollTo().assertIsDisplayed()
+        // Point A's card opens to its antenna settings.
+        compose.onAllNodesWithText("Dropped pin").onFirst().performScrollTo().performClick()
+        val total = if (nextUnit == DistanceUnit.IMPERIAL) "Total height: 348 ft" else "Total height: 106 m"
+        compose.onNodeWithText(total).performScrollTo().assertIsDisplayed()
         val slider = compose.onNodeWithContentDescription("Additional antenna height A")
         slider.performScrollTo().performSemanticsAction(SemanticsActions.SetProgress) { it(if (nextUnit == DistanceUnit.IMPERIAL) 50f else 15f) }
         compose.runOnIdle {
             assertEquals(if (nextUnit == DistanceUnit.IMPERIAL) 15.24 else 15.0, model.state.value.fields.getValue("Height A (m)").toDouble(), 1e-8)
-            assertNull(model.state.value.result)
         }
+        compose.onNodeWithText("Enter coordinates").performScrollTo().performClick()
         compose.onNodeWithText("Latitude A").performScrollTo().performTextReplacement("")
         compose.runOnIdle { assertNull(model.state.value.result) }
         compose.onNodeWithText("Clear terrain path").assertDoesNotExist()
@@ -98,7 +96,7 @@ class LinkProfileUiTest {
             compose.onNodeWithText("Choose Point A").assertIsDisplayed()
             compose.onNodeWithText("Cancel").performClick()
         }
-        compose.onNodeWithText("Latitude A").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Place Point A and Point B to analyze the link.").assertIsDisplayed()
     }
 
     @Test fun settingsUnitIsUsedWhenOpeningPlanner() {
@@ -120,7 +118,8 @@ class LinkProfileUiTest {
         compose.onNodeWithText("Node Planner").performScrollTo().performClick()
         compose.onNodeWithText("Open Tool").performScrollTo().performClick()
         if (BuildConfig.MAPS_CONFIGURED) compose.onNodeWithText("Cancel").performClick()
-        compose.onNodeWithText("Additional antenna height A: 32.81 ft").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Point A not placed").performScrollTo().performClick()
+        compose.onNodeWithText("Additional antenna height A: 20 ft").performScrollTo().assertIsDisplayed()
     }
 
     @Test fun lightCompactAnalysisAndEdit() = exercise(Appearance.LIGHT, 3f, 1f)

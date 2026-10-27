@@ -108,8 +108,11 @@ internal interface MapOverlays {
     fun setLinkPath(stretches: List<PathStretch>) {}
 }
 
-/** One stretch of a planned link; [color] is ARGB. */
-internal data class PathStretch(val points: List<Coordinate>, val color: Int, val dashed: Boolean)
+/**
+ * One stretch of a planned link; [color] and [casing] are ARGB. A dashed stretch's casing is
+ * dashed in step with it, so it edges each dash without filling the gaps.
+ */
+internal data class PathStretch(val points: List<Coordinate>, val color: Int, val dashed: Boolean, val casing: Int = 0xBFFFFFFF.toInt())
 
 /** ARGB as the "#RRGGBB" string MapLibre expressions take. */
 internal fun Int.hexColor(): String = String.format("#%06X", this and 0xFFFFFF)

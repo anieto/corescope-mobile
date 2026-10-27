@@ -423,28 +423,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             IconButton(onClick = { search = true }) { Icon(Icons.Outlined.Search, "Search nodes") }
             Box {
                 IconButton(onClick = { layersOpen = true }) { Icon(Icons.Outlined.Layers, "Map layers") }
-                DropdownMenu(layersOpen, { layersOpen = false }) {
-                    val google = BuildConfig.GOOGLE_MAPS_CONFIGURED
-                    // Grouped by provider when there is more than one.
-                    if (google) MenuSectionHeader(stringResource(R.string.map_provider_carto))
-                    listOf(R.string.standard, R.string.light, R.string.dark).forEachIndexed { index, label ->
-                        val chosen = providerChoice.provider == MapProvider.CARTO && mode == index
-                        DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = {
-                            choose(providerChoice.copy(provider = MapProvider.CARTO, cartoStyle = index)); layersOpen = false
-                        }, trailingIcon = { if (chosen) Icon(Icons.Outlined.Check, null) })
-                    }
-                    if (google) {
-                        HorizontalDivider()
-                        MenuSectionHeader(stringResource(R.string.map_provider_google))
-                        listOf(GoogleMapType.MAP to R.string.google_map, GoogleMapType.SATELLITE to R.string.google_satellite,
-                            GoogleMapType.TERRAIN to R.string.google_terrain, GoogleMapType.HYBRID to R.string.google_hybrid).forEach { (type, label) ->
-                            val chosen = providerChoice.provider == MapProvider.GOOGLE && providerChoice.googleType == type
-                            DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = {
-                                choose(providerChoice.copy(provider = MapProvider.GOOGLE, googleType = type)); layersOpen = false
-                            }, trailingIcon = { if (chosen) Icon(Icons.Outlined.Check, null) })
-                        }
-                    }
-                }
+                MapLayersMenu(layersOpen, { layersOpen = false }, providerChoice, darkTheme) { choose(it); layersOpen = false }
             }
         })
     Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -701,4 +680,33 @@ internal fun regionSpan(region: RegionCoordinate): Pair<Double, Double> {
     val radius = region.radiusKm?.takeIf { it.isFinite() && it > 0 }?.coerceAtMost(2000.0) ?: 45.0
     val latitude = ((radius * 2.4) / 111).coerceAtLeast(0.15)
     return latitude to (latitude / kotlin.math.cos(Math.toRadians(region.lat)).coerceAtLeast(0.2))
+}
+
+/** The map picker: CARTO's three styles and, in builds with a key, Google's four map types. */
+@Composable
+internal fun MapLayersMenu(expanded: Boolean, onDismiss: () -> Unit, choice: MapProviderChoice, darkTheme: Boolean,
+    onChoose: (MapProviderChoice) -> Unit) {
+    val mode = choice.cartoStyle(darkTheme)
+    DropdownMenu(expanded, onDismiss) {
+        val google = BuildConfig.GOOGLE_MAPS_CONFIGURED
+        // Grouped by provider when there is more than one.
+        if (google) MenuSectionHeader(stringResource(R.string.map_provider_carto))
+        listOf(R.string.standard, R.string.light, R.string.dark).forEachIndexed { index, label ->
+            val chosen = choice.provider == MapProvider.CARTO && mode == index
+            DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = {
+                onChoose(choice.copy(provider = MapProvider.CARTO, cartoStyle = index))
+            }, trailingIcon = { if (chosen) Icon(Icons.Outlined.Check, null) })
+        }
+        if (google) {
+            HorizontalDivider()
+            MenuSectionHeader(stringResource(R.string.map_provider_google))
+            listOf(GoogleMapType.MAP to R.string.google_map, GoogleMapType.SATELLITE to R.string.google_satellite,
+                GoogleMapType.TERRAIN to R.string.google_terrain, GoogleMapType.HYBRID to R.string.google_hybrid).forEach { (type, label) ->
+                val chosen = choice.provider == MapProvider.GOOGLE && choice.googleType == type
+                DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = {
+                    onChoose(choice.copy(provider = MapProvider.GOOGLE, googleType = type))
+                }, trailingIcon = { if (chosen) Icon(Icons.Outlined.Check, null) })
+            }
+        }
+    }
 }

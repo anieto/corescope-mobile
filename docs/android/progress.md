@@ -171,6 +171,44 @@ and both platforms moved to a shorter dash period at the same weight: iOS 3.5 pt
 3.5/2.5 dashes, MapLibre 0.9/0.65 line widths, Google 3.5/2.5 dp. iOS then got back a faint outline
 (5 pt, white at 55%) dashed in step with the line, so it edges the dashes without filling gaps.
 
+2026-10-27 — Link Profile redesign: full-screen map and bottom sheet (branch `link-profile-sheet`).
+Phones: the map fills the screen under a Material bottom sheet. Collapsed, the sheet is only its
+header: the prompt while points are placed ("Choose Point A", Cancel / Use Point A; the map no
+longer has its own title, prompt or buttons), "Analyzing link…", an error with Try Again, or the
+verdict with link margin and distance. Pulled up, it holds a card per point (the node's name, or
+"Dropped pin", with ground elevation and antenna height; tapping opens the height slider, gain,
+loss, Move on map and Enter coordinates), the radio settings (gains and losses moved to the
+point cards), the full result, Start Over and one privacy/estimate note. Coordinates are hidden
+unless asked for, except without a map. Choosing a point lowers the sheet. The logo, CARTO/OSM
+attribution and path framing sit above the collapsed sheet. Foldable, tabletop and wide layouts
+keep their panes, with the same header and content in the side or lower panel. Swap was not
+added (the result is the same either way). Analysis now runs on its own 600 ms after the last
+change once both points parse (`scheduleAnalysis`), so there is no Analyze button; Try Again
+analyzes at once. Placing a point on a known node keeps its name (`place`, saved per endpoint);
+typing coordinates drops it. Validation: JVM suite 371 tests (1 new; two view-model tests updated
+for auto-analysis), zero failures, one skipped; LinkProfileUiTest updated and compiles but has not
+been run. iOS not yet changed.
+Follow-up: on first open the sheet showed only its handle. The peek follows the header, which is
+measured after the first frame, and a collapsed M3 sheet does not move to a new peek on its own,
+so it is settled again whenever the peek changes while collapsed. Default antenna height is now
+20 ft (6.096 m) in imperial and 6 m in metric, on both platforms (Android takes the unit as a
+view-model argument; iOS reads the saved unit); typed or saved heights are unchanged.
+Radio card trimmed: the US/Canada and EU/UK chips (no Custom chip; editing a value makes the
+radio custom and the toggle reads "Customize radio · edited"), then Customize radio with frequency,
+transmit power and sensitivity. Bandwidth, spreading factor and coding rate were removed: the
+engine never used them. Only those three values switch the preset to Custom (point gains and
+losses used to as well). The refraction note moved to the result's Assumptions. Heights show in
+whole feet or metres. The sheet's header is pinned while its content scrolls (side panels too),
+and the sheet carries the page mesh like the side panels and the iOS panel. iOS not yet changed.
+Later: the drag handle (drawn by us so it sits on the mesh) toggles the sheet when tapped, as
+the scaffold's own did; Start Over is a tonal button. The path casing is now dashed in step with
+dashed stretches on both engines (it used to run solid under the dashes and fill the gaps, worst
+in white on Google's dark map) and is dark on dark maps, light on light ones. Link Profile has the
+live map's layers button (shared `MapLayersMenu`); a choice there is saved for the live map too.
+CARTO Dark Matter is recoloured at load on every MapLibre map (`tintDarkMatter`): land #18232D,
+water #0C1925, roads and boundaries in slate by class, casings just darker than land, labels
+unchanged, so it sits with the navy theme instead of near-black.
+
 2026-10-20 — 0.9.0 Android review: account first visit, selection cache and UI consistency.
 
 Fixes: the CoreScope account screen called `/api/auth/me` without a saved session and showed
