@@ -40,6 +40,27 @@ fun rememberFoldSplit(): FoldSplit {
 }
 
 /**
+ * Where a half-opened horizontal fold (tabletop posture) crosses a layout, as [FoldSplit] but
+ * measured from the layout's top edge. A flat horizontal fold is ignored: the screen reads as
+ * one surface, and splitting a fully open landscape screen top/bottom would waste it.
+ */
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+@Composable
+fun rememberTabletopSplit(): FoldSplit {
+    val hinge = currentWindowAdaptiveInfo().windowPosture.hingeList.firstOrNull { !it.isVertical && it.isSeparating }
+    val density = LocalDensity.current
+    var top by remember { mutableFloatStateOf(0f) }
+    var height by remember { mutableIntStateOf(0) }
+    val modifier = Modifier.onGloballyPositioned { coordinates ->
+        top = coordinates.positionInWindow().y
+        height = coordinates.size.height
+    }
+    val offsetPx = hinge?.let { it.bounds.center.y - top }
+    val offset = offsetPx?.takeIf { height > 0 && it > 0f && it < height }?.let { with(density) { it.toDp() } }
+    return FoldSplit(modifier, offset)
+}
+
+/**
  * The first pane's width when splitting at the fold, or null to use the normal layout: both
  * sides must keep at least [minPane] so neither pane is squeezed by an off-center hinge.
  */

@@ -13,17 +13,38 @@ import androidx.compose.ui.platform.LocalContext
 import org.nodescope.android.core.model.Coordinate
 import org.nodescope.android.feature.map.*
 
+/**
+ * The map's saveable state, held by the screen above its layout branches so the camera and an
+ * unconfirmed tap survive folding, rotation and posture changes.
+ */
+internal class LinkProfileMapState(val camera: MutableState<List<Double>>, val tentative: MutableState<Tentative?>) {
+    /** An unconfirmed tap and the endpoint it was made for; it never carries over from A to B. */
+    data class Tentative(val endpoint: String, val latitude: Double, val longitude: Double)
+}
+
+private val tentativeSaver = androidx.compose.runtime.saveable.listSaver<LinkProfileMapState.Tentative?, Any>(
+    save = { it?.let { tap -> listOf(tap.endpoint, tap.latitude, tap.longitude) } ?: emptyList() },
+    restore = { values -> if (values.size == 3) LinkProfileMapState.Tentative(values[0] as String, values[1] as Double, values[2] as Double) else null })
+
+@Composable
+internal fun rememberLinkProfileMapState(origin: ProfileCoordinate?): LinkProfileMapState {
+    val camera = rememberSaveable { mutableStateOf(listOf(origin?.latitude ?: 0.0, origin?.longitude ?: 0.0, if (origin != null) 10.0 else 1.0, 0.0, 0.0)) }
+    val tentative = rememberSaveable(stateSaver = tentativeSaver) { mutableStateOf<LinkProfileMapState.Tentative?>(null) }
+    return remember(camera, tentative) { LinkProfileMapState(camera, tentative) }
+}
+
 /** Persistent map: tentative taps are committed only by Use Point; cancel leaves inputs intact. */
 @Composable
 internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, pointB: ProfileCoordinate?,
     nodes: List<org.nodescope.android.core.model.MeshNode>, onCancel: () -> Unit, onChoose: (ProfileCoordinate) -> Unit,
-    modifier: Modifier = Modifier) {
+    modifier: Modifier = Modifier, mapState: LinkProfileMapState = rememberLinkProfileMapState(pointA ?: pointB)) {
     Surface(modifier) {
         Column(Modifier.fillMaxSize()) {
-            var latitude by rememberSaveable(endpoint) { mutableStateOf<Double?>(null) }
-            var longitude by rememberSaveable(endpoint) { mutableStateOf<Double?>(null) }
-            val origin = pointA ?: pointB
-            var camera by rememberSaveable { mutableStateOf(listOf(origin?.latitude ?: 0.0, origin?.longitude ?: 0.0, if (origin != null) 10.0 else 1.0, 0.0, 0.0)) }
+            var tentativePoint by mapState.tentative
+            val current = tentativePoint?.takeIf { it.endpoint == endpoint }
+            val latitude = current?.latitude
+            val longitude = current?.longitude
+            var camera by mapState.camera
             var retry by remember { mutableIntStateOf(0) }
             // The provider and style picked on the live map (CARTO or Google Maps).
             val context = LocalContext.current
@@ -49,7 +70,7 @@ internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, point
                 val onTap: (MapTap) -> Boolean = { tap ->
                     val node = nodes.firstOrNull { it.publicKey == tap.nodeKey }?.coordinate
                     val spot = node ?: tap.coordinate?.takeIf { tap.expandGroup == null }
-                    if (endpoint != null && spot != null) { latitude = spot.latitude; longitude = spot.longitude; true }
+                    if (endpoint != null && spot != null) { tentativePoint = LinkProfileMapState.Tentative(endpoint, spot.latitude, spot.longitude); true }
                     else { tap.expandGroup?.invoke(); tap.expandGroup != null }
                 }
                 when (engine) {

@@ -76,6 +76,22 @@ their coordinate through `MapTap.coordinate` on both engines, replacing the plan
 MapLibre-only click listener. CARTO/OSM attribution buttons show only for CARTO.
 Validation: debug and instrumentation APKs build; JVM suite 363 tests, zero failures, one skipped.
 
+2026-10-27 — Link Profile foldable, tabletop and tablet layouts.
+An unfolded vertical hinge splits the map and editor into the two halves, with the pane gap on
+the crease (both halves at least 280 dp, otherwise the normal layout). Pane order deliberately
+does not copy iOS Duo, whose narrow right-hand editor works around the iOS tab bar: Android puts
+the editor first and the map on the right, in equal halves at the hinge. A half-opened horizontal hinge (tabletop) puts the map above the crease
+and the controls below it. Tablets and wide windows (840 dp, 1000 dp at 150%+ font scale) put
+the editor first, sized as on iPad (34% of the width, 340–420 dp), with the map on the larger right side. `rememberTabletopSplit`
+joins `rememberFoldSplit` in FoldSplit.kt. The map camera, an unconfirmed tap (tied to its
+endpoint, so it never carries from A to B), and the controls' scroll position are held above
+the layout branches, so they survive the activity recreation from folding and rotation. The map
+is movable content, so a live posture change moves it rather than rebuilding it.
+Validation: debug and instrumentation APKs build; JVM suite 363 tests, zero failures, one skipped.
+Not yet checked on a foldable or tablet emulator: hinge placement, tabletop, scrolling in both
+panes, and state across fold/rotate.
+
+
 2026-10-20 — 0.9.0 Android review: account first visit, selection cache and UI consistency.
 
 Fixes: the CoreScope account screen called `/api/auth/me` without a saved session and showed

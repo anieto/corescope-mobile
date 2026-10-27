@@ -25,6 +25,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.nodescope.android.core.design.meshPageBackground
+import org.nodescope.android.core.design.PaneGap
+import org.nodescope.android.core.design.firstPaneWidth
+import org.nodescope.android.core.design.rememberFoldSplit
+import org.nodescope.android.core.design.rememberTabletopSplit
+import androidx.compose.ui.platform.LocalDensity
 import org.nodescope.android.BuildConfig
 import java.text.DateFormat
 import java.util.Date
@@ -40,17 +45,30 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
     }.getOrNull()
     var expanded by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     androidx.activity.compose.BackHandler(enabled = selecting != null) { selecting = null }
-    val map: @Composable (Modifier) -> Unit = { modifier ->
-        LinkProfileMap(selecting, coordinate("A"), coordinate("B"), nodes, { selecting = null }, { point ->
-            selecting?.let { endpoint ->
-                model.edit("Latitude $endpoint", point.latitude.toString())
-                model.edit("Longitude $endpoint", point.longitude.toString())
-                selecting = if (endpoint == "A" && coordinate("B") == null) "B" else null
-            }
-        }, modifier)
+    // Held here, above the layout branches below, so folding, rotating or changing posture keeps
+    // the camera, an unconfirmed tap and the scroll position (rememberSaveable restores by position).
+    val mapState = rememberLinkProfileMapState(coordinate("A") ?: coordinate("B"))
+    val scroll = rememberScrollState()
+    val currentNodes by rememberUpdatedState(nodes)
+    // One map instance moves between layouts on a live posture change instead of being rebuilt.
+    val map = remember {
+        movableContentOf { modifier: Modifier ->
+            LinkProfileMap(selecting, coordinate("A"), coordinate("B"), currentNodes, { selecting = null }, { point ->
+                selecting?.let { endpoint ->
+                    model.edit("Latitude $endpoint", point.latitude.toString())
+                    model.edit("Longitude $endpoint", point.longitude.toString())
+                    selecting = if (endpoint == "A" && coordinate("B") == null) "B" else null
+                }
+            }, modifier, mapState)
+        }
     }
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val wide = maxWidth >= 840.dp
+    val fold = rememberFoldSplit()
+    val tabletop = rememberTabletopSplit()
+    BoxWithConstraints(Modifier.fillMaxSize().then(fold.modifier).then(tabletop.modifier)) {
+        val wide = maxWidth >= if (LocalDensity.current.fontScale >= 1.5f) 1000.dp else 840.dp
+        // Unfolded: the panes meet at the crease, the gap between them sitting on the hinge.
+        val editorAtFold = fold.firstPaneWidth(maxWidth, 280.dp)?.minus(PaneGap / 2)
+        val mapAboveFold = tabletop.offset?.takeIf { it >= 160.dp && maxHeight - it >= 160.dp }?.minus(PaneGap / 2)
         val editor: @Composable () -> Unit = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Compare terrain clearance and modeled path loss between two locations. Planning estimates do not prove a radio link will work.")
@@ -100,17 +118,33 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
             }
         }
         val controls: @Composable () -> Unit = {
-            Column(Modifier.fillMaxSize().meshPageBackground().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(Modifier.fillMaxSize().meshPageBackground().verticalScroll(scroll).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 editor()
                 state.result?.let { ProfileResult(it, distanceUnit) }
             }
         }
         if (!BuildConfig.MAPS_CONFIGURED) {
             controls()
-        } else if (wide) {
+        } else if (editorAtFold != null) {
+            // Editor before the hinge, map after it; the editor is not squeezed into a side column.
             Row(Modifier.fillMaxSize()) {
+                Box(Modifier.width(editorAtFold).fillMaxHeight()) { controls() }
+                Spacer(Modifier.width(PaneGap))
                 map(Modifier.weight(1f).fillMaxHeight())
-                Box(Modifier.width(400.dp).fillMaxHeight()) { controls() }
+            }
+        } else if (mapAboveFold != null) {
+            // Tabletop: map on the upper half, controls on the lower, nothing under the crease.
+            Column(Modifier.fillMaxSize()) {
+                map(Modifier.height(mapAboveFold).fillMaxWidth())
+                Spacer(Modifier.height(PaneGap))
+                Box(Modifier.weight(1f).fillMaxWidth()) { controls() }
+            }
+        } else if (wide) {
+            // Tablets and wide windows: the editor first, sized as on iPad; the map takes the larger right side.
+            val editorWidth = (maxWidth * 0.34f).coerceIn(340.dp, 420.dp)
+            Row(Modifier.fillMaxSize()) {
+                Box(Modifier.width(editorWidth).fillMaxHeight()) { controls() }
+                map(Modifier.weight(1f).fillMaxHeight())
             }
         } else {
             val panelHeight = if (expanded && state.result != null) (maxHeight * 0.72f).coerceAtMost(620.dp) else (maxHeight * 0.44f).coerceAtMost(330.dp)
@@ -132,6 +166,7 @@ private fun ProfileField(label: String, value: String, edit: (String) -> Unit) {
     OutlinedTextField(value, edit, label = { Text(label) }, singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text), modifier = Modifier.fillMaxWidth())
 }
+
 
 private fun Double.display() = String.format(Locale.getDefault(), "%.2f", this)
 
