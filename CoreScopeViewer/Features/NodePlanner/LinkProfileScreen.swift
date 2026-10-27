@@ -5,7 +5,6 @@ import SwiftUI
 struct LinkProfileScreen: View {
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(RegionFilterStore.self) private var regionFilter
-    @Environment(TabBarContextActionStore.self) private var tabBarContextAction
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var model = LinkProfileModel()
@@ -70,30 +69,20 @@ struct LinkProfileScreen: View {
         .toolbarBackground(Color(uiColor: .systemGroupedBackground), for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .overlay(alignment: .topLeading) {
-            Button { dismiss() } label: {
-                Image(systemName: "chevron.backward")
-                    .font(.title2.weight(.semibold))
-                    .frame(width: 44, height: 44)
-                    .background(.regularMaterial, in: Circle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Back")
+            LinkProfileBackButton(action: dismiss.callAsFunction)
             .padding()
             .padding(.top, overlayBackTopPadding)
             .opacity(showsOverlayBackButton ? 1 : 0)
             .allowsHitTesting(showsOverlayBackButton)
         }
+        .overlay(alignment: .topTrailing) {
+            LinkProfileBackButton(action: dismiss.callAsFunction)
+                .padding(.top, 104)
+                .padding(.trailing, 28)
+                .opacity(isHingedDevice == true ? 1 : 0)
+                .allowsHitTesting(isHingedDevice == true)
+        }
         .observesDuoHinge($isHingedDevice)
-        .onChange(of: isHingedDevice, initial: true) { _, isHingedDevice in
-            if isHingedDevice == true {
-                tabBarContextAction.set(.back) { dismiss() }
-            } else {
-                tabBarContextAction.clear()
-            }
-        }
-        .onDisappear {
-            tabBarContextAction.clear()
-        }
         .task(id: "\(settings.sourceSession.id)|\(regionFilter.selectedRegion ?? "")") {
             catalog.configure(settings: settings)
             await catalog.load(region: regionFilter.selectedRegion)
@@ -116,6 +105,21 @@ struct LinkProfileScreen: View {
         usesWideWorkspace && showsOverlayBackButton ? 56 : 0
     }
 
+}
+
+private struct LinkProfileBackButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "chevron.backward")
+                .font(.title2.weight(.semibold))
+                .frame(width: 44, height: 44)
+                .background(.regularMaterial, in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Back")
+    }
 }
 
 private struct LinkProfileCompactWorkspace: View {
