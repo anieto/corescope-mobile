@@ -50,7 +50,7 @@ data class MapFilters(
 
 /** Observers that can be chosen: those in the selected region (or all), by name. */
 fun mapObserverOptions(observers: List<MeshObserver>, region: String?): List<MeshObserver> =
-    observers.filter { region == null || it.iata.equals(region, ignoreCase = true) }
+    observers.filter { org.nodescope.android.core.model.regionIncludes(region, it.iata) }
         .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name?.takeIf(String::isNotBlank) ?: it.id })
 
 private val filtersJson = Json { ignoreUnknownKeys = true }

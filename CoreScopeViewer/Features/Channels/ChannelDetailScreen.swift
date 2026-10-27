@@ -234,9 +234,9 @@ struct ChannelDetailScreen: View {
         var messages = viewModel.messages
         if !channel.isLocallyMonitored,
            settings.beaconBackend == nil,
-           let selectedRegion = regionFilter.selectedRegion {
+           regionFilter.selectedRegion != nil {
             messages = messages.filter { message in
-                message.observers.contains { observerRegionLookup.iataByName[$0] == selectedRegion }
+                message.observers.contains { regionFilter.includes(observerRegionLookup.iataByName[$0]) }
             }
         }
         return messages.sorted {

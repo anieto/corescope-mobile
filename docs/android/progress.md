@@ -119,6 +119,29 @@ community viewport, else every offered region. The live map's viewport helpers n
 it too. iOS replaces its `.userLocation` start, and stays on the known nodes until region data
 arrives. Validation: Android JVM suite and APKs build; iOS simulator build succeeds (Xcode 27.1).
 
+2026-10-27 — Region quick picks (both platforms).
+CoreScope's `/api/config/region-quick-picks` publishes named groups of region codes (MeshTexas:
+Central, South, West, North and East Texas). Both apps load them with the regions, offer them
+in the region menus between All and the single regions, and show the pick's name as the
+selection. The selection stays the server's `region=` value, so a pick is its codes joined with
+commas ("AUS,SAT,ACT"), which CoreScope accepts on every endpoint; fetches are unchanged.
+Client-side comparisons now test membership: Android `regionIncludes()`, iOS
+`RegionFilterStore.includes(_:)`. That covers observer lists, map observer options, live-packet
+region filtering, route observations and channel messages. A pick frames the area around its
+regions on the live map and in Link Profile. The selection is pick-or-single, not arbitrary
+multi-select, by choice. Beacon and older servers offer no picks; a failed or HTML response
+means none.
+Validation: JVM suite 369 tests (6 new), zero failures, one skipped. MyNodesBaseRepositoryTest
+failed once on the "16 calls" count, then passed 5/5 alone and in a full rerun, so it is flaky
+and unrelated. iOS simulator build succeeds.
+Follow-up the same day: menus label the groups "Region groups" (first "Areas", renamed since "area" vs "region" read ambiguously) and the single codes "Regions"; the
+headers only appear when the host has picks (Android reuses the map's MenuSectionHeader). iOS
+framed a pick from its airport points alone (BeaconRegionReader.Frame.enclosing, 20% padding),
+which cut off south San Antonio. It now combines each region's full single-region view
+(`RegionCameraFraming.areaFrame`: published radius, else 45 km), as Android's union of
+`regionBounds` already did. MyNodesBaseRepositoryTest failed again in one full run: node
+fetches and observer pages race for a shared 20-request budget, so the count is
+interleaving-dependent.
 
 2026-10-20 — 0.9.0 Android review: account first visit, selection cache and UI consistency.
 

@@ -617,7 +617,7 @@ struct FieldToolsScreen: View {
     private var scopeSection: some View {
         Section("Analyzer Scope") {
             LabeledContent("Analyzer", value: settings.host)
-            LabeledContent("Region", value: regionFilter.selectedRegion ?? String(localized: "All regions"))
+            LabeledContent("Region", value: regionFilter.selectionTitle ?? String(localized: "All regions"))
         }
     }
 

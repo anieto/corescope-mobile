@@ -899,7 +899,8 @@ private final class LiveObservationFeedModel {
             if let filterType, data.decoded?.header?.payloadType != filterType { continue }
 
             let region = data.observerId.flatMap { regionByObserverID[$0] }
-            if let selectedRegion, region != selectedRegion { continue }
+            // A quick pick selects several comma-separated codes.
+            if let selectedRegion, !selectedRegion.split(separator: ",").contains(where: { $0.caseInsensitiveCompare(region ?? "") == .orderedSame }) { continue }
 
             let hash = data.hash?.trimmingCharacters(in: .whitespacesAndNewlines)
             let hasHash = !(hash?.isEmpty ?? true)
@@ -1212,10 +1213,28 @@ private struct LivePacketFiltersSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Region") {
-                    regionButton(code: nil, title: "Entire Network")
-                    ForEach(regionFilter.options, id: \.self) { code in
-                        regionButton(code: code, title: regionFilter.label(for: code))
+                if regionFilter.availablePicks.isEmpty {
+                    Section("Region") {
+                        regionButton(code: nil, title: "Entire Network")
+                        ForEach(regionFilter.options, id: \.self) { code in
+                            regionButton(code: code, title: regionFilter.label(for: code))
+                        }
+                    }
+                } else {
+                    Section("Region") {
+                        regionButton(code: nil, title: "Entire Network")
+                    }
+                    Section("Region groups") {
+                        ForEach(regionFilter.availablePicks, id: \.self) { pick in
+                            selectionButton(title: pick.name, isSelected: regionFilter.isSelected(pick)) {
+                                regionFilter.select(pick)
+                            }
+                        }
+                    }
+                    Section("Regions") {
+                        ForEach(regionFilter.options, id: \.self) { code in
+                            regionButton(code: code, title: regionFilter.label(for: code))
+                        }
                     }
                 }
 

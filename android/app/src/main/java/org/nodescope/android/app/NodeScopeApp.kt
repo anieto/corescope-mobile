@@ -305,7 +305,7 @@ internal fun AppShell(
     /** A packet's distinct routes from its full observation list, limited to the selected region. */
     suspend fun fullRoutes(host: String, region: String?, hash: String): List<RouteOption> {
         val detail = browse?.let { repository -> runCatching { repository.packetDetail(host, hash) }.getOrNull() } ?: return emptyList()
-        val observations = detail.observations.filter { region == null || it.observerIata.equals(region, true) }
+        val observations = detail.observations.filter { org.nodescope.android.core.model.regionIncludes(region, it.observerIata) }
         return routeOptions(observations.map { HeardPath(it.resolvedPath.orEmpty(), RouteHearing(it.observerName?.takeIf(String::isNotBlank) ?: "Observer ${it.id}", it.observerIata, it.snr, it.rssi)) })
     }
     fun completeRoutes(id: String, hash: String) {
@@ -667,12 +667,23 @@ internal fun AppShell(
 private fun RegionMenu(preferences: AppPreferences, state: SessionState, onRegion: (String?) -> Unit) {
     var open by remember { mutableStateOf(false) }
     val regions = state.snapshot?.regions.orEmpty()
+    // The host's quick picks ("Central Texas", …) select several regions at once.
+    val picks = org.nodescope.android.core.model.availablePicks(state.snapshot?.quickPicks.orEmpty(), regions)
     Box {
         TextButton(onClick = { open = true }, enabled = regions.isNotEmpty() || preferences.region != null) {
-            Text(preferences.region ?: stringResource(R.string.all_regions))
+            Text(org.nodescope.android.core.model.regionTitle(picks, preferences.region) ?: stringResource(R.string.all_regions))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(text = { Text(stringResource(R.string.all_regions)) }, onClick = { onRegion(null); open = false })
+            if (picks.isNotEmpty()) {
+                HorizontalDivider()
+                org.nodescope.android.feature.map.MenuSectionHeader("Region groups")
+                picks.forEach { pick ->
+                    DropdownMenuItem(text = { Text(pick.name) }, onClick = { onRegion(pick.selection); open = false })
+                }
+                HorizontalDivider()
+                org.nodescope.android.feature.map.MenuSectionHeader("Regions")
+            }
             regions.toSortedMap().forEach { (code, label) ->
                 DropdownMenuItem(text = { Text("$label ($code)") }, onClick = { onRegion(code); open = false })
             }

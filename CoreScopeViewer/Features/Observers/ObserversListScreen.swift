@@ -266,7 +266,7 @@ struct ObserversListScreen: View {
         availableModels = Array(Set(observerBaseline.compactMap(\.model))).sorted()
 
         let filtered = observerBaseline.map(applyingLiveStatus).filter { observer in
-            let matchesRegion = regionFilter.selectedRegion == nil || observer.iata == regionFilter.selectedRegion
+            let matchesRegion = regionFilter.includes(observer.iata)
             let matchesActivity = activityFilter == .all || observer.isRecentlySeen
             let matchesModel = selectedModel == nil || observer.model == selectedModel
             let matchesQuery = query.isEmpty

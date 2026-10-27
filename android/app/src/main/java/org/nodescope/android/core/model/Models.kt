@@ -74,6 +74,8 @@ data class AnalyzerSnapshot(
     val mapDefaults: MapDefaults?,
     val configurationIncomplete: Boolean = false,
     val regionCoordinates: Map<String, RegionCoordinate> = emptyMap(),
+    /** Named groups of regions, CoreScope only; empty when the server has none. */
+    val quickPicks: List<RegionQuickPick> = emptyList(),
 )
 
 @Serializable

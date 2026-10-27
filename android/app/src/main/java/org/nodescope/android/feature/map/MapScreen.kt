@@ -642,7 +642,7 @@ private fun MapLoadError.describe(): String = when (this) {
 
 /** A non-interactive group title inside a dropdown menu. */
 @Composable
-private fun MenuSectionHeader(title: String) {
+internal fun MenuSectionHeader(title: String) {
     Text(title, Modifier.padding(horizontal = 16.dp, vertical = 8.dp).semantics { heading() },
         style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }

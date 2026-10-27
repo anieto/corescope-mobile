@@ -59,7 +59,8 @@ internal fun regionCenters(snapshot: org.nodescope.android.core.model.AnalyzerSn
 }
 
 /**
- * A selected region frames its center; its node list is not used first because a region's
+ * A selected region frames its center, and a quick pick the area around its regions' centers.
+ * A region's node list is not used first because a region's
  * nodes are the ones its observers *heard*, which can lie far outside it. A center set aside
  * as an outlier is not trusted, so that region frames its nodes instead.
  * "All regions" frames, in order: the community viewport from the source registry, every
@@ -69,6 +70,14 @@ internal fun regionCenters(snapshot: org.nodescope.android.core.model.AnalyzerSn
 internal fun cameraTarget(snapshot: org.nodescope.android.core.model.AnalyzerSnapshot, selectedRegion: String?,
     sourceViewport: RegionCoordinate? = null): CameraTarget? {
     val (trusted, outliers) = regionCenters(snapshot)
+    // A quick pick frames all of its trusted regions together.
+    val codes = org.nodescope.android.core.model.regionCodes(selectedRegion)
+    if (codes != null && codes.size > 1) {
+        val areas = codes.filter { it !in outliers }.mapNotNull { code ->
+            snapshot.regionCoordinates.entries.firstOrNull { it.key.equals(code, true) }?.value?.takeIf { it.coordinate != null }?.let(::regionBounds)
+        }
+        if (areas.isNotEmpty()) return areas.union()
+    }
     if (selectedRegion != null) {
         if (selectedRegion.uppercase() !in outliers) snapshot.regionCoordinates.entries.firstOrNull { it.key.equals(selectedRegion, true) }?.value
             ?.takeIf { it.coordinate != null }?.let { return regionBounds(it) }

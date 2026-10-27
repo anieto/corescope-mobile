@@ -50,11 +50,15 @@ protocol AnalyzerBackend: FieldCatalogBackend {
     func channels(region: String?) async throws -> ChannelsResponse
     func channelMessages(id: String, offset: Int) async throws -> ChannelMessagesResponse
     func regions() async throws -> RegionsMap
+    func regionQuickPicks() async throws -> [RegionQuickPick]
     func iataCoordinates() async throws -> IataCoordsResponse
     func mapDefaults() async throws -> MapDefaults
 }
 
 extension AnalyzerBackend {
+    /// Only CoreScope publishes quick picks; other backends offer single regions.
+    func regionQuickPicks() async throws -> [RegionQuickPick] { [] }
+
     func packets(region: String?, limit: Int, payloadType: Int?) async throws -> [Packet] {
         try sourceSession.check()
         let packets = try await AnalyzerPaging.collect(limit: limit, identity: { (packet: Packet) in

@@ -84,9 +84,10 @@ struct NodeScopeApp: App {
                 regionFilter.configure(settings: settings)
                 observerRegionLookup.configure(settings: settings)
                 async let regions: Void = regionFilter.loadRegions()
+                async let picks: Void = regionFilter.loadQuickPicks()
                 async let coords: Void = regionFilter.loadIataCoords()
                 async let observerRegions: Void = observerRegionLookup.load()
-                _ = await (regions, coords, observerRegions)
+                _ = await (regions, picks, coords, observerRegions)
             }
         }
     }

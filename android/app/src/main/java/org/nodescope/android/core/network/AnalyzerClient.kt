@@ -102,6 +102,10 @@ class HttpAnalyzerRepository(private val client: BodySource,
         val defaults = async {
             optional { protocolJson.decodeFromString<MapDefaults>(client.read(endpoint(selection.host, "api", "config", "map"))) }
         }
+        // Older servers lack this endpoint (or answer with the web app): no quick picks then.
+        val picks = async {
+            optional { protocolJson.decodeFromString<RegionQuickPicksResponse>(client.read(endpoint(selection.host, "api", "config", "region-quick-picks"))).quickPicks }
+        }
         val nodesUrl = endpoint(selection.host, "api", "nodes").newBuilder()
             .addQueryParameter("limit", "5000").apply {
                 selection.region?.let { addQueryParameter("region", it) }
@@ -113,7 +117,8 @@ class HttpAnalyzerRepository(private val client: BodySource,
             response.total, regionResult.orEmpty(), mapResult,
             configurationIncomplete = regionResult == null || mapResult == null,
             regionCoordinates = regionCoordinatesFor(regionResult.orEmpty(), centers.await().orEmpty(),
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { airports() }))
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { airports() }),
+            quickPicks = picks.await().orEmpty())
     }
 }
 

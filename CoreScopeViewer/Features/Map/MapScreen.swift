@@ -1208,10 +1208,9 @@ struct MapScreen: View {
     }
 
     private var mapObserverOptions: [MapObserverOption] {
-        let selectedRegion = regionFilter.selectedRegion?.uppercased()
         return observerRegionLookup.observers
             .filter { observer in
-                selectedRegion == nil || observer.iata?.uppercased() == selectedRegion
+                regionFilter.includes(observer.iata)
             }
             .map { observer in
                 MapObserverOption(
@@ -1235,8 +1234,8 @@ struct MapScreen: View {
         if isLocatingUser {
             return "Locating you…"
         }
-        if let selectedRegion = regionFilter.selectedRegion {
-            return "Loading \(selectedRegion)…"
+        if let selection = regionFilter.selectionTitle {
+            return "Loading \(selection)…"
         }
         return "Loading all regions…"
     }
@@ -1810,6 +1809,14 @@ struct MapScreen: View {
             return
         }
 
+        // A quick pick frames all of its regions together.
+        if let codes = regionFilter.selectedCodes, codes.count > 1 {
+            if let frame = RegionCameraFraming.areaFrame(codes: codes.sorted(), regionFilter: regionFilter) {
+                moveCamera(to: frame)
+            }
+            return
+        }
+
         let code = selectedRegion.uppercased()
         if let coordinate = iataCoordinates[code], !isReplayMode {
             moveCamera(to: coordinate, radiusKm: iataRadiusKm[code] ?? 45)
@@ -2150,7 +2157,7 @@ struct MapScreen: View {
         observerId: String?,
         observerName: String?
     ) -> Bool {
-        guard let selectedRegion = regionFilter.selectedRegion?.uppercased() else {
+        guard regionFilter.selectedCodes != nil else {
             return true
         }
 
@@ -2158,7 +2165,7 @@ struct MapScreen: View {
             let observerRegion = observerRegionLookup.iataById[observerId]
                 ?? observerRegionLookup.iataById[observerId.lowercased()]
             if let observerRegion {
-                return observerRegion.uppercased() == selectedRegion
+                return regionFilter.includes(observerRegion)
             }
         }
 
@@ -2166,7 +2173,7 @@ struct MapScreen: View {
             let observerRegion = observerRegionLookup.iataByName[observerName]
                 ?? observerRegionLookup.iataByName[observerName.lowercased()]
             if let observerRegion {
-                return observerRegion.uppercased() == selectedRegion
+                return regionFilter.includes(observerRegion)
             }
         }
 
@@ -2682,21 +2689,8 @@ private struct MapRegionScopeControl: View {
                     Text("All Regions")
                 }
             }
-
-            if !regionFilter.options.isEmpty {
-                Divider()
-                ForEach(regionFilter.options, id: \.self) { code in
-                    Button {
-                        regionFilter.selectedRegion = code
-                    } label: {
-                        if regionFilter.selectedRegion == code {
-                            Label(regionFilter.label(for: code), systemImage: "checkmark")
-                        } else {
-                            Text(regionFilter.label(for: code))
-                        }
-                    }
-                }
-            }
+            RegionQuickPickButtons()
+            RegionCodeButtons()
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: "line.3.horizontal.decrease.circle.fill")
@@ -2721,6 +2715,8 @@ private struct MapRegionScopeControl: View {
         guard let selectedRegion = regionFilter.selectedRegion else {
             return "All Regions"
         }
+        if let pick = regionFilter.activePick { return pick.name }
+        if selectedRegion.contains(",") { return regionFilter.label(for: selectedRegion) }
         return "\(selectedRegion) · \(regionFilter.label(for: selectedRegion))"
     }
 }
@@ -3527,7 +3523,34 @@ enum RegionCameraFraming {
     /// Every region the analyzer offers, from published centers or the bundled airport table.
     @MainActor
     static func allRegionsViewport(regionFilter: RegionFilterStore) -> BeaconRegionReader.Frame? {
-        let coordinates = regionFilter.options.compactMap { code -> IataCoordinate? in
+        BeaconRegionReader.Frame.enclosing(coordinates(codes: regionFilter.options, regionFilter: regionFilter))
+    }
+
+    /// A quick pick's area: each region's full view (its published radius, else 45 km, exactly
+    /// as when that region is selected alone), combined. Framing only the centers cut off
+    /// the parts of a city beyond its airport, such as south San Antonio.
+    @MainActor
+    static func areaFrame(codes: [String], regionFilter: RegionFilterStore) -> BeaconRegionReader.Frame? {
+        let boxes = coordinates(codes: codes, regionFilter: regionFilter).compactMap { point -> (north: Double, south: Double, east: Double, west: Double)? in
+            let center = CLLocationCoordinate2D(latitude: point.lat, longitude: point.lon)
+            guard CLLocationCoordinate2DIsValid(center) else { return nil }
+            let radius = point.radiusKm.flatMap { $0.isFinite && $0 > 0 ? min($0, 2000) : nil } ?? 45
+            let span = span(around: center, radiusKm: radius)
+            return (center.latitude + span.latitudeDelta / 2, center.latitude - span.latitudeDelta / 2,
+                    center.longitude + span.longitudeDelta / 2, center.longitude - span.longitudeDelta / 2)
+        }
+        guard let north = boxes.map(\.north).max(), let south = boxes.map(\.south).min(),
+              let east = boxes.map(\.east).max(), let west = boxes.map(\.west).min() else { return nil }
+        return BeaconRegionReader.Frame(
+            latitude: (north + south) / 2, longitude: (east + west) / 2,
+            latitudeDelta: min(180, north - south), longitudeDelta: min(360, east - west)
+        )
+    }
+
+    /// Centers for [codes]: the analyzer's published ones, else the bundled airport table.
+    @MainActor
+    private static func coordinates(codes: [String], regionFilter: RegionFilterStore) -> [IataCoordinate] {
+        codes.compactMap { code -> IataCoordinate? in
             if let published = regionFilter.iataCoords.first(where: {
                 $0.key.caseInsensitiveCompare(code) == .orderedSame
             })?.value {
@@ -3536,7 +3559,6 @@ enum RegionCameraFraming {
             guard let fallback = AirportCoordinates.coordinate(for: code) else { return nil }
             return IataCoordinate(lat: fallback.latitude, lon: fallback.longitude, radiusKm: nil)
         }
-        return BeaconRegionReader.Frame.enclosing(coordinates)
     }
 
     /// The opening view without network lookups: a selected region's published center (and
@@ -3544,6 +3566,9 @@ enum RegionCameraFraming {
     /// when nothing is known yet.
     @MainActor
     static func openingRegion(regionFilter: RegionFilterStore, registry: AnalyzerSourceRegistry, host: String) -> MKCoordinateRegion? {
+        if let codes = regionFilter.selectedCodes, codes.count > 1 {
+            return areaFrame(codes: codes.sorted(), regionFilter: regionFilter).map(region(for:))
+        }
         if let selected = regionFilter.selectedRegion?.uppercased() {
             if let published = regionFilter.iataCoords.first(where: { $0.key.uppercased() == selected })?.value {
                 let center = CLLocationCoordinate2D(latitude: published.lat, longitude: published.lon)
@@ -3560,12 +3585,13 @@ enum RegionCameraFraming {
         if let viewport = communityViewport(registry: registry, host: host) {
             return MKCoordinateRegion(center: viewport.center, span: span(around: viewport.center, radiusKm: viewport.radiusKm))
         }
-        if let frame = allRegionsViewport(regionFilter: regionFilter) {
-            return MKCoordinateRegion(
-                center: CLLocationCoordinate2D(latitude: frame.latitude, longitude: frame.longitude),
-                span: MKCoordinateSpan(latitudeDelta: frame.latitudeDelta, longitudeDelta: frame.longitudeDelta)
-            )
-        }
-        return nil
+        return allRegionsViewport(regionFilter: regionFilter).map(region(for:))
+    }
+
+    private static func region(for frame: BeaconRegionReader.Frame) -> MKCoordinateRegion {
+        MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: frame.latitude, longitude: frame.longitude),
+            span: MKCoordinateSpan(latitudeDelta: frame.latitudeDelta, longitudeDelta: frame.longitudeDelta)
+        )
     }
 }

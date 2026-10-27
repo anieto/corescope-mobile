@@ -71,9 +71,10 @@ struct StorageSettingsScreen: View {
         clearFailed = !succeeded
 
         async let regions: Void = regionFilter.loadRegions()
+        async let picks: Void = regionFilter.loadQuickPicks()
         async let coordinates: Void = regionFilter.loadIataCoords()
         async let observerRegions: Void = observerRegionLookup.load()
-        _ = await (regions, coordinates, observerRegions)
+        _ = await (regions, picks, coordinates, observerRegions)
 
         usage = await CacheStorageService.shared.usage()
         clearedAt = succeeded ? .now : nil

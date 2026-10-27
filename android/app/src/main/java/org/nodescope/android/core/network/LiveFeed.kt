@@ -27,8 +27,8 @@ data class LiveFeedState(
     /** Worked out once per state; screens read it on every recomposition. */
     val visiblePackets: List<LivePacket> by lazy(LazyThreadSafetyMode.PUBLICATION) {
         val region = selection?.region ?: return@lazy packets
-        val ids = observers.filter { it.iata.equals(region, true) }.map { it.id.lowercase() }.toSet()
-        packets.filter { it.region.equals(region, true) || it.observerId?.lowercase() in ids }
+        val ids = observers.filter { org.nodescope.android.core.model.regionIncludes(region, it.iata) }.map { it.id.lowercase() }.toSet()
+        packets.filter { (it.region != null && org.nodescope.android.core.model.regionIncludes(region, it.region)) || it.observerId?.lowercase() in ids }
     }
 }
 sealed interface LiveSignal {
