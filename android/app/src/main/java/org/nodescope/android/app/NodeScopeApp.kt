@@ -1,6 +1,7 @@
 package org.nodescope.android.app
 
 import androidx.compose.ui.draw.clip
+import org.nodescope.android.core.design.meshPageBackground
 import org.nodescope.android.core.design.paneCanvasColor
 import org.nodescope.android.core.design.PaneShape
 import org.nodescope.android.core.design.PaneGap
@@ -86,7 +87,12 @@ import org.nodescope.android.feature.nodes.*
 private inline fun <reified T : Any> NavGraphBuilder.screen(noinline content: @Composable AnimatedContentScope.(NavBackStackEntry) -> Unit) {
     composable<T> { entry ->
         val scope = this
-        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { scope.content(entry) }
+        val background = when (T::class) {
+            MapRoute::class, MapLabRoute::class, NodeAnalyticsRoute::class -> Modifier.background(MaterialTheme.colorScheme.background)
+            SettingsRoute::class, AboutRoute::class -> Modifier.meshPageBackground(subdued = false)
+            else -> Modifier.meshPageBackground()
+        }
+        Box(Modifier.fillMaxSize().then(background)) { scope.content(entry) }
     }
 }
 
@@ -135,7 +141,7 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
     val error by model.writeError.collectAsStateWithLifecycle()
     if (!preferences.onboarded) {
         Surface(Modifier.fillMaxSize()) {
-            Box(Modifier.safeDrawingPadding()) {
+            Box(Modifier.fillMaxSize().meshPageBackground().safeDrawingPadding()) {
                 OnboardingScreen(sources, preferences.host, saving, error, { model.selectSource(it) }, model.sourceIcons)
             }
         }
@@ -168,7 +174,7 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
                 feed = live, onReconnect = model::reconnectLive, browse = model.browse, monitoredChannels = { model.monitoredChannels },
                 onLiveFeedDemand = model::setLiveFeedDemand,
                 diagnostics = model.diagnostics, cacheStorage = model.cacheStorage, myNodesRepositories = model::myNodesRepositories, myNodesSnapshots = model.myNodesSnapshots, sourceChangedAt = sourceChangedAt,
-                pendingLink = pendingLink, onLinkHandled = model::linkHandled, onDistanceUnit = model::setDistanceUnit,
+                pendingLink = pendingLink, onLinkHandled = model::linkHandled, onDistanceUnit = model::setDistanceUnit, onBackgroundTexture = model::setBackgroundTexture,
                 sourceName = sources.firstOrNull { source ->
                     runCatching { org.nodescope.android.core.network.normalizeHost(source.host) }.getOrNull().equals(preferences.host, true)
                 }?.name,
@@ -183,7 +189,7 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
 @Composable
 private fun SourceCheck(error: String?, onRetry: () -> Unit, onChooseAnother: () -> Unit) {
     Surface(Modifier.fillMaxSize()) {
-        Column(Modifier.safeDrawingPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+        Column(Modifier.fillMaxSize().meshPageBackground().safeDrawingPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally) {
             if (error == null) {
                 CircularProgressIndicator()
@@ -220,6 +226,7 @@ internal fun AppShell(
     myNodesSnapshots: org.nodescope.android.core.storage.MyNodesSnapshotStore? = null,
     pendingLink: PendingLink? = null, onLinkHandled: (Long) -> Unit = {},
     onDistanceUnit: (org.nodescope.android.core.storage.DistanceUnit) -> Unit = {},
+    onBackgroundTexture: (Boolean) -> Unit = {},
     onLiveFeedDemand: (java.util.UUID, String, org.nodescope.android.core.network.LiveFeedDemand?) -> Unit = { _, _, _ -> },
 ) {
     val context = LocalContext.current
@@ -577,7 +584,7 @@ internal fun AppShell(
                                 onDiagnostics = { if (diagnostics != null) nav.navigate(DiagnosticsRoute) },
                                 onStorage = { if (cacheStorage != null) nav.navigate(StorageRoute) },
                                 onAbout = { nav.navigate(AboutRoute) }, onMapLab = { nav.navigate(MapLabRoute) },
-                                onSupport = { runCatching { uriHandler.openUri(SUPPORT_URL) } }, onDistanceUnit = onDistanceUnit)
+                                onSupport = { runCatching { uriHandler.openUri(SUPPORT_URL) } }, onDistanceUnit = onDistanceUnit, onBackgroundTexture = onBackgroundTexture)
                         }
                         screen<DiagnosticsRoute> { diagnostics?.let { DiagnosticsScreen(it, preferences.host, currentFeed.connection) } }
                         screen<FavoritesRoute> { backStack ->

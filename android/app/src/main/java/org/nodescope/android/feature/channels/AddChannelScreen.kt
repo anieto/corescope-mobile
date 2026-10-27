@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.channels
 
+import org.nodescope.android.core.design.meshCardColors
 import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -74,7 +75,7 @@ fun AddChannelScreen(store: MonitoredChannelStore, onDone: () -> Unit) {
                     icon = { SegmentedButtonDefaults.Icon(mode == option) { Icon(option.icon, null, Modifier.size(18.dp)) } }) { Text(option.label) }
             }
         }
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        Card(colors = meshCardColors()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(mode.title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                 val plain = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, imeAction = ImeAction.Done)
@@ -119,7 +120,7 @@ fun AddChannelScreen(store: MonitoredChannelStore, onDone: () -> Unit) {
 private fun GeneratedKey(channel: MonitoredChannel) {
     val copy = rememberCopyAction()
     val context = LocalContext.current
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+    Card(colors = meshCardColors()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Generated key for ${channel.title}", style = MaterialTheme.typography.titleMedium)
             Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.small) {

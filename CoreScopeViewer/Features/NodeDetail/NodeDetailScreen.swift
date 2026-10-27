@@ -13,6 +13,7 @@ struct NodeDetailScreen: View {
     @State private var linkedNodesByPublicKey: [String: MeshNode] = [:]
     @State private var selectedLinkedNode: MeshNode?
     @State private var meshCoreContact: MeshCoreContactLink?
+    @State private var showsFieldTools = false
 
     private var hasFieldCoordinate: Bool {
         guard let latitude = displayedNode.lat, let longitude = displayedNode.lon else { return false }
@@ -37,6 +38,15 @@ struct NodeDetailScreen: View {
                 )
 
                 NodeIdentityCard(node: displayedNode)
+
+                if hasFieldCoordinate {
+                    Button {
+                        showsFieldTools = true
+                    } label: {
+                        FieldGuidanceLinkCard(entityName: displayedNode.name ?? String(localized: "this node"))
+                    }
+                    .buttonStyle(.plain)
+                }
 
                 if settings.beaconBackend != nil {
                     BeaconFeatureNotice(capability: .nodeHealth)
@@ -108,8 +118,8 @@ struct NodeDetailScreen: View {
         .toolbar {
             if hasFieldCoordinate {
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink {
-                        FieldToolsScreen(initialNode: displayedNode)
+                    Button {
+                        showsFieldTools = true
                     } label: {
                         Image(systemName: "location.viewfinder")
                     }
@@ -128,6 +138,12 @@ struct NodeDetailScreen: View {
         }
         .sheet(item: $meshCoreContact) { contact in
             MeshCoreContactSheet(contact: contact)
+        }
+        .fullScreenCover(isPresented: $showsFieldTools) {
+            FieldToolsScreen(
+                initialNode: displayedNode,
+                closeAction: { showsFieldTools = false }
+            )
         }
         .onChange(of: nodeCatalogViewModel.nodes) {
             linkedNodesByPublicKey = nodeCatalogViewModel.nodesByPubkey

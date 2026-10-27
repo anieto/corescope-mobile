@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.map
 
+import org.nodescope.android.core.design.MeshModalBottomSheet
 import kotlinx.coroutines.launch
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -395,7 +396,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     }
     if (filtersOpen) MapFiltersSheet(filters, observerOptions, onChange = { filters = it }, onDismiss = { filtersOpen = false })
     routeDetail?.let { details -> RouteDetailsSheet(details, onNode = { routeDetail = null; currentOnNode(it) }, onDismiss = { routeDetail = null }) }
-    if (search) ModalBottomSheet(onDismissRequest = { search = false }) {
+    if (search) MeshModalBottomSheet(onDismissRequest = { search = false }) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.8f)) {
             Text("Search nodes", Modifier.padding(horizontal = 20.dp), style = MaterialTheme.typography.titleLarge)
             NodeBrowser(snapshot?.nodes.orEmpty(), snapshot?.total ?: 0) { key ->

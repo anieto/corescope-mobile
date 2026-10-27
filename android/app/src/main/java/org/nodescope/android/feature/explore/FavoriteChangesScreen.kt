@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.explore
 
+import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -186,7 +187,7 @@ fun FavoriteChangesScreen(host: String, sourceName: String?, library: NodeLibrar
     LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item(key = "summary") {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Card(colors = meshCardColors()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     FavoriteSourceIdentity(host, sourceName)
                     Row {
@@ -208,7 +209,7 @@ fun FavoriteChangesScreen(host: String, sourceName: String?, library: NodeLibrar
             Text("No favorites to compare. Save nodes or observers in Favorites to follow changes here.")
         }
         items(model.rows, key = { it.id }) { row ->
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Card(colors = meshCardColors()) {
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(row.title, style = MaterialTheme.typography.titleMedium)
                     Text(row.message, style = MaterialTheme.typography.bodyMedium)

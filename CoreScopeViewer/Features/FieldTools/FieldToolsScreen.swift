@@ -80,6 +80,35 @@ enum FieldCatalogFilter: String, CaseIterable, Identifiable {
     }
 }
 
+struct FieldGuidanceLinkCard: View {
+    let entityName: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "location.north.circle.fill")
+                .font(.title2)
+                .foregroundStyle(NodeScopeStyle.signal)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Guide to \(entityName)")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text("See distance, direction, and recent network evidence")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
+        }
+        .padding(16)
+        .instrumentCard()
+        .contentShape(Rectangle())
+    }
+}
+
 struct FieldTargetEvidence: Equatable {
     enum FactKind: String, Equatable {
         case advertisements
@@ -370,6 +399,7 @@ struct FieldToolsScreen: View {
     private static let maximumMapAnnotations = 150
 
     let initialReference: FieldCoordinate?
+    let closeAction: (() -> Void)?
 
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(RegionFilterStore.self) private var regionFilter
@@ -387,16 +417,19 @@ struct FieldToolsScreen: View {
     @State private var showsLocationExplanation = false
     @State private var showsCoordinateEntry = false
     @State private var activeSourceSessionID: UUID?
-    @State private var showsCompactCanvas = false
+    @State private var showsNearbySheet = false
+    @State private var showsTargetDetails = false
     @State private var displayedMapItems: [FieldCatalogItem] = []
     @State private var visibleMapRect: MKMapRect?
 
     init(
         initialReference: FieldCoordinate? = nil,
         initialNode: MeshNode? = nil,
-        initialObserver: MeshObserver? = nil
+        initialObserver: MeshObserver? = nil,
+        closeAction: (() -> Void)? = nil
     ) {
         self.initialReference = initialReference
+        self.closeAction = closeAction
         _model = State(initialValue: FieldToolsViewModel(reference: initialReference))
         let initialItem = initialNode.map(FieldCatalogItem.node) ?? initialObserver.map(FieldCatalogItem.observer)
         _selectedItem = State(initialValue: initialItem)
@@ -404,24 +437,10 @@ struct FieldToolsScreen: View {
     }
 
     var body: some View {
-        Group {
-            if horizontalSizeClass == .compact {
-                toolsPanel
-            } else {
-                AdaptiveListDetailNavigation(
-                    preferredCompactColumn: $preferredCompactColumn,
-                    detailNavigationID: selectedItem?.id
-                ) {
-                    toolsPanel
-                } detail: {
-                    canvas
-                }
-            }
-        }
-        .navigationTitle("Field Tools")
-        .navigationDestination(isPresented: $showsCompactCanvas) {
+        NavigationStack {
             canvas
         }
+        .navigationTitle("Field Tools")
         .task(id: "\(settings.sourceSession.id)|\(regionFilter.selectedRegion ?? "")") {
             if let activeSourceSessionID, activeSourceSessionID != settings.sourceSession.id {
                 selectedItem = nil
@@ -486,44 +505,62 @@ struct FieldToolsScreen: View {
                 useManualReference(coordinate)
             }
         }
+        .sheet(isPresented: $showsNearbySheet) {
+            NavigationStack {
+                toolsPanel
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { showsNearbySheet = false }
+                        }
+                    }
+            }
+        }
+        .sheet(isPresented: $showsTargetDetails) {
+            NavigationStack {
+                ScrollView {
+                    if let target = pinnedItem ?? selectedItem {
+                        VStack(spacing: 12) {
+                            FieldTargetEvidenceCard(
+                                evidence: FieldTargetEvidence(
+                                    item: target,
+                                    catalogFetchedAt: model.lastUpdatedAt,
+                                    sourceHost: settings.host
+                                ),
+                                analytics: model.targetEvidenceItemID == target.id
+                                    ? model.targetEvidence : nil,
+                                isLoadingAnalytics: model.targetEvidenceItemID == target.id
+                                    && model.isLoadingTargetEvidence,
+                                analyticsError: model.targetEvidenceItemID == target.id
+                                    ? model.targetEvidenceError : nil
+                            )
+                            FieldTargetQuickActions(
+                                item: target,
+                                capabilities: model.capabilities,
+                                analytics: model.targetEvidenceItemID == target.id
+                                    ? model.targetEvidence?.evidence : nil
+                            )
+                        }
+                        .padding()
+                    }
+                }
+                .meshPageBackground()
+                .navigationTitle("Target Details")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { showsTargetDetails = false }
+                    }
+                }
+            }
+        }
     }
 
     private var toolsPanel: some View {
         List {
-            Section {
-                HStack(spacing: 4) {
-                    ForEach(FieldToolsActivity.allCases) { activity in
-                        Button {
-                            self.activity = activity
-                        } label: {
-                            Label(activity.title, systemImage: activity.symbol)
-                                .frame(maxWidth: .infinity, minHeight: 44)
-                                .foregroundStyle(self.activity == activity ? NodeScopeStyle.deepNavy : .primary)
-                                .background(
-                                    self.activity == activity ? NodeScopeStyle.signal : Color.clear,
-                                    in: RoundedRectangle(cornerRadius: 9)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(activity.title)
-                        .accessibilityAddTraits(self.activity == activity ? .isSelected : [])
-                    }
-                }
-                .padding(3)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                .listRowBackground(Color.clear)
-            }
-
             contextSection
-
-            switch activity {
-            case .nearby:
-                nearbySection
-            case .plan:
-                planSection
-            }
+            nearbySection
+            planSection
+            scopeSection
         }
         .navigationTitle("Field Tools")
         .adaptiveSidebarListStyle(meshBackground: true)
@@ -537,19 +574,17 @@ struct FieldToolsScreen: View {
 
     @ViewBuilder
     private var contextSection: some View {
-        Section("Context") {
-            Label(settings.host, systemImage: "server.rack")
-            Label(regionFilter.selectedRegion ?? String(localized: "All regions"), systemImage: "scope")
+        Section("Starting Point") {
             if model.reference == nil {
                 Button {
                     showCanvas()
                 } label: {
-                    Label("Choose Reference on Map", systemImage: "mappin.and.ellipse")
+                    Label("Choose on Map", systemImage: "mappin.and.ellipse")
                 }
             } else {
                 Label(referenceDescription, systemImage: usesDeviceReference ? "location.fill" : "location")
                     .foregroundStyle(NodeScopeStyle.signal)
-                Button("Clear Reference", role: .destructive) {
+                Button("Change Starting Point", role: .destructive) {
                     model.reference = nil
                     usesDeviceReference = false
                     locationSession.stop()
@@ -579,6 +614,13 @@ struct FieldToolsScreen: View {
         }
     }
 
+    private var scopeSection: some View {
+        Section("Analyzer Scope") {
+            LabeledContent("Analyzer", value: settings.host)
+            LabeledContent("Region", value: regionFilter.selectedRegion ?? String(localized: "All regions"))
+        }
+    }
+
     @ViewBuilder
     private var nearbySection: some View {
         Section {
@@ -602,6 +644,7 @@ struct FieldToolsScreen: View {
                 ForEach(model.visibleItems) { item in
                     Button {
                         selectedItem = item
+                        pinnedItem = item
                         if let coordinate = item.coordinate {
                             position = .region(MKCoordinateRegion(
                                 center: coordinate.clLocationCoordinate,
@@ -621,7 +664,7 @@ struct FieldToolsScreen: View {
                 }
             }
         } header: {
-            Text("Located Equipment")
+            Text("Nearby Equipment")
         } footer: {
             if let lastUpdatedAt = model.lastUpdatedAt {
                 Text("Analyzer catalog updated \(lastUpdatedAt, format: .relative(presentation: .named))")
@@ -641,15 +684,12 @@ struct FieldToolsScreen: View {
             VStack(alignment: .leading, spacing: 12) {
                 Label("Deployment Planning", systemImage: "antenna.radiowaves.left.and.right")
                     .font(.headline)
-                Text("Choose a proposed site on the map. Radio, antenna, terrain, and receiver assumptions are added in the next planning slice.")
+                Text("Coverage modeling and proposed-site comparisons are still being built.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                Button("Choose Proposed Site") {
-                    showCanvas()
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                Label("Coming Soon", systemImage: "hammer")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
             }
             .listRowBackground(Color.clear)
         }
@@ -672,7 +712,7 @@ struct FieldToolsScreen: View {
                             .stroke(NodeScopeStyle.activity, style: StrokeStyle(lineWidth: 3, dash: [7, 5]))
                     }
 
-                    if !accessibilityVoiceOverEnabled {
+                    if model.reference != nil && !accessibilityVoiceOverEnabled {
                         ForEach(displayedMapItems) { item in
                             if let coordinate = item.coordinate {
                                 Annotation(item.name, coordinate: coordinate.clLocationCoordinate) {
@@ -710,33 +750,63 @@ struct FieldToolsScreen: View {
                 }
             }
 
-            FieldCanvasHeader(
-                activity: activity,
-                referenceIsSet: model.reference != nil,
-                selectedName: selectedItem?.name
-            )
-            .padding(12)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text(selectedItem?.name ?? String(localized: "Field Map"))
+                        .font(.headline)
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 44)
+                        .nodeScopeFloatingGlass(cornerRadius: 18)
+
+                    Spacer()
+
+                    if let closeAction {
+                        Button(action: closeAction) {
+                            Image(systemName: "xmark")
+                                .frame(width: 44, height: 44)
+                        }
+                        .buttonStyle(.plain)
+                        .nodeScopeFloatingGlass(cornerRadius: 18)
+                        .accessibilityLabel("Close Field Tools")
+                    }
+                }
+
+                if horizontalSizeClass == .compact {
+                    Button {
+                        showsNearbySheet = true
+                    } label: {
+                        Label("Nearby", systemImage: "list.bullet")
+                            .font(.subheadline.weight(.semibold))
+                            .padding(.horizontal, 12)
+                            .frame(minHeight: 44)
+                            .nodeScopeFloatingGlass(cornerRadius: 16)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    FieldCanvasHeader(
+                        activity: activity,
+                        referenceIsSet: model.reference != nil,
+                        selectedName: selectedItem?.name
+                    )
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 32)
+            .padding(.bottom, 12)
 
             if let target = pinnedItem ?? selectedItem {
                 VStack {
                     Spacer()
                     VStack(spacing: 8) {
-                        if pinnedItem?.id == target.id {
-                            FieldTargetEvidenceCard(evidence: FieldTargetEvidence(
-                                item: target,
-                                catalogFetchedAt: model.lastUpdatedAt,
-                                sourceHost: settings.host
-                            ), analytics: model.targetEvidenceItemID == target.id
-                                ? model.targetEvidence : nil,
-                               isLoadingAnalytics: model.targetEvidenceItemID == target.id
-                                && model.isLoadingTargetEvidence,
-                               analyticsError: model.targetEvidenceItemID == target.id
-                                ? model.targetEvidenceError : nil)
-                            FieldTargetQuickActions(
-                                item: target,
-                                capabilities: model.capabilities,
-                                analytics: model.targetEvidenceItemID == target.id
-                                    ? model.targetEvidence?.evidence : nil
+                        if model.reference == nil {
+                            FieldGettingStartedCard(
+                                hasStartingPoint: false,
+                                nearbyCount: model.visibleItems.count,
+                                useMyLocation: { showsLocationExplanation = true },
+                                enterCoordinates: { showsCoordinateEntry = true },
+                                showNearby: { showsNearbySheet = true }
                             )
                         }
                         FieldTargetSummary(
@@ -753,13 +823,37 @@ struct FieldToolsScreen: View {
                             pin: { pinnedItem = target },
                             unpin: { pinnedItem = nil }
                         )
+                        if pinnedItem?.id == target.id {
+                            Button {
+                                showsTargetDetails = true
+                            } label: {
+                                Label("Network Evidence & Actions", systemImage: "waveform.path.ecg")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.large)
+                            .frame(maxWidth: 520)
+                        }
                     }
                     .padding(12)
+                    .padding(.bottom, 24)
+                }
+            } else {
+                VStack {
+                    Spacer()
+                    FieldGettingStartedCard(
+                        hasStartingPoint: model.reference != nil,
+                        nearbyCount: model.visibleItems.count,
+                        useMyLocation: { showsLocationExplanation = true },
+                        enterCoordinates: { showsCoordinateEntry = true },
+                        showNearby: { showsNearbySheet = true }
+                    )
+                    .padding(12)
+                    .padding(.bottom, 24)
                 }
             }
         }
-        .navigationTitle(selectedItem?.name ?? String(localized: "Field Map"))
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .navigationBar)
     }
 
     private func geometry(for item: FieldCatalogItem) -> FieldGeometryResult? {
@@ -788,7 +882,7 @@ struct FieldToolsScreen: View {
 
     private func showCanvas() {
         if horizontalSizeClass == .compact {
-            showsCompactCanvas = true
+            showsNearbySheet = false
         } else {
             preferredCompactColumn = .detail
         }
@@ -843,6 +937,66 @@ private struct FieldNearbyControls: View {
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
         }
         .padding(.vertical, 4)
+    }
+}
+
+private struct FieldGettingStartedCard: View {
+    let hasStartingPoint: Bool
+    let nearbyCount: Int
+    let useMyLocation: () -> Void
+    let enterCoordinates: () -> Void
+    let showNearby: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(
+                hasStartingPoint ? "Choose Nearby Equipment" : "Choose Your Starting Point",
+                systemImage: hasStartingPoint ? "dot.radiowaves.left.and.right" : "location.circle"
+            )
+            .font(.headline)
+
+            Text(hasStartingPoint
+                ? "Select a node or observer to see its distance and direction."
+                : "Use your location, tap anywhere on the map, or enter coordinates.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            if hasStartingPoint {
+                Button(action: showNearby) {
+                    Label("View \(nearbyCount) Nearby", systemImage: "list.bullet")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) { startingPointActions }
+                    VStack(spacing: 8) { startingPointActions }
+                }
+                Label("Or tap the map to choose another place", systemImage: "hand.tap")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(14)
+        .instrumentCard()
+        .frame(maxWidth: 520)
+        .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private var startingPointActions: some View {
+        Button(action: useMyLocation) {
+            Label("Use My Location", systemImage: "location.fill")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.borderedProminent)
+
+        Button(action: enterCoordinates) {
+            Label("Enter Coordinates", systemImage: "number")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
     }
 }
 
@@ -924,7 +1078,7 @@ private struct FieldTargetSummary: View {
 
     private var pinButton: some View {
         Button(action: isPinned ? unpin : pin) {
-            Label(isPinned ? "Unpin" : "Pin Target", systemImage: isPinned ? "pin.slash" : "pin")
+            Label(isPinned ? "Stop Guidance" : "Guide Me", systemImage: isPinned ? "xmark" : "location.north")
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)

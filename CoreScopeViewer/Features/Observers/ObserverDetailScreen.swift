@@ -50,6 +50,16 @@ struct ObserverDetailScreen: View {
 
                 if isCurrentSource {
                     ObserverIdentityCard(observer: displayedObserver)
+                    if hasFieldCoordinate {
+                        Button {
+                            showsFieldTools = true
+                        } label: {
+                            FieldGuidanceLinkCard(
+                                entityName: displayedObserver.name ?? String(localized: "this observer")
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
 
                 if let analytics = viewModel.analytics {
@@ -102,8 +112,11 @@ struct ObserverDetailScreen: View {
             recentItemsStore.record(observer: observer, source: favoriteSource)
         }
         .toolbar { observerToolbar }
-        .navigationDestination(isPresented: $showsFieldTools) {
-            FieldToolsScreen(initialObserver: displayedObserver)
+        .fullScreenCover(isPresented: $showsFieldTools) {
+            FieldToolsScreen(
+                initialObserver: displayedObserver,
+                closeAction: { showsFieldTools = false }
+            )
         }
         .task(id: "\(settings.sourceSession.id)|\(observer.id)") {
             await loadDetails()

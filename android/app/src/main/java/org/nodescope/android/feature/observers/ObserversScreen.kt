@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.observers
 
+import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -127,7 +128,7 @@ private fun ObserverCard(observer: MeshObserver, now: Long, isSelected: Boolean,
     val active = observer.online ?: observer.isActive(now)
     val tone = statusAccent(active)
     Card(onClick = onClick, modifier = Modifier.semantics { selected = isSelected },
-        colors = CardDefaults.cardColors(containerColor = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface)) {
+        colors = meshCardColors(selected = isSelected)) {
         Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.size(42.dp).background(tone.copy(alpha = 0.14f), CircleShape), contentAlignment = Alignment.Center) {
                 Icon(Icons.Outlined.Sensors, if (active) "Active" else "Inactive", tint = tone)

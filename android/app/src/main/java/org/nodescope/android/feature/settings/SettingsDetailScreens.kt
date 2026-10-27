@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.settings
 
+import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.foundation.clickable
 import org.nodescope.android.core.design.rememberCopyAction
 import org.nodescope.android.app.AppIdentity
@@ -307,7 +308,7 @@ private fun LinkRow(icon: ImageVector, title: String, onClick: () -> Unit) {
 private fun Section(title: String?, footer: String? = null, content: @Composable ColumnScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         title?.let { SectionLabel(it, Modifier.padding(horizontal = 4.dp)) }
-        Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
         }
         footer?.let { Text(it, Modifier.padding(horizontal = 4.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }

@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.explore
 
+import org.nodescope.android.core.design.meshCardColors
 import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -378,7 +379,7 @@ fun CoreScopeAccountScreen(host: String, sourceName: String?, library: NodeLibra
 /** Settings-style panel: small primary icon and label heading a surface card. */
 @Composable
 private fun AccountCard(title: String?, icon: ImageVector?, content: @Composable ColumnScope.() -> Unit) {
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+    Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (title != null) Row(Modifier.semantics { heading() }, verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)) {

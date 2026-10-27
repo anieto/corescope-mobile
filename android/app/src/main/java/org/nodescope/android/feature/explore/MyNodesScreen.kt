@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.explore
 
+import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Info
@@ -103,7 +104,7 @@ fun MyNodesScreen(host: String, library: NodeLibrary, acquire: () -> MyNodesRepo
     )
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Card(colors = meshCardColors()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) { FavoriteSourceIdentity(host, sourceName) }
@@ -134,7 +135,7 @@ fun MyNodesScreen(host: String, library: NodeLibrary, acquire: () -> MyNodesRepo
                 it.fetchedAt, now, row.state in listOf(MyNodesBaseState.FETCHED, MyNodesBaseState.CACHED))
             }
             Card(onClick = { onNode(item.entityId) }, modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            colors = meshCardColors()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     ActivityItemHeading(snapshot?.node?.name ?: item.title) { KindIcon(SavedKind.NODE, snapshot?.node ?: item.node) }
                     Text(when (activity?.state) {
@@ -167,7 +168,7 @@ fun MyNodesScreen(host: String, library: NodeLibrary, acquire: () -> MyNodesRepo
         items(observers, key = { it.key }) { item ->
             val record = catalog?.snapshot?.observers?.firstOrNull { it.id == item.entityId }
             Card(onClick = { onObserver(item.entityId, record?.name ?: item.title) }, modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            colors = meshCardColors()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     ActivityItemHeading(record?.name ?: item.title) { KindIcon(SavedKind.OBSERVER, null) }
                     val seen = record?.lastSeen?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }

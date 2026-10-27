@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.settings
 
+import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -16,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -41,6 +43,7 @@ fun SettingsScreen(
     onAppearance: (Appearance) -> Unit, onSource: () -> Unit, onDiagnostics: () -> Unit, onStorage: () -> Unit,
     onAbout: () -> Unit, onMapLab: () -> Unit, onSupport: (() -> Unit)? = null,
     onDistanceUnit: (DistanceUnit) -> Unit = {},
+    onBackgroundTexture: (Boolean) -> Unit = {},
 ) {
     // After an analyzer change, report whether the new source connects (as iOS does).
     var status by remember { mutableStateOf<SourceStatus?>(null) }
@@ -77,6 +80,15 @@ fun SettingsScreen(
                     AdaptiveChoiceRow(Appearance.entries, preferences.appearance, label = { mode ->
                         stringResource(when (mode) { Appearance.SYSTEM -> R.string.system; Appearance.LIGHT -> R.string.light; Appearance.DARK -> R.string.dark })
                     }, onSelect = onAppearance)
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Background Texture", style = MaterialTheme.typography.titleSmall)
+                            Text("Show decorative lines and nodes", style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = preferences.backgroundTexture, onCheckedChange = onBackgroundTexture,
+                            modifier = Modifier.semantics { contentDescription = "Background Texture" })
+                    }
                 }
             }
             item {
@@ -162,7 +174,7 @@ private fun Panel(title: String, icon: ImageVector, content: @Composable ColumnS
 
 @Composable
 private fun CardRow(content: @Composable ColumnScope.() -> Unit) {
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+    Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
     }
 }

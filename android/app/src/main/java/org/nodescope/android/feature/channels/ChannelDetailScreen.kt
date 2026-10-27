@@ -2,6 +2,9 @@ package org.nodescope.android.feature.channels
 
 import org.nodescope.android.core.network.BackendCapability
 
+import org.nodescope.android.core.design.senderColor
+import org.nodescope.android.core.design.senderBubbleFill
+import org.nodescope.android.core.design.senderBubbleStroke
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,8 +21,6 @@ import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.compositeOver
-import androidx.compose.ui.graphics.luminance
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.nodescope.android.core.design.*
 import org.nodescope.android.core.model.AnalyzerSelection
@@ -149,8 +150,9 @@ private fun ChatBubble(message: ConversationMessage, trailing: Boolean, onPacket
     Row(Modifier.fillMaxWidth(), horizontalArrangement = if (trailing) Arrangement.End else Arrangement.Start) {
         Column(Modifier.fillMaxWidth(0.86f), horizontalAlignment = if (trailing) Alignment.End else Alignment.Start, verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(message.sender, Modifier.padding(horizontal = 4.dp), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = tone)
-            Surface(color = tone.copy(alpha = 0.10f).compositeOver(MaterialTheme.colorScheme.surface), shape = MaterialTheme.shapes.medium,
-                border = BorderStroke(1.dp, tone.copy(alpha = 0.25f))) {
+            Surface(color = senderBubbleFill(message.sender), shape = MaterialTheme.shapes.medium,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                border = BorderStroke(1.dp, senderBubbleStroke(message.sender))) {
                 Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     SelectionContainer { Text(linkified(message.text, MaterialTheme.colorScheme.primary), style = MaterialTheme.typography.bodyLarge) }
                     Text(shortDateTime(message.timestamp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -186,15 +188,4 @@ private fun linkified(text: String, linkColor: Color): AnnotatedString = buildAn
         index = match.range.first + url.length
     }
     append(text.substring(index))
-}
-
-private val lightSenderTones = listOf(0xFF0063A6, 0xFF8A4B00, 0xFF1B7A43, 0xFF9C2F6B, 0xFF5A4AB5, 0xFF00707A, 0xFFA23B2A, 0xFF52667A)
-private val darkSenderTones = listOf(0xFF81C3FF, 0xFFFFB866, 0xFF6FD69B, 0xFFF08BC0, 0xFFB3A6FF, 0xFF5FD3DC, 0xFFFF9A85, 0xFFA9BCCF)
-
-/** Stable per-sender tone, readable on the theme's surface. */
-@Composable
-private fun senderColor(sender: String): Color {
-    val dark = MaterialTheme.colorScheme.surface.luminance() < 0.3f
-    val tones = if (dark) darkSenderTones else lightSenderTones
-    return Color(tones[Math.floorMod(sender.hashCode(), tones.size)])
 }

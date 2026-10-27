@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.map
 
+import org.nodescope.android.core.design.meshPageBackground
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -81,7 +82,7 @@ fun MapPacketsLayout(
         }
         // Panel and map as two cards on the canvas; at a fold the gap between them sits on the crease.
         Row(Modifier.fillMaxSize().background(paneCanvasColor())) {
-            Column(Modifier.width(atFold?.minus(PaneGap / 2) ?: PANEL_WIDTH).fillMaxHeight().paneCard()) {
+            Column(Modifier.width(atFold?.minus(PaneGap / 2) ?: PANEL_WIDTH).fillMaxHeight().paneCard().meshPageBackground()) {
                 Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("Live packets", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleLarge)
@@ -158,7 +159,7 @@ private fun PacketsSheetLayout(
     BottomSheetScaffold(
         scaffoldState = scaffoldState, sheetPeekHeight = height / 2, sheetSwipeEnabled = true,
         sheetContent = {
-            Column(Modifier.fillMaxWidth().height(height * 0.85f)) {
+            Column(Modifier.fillMaxWidth().height(height * 0.85f).meshPageBackground()) {
                 Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("Live packets", Modifier.weight(1f).semantics { heading() }, style = MaterialTheme.typography.titleLarge)
                     IconButton(onClick = ::hide) { Icon(Icons.Outlined.Close, "Close live packets") }

@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.packets
 
+import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.semantics.selected
 import androidx.compose.foundation.BorderStroke
@@ -111,7 +112,7 @@ fun PacketScreen(feed: LiveFeedState, onReconnect: () -> Unit, regionControl: @C
 
     LazyColumn(Modifier.fillMaxSize(), state = scroll, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Card(colors = meshCardColors()) {
                 Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -179,7 +180,7 @@ private fun TransmissionRow(group: TransmissionGroup, now: Long, selected: Boole
     actions: (@Composable (TransmissionGroup) -> Unit)? = null, onClick: () -> Unit) {
     val tone = packetTone(group.typeName)
     Card(onClick = onClick, modifier = Modifier.semantics { this.selected = selected },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = meshCardColors(),
         border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null) {
       // The actions under a selected row slide open instead of jolting the list.
       Column(Modifier.animateContentSize()) {

@@ -121,6 +121,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
     fun setAppearance(mode: Appearance) = persist { container.preferences.setAppearance(mode) }
+    fun setBackgroundTexture(enabled: Boolean) = persist { container.preferences.setBackgroundTexture(enabled) }
     fun setDistanceUnit(unit: org.nodescope.android.core.storage.DistanceUnit) = persist { container.preferences.setDistanceUnit(unit) }
     fun setRegion(region: String?) = persist { container.preferences.setRegion(region) }
     fun selectDestination(destination: String) = persist { container.preferences.setDestination(destination) }

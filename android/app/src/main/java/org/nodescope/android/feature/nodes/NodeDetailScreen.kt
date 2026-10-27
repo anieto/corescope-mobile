@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.nodes
 
+import org.nodescope.android.core.design.meshCardColors
+import org.nodescope.android.core.design.MeshModalBottomSheet
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Bitmap
@@ -185,7 +187,7 @@ private fun IdentityCard(node: MeshNode, publicKey: String, favorite: Boolean, n
 
 @Composable
 private fun AnalyticsLinkCard(onClick: () -> Unit) {
-    Card(onClick = onClick, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+    Card(onClick = onClick, colors = meshCardColors()) {
         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Box(Modifier.size(48.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.13f), CircleShape), contentAlignment = Alignment.Center) {
                 Icon(Icons.Outlined.QueryStats, null, tint = MaterialTheme.colorScheme.primary)
@@ -380,7 +382,7 @@ private fun MetricTile(value: String, label: String, modifier: Modifier) {
 
 @Composable
 private fun DetailCard(title: String? = null, icon: ImageVector? = null, content: @Composable ColumnScope.() -> Unit) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+    Card(colors = meshCardColors()) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             if (title != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 icon?.let { Icon(it, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary) }
@@ -404,7 +406,7 @@ private fun MeshCoreContactSheet(contact: MeshCoreContactLink, onDismiss: () -> 
     val qr = remember(contact.url) { meshCoreQrBitmap(contact.url) }
     var openFailed by remember { mutableStateOf(false) }
     var copied by remember { mutableStateOf(false) }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    MeshModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp),

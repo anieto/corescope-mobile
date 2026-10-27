@@ -1,5 +1,8 @@
 package org.nodescope.android.feature.explore
 
+import org.nodescope.android.core.design.meshCardColors
+import org.nodescope.android.core.design.meshCardColor
+import org.nodescope.android.core.design.MeshModalBottomSheet
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -149,7 +152,7 @@ fun ExploreScreen(model: ExploreViewModel?, host: String, snapshot: AnalyzerSnap
             }
             item {
                 Card(onClick = actions.onFavorites, modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                    colors = meshCardColors()) {
                     Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Icon(Icons.Outlined.Star, contentDescription = null, modifier = Modifier.size(24.dp),
@@ -206,7 +209,7 @@ fun FavoritesScreen(model: ExploreViewModel?, host: String, snapshot: AnalyzerSn
     var editing by remember { mutableStateOf(false) }
     LaunchedEffect(model, host) { model?.nodes?.load(host) }
     LaunchedEffect(nodes) { if (nodes.isNotEmpty()) library.refreshNodes(nodes) }
-    if (adding) ModalBottomSheet(onDismissRequest = { adding = false }) {
+    if (adding) MeshModalBottomSheet(onDismissRequest = { adding = false }) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.85f)) {
             Text("Add favorite node", Modifier.padding(horizontal = 20.dp), style = MaterialTheme.typography.titleLarge)
             NodeBrowser(nodes, nodes.size) { key ->
@@ -225,7 +228,7 @@ fun FavoritesScreen(model: ExploreViewModel?, host: String, snapshot: AnalyzerSn
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
                     Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
                         NavigationRow("Activity", "Last heard and freshness for saved nodes and observers", Icons.Outlined.GraphicEq, actions.onActivity)
                         if (!isBeacon) NavigationRow("CoreScope account", "Sync node favorites with your account on this source", Icons.Outlined.AccountCircle, actions.onAccount)
@@ -300,7 +303,7 @@ private fun open(item: SavedItem, actions: ExploreActions) = when (item.kind) {
 @Composable
 private fun GlanceCard(metrics: List<Pair<GlanceMetric, GlanceValue>>, loading: Boolean,
     actions: ExploreActions, onCustomize: () -> Unit, onExportCsv: () -> Unit, onExportJson: () -> Unit) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+    Card(colors = meshCardColors()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -372,7 +375,7 @@ internal fun KindIcon(kind: SavedKind, node: MeshNode?) {
 @Composable
 private fun SavedRow(item: SavedItem, now: Long?, current: MeshNode?, onOpen: () -> Unit, detail: String? = null,
     trailing: @Composable RowScope.() -> Unit) {
-    Surface(onClick = onOpen, shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface) {
+    Surface(onClick = onOpen, shape = MaterialTheme.shapes.medium, color = meshCardColor(), contentColor = MaterialTheme.colorScheme.onSurface) {
         Row(Modifier.fillMaxWidth().padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             KindIcon(item.kind, current ?: item.node)
@@ -390,7 +393,7 @@ private fun SavedRow(item: SavedItem, now: Long?, current: MeshNode?, onOpen: ()
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CustomizeSheet(preferences: GlancePreferences, onChange: (GlancePreferences) -> Unit, onDismiss: () -> Unit) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    MeshModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Customize dashboard", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
@@ -428,7 +431,7 @@ private fun GlobalSearchSheet(nodes: List<MeshNode>, observers: List<MeshObserve
     var query by remember { mutableStateOf("") }
     val results = remember(query, nodes, observers, channels, monitored, packets) { searchNetwork(query, nodes, observers, channels, monitored, packets) }
     fun choose(open: () -> Unit) { library.recordSearch(query); onDismiss(); open() }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    MeshModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.92f).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             BrowseSearchFieldWithSubmit(query, { query = it }) { library.recordSearch(query) }
             val trimmed = query.trim()

@@ -1,6 +1,11 @@
 package org.nodescope.android.feature.packets
 
+import org.nodescope.android.core.design.meshCardColors
 import android.content.Intent
+import org.nodescope.android.core.design.senderColor
+import org.nodescope.android.core.design.senderBubbleFill
+import org.nodescope.android.core.design.senderBubbleStroke
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -63,9 +68,11 @@ fun MessagePacketScreen(model: PacketDetailViewModel, host: String, hash: String
         }
         if (text.isNotBlank()) item {
             PacketCard("Message", Icons.Outlined.ChatBubbleOutline) {
-                Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.medium, modifier = Modifier.fillMaxWidth()) {
+                Surface(color = senderBubbleFill(sender), contentColor = MaterialTheme.colorScheme.onSurface,
+                    border = BorderStroke(1.dp, senderBubbleStroke(sender)),
+                    shape = MaterialTheme.shapes.medium, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(sender, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                        Text(sender, style = MaterialTheme.typography.titleSmall, color = senderColor(sender))
                         SelectionContainer { Text(text, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center) }
                     }
                 }
@@ -73,7 +80,7 @@ fun MessagePacketScreen(model: PacketDetailViewModel, host: String, hash: String
         }
         item {
             val type = detail?.packet?.payloadType?.let(::payloadTypeName)
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Card(colors = meshCardColors()) {
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Box(Modifier.size(48.dp).background(SignalBlue, MaterialTheme.shapes.medium), contentAlignment = Alignment.Center) {
@@ -200,7 +207,7 @@ private fun MetricTile(value: String, label: String, icon: ImageVector, modifier
 
 @Composable
 private fun PacketCard(title: String, icon: ImageVector, content: @Composable ColumnScope.() -> Unit) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+    Card(colors = meshCardColors()) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(icon, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
