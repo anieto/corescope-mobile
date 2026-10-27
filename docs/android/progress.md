@@ -39,8 +39,7 @@ and chart distances reuse the application's short-distance feet/meters formattin
 Pixel 10 compact-light check confirmed the default 32.81 ft label, the 0–100 ft range, and a
 slider tap updating to 50 ft without overlap; Imperial settings were retained.
 
-Remaining parity: hinge-aware pane placement and finer chart presentation. The planner map currently uses CARTO regardless of the main map's provider
-preference. Selection and layout validation for this increment is recorded below. Native map transitions
+Remaining parity: hinge-aware pane placement and finer chart presentation. (The planner map now follows the live map's provider; see the later entry.) Selection and layout validation for this increment is recorded below. Native map transitions
 are immediate to avoid surface ghosting. The native map tap callback reads current endpoint
 state so selecting Point B works after confirming Point A.
 
@@ -62,6 +61,20 @@ layout and enlarged text were covered by the automated checks rather than that v
 Exhaustive visual checks of
 foldables, rotation, nested navigation, and map sheets in both themes remain outstanding.
 
+2026-10-27 — Link Profile endpoint pins.
+Point A, Point B and the tentative choice were drawn through the route-anchor layer as role
+dots, so they looked like nodes. They now use `MapOverlays.setPins`: labelled teardrop pins
+(A blue, B orange, tentative grey, as iOS Marker tints) in a MapLibre symbol layer above all
+other overlays. Known nodes keep the app's role-coloured dots.
+
+2026-10-27 — Link Profile follows the live map's provider and style.
+The planner map now uses the provider picked on the live map (CARTO or Google Maps) and, for
+CARTO, the picked style. The CARTO style is now saved with the provider choice (`cartoStyle`,
+null = follow the app theme), so it persists across launches instead of resetting each session.
+Google implements `setPins` as markers (name is the marker title only). Map taps now report
+their coordinate through `MapTap.coordinate` on both engines, replacing the planner's
+MapLibre-only click listener. CARTO/OSM attribution buttons show only for CARTO.
+Validation: debug and instrumentation APKs build; JVM suite 363 tests, zero failures, one skipped.
 
 2026-10-20 — 0.9.0 Android review: account first visit, selection cache and UI consistency.
 

@@ -43,6 +43,7 @@ private const val ROUTE_NODE_POINTS = "nodescope-route-node-points"
 private const val ROUTE = "nodescope-route"
 private const val PACKET = "nodescope-packet"
 private const val USER_LOCATION = "nodescope-user-location"
+private const val PINS = "nodescope-pins"
 private val emptyFeatures get() = FeatureCollection.fromFeatures(emptyList<Feature>())
 
 /** CARTO basemap styles, in the order of the layers menu (Standard, Light, Dark). */
@@ -176,7 +177,8 @@ internal fun MapLibreEngineHost(engine: MapLibreEngine, styleMode: Int, retry: I
                         routeKeys = {
                             ready.queryRenderedFeatures(area, "live-route-halo")
                                 .mapNotNull { line -> if (line.hasProperty("route")) line.getStringProperty("route") else null }
-                        }))
+                        },
+                        coordinate = Coordinate.valid(coordinate.latitude, coordinate.longitude)))
                 }
                 engine.attach(ready)
             }
@@ -283,7 +285,17 @@ private data class MapLibreOverlays(val style: Style) : MapOverlays {
     override fun setSamplePacket(point: Coordinate?) {
         source(PACKET)?.setGeoJson(if (point == null) emptyFeatures else FeatureCollection.fromFeatures(listOf(Feature.fromGeometry(point.point))))
     }
+    override fun setPins(pins: List<MapPin>) {
+        source(PINS)?.setGeoJson(FeatureCollection.fromFeatures(pins.map { pin ->
+            Feature.fromGeometry(pin.coordinate.point).apply {
+                addStringProperty("pin", pinImage(pin.kind))
+                addStringProperty("name", pin.name)
+            }
+        }))
+    }
 }
+
+private fun pinImage(kind: MapPin.Kind) = "nodescope-pin-${kind.name.lowercase()}"
 
 private val Coordinate.point get() = Point.fromLngLat(longitude, latitude)
 
@@ -367,6 +379,17 @@ private fun addOverlays(style: Style, dark: Boolean) {
     style.addLayer(CircleLayer("nodescope-user-halo", USER_LOCATION).withProperties(circleRadius(16f), circleColor("#1A73E8"), circleOpacity(0.18f)))
     style.addLayer(CircleLayer("nodescope-user-dot", USER_LOCATION).withProperties(
         circleRadius(7f), circleColor("#1A73E8"), circleStrokeWidth(2.5f), circleStrokeColor("#FFFFFF")))
+    // Place pins sit on top, tip on the coordinate, with their name below like iOS Markers.
+    // Drawn at device density so MapLibre scales them 1:1.
+    val density = android.content.res.Resources.getSystem().displayMetrics.density
+    MapPin.Kind.entries.forEach { style.addImage(pinImage(it), pinBitmap(it.color(dark), it.glyph, density)) }
+    style.addSource(GeoJsonSource(PINS, emptyFeatures))
+    style.addLayer(SymbolLayer("nodescope-pins", PINS).withProperties(
+        iconImage(get("pin")), iconAnchor(Property.ICON_ANCHOR_BOTTOM), iconAllowOverlap(true), iconIgnorePlacement(true),
+        textField(get("name")), textFont(arrayOf("Montserrat Medium", "Open Sans Bold", "Noto Sans Regular", "HanWangHeiLight Regular", "NanumBarunGothic Regular")),
+        textSize(11f), textAnchor(Property.TEXT_ANCHOR_TOP), textOffset(arrayOf(0f, 0.3f)), textOptional(true),
+        textColor(if (dark) "#FFFFFF" else "#14243A"), textHaloColor(if (dark) "rgba(0,0,0,0.72)" else "rgba(255,255,255,0.85)"),
+        textHaloWidth(1.6f)))
 }
 
 private suspend fun MapLibreMap.animateCameraAndWait(update: CameraUpdate, durationMs: Int) =

@@ -62,15 +62,14 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         return
     }
     val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.3f
-    var mode by rememberSaveable { mutableIntStateOf(if (darkTheme) 2 else 0) }
-    var customStyle by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(darkTheme) { if (!customStyle) mode = if (darkTheme) 2 else 0 }
     var search by remember { mutableStateOf(false) }
     var layersOpen by remember { mutableStateOf(false) }
     val context = LocalContext.current
     // CARTO, or Google Maps (beta) when this build has a key; remembered across launches.
     var providerChoice by remember { mutableStateOf(loadMapProvider(context)) }
     fun choose(choice: MapProviderChoice) { providerChoice = choice; saveMapProvider(context, choice) }
+    // A picked CARTO style sticks; until then it follows the app theme.
+    val mode = providerChoice.cartoStyle(darkTheme)
     var filtersOpen by remember { mutableStateOf(false) }
     // Saved per analyzer, as on iOS.
     var filters by remember(host) { mutableStateOf(host?.let { loadMapFilters(context, it) } ?: MapFilters()) }
@@ -431,7 +430,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                     listOf(R.string.standard, R.string.light, R.string.dark).forEachIndexed { index, label ->
                         val chosen = providerChoice.provider == MapProvider.CARTO && mode == index
                         DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = {
-                            mode = index; customStyle = true; choose(providerChoice.copy(provider = MapProvider.CARTO)); layersOpen = false
+                            choose(providerChoice.copy(provider = MapProvider.CARTO, cartoStyle = index)); layersOpen = false
                         }, trailingIcon = { if (chosen) Icon(Icons.Outlined.Check, null) })
                     }
                     if (google) {
@@ -441,7 +440,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                             GoogleMapType.TERRAIN to R.string.google_terrain, GoogleMapType.HYBRID to R.string.google_hybrid).forEach { (type, label) ->
                             val chosen = providerChoice.provider == MapProvider.GOOGLE && providerChoice.googleType == type
                             DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = {
-                                choose(MapProviderChoice(MapProvider.GOOGLE, type)); layersOpen = false
+                                choose(providerChoice.copy(provider = MapProvider.GOOGLE, googleType = type)); layersOpen = false
                             }, trailingIcon = { if (chosen) Icon(Icons.Outlined.Check, null) })
                         }
                     }

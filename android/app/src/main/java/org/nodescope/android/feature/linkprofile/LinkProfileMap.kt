@@ -9,7 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
-import org.maplibre.android.maps.MapLibreMap
+import androidx.compose.ui.platform.LocalContext
 import org.nodescope.android.core.model.Coordinate
 import org.nodescope.android.feature.map.*
 
@@ -25,46 +25,45 @@ internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, point
             val origin = pointA ?: pointB
             var camera by rememberSaveable { mutableStateOf(listOf(origin?.latitude ?: 0.0, origin?.longitude ?: 0.0, if (origin != null) 10.0 else 1.0, 0.0, 0.0)) }
             var retry by remember { mutableIntStateOf(0) }
-            val engine = rememberMapLibreEngine()
-            val map = engine.map
-            // Selection state is recreated for each endpoint; the long-lived native listener
-            // must invoke the latest setters after A advances to B.
-            val onCoordinateTap by rememberUpdatedState<(Double, Double) -> Boolean>({ lat, lon ->
-                if (endpoint != null) { latitude = lat; longitude = lon; true } else false
-            })
-            DisposableEffect(map) {
-                val listener = MapLibreMap.OnMapClickListener { point -> onCoordinateTap(point.latitude, point.longitude) }
-                map?.addOnMapClickListener(listener)
-                onDispose { map?.removeOnMapClickListener(listener) }
-            }
+            // The provider and style picked on the live map (CARTO or Google Maps).
+            val context = LocalContext.current
+            val choice = remember { loadMapProvider(context) }
+            val dark = MaterialTheme.colorScheme.background.luminance() < 0.3f
+            val engine: MapEngineState = if (choice.provider == MapProvider.GOOGLE) rememberGoogleMapEngine() else rememberMapLibreEngine()
             LaunchedEffect(engine.overlays, latitude, longitude, pointA, pointB, nodes) {
                 val a = pointA?.let { Coordinate.gps(it.latitude, it.longitude) }
                 val b = pointB?.let { Coordinate.gps(it.latitude, it.longitude) }
                 val tentative = latitude?.let { lat -> longitude?.let { lon -> Coordinate.gps(lat, lon) } }
                 engine.overlays?.setNodes(nodeMarkers(nodes), grouped = true)
-                engine.overlays?.setRouteAnchors(listOfNotNull(
-                    a?.let { MapMarker(it, "repeater", name = "Point A") },
-                    b?.let { MapMarker(it, "observer", name = "Point B") },
-                    tentative?.let { MapMarker(it, "repeater", name = "Tentative location") }))
+                engine.overlays?.setPins(listOfNotNull(
+                    a?.let { MapPin(it, MapPin.Kind.POINT_A, "Point A") },
+                    b?.let { MapPin(it, MapPin.Kind.POINT_B, "Point B") },
+                    tentative?.let { MapPin(it, MapPin.Kind.TENTATIVE, "Tentative location") }))
                 engine.overlays?.setSampleRoute(if (a != null && b != null) listOf(a, b) else emptyList())
             }
             Text(if (endpoint != null) "Choose Point $endpoint" else "Link endpoints", Modifier.padding(12.dp), style = MaterialTheme.typography.titleMedium)
             if (endpoint != null) Text("Confirming a point sends its coordinates to Open-Meteo for elevation.",
                 Modifier.padding(horizontal = 12.dp), style = MaterialTheme.typography.bodySmall)
             Box(Modifier.weight(1f).fillMaxWidth()) {
-                MapLibreEngineHost(engine, if (MaterialTheme.colorScheme.background.luminance() < 0.3f) 2 else 0,
-                    retry, 0, camera, { camera = it }, { tap ->
-                        val node = nodes.firstOrNull { it.publicKey == tap.nodeKey }?.coordinate
-                        if (endpoint != null && node != null) { latitude = node.latitude; longitude = node.longitude; true }
-                        else { tap.expandGroup?.invoke(); tap.expandGroup != null }
-                    }, Modifier.fillMaxSize())
+                // A known node under the finger wins; otherwise the tapped spot, or a group expands.
+                val onTap: (MapTap) -> Boolean = { tap ->
+                    val node = nodes.firstOrNull { it.publicKey == tap.nodeKey }?.coordinate
+                    val spot = node ?: tap.coordinate?.takeIf { tap.expandGroup == null }
+                    if (endpoint != null && spot != null) { latitude = spot.latitude; longitude = spot.longitude; true }
+                    else { tap.expandGroup?.invoke(); tap.expandGroup != null }
+                }
+                when (engine) {
+                    is MapLibreEngine -> MapLibreEngineHost(engine, choice.cartoStyle(dark), retry, 0, camera, { camera = it }, onTap, Modifier.fillMaxSize())
+                    is GoogleMapEngine -> GoogleMapEngineHost(engine, choice.googleType, dark, 0, camera, { camera = it }, onTap, Modifier.fillMaxSize())
+                }
                 if (engine.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if (engine.failed) Surface(Modifier.align(Alignment.Center)) {
                     TextButton(onClick = { retry++ }) { Text("Map failed to load. Retry") }
                 }
             }
             val uri = LocalUriHandler.current
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+            // Google draws its own logo and attribution on the map.
+            if (engine is MapLibreEngine) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                 TextButton(onClick = { uri.openUri("https://carto.com/attributions") }) { Text("© CARTO") }
                 TextButton(onClick = { uri.openUri("https://www.openstreetmap.org/copyright") }) { Text("© OpenStreetMap") }
             }
