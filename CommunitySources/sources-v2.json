@@ -43,6 +43,15 @@
       "isDefault": false
     },
     {
+      "id": "ntxmesh",
+      "type": "corescope",
+      "icon": "icons/ntxmesh.png",
+      "name": "NTXMesh",
+      "host": "ntxmesh.dhovin.me",
+      "subtitle": "DFW / North Texas Mesh",
+      "isDefault": false
+    },
+    {
       "id": "colorado-mesh",
       "type": "beacon",
       "icon": "icons/colorado-mesh.png",
