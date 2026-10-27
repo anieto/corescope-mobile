@@ -562,6 +562,10 @@ private final class LinkProfileModel {
     init(elevationProvider: any NodePlannerElevationProviding = OpenMeteoElevationProvider()) {
         self.elevationProvider = elevationProvider
         analyzer = NodePlannerLinkAnalyzer(elevationProvider: elevationProvider)
+        // A typical rooftop mast: 20 ft in imperial, 6 m in metric.
+        let unit = UserDefaults.standard.string(forKey: DistanceUnit.defaultsKey).flatMap(DistanceUnit.init(rawValue:)) ?? .imperial
+        heightA = unit == .imperial ? 6.096 : 6
+        heightB = heightA
     }
 
     func analyze() async {
