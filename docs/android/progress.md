@@ -91,6 +91,24 @@ Validation: debug and instrumentation APKs build; JVM suite 363 tests, zero fail
 Not yet checked on a foldable or tablet emulator: hinge placement, tabletop, scrolling in both
 panes, and state across fold/rotate.
 
+2026-10-27 — Link Profile terrain chart and result card match iOS.
+The chart is now a port of iOS's LinkProfileTerrainCanvas (itself adapted from MeshCore One,
+GPL v3; the attribution header is carried over). It shows the full Fresnel zone faint, the 60%
+band stronger, both clipped at the terrain, with dashed zone edges. Terrain is drawn as a 35% brown
+fill with an outline, with small red dots where terrain enters the 60% zone, and the line of sight
+on top. Blue A / orange B antenna masts match the map pins. A dashed grid has five elevation and
+five distance labels in the app's units, and there is a swatch legend. The vertical range now
+starts just below the terrain instead of the Fresnel zone's bottom, which had flattened the terrain.
+The result card follows iOS:
+- a status icon and "Estimate"
+- label/value rows: distance, bearing (° true), losses, receive level, margin, worst clearance,
+  terrain source, calculated time
+- an Assumptions summary
+Ground A/B, sample count and fetch time were dropped to match iOS; ground elevation stays on the
+endpoint cards. The Open-Meteo attribution link and model ID remain. The UI test's
+unit-conversion check now uses the Distance row.
+Validation: debug and instrumentation APKs build; JVM suite 363 tests, zero failures, one skipped.
+The chart has not been visually compared with iOS on a device yet.
 
 2026-10-20 — 0.9.0 Android review: account first visit, selection cache and UI consistency.
 

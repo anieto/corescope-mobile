@@ -65,8 +65,9 @@ class LinkProfileUiTest {
             assertSame(resultBeforeSwitch, model.state.value.result)
             assertEquals("10", model.state.value.fields["Height A (m)"])
         }
-        val groundResult = if (nextUnit == DistanceUnit.IMPERIAL) "Ground A / B: 328.08 ft / 328.08 ft" else "Ground A / B: 100.00 m / 100.00 m"
-        compose.onNodeWithText(groundResult).performScrollTo().assertIsDisplayed()
+        // Result values follow the unit without recalculating (the Distance row, as on iOS).
+        val distanceResult = org.nodescope.android.core.design.formatDistance(resultBeforeSwitch!!.result.distanceMeters / 1000, nextUnit)
+        compose.onNodeWithText(distanceResult).performScrollTo().assertIsDisplayed()
         val slider = compose.onNodeWithContentDescription("Additional antenna height A")
         slider.performScrollTo().performSemanticsAction(SemanticsActions.SetProgress) { it(if (nextUnit == DistanceUnit.IMPERIAL) 50f else 15f) }
         compose.runOnIdle {

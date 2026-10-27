@@ -10,6 +10,21 @@ import androidx.compose.runtime.*
 import org.nodescope.android.core.design.meshCardColors
 import org.nodescope.android.core.design.meshCardColor
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Contrast
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -168,74 +183,190 @@ private fun ProfileField(label: String, value: String, edit: (String) -> Unit) {
 }
 
 
-private fun Double.display() = String.format(Locale.getDefault(), "%.2f", this)
-
 @Composable
 private fun ProfileResult(analysis: LinkAnalysis, distanceUnit: DistanceUnit) {
     val result = analysis.result
+    fun dB(value: Double, digits: Int = 1) = String.format(Locale.getDefault(), "%.${digits}f", value)
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = meshCardColor().copy(alpha = 1f))) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(when (result.clearanceStatus) {
-                ClearanceStatus.CLEAR -> "Clear terrain path"
-                ClearanceStatus.MARGINAL -> "Marginal clearance"
-                ClearanceStatus.PARTIAL_OBSTRUCTION -> "Partial obstruction"
-                ClearanceStatus.BLOCKED -> "Blocked by terrain"
-            }, style = MaterialTheme.typography.titleLarge)
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val (title, icon) = when (result.clearanceStatus) {
+                    ClearanceStatus.CLEAR -> "Clear terrain path" to Icons.Filled.CheckCircle
+                    ClearanceStatus.MARGINAL -> "Marginal clearance" to Icons.Filled.Error
+                    ClearanceStatus.PARTIAL_OBSTRUCTION -> "Partially obstructed" to Icons.Filled.Contrast
+                    ClearanceStatus.BLOCKED -> "Blocked by terrain" to Icons.Filled.Block
+                }
+                Icon(icon, null, Modifier.size(20.dp))
+                Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                Text("Estimate", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             TerrainChart(analysis, distanceUnit)
-            Text("Brown: terrain · Teal: first Fresnel zone · Red: less than 60% clearance", style = MaterialTheme.typography.bodySmall)
-            val metrics = linkedMapOf(
-                "Distance" to formatDistance(result.distanceMeters / 1000, distanceUnit), "Initial bearing" to "${analysis.bearing.display()}°",
-                "Ground A / B" to "${formatProfileHeight(analysis.terrain.points.first().elevationMeters, distanceUnit)} / ${formatProfileHeight(analysis.terrain.points.last().elevationMeters, distanceUnit)}",
-                "Worst Fresnel clearance" to "${result.worstClearancePercent.display()}%", "Free-space path loss" to "${result.freeSpacePathLossDB.display()} dB",
-                "Peak diffraction loss" to "${result.peakDiffractionLossDB.display()} dB", "Total path loss" to "${result.totalPathLossDB.display()} dB",
-                "Receive power" to "${result.receivePowerDBm?.display()} dBm", "Link margin" to "${result.linkMarginDB?.display()} dB",
-                "Terrain samples" to "${analysis.terrain.points.size} · ${analysis.terrain.origin}",
-                "Terrain fetched" to DateFormat.getDateTimeInstance().format(Date(analysis.terrain.fetchedAt)),
-                "Calculated" to DateFormat.getDateTimeInstance().format(Date(analysis.calculatedAt)))
-            metrics.forEach { (label, value) -> Text("$label: $value") }
-            Text("Terrain: Open-Meteo / Copernicus DEM GLO-90 (nominal resolution ${formatProfileHeight(90.0, distanceUnit)}). Model: ${LinkProfileEngine.ENGINE_ID} v${LinkProfileEngine.ENGINE_VERSION}.", style = MaterialTheme.typography.bodySmall)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                MetricRow("Distance", formatDistance(result.distanceMeters / 1000, distanceUnit))
+                MetricRow("Initial bearing", "${dB(analysis.bearing, 0)}° true")
+                MetricRow("Free-space path loss", "${dB(result.freeSpacePathLossDB)} dB")
+                MetricRow("Diffraction loss", "${dB(result.peakDiffractionLossDB)} dB")
+                MetricRow("Total path loss", "${dB(result.totalPathLossDB)} dB")
+                result.receivePowerDBm?.let { MetricRow("Predicted receive level", "${dB(it)} dBm") }
+                result.linkMarginDB?.let { MetricRow("Link margin", "${dB(it)} dB") }
+                MetricRow("Worst Fresnel clearance", "${dB(result.worstClearancePercent, 0)}%")
+                MetricRow("Terrain source", "Copernicus GLO-90 · Open-Meteo")
+                MetricRow("Calculated", DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(analysis.calculatedAt)))
+            }
+            HorizontalDivider()
+            Text("Assumptions", style = MaterialTheme.typography.titleSmall)
+            val request = analysis.request
+            Text(request.linkBudget?.let { budget ->
+                "TX power ${dB(budget.transmitPowerDBm)} dBm; antenna gains ${dB(budget.gainADB)}/${dB(budget.gainBDB)} dBi; " +
+                    "system losses ${dB(budget.lossADB)}/${dB(budget.lossBDB)} dB; receiver sensitivity ${dB(budget.receiverSensitivityDBm)} dBm; " +
+                    "k = ${dB(request.refractionK, 2)}."
+            } ?: "No complete link budget was supplied.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Model: ${LinkProfileEngine.ENGINE_ID} v${LinkProfileEngine.ENGINE_VERSION}.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             val uri = androidx.compose.ui.platform.LocalUriHandler.current
             TextButton(onClick = { uri.openUri("https://open-meteo.com/en/docs/elevation-api") }) { Text("Terrain data attribution") }
         }
     }
 }
 
+/** A label/value row as on iOS: secondary label, value aligned to the trailing edge. */
+@Composable
+private fun MetricRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, Modifier.weight(1f), textAlign = TextAlign.End)
+    }
+}
+
+// This terrain-profile renderer is adapted from MeshCore One by Avi0n, via NodeScope iOS:
+// https://github.com/Avi0n/MeshCoreOne
+// Upstream commit: 9fba8e45ca14c38f4ed20e5ede157944fa1c246d
+// Source: MC1/Views/Tools/LineOfSight/TerrainProfileCanvas.swift and
+// MC1/Views/Tools/LineOfSight/ChartCoordinateSpace.swift
+// Licensed under GNU GPL v3.0. Modified for NodeScope's analysis types,
+// styling, accessibility, endpoint-only workflow, and adaptive layouts.
+private class ChartSample(val distanceMeters: Double, val terrainMeters: Double, val lineOfSightMeters: Double, val fresnelRadiusMeters: Double) {
+    val fresnelTop get() = lineOfSightMeters + fresnelRadiusMeters
+    val fresnelBottom get() = lineOfSightMeters - fresnelRadiusMeters
+    val fresnelTop60 get() = lineOfSightMeters + fresnelRadiusMeters * 0.6
+    val fresnelBottom60 get() = lineOfSightMeters - fresnelRadiusMeters * 0.6
+    /** Fresnel bands stop at the ground rather than being drawn through it. */
+    val visibleFresnelBottom get() = terrainMeters.coerceAtLeast(fresnelBottom).coerceAtMost(fresnelTop)
+    val visibleFresnelBottom60 get() = terrainMeters.coerceAtLeast(fresnelBottom60).coerceAtMost(fresnelTop60)
+    val isObstructed get() = terrainMeters > fresnelBottom60
+}
+
+private val TerrainBrown = Color(0xFFA2845E)
+private val FresnelTeal = Color(0xFF30B0C7)
+private val ObstructedRed = Color(0xFFFF3B30)
+private val PointABlue = Color(0xFF007AFF)
+private val PointBOrange = Color(0xFFFF9500)
+
 @Composable
 private fun TerrainChart(analysis: LinkAnalysis, distanceUnit: DistanceUnit) {
     val points = analysis.terrain.points
     val request = analysis.request
     val length = analysis.result.distanceMeters
-    val start = points.first().elevationMeters + request.heightAMeters
-    val end = points.last().elevationMeters + request.heightBMeters
-    val ground = points.map { it.elevationMeters + LinkProfileEngine.earthBulge(it.distanceMeters, length - it.distanceMeters, request.refractionK) }
-    val sight = points.map { start + it.distanceMeters / length * (end - start) }
-    val radii = points.map { LinkProfileEngine.fresnelRadius(request.frequencyMHz, it.distanceMeters, length - it.distanceMeters) }
-    val low = minOf(ground.min(), sight.indices.minOf { sight[it] - radii[it] }) - 5
-    val high = maxOf(ground.max(), sight.indices.maxOf { sight[it] + radii[it] }) + 5
-    val lineColor = MaterialTheme.colorScheme.onSurface
-    Text("Terrain profile · elevation ${formatProfileHeight(low, distanceUnit)}–${formatProfileHeight(high, distanceUnit)}", style = MaterialTheme.typography.titleSmall)
-    Canvas(Modifier.fillMaxWidth().height(240.dp).semantics {
-        contentDescription = "Terrain, line of sight and first Fresnel zone over ${formatDistance(length / 1000, distanceUnit)}. Worst clearance ${analysis.result.worstClearancePercent.display()} percent."
-    }) {
-        fun position(index: Int, elevation: Double) = Offset((points[index].distanceMeters / length * size.width).toFloat(), (size.height * (1 - (elevation - low) / (high - low))).toFloat())
-        val terrain = Path().apply {
-            moveTo(0f, size.height)
-            ground.indices.forEach { val p = position(it, ground[it]); lineTo(p.x, p.y) }
-            lineTo(size.width, size.height); close()
+    val samples = remember(analysis) {
+        val start = points.first().elevationMeters + request.heightAMeters
+        val end = points.last().elevationMeters + request.heightBMeters
+        points.map { point ->
+            val a = point.distanceMeters
+            val b = (length - a).coerceAtLeast(0.0)
+            ChartSample(a, point.elevationMeters + LinkProfileEngine.earthBulge(a, b, request.refractionK),
+                start + (if (length > 0) a / length else 0.0) * (end - start), LinkProfileEngine.fresnelRadius(request.frequencyMHz, a, b))
         }
-        drawPath(terrain, Color(0xFF9B7653))
-        val fresnel = Path().apply {
-            sight.indices.forEach { val p = position(it, sight[it] + radii[it]); if (it == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y) }
-            sight.indices.reversed().forEach { val p = position(it, sight[it] - radii[it]); lineTo(p.x, p.y) }; close()
-        }
-        drawPath(fresnel, Color(0x55009999))
-        drawLine(lineColor, position(0, start), position(points.lastIndex, end), 2.dp.toPx())
-        ground.indices.filter { it > 0 && it < points.lastIndex && ground[it] > sight[it] - 0.6 * radii[it] }.forEach {
-            drawCircle(Color.Red, 3.dp.toPx(), position(it, ground[it]))
-        }
-        drawRect(lineColor.copy(alpha = 0.3f), style = Stroke(1.dp.toPx()))
     }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("A · ${formatDistance(0.0, distanceUnit)}"); Text("B · ${formatDistance(length / 1000, distanceUnit)}") }
+    // The terrain sets the floor; the Fresnel zone's top sets the ceiling, with headroom for both.
+    val minimum = samples.minOf { it.terrainMeters }
+    val maximum = samples.maxOf { it.fresnelTop }
+    val span = maxOf(10.0, maximum - minimum)
+    val low = minimum - span * 0.12
+    val high = maximum + span * 0.2
+    val xMax = maxOf(1.0, samples.last().distanceMeters)
+    val ink = MaterialTheme.colorScheme.onSurface
+    val secondary = MaterialTheme.colorScheme.onSurfaceVariant
+    val measurer = rememberTextMeasurer()
+    val axisStyle = TextStyle(fontSize = 9.sp, color = secondary)
+    val markerStyle = TextStyle(fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color.White)
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("Terrain profile", style = MaterialTheme.typography.titleSmall)
+        Canvas(Modifier.fillMaxWidth().height(240.dp).semantics {
+            contentDescription = "Terrain elevation, line of sight, first Fresnel zone, and obstructed regions. " +
+                "Distance ${formatDistance(length / 1000, distanceUnit)}. Worst Fresnel clearance ${analysis.result.worstClearancePercent.roundToInt()} percent."
+        }) {
+            val left = 42.dp.toPx(); val right = 14.dp.toPx(); val top = 22.dp.toPx(); val bottom = 28.dp.toPx()
+            val plotWidth = (size.width - left - right).coerceAtLeast(1f)
+            val plotHeight = (size.height - top - bottom).coerceAtLeast(1f)
+            fun point(x: Double, y: Double) = Offset(left + plotWidth * (x / xMax).toFloat(), size.height - bottom - plotHeight * ((y - low) / (high - low)).toFloat())
+            fun line(value: (ChartSample) -> Double) = Path().apply {
+                samples.forEachIndexed { index, sample -> point(sample.distanceMeters, value(sample)).let { if (index == 0) moveTo(it.x, it.y) else lineTo(it.x, it.y) } }
+            }
+            fun band(upper: (ChartSample) -> Double, lower: (ChartSample) -> Double) = line(upper).apply {
+                samples.asReversed().forEach { sample -> point(sample.distanceMeters, lower(sample)).let { lineTo(it.x, it.y) } }
+                close()
+            }
+            val dash = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))
+            // Grid with elevation labels (left) and distance labels (below), in the app's units.
+            for (index in 0..4) {
+                val y = low + (high - low) * index / 4
+                drawLine(secondary.copy(alpha = 0.22f), point(0.0, y), point(xMax, y), 0.5.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx())))
+                val height = profileDisplayHeight(y, distanceUnit).toInt()
+                val label = measurer.measure(if (index == 4) "$height ${if (distanceUnit == DistanceUnit.IMPERIAL) "ft" else "m"}" else "$height", axisStyle)
+                val at = point(0.0, y)
+                drawText(label, topLeft = Offset(at.x - label.size.width - 3.dp.toPx(), at.y - label.size.height / 2f))
+            }
+            for (index in 0..4) {
+                val x = xMax * index / 4
+                val distance = if (distanceUnit == DistanceUnit.IMPERIAL) x / 1_609.344 else x / 1_000
+                val number = String.format(Locale.getDefault(), "%.${if (xMax < 10_000) 1 else 0}f", distance)
+                val label = measurer.measure(if (index == 4) "$number ${if (distanceUnit == DistanceUnit.IMPERIAL) "mi" else "km"}" else number, axisStyle)
+                val at = point(x, low)
+                val textLeft = (at.x - label.size.width / 2f).coerceIn(0f, size.width - label.size.width)
+                drawText(label, topLeft = Offset(textLeft, at.y + 2.dp.toPx()))
+            }
+            // Fresnel zone: the full zone faint, the 60% band stronger, both stopping at the ground.
+            drawPath(band({ it.fresnelTop }, { it.visibleFresnelBottom }), FresnelTeal.copy(alpha = 0.2f))
+            drawPath(band({ it.fresnelTop60 }, { it.visibleFresnelBottom60 }), FresnelTeal.copy(alpha = 0.42f))
+            drawPath(line { it.fresnelTop }, FresnelTeal.copy(alpha = 0.65f), style = Stroke(1.dp.toPx(), pathEffect = dash))
+            drawPath(line { it.fresnelBottom }, FresnelTeal.copy(alpha = 0.65f), style = Stroke(1.dp.toPx(), pathEffect = dash))
+            // Terrain.
+            val terrain = line { it.terrainMeters }
+            drawPath(Path().apply {
+                addPath(terrain)
+                point(xMax, low).let { lineTo(it.x, it.y) }
+                point(0.0, low).let { lineTo(it.x, it.y) }
+                close()
+            }, TerrainBrown.copy(alpha = 0.35f))
+            drawPath(terrain, TerrainBrown, style = Stroke(1.dp.toPx()))
+            // Terrain reaching into the 60% zone.
+            samples.filter { it.isObstructed }.forEach { drawCircle(ObstructedRed, 2.5.dp.toPx(), point(it.distanceMeters, it.terrainMeters)) }
+            drawPath(line { it.lineOfSightMeters }, ink, style = Stroke(2.dp.toPx()))
+            // Antenna masts from the ground to the line of sight, lettered as on the map.
+            listOf(Triple("A", samples.first(), PointABlue), Triple("B", samples.last(), PointBOrange)).forEach { (name, sample, color) ->
+                val ground = point(sample.distanceMeters, sample.terrainMeters)
+                val antenna = point(sample.distanceMeters, sample.lineOfSightMeters)
+                drawLine(color, ground, antenna, 2.dp.toPx())
+                drawCircle(color, 7.dp.toPx(), antenna)
+                val label = measurer.measure(name, markerStyle)
+                drawText(label, topLeft = Offset(antenna.x - label.size.width / 2f, antenna.y - label.size.height / 2f))
+            }
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            ChartLegend(TerrainBrown, "Terrain")
+            ChartLegend(ink, "Line of sight")
+            ChartLegend(FresnelTeal.copy(alpha = 0.55f), "Fresnel zone")
+            ChartLegend(ObstructedRed.copy(alpha = 0.7f), "Obstructed")
+        }
+    }
+}
+
+@Composable
+private fun ChartLegend(color: Color, title: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Box(Modifier.size(18.dp, 4.dp).background(color, RoundedCornerShape(2.dp)))
+        Text(title, style = MaterialTheme.typography.bodySmall)
+    }
 }
 
 /** Slider range and one-unit increments match iOS; switching units never rewrites the input. */
