@@ -17,7 +17,9 @@ import org.nodescope.android.feature.map.*
  * The map's saveable state, held by the screen above its layout branches so the camera and an
  * unconfirmed tap survive folding, rotation and posture changes.
  */
-internal class LinkProfileMapState(val camera: MutableState<List<Double>>, val tentative: MutableState<Tentative?>) {
+internal class LinkProfileMapState(val camera: MutableState<List<Double>>, val tentative: MutableState<Tentative?>,
+    /** Whether the opening view has been chosen; a restored camera is never re-framed. */
+    val framed: MutableState<Boolean>) {
     /** An unconfirmed tap and the endpoint it was made for; it never carries over from A to B. */
     data class Tentative(val endpoint: String, val latitude: Double, val longitude: Double)
 }
@@ -30,14 +32,18 @@ private val tentativeSaver = androidx.compose.runtime.saveable.listSaver<LinkPro
 internal fun rememberLinkProfileMapState(origin: ProfileCoordinate?): LinkProfileMapState {
     val camera = rememberSaveable { mutableStateOf(listOf(origin?.latitude ?: 0.0, origin?.longitude ?: 0.0, if (origin != null) 10.0 else 1.0, 0.0, 0.0)) }
     val tentative = rememberSaveable(stateSaver = tentativeSaver) { mutableStateOf<LinkProfileMapState.Tentative?>(null) }
-    return remember(camera, tentative) { LinkProfileMapState(camera, tentative) }
+    // An endpoint already centers the camera; otherwise the selected region frames it once loaded.
+    val framed = rememberSaveable { mutableStateOf(origin != null) }
+    return remember(camera, tentative, framed) { LinkProfileMapState(camera, tentative, framed) }
 }
 
 /** Persistent map: tentative taps are committed only by Use Point; cancel leaves inputs intact. */
 @Composable
 internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, pointB: ProfileCoordinate?,
     nodes: List<org.nodescope.android.core.model.MeshNode>, onCancel: () -> Unit, onChoose: (ProfileCoordinate) -> Unit,
-    modifier: Modifier = Modifier, mapState: LinkProfileMapState = rememberLinkProfileMapState(pointA ?: pointB)) {
+    modifier: Modifier = Modifier, mapState: LinkProfileMapState = rememberLinkProfileMapState(pointA ?: pointB),
+    snapshot: org.nodescope.android.core.model.AnalyzerSnapshot? = null, selectedRegion: String? = null,
+    sourceViewport: org.nodescope.android.core.model.RegionCoordinate? = null) {
     Surface(modifier) {
         Column(Modifier.fillMaxSize()) {
             var tentativePoint by mapState.tentative
@@ -51,6 +57,19 @@ internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, point
             val choice = remember { loadMapProvider(context) }
             val dark = MaterialTheme.colorScheme.background.luminance() < 0.3f
             val engine: MapEngineState = if (choice.provider == MapProvider.GOOGLE) rememberGoogleMapEngine() else rememberMapLibreEngine()
+            // With no endpoints yet, open on the region selected for the live map, framed the same way.
+            val density = androidx.compose.ui.platform.LocalDensity.current.density
+            LaunchedEffect(engine.camera, snapshot, selectedRegion, sourceViewport) {
+                val ready = engine.camera ?: return@LaunchedEffect
+                if (mapState.framed.value || snapshot == null) return@LaunchedEffect
+                val inset = (24 * density).toInt()
+                when (val target = cameraTarget(snapshot, selectedRegion, sourceViewport)) {
+                    null -> return@LaunchedEffect
+                    is CameraTarget.Center -> ready.jump(CameraMove.Center(target.coordinate, target.zoom))
+                    is CameraTarget.Bounds -> ready.jump(CameraMove.Fit(target, FramingInsets(inset, inset, inset, inset)))
+                }
+                mapState.framed.value = true
+            }
             LaunchedEffect(engine.overlays, latitude, longitude, pointA, pointB, nodes) {
                 val a = pointA?.let { Coordinate.gps(it.latitude, it.longitude) }
                 val b = pointB?.let { Coordinate.gps(it.latitude, it.longitude) }

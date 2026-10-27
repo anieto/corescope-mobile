@@ -526,7 +526,8 @@ internal fun AppShell(
                                     org.nodescope.android.feature.linkprofile.LinkTerrainProvider(java.io.File(context.cacheDir, "link-profile/elevations.json")),
                                     createSavedStateHandle())
                             }
-                            org.nodescope.android.feature.linkprofile.LinkProfileScreen(profileModel, preferences.distanceUnit, state.snapshot?.nodes.orEmpty())
+                            org.nodescope.android.feature.linkprofile.LinkProfileScreen(profileModel, preferences.distanceUnit, state.snapshot?.nodes.orEmpty(),
+                                state.snapshot, preferences.region, sourceViewport)
                         }
                         screen<PacketRoute> {
                             if (org.nodescope.android.core.design.LocalBeaconSource.current)

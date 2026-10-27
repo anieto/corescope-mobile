@@ -110,6 +110,16 @@ unit-conversion check now uses the Distance row.
 Validation: debug and instrumentation APKs build; JVM suite 363 tests, zero failures, one skipped.
 The chart has not been visually compared with iOS on a device yet.
 
+2026-10-27 — Link Profile opens on the selected region (both platforms).
+With no endpoints, the planner map now frames the region selected for the live map instead of
+0°, 0° at world zoom. Android reuses the live map's `cameraTarget()`, framing once per screen
+(saved, so a restored camera is not re-framed). iOS uses a new `RegionCameraFraming` in
+MapScreen.swift: a selected region's published center and radius or its airport, else the
+community viewport, else every offered region. The live map's viewport helpers now delegate to
+it too. iOS replaces its `.userLocation` start, and stays on the known nodes until region data
+arrives. Validation: Android JVM suite and APKs build; iOS simulator build succeeds (Xcode 27.1).
+
+
 2026-10-20 — 0.9.0 Android review: account first visit, selection cache and UI consistency.
 
 Fixes: the CoreScope account screen called `/api/auth/me` without a saved session and showed

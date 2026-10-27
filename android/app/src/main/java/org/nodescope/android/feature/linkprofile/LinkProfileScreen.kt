@@ -51,7 +51,9 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = LocalDistanceUnit.current, nodes: List<org.nodescope.android.core.model.MeshNode> = emptyList()) {
+fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = LocalDistanceUnit.current, nodes: List<org.nodescope.android.core.model.MeshNode> = emptyList(),
+    snapshot: org.nodescope.android.core.model.AnalyzerSnapshot? = null, selectedRegion: String? = null,
+    sourceViewport: org.nodescope.android.core.model.RegionCoordinate? = null) {
     val state by model.state.collectAsStateWithLifecycle()
     var advanced by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     var selecting by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(if (state.fields.getValue("Latitude A").isBlank() && BuildConfig.MAPS_CONFIGURED) "A" else null) }
@@ -65,6 +67,9 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
     val mapState = rememberLinkProfileMapState(coordinate("A") ?: coordinate("B"))
     val scroll = rememberScrollState()
     val currentNodes by rememberUpdatedState(nodes)
+    val currentSnapshot by rememberUpdatedState(snapshot)
+    val currentRegion by rememberUpdatedState(selectedRegion)
+    val currentViewport by rememberUpdatedState(sourceViewport)
     // One map instance moves between layouts on a live posture change instead of being rebuilt.
     val map = remember {
         movableContentOf { modifier: Modifier ->
@@ -74,7 +79,7 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
                     model.edit("Longitude $endpoint", point.longitude.toString())
                     selecting = if (endpoint == "A" && coordinate("B") == null) "B" else null
                 }
-            }, modifier, mapState)
+            }, modifier, mapState, currentSnapshot, currentRegion, currentViewport)
         }
     }
     val fold = rememberFoldSplit()

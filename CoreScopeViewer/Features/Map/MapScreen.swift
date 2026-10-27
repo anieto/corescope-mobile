@@ -1854,17 +1854,7 @@ struct MapScreen: View {
     }
 
     private var communitySourceViewport: (center: CLLocationCoordinate2D, radiusKm: Double)? {
-        guard let source = analyzerSourceRegistry.sources.first(where: {
-            $0.host.caseInsensitiveCompare(settings.host) == .orderedSame
-        }),
-        let latitude = source.mapLatitude,
-        let longitude = source.mapLongitude else {
-            return nil
-        }
-
-        let center = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-        guard CLLocationCoordinate2DIsValid(center) else { return nil }
-        return (center, source.mapRadiusKm ?? 250)
+        RegionCameraFraming.communityViewport(registry: analyzerSourceRegistry, host: settings.host)
     }
 
     private var communitySourceViewportSignature: String? {
@@ -1873,16 +1863,7 @@ struct MapScreen: View {
     }
 
     private var sourceRegionViewport: BeaconRegionReader.Frame? {
-        let coordinates = regionFilter.options.compactMap { code -> IataCoordinate? in
-            if let published = regionFilter.iataCoords.first(where: {
-                $0.key.caseInsensitiveCompare(code) == .orderedSame
-            })?.value {
-                return published
-            }
-            guard let fallback = AirportCoordinates.coordinate(for: code) else { return nil }
-            return IataCoordinate(lat: fallback.latitude, lon: fallback.longitude, radiusKm: nil)
-        }
-        return BeaconRegionReader.Frame.enclosing(coordinates)
+        RegionCameraFraming.allRegionsViewport(regionFilter: regionFilter)
     }
 
     private var sourceRegionViewportSignature: String? {
@@ -1909,11 +1890,9 @@ struct MapScreen: View {
         radiusKm: Double = 45,
         verticalBiasFraction: Double = 0
     ) {
-        let latitudeSpan = max((radiusKm * 2.4) / 111, 0.15)
-        let longitudeSpan = max(
-            latitudeSpan / max(cos(center.latitude * .pi / 180), 0.2),
-            0.15
-        )
+        let span = RegionCameraFraming.span(around: center, radiusKm: radiusKm)
+        let latitudeSpan = span.latitudeDelta
+        let longitudeSpan = span.longitudeDelta
         // Shifting the framed center south moves the requested coordinate
         // toward the top of the screen, clear of the bottom-anchored replay
         // controls. A fraction of 0 keeps the normal dead-center framing.
@@ -3521,5 +3500,72 @@ private struct ReplayReceiverMarker: View {
             .allowsHitTesting(false)
             .accessibilityElement()
             .accessibilityLabel("Heard by \(name)")
+    }
+}
+
+/// How a map opens on the selected region, shared by the live map and Link Profile so both
+/// frame a region the same way.
+enum RegionCameraFraming {
+    /// The span that shows about [radiusKm] around [center], never closer than a small town.
+    static func span(around center: CLLocationCoordinate2D, radiusKm: Double) -> MKCoordinateSpan {
+        let latitudeSpan = max((radiusKm * 2.4) / 111, 0.15)
+        let longitudeSpan = max(latitudeSpan / max(cos(center.latitude * .pi / 180), 0.2), 0.15)
+        return MKCoordinateSpan(latitudeDelta: latitudeSpan, longitudeDelta: longitudeSpan)
+    }
+
+    /// The community registry's viewport for this analyzer, if it publishes one.
+    @MainActor
+    static func communityViewport(registry: AnalyzerSourceRegistry, host: String) -> (center: CLLocationCoordinate2D, radiusKm: Double)? {
+        guard let source = registry.sources.first(where: { $0.host.caseInsensitiveCompare(host) == .orderedSame }),
+              let latitude = source.mapLatitude,
+              let longitude = source.mapLongitude else { return nil }
+        let center = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+        guard CLLocationCoordinate2DIsValid(center) else { return nil }
+        return (center, source.mapRadiusKm ?? 250)
+    }
+
+    /// Every region the analyzer offers, from published centers or the bundled airport table.
+    @MainActor
+    static func allRegionsViewport(regionFilter: RegionFilterStore) -> BeaconRegionReader.Frame? {
+        let coordinates = regionFilter.options.compactMap { code -> IataCoordinate? in
+            if let published = regionFilter.iataCoords.first(where: {
+                $0.key.caseInsensitiveCompare(code) == .orderedSame
+            })?.value {
+                return published
+            }
+            guard let fallback = AirportCoordinates.coordinate(for: code) else { return nil }
+            return IataCoordinate(lat: fallback.latitude, lon: fallback.longitude, radiusKm: nil)
+        }
+        return BeaconRegionReader.Frame.enclosing(coordinates)
+    }
+
+    /// The opening view without network lookups: a selected region's published center (and
+    /// radius) or its airport, else the community viewport, else every offered region. Nil
+    /// when nothing is known yet.
+    @MainActor
+    static func openingRegion(regionFilter: RegionFilterStore, registry: AnalyzerSourceRegistry, host: String) -> MKCoordinateRegion? {
+        if let selected = regionFilter.selectedRegion?.uppercased() {
+            if let published = regionFilter.iataCoords.first(where: { $0.key.uppercased() == selected })?.value {
+                let center = CLLocationCoordinate2D(latitude: published.lat, longitude: published.lon)
+                if CLLocationCoordinate2DIsValid(center) {
+                    let radius = published.radiusKm.flatMap { $0.isFinite && $0 > 0 ? min($0, 2000) : nil } ?? 45
+                    return MKCoordinateRegion(center: center, span: span(around: center, radiusKm: radius))
+                }
+            }
+            if let airport = AirportCoordinates.coordinate(for: selected) {
+                return MKCoordinateRegion(center: airport, span: span(around: airport, radiusKm: 45))
+            }
+            return nil
+        }
+        if let viewport = communityViewport(registry: registry, host: host) {
+            return MKCoordinateRegion(center: viewport.center, span: span(around: viewport.center, radiusKm: viewport.radiusKm))
+        }
+        if let frame = allRegionsViewport(regionFilter: regionFilter) {
+            return MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: frame.latitude, longitude: frame.longitude),
+                span: MKCoordinateSpan(latitudeDelta: frame.latitudeDelta, longitudeDelta: frame.longitudeDelta)
+            )
+        }
+        return nil
     }
 }

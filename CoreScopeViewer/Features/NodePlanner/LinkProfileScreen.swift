@@ -257,8 +257,13 @@ private struct LinkProfilePersistentMap: View {
     var selectionTrailingClearance: CGFloat = 0
     var promptLeadingClearance: CGFloat = 0
     var promptTopClearance: CGFloat = 0
+    @Environment(RegionFilterStore.self) private var regionFilter
+    @Environment(AnalyzerSourceRegistry.self) private var analyzerSourceRegistry
+    @Environment(AnalyzerSettings.self) private var settings
     @State private var tentativeCoordinate: CLLocationCoordinate2D?
-    @State private var position: MapCameraPosition = .userLocation(fallback: .automatic)
+    // Opens on the region selected for the live map; until that is known, the known nodes.
+    @State private var position: MapCameraPosition = .automatic
+    @State private var hasFramedRegion = false
 
     var body: some View {
         MapReader { proxy in
@@ -345,6 +350,15 @@ private struct LinkProfilePersistentMap: View {
         }
         .accessibilityLabel("Map for selecting Point A and Point B")
         .onChange(of: activeEndpoint) { _, _ in tentativeCoordinate = nil }
+        // Region centers can arrive after the screen opens; frame once, and never over endpoints.
+        .task(id: "\(regionFilter.selectedRegion ?? "all")|\(regionFilter.iataCoords.count)|\(regionFilter.options.count)") {
+            guard !hasFramedRegion, model.coordinateA == nil, model.coordinateB == nil,
+                  let region = RegionCameraFraming.openingRegion(
+                    regionFilter: regionFilter, registry: analyzerSourceRegistry, host: settings.host
+                  ) else { return }
+            position = .region(region)
+            hasFramedRegion = true
+        }
     }
 
     private var nodesWithCoordinates: [MeshNode] {
