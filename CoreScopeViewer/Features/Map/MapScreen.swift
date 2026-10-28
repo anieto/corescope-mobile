@@ -10,6 +10,10 @@ struct MapScreen: View {
     var pinsPacketSidebarToggle = false
     var centersBottomControlsInLeadingPane = false
     var bottomObscuredFraction: Double = 0
+    /// Width covered on the right by a panel drawn over the map (the Duo's packet sidebar). The
+    /// map itself is not resized, so its nodes stay put; its controls move clear of the panel,
+    /// and the camera pans alongside the panel's slide so the visible part stays centred.
+    var trailingObscuredWidth: CGFloat = 0
 
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(RegionFilterStore.self) private var regionFilter
@@ -65,7 +69,7 @@ struct MapScreen: View {
     @State private var lastHandledNavigationRequestID: UUID?
     @State private var isMapCameraMoving = false
     @State private var mapViewportSize = CGSize.zero
-    @State private var isHingedDevice: Bool?
+    @Environment(\.isHingedDevice) private var isHingedDevice
     /// The top inset outside the navigation stack (status bar and tab bar). The wide header is
     /// placed from this: on the first appearance the hidden navigation bar's height is still in
     /// the stack's own safe area, which dropped the header by a bar height until the next visit.
@@ -207,11 +211,11 @@ struct MapScreen: View {
     }
 
     private var wideMapHeaderTopPadding: CGFloat {
-        isHingedDevice == true ? 32 : 8
+        isHingedDevice ? 32 : 8
     }
 
     private var wideMapStatusTopPadding: CGFloat {
-        isHingedDevice == true ? 84 : 60
+        isHingedDevice ? 84 : 60
     }
 
     var body: some View {
@@ -243,6 +247,9 @@ struct MapScreen: View {
                 }
                 .onChange(of: bottomObscuredFraction) {
                     refitReplayForVisibleMapArea()
+                }
+                .onChange(of: trailingObscuredWidth) { oldWidth, newWidth in
+                    recenterAfterObscuredWidthChange(by: newWidth - oldWidth)
                 }
             }
                 .mapScope(mapScope)
@@ -327,6 +334,7 @@ struct MapScreen: View {
                             mapDisplayStyle: $mapDisplayStyle
                         )
                         .padding(.horizontal, 20)
+                        .padding(.trailing, trailingObscuredWidth)
                         .padding(.top, chromeTopInset + wideMapHeaderTopPadding)
                         .ignoresSafeArea(.container, edges: .top)
                     }
@@ -390,7 +398,7 @@ struct MapScreen: View {
                 }
                 .overlay(alignment: .bottomTrailing) {
                     zoomControl
-                        .padding(.trailing, 12)
+                        .padding(.trailing, 12 + trailingObscuredWidth)
                         .padding(.bottom, 36)
                 }
                 .overlay(alignment: .bottom) {
@@ -423,6 +431,7 @@ struct MapScreen: View {
                             }
                         }
                         .padding(.bottom, viewModel.nodes.isEmpty ? 12 : 44)
+                        .padding(.trailing, trailingObscuredWidth)
                     }
                 }
                 .overlay(alignment: .bottom) {
@@ -433,6 +442,7 @@ struct MapScreen: View {
                             .padding(.vertical, 4)
                             .background(.thinMaterial, in: Capsule())
                             .padding(.bottom, 12)
+                            .padding(.trailing, trailingObscuredWidth)
                     }
                 }
                 .overlay {
@@ -481,7 +491,6 @@ struct MapScreen: View {
                 }
         }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { chromeTopInset = $0 }
-        .observesDuoHinge($isHingedDevice)
         .sheet(isPresented: $isSearchPresented) {
             MapNodeSearchSheet(nodes: viewModel.nodes, selectNode: focusOnSearchedNode)
                 .presentationDetents([.medium, .large])
@@ -1741,6 +1750,24 @@ struct MapScreen: View {
         )
         withAnimation {
             cameraPosition = .region(MKCoordinateRegion(center: region.center, span: newSpan))
+        }
+    }
+
+    /// Pans by half the change, alongside the covering panel's slide, so what was centred in the
+    /// visible part of the map stays centred: east when the panel opens, back west when it closes.
+    /// A camera move only re-groups nodes when it ends, so running it with the slide is smooth.
+    private func recenterAfterObscuredWidthChange(by delta: CGFloat) {
+        guard delta != 0, let region = visibleRegion, mapViewportSize.width > 0 else { return }
+        let degreesPerPoint = region.span.longitudeDelta / Double(mapViewportSize.width)
+        var longitude = region.center.longitude + Double(delta / 2) * degreesPerPoint
+        if longitude > 180 { longitude -= 360 }
+        if longitude < -180 { longitude += 360 }
+        let shifted = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: region.center.latitude, longitude: longitude),
+            span: region.span
+        )
+        withAnimation(.smooth(duration: 0.3)) {
+            cameraPosition = .region(shifted)
         }
     }
 

@@ -44,6 +44,7 @@ struct NodeScopeApp: App {
                     }
                 }
             }
+            .resolvesDuoHinge()
             .background {
                 NodeScopeBackground()
             }

@@ -12,6 +12,10 @@ private struct DuoHingeObserver: ViewModifier {
             content
                 .onHingeChange { _, newContext in
                     let newValue = newContext.hinge != nil
+                    // Hinge updates also arrive when nothing this app uses has changed. Only a
+                    // real change may touch the state: at the root, an animated write would run
+                    // through every screen and stutter continuous animations such as live packets.
+                    guard newValue != isHingedDevice else { return }
                     if isHingedDevice == nil {
                         // Resolve the initial posture without animating an incorrect layout.
                         isHingedDevice = newValue
@@ -40,9 +44,44 @@ private struct DuoHingeObserver: ViewModifier {
     }
 }
 
+extension EnvironmentValues {
+    /// Whether this window is on a device with an active hinge. Resolved once at the app's root
+    /// (see `resolvesDuoHinge()`) and kept current as the device folds, so every screen knows its
+    /// layout on its first frame instead of resolving it, and flashing the wrong one, itself.
+    @Entry var isHingedDevice = false
+}
+
+/// Holds the window until the hinge is known, then publishes it to every screen.
+private struct DuoHingeRoot: ViewModifier {
+    @State private var isHingedDevice: Bool?
+
+    func body(content: Content) -> some View {
+        // Nothing is drawn for the observer's short launch wait (the window background shows);
+        // not an opacity, which would composite the whole app into one layer from then on.
+        ZStack {
+            if let isHingedDevice {
+                content
+                    .environment(\.isHingedDevice, isHingedDevice)
+            } else {
+                Color.clear
+            }
+        }
+        // The listener sits on an empty view behind the app, not around it, so each hinge
+        // update re-evaluates that one view rather than the whole app; only a real change
+        // reaches the screens, through the environment.
+        .background {
+            Color.clear
+                .modifier(DuoHingeObserver(isHingedDevice: $isHingedDevice))
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+    }
+}
+
 extension View {
-    func observesDuoHinge(_ isHingedDevice: Binding<Bool?>) -> some View {
-        modifier(DuoHingeObserver(isHingedDevice: isHingedDevice))
+    /// Apply once, at the window's root.
+    func resolvesDuoHinge() -> some View {
+        modifier(DuoHingeRoot())
     }
 }
 

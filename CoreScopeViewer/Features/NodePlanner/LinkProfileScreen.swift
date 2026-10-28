@@ -10,7 +10,7 @@ struct LinkProfileScreen: View {
     @State private var model = LinkProfileModel()
     @State private var catalog = FieldToolsViewModel(reference: nil)
     @State private var endpointPicker: LinkProfileEndpoint? = .pointA
-    @State private var isHingedDevice: Bool?
+    @Environment(\.isHingedDevice) private var isHingedDevice
     @State private var isWideLayout = false
     /// Shared with the live map: picking a style here changes both.
     @State private var mapDisplayStyle = MapDisplayStyle.persisted
@@ -42,7 +42,7 @@ struct LinkProfileScreen: View {
                     // Both panes run to the top edge under the invisible bar, as the app's other
                     // Duo layouts do; the back button stays in the side column.
                     .ignoresSafeArea(.container, edges: [.top, .bottom])
-                } else if isWideLayout {
+                } else if geometry.size.width >= 900 {
                     // iPad: both panes run up under the transparent bar, which holds the back
                     // button and the map style menu on the tab bar's row; content starts below it.
                     HStack(spacing: 0) {
@@ -71,6 +71,9 @@ struct LinkProfileScreen: View {
                         mapDisplayStyle: $mapDisplayStyle,
                         promptLeadingClearance: showsOverlayBackButton ? 60 : 0
                     )
+                    // On a Duo the bar is shown for its back button (in the side column); the
+                    // map still runs to the top edge under it.
+                    .ignoresSafeArea(.container, edges: isHingedDevice ? .top : [])
                 }
             }
             .onGeometryChange(for: Bool.self) { $0.size.width >= 900 } action: { isWideLayout = $0 }
@@ -85,7 +88,8 @@ struct LinkProfileScreen: View {
         .toolbar(usesSystemBar ? .visible : .hidden, for: .navigationBar)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
-            if usesSystemBar && !usesDuoWorkspace {
+            // iPad only: every Duo layout keeps the style button on the map.
+            if isWideLayout && !isHingedDevice {
                 ToolbarItem(placement: .topBarLeading) {
                     LinkProfileMapStyleMenu(style: $mapDisplayStyle, inToolbar: true)
                 }
@@ -100,7 +104,6 @@ struct LinkProfileScreen: View {
         .onChange(of: mapDisplayStyle) { _, style in
             UserDefaults.standard.set(style.rawValue, forKey: MapDisplayStyle.defaultsKey)
         }
-        .observesDuoHinge($isHingedDevice)
         .task(id: "\(settings.sourceSession.id)|\(regionFilter.selectedRegion ?? "")") {
             catalog.configure(settings: settings)
             await catalog.load(region: regionFilter.selectedRegion)
@@ -108,16 +111,17 @@ struct LinkProfileScreen: View {
     }
 
     private var usesDuoWorkspace: Bool {
-        isHingedDevice == true && horizontalSizeClass == .regular
+        isHingedDevice && horizontalSizeClass == .regular
     }
 
     /// iPad and the Duo use the system navigation bar's back button.
+    /// Any Duo layout (two panes or one) and iPad; only the iPhone layout floats its own.
     private var usesSystemBar: Bool {
-        usesDuoWorkspace || (isHingedDevice == false && isWideLayout)
+        isHingedDevice || isWideLayout
     }
 
     private var showsOverlayBackButton: Bool {
-        isHingedDevice == false && !isWideLayout
+        !usesSystemBar
     }
 
 }
