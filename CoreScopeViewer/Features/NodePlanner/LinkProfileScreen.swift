@@ -24,7 +24,10 @@ struct LinkProfileScreen: View {
                             model: model,
                             nodes: catalog.nodes,
                             activeEndpoint: $endpointPicker,
-                            mapDisplayStyle: $mapDisplayStyle
+                            mapDisplayStyle: $mapDisplayStyle,
+                            // The pane runs up under the status bar and the invisible bar, so
+                            // the style button and legend start below them.
+                            promptTopClearance: geometry.safeAreaInsets.top
                         )
                         .safeAreaPadding(.trailing)
                         .clipped()
@@ -316,15 +319,20 @@ private struct LinkProfilePersistentMap: View {
                 // Native markers rather than SwiftUI annotations: each annotation was a view of its
                 // own that caught fingers, so a pinch starting on a node never reached the map.
                 // Choosing a node is handled by the map's tap below.
-                ForEach(knownNodes, id: \.node.id) { known in
+                // A node that is an endpoint, or about to be, gives up its marker to the endpoint's.
+                ForEach(knownNodes.filter { !occupied.contains(where: $0.coordinate.isSame) }, id: \.node.id) { known in
                     Marker(known.node.name ?? String(localized: "Known node"), systemImage: "antenna.radiowaves.left.and.right", coordinate: known.coordinate)
                         .tint(NodeScopeStyle.signal)
                 }
-                if let pointA = model.coordinateA {
-                    Marker("Point A", coordinate: pointA).tint(.blue)
+                // Lettered in the endpoint's colour and named after the node it sits on. While a
+                // new spot is pending, it stands in for the endpoint's old marker.
+                if let pointA = model.coordinateA, pendingTentative?.endpoint != .pointA {
+                    Marker(model.nameA ?? String(localized: "Point A"), monogram: Text(verbatim: "A"), coordinate: pointA)
+                        .tint(LinkProfileEndpoint.pointA.color)
                 }
-                if let pointB = model.coordinateB {
-                    Marker("Point B", coordinate: pointB).tint(.orange)
+                if let pointB = model.coordinateB, pendingTentative?.endpoint != .pointB {
+                    Marker(model.nameB ?? String(localized: "Point B"), monogram: Text(verbatim: "B"), coordinate: pointB)
+                        .tint(LinkProfileEndpoint.pointB.color)
                 }
                 if let result = model.result {
                     // A solid route coloured by clearance along the sampled path, on one dark
@@ -343,13 +351,11 @@ private struct LinkProfilePersistentMap: View {
                     MapPolyline(coordinates: [pointA, pointB])
                         .stroke(NodeScopeStyle.signal, style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: [6, 6]))
                 }
-                if let tentative = model.tentative, tentative.endpoint == activeEndpoint {
-                    Annotation("Tentative location", coordinate: tentative.coordinate) {
-                        Image(systemName: "mappin.circle.fill")
-                            .font(.largeTitle)
-                            .foregroundStyle(.secondary)
-                            .background(.background, in: Circle())
-                    }
+                // The pending choice, exactly where the endpoint will go: on a known node it takes
+                // that node's place, so the node visibly changes into Point A or B.
+                if let tentative = pendingTentative {
+                    Marker(tentative.name ?? String(localized: "Dropped pin"), monogram: Text(verbatim: tentative.endpoint.letter), coordinate: tentative.coordinate)
+                        .tint(tentative.endpoint.color)
                 }
             }
             .mapStyle(mapDisplayStyle.realisticStyle)
@@ -442,6 +448,15 @@ private struct LinkProfilePersistentMap: View {
         )
         hasFramedRegion = true
         withAnimation(.easeInOut) { position = .rect(rect) }
+    }
+
+    private var pendingTentative: LinkProfileTentative? {
+        model.tentative.flatMap { $0.endpoint == activeEndpoint ? $0 : nil }
+    }
+
+    /// Where endpoint markers stand: the endpoints and any pending choice.
+    private var occupied: [CLLocationCoordinate2D] {
+        [model.coordinateA, model.coordinateB, pendingTentative?.coordinate].compactMap { $0 }
     }
 
     private var knownNodes: [(node: MeshNode, coordinate: CLLocationCoordinate2D)] {
@@ -1530,6 +1545,12 @@ private struct LinkProfileTerrainCanvas: View {
         let distance = distanceUnit.format(kilometers: analysis.result.distanceMeters / 1_000)
         let clearance = analysis.result.worstClearancePercent.formatted(.number.precision(.fractionLength(0)))
         return "Distance \(distance). Worst Fresnel clearance \(clearance) percent."
+    }
+}
+
+private extension CLLocationCoordinate2D {
+    func isSame(_ other: CLLocationCoordinate2D) -> Bool {
+        latitude == other.latitude && longitude == other.longitude
     }
 }
 

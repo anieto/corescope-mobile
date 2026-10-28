@@ -83,12 +83,13 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
     val currentViewport by rememberUpdatedState(sourceViewport)
     val currentAnalysis by rememberUpdatedState(state.result)
     val currentSelecting by rememberUpdatedState(selecting)
+    val currentNames by rememberUpdatedState(state.names)
     var mapInset by remember { mutableStateOf(0.dp) }
     // One map instance moves between layouts on a live posture change instead of being rebuilt.
     val map = remember {
         movableContentOf { modifier: Modifier ->
             LinkProfileMap(currentSelecting, coordinate("A"), coordinate("B"), currentNodes, modifier, mapState,
-                currentSnapshot, currentRegion, currentViewport, currentAnalysis, mapInset)
+                currentSnapshot, currentRegion, currentViewport, currentAnalysis, mapInset, currentNames)
         }
     }
     fun choose(endpoint: String) {

@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import org.nodescope.android.core.model.Coordinate
 import org.nodescope.android.feature.map.*
+import kotlin.math.abs
 
 /**
  * The map's saveable state, held by the screen above its layout branches so the camera and an
@@ -53,7 +54,7 @@ internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, point
     modifier: Modifier = Modifier, mapState: LinkProfileMapState = rememberLinkProfileMapState(pointA ?: pointB),
     snapshot: org.nodescope.android.core.model.AnalyzerSnapshot? = null, selectedRegion: String? = null,
     sourceViewport: org.nodescope.android.core.model.RegionCoordinate? = null, analysis: LinkAnalysis? = null,
-    bottomInset: androidx.compose.ui.unit.Dp = 0.dp) {
+    bottomInset: androidx.compose.ui.unit.Dp = 0.dp, names: Map<String, String> = emptyMap()) {
     Box(modifier) {
         var tentativePoint by mapState.tentative
         val current = tentativePoint?.takeIf { it.endpoint == endpoint }
@@ -95,15 +96,24 @@ internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, point
             mapState.fittedPath.value = path
             mapState.framed.value = true
         }
-        LaunchedEffect(engine.overlays, latitude, longitude, pointA, pointB, nodes, analysis, dark) {
+        LaunchedEffect(engine.overlays, latitude, longitude, current?.name, pointA, pointB, nodes, analysis, dark, names) {
             val a = pointA?.let { Coordinate.gps(it.latitude, it.longitude) }
             val b = pointB?.let { Coordinate.gps(it.latitude, it.longitude) }
             val tentative = latitude?.let { lat -> longitude?.let { lon -> Coordinate.gps(lat, lon) } }
-            engine.overlays?.setNodes(nodeMarkers(nodes), grouped = true)
+            // As on iOS: a pending choice is drawn as the endpoint it will become, lettered and in
+            // its colour, and stands in for that endpoint's old pin. A node that is an endpoint, or
+            // about to be, gives up its own marker, so the pin visibly takes the node's place.
+            val pending = endpoint.takeIf { tentative != null }
+            val occupied = listOfNotNull(a, b, tentative)
+            fun isOccupied(node: org.nodescope.android.core.model.MeshNode) = node.coordinate?.let { spot ->
+                occupied.any { abs(it.latitude - spot.latitude) < 1e-7 && abs(it.longitude - spot.longitude) < 1e-7 }
+            } == true
+            fun kind(letter: String) = if (letter == "A") MapPin.Kind.POINT_A else MapPin.Kind.POINT_B
+            engine.overlays?.setNodes(nodeMarkers(nodes.filterNot(::isOccupied)), grouped = true)
             engine.overlays?.setPins(listOfNotNull(
-                a?.let { MapPin(it, MapPin.Kind.POINT_A, "Point A") },
-                b?.let { MapPin(it, MapPin.Kind.POINT_B, "Point B") },
-                tentative?.let { MapPin(it, MapPin.Kind.TENTATIVE, "Tentative location") }))
+                a?.takeIf { pending != "A" }?.let { MapPin(it, MapPin.Kind.POINT_A, names["A"] ?: "Point A") },
+                b?.takeIf { pending != "B" }?.let { MapPin(it, MapPin.Kind.POINT_B, names["B"] ?: "Point B") },
+                tentative?.let { spot -> pending?.let { MapPin(spot, kind(it), current?.name ?: "Dropped pin") } }))
             engine.overlays?.setLinkPath(if (a != null && b != null) linkPathStretches(a, b, analysis, dark) else emptyList())
         }
         // A known node under the finger wins; otherwise the tapped spot, or a group expands.
