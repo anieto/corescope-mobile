@@ -66,6 +66,10 @@ struct MapScreen: View {
     @State private var isMapCameraMoving = false
     @State private var mapViewportSize = CGSize.zero
     @State private var isHingedDevice: Bool?
+    /// The top inset outside the navigation stack (status bar and tab bar). The wide header is
+    /// placed from this: on the first appearance the hidden navigation bar's height is still in
+    /// the stack's own safe area, which dropped the header by a bar height until the next visit.
+    @State private var chromeTopInset: CGFloat = 0
 
     private struct NodeCluster: Identifiable, Sendable {
         let id: String
@@ -365,7 +369,8 @@ struct MapScreen: View {
                             mapDisplayStyle: $mapDisplayStyle
                         )
                         .padding(.horizontal, 20)
-                        .padding(.top, wideMapHeaderTopPadding)
+                        .padding(.top, chromeTopInset + wideMapHeaderTopPadding)
+                        .ignoresSafeArea(.container, edges: .top)
                     }
                 }
                 .overlay(alignment: .topLeading) {
@@ -393,7 +398,8 @@ struct MapScreen: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.leading, usesWideMapHeader ? 20 : 12)
-                    .padding(.top, usesWideMapHeader ? wideMapStatusTopPadding : 12)
+                    .padding(.top, usesWideMapHeader ? chromeTopInset + wideMapStatusTopPadding : 12)
+                    .ignoresSafeArea(.container, edges: usesWideMapHeader ? .top : [])
                 }
                 .overlay(alignment: .bottomLeading) {
                     VStack(spacing: 10) {
@@ -516,6 +522,7 @@ struct MapScreen: View {
                     }
                 }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { chromeTopInset = $0 }
         .observesDuoHinge($isHingedDevice)
         .sheet(isPresented: $isSearchPresented) {
             MapNodeSearchSheet(nodes: viewModel.nodes, selectNode: focusOnSearchedNode)
