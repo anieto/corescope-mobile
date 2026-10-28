@@ -52,6 +52,8 @@ struct ChannelDetailScreen: View {
                 .adaptiveContentWidth(760)
             }
             .defaultScrollAnchor(.bottom, for: .alignment)
+            // Folding or resizing the pane keeps the newest messages in view.
+            .defaultScrollAnchor(.bottom, for: .sizeChanges)
             .onChange(of: orderedMessages.last?.id) {
                 scrollToBottom(proxy: proxy)
             }
