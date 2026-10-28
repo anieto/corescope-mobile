@@ -66,6 +66,10 @@ struct MapScreen: View {
     @State private var isMapCameraMoving = false
     @State private var mapViewportSize = CGSize.zero
     @State private var isHingedDevice: Bool?
+    /// The top inset outside the navigation stack (status bar and tab bar). The wide header is
+    /// placed from this: on the first appearance the hidden navigation bar's height is still in
+    /// the stack's own safe area, which dropped the header by a bar height until the next visit.
+    @State private var chromeTopInset: CGFloat = 0
 
     private struct NodeCluster: Identifiable, Sendable {
         let id: String
@@ -119,48 +123,6 @@ struct MapScreen: View {
         let clusters: [NodeCluster]
         let displayCoordinatesByNodeID: [String: CLLocationCoordinate2D]
         let filteredCount: Int
-    }
-
-    private enum MapDisplayStyle: String, CaseIterable, Identifiable {
-        case standard
-        case imagery
-        case hybrid
-
-        static let defaultsKey = "mapDisplayStyle"
-
-        static var persisted: Self {
-            guard let rawValue = UserDefaults.standard.string(forKey: defaultsKey),
-                  let style = Self(rawValue: rawValue) else {
-                return .standard
-            }
-            return style
-        }
-
-        var id: String { rawValue }
-
-        var title: String {
-            switch self {
-            case .standard: "Standard"
-            case .imagery: "Satellite"
-            case .hybrid: "Hybrid"
-            }
-        }
-
-        var systemImage: String {
-            switch self {
-            case .standard: "map"
-            case .imagery: "globe.americas.fill"
-            case .hybrid: "map.fill"
-            }
-        }
-
-        var style: MapStyle {
-            switch self {
-            case .standard: .standard
-            case .imagery: .imagery
-            case .hybrid: .hybrid
-            }
-        }
     }
 
     private struct WideMapHeader: View {
@@ -365,7 +327,8 @@ struct MapScreen: View {
                             mapDisplayStyle: $mapDisplayStyle
                         )
                         .padding(.horizontal, 20)
-                        .padding(.top, wideMapHeaderTopPadding)
+                        .padding(.top, chromeTopInset + wideMapHeaderTopPadding)
+                        .ignoresSafeArea(.container, edges: .top)
                     }
                 }
                 .overlay(alignment: .topLeading) {
@@ -393,7 +356,8 @@ struct MapScreen: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.leading, usesWideMapHeader ? 20 : 12)
-                    .padding(.top, usesWideMapHeader ? wideMapStatusTopPadding : 12)
+                    .padding(.top, usesWideMapHeader ? chromeTopInset + wideMapStatusTopPadding : 12)
+                    .ignoresSafeArea(.container, edges: usesWideMapHeader ? .top : [])
                 }
                 .overlay(alignment: .bottomLeading) {
                     VStack(spacing: 10) {
@@ -516,6 +480,7 @@ struct MapScreen: View {
                     }
                 }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { chromeTopInset = $0 }
         .observesDuoHinge($isHingedDevice)
         .sheet(isPresented: $isSearchPresented) {
             MapNodeSearchSheet(nodes: viewModel.nodes, selectNode: focusOnSearchedNode)
@@ -3593,5 +3558,57 @@ enum RegionCameraFraming {
             center: CLLocationCoordinate2D(latitude: frame.latitude, longitude: frame.longitude),
             span: MKCoordinateSpan(latitudeDelta: frame.latitudeDelta, longitudeDelta: frame.longitudeDelta)
         )
+    }
+}
+
+/// The map styles offered on the live map and in Link Profile; the choice is shared.
+enum MapDisplayStyle: String, CaseIterable, Identifiable {
+    case standard
+    case imagery
+    case hybrid
+
+    static let defaultsKey = "mapDisplayStyle"
+
+    static var persisted: Self {
+        guard let rawValue = UserDefaults.standard.string(forKey: defaultsKey),
+              let style = Self(rawValue: rawValue) else {
+            return .standard
+        }
+        return style
+    }
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .standard: "Standard"
+        case .imagery: "Satellite"
+        case .hybrid: "Hybrid"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .standard: "map"
+        case .imagery: "globe.americas.fill"
+        case .hybrid: "map.fill"
+        }
+    }
+
+    /// Link Profile keeps 3D terrain in every style.
+    var realisticStyle: MapStyle {
+        switch self {
+        case .standard: .standard(elevation: .realistic)
+        case .imagery: .imagery(elevation: .realistic)
+        case .hybrid: .hybrid(elevation: .realistic)
+        }
+    }
+
+    var style: MapStyle {
+        switch self {
+        case .standard: .standard
+        case .imagery: .imagery
+        case .hybrid: .hybrid
+        }
     }
 }

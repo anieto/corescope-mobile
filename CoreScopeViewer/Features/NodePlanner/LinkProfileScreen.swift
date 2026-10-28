@@ -11,6 +11,9 @@ struct LinkProfileScreen: View {
     @State private var catalog = FieldToolsViewModel(reference: nil)
     @State private var endpointPicker: LinkProfileEndpoint? = .pointA
     @State private var isHingedDevice: Bool?
+    @State private var isWideLayout = false
+    /// Shared with the live map: picking a style here changes both.
+    @State private var mapDisplayStyle = MapDisplayStyle.persisted
 
     var body: some View {
         GeometryReader { geometry in
@@ -21,66 +24,81 @@ struct LinkProfileScreen: View {
                             model: model,
                             nodes: catalog.nodes,
                             activeEndpoint: $endpointPicker,
-                            selectionTrailingClearance: 48
+                            mapDisplayStyle: $mapDisplayStyle
                         )
                         .safeAreaPadding(.trailing)
                         .clipped()
                     } secondary: {
                         LinkProfileEditor(
                             model: model,
-                            chooseOnMap: { endpointPicker = $0 },
+                            activeEndpoint: $endpointPicker,
                             trailingPadding: 112,
-                            usesCompactHeader: true
+                            usesCompactHeader: true,
+                            topInset: 24
                         )
                         .background(Color(uiColor: .systemGroupedBackground))
                         .clipped()
                     }
-                    .ignoresSafeArea(.container, edges: .bottom)
-                } else if geometry.size.width >= 900 {
+                    // Both panes run to the top edge under the invisible bar, as the app's other
+                    // Duo layouts do; the back button stays in the side column.
+                    .ignoresSafeArea(.container, edges: [.top, .bottom])
+                } else if isWideLayout {
+                    // iPad: both panes run up under the transparent bar, which holds the back
+                    // button and the map style menu on the tab bar's row; content starts below it.
                     HStack(spacing: 0) {
                         LinkProfilePersistentMap(
                             model: model,
                             nodes: catalog.nodes,
                             activeEndpoint: $endpointPicker,
-                            promptLeadingClearance: 60,
-                            promptTopClearance: 56
+                            mapDisplayStyle: $mapDisplayStyle,
+                            showsStyleMenu: false,
+                            promptTopClearance: geometry.safeAreaInsets.top
                         )
                         LinkProfileEditor(
                             model: model,
-                            chooseOnMap: { endpointPicker = $0 },
-                            topInset: 56
+                            activeEndpoint: $endpointPicker,
+                            usesCompactHeader: true,
+                            topInset: geometry.safeAreaInsets.top
                         )
                         .frame(width: min(420, max(340, geometry.size.width * 0.34)))
                     }
+                    .ignoresSafeArea(.container, edges: .top)
                 } else {
                     LinkProfileCompactWorkspace(
                         model: model,
                         nodes: catalog.nodes,
                         activeEndpoint: $endpointPicker,
+                        mapDisplayStyle: $mapDisplayStyle,
                         promptLeadingClearance: showsOverlayBackButton ? 60 : 0
                     )
                 }
             }
+            .onGeometryChange(for: Bool.self) { $0.size.width >= 900 } action: { isWideLayout = $0 }
         }
         .background(Color(uiColor: .systemGroupedBackground))
-        .navigationTitle("Link Profile")
+        // iPhone: the map runs edge to edge under a floating back button. iPad and the Duo show
+        // the navigation bar so the system places its back button (the tab bar's row on iPad,
+        // the side column on the Duo); the bar is otherwise invisible, with no background and
+        // no title, since the editor pane carries the heading.
+        .navigationTitle(usesSystemBar ? "" : "Link Profile")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar(.hidden, for: .navigationBar)
-        .toolbarBackground(Color(uiColor: .systemGroupedBackground), for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbar(usesSystemBar ? .visible : .hidden, for: .navigationBar)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbar {
+            if usesSystemBar && !usesDuoWorkspace {
+                ToolbarItem(placement: .topBarLeading) {
+                    LinkProfileMapStyleMenu(style: $mapDisplayStyle, inToolbar: true)
+                }
+            }
+        }
         .overlay(alignment: .topLeading) {
             LinkProfileBackButton(action: dismiss.callAsFunction)
             .padding()
-            .padding(.top, overlayBackTopPadding)
             .opacity(showsOverlayBackButton ? 1 : 0)
             .allowsHitTesting(showsOverlayBackButton)
         }
-        .overlay(alignment: .topTrailing) {
-            LinkProfileBackButton(action: dismiss.callAsFunction)
-                .padding(.top, 104)
-                .padding(.trailing, 28)
-                .opacity(isHingedDevice == true ? 1 : 0)
-                .allowsHitTesting(isHingedDevice == true)
+        .onChange(of: mapDisplayStyle) { _, style in
+            UserDefaults.standard.set(style.rawValue, forKey: MapDisplayStyle.defaultsKey)
         }
         .observesDuoHinge($isHingedDevice)
         .task(id: "\(settings.sourceSession.id)|\(regionFilter.selectedRegion ?? "")") {
@@ -93,18 +111,48 @@ struct LinkProfileScreen: View {
         isHingedDevice == true && horizontalSizeClass == .regular
     }
 
-    private var usesWideWorkspace: Bool {
-        horizontalSizeClass == .regular
+    /// iPad and the Duo use the system navigation bar's back button.
+    private var usesSystemBar: Bool {
+        usesDuoWorkspace || (isHingedDevice == false && isWideLayout)
     }
 
     private var showsOverlayBackButton: Bool {
-        isHingedDevice == false
+        isHingedDevice == false && !isWideLayout
     }
 
-    private var overlayBackTopPadding: CGFloat {
-        usesWideWorkspace && showsOverlayBackButton ? 56 : 0
-    }
+}
 
+/// Standard, Satellite or Hybrid, as on the live map.
+private struct LinkProfileMapStyleMenu: View {
+    @Binding var style: MapDisplayStyle
+    /// In the navigation bar the system draws the button's background.
+    var inToolbar = false
+
+    var body: some View {
+        Menu {
+            ForEach(MapDisplayStyle.allCases) { option in
+                Button {
+                    style = option
+                } label: {
+                    if style == option {
+                        Label(option.title, systemImage: "checkmark")
+                    } else {
+                        Label(option.title, systemImage: option.systemImage)
+                    }
+                }
+            }
+        } label: {
+            if inToolbar {
+                Image(systemName: "map")
+            } else {
+                Image(systemName: "map")
+                    .font(.title3)
+                    .frame(width: 44, height: 44)
+                    .background(.regularMaterial, in: Circle())
+            }
+        }
+        .accessibilityLabel("Map style")
+    }
 }
 
 private struct LinkProfileBackButton: View {
@@ -122,12 +170,17 @@ private struct LinkProfileBackButton: View {
     }
 }
 
+/// iPhone: the map fills the screen under a panel that collapses to its header (the prompt while
+/// points are placed, then the verdict) and expands to the points, radio and results. Drag the
+/// handle or header, or tap the handle.
 private struct LinkProfileCompactWorkspace: View {
     let model: LinkProfileModel
     let nodes: [MeshNode]
     @Binding var activeEndpoint: LinkProfileEndpoint?
+    @Binding var mapDisplayStyle: MapDisplayStyle
     let promptLeadingClearance: CGFloat
-    @State private var isPanelExpanded = false
+    @State private var isExpanded = false
+    @State private var headerHeight: CGFloat = 0
 
     var body: some View {
         GeometryReader { geometry in
@@ -135,117 +188,87 @@ private struct LinkProfileCompactWorkspace: View {
                 model: model,
                 nodes: nodes,
                 activeEndpoint: $activeEndpoint,
+                mapDisplayStyle: $mapDisplayStyle,
                 promptLeadingClearance: promptLeadingClearance
             )
                 .safeAreaInset(edge: .bottom, spacing: 8) {
-                    if activeEndpoint == nil {
+                    VStack(spacing: 0) {
                         VStack(spacing: 0) {
-                            if model.result != nil {
-                                LinkProfileCompactPanelHeader(isExpanded: isPanelExpanded) {
-                                    withAnimation(.easeInOut) {
-                                        isPanelExpanded.toggle()
-                                    }
-                                }
+                            Button {
+                                setExpanded(!isExpanded)
+                            } label: {
+                                Capsule()
+                                    .fill(.secondary.opacity(0.45))
+                                    .frame(width: 36, height: 5)
+                                    .frame(maxWidth: .infinity, minHeight: 24)
+                                    .contentShape(Rectangle())
                             }
-                            ScrollView {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    LinkProfileEndpointLayout(
-                                        model: model,
-                                        chooseOnMap: { activeEndpoint = $0 }
-                                    )
-                                    LinkProfileRadioSettings(model: model)
-                                    LinkProfileAction(model: model)
-                                    if let result = model.result {
-                                        LinkProfileResultCard(result: result)
-                                    }
-                                }
-                                .padding()
-                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(isExpanded ? "Hide link details" : "Show link details")
+                            LinkProfileHeader(model: model, activeEndpoint: $activeEndpoint)
+                                .padding(.horizontal)
+                                .padding(.bottom, 14)
                         }
-                        .frame(height: panelHeight(in: geometry.size.height))
-                        .meshPageBackground()
-                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                        .padding(.horizontal, 8)
+                        .contentShape(Rectangle())
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
+                        .gesture(
+                            DragGesture(minimumDistance: 12).onEnded { value in
+                                if value.translation.height < -30 { setExpanded(true) }
+                                if value.translation.height > 30 { setExpanded(false) }
+                            }
+                        )
+                        if isExpanded {
+                            ScrollView {
+                                LinkProfileDetails(model: model, activeEndpoint: $activeEndpoint)
+                                    .padding(.horizontal)
+                                    .padding(.bottom)
+                            }
+                            // Open nearly to the top, leaving the back button and a strip of map.
+                            .frame(height: max(160, geometry.size.height - headerHeight - 72))
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
                     }
+                    .meshPageBackground()
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .padding(.horizontal, 8)
                 }
         }
-    }
-
-    private func panelHeight(in availableHeight: CGFloat) -> CGFloat {
-        guard model.result != nil, isPanelExpanded else { return min(330, availableHeight * 0.44) }
-        return min(620, availableHeight * 0.72)
-    }
-}
-
-private struct LinkProfileCompactPanelHeader: View {
-    let isExpanded: Bool
-    let toggle: () -> Void
-
-    var body: some View {
-        HStack {
-            Capsule()
-                .fill(.secondary.opacity(0.35))
-                .frame(width: 36, height: 5)
-            Spacer()
-            Button(action: toggle) {
-                Label(
-                    isExpanded ? "Show More Map" : "Show More Results",
-                    systemImage: isExpanded ? "chevron.down" : "chevron.up"
-                )
-                .font(.subheadline.weight(.semibold))
-            }
-            .buttonStyle(.bordered)
+        // Choosing a point needs the map.
+        .onChange(of: activeEndpoint) { _, endpoint in
+            if endpoint != nil { setExpanded(false) }
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 10)
-        .padding(.bottom, 4)
+    }
+
+    private func setExpanded(_ expanded: Bool) {
+        withAnimation(.easeInOut) { isExpanded = expanded }
     }
 }
 
+/// iPad's side column and the Duo's right screen: the header stays put while the rest scrolls.
 private struct LinkProfileEditor: View {
     @Bindable var model: LinkProfileModel
-    let chooseOnMap: (LinkProfileEndpoint) -> Void
-    var trailingPadding: CGFloat = 16
+    @Binding var activeEndpoint: LinkProfileEndpoint?
+    var trailingPadding: CGFloat = 20
     var usesCompactHeader = false
     var topInset: CGFloat = 0
-    private let resultAnchor = "link-profile-result"
 
     var body: some View {
-        ScrollViewReader { proxy in
+        VStack(alignment: .leading, spacing: 16) {
+            if usesCompactHeader {
+                Label("Link Profile", systemImage: "point.topleft.down.to.point.bottomright.curvepath")
+                    .font(.title2.bold())
+            }
+            LinkProfileHeader(model: model, activeEndpoint: $activeEndpoint)
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    if usesCompactHeader {
-                        Label("Link Profile", systemImage: "point.topleft.down.to.point.bottomright.curvepath")
-                            .font(.title2.bold())
-                    } else {
-                        LinkProfileIntroduction()
-                    }
-                    LinkProfileEndpointLayout(
-                        model: model,
-                        chooseOnMap: chooseOnMap
-                    )
-                    LinkProfileRadioSettings(model: model)
-                    LinkProfilePrivacyNotice()
-                    LinkProfileAction(model: model)
-                    if let result = model.result {
-                        LinkProfileResultCard(result: result)
-                            .id(resultAnchor)
-                    }
-                }
-                .padding(.leading, 20)
-                .padding(.vertical, 20)
-                .padding(.trailing, trailingPadding)
+                LinkProfileDetails(model: model, activeEndpoint: $activeEndpoint)
+                    .padding(.bottom, 20)
             }
-            .safeAreaInset(edge: .top, spacing: 0) {
-                Color.clear.frame(height: topInset)
-            }
-            .onChange(of: model.result) { _, result in
-                guard result != nil else { return }
-                withAnimation(.easeInOut) {
-                    proxy.scrollTo(resultAnchor, anchor: .top)
-                }
-            }
+            .scrollIndicators(.hidden)
         }
+        .padding(.leading, 20)
+        .padding(.trailing, trailingPadding)
+        .padding(.top, 20 + topInset)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .meshPageBackground()
     }
 }
@@ -254,26 +277,28 @@ private struct LinkProfilePersistentMap: View {
     let model: LinkProfileModel
     let nodes: [MeshNode]
     @Binding var activeEndpoint: LinkProfileEndpoint?
-    var selectionTrailingClearance: CGFloat = 0
+    @Binding var mapDisplayStyle: MapDisplayStyle
+    /// iPad puts the style menu in the navigation bar instead.
+    var showsStyleMenu = true
     var promptLeadingClearance: CGFloat = 0
     var promptTopClearance: CGFloat = 0
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(AnalyzerSourceRegistry.self) private var analyzerSourceRegistry
     @Environment(AnalyzerSettings.self) private var settings
-    @State private var tentativeCoordinate: CLLocationCoordinate2D?
     // Opens on the region selected for the live map; until that is known, the known nodes.
     @State private var position: MapCameraPosition = .automatic
     @State private var hasFramedRegion = false
+    @Namespace private var mapScope
 
     var body: some View {
         MapReader { proxy in
-            Map(position: $position) {
+            Map(position: $position, scope: mapScope) {
                 ForEach(Array(nodesWithCoordinates.prefix(200)), id: \.id) { node in
                     if let coordinate = node.coordinate {
                         Annotation(node.name ?? "Known node", coordinate: coordinate) {
                             Button {
-                                guard activeEndpoint != nil else { return }
-                                tentativeCoordinate = coordinate
+                                guard let activeEndpoint else { return }
+                                model.tentative = LinkProfileTentative(endpoint: activeEndpoint, coordinate: coordinate, name: node.name)
                             } label: {
                                 Image(systemName: "antenna.radiowaves.left.and.right.circle.fill")
                                     .font(.title2)
@@ -311,8 +336,8 @@ private struct LinkProfilePersistentMap: View {
                     MapPolyline(coordinates: [pointA, pointB])
                         .stroke(NodeScopeStyle.signal, lineWidth: 3)
                 }
-                if let tentativeCoordinate {
-                    Annotation("Tentative location", coordinate: tentativeCoordinate) {
+                if let tentative = model.tentative, tentative.endpoint == activeEndpoint {
+                    Annotation("Tentative location", coordinate: tentative.coordinate) {
                         Image(systemName: "mappin.circle.fill")
                             .font(.largeTitle)
                             .foregroundStyle(.secondary)
@@ -320,63 +345,49 @@ private struct LinkProfilePersistentMap: View {
                     }
                 }
             }
-            .mapStyle(.standard(elevation: .realistic))
+            .mapStyle(mapDisplayStyle.realisticStyle)
             .mapControls {
-                MapCompass()
                 MapScaleView()
+            }
+            // The style menu, with the compass placed under it so the two never overlap.
+            .overlay(alignment: .topTrailing) {
+                VStack(spacing: 8) {
+                    if showsStyleMenu {
+                        LinkProfileMapStyleMenu(style: $mapDisplayStyle)
+                    }
+                    MapCompass(scope: mapScope)
+                }
+                .padding()
+                .padding(.top, promptTopClearance)
             }
             .simultaneousGesture(
                 SpatialTapGesture().onEnded { value in
-                    guard activeEndpoint != nil,
+                    guard let activeEndpoint,
                           let coordinate = proxy.convert(value.location, from: .local) else { return }
-                    tentativeCoordinate = coordinate
+                    model.tentative = LinkProfileTentative(endpoint: activeEndpoint, coordinate: coordinate, name: nil)
                 }
             )
+            // Prompts and confirmation live in the header; the map only carries the legend.
             .overlay(alignment: .topLeading) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Label(promptTitle, systemImage: activeEndpoint == nil ? "checkmark.circle" : "mappin.and.ellipse")
-                        .font(.headline)
-                        .padding(.horizontal, 14)
-                        .frame(minHeight: 44)
-                        .background(.regularMaterial, in: Capsule())
-                    if model.result != nil, activeEndpoint == nil {
-                        HStack(spacing: 10) {
-                            ForEach(NodePlannerPathClearance.allCases, id: \.self) { clearance in
-                                LinkProfileClearanceLegend(clearance: clearance)
-                            }
+                if model.result != nil, activeEndpoint == nil {
+                    HStack(spacing: 10) {
+                        ForEach(NodePlannerPathClearance.allCases, id: \.self) { clearance in
+                            LinkProfileClearanceLegend(clearance: clearance)
                         }
-                        .font(.caption)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(.regularMaterial, in: Capsule())
                     }
-                }
+                    .font(.caption)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(.regularMaterial, in: Capsule())
                     .padding()
                     .padding(.leading, promptLeadingClearance)
                     .padding(.top, promptTopClearance)
-            }
-            .overlay(alignment: .bottom) {
-                if let activeEndpoint {
-                    HStack(spacing: 0) {
-                        Spacer(minLength: 16)
-                        LinkProfileMapSelectionBar(
-                            endpointTitle: activeEndpoint.title,
-                            coordinate: tentativeCoordinate,
-                            cancel: {
-                                tentativeCoordinate = nil
-                                self.activeEndpoint = nil
-                            },
-                            confirm: { commit(tentativeCoordinate, for: activeEndpoint) }
-                        )
-                        .frame(maxWidth: 360)
-                        Spacer(minLength: 16 + selectionTrailingClearance)
-                    }
-                    .padding(.vertical, 16)
                 }
             }
         }
+        .mapScope(mapScope)
         .accessibilityLabel("Map for selecting Point A and Point B")
-        .onChange(of: activeEndpoint) { _, _ in tentativeCoordinate = nil }
+        .onChange(of: activeEndpoint) { _, _ in model.tentative = nil }
         // Once both endpoints are chosen, show the whole path.
         .onChange(of: fittedEndpoints) { _, endpoints in
             guard endpoints != nil else { return }
@@ -422,20 +433,13 @@ private struct LinkProfilePersistentMap: View {
     private var nodesWithCoordinates: [MeshNode] {
         nodes.filter { $0.coordinate != nil }
     }
+}
 
-    private var promptTitle: LocalizedStringResource {
-        if let activeEndpoint { return "Choose \(activeEndpoint.title)" }
-        if model.coordinateA != nil && model.coordinateB != nil { return "Endpoints selected" }
-        if model.coordinateA == nil { return "Choose Point A" }
-        return "Choose Point B"
-    }
-
-    private func commit(_ coordinate: CLLocationCoordinate2D?, for endpoint: LinkProfileEndpoint) {
-        guard let coordinate else { return }
-        model.set(coordinate, for: endpoint)
-        tentativeCoordinate = nil
-        activeEndpoint = endpoint == .pointA && model.coordinateB == nil ? .pointB : nil
-    }
+private struct LinkProfileTentative {
+    let endpoint: LinkProfileEndpoint
+    let coordinate: CLLocationCoordinate2D
+    /// The known node tapped, if any.
+    let name: String?
 }
 
 private enum LinkProfileEndpoint: String, Identifiable {
@@ -450,6 +454,11 @@ private enum LinkProfileEndpoint: String, Identifiable {
         case .pointB: "Point B"
         }
     }
+
+    var letter: String { self == .pointA ? "A" : "B" }
+
+    /// The map's marker tints.
+    var color: Color { self == .pointA ? .blue : .orange }
 
 }
 
@@ -474,25 +483,6 @@ private enum LinkProfileRadioPreset: String, CaseIterable, Identifiable {
         case .europeNarrow: 869.618
         case .custom: nil
         }
-    }
-
-    var bandwidthKHz: Double? {
-        switch self {
-        case .unitedStatesNarrow, .europeNarrow: 62.5
-        case .custom: nil
-        }
-    }
-
-    var spreadingFactor: Int? {
-        switch self {
-        case .unitedStatesNarrow: 7
-        case .europeNarrow: 8
-        case .custom: nil
-        }
-    }
-
-    var codingRate: Int? {
-        self == .custom ? nil : 5
     }
 
     var transmitPowerDBm: Double? {
@@ -521,11 +511,13 @@ private final class LinkProfileModel {
     var longitudeB: Double?
     var heightA = 10.0
     var heightB = 10.0
+    /// The known node each endpoint was placed on; nil for a dropped pin or typed coordinates.
+    var nameA: String?
+    var nameB: String?
+    /// An unconfirmed tap while an endpoint is being chosen; confirmed from the header.
+    var tentative: LinkProfileTentative?
     var radioPreset = LinkProfileRadioPreset.unitedStatesNarrow
     var frequencyMHz = 910.525
-    var bandwidthKHz = 62.5
-    var spreadingFactor = 7
-    var codingRate = 5
     var transmitPowerDBm = 22.0
     var gainADB = 2.15
     var gainBDB = 2.15
@@ -544,6 +536,7 @@ private final class LinkProfileModel {
     private let elevationProvider: any NodePlannerElevationProviding
     @ObservationIgnored private var elevationTaskA: Task<Void, Never>?
     @ObservationIgnored private var elevationTaskB: Task<Void, Never>?
+    @ObservationIgnored private var analysisTask: Task<Void, Never>?
 
     var coordinateA: CLLocationCoordinate2D? {
         guard let latitudeA, let longitudeA else { return nil }
@@ -555,8 +548,20 @@ private final class LinkProfileModel {
         return CLLocationCoordinate2D(latitude: latitudeB, longitude: longitudeB)
     }
 
-    var canAnalyze: Bool {
-        coordinateA != nil && coordinateB != nil && !isAnalyzing
+    func name(for endpoint: LinkProfileEndpoint) -> String? {
+        endpoint == .pointA ? nameA : nameB
+    }
+
+    func coordinate(for endpoint: LinkProfileEndpoint) -> CLLocationCoordinate2D? {
+        endpoint == .pointA ? coordinateA : coordinateB
+    }
+
+    func groundElevation(for endpoint: LinkProfileEndpoint) -> Double? {
+        endpoint == .pointA ? groundElevationA : groundElevationB
+    }
+
+    func isLoadingElevation(for endpoint: LinkProfileEndpoint) -> Bool {
+        endpoint == .pointA ? isLoadingElevationA : isLoadingElevationB
     }
 
     init(elevationProvider: any NodePlannerElevationProviding = OpenMeteoElevationProvider()) {
@@ -568,17 +573,36 @@ private final class LinkProfileModel {
         heightB = heightA
     }
 
-    func analyze() async {
-        guard !isAnalyzing,
-              let latitudeA, let longitudeA,
-              let latitudeB, let longitudeB else {
-            errorMessage = "Choose Point A and Point B before analyzing the link."
+    /// Any change clears the result; once both endpoints are set the link is analyzed on its own,
+    /// shortly after the last change, so there is no Analyze button.
+    func scheduleAnalysis(after delay: Duration = .milliseconds(600)) {
+        analysisTask?.cancel()
+        result = nil
+        errorMessage = nil
+        guard coordinateA != nil, coordinateB != nil else {
+            isAnalyzing = false
             return
         }
         isAnalyzing = true
-        result = nil
-        errorMessage = nil
-        defer { isAnalyzing = false }
+        analysisTask = Task { [weak self] in
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled else { return }
+            await self?.runAnalysis()
+        }
+    }
+
+    /// Try Again after a failure: analyzes at once.
+    func analyze() {
+        scheduleAnalysis(after: .zero)
+    }
+
+    private func runAnalysis() async {
+        guard let latitudeA, let longitudeA, let latitudeB, let longitudeB else {
+            isAnalyzing = false
+            return
+        }
+        // A newer change cancels this run; only the current run may report.
+        defer { if !Task.isCancelled { isAnalyzing = false } }
 
         do {
             let pointA = try NodePlannerCoordinate(latitude: latitudeA, longitude: longitudeA)
@@ -602,32 +626,37 @@ private final class LinkProfileModel {
                     sampleCount: nil
                 )
             )
+            guard !Task.isCancelled else { return }
             result = analysis
             groundElevationA = analysis.terrain.samples.first?.elevationMeters
             groundElevationB = analysis.terrain.samples.last?.elevationMeters
-        } catch is CancellationError {
-            errorMessage = "Analysis was cancelled."
-        } catch NodePlannerElevationError.invalidCoordinate {
-            errorMessage = "Enter valid latitude and longitude values."
-        } catch NodePlannerElevationError.unavailable {
-            errorMessage = "Elevation data is unavailable. Try again when you have a connection."
         } catch {
-            errorMessage = "The link could not be analyzed with these settings."
+            guard !Task.isCancelled, !(error is CancellationError) else { return }
+            switch error {
+            case NodePlannerElevationError.invalidCoordinate:
+                errorMessage = "Enter valid latitude and longitude values."
+            case NodePlannerElevationError.unavailable:
+                errorMessage = "Elevation data is unavailable. Try again when you have a connection."
+            default:
+                errorMessage = "The link could not be analyzed with these settings."
+            }
         }
     }
 
-    func set(_ coordinate: CLLocationCoordinate2D, for endpoint: LinkProfileEndpoint) {
+    /// Places [endpoint], named after the known node it was chosen on, if any.
+    func set(_ coordinate: CLLocationCoordinate2D, for endpoint: LinkProfileEndpoint, name: String? = nil) {
         switch endpoint {
         case .pointA:
             latitudeA = coordinate.latitude
             longitudeA = coordinate.longitude
+            nameA = name
         case .pointB:
             latitudeB = coordinate.latitude
             longitudeB = coordinate.longitude
+            nameB = name
         }
-        result = nil
-        errorMessage = nil
         scheduleElevationLookup(for: endpoint)
+        scheduleAnalysis()
     }
 
     func clear(_ endpoint: LinkProfileEndpoint) {
@@ -636,51 +665,44 @@ private final class LinkProfileModel {
             elevationTaskA?.cancel()
             latitudeA = nil
             longitudeA = nil
+            nameA = nil
             groundElevationA = nil
             isLoadingElevationA = false
         case .pointB:
             elevationTaskB?.cancel()
             latitudeB = nil
             longitudeB = nil
+            nameB = nil
             groundElevationB = nil
             isLoadingElevationB = false
         }
-        result = nil
-        errorMessage = nil
+        scheduleAnalysis()
     }
 
     /// Clears both endpoints and the result; heights and radio settings are kept.
     func startOver() {
+        tentative = nil
         clear(.pointA)
         clear(.pointB)
     }
 
-    func swapEndpoints() {
-        (latitudeA, latitudeB) = (latitudeB, latitudeA)
-        (longitudeA, longitudeB) = (longitudeB, longitudeA)
-        (heightA, heightB) = (heightB, heightA)
-        (groundElevationA, groundElevationB) = (groundElevationB, groundElevationA)
-        result = nil
-        errorMessage = nil
-    }
-
+    /// Typed coordinates are no longer the known node they were placed on.
     func endpointCoordinatesChanged(_ endpoint: LinkProfileEndpoint) {
-        result = nil
-        errorMessage = nil
+        switch endpoint {
+        case .pointA: nameA = nil
+        case .pointB: nameB = nil
+        }
         scheduleElevationLookup(for: endpoint)
+        scheduleAnalysis()
     }
 
     func configurationChanged() {
-        result = nil
-        errorMessage = nil
+        scheduleAnalysis()
     }
 
     func applyRadioPreset(_ preset: LinkProfileRadioPreset) {
         radioPreset = preset
         if let value = preset.frequencyMHz { frequencyMHz = value }
-        if let value = preset.bandwidthKHz { bandwidthKHz = value }
-        if let value = preset.spreadingFactor { spreadingFactor = value }
-        if let value = preset.codingRate { codingRate = value }
         if let value = preset.transmitPowerDBm { transmitPowerDBm = value }
         if let value = preset.receiverSensitivityDBm { receiverSensitivityDBm = value }
         configurationChanged()
@@ -755,334 +777,366 @@ private final class LinkProfileModel {
     }
 }
 
-private struct LinkProfileIntroduction: View {
+/// The always-visible line: what to do next while points are placed (choosing one is confirmed
+/// here, so the map stays clear), then analyzing, an error, or the verdict.
+private struct LinkProfileHeader: View {
+    @Bindable var model: LinkProfileModel
+    @Binding var activeEndpoint: LinkProfileEndpoint?
+    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("Estimate a path before deployment", systemImage: "point.topleft.down.to.point.bottomright.curvepath")
-                .font(.title2.bold())
-            Text("Compare terrain clearance and modeled path loss between any two locations. Results are planning estimates, not proof that a radio link will work.")
+            if let endpoint = activeEndpoint {
+                let tentative = model.tentative.flatMap { $0.endpoint == endpoint ? $0 : nil }
+                Text("Choose Point \(endpoint.letter)")
+                    .font(.headline)
+                Text(tentative.map { $0.name ?? String(localized: "Dropped pin") } ?? String(localized: "Tap the map or a known node."))
+                    .foregroundStyle(.secondary)
+                Text("Confirming sends its coordinates to Open-Meteo for elevation.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                HStack {
+                    Button("Cancel") {
+                        model.tentative = nil
+                        activeEndpoint = nil
+                    }
+                    .buttonStyle(.bordered)
+                    Button("Use Point \(endpoint.letter)") {
+                        guard let tentative else { return }
+                        model.set(tentative.coordinate, for: endpoint, name: tentative.name)
+                        model.tentative = nil
+                        activeEndpoint = endpoint == .pointA && model.coordinateB == nil ? .pointB : nil
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(tentative == nil)
+                }
+                .padding(.top, 4)
+            } else if model.coordinateA == nil || model.coordinateB == nil {
+                let next: LinkProfileEndpoint = model.coordinateA == nil ? .pointA : .pointB
+                Text("Place Point A and Point B to analyze the link.")
+                    .font(.headline)
+                Button("Choose Point \(next.letter)") { activeEndpoint = next }
+                    .buttonStyle(.borderedProminent)
+                    .padding(.top, 4)
+            } else if let errorMessage = model.errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+                Button("Try Again") { model.analyze() }
+                    .buttonStyle(.bordered)
+            } else if let result = model.result, !model.isAnalyzing {
+                let status = result.result.clearanceStatus
+                Label {
+                    Text(status.title)
+                } icon: {
+                    Image(systemName: status.symbol)
+                        .foregroundStyle(status.pathClearance.color)
+                }
+                .font(.headline)
+                Text(summary(result.result))
+                    .foregroundStyle(.secondary)
+            } else {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("Analyzing link…")
+                        .font(.headline)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .contain)
+    }
+
+    private func summary(_ result: NodePlannerPathResult) -> String {
+        let distance = distanceUnit.format(kilometers: result.distanceMeters / 1_000)
+        guard let margin = result.linkMarginDB else { return distance }
+        return String(localized: "Link margin \(margin.formatted(.number.precision(.fractionLength(1)))) dB · \(distance)")
+    }
+}
+
+extension NodePlannerClearanceStatus {
+    fileprivate var title: LocalizedStringResource {
+        switch self {
+        case .clear: "Clear terrain path"
+        case .marginal: "Marginal clearance"
+        case .partialObstruction: "Partially obstructed"
+        case .blocked: "Blocked by terrain"
+        }
+    }
+
+    fileprivate var symbol: String {
+        switch self {
+        case .clear: "checkmark.circle.fill"
+        case .marginal: "exclamationmark.circle.fill"
+        case .partialObstruction: "circle.lefthalf.filled"
+        case .blocked: "xmark.octagon.fill"
+        }
+    }
+
+    /// The verdict's colour, matching the path: both obstructed statuses read as obstructed.
+    fileprivate var pathClearance: NodePlannerPathClearance {
+        switch self {
+        case .clear: .clear
+        case .marginal: .marginal
+        case .partialObstruction, .blocked: .obstructed
+        }
+    }
+}
+
+/// Everything under the header: the two points, the radio, the full result, and Start Over.
+private struct LinkProfileDetails: View {
+    @Bindable var model: LinkProfileModel
+    @Binding var activeEndpoint: LinkProfileEndpoint?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            LinkProfilePointCard(model: model, endpoint: .pointA) { activeEndpoint = .pointA }
+            LinkProfilePointCard(model: model, endpoint: .pointB) { activeEndpoint = .pointB }
+            LinkProfileRadioSettings(model: model)
+            if let result = model.result {
+                LinkProfileResultCard(result: result)
+            }
+            if model.coordinateA != nil || model.coordinateB != nil {
+                Button {
+                    model.startOver()
+                    activeEndpoint = .pointA
+                } label: {
+                    Label("Start Over", systemImage: "arrow.counterclockwise")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+            }
+            Text("Planning estimates only: terrain does not account for buildings, foliage or interference. Placing points sends their coordinates to Open-Meteo for elevation; results are cached on this device.")
+                .font(.caption)
                 .foregroundStyle(.secondary)
         }
     }
 }
 
-private struct LinkProfileEndpointLayout: View {
+/// One endpoint: its name (the known node, or a dropped pin), ground elevation and antenna
+/// height. Tapping opens the antenna settings, moving the point, and typed coordinates.
+private struct LinkProfilePointCard: View {
     @Bindable var model: LinkProfileModel
-    let chooseOnMap: (LinkProfileEndpoint) -> Void
-
-    var body: some View {
-        VStack(spacing: 12) {
-            endpointCards
-
-            HStack(spacing: 12) {
-                if model.coordinateA != nil && model.coordinateB != nil {
-                    Button {
-                        model.swapEndpoints()
-                    } label: {
-                        Label("Swap A and B", systemImage: "arrow.up.arrow.down")
-                    }
-                    .buttonStyle(.bordered)
-                }
-                if model.coordinateA != nil || model.coordinateB != nil {
-                    Button {
-                        model.startOver()
-                        chooseOnMap(.pointA)
-                    } label: {
-                        Label("Start Over", systemImage: "arrow.counterclockwise")
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(model.isAnalyzing)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var endpointCards: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .top, spacing: 12) { cards }
-            VStack(spacing: 12) { cards }
-        }
-    }
-
-    @ViewBuilder
-    private var cards: some View {
-        LinkProfileEndpointCard(
-            endpoint: .pointA,
-            latitude: $model.latitudeA,
-            longitude: $model.longitudeA,
-            height: $model.heightA,
-            groundElevationMeters: model.groundElevationA,
-            isLoadingElevation: model.isLoadingElevationA,
-            relocate: { chooseOnMap(.pointA) },
-            clear: { model.clear(.pointA) },
-            coordinatesChanged: { model.endpointCoordinatesChanged(.pointA) },
-            heightChanged: model.configurationChanged
-        )
-        LinkProfileEndpointCard(
-            endpoint: .pointB,
-            latitude: $model.latitudeB,
-            longitude: $model.longitudeB,
-            height: $model.heightB,
-            groundElevationMeters: model.groundElevationB,
-            isLoadingElevation: model.isLoadingElevationB,
-            relocate: { chooseOnMap(.pointB) },
-            clear: { model.clear(.pointB) },
-            coordinatesChanged: { model.endpointCoordinatesChanged(.pointB) },
-            heightChanged: model.configurationChanged
-        )
-    }
-}
-
-private struct LinkProfileEndpointCard: View {
     let endpoint: LinkProfileEndpoint
-    @Binding var latitude: Double?
-    @Binding var longitude: Double?
-    @Binding var height: Double
-    let groundElevationMeters: Double?
-    let isLoadingElevation: Bool
-    let relocate: () -> Void
-    let clear: () -> Void
-    let coordinatesChanged: () -> Void
-    let heightChanged: () -> Void
-    @State private var showsCoordinateEntry = false
+    let choose: () -> Void
+    @State private var isExpanded = false
+    @State private var showsCoordinates = false
     @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label(endpoint.title, systemImage: endpoint == .pointA ? "a.circle.fill" : "b.circle.fill")
-                    .font(.headline)
-                    .foregroundStyle(endpoint == .pointA ? .blue : .orange)
-                Spacer()
-                Menu("Endpoint actions", systemImage: "ellipsis.circle") {
-                    Button("Relocate on Map", systemImage: "mappin.and.ellipse", action: relocate)
-                    Button("Enter Coordinates", systemImage: "number") {
-                        showsCoordinateEntry.toggle()
+            Button {
+                withAnimation(.easeInOut) { isExpanded.toggle() }
+            } label: {
+                HStack(spacing: 12) {
+                    Text(endpoint.letter)
+                        .font(.headline.bold())
+                        .foregroundStyle(.white)
+                        .frame(width: 30, height: 30)
+                        .background(endpoint.color, in: Circle())
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title)
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        Text(summary)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
-                    if hasCoordinate {
-                        Button("Clear Endpoint", systemImage: "trash", role: .destructive, action: clear)
-                    }
-                }
-                .labelStyle(.iconOnly)
-            }
-
-            if hasCoordinate {
-                Text(coordinateSummary)
-                    .font(.subheadline.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            } else {
-                Text("Not selected")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-
-            elevationSummary
-
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text("Additional antenna height")
-                    Spacer()
-                    Text(distanceUnit.formatHeight(meters: height))
-                        .monospacedDigit()
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.down")
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
                         .foregroundStyle(.secondary)
                 }
-                Slider(value: displayedHeight, in: distanceUnit.antennaHeightRange, step: 1)
-                    .accessibilityLabel("Additional antenna height")
-                    .accessibilityValue(distanceUnit.formatHeight(meters: height))
-                    .onChange(of: height) { _, _ in heightChanged() }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
 
-            if showsCoordinateEntry {
-                Divider()
-                LabeledContent("Latitude") {
-                    TextField("Latitude", value: $latitude, format: .number.precision(.fractionLength(0...6)))
-                        .multilineTextAlignment(.trailing)
-                        .keyboardType(.numbersAndPunctuation)
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Additional antenna height")
+                        Spacer()
+                        Text(distanceUnit.formatHeight(meters: height.wrappedValue))
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                    Slider(value: displayedHeight, in: distanceUnit.antennaHeightRange, step: 1)
+                        .accessibilityLabel("Additional antenna height")
+                        .accessibilityValue(distanceUnit.formatHeight(meters: height.wrappedValue))
                 }
-                LabeledContent("Longitude") {
-                    TextField("Longitude", value: $longitude, format: .number.precision(.fractionLength(0...6)))
-                        .multilineTextAlignment(.trailing)
-                        .keyboardType(.numbersAndPunctuation)
+                LabeledContent("Total height") {
+                    if let ground = model.groundElevation(for: endpoint) {
+                        Text(distanceUnit.formatHeight(meters: ground + height.wrappedValue))
+                            .monospacedDigit()
+                    } else {
+                        Text("—")
+                    }
                 }
-                .onChange(of: latitude) { _, _ in coordinatesChanged() }
-                .onChange(of: longitude) { _, _ in coordinatesChanged() }
-            } else if !hasCoordinate {
-                Button("Select on Map", systemImage: "mappin.and.ellipse", action: relocate)
-                    .buttonStyle(.borderedProminent)
+                LinkProfileNumericSetting(title: "Antenna gain", value: budgetBinding(\.gainADB, \.gainBDB), unit: "dBi")
+                LinkProfileNumericSetting(title: "System loss", value: budgetBinding(\.lossADB, \.lossBDB), unit: "dB")
+                ViewThatFits(in: .horizontal) {
+                    HStack { actions }
+                    VStack(alignment: .leading) { actions }
+                }
+                .buttonStyle(.bordered)
+                if showsCoordinates {
+                    LabeledContent("Latitude") {
+                        TextField("Latitude", value: latitude, format: .number.precision(.fractionLength(0...6)))
+                            .multilineTextAlignment(.trailing)
+                            .keyboardType(.numbersAndPunctuation)
+                    }
+                    LabeledContent("Longitude") {
+                        TextField("Longitude", value: longitude, format: .number.precision(.fractionLength(0...6)))
+                            .multilineTextAlignment(.trailing)
+                            .keyboardType(.numbersAndPunctuation)
+                    }
+                }
             }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .instrumentCard()
-        .contentShape(
-            RoundedRectangle(cornerRadius: NodeScopeStyle.cornerRadius, style: .continuous)
-        )
-    }
-
-    private var hasCoordinate: Bool {
-        latitude != nil && longitude != nil
-    }
-
-    private var coordinateSummary: String {
-        guard let latitude, let longitude else { return String(localized: "Not selected") }
-        return "\(latitude.formatted(.number.precision(.fractionLength(5)))), \(longitude.formatted(.number.precision(.fractionLength(5))))"
-    }
-
-    @ViewBuilder
-    private var elevationSummary: some View {
-        Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 5) {
-            GridRow {
-                Text("Ground elevation")
-                    .foregroundStyle(.secondary)
-                Spacer()
-                if isLoadingElevation {
-                    ProgressView().controlSize(.small)
-                } else if let groundElevationMeters {
-                    Text(distanceUnit.formatHeight(meters: groundElevationMeters))
-                        .monospacedDigit()
-                } else {
-                    Text("Unavailable").foregroundStyle(.secondary)
-                }
-            }
-            GridRow {
-                Text("Total height")
-                    .foregroundStyle(.secondary)
-                Spacer()
-                if let groundElevationMeters {
-                    Text(distanceUnit.formatHeight(meters: groundElevationMeters + height))
-                        .monospacedDigit()
-                } else {
-                    Text("—").foregroundStyle(.secondary)
-                }
-            }
-        }
-        .font(.subheadline)
-    }
-
-    private var displayedHeight: Binding<Double> {
-        Binding(
-            get: { distanceUnit.displayHeight(meters: height) },
-            set: { height = distanceUnit.meters(fromDisplayedHeight: $0) }
-        )
-    }
-}
-
-private struct LinkProfileMapSelectionBar: View {
-    let endpointTitle: LocalizedStringResource
-    let coordinate: CLLocationCoordinate2D?
-    let cancel: () -> Void
-    let confirm: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Tap the map to position \(endpointTitle).")
-                .font(.subheadline)
-            if let coordinate {
-                Text("\(coordinate.latitude, format: .number.precision(.fractionLength(5))), \(coordinate.longitude, format: .number.precision(.fractionLength(5)))")
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-            } else {
-                Text("No location selected")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            ViewThatFits(in: .horizontal) {
-                HStack { actions }
-                VStack { actions }
-            }
-        }
-        .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
     }
 
     @ViewBuilder
     private var actions: some View {
-        Button("Cancel", action: cancel)
-            .buttonStyle(.bordered)
-            .frame(maxWidth: .infinity)
-        Button("Use This Location", action: confirm)
-            .buttonStyle(.borderedProminent)
-            .frame(maxWidth: .infinity)
-            .disabled(coordinate == nil)
-    }
-}
-
-private struct LinkProfileRadioSettings: View {
-    @Bindable var model: LinkProfileModel
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Radio settings")
-                .font(.headline)
-
-            Picker("Preset", selection: presetSelection) {
-                ForEach(LinkProfileRadioPreset.allCases) { preset in
-                    Text(preset.title).tag(preset)
-                }
-            }
-
-            LabeledContent("Frequency") {
-                HStack(spacing: 4) {
-                    TextField(
-                        "Frequency",
-                        value: numericBinding(\.frequencyMHz),
-                        format: .number.precision(.fractionLength(0...3))
-                    )
-                        .multilineTextAlignment(.trailing)
-                        .keyboardType(.decimalPad)
-                    Text("MHz")
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            DisclosureGroup("Advanced assumptions") {
-                VStack(spacing: 10) {
-                    LinkProfileNumericSetting(title: "Bandwidth", value: numericBinding(\.bandwidthKHz), unit: "kHz")
-                    LinkProfileIntegerSetting(title: "Spreading factor", value: integerBinding(\.spreadingFactor))
-                    LinkProfileIntegerSetting(title: "Coding rate", value: integerBinding(\.codingRate), prefix: "4/")
-                    LinkProfileNumericSetting(title: "Transmit power", value: numericBinding(\.transmitPowerDBm), unit: "dBm")
-                    LinkProfileNumericSetting(title: "Point A antenna gain", value: numericBinding(\.gainADB), unit: "dBi")
-                    LinkProfileNumericSetting(title: "Point A system loss", value: numericBinding(\.lossADB), unit: "dB")
-                    LinkProfileNumericSetting(title: "Point B antenna gain", value: numericBinding(\.gainBDB), unit: "dBi")
-                    LinkProfileNumericSetting(title: "Point B system loss", value: numericBinding(\.lossBDB), unit: "dB")
-                    LinkProfileNumericSetting(
-                        title: "Receiver sensitivity",
-                        value: numericBinding(\.receiverSensitivityDBm),
-                        unit: "dBm"
-                    )
-                }
-                .padding(.top, 8)
-            }
-
-            Text("Preset values are planning assumptions, not detected hardware settings. Standard atmospheric refraction (k = 4/3) is used.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        Button(hasCoordinate ? "Move on Map" : "Choose on Map", systemImage: "mappin.and.ellipse", action: choose)
+        Button(showsCoordinates ? "Hide Coordinates" : "Enter Coordinates", systemImage: "number") {
+            showsCoordinates.toggle()
         }
-        .padding()
-        .instrumentCard()
     }
 
-    private var presetSelection: Binding<LinkProfileRadioPreset> {
-        Binding(
-            get: { model.radioPreset },
-            set: { model.applyRadioPreset($0) }
-        )
+    private var hasCoordinate: Bool { model.coordinate(for: endpoint) != nil }
+
+    private var title: String {
+        guard hasCoordinate else { return String(localized: "Point \(endpoint.letter) not placed") }
+        return model.name(for: endpoint) ?? String(localized: "Dropped pin")
     }
 
-    private func numericBinding(_ keyPath: ReferenceWritableKeyPath<LinkProfileModel, Double>) -> Binding<Double> {
+    private var summary: String {
+        let antenna = String(localized: "Antenna \(distanceUnit.formatHeight(meters: height.wrappedValue))")
+        let ground: String? = if model.isLoadingElevation(for: endpoint) {
+            String(localized: "Ground elevation: Loading…")
+        } else if let meters = model.groundElevation(for: endpoint) {
+            String(localized: "Ground elevation: \(distanceUnit.formatHeight(meters: meters))")
+        } else if hasCoordinate {
+            String(localized: "Ground elevation: Unavailable")
+        } else {
+            nil
+        }
+        return [ground, antenna].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    private var height: Binding<Double> {
         Binding(
-            get: { model[keyPath: keyPath] },
+            get: { endpoint == .pointA ? model.heightA : model.heightB },
             set: {
-                model[keyPath: keyPath] = $0
-                model.radioPreset = .custom
+                if endpoint == .pointA { model.heightA = $0 } else { model.heightB = $0 }
                 model.configurationChanged()
             }
         )
     }
 
-    private func integerBinding(_ keyPath: ReferenceWritableKeyPath<LinkProfileModel, Int>) -> Binding<Int> {
+    private var displayedHeight: Binding<Double> {
+        Binding(
+            get: { distanceUnit.displayHeight(meters: height.wrappedValue) },
+            set: { height.wrappedValue = distanceUnit.meters(fromDisplayedHeight: $0) }
+        )
+    }
+
+    /// Gain and loss belong to this end; editing them does not make the radio custom.
+    private func budgetBinding(
+        _ a: ReferenceWritableKeyPath<LinkProfileModel, Double>,
+        _ b: ReferenceWritableKeyPath<LinkProfileModel, Double>
+    ) -> Binding<Double> {
+        let keyPath = endpoint == .pointA ? a : b
+        return Binding(
+            get: { model[keyPath: keyPath] },
+            set: {
+                model[keyPath: keyPath] = $0
+                model.configurationChanged()
+            }
+        )
+    }
+
+    private var latitude: Binding<Double?> {
+        Binding(
+            get: { endpoint == .pointA ? model.latitudeA : model.latitudeB },
+            set: {
+                if endpoint == .pointA { model.latitudeA = $0 } else { model.latitudeB = $0 }
+                model.endpointCoordinatesChanged(endpoint)
+            }
+        )
+    }
+
+    private var longitude: Binding<Double?> {
+        Binding(
+            get: { endpoint == .pointA ? model.longitudeA : model.longitudeB },
+            set: {
+                if endpoint == .pointA { model.longitudeA = $0 } else { model.longitudeB = $0 }
+                model.endpointCoordinatesChanged(endpoint)
+            }
+        )
+    }
+}
+
+/// The two presets, then the three values a preset sets. Editing one makes the radio custom,
+/// and neither preset is then selected.
+private struct LinkProfileRadioSettings: View {
+    @Bindable var model: LinkProfileModel
+    @State private var isCustomizing = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Radio settings")
+                .font(.headline)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) { presets }
+                VStack(alignment: .leading, spacing: 8) { presets }
+            }
+            Button {
+                withAnimation(.easeInOut) { isCustomizing.toggle() }
+            } label: {
+                HStack {
+                    Text(customizeTitle)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .rotationEffect(.degrees(isCustomizing ? 180 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.tint)
+            if isCustomizing {
+                LinkProfileNumericSetting(title: "Frequency", value: customBinding(\.frequencyMHz), unit: "MHz")
+                LinkProfileNumericSetting(title: "Transmit power", value: customBinding(\.transmitPowerDBm), unit: "dBm")
+                LinkProfileNumericSetting(title: "Receiver sensitivity", value: customBinding(\.receiverSensitivityDBm), unit: "dBm")
+            }
+        }
+        .padding()
+        .instrumentCard()
+    }
+
+    @ViewBuilder
+    private var presets: some View {
+        ForEach([LinkProfileRadioPreset.unitedStatesNarrow, .europeNarrow]) { preset in
+            if model.radioPreset == preset {
+                Button { model.applyRadioPreset(preset) } label: { Text(preset.title) }
+                    .buttonStyle(.borderedProminent)
+            } else {
+                Button { model.applyRadioPreset(preset) } label: { Text(preset.title) }
+                    .buttonStyle(.bordered)
+            }
+        }
+    }
+
+    private var customizeTitle: LocalizedStringResource {
+        if isCustomizing { return "Hide radio values" }
+        return model.radioPreset == .custom ? "Customize radio · edited" : "Customize radio"
+    }
+
+    private func customBinding(_ keyPath: ReferenceWritableKeyPath<LinkProfileModel, Double>) -> Binding<Double> {
         Binding(
             get: { model[keyPath: keyPath] },
             set: {
@@ -1102,7 +1156,7 @@ private struct LinkProfileNumericSetting: View {
     var body: some View {
         LabeledContent {
             HStack(spacing: 4) {
-                TextField(title, value: $value, format: .number.precision(.fractionLength(0...2)))
+                TextField(title, value: $value, format: .number.precision(.fractionLength(0...3)))
                     .multilineTextAlignment(.trailing)
                     .keyboardType(.numbersAndPunctuation)
                 Text(unit)
@@ -1114,83 +1168,12 @@ private struct LinkProfileNumericSetting: View {
     }
 }
 
-private struct LinkProfileIntegerSetting: View {
-    let title: LocalizedStringResource
-    @Binding var value: Int
-    var prefix = ""
-
-    var body: some View {
-        LabeledContent {
-            HStack(spacing: 0) {
-                Text(prefix)
-                    .foregroundStyle(.secondary)
-                TextField(title, value: $value, format: .number)
-                    .multilineTextAlignment(.trailing)
-                    .keyboardType(.numberPad)
-                    .frame(minWidth: 40)
-            }
-        } label: {
-            Text(title)
-        }
-    }
-}
-
-private struct LinkProfilePrivacyNotice: View {
-    var body: some View {
-        Label {
-            Text("Analyzing sends sampled path coordinates to Open-Meteo for Copernicus elevation lookup. Successful results are cached on this device.")
-        } icon: {
-            Image(systemName: "hand.raised.fill")
-        }
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .accessibilityElement(children: .combine)
-    }
-}
-
-private struct LinkProfileAction: View {
-    @Bindable var model: LinkProfileModel
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button {
-                Task { await model.analyze() }
-            } label: {
-                HStack {
-                    if model.isAnalyzing {
-                        ProgressView()
-                    }
-                    Text(model.isAnalyzing ? "Analyzing…" : "Analyze Link")
-                        .frame(maxWidth: .infinity)
-                }
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(!model.canAnalyze)
-
-            if let errorMessage = model.errorMessage {
-                Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
-                    .font(.callout)
-                    .foregroundStyle(.red)
-            }
-        }
-    }
-}
-
 private struct LinkProfileResultCard: View {
     let result: NodePlannerLinkAnalysis
     @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label(statusTitle, systemImage: statusSymbol)
-                    .font(.headline)
-                Spacer()
-                Text("Estimate")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
             LinkProfileTerrainCanvas(analysis: result)
             Grid(alignment: .leading, horizontalSpacing: 20, verticalSpacing: 8) {
                 LinkProfileMetricRow(
@@ -1245,24 +1228,6 @@ private struct LinkProfileResultCard: View {
         .background(Color(uiColor: .systemBackground), in: RoundedRectangle(cornerRadius: NodeScopeStyle.cornerRadius))
     }
 
-    private var statusTitle: LocalizedStringResource {
-        switch result.result.clearanceStatus {
-        case .clear: "Clear terrain path"
-        case .marginal: "Marginal clearance"
-        case .partialObstruction: "Partially obstructed"
-        case .blocked: "Blocked by terrain"
-        }
-    }
-
-    private var statusSymbol: String {
-        switch result.result.clearanceStatus {
-        case .clear: "checkmark.circle.fill"
-        case .marginal: "exclamationmark.circle.fill"
-        case .partialObstruction: "circle.lefthalf.filled"
-        case .blocked: "xmark.octagon.fill"
-        }
-    }
-
     private var bearingText: String {
         let bearing = NodePlannerLinkAnalyzer.initialBearing(
             from: result.request.pointA,
@@ -1276,7 +1241,7 @@ private struct LinkProfileResultCard: View {
             return String(localized: "No complete link budget was supplied.")
         }
         return String(
-            localized: "TX power \(budget.transmitPowerDBm.formatted(.number.precision(.fractionLength(1)))) dBm; antenna gains \(budget.gainADB.formatted(.number.precision(.fractionLength(1))))/\(budget.gainBDB.formatted(.number.precision(.fractionLength(1)))) dBi; system losses \(budget.lossADB.formatted(.number.precision(.fractionLength(1))))/\(budget.lossBDB.formatted(.number.precision(.fractionLength(1)))) dB; receiver sensitivity \(budget.receiverSensitivityDBm.formatted(.number.precision(.fractionLength(1)))) dBm; k = \(result.request.refractionK.formatted(.number.precision(.fractionLength(2))))."
+            localized: "TX power \(budget.transmitPowerDBm.formatted(.number.precision(.fractionLength(1)))) dBm; antenna gains \(budget.gainADB.formatted(.number.precision(.fractionLength(1))))/\(budget.gainBDB.formatted(.number.precision(.fractionLength(1)))) dBi; system losses \(budget.lossADB.formatted(.number.precision(.fractionLength(1))))/\(budget.lossBDB.formatted(.number.precision(.fractionLength(1)))) dB; receiver sensitivity \(budget.receiverSensitivityDBm.formatted(.number.precision(.fractionLength(1)))) dBm; standard atmospheric refraction (k = 4/3)."
         )
     }
 }

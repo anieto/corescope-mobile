@@ -208,6 +208,15 @@ live map's layers button (shared `MapLayersMenu`); a choice there is saved for t
 CARTO Dark Matter is recoloured at load on every MapLibre map (`tintDarkMatter`): land #18232D,
 water #0C1925, roads and boundaries in slate by class, casings just darker than land, labels
 unchanged, so it sits with the navy theme instead of near-black.
+iOS port (same branch): iPhone gets the map under a panel that collapses to its header and
+expands (handle tap, or drag on handle/header) to the points, radio and results; choosing a point
+collapses it. iPad's side column and the Duo's right screen (map stays on the larger left screen)
+show the same header pinned above the scrolling content. The header confirms map taps (the old
+bottom selection bar and the map's prompt capsule are gone; the map keeps only the legend), so the
+tentative tap moved into the model. The model gains node names, automatic analysis (600 ms,
+cancelling stale runs) and loses Swap, the Analyze button, and bandwidth/SF/CR. Point cards and
+the radio card match Android (gain and loss per point; Customize radio for frequency, power and
+sensitivity). iOS app and tests build; not yet checked on a device.
 
 2026-10-20 — 0.9.0 Android review: account first visit, selection cache and UI consistency.
 
