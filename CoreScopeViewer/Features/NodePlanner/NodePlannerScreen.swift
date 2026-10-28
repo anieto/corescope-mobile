@@ -31,15 +31,9 @@ private struct NodePlannerWelcome: View {
 
 private struct NodePlannerToolGrid: View {
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .top, spacing: 16) {
-                LinkProfileToolCard()
-                CandidateSitesToolCard()
-            }
-            VStack(spacing: 16) {
-                LinkProfileToolCard()
-                CandidateSitesToolCard()
-            }
+        VStack(spacing: 12) {
+            LinkProfileToolCard()
+            CandidateSitesToolCard()
         }
     }
 }
@@ -53,7 +47,6 @@ private struct LinkProfileToolCard: View {
                 icon: "point.topleft.down.to.point.bottomright.curvepath",
                 title: "Link Profile",
                 detail: "Estimate terrain clearance and modeled path loss between two locations.",
-                availability: "Available",
                 isEnabled: true
             )
         }
@@ -68,7 +61,7 @@ private struct CandidateSitesToolCard: View {
             icon: "mappin.and.ellipse",
             title: "Candidate Sites",
             detail: "Compare proposed node locations, potential links, and estimated coverage.",
-            availability: "Coming next",
+            availability: "Coming soon",
             isEnabled: false
         )
         .accessibilityElement(children: .combine)
@@ -79,37 +72,45 @@ private struct NodePlannerToolCard: View {
     let icon: String
     let title: LocalizedStringResource
     let detail: LocalizedStringResource
-    let availability: LocalizedStringResource
+    /// Shown only for a tool that is not ready; an available tool's chevron says enough.
+    var availability: LocalizedStringResource? = nil
     let isEnabled: Bool
 
+    /// Explore's row: a filled-circle icon, title and description, and a chevron on a tool that
+    /// opens. A tool that is not ready yet is greyed and says so instead of showing a chevron.
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top) {
-                Image(systemName: icon)
-                    .font(.title)
-                    .foregroundStyle(isEnabled ? NodeScopeStyle.signal : .secondary)
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.headline)
+                .foregroundStyle(.white)
+                .frame(width: 44, height: 44)
+                .background(isEnabled ? NodeScopeStyle.signal : Color.secondary.opacity(0.5), in: Circle())
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text(detail)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if isEnabled {
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
                     .accessibilityHidden(true)
-                Spacer()
+            } else if let availability {
                 Text(availability)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(isEnabled ? NodeScopeStyle.signal : .secondary)
-            }
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(.primary)
-            Text(detail)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            if isEnabled {
-                Label("Open Tool", systemImage: "chevron.forward")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(NodeScopeStyle.signal)
+                    .foregroundStyle(.secondary)
             }
         }
-        .padding()
-        .frame(maxWidth: .infinity, minHeight: 190, alignment: .topLeading)
+        .padding(16)
         .instrumentCard()
-        .contentShape(RoundedRectangle(cornerRadius: NodeScopeStyle.cornerRadius, style: .continuous))
+        .contentShape(Rectangle())
     }
 }
 
