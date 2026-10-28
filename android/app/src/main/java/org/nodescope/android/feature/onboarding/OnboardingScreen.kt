@@ -1,5 +1,8 @@
 package org.nodescope.android.feature.onboarding
 
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -60,7 +63,7 @@ fun OnboardingScreen(
     val source = sources.firstOrNull { runCatching { normalizeHost(it.host) }.getOrNull().equals(host, true) }
     when (step) {
         OnboardingStep.SOURCE -> OnboardingPage(
-            icon = Icons.Outlined.SettingsInputAntenna, title = stringResource(R.string.welcome),
+            icon = null, title = stringResource(R.string.welcome),
             description = "Choose a community analyzer to explore its live nodes, routes, channels, and observers.",
             primary = stringResource(R.string.continue_label), primaryEnabled = host.isNotBlank(),
             onPrimary = { step = OnboardingStep.OVERVIEW },
@@ -101,10 +104,13 @@ fun OnboardingScreen(
     }
 }
 
-/** Icon, title and description, the step's content, then the primary action at the bottom. */
+/**
+ * Icon (the app icon when [icon] is null, as on the welcome step), title and description, the
+ * step's content, then the primary action at the bottom.
+ */
 @Composable
 private fun OnboardingPage(
-    icon: ImageVector, title: String, description: String, primary: String, primaryEnabled: Boolean,
+    icon: ImageVector?, title: String, description: String, primary: String, primaryEnabled: Boolean,
     onPrimary: () -> Unit, onBack: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
@@ -116,7 +122,9 @@ private fun OnboardingPage(
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = maxHeight).padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                 Column(Modifier.widthIn(max = 720.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                    Icon(icon, null, Modifier.size(72.dp), tint = MaterialTheme.colorScheme.primary)
+                    if (icon != null) Icon(icon, null, Modifier.size(72.dp), tint = MaterialTheme.colorScheme.primary)
+                    else androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(R.drawable.app_icon), null,
+                        Modifier.size(96.dp).shadow(6.dp, RoundedCornerShape(22.dp)).clip(RoundedCornerShape(22.dp)))
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineLarge,
                             fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)

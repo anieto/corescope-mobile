@@ -90,7 +90,7 @@ class LinkProfileUiTest {
         compose.onNodeWithText("Node Planner").performScrollTo().performClick()
         compose.onNodeWithText("Plan before you deploy").assertIsDisplayed()
         compose.onNodeWithText("Candidate Sites").assertExists()
-        compose.onNodeWithText("Open Tool").performScrollTo().performClick()
+        compose.onNodeWithText("Link Profile").performScrollTo().performClick()
         compose.onNodeWithText("Link Profile").assertIsDisplayed()
         if (BuildConfig.MAPS_CONFIGURED) {
             compose.onNodeWithText("Choose Point A").assertIsDisplayed()
@@ -116,7 +116,7 @@ class LinkProfileUiTest {
         compose.runOnIdle { assertEquals(DistanceUnit.IMPERIAL, preferences.value.distanceUnit) }
         compose.onNodeWithText("Explore").performClick()
         compose.onNodeWithText("Node Planner").performScrollTo().performClick()
-        compose.onNodeWithText("Open Tool").performScrollTo().performClick()
+        compose.onNodeWithText("Link Profile").performScrollTo().performClick()
         if (BuildConfig.MAPS_CONFIGURED) compose.onNodeWithText("Cancel").performClick()
         compose.onNodeWithText("Point A not placed").performScrollTo().performClick()
         compose.onNodeWithText("Additional antenna height A: 20 ft").performScrollTo().assertIsDisplayed()

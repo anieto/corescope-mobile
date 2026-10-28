@@ -5,7 +5,7 @@ struct AboutScreen: View {
         List {
             Section {
                 VStack(spacing: 10) {
-                    if let appIcon = Self.appIcon {
+                    if let appIcon = UIImage.appIcon {
                         Image(uiImage: appIcon)
                             .resizable()
                             .scaledToFit()
@@ -138,11 +138,14 @@ struct AboutScreen: View {
         Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
     }
 
+}
+
+extension UIImage {
     /// `Image("AppIcon")` can't resolve an asset catalog app-icon set
     /// directly, so this reads the actual rendered icon filename Info.plist
     /// records for the app (the same one iOS shows on the home screen) and
-    /// loads it by name instead.
-    private static var appIcon: UIImage? {
+    /// loads it by name instead. Shared by About and onboarding.
+    static var appIcon: UIImage? {
         guard let icons = Bundle.main.infoDictionary?["CFBundleIcons"] as? [String: Any],
               let primary = icons["CFBundlePrimaryIcon"] as? [String: Any],
               let files = primary["CFBundleIconFiles"] as? [String],
