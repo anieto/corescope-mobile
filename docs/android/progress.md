@@ -208,6 +208,17 @@ live map's layers button (shared `MapLayersMenu`); a choice there is saved for t
 CARTO Dark Matter is recoloured at load on every MapLibre map (`tintDarkMatter`): land #18232D,
 water #0C1925, roads and boundaries in slate by class, casings just darker than land, labels
 unchanged, so it sits with the navy theme instead of near-black.
+Path restyle (both platforms): the analyzed path is now a solid route coloured by clearance
+over one dark casing (7 wide under a 4-wide line, round caps and joins), and the unanalyzed A–B
+line is the dashed one; the legend swatches are solid to match (the chart's line of sight stays
+dashed). Start Over became a "Reset" button beside the header, shown once a point is placed and
+no point is being chosen, so it works with the sheet collapsed. iPhone's panel floats 8 pt above
+the tab bar.
+The phone panel now floats over the map on both platforms: opening it covers the map instead of
+moving the camera (iOS: ZStack overlay, the map's safe area clears only the collapsed header;
+Android: a plain overlay replaced BottomSheetScaffold, suspected of blocking pinch). iOS map
+gestures: the tap-to-place gesture and node buttons only take touches while a point is chosen,
+so they no longer catch the start of a pinch.
 iOS port (same branch): iPhone gets the map under a panel that collapses to its header and
 expands (handle tap, or drag on handle/header) to the points, radio and results; choosing a point
 collapses it. iPad's side column and the Duo's right screen (map stays on the larger left screen)

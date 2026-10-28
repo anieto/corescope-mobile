@@ -3,6 +3,11 @@ package org.nodescope.android.feature.linkprofile
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.border
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.ui.layout.onSizeChanged
@@ -56,7 +61,6 @@ import org.nodescope.android.BuildConfig
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,14 +104,15 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
                 mapState.tentative.value = null
                 selecting = if (tap.endpoint == "A" && coordinate("B") == null) "B" else null
             },
-            onRetry = model::analyze)
+            onRetry = model::analyze,
+            onReset = {
+                model.startOver()
+                mapState.fittedPath.value = null
+                if (BuildConfig.MAPS_CONFIGURED) choose("A") else selecting = null
+            })
     }
     val details: @Composable () -> Unit = {
-        LinkDetails(model, state, distanceUnit, onMove = ::choose, onStartOver = {
-            model.startOver()
-            mapState.fittedPath.value = null
-            if (BuildConfig.MAPS_CONFIGURED) choose("A") else selecting = null
-        })
+        LinkDetails(model, state, distanceUnit, onMove = ::choose)
     }
     val fold = rememberFoldSplit()
     val tabletop = rememberTabletopSplit()
@@ -151,63 +156,70 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
                 map(Modifier.weight(1f).fillMaxHeight())
             }
         } else {
-            // Phones: the map fills the screen under a sheet. Collapsed, the sheet is just its
-            // header (the prompt, or the verdict); pulled up, it holds the points, radio and results.
-            val sheet = rememberBottomSheetScaffoldState()
-            val scope = rememberCoroutineScope()
+            // Phones: the map fills the screen under a floating panel, as on iPhone. Collapsed, the
+            // panel is just its header (the prompt, or the verdict); opened, it also holds the
+            // points, radio and results, covering the map rather than moving it. A plain overlay
+            // instead of BottomSheetScaffold, which was the likely cause of pinch-zoom not working.
             val density = LocalDensity.current
+            var expanded by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
             var headerHeight by remember { mutableStateOf(0.dp) }
-            val peek = headerHeight + 48.dp
-            val sheetMax = maxHeight - 48.dp
-            SideEffect { mapInset = peek }
-            // Choosing a point needs the map: lower the sheet out of the way.
-            LaunchedEffect(selecting) { if (selecting != null) sheet.bottomSheetState.partialExpand() }
-            // The peek follows the header, which is only measured after the first frame; a
-            // collapsed sheet does not move to a new peek by itself, so settle it again.
-            LaunchedEffect(peek) {
-                if (sheet.bottomSheetState.currentValue == SheetValue.PartiallyExpanded) sheet.bottomSheetState.partialExpand()
-            }
-            // The sheet carries the page's mesh, as the side panels and iOS's panel do; the
-            // header stays pinned while the points, radio and results scroll under it.
-            BottomSheetScaffold(
-                scaffoldState = sheet,
-                sheetPeekHeight = peek,
-                sheetContainerColor = Color.Transparent,
-                sheetShadowElevation = 8.dp,
-                sheetDragHandle = null,
-                sheetContent = {
-                    Column(Modifier.fillMaxWidth().heightIn(max = sheetMax)
-                        .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)).meshPageBackground()) {
-                        // Drawn here so it sits on the mesh; tapping it expands or collapses the
-                        // sheet, as the scaffold's own handle would.
-                        val expanded = sheet.bottomSheetState.currentValue == SheetValue.Expanded
-                        Box(Modifier.fillMaxWidth().clickable(onClickLabel = if (expanded) "Collapse" else "Expand") {
-                            scope.launch { if (expanded) sheet.bottomSheetState.partialExpand() else sheet.bottomSheetState.expand() }
-                        }.semantics { contentDescription = if (expanded) "Collapse results" else "Expand results" },
+            SideEffect { mapInset = headerHeight + 16.dp }
+            val detailsMax = (maxHeight - headerHeight - 88.dp).coerceAtLeast(160.dp)
+            // Choosing a point needs the map.
+            LaunchedEffect(selecting) { if (selecting != null) expanded = false }
+            Box(Modifier.fillMaxSize()) {
+                map(Modifier.fillMaxSize())
+                // As on iPhone: a deeper shadow, a hairline edge and, in light mode, a cool grey-blue
+                // wash over the mesh, which on its own blends into the light map.
+                val panelShape = RoundedCornerShape(28.dp)
+                val light = MaterialTheme.colorScheme.background.luminance() >= 0.3f
+                Column(Modifier.align(Alignment.BottomCenter).padding(8.dp).fillMaxWidth()
+                    .shadow(14.dp, panelShape).clip(panelShape).meshPageBackground()
+                    .background(if (light) Color(0.62f, 0.70f, 0.82f, 0.25f) else Color.Transparent)
+                    .border(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f), panelShape)
+                    .animateContentSize()) {
+                    // The handle and header: tap the handle, or drag either, to open or close.
+                    Column(Modifier.fillMaxWidth()
+                        .onSizeChanged { headerHeight = with(density) { it.height.toDp() } }
+                        .pointerInput(Unit) {
+                            var dragged = 0f
+                            detectVerticalDragGestures(onDragStart = { dragged = 0f }, onDragEnd = {
+                                if (dragged < -30 * density.density) expanded = true
+                                if (dragged > 30 * density.density) expanded = false
+                            }) { _, amount -> dragged += amount }
+                        }) {
+                        Box(Modifier.fillMaxWidth().clickable(onClickLabel = if (expanded) "Collapse" else "Expand") { expanded = !expanded }
+                            .semantics { contentDescription = if (expanded) "Collapse results" else "Expand results" },
                             contentAlignment = Alignment.Center) { BottomSheetDefaults.DragHandle() }
-                        Box(Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp)
-                            .onSizeChanged { headerHeight = with(density) { it.height.toDp() + 12.dp } }) { header() }
-                        Column(Modifier.weight(1f, fill = false).verticalScroll(scroll).padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
+                        Box(Modifier.padding(horizontal = 16.dp).padding(bottom = 14.dp)) { header() }
+                    }
+                    if (expanded) {
+                        // Open nearly to the top, leaving the back button and a strip of map.
+                        Column(Modifier.heightIn(max = detailsMax)
+                            .verticalScroll(scroll).padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
                             details()
                         }
                     }
-                },
-            ) { map(Modifier.fillMaxSize()) }
+                }
+            }
         }
     }
 }
 
 /**
  * The sheet's always-visible line: what to do next while points are being placed, then the
- * verdict. Choosing a point is confirmed here, so the map stays clear.
+ * verdict. Choosing a point is confirmed here, so the map stays clear. Reset sits beside it once
+ * a point is placed, so starting over never needs the sheet opened.
  */
 @Composable
 private fun LinkHeader(state: LinkProfileViewModel.State, selecting: String?, tentative: LinkProfileMapState.Tentative?,
     distanceUnit: DistanceUnit, onChoose: (String) -> Unit, onCancel: () -> Unit,
-    onUse: (LinkProfileMapState.Tentative) -> Unit, onRetry: () -> Unit) {
+    onUse: (LinkProfileMapState.Tentative) -> Unit, onRetry: () -> Unit, onReset: () -> Unit) {
     fun placed(endpoint: String) = state.fields.getValue("Latitude $endpoint").isNotBlank() && state.fields.getValue("Longitude $endpoint").isNotBlank()
     val secondary = MaterialTheme.colorScheme.onSurfaceVariant
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    val anyPlaced = listOf("Latitude A", "Longitude A", "Latitude B", "Longitude B").any { state.fields.getValue(it).isNotBlank() }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         val result = state.result
         when {
             selecting != null -> {
@@ -249,6 +261,16 @@ private fun LinkHeader(state: LinkProfileViewModel.State, selecting: String?, te
             else -> Text("Analyzing link…", style = MaterialTheme.typography.titleMedium)
         }
     }
+    if (selecting == null && anyPlaced) {
+        // A primary-coloured outline: the tonal fill nearly vanished on the light mesh.
+        OutlinedButton(onClick = onReset, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+            contentPadding = PaddingValues(horizontal = 12.dp)) {
+            Icon(Icons.Filled.Refresh, contentDescription = null, Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("Reset")
+        }
+    }
+    }
 }
 
 internal fun verdict(status: ClearanceStatus) = when (status) {
@@ -265,10 +287,10 @@ private val ClearanceStatus.pathClearance get() = when (this) {
     ClearanceStatus.PARTIAL_OBSTRUCTION, ClearanceStatus.BLOCKED -> PathClearance.OBSTRUCTED
 }
 
-/** Everything under the header: the two points, the radio, the full result, and Start Over. */
+/** Everything under the header: the two points, the radio and the full result. */
 @Composable
 private fun LinkDetails(model: LinkProfileViewModel, state: LinkProfileViewModel.State, distanceUnit: DistanceUnit,
-    onMove: (String) -> Unit, onStartOver: () -> Unit) {
+    onMove: (String) -> Unit) {
     var customizing by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         listOf("A", "B").forEach { endpoint -> PointCard(model, state, endpoint, distanceUnit, onMove) }
@@ -292,15 +314,6 @@ private fun LinkDetails(model: LinkProfileViewModel, state: LinkProfileViewModel
             }
         }
         state.result?.let { ProfileResult(it, distanceUnit) }
-        if (listOf("Latitude A", "Longitude A", "Latitude B", "Longitude B").any { state.fields.getValue(it).isNotBlank() }) {
-            // A primary-coloured outline: the tonal fill nearly vanished on the light mesh.
-            OutlinedButton(onClick = onStartOver, Modifier.fillMaxWidth(),
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary)) {
-                Icon(Icons.Filled.Refresh, contentDescription = null, Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Start Over")
-            }
-        }
         Text("Planning estimates only: terrain does not account for buildings, foliage or interference. Placing points sends their coordinates to Open-Meteo for elevation; cached elevations are kept for 30 days.",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }

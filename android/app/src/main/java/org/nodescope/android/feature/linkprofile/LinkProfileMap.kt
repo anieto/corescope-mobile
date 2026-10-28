@@ -162,13 +162,16 @@ private const val UnanalyzedBlue = 0xFF299EFF.toInt()
 /** A faint edge that lifts the line off the map: light on light maps, dark on dark ones. */
 private fun casing(dark: Boolean) = if (dark) 0x99000000.toInt() else 0x8CFFFFFF.toInt()
 
+/** The analyzed route's dark edge, the same on every map, as on iOS. */
+private const val RouteCasing = 0x66000000
+
 /**
- * The A–B line: one solid blue line until analyzed, then dashed throughout and coloured by
- * clearance, so a result never reads as the unanalyzed line. Samples are evenly spaced in latitude and longitude
+ * The A–B line: one dashed blue line until analyzed, then a solid route coloured by clearance,
+ * so a result never reads as the unanalyzed line. Samples are evenly spaced in latitude and longitude
  * ([LinkGeometry.samples]), so a distance along the path maps to the same fraction between A and B.
  */
 internal fun linkPathStretches(a: Coordinate, b: Coordinate, analysis: LinkAnalysis?, dark: Boolean): List<PathStretch> {
-    val unanalyzed = listOf(PathStretch(listOf(a, b), UnanalyzedBlue, dashed = false, casing(dark)))
+    val unanalyzed = listOf(PathStretch(listOf(a, b), UnanalyzedBlue, dashed = true, casing(dark)))
     if (analysis == null) return unanalyzed
     val length = analysis.result.distanceMeters.takeIf { it > 0 } ?: return unanalyzed
     var delta = b.longitude - a.longitude
@@ -182,7 +185,7 @@ internal fun linkPathStretches(a: Coordinate, b: Coordinate, analysis: LinkAnaly
         return Coordinate.gps(a.latitude + fraction * (b.latitude - a.latitude), longitude)
     }
     return LinkProfileEngine.clearanceStretches(analysis.request).map { stretch ->
-        PathStretch(listOfNotNull(at(stretch.startMeters), at(stretch.endMeters)), stretch.clearance.argb(dark), dashed = true, casing(dark))
+        PathStretch(listOfNotNull(at(stretch.startMeters), at(stretch.endMeters)), stretch.clearance.argb(dark), dashed = false, RouteCasing)
     }
 }
 
@@ -199,14 +202,13 @@ private fun ClearanceLegend(modifier: Modifier) {
     }
 }
 
-/** A short dashed line in the clearance's colour, then its name; shared with the chart legend. */
+/** A short line in the clearance's colour, then its name; shared with the chart legend. */
 @Composable
 internal fun ClearanceSwatch(color: androidx.compose.ui.graphics.Color, title: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         androidx.compose.foundation.Canvas(Modifier.size(18.dp, 4.dp)) {
             drawLine(color, androidx.compose.ui.geometry.Offset(0f, size.height / 2), androidx.compose.ui.geometry.Offset(size.width, size.height / 2),
-                strokeWidth = size.height, cap = androidx.compose.ui.graphics.StrokeCap.Butt,
-                pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 2.dp.toPx())))
+                strokeWidth = size.height, cap = androidx.compose.ui.graphics.StrokeCap.Butt)
         }
         Text(title, style = MaterialTheme.typography.bodySmall)
     }

@@ -185,57 +185,73 @@ private struct LinkProfileCompactWorkspace: View {
     let promptLeadingClearance: CGFloat
     @State private var isExpanded = false
     @State private var headerHeight: CGFloat = 0
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+        // The panel floats over the map: the map's safe area only clears the collapsed panel, so
+        // expanding it covers the map instead of moving the camera and controls.
         GeometryReader { geometry in
-            LinkProfilePersistentMap(
-                model: model,
-                nodes: nodes,
-                activeEndpoint: $activeEndpoint,
-                mapDisplayStyle: $mapDisplayStyle,
-                promptLeadingClearance: promptLeadingClearance
-            )
-                .safeAreaInset(edge: .bottom, spacing: 8) {
+            ZStack(alignment: .bottom) {
+                LinkProfilePersistentMap(
+                    model: model,
+                    nodes: nodes,
+                    activeEndpoint: $activeEndpoint,
+                    mapDisplayStyle: $mapDisplayStyle,
+                    promptLeadingClearance: promptLeadingClearance
+                )
+                .safeAreaPadding(.bottom, headerHeight + 16)
+                VStack(spacing: 0) {
                     VStack(spacing: 0) {
-                        VStack(spacing: 0) {
-                            Button {
-                                setExpanded(!isExpanded)
-                            } label: {
-                                Capsule()
-                                    .fill(.secondary.opacity(0.45))
-                                    .frame(width: 36, height: 5)
-                                    .frame(maxWidth: .infinity, minHeight: 24)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(isExpanded ? "Hide link details" : "Show link details")
-                            LinkProfileHeader(model: model, activeEndpoint: $activeEndpoint)
-                                .padding(.horizontal)
-                                .padding(.bottom, 14)
+                        Button {
+                            setExpanded(!isExpanded)
+                        } label: {
+                            Capsule()
+                                .fill(.secondary.opacity(0.45))
+                                .frame(width: 36, height: 5)
+                                .frame(maxWidth: .infinity, minHeight: 24)
+                                .contentShape(Rectangle())
                         }
-                        .contentShape(Rectangle())
-                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
-                        .gesture(
-                            DragGesture(minimumDistance: 12).onEnded { value in
-                                if value.translation.height < -30 { setExpanded(true) }
-                                if value.translation.height > 30 { setExpanded(false) }
-                            }
-                        )
-                        if isExpanded {
-                            ScrollView {
-                                LinkProfileDetails(model: model, activeEndpoint: $activeEndpoint)
-                                    .padding(.horizontal)
-                                    .padding(.bottom)
-                            }
-                            // Open nearly to the top, leaving the back button and a strip of map.
-                            .frame(height: max(160, geometry.size.height - headerHeight - 72))
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(isExpanded ? "Hide link details" : "Show link details")
+                        LinkProfileHeader(model: model, activeEndpoint: $activeEndpoint)
+                            .padding(.horizontal)
+                            .padding(.bottom, 14)
                     }
-                    .meshPageBackground()
-                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                    .padding(.horizontal, 8)
+                    .contentShape(Rectangle())
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
+                    .gesture(
+                        DragGesture(minimumDistance: 12).onEnded { value in
+                            if value.translation.height < -30 { setExpanded(true) }
+                            if value.translation.height > 30 { setExpanded(false) }
+                        }
+                    )
+                    if isExpanded {
+                        ScrollView {
+                            LinkProfileDetails(model: model, activeEndpoint: $activeEndpoint)
+                                .padding(.horizontal)
+                                .padding(.bottom)
+                        }
+                        // Open nearly to the top, leaving the back button and a strip of map.
+                        .frame(height: max(160, geometry.size.height - headerHeight - 72))
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
                 }
+                // Light mode: a cool grey-blue wash over the mesh, which on its own matches the
+                // light map's land and water closely enough for the panel to blend in.
+                .background(colorScheme == .light ? Color(red: 0.62, green: 0.70, blue: 0.82).opacity(0.25) : .clear)
+                .meshPageBackground()
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                // A hairline edge and a soft shadow lift the panel off a light map, where the
+                // subdued mesh is close to the map's own colours.
+                .overlay {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.5)
+                }
+                .shadow(color: .black.opacity(0.28), radius: 18, y: 6)
+                .padding(.horizontal, 8)
+                // A gap above the tab bar so the panel reads as floating.
+                .padding(.bottom, 8)
+            }
         }
         // Choosing a point needs the map.
         .onChange(of: activeEndpoint) { _, endpoint in
@@ -297,24 +313,12 @@ private struct LinkProfilePersistentMap: View {
     var body: some View {
         MapReader { proxy in
             Map(position: $position, scope: mapScope) {
-                ForEach(Array(nodesWithCoordinates.prefix(200)), id: \.id) { node in
-                    if let coordinate = node.coordinate {
-                        Annotation(node.name ?? "Known node", coordinate: coordinate) {
-                            Button {
-                                guard let activeEndpoint else { return }
-                                model.tentative = LinkProfileTentative(endpoint: activeEndpoint, coordinate: coordinate, name: node.name)
-                            } label: {
-                                Image(systemName: "antenna.radiowaves.left.and.right.circle.fill")
-                                    .font(.title2)
-                                    .foregroundStyle(NodeScopeStyle.signal)
-                                    .background(.background, in: Circle())
-                            }
-                            .buttonStyle(.plain)
-                            .frame(minWidth: 44, minHeight: 44)
-                            .accessibilityLabel(node.name ?? String(localized: "Known node"))
-                            .accessibilityHint("Use as the selected link endpoint")
-                        }
-                    }
+                // Native markers rather than SwiftUI annotations: each annotation was a view of its
+                // own that caught fingers, so a pinch starting on a node never reached the map.
+                // Choosing a node is handled by the map's tap below.
+                ForEach(knownNodes, id: \.node.id) { known in
+                    Marker(known.node.name ?? String(localized: "Known node"), systemImage: "antenna.radiowaves.left.and.right", coordinate: known.coordinate)
+                        .tint(NodeScopeStyle.signal)
                 }
                 if let pointA = model.coordinateA {
                     Marker("Point A", coordinate: pointA).tint(.blue)
@@ -323,22 +327,21 @@ private struct LinkProfilePersistentMap: View {
                     Marker("Point B", coordinate: pointB).tint(.orange)
                 }
                 if let result = model.result {
-                    // Dashed throughout and coloured by clearance along the sampled path, so a
-                    // result never reads as the solid unanalyzed line. The faint outline is dashed
-                    // in step with the line, so it edges each dash without filling the gaps.
-                    let samples = result.terrain.samples
-                    ForEach(Array(result.clearanceStretches.enumerated()), id: \.offset) { _, stretch in
-                        let coordinates = samples[stretch.startIndex...stretch.endIndex].map {
-                            CLLocationCoordinate2D(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude)
-                        }
-                        MapPolyline(coordinates: coordinates)
-                            .stroke(.white.opacity(0.55), style: StrokeStyle(lineWidth: 5, dash: [3.5, 2.5]))
-                        MapPolyline(coordinates: coordinates)
-                            .stroke(stretch.clearance.color, style: StrokeStyle(lineWidth: 3.5, dash: [3.5, 2.5]))
+                    // A solid route coloured by clearance along the sampled path, on one dark
+                    // casing drawn under every stretch so colour changes don't break the edge.
+                    let stretches = Array(result.clearanceStretches.enumerated())
+                    let casing = StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round)
+                    let line = StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round)
+                    MapPolyline(coordinates: result.terrain.samples.map(\.mapCoordinate))
+                        .stroke(.black.opacity(0.4), style: casing)
+                    ForEach(stretches, id: \.offset) { _, stretch in
+                        MapPolyline(coordinates: result.terrain.samples[stretch.startIndex...stretch.endIndex].map(\.mapCoordinate))
+                            .stroke(stretch.clearance.color, style: line)
                     }
                 } else if let pointA = model.coordinateA, let pointB = model.coordinateB {
+                    // Dashed until the analysis colours it.
                     MapPolyline(coordinates: [pointA, pointB])
-                        .stroke(NodeScopeStyle.signal, lineWidth: 3)
+                        .stroke(NodeScopeStyle.signal, style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: [6, 6]))
                 }
                 if let tentative = model.tentative, tentative.endpoint == activeEndpoint {
                     Annotation("Tentative location", coordinate: tentative.coordinate) {
@@ -364,12 +367,19 @@ private struct LinkProfilePersistentMap: View {
                 .padding()
                 .padding(.top, promptTopClearance)
             }
+            // Attached only while choosing a point: a SwiftUI gesture on the map can hold back
+            // MapKit's own pinch and pan.
             .simultaneousGesture(
                 SpatialTapGesture().onEnded { value in
-                    guard let activeEndpoint,
-                          let coordinate = proxy.convert(value.location, from: .local) else { return }
-                    model.tentative = LinkProfileTentative(endpoint: activeEndpoint, coordinate: coordinate, name: nil)
-                }
+                    guard let activeEndpoint else { return }
+                    // A known node's marker under the finger wins over the spot itself.
+                    if let known = knownNode(at: value.location, proxy: proxy) {
+                        model.tentative = LinkProfileTentative(endpoint: activeEndpoint, coordinate: known.coordinate, name: known.node.name)
+                    } else if let coordinate = proxy.convert(value.location, from: .local) {
+                        model.tentative = LinkProfileTentative(endpoint: activeEndpoint, coordinate: coordinate, name: nil)
+                    }
+                },
+                including: activeEndpoint == nil ? .subviews : .all
             )
             // Prompts and confirmation live in the header; the map only carries the legend.
             .overlay(alignment: .topLeading) {
@@ -434,8 +444,23 @@ private struct LinkProfilePersistentMap: View {
         withAnimation(.easeInOut) { position = .rect(rect) }
     }
 
-    private var nodesWithCoordinates: [MeshNode] {
-        nodes.filter { $0.coordinate != nil }
+    private var knownNodes: [(node: MeshNode, coordinate: CLLocationCoordinate2D)] {
+        Array(nodes.lazy.compactMap { node in node.coordinate.map { (node, $0) } }.prefix(200))
+    }
+
+    /// The node whose marker covers `location`. A marker's balloon stands above its coordinate,
+    /// so the hit area runs from a little below the point to the top of the balloon.
+    private func knownNode(at location: CGPoint, proxy: MapProxy) -> (node: MeshNode, coordinate: CLLocationCoordinate2D)? {
+        knownNodes
+            .compactMap { known -> (known: (node: MeshNode, coordinate: CLLocationCoordinate2D), distance: CGFloat)? in
+                guard let point = proxy.convert(known.coordinate, to: .local) else { return nil }
+                let dx = location.x - point.x
+                let dy = location.y - point.y
+                guard abs(dx) <= 24, (-48...12).contains(dy) else { return nil }
+                return (known, hypot(dx, dy + 20))
+            }
+            .min { $0.distance < $1.distance }?
+            .known
     }
 }
 
@@ -782,13 +807,29 @@ private final class LinkProfileModel {
 }
 
 /// The always-visible line: what to do next while points are placed (choosing one is confirmed
-/// here, so the map stays clear), then analyzing, an error, or the verdict.
+/// here, so the map stays clear), then analyzing, an error, or the verdict. Reset sits beside it
+/// once a point is placed, so starting over never needs the panel opened.
 private struct LinkProfileHeader: View {
     @Bindable var model: LinkProfileModel
     @Binding var activeEndpoint: LinkProfileEndpoint?
     @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
 
     var body: some View {
+        HStack(spacing: 12) {
+            status
+            if activeEndpoint == nil && (model.coordinateA != nil || model.coordinateB != nil) {
+                Button {
+                    model.startOver()
+                    activeEndpoint = .pointA
+                } label: {
+                    Label("Reset", systemImage: "arrow.counterclockwise")
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+    }
+
+    private var status: some View {
         VStack(alignment: .leading, spacing: 6) {
             if let endpoint = activeEndpoint {
                 let tentative = model.tentative.flatMap { $0.endpoint == endpoint ? $0 : nil }
@@ -886,7 +927,7 @@ extension NodePlannerClearanceStatus {
     }
 }
 
-/// Everything under the header: the two points, the radio, the full result, and Start Over.
+/// Everything under the header: the two points, the radio and the full result.
 private struct LinkProfileDetails: View {
     @Bindable var model: LinkProfileModel
     @Binding var activeEndpoint: LinkProfileEndpoint?
@@ -898,17 +939,6 @@ private struct LinkProfileDetails: View {
             LinkProfileRadioSettings(model: model)
             if let result = model.result {
                 LinkProfileResultCard(result: result)
-            }
-            if model.coordinateA != nil || model.coordinateB != nil {
-                Button {
-                    model.startOver()
-                    activeEndpoint = .pointA
-                } label: {
-                    Label("Start Over", systemImage: "arrow.counterclockwise")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
             }
             Text("Planning estimates only: terrain does not account for buildings, foliage or interference. Placing points sends their coordinates to Open-Meteo for elevation; results are cached on this device.")
                 .font(.caption)
@@ -1503,6 +1533,12 @@ private struct LinkProfileTerrainCanvas: View {
     }
 }
 
+private extension NodePlannerTerrainSample {
+    var mapCoordinate: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: coordinate.latitude, longitude: coordinate.longitude)
+    }
+}
+
 extension NodePlannerPathClearance {
     var color: Color {
         switch self {
@@ -1521,7 +1557,7 @@ extension NodePlannerPathClearance {
     }
 }
 
-/// A short dashed line in the clearance's colour, then its name.
+/// A short line in the clearance's colour, then its name.
 private struct LinkProfileClearanceLegend: View {
     let clearance: NodePlannerPathClearance
 
@@ -1533,7 +1569,7 @@ private struct LinkProfileClearanceLegend: View {
                 var path = Path()
                 path.move(to: CGPoint(x: 0, y: size.height / 2))
                 path.addLine(to: CGPoint(x: size.width, y: size.height / 2))
-                context.stroke(path, with: .color(clearance.color), style: StrokeStyle(lineWidth: size.height, dash: [4, 2]))
+                context.stroke(path, with: .color(clearance.color), style: StrokeStyle(lineWidth: size.height))
             }
             .frame(width: 18, height: 4)
         }

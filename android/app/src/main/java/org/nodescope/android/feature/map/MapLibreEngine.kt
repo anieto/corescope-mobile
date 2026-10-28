@@ -426,18 +426,19 @@ private fun addOverlays(style: Style, dark: Boolean) {
         .withFilter(all(eq(get("role"), literal("observer")), has("name"))).withProperties(visibility(Property.VISIBLE)))
     style.addSource(GeoJsonSource(ROUTE, emptyFeatures))
     style.addLayer(LineLayer("nodescope-route-line", ROUTE).withProperties(lineColor("#299EFF"), lineWidth(4f)))
-    // A planned link: a faint casing so it reads on any basemap, then the coloured stretches.
+    // A planned link: a casing so it reads on any basemap, then the coloured stretches. Every
+    // stretch's casing is drawn before any line, so colour changes don't break the edge.
     // Dash patterns cannot vary per feature, so dashed stretches get their own layers, and their
     // casing is dashed in step (dash lengths are in line widths: 4 × 0.9 = 6 × 0.6).
     style.addSource(GeoJsonSource(LINK_PATH, emptyFeatures))
     val solid = eq(get("dashed"), literal(false))
     val dashed = eq(get("dashed"), literal(true))
     style.addLayer(LineLayer("nodescope-link-casing", LINK_PATH).withFilter(solid).withProperties(
-        lineColor(get("casing")), lineOpacity(get("casingOpacity")), lineWidth(6f), lineCap(Property.LINE_CAP_ROUND)))
+        lineColor(get("casing")), lineOpacity(get("casingOpacity")), lineWidth(7f), lineCap(Property.LINE_CAP_ROUND), lineJoin(Property.LINE_JOIN_ROUND)))
     style.addLayer(LineLayer("nodescope-link-dashed-casing", LINK_PATH).withFilter(dashed).withProperties(
         lineColor(get("casing")), lineOpacity(get("casingOpacity")), lineWidth(6f), lineDasharray(arrayOf(0.6f, 0.4333f))))
     style.addLayer(LineLayer("nodescope-link-solid", LINK_PATH).withFilter(solid)
-        .withProperties(lineColor(get("color")), lineWidth(4f), lineCap(Property.LINE_CAP_ROUND)))
+        .withProperties(lineColor(get("color")), lineWidth(4f), lineCap(Property.LINE_CAP_ROUND), lineJoin(Property.LINE_JOIN_ROUND)))
     style.addLayer(LineLayer("nodescope-link-dashed", LINK_PATH).withFilter(dashed)
         .withProperties(lineColor(get("color")), lineWidth(4f), lineDasharray(arrayOf(0.9f, 0.65f))))
     style.addSource(GeoJsonSource(PACKET, emptyFeatures))
