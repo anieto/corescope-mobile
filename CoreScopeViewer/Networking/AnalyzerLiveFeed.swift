@@ -56,11 +56,15 @@ protocol AnalyzerLiveFeed: AnyObject {
     func subscribe(_ subscriptions: Set<LiveFeedSubscription>)
     func configure(_ configuration: LiveFeedConfiguration)
     func refreshObservers()
+    /// The app just returned to the foreground. iOS drops a suspended app's sockets,
+    /// so check the connection now and skip any reconnect backoff if it died.
+    func resumeAfterForeground()
 }
 
 extension AnalyzerLiveFeed {
     var usesBrowseSnapshots: Bool { false }
     func refreshObservers() {}
+    func resumeAfterForeground() {}
 }
 
 @MainActor
@@ -104,6 +108,7 @@ final class CoreScopeLiveFeed: NSObject, AnalyzerLiveFeed, URLSessionWebSocketDe
     private var socket: URLSessionWebSocketTask?
     private var receiveTask: Task<Void, Never>?
     private var reconnectTask: Task<Void, Never>?
+    private var foregroundedAt: Date?
 
     init(url: URL) {
         self.url = url
@@ -147,9 +152,27 @@ final class CoreScopeLiveFeed: NSObject, AnalyzerLiveFeed, URLSessionWebSocketDe
         continuation.finish()
     }
 
+    func resumeAfterForeground() {
+        guard session != nil || reconnectTask != nil else { return }
+        foregroundedAt = .now
+        guard let socket, reconnectTask == nil else {
+            connect()
+            return
+        }
+        // A socket killed during suspension can still look open until the next read fails.
+        socket.sendPing { [weak self] error in
+            guard error != nil else { return }
+            Task { @MainActor [weak self] in
+                guard let self, self.socket === socket else { return }
+                self.connectionFailed(error?.localizedDescription ?? "Connection lost.")
+            }
+        }
+    }
+
     private func stopSocket() {
         receiveTask?.cancel()
         reconnectTask?.cancel()
+        reconnectTask = nil
         socket?.cancel(with: .goingAway, reason: nil)
         socket = nil
         session?.invalidateAndCancel()
@@ -176,8 +199,11 @@ final class CoreScopeLiveFeed: NSObject, AnalyzerLiveFeed, URLSessionWebSocketDe
     private func connectionFailed(_ message: String) {
         continuation.yield(.disconnected(message))
         reconnectTask?.cancel()
+        // Failures right after returning to the foreground are the suspension, not the server.
+        let delay: Duration = foregroundedAt.map { Date.now.timeIntervalSince($0) < 5 } == true ? .zero : .seconds(3)
+        foregroundedAt = nil
         reconnectTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(3))
+            try? await Task.sleep(for: delay)
             guard let self, !Task.isCancelled else { return }
             self.connect()
         }

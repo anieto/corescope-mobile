@@ -25,9 +25,10 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     val state = session.states.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SessionState())
     private val feed = LiveFeed(container.preferences, container.packetSource, container.sourceRouter.liveReadiness)
     // Packet bookkeeping runs off the main thread, which only receives each finished state; on a
-    // busy network it otherwise competed with the map's animation for every frame.
+    // busy network it otherwise competed with the map's animation for every frame. The socket
+    // outlives a quick app switch or rotation, then closes in the background (Beacon's guidance).
     val live = feed.states.flowOn(kotlinx.coroutines.Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(0, 0), LiveFeedState())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(10_000, 0), LiveFeedState())
     fun reconnectLive() = feed.reconnect()
     fun refreshBeaconObservers() = feed.refreshObservers()
     fun retryBeaconMetadata() = feed.retryMetadataRecovery()

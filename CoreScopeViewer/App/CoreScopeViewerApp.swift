@@ -15,6 +15,7 @@ struct NodeScopeApp: App {
     @State private var searchHistoryStore = SearchHistoryStore()
     @State private var appNavigationStore = AppNavigationStore()
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         let settings = AnalyzerSettings()
@@ -67,6 +68,9 @@ struct NodeScopeApp: App {
             }
             .task {
                 await analyzerSourceRegistry.refresh()
+            }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { liveFeed.resumeAfterForeground() }
             }
             .task(id: "\(hasCompletedOnboarding)|\(settings.sourceResolutionID)") {
                 guard hasCompletedOnboarding else { return }
