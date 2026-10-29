@@ -52,6 +52,15 @@
       "isDefault": false
     },
     {
+      "id": "sacscope",
+      "type": "corescope",
+      "icon": "icons/sacscope.png",
+      "name": "SacScope",
+      "host": "scope.sacmesh.org",
+      "subtitle": "Sacramento Valley and Surrounding Hills",
+      "isDefault": false
+    },
+    {
       "id": "colorado-mesh",
       "type": "beacon",
       "icon": "icons/colorado-mesh.png",
