@@ -4,7 +4,7 @@ NodeScope should remain a fast, native, read-only mesh observability tool. New
 features should make live and historical network behavior easier to understand
 without reproducing every desktop or operator control from CoreScope.
 
-Every feature and release closeout must be verified on both iPhone and iPad,
+Every feature and release closeout must be verified on iPhone, iPhone Duo and iPad,
 including navigation, safe areas, adaptive layout, popovers/sheets, and toolbar
 content in portrait and landscape where applicable, and on Android phones,
 tablets, and foldables once Android has the feature.
@@ -23,10 +23,12 @@ tablets, and foldables once Android has the feature.
 - Node Analytics with selectable time ranges, health and signal metrics, charts,
   observer coverage, peer interactions, exports, and graceful capability checks.
 
-## 0.8.0 — Beacon support
+## 0.8.0 — Beacon support (complete)
 
-Make NodeScope work with Beacon servers as well as CoreScope, without changing
-the CoreScope experience. Planned and tracked in [the Beacon plan](docs/beacon/plan.md).
+NodeScope now works with Beacon servers as well as CoreScope, without changing
+the CoreScope experience. Implementation is tracked in [the Beacon plan](docs/beacon/plan.md).
+Release marked complete on 2026-10-15; iOS and Android releases are pending
+approval from Apple and Google, respectively.
 
 - Phase 1: a backend abstraction so every screen talks to a CoreScope or Beacon
   adapter, with no CoreScope behavior change.
@@ -35,54 +37,58 @@ the CoreScope experience. Planned and tracked in [the Beacon plan](docs/beacon/p
 - Phase 3: Beacon neighbors, node analytics derived from observation history,
   observer activity and telemetry, server-decrypted channels with database-reset
   recovery, and expanded diagnostics. Implemented on iOS and Android; live
-  acceptance passed on three servers. Remaining: side-by-side device review,
-  channel upgrade and rollback drills, and beta builds ([phase 3 tasks](docs/beacon/phase3-tasks.md)).
+  acceptance passed on three servers. The release is complete; the
+  [phase 3 tasks](docs/beacon/phase3-tasks.md) retain the implementation checklist.
 - Beacon screens reuse the CoreScope design. Data Beacon can't provide is shown
   as unavailable or partial with an explanation, never as zero.
 
-## 0.9.0 — My Nodes and network awareness
+## 0.9.0 — My Nodes and network awareness (complete)
 
-Turn favorites and Node Analytics into a useful daily health view without
-requiring users to inspect every node individually.
+Marked complete on 2026-10-20. Final [store notes](docs/my-nodes/release.md) retain validation
+and submission follow-ups.
 
-- Add a My Nodes dashboard for favorite nodes with last-heard state,
-  availability, signal trend, observer coverage, and available telemetry.
-- Summarize meaningful changes since the previous visit, including nodes newly
-  active or silent, observer availability changes, and significant signal shifts.
-- Add direct drill-down from health and change summaries into analytics, packets,
-  routes, observers, and the map.
-- Surface analyzer health, live-feed state, capability support, and data freshness
-  so network changes are not confused with stale or unavailable analyzer data.
-- Keep alerts in-app for this release; defer background notifications until user
-  demand justifies their lifecycle and delivery complexity.
-- Preserve analyzer scoping, cached-first loading, exports, Dynamic Type, and
-  VoiceOver throughout the experience.
-- Work on both CoreScope and Beacon sources, using each backend's analytics and
-  explaining metrics a backend can't provide (Beacon has no availability or
-  observer coverage per node).
+Detailed scope, proposed behavior, milestones, and acceptance criteria are in the
+[0.9.0 implementation plan](docs/my-nodes/plan.md). Implementation started on
+2026-10-16 with the backend/account contract audit; see
+[implementation progress](docs/my-nodes/implementation.md).
 
-## 0.10.0 — Field investigation
+Make Favorites and Activity useful for everyday checks, with reliable optional CoreScope
+account sync on iOS and Android. The approved 2026-10-19 scope in the implementation plan
+supersedes the original broader analytics dashboard.
 
-Make NodeScope useful while deploying, locating, or troubleshooting physical
-mesh equipment without turning the phone into a source of RF telemetry.
+- Show device favorites and account nodes together, preserving separate memberships and ordering.
+- Keep Activity focused on readable names, last heard, freshness, cached/error states and detail navigation.
+- Validate account sync, switching, deletion/reset, expiry, offline behavior and sign-out.
+- Finish Android parity and focused accessibility, adaptive-layout and performance checks.
+- Complete backend regression, beta smoke tests and release preparation.
 
-- Add an optional Field Mode from the map and node details rather than another
-  permanent primary tab.
-- Show nearby nodes and observers relative to the current location or a manually
-  selected reference point.
-- Show distance, bearing, last-heard state, recent signal quality, observer
-  coverage, coordinate age, GPS accuracy, and network-data freshness.
-- Allow one node or observer to be pinned as the active target with compact
-  compass-style guidance and direct access to its analytics, packets, and routes.
-- Add investigation snapshots that package the relevant packet, route, nodes,
-  observers, timestamps, and analyzer source for sharing or export.
-- Support public-key QR scanning and presentation for quick node lookup and
-  favoriting in the field.
-- Keep location use foreground-only, on-device, and optional. Do not upload or
-  persist the user's location history, and clearly distinguish stale reported
-  coordinates from a device's current physical location.
-- Treat lightweight historical context around a selected incident as optional;
-  do not require continuous map playback for the initial Field Mode.
+Defer the Changes summary, dashboard signal/availability/coverage/telemetry, live Activity updates,
+extra drill-down controls and dashboard exports. Detailed Node Analytics and its exports remain
+available. Background notifications remain out of scope.
+
+## 0.10.0 — Node Planner
+
+Help people evaluate proposed mesh deployments before installing hardware. The normal map shows
+where deployed nodes are; Node Planner estimates what a new node at a candidate site might reach.
+
+Detailed product behavior, analysis contracts, architecture, milestones, tests and release gates
+are in the [0.10.0 Node Planner plan](docs/node-planner/plan.md). The previous Field Tools plan and
+implementation record are retained as prototype history, not the release contract.
+
+- Create locally saved deployment plans with one or more candidate sites.
+- Configure explicit radio, modem, antenna, cable, receiver and installation assumptions.
+- Use audited elevation data and a reviewed propagation engine for terrain-aware analysis.
+- Analyze point-to-point paths to known nodes with terrain profile, line of sight, Fresnel context,
+  predicted receive level, link margin and visible provenance.
+- Include a secondary **Link Profile** tool for analyzing any two nodes or map points, built on the
+  same terrain and RF foundation as planned potential-link analysis. Use one persistent map for
+  selecting both endpoints, nearby known-node context, configuration and synchronized results.
+- Rank **Potential Links** without equating proximity with reachability.
+- Render clearly labeled **Estimated Coverage** that cannot be confused with observed network data.
+- Compare candidate sites or configurations and export an assumption-rich planning summary.
+- Keep plans local, location optional and foreground-only, and cached/offline limitations explicit.
+- Deliver matching calculations and terminology across iOS and Android with adaptive layouts for
+  iPhone, iPhone Duo, iPad and Android foldables.
 
 ## 1.0.0 — Investigation depth and product maturity
 
@@ -116,7 +122,7 @@ These may be revisited after 1.0 if user demand justifies them.
 - Spotlight indexing and App Shortcuts.
 - Favorite-node activity or stale-state background notifications.
 - Saved network-view presets.
-- Field survey breadcrumb recording and coverage heatmaps.
+- Field survey breadcrumb recording.
 - Route image generation.
 - Locally monitored (on-phone decrypted) channels on Beacon sources. Blocked until
   Beacon can list channel payloads without one request per packet.
@@ -126,7 +132,8 @@ These may be revisited after 1.0 if user demand justifies them.
 These CoreScope features do not fit NodeScope's focused, read-only mobile role.
 
 - MQTT broker, ingestion, retention, and server administration.
-- API-key-protected write operations or packet injection.
+- Operator/API-key-protected write operations or packet injection. Optional
+  personal account-selection sync is in scope for 0.9.0.
 - Theme designers, Matrix mode, and other desktop visual-effect modes.
 - Desktop-style resizable packet tables.
 - Uploading mobile RF telemetry or location tracks.
@@ -140,8 +147,5 @@ and 3 are at parity. See [implementation progress](docs/android/progress.md).
 
 ## Current priority
 
-Finish the 0.8.0 Beacon release gate: device review of every phase 3 screen on
-iOS and Android, the channel upgrade and rollback drills, and beta builds. Then
-build 0.9.0 My Nodes and network awareness on the Node Analytics foundation,
-prioritizing a concise answer to what changed, whether favorite nodes are
-healthy, and whether the configured analyzer data is current and complete.
+Prepare the next milestone, 0.10.0 Node Planner. Version 0.9.0 feature work is complete;
+store distribution and recorded validation follow-ups remain in its release notes.

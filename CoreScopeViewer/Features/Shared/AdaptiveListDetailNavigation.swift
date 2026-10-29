@@ -5,7 +5,7 @@ struct AdaptiveListDetailNavigation<Sidebar: View, Detail: View>: View {
     @Binding var preferredCompactColumn: NavigationSplitViewColumn
     let detailNavigationID: AnyHashable?
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var isHingedDevice: Bool?
+    @Environment(\.isHingedDevice) private var isHingedDevice
     @ViewBuilder let sidebar: Sidebar
     @ViewBuilder let detail: Detail
 
@@ -46,8 +46,6 @@ struct AdaptiveListDetailNavigation<Sidebar: View, Detail: View>: View {
                     .id(detailNavigationID)
                 }
                 .navigationSplitViewStyle(.balanced)
-                .opacity(isHingedDevice == nil ? 0 : 1)
-                .accessibilityHidden(isHingedDevice == nil)
                 .transition(.opacity)
             }
         }
@@ -56,10 +54,9 @@ struct AdaptiveListDetailNavigation<Sidebar: View, Detail: View>: View {
             NodeScopeBackground()
                 .ignoresSafeArea(.container, edges: .top)
         }
-        .observesDuoHinge($isHingedDevice)
     }
 
     private var usesDuoPaneOrder: Bool {
-        isHingedDevice == true && horizontalSizeClass == .regular
+        isHingedDevice && horizontalSizeClass == .regular
     }
 }

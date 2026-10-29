@@ -254,7 +254,9 @@ internal class GoogleOverlays(private val context: Context, private val map: Goo
     private var items: List<NodeItem> = emptyList()
     private var userMarker: Marker? = null
     private var sampleRoute: Polyline? = null
+    private var linkPath: List<Polyline> = emptyList()
     private var samplePacket: Marker? = null
+    private var pins: List<Marker> = emptyList()
 
     init {
         nodes.algorithm = NodeGrouping().apply { maxDistanceBetweenClusteredItems = 24 }
@@ -288,7 +290,8 @@ internal class GoogleOverlays(private val context: Context, private val map: Goo
             key to hypot((screen.x - tap.x).toDouble(), (screen.y - tap.y).toDouble())
         }.minByOrNull { it.second }?.takeIf { it.second <= 24 * screenDensity }
         onTap(MapTap(nearest?.first, nearest != null && nearest.second <= 12 * screenDensity, null,
-            { routeLayer.routesNear(tap.x.toFloat(), tap.y.toFloat(), 24 * screenDensity) }))
+            { routeLayer.routesNear(tap.x.toFloat(), tap.y.toFloat(), 24 * screenDensity) },
+            Coordinate.valid(point.latitude, point.longitude)))
     }
 
     /** Zooms into a group far enough for it to come apart (groups end at MapLibre zoom 9). */
@@ -329,11 +332,34 @@ internal class GoogleOverlays(private val context: Context, private val map: Goo
             .width(4 * screenDensity).color(0xFF299EFF.toInt())) else null
     }
 
+    /** A faint casing under each stretch, as on CARTO, dashed in step with a dashed stretch so the gaps stay open. */
+    override fun setLinkPath(stretches: List<PathStretch>) {
+        linkPath.forEach { it.remove() }
+        linkPath = stretches.filter { it.points.size > 1 }.flatMap { stretch ->
+            val points = stretch.points.map { LatLng(it.latitude, it.longitude) }
+            val dashes = listOf(Dash(3.5f * screenDensity), Gap(2.5f * screenDensity))
+            val casing = map.addPolyline(PolylineOptions().addAll(points).width((if (stretch.dashed) 6 else 7) * screenDensity).color(stretch.casing).zIndex(1f)
+                .apply { if (stretch.dashed) pattern(dashes) else { startCap(RoundCap()); endCap(RoundCap()); jointType(JointType.ROUND) } })
+            val line = map.addPolyline(PolylineOptions().addAll(points).width(4 * screenDensity).color(stretch.color).zIndex(2f)
+                .apply { if (stretch.dashed) pattern(dashes) else { startCap(RoundCap()); endCap(RoundCap()); jointType(JointType.ROUND) } })
+            listOf(casing, line)
+        }
+    }
+
     override fun setSamplePacket(point: Coordinate?) {
         if (point == null) { samplePacket?.let { decorations.remove(it) }; samplePacket = null; return }
         val position = LatLng(point.latitude, point.longitude)
         samplePacket?.let { it.position = position } ?: run {
             samplePacket = decorations.addMarker(markerOptions(point, dot("packet", 9f, 0xFF00BCD4.toInt(), 1f, 0xFFC5E4FA.toInt())))
+        }
+    }
+
+    /** Pins carry their glyph; Google markers have no text, so the name is only the accessibility title. */
+    override fun setPins(pins: List<MapPin>) {
+        this.pins.forEach { decorations.remove(it) }
+        this.pins = pins.map { pin ->
+            val icon = icons.getOrPut("pin:${pin.kind}") { BitmapDescriptorFactory.fromBitmap(pinBitmap(pin.kind.color(dark = false), pin.kind.glyph, screenDensity)) }
+            decorations.addMarker(markerOptions(pin.coordinate, icon).anchor(0.5f, 1f).title(pin.name).zIndex(4f))
         }
     }
 

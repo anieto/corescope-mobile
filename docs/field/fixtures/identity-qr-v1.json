@@ -1,0 +1,24 @@
+{
+  "schema": "org.nodescope.field.identity-qr",
+  "version": 1,
+  "publicKey": "9cd8fcf22a47333b591d96a2b848b73f457b1bb1a3ea2453a885f9e5787765b1",
+  "identity": {
+    "source": { "backend": "corescope", "origin": "https://one.example/base" },
+    "kind": "node",
+    "value": "9cd8fcf22a47333b591d96a2b848b73f457b1bb1a3ea2453a885f9e5787765b1",
+    "encoded": "9:corescope24:https://one.example/base4:node64:9cd8fcf22a47333b591d96a2b848b73f457b1bb1a3ea2453a885f9e5787765b1"
+  },
+  "validPayloads": [
+    "9CD8FCF22A47333B591D96A2B848B73F457B1BB1A3EA2453A885F9E5787765B1",
+    "nodescope://node/9CD8FCF22A47333B591D96A2B848B73F457B1BB1A3EA2453A885F9E5787765B1",
+    "nodescope://observer/SAT-01",
+    "meshcore://contact/add?name=Hill%20Top%20%2B%20West&public_key=9cd8fcf22a47333b591d96a2b848b73f457b1bb1a3ea2453a885f9e5787765b1&type=2"
+  ],
+  "invalidPayloads": [
+    "abcd",
+    "https://example.com/node/9cd8fcf22a47333b591d96a2b848b73f457b1bb1a3ea2453a885f9e5787765b1",
+    "nodescope://node/abcd",
+    "nodescope://channel/test",
+    "meshcore://contact/add?name=R&public_key=9cd8fcf22a47333b591d96a2b848b73f457b1bb1a3ea2453a885f9e5787765b1&type=2&type=3"
+  ]
+}

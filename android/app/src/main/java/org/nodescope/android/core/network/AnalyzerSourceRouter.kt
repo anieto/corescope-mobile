@@ -90,8 +90,14 @@ class AnalyzerSourceRouter(
                     if (mutableState.value.resolutionId != resolutionId) return
                     selectBeacon(info, captured.id)
                 } catch (e: BeaconApiException.Server) {
-                    // Only an absent Beacon endpoint permits a positive CoreScope compatibility check.
+                    // An absent Beacon endpoint permits a positive CoreScope compatibility check.
                     if (e.status != 404 || requiresBeacon) throw e
+                    coreScopeCheck(host, captured)
+                } catch (e: BeaconApiException.InvalidResponse) {
+                    // So does a successful answer that isn't Beacon JSON: CoreScope serves its web
+                    // page (200, HTML) for every unknown path, /api/v1/info included. Errors,
+                    // timeouts and throttling still never count as evidence of CoreScope.
+                    if (requiresBeacon) throw e
                     coreScopeCheck(host, captured)
                 }
             }

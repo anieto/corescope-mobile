@@ -189,6 +189,29 @@ struct ModelDecodingTests {
         #expect(envelope.id == -1)
     }
 
+    @Test func sharedCoreScopeLiveFixturePreservesObservedWireSemantics() throws {
+        struct Fixture: Decodable {
+            struct Source: Decodable { let backend: String; let release: String; let commit: String }
+            let source: Source
+            let frames: [LiveEnvelope]
+        }
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("shared/fixtures/core/live-session.json")
+        let fixture = try JSONDecoder().decode(Fixture.self, from: Data(contentsOf: url))
+
+        #expect(fixture.source.backend == "corescope")
+        #expect(fixture.source.release == "v3.14.0")
+        #expect(fixture.source.commit == "9dbc287579a237ffa744dd0c91fa7227d09763ac")
+        #expect(fixture.frames.count == 3)
+        #expect(fixture.frames[0].data == nil)
+        let packet = try #require(fixture.frames[1].data)
+        #expect(packet.observerId == "OBS-NORTH")
+        #expect(packet.observationCount == 3)
+        #expect(packet.decoded?.payload?.publicKey == "aa11000000000000000000000000000000000000000000000000000000000000")
+        #expect(packet.resolvedPath == ["aa11000000000000000000000000000000000000000000000000000000000000", nil])
+        #expect(fixture.frames[2].data?.decoded == nil)
+    }
+
     @Test func decodesRegionsMap() throws {
         let json = """
         { "AUS": "Austin, TX", "SAT": "San Antonio, TX" }

@@ -1,0 +1,31 @@
+{
+  "schema": "org.nodescope.field.snapshot",
+  "version": 1,
+  "activity": "nearby",
+  "capturedAt": "2026-10-22T20:00:00Z",
+  "appVersion": "0.10.0",
+  "source": {
+    "backend": "corescope",
+    "origin": "https://example.test",
+    "displayName": "Example",
+    "regionScope": "SAT"
+  },
+  "target": {
+    "kind": "node",
+    "identifier": "9cd8fcf22a47333b591d96a2b848b73f457b1bb1a3ea2453a885f9e5787765b1",
+    "displayName": "Hill Top",
+    "role": "repeater",
+    "reportedCoordinate": { "latitude": 30.2672, "longitude": -97.7431 },
+    "activityAt": "2026-10-22T19:55:00Z",
+    "catalogFetchedAt": "2026-10-22T20:00:00Z"
+  },
+  "geometry": { "distanceMeters": 293095.4775595935, "trueBearingDegrees": 17.57049352937031 },
+  "packetIdentifiers": [],
+  "routeIdentifiers": [],
+  "state": {
+    "cached": false,
+    "partial": true,
+    "unsupported": ["coordinateTimestamp"],
+    "limitations": ["Position age unknown"]
+  }
+}

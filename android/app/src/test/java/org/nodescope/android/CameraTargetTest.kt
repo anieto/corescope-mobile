@@ -38,6 +38,15 @@ class CameraTargetTest {
         assertEquals(-97.50, (target.east + target.west) / 2, 0.01)
     }
 
+    @Test fun quickPickFramesAllOfItsRegions() {
+        // "Central Texas" = AUS, SAT, ACT: the frame spans San Antonio (south) to Waco (north).
+        val target = cameraTarget(snapshot(), "AUS,SAT,ACT") as CameraTarget.Bounds
+        val single = cameraTarget(snapshot(), "SAT") as CameraTarget.Bounds
+        assertTrue(target.north > 31.5)
+        assertTrue(target.south < 29.6)
+        assertTrue(target.north - target.south > single.north - single.south)
+    }
+
     @Test fun unknownRegionStillFallsBackToItsNodes() {
         val target = cameraTarget(snapshot().copy(regionCoordinates = emptyMap()), "CRP") as CameraTarget.Bounds
         assertEquals(30.5, target.north, 0.001)

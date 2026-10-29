@@ -12,6 +12,7 @@ struct RootTabView: View {
         case channels
         case observers
         case settings
+        case contextAction
 
         var title: LocalizedStringKey {
             switch self {
@@ -20,6 +21,7 @@ struct RootTabView: View {
             case .channels: "Channels"
             case .observers: "Observers"
             case .settings: "Settings"
+            case .contextAction: "Action"
             }
         }
 
@@ -30,11 +32,13 @@ struct RootTabView: View {
             case .channels: "bubble.left.and.bubble.right"
             case .observers: "antenna.radiowaves.left.and.right"
             case .settings: "slider.horizontal.3"
+            case .contextAction: "ellipsis"
             }
         }
     }
 
     @State private var selectedTab: Tab = .map
+    @State private var contextAction = TabBarContextActionStore()
     @AppStorage("lastSelectedTab") private var lastSelectedTabRawValue = Tab.map.rawValue
     @State private var resetIDs: [Tab: UUID] = Dictionary(
         uniqueKeysWithValues: Tab.allCases.map { ($0, UUID()) }
@@ -71,7 +75,16 @@ struct RootTabView: View {
                 SettingsScreen(resetID: resetIDs[.settings] ?? UUID())
                     .id(resetIDs[.settings])
             }
+
+            if let kind = contextAction.kind {
+                SwiftUI.Tab(value: Tab.contextAction) {
+                    Color.clear
+                } label: {
+                    Label(kind.title, systemImage: kind.systemImage)
+                }
+            }
         }
+        .environment(contextAction)
         .background {
             NodeScopeBackground()
         }
@@ -113,7 +126,9 @@ struct RootTabView: View {
         Binding(
             get: { selectedTab },
             set: { tab in
-                if selectedTab == tab {
+                if tab == .contextAction {
+                    contextAction.perform()
+                } else if selectedTab == tab {
                     resetIDs[tab] = UUID()
                 } else {
                     selectedTab = tab
@@ -126,7 +141,7 @@ struct RootTabView: View {
         // Keep Settings alive while it reports the connection result for the
         // newly selected analyzer. The picker dismisses itself, while every
         // data-bearing tab still receives a fresh navigation/data reset.
-        for tab in Tab.allCases where tab != .settings {
+        for tab in Tab.allCases where tab != .settings && tab != .contextAction {
             resetIDs[tab] = UUID()
         }
     }

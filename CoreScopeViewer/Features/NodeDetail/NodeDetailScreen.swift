@@ -13,6 +13,13 @@ struct NodeDetailScreen: View {
     @State private var linkedNodesByPublicKey: [String: MeshNode] = [:]
     @State private var selectedLinkedNode: MeshNode?
     @State private var meshCoreContact: MeshCoreContactLink?
+    @State private var showsFieldTools = false
+
+    private var hasFieldCoordinate: Bool {
+        guard let latitude = displayedNode.lat, let longitude = displayedNode.lon else { return false }
+        return !(latitude == 0 && longitude == 0)
+            && FieldCoordinate(latitude: latitude, longitude: longitude) != nil
+    }
 
     var body: some View {
         ScrollView {
@@ -31,6 +38,15 @@ struct NodeDetailScreen: View {
                 )
 
                 NodeIdentityCard(node: displayedNode)
+
+                if hasFieldCoordinate {
+                    Button {
+                        showsFieldTools = true
+                    } label: {
+                        FieldGuidanceLinkCard(entityName: displayedNode.name ?? String(localized: "this node"))
+                    }
+                    .buttonStyle(.plain)
+                }
 
                 if settings.beaconBackend != nil {
                     BeaconFeatureNotice(capability: .nodeHealth)
@@ -90,7 +106,7 @@ struct NodeDetailScreen: View {
             .padding(16)
             .adaptiveContentWidth()
         }
-        .background(NodeScopeBackground())
+        .background(MeshBackground(subdued: true).ignoresSafeArea())
         .refreshable {
             await refreshNodeData(forceCatalogRefresh: true)
         }
@@ -100,6 +116,16 @@ struct NodeDetailScreen: View {
             recentItemsStore.record(node: node, source: favoriteSource)
         }
         .toolbar {
+            if hasFieldCoordinate {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showsFieldTools = true
+                    } label: {
+                        Image(systemName: "location.viewfinder")
+                    }
+                    .accessibilityLabel("Guide to Node in Field Tools")
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 favoriteButton
             }
@@ -112,6 +138,12 @@ struct NodeDetailScreen: View {
         }
         .sheet(item: $meshCoreContact) { contact in
             MeshCoreContactSheet(contact: contact)
+        }
+        .fullScreenCover(isPresented: $showsFieldTools) {
+            FieldToolsScreen(
+                initialNode: displayedNode,
+                closeAction: { showsFieldTools = false }
+            )
         }
         .onChange(of: nodeCatalogViewModel.nodes) {
             linkedNodesByPublicKey = nodeCatalogViewModel.nodesByPubkey
@@ -849,6 +881,7 @@ private struct MeshCoreContactSheet: View {
                 .padding(20)
                 .frame(maxWidth: .infinity)
             }
+            .meshPageBackground()
             .navigationTitle("Add to MeshCore")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

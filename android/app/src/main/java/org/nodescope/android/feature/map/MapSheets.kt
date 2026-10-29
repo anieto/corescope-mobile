@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.map
 
+import org.nodescope.android.core.design.MeshModalBottomSheet
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -45,7 +46,7 @@ fun roleColor(role: String): Color = roleColors[role.lowercase()] ?: Color(0xFF2
 @Composable
 internal fun MapFiltersSheet(filters: MapFilters, observers: List<MeshObserver>, onChange: (MapFilters) -> Unit, onDismiss: () -> Unit) {
     var picking by remember { mutableStateOf(false) }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    MeshModalBottomSheet(onDismissRequest = onDismiss) {
         if (picking) ObserverPicker(filters.observerId, observers, onBack = { picking = false }) {
             onChange(filters.copy(observerId = it)); picking = false
         } else Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp)) {
@@ -144,7 +145,7 @@ internal fun RouteDetailsSheet(details: RouteDetails, onNode: (String) -> Unit, 
     val now = rememberNow()
     val packet = details.packet
     val age = relativeTime(Instant.ofEpochMilli(details.observedAt), now)
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    MeshModalBottomSheet(onDismissRequest = onDismiss) {
         LazyColumn(Modifier.fillMaxWidth(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp)) {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -210,7 +211,7 @@ private fun SummaryRow(label: String, value: String) {
 @Composable
 internal fun MapNodeSelectionSheet(node: org.nodescope.android.core.model.MeshNode, onDetails: () -> Unit, onDismiss: () -> Unit) {
     val now = rememberNow()
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    MeshModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

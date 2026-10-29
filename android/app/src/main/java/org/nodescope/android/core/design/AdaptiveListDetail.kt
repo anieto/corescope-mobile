@@ -1,5 +1,7 @@
 package org.nodescope.android.core.design
 
+import androidx.compose.ui.draw.clip
+
 import androidx.compose.foundation.background
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
@@ -70,12 +72,12 @@ fun AdaptiveListDetail(
             listPane = {
                 AnimatedPane(Modifier.preferredWidth(listAtFold ?: 340.dp)) {
                     // Side by side, each pane is its own rounded card on the canvas.
-                    Box(if (twoPanes && wide) Modifier.fillMaxSize().paneCard() else Modifier.fillMaxSize()) { listPane(twoPanes) }
+                    Box(if (twoPanes && wide) Modifier.fillMaxSize().clip(PaneShape).meshPageBackground() else Modifier.fillMaxSize()) { listPane(twoPanes) }
                 }
             },
             detailPane = {
                 AnimatedPane {
-                    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface,
+                    Surface(Modifier.fillMaxSize().clip(if (twoPanes && wide) PaneShape else androidx.compose.ui.graphics.RectangleShape).meshPageBackground(), color = androidx.compose.ui.graphics.Color.Transparent,
                         shape = if (twoPanes && wide) PaneShape else androidx.compose.ui.graphics.RectangleShape) {
                         if (selectedId == null) {
                             Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {

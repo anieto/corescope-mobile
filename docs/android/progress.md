@@ -1,5 +1,292 @@
 # Android implementation progress
 
+2026-10-26 — Link Profile: calculation and interactive editor increment.
+
+Explore now opens Link Profile with manual or CARTO map endpoint selection, antenna heights,
+US/Canada and EU/UK radio presets, custom radio/link-budget fields, and terrain analysis.
+The responsive workspace keeps the map beside the editor on wide windows and above
+scrolling controls on phones. Results include terrain, line of sight, Fresnel zone, clearance, path loss, receive power,
+link margin, bearing, source timestamps, and attribution. Input edits cancel active requests and
+invalidate prior results; inputs survive recreation through SavedStateHandle.
+
+The RF engine matches iOS golden values. Open-Meteo uses the same 20/50/80/100 sampling
+thresholds and shortest-longitude interpolation, with cancellable HTTP, strict response counts,
+and a bounded 30-day disk cache. Endpoint coordinates are sent for elevation previews;
+sampled path coordinates are sent when Analyze is selected.
+
+2026-10-27 — Node Planner navigation and persistent Link Profile workspace.
+Explore opens the Node Planner landing page, with Link Profile available and Candidate Sites
+marked Coming next, matching iOS. Link Profile keeps the map beside the editor on wide windows
+and above compact expandable controls on phones. Point A confirmation advances to Point B;
+tentative selection can be cancelled, and known analyzer nodes are selectable endpoints.
+The editor/result viewport carries the subdued mesh while the map stays undecorated.
+
+2026-10-27 — Endpoint elevation previews and iOS card opacity.
+Endpoint cards show ground elevation and total height in feet or meters according to the app
+preference. Coordinate edits debounce lookups for 350 ms, cancel superseded work, clear stale
+values, and handle unavailable terrain independently for each endpoint. Restored endpoints
+reload previews; analysis reuses the same cache and refreshes endpoint heights from its profile.
+The planner and endpoint/radio cards use the shared iOS-matched 80% white/slate fill. The terrain
+result card remains fully opaque. Map/editor copy explains when coordinates go to Open-Meteo.
+
+2026-10-27 — Settings-aware antenna height controls and chart units.
+Antenna heights use one-unit sliders matching iOS: 0–100 feet or 0–30 meters. Inputs remain
+stored in meters; changing the display unit does not mutate physical heights or invalidate an
+existing result. The Settings preference is passed into the planner, and the screen default uses
+the shared LocalDistanceUnit. Ground heights, chart elevation bounds, distance labels, chart
+accessibility description, and displayed terrain resolution all use the selected units. Result
+and chart distances reuse the application's short-distance feet/meters formatting. A manual
+Pixel 10 compact-light check confirmed the default 32.81 ft label, the 0–100 ft range, and a
+slider tap updating to 50 ft without overlap; Imperial settings were retained.
+
+Remaining parity: hinge-aware pane placement and finer chart presentation. (The planner map now follows the live map's provider; see the later entry.) Selection and layout validation for this increment is recorded below. Native map transitions
+are immediate to avoid surface ghosting. The native map tap callback reads current endpoint
+state so selecting Point B works after confirming Point A.
+
+Validation: debug APK builds; the full JVM suite passed with 363 tests, zero failures, one skipped.
+Five preview/view-model tests cover debounce, independent endpoint failures, and cancellation,
+including a late analysis failure after editing.
+Lint is blocked by the existing API-33 URLDecoder overload in FieldContracts.kt:91 (minimum API 26).
+2026-10-27 validation: debug and instrumentation APKs rebuild successfully. All five focused
+Compose tests pass on the Pixel 10 emulator: light compact, dark wide, enlarged text, and
+Explore → Node Planner → Link Profile navigation, and selecting units in Settings before opening
+the planner. Unit-switching checks confirm unchanged physical inputs/results, converted result
+labels, and slider edits converted back to meters. Coverage includes cached elevation previews and total heights in meters/feet, cached analysis,
+compact panel expansion, cancellation of initial selection, and clearing stale results after edits. Manual verification of the final APK confirmed Explore navigation, sequential A/B map
+selection and confirmation, both endpoint markers and their connecting line, and the compact
+editor in light mode without visible overlaps or transition ghosting. A separate visual pass
+confirmed translucent landing/endpoint cards and readable elevation placeholders in both light
+and dark compact portrait; Appearance was restored to System. Populated elevations, wide
+layout and enlarged text were covered by the automated checks rather than that visual pass.
+Exhaustive visual checks of
+foldables, rotation, nested navigation, and map sheets in both themes remain outstanding.
+
+2026-10-27 — Link Profile endpoint pins.
+Point A, Point B and the tentative choice were drawn through the route-anchor layer as role
+dots, so they looked like nodes. They now use `MapOverlays.setPins`: labelled teardrop pins
+(A blue, B orange, tentative grey, as iOS Marker tints) in a MapLibre symbol layer above all
+other overlays. Known nodes keep the app's role-coloured dots.
+
+2026-10-27 — Link Profile follows the live map's provider and style.
+The planner map now uses the provider picked on the live map (CARTO or Google Maps) and, for
+CARTO, the picked style. The CARTO style is now saved with the provider choice (`cartoStyle`,
+null = follow the app theme), so it persists across launches instead of resetting each session.
+Google implements `setPins` as markers (name is the marker title only). Map taps now report
+their coordinate through `MapTap.coordinate` on both engines, replacing the planner's
+MapLibre-only click listener. CARTO/OSM attribution buttons show only for CARTO.
+Validation: debug and instrumentation APKs build; JVM suite 363 tests, zero failures, one skipped.
+
+2026-10-27 — Link Profile foldable, tabletop and tablet layouts.
+An unfolded vertical hinge splits the map and editor into the two halves, with the pane gap on
+the crease (both halves at least 280 dp, otherwise the normal layout). Pane order deliberately
+does not copy iOS Duo, whose narrow right-hand editor works around the iOS tab bar: Android puts
+the editor first and the map on the right, in equal halves at the hinge. A half-opened horizontal hinge (tabletop) puts the map above the crease
+and the controls below it. Tablets and wide windows (840 dp, 1000 dp at 150%+ font scale) put
+the editor first, sized as on iPad (34% of the width, 340–420 dp), with the map on the larger right side. `rememberTabletopSplit`
+joins `rememberFoldSplit` in FoldSplit.kt. The map camera, an unconfirmed tap (tied to its
+endpoint, so it never carries from A to B), and the controls' scroll position are held above
+the layout branches, so they survive the activity recreation from folding and rotation. The map
+is movable content, so a live posture change moves it rather than rebuilding it.
+Validation: debug and instrumentation APKs build; JVM suite 363 tests, zero failures, one skipped.
+Not yet checked on a foldable or tablet emulator: hinge placement, tabletop, scrolling in both
+panes, and state across fold/rotate.
+
+2026-10-27 — Link Profile terrain chart and result card match iOS.
+The chart is now a port of iOS's LinkProfileTerrainCanvas (itself adapted from MeshCore One,
+GPL v3; the attribution header is carried over). It shows the full Fresnel zone faint, the 60%
+band stronger, both clipped at the terrain, with dashed zone edges. Terrain is drawn as a 35% brown
+fill with an outline, with small red dots where terrain enters the 60% zone, and the line of sight
+on top. Blue A / orange B antenna masts match the map pins. A dashed grid has five elevation and
+five distance labels in the app's units, and there is a swatch legend. The vertical range now
+starts just below the terrain instead of the Fresnel zone's bottom, which had flattened the terrain.
+The result card follows iOS:
+- a status icon and "Estimate"
+- label/value rows: distance, bearing (° true), losses, receive level, margin, worst clearance,
+  terrain source, calculated time
+- an Assumptions summary
+Ground A/B, sample count and fetch time were dropped to match iOS; ground elevation stays on the
+endpoint cards. The Open-Meteo attribution link and model ID remain. The UI test's
+unit-conversion check now uses the Distance row.
+Validation: debug and instrumentation APKs build; JVM suite 363 tests, zero failures, one skipped.
+The chart has not been visually compared with iOS on a device yet.
+
+2026-10-27 — Link Profile opens on the selected region (both platforms).
+With no endpoints, the planner map now frames the region selected for the live map instead of
+0°, 0° at world zoom. Android reuses the live map's `cameraTarget()`, framing once per screen
+(saved, so a restored camera is not re-framed). iOS uses a new `RegionCameraFraming` in
+MapScreen.swift: a selected region's published center and radius or its airport, else the
+community viewport, else every offered region. The live map's viewport helpers now delegate to
+it too. iOS replaces its `.userLocation` start, and stays on the known nodes until region data
+arrives. Validation: Android JVM suite and APKs build; iOS simulator build succeeds (Xcode 27.1).
+
+2026-10-27 — Region quick picks (both platforms).
+CoreScope's `/api/config/region-quick-picks` publishes named groups of region codes (MeshTexas:
+Central, South, West, North and East Texas). Both apps load them with the regions, offer them
+in the region menus between All and the single regions, and show the pick's name as the
+selection. The selection stays the server's `region=` value, so a pick is its codes joined with
+commas ("AUS,SAT,ACT"), which CoreScope accepts on every endpoint; fetches are unchanged.
+Client-side comparisons now test membership: Android `regionIncludes()`, iOS
+`RegionFilterStore.includes(_:)`. That covers observer lists, map observer options, live-packet
+region filtering, route observations and channel messages. A pick frames the area around its
+regions on the live map and in Link Profile. The selection is pick-or-single, not arbitrary
+multi-select, by choice. Beacon and older servers offer no picks; a failed or HTML response
+means none.
+Validation: JVM suite 369 tests (6 new), zero failures, one skipped. MyNodesBaseRepositoryTest
+failed once on the "16 calls" count, then passed 5/5 alone and in a full rerun, so it is flaky
+and unrelated. iOS simulator build succeeds.
+Follow-up the same day: menus label the groups "Region groups" (first "Areas", renamed since "area" vs "region" read ambiguously) and the single codes "Regions"; the
+headers only appear when the host has picks (Android reuses the map's MenuSectionHeader). iOS
+framed a pick from its airport points alone (BeaconRegionReader.Frame.enclosing, 20% padding),
+which cut off south San Antonio. It now combines each region's full single-region view
+(`RegionCameraFraming.areaFrame`: published radius, else 45 km), as Android's union of
+`regionBounds` already did. MyNodesBaseRepositoryTest failed again in one full run: node
+fetches and observer pages race for a shared 20-request budget, so the count is
+interleaving-dependent.
+
+2026-10-27 — Link Profile path coloured by clearance (both platforms).
+After Analyze, the map's A–B line and the chart's line of sight are split into stretches by
+Fresnel clearance, using the result card's bands: green clear (80% and up), orange marginal
+(60–80%), red obstructed (below 60%, which includes blocked). Obstructed stretches are also
+dashed, so they read without colour. Each gap between samples takes the worse of its two ends,
+and the endpoint samples carry no clearance, as in the engine (`clearanceStretches`; Android by
+distance, iOS by sample index so the map follows the sampled coordinates). The line is blue
+until analyzed and returns to blue when an edit clears the result. Map lines get a casing so
+they read on every basemap and between dashes (MapLibre: separate solid and dashed layers,
+since a dash pattern cannot vary per feature; Google: a polyline pair per stretch). A legend
+sits on the map while a result is shown, and the chart legend drops "Line of sight" for the
+same three entries. Validation: JVM suite 370 tests, zero failures, one skipped; iOS app and
+tests build. Not yet checked on a device.
+Follow-up after the first device check: the whole analyzed path is now dashed (shorter dashes),
+with colour alone giving clearance; the unanalyzed line stays solid blue. The chart's line of
+sight keeps one dash phase across colour changes. Start Over (both platforms) clears A, B and
+the result, keeps heights and radio settings, and returns to choosing Point A. Once both
+endpoints are set and none is being chosen, the map fits the whole path: Android fits the bounds
+inside insets clear of the legend and pins, and remembers the fitted pair so a rotation does not
+re-fit; iOS pads the path's bounds (20% each side, 45% above for the prompt, legend and pins)
+and relies on Map keeping its camera inside the safe area. A first iOS version also subtracted
+the safe-area insets from the map's size, but that size already excludes them, so the visible
+height went negative and the fit zoomed out to the whole region. The iOS dashes were then
+slimmed, then the casing was dropped on iOS (it filled the gaps with white and looked heavy)
+and both platforms moved to a shorter dash period at the same weight: iOS 3.5 pt line with
+3.5/2.5 dashes, MapLibre 0.9/0.65 line widths, Google 3.5/2.5 dp. iOS then got back a faint outline
+(5 pt, white at 55%) dashed in step with the line, so it edges the dashes without filling gaps.
+
+2026-10-27 — Link Profile redesign: full-screen map and bottom sheet (branch `link-profile-sheet`).
+Phones: the map fills the screen under a Material bottom sheet. Collapsed, the sheet is only its
+header: the prompt while points are placed ("Choose Point A", Cancel / Use Point A; the map no
+longer has its own title, prompt or buttons), "Analyzing link…", an error with Try Again, or the
+verdict with link margin and distance. Pulled up, it holds a card per point (the node's name, or
+"Dropped pin", with ground elevation and antenna height; tapping opens the height slider, gain,
+loss, Move on map and Enter coordinates), the radio settings (gains and losses moved to the
+point cards), the full result, Start Over and one privacy/estimate note. Coordinates are hidden
+unless asked for, except without a map. Choosing a point lowers the sheet. The logo, CARTO/OSM
+attribution and path framing sit above the collapsed sheet. Foldable, tabletop and wide layouts
+keep their panes, with the same header and content in the side or lower panel. Swap was not
+added (the result is the same either way). Analysis now runs on its own 600 ms after the last
+change once both points parse (`scheduleAnalysis`), so there is no Analyze button; Try Again
+analyzes at once. Placing a point on a known node keeps its name (`place`, saved per endpoint);
+typing coordinates drops it. Validation: JVM suite 371 tests (1 new; two view-model tests updated
+for auto-analysis), zero failures, one skipped; LinkProfileUiTest updated and compiles but has not
+been run. iOS not yet changed.
+Follow-up: on first open the sheet showed only its handle. The peek follows the header, which is
+measured after the first frame, and a collapsed M3 sheet does not move to a new peek on its own,
+so it is settled again whenever the peek changes while collapsed. Default antenna height is now
+20 ft (6.096 m) in imperial and 6 m in metric, on both platforms (Android takes the unit as a
+view-model argument; iOS reads the saved unit); typed or saved heights are unchanged.
+Radio card trimmed: the US/Canada and EU/UK chips (no Custom chip; editing a value makes the
+radio custom and the toggle reads "Customize radio · edited"), then Customize radio with frequency,
+transmit power and sensitivity. Bandwidth, spreading factor and coding rate were removed: the
+engine never used them. Only those three values switch the preset to Custom (point gains and
+losses used to as well). The refraction note moved to the result's Assumptions. Heights show in
+whole feet or metres. The sheet's header is pinned while its content scrolls (side panels too),
+and the sheet carries the page mesh like the side panels and the iOS panel. iOS not yet changed.
+Later: the drag handle (drawn by us so it sits on the mesh) toggles the sheet when tapped, as
+the scaffold's own did; Start Over is a tonal button. The path casing is now dashed in step with
+dashed stretches on both engines (it used to run solid under the dashes and fill the gaps, worst
+in white on Google's dark map) and is dark on dark maps, light on light ones. Link Profile has the
+live map's layers button (shared `MapLayersMenu`); a choice there is saved for the live map too.
+CARTO Dark Matter is recoloured at load on every MapLibre map (`tintDarkMatter`): land #18232D,
+water #0C1925, roads and boundaries in slate by class, casings just darker than land, labels
+unchanged, so it sits with the navy theme instead of near-black.
+Path restyle (both platforms): the analyzed path is now a solid route coloured by clearance
+over one dark casing (7 wide under a 4-wide line, round caps and joins), and the unanalyzed A–B
+line is the dashed one; the legend swatches are solid to match (the chart's line of sight stays
+dashed). Start Over became a "Reset" button beside the header, shown once a point is placed and
+no point is being chosen, so it works with the sheet collapsed. iPhone's panel floats 8 pt above
+the tab bar.
+The phone panel now floats over the map on both platforms: opening it covers the map instead of
+moving the camera (iOS: ZStack overlay, the map's safe area clears only the collapsed header;
+Android: a plain overlay replaced BottomSheetScaffold, suspected of blocking pinch). iOS map
+gestures: the tap-to-place gesture and node buttons only take touches while a point is chosen,
+so they no longer catch the start of a pinch.
+iOS port (same branch): iPhone gets the map under a panel that collapses to its header and
+expands (handle tap, or drag on handle/header) to the points, radio and results; choosing a point
+collapses it. iPad's side column and the Duo's right screen (map stays on the larger left screen)
+show the same header pinned above the scrolling content. The header confirms map taps (the old
+bottom selection bar and the map's prompt capsule are gone; the map keeps only the legend), so the
+tentative tap moved into the model. The model gains node names, automatic analysis (600 ms,
+cancelling stale runs) and loses Swap, the Analyze button, and bandwidth/SF/CR. Point cards and
+the radio card match Android (gain and loss per point; Customize radio for frequency, power and
+sensitivity). iOS app and tests build; not yet checked on a device.
+
+2026-10-20 — 0.9.0 Android review: account first visit, selection cache and UI consistency.
+
+Fixes: the CoreScope account screen called `/api/auth/me` without a saved session and showed
+"Sign in again" on a first visit; like iOS it now validates only a restored session and goes
+straight to sign-in. Added iOS's Try again when the screen can't load. `AccountSelectionStore`
+decodes each account selection once per save instead of on every `favorites` read, and caches
+claimed nodes per baseline (Favorites rows read both several times per recomposition).
+
+UI aligned with the rest of the app: Favorites uses an Add icon button in the header, Activity and
+CoreScope account as `NavigationRow`s in a surface card, `EmptyState`, the gold star for removal
+(menu only when a node is both a device and account favorite), and the membership label inside the
+row. Activity uses `KindIcon`, `SectionLabel`, `EmptyState` and an error line with Retry. The account
+screen is split into iOS's cards (connection, status, signed in, reset, sync, account nodes, sign in)
+with Settings-style headings, destructive Sign out/Remove, and autofill hints on the sign-in fields.
+The Explore Favorites card uses the surface card color and the app's gold outlined star.
+
+Validation: debug app and instrumented-test APKs build; all 330 JVM tests pass; lint unchanged
+(33 pre-existing dependency/style warnings). UI tests updated for "Add favorite node" (now a content
+description) and "Load more"; instrumented tests were not run.
+
+2026-10-16 — My Nodes analytics cache and scheduler.
+
+Ported `MyNodesAnalyticsRepository`: source/session isolation, original snapshot timestamps,
+15-minute reuse, coalesced refreshes, two concurrent node loads under a shared 20-attempt budget,
+explicit deferred rows, and per-caller cancellation. Source changes and clear reject late writes.
+CoreScope/Beacon factories use the budgeted adapters; CoreScope Retry-After persists across batches.
+New keys joining an active batch are deferred to an explicit later batch. No dashboard UI or
+persistent baseline store is enabled yet. Details and measurement limits are in
+[the shared implementation log](../my-nodes/implementation.md).
+
+Validation: all 70 targeted JVM tests pass (57 Beacon API, five foundation, eight repository).
+The repository size matrix covers 0, 1, 20, 100 and 500 selections; adapter fixtures verify cache
+reuse without another HTTP call and a 300-second Retry-After shared across batches.
+
+2026-10-16 — My Nodes HTTP integration and bounded Beacon history.
+
+Ported the Swift transport allowance into the Beacon client and CoreScope `BodySource` factory.
+The dashboard history entry point spends at most four calls per node, retains partial pages on
+batch exhaustion, preserves allowance across session replacement and respects Beacon cooldowns.
+Scoped OkHttp clients disable implicit redirects/retries and HTTP caching. Repository cache,
+coalescing, batch scheduling and UI wiring remain open; see the shared implementation log.
+Validation: 54 Beacon API tests and five foundation tests pass, including six new integration tests.
+
+2026-10-16 — My Nodes evidence and request gate.
+
+Ported the per-metric history comparison gate and batch request limiter from Swift. All five
+targeted JVM tests pass, including 12 shared evidence cases, up to 500 favorites, failed-attempt
+accounting, concurrency, cancellation and stale-result rejection. At this checkpoint production HTTP wiring was still
+pending; see the shared implementation log for the boundary and remaining A2 work.
+
+2026-10-16 — 0.9.0 account contract foundation.
+
+Added `CoreScopeAccountSettings` and matching shared-fixture tests after the iOS contract model.
+Raw settings values and unknown item fields stay intact; unsupported schema/allowlist shapes do
+not enable sync. All four targeted JVM tests pass. Login, persistence, sync and dashboard work
+remain pending. See [the shared 0.9.0 log](../my-nodes/implementation.md) for the upstream pin,
+merge oracle, measured request costs and next tasks.
+
 2026-09-21 — first foundation increment.
 
 The user authorized deleting the earlier prototype and beginning implementation.
@@ -976,4 +1263,3 @@ Checked against iOS `0bfb2de` after Codex committed it.
 - Map framing for a Beacon source with no region already matched iOS (trusted region centers).
 - Not ported: session-scoped cache keys (see phase3-implementation.md).
 - 249 JVM tests pass; not yet checked on a device.
-

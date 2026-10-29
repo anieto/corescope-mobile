@@ -1,0 +1,49 @@
+{
+  "source": {
+    "backend": "corescope",
+    "release": "v3.14.0",
+    "commit": "9dbc287579a237ffa744dd0c91fa7227d09763ac"
+  },
+  "frames": [
+    { "type": "heartbeat" },
+    {
+      "type": "packet",
+      "data": {
+        "id": 991,
+        "raw": "4F01A3",
+        "decoded": {
+          "header": {
+            "routeType": 1,
+            "payloadType": 4,
+            "payloadVersion": 1,
+            "payloadTypeName": "ADVERT"
+          },
+          "path": { "hops": ["a1", "b2"] },
+          "payload": {
+            "name": "Fixture Repeater",
+            "pubKey": "aa11000000000000000000000000000000000000000000000000000000000000"
+          }
+        },
+        "snr": 6.5,
+        "rssi": -92,
+        "hash": "deadbeef",
+        "observer_id": "OBS-NORTH",
+        "observer_name": "North Observer",
+        "path_json": "[\"a1\",\"b2\"]",
+        "observation_count": 3,
+        "resolved_path": [
+          "aa11000000000000000000000000000000000000000000000000000000000000",
+          null
+        ]
+      }
+    },
+    {
+      "type": "packet",
+      "data": {
+        "id": 992,
+        "observer_id": "OBS-SOUTH",
+        "path_json": "[\"c3\",\"d4\"]"
+      }
+    }
+  ]
+}

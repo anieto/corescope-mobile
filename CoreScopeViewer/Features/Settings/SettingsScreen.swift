@@ -9,6 +9,7 @@ struct SettingsScreen: View {
     @Environment(ObserverRegionLookup.self) private var observerRegionLookup
     @Environment(AppearanceSettings.self) private var appearanceSettings
     @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
+    @AppStorage(AppearanceSettings.backgroundTextureDefaultsKey) private var backgroundTextureEnabled = true
     @State private var hostInput = ""
     @State private var sourceSaveStatus: SourceSaveStatus?
     @State private var sourceSaveID = UUID()
@@ -36,6 +37,13 @@ struct SettingsScreen: View {
                         }
                         .pickerStyle(.segmented)
                         .labelsHidden()
+
+                        Divider()
+
+                        Toggle("Background Texture", isOn: $backgroundTextureEnabled)
+                        Text("Show subtle network lines and nodes behind page content.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                     }
 
                     SettingsPanel(title: "Units", symbol: "ruler") {
@@ -133,7 +141,7 @@ struct SettingsScreen: View {
                 .padding(.top, 18)
                 .adaptiveContentWidth()
             }
-            .background(NodeScopeBackground())
+            .background(MeshBackground().ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
             .onAppear { hostInput = settings.host }
             .overlay(alignment: .bottom) {

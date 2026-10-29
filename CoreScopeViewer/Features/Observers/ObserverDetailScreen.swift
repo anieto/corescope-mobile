@@ -14,6 +14,7 @@ struct ObserverDetailScreen: View {
     @State private var exportDocument = TextExportDocument()
     @State private var exportContentType = UTType.json
     @State private var exportFilename = "observer-statistics"
+    @State private var showsFieldTools = false
 
     private var usesBeaconDetail: Bool { viewModel.beaconDetailSource != nil || liveFeed.usesBrowseSnapshots }
     private var isCurrentSource: Bool {
@@ -25,6 +26,11 @@ struct ObserverDetailScreen: View {
         detail.online = observer.online
         let statuses = liveFeed.beaconObserverStatuses(sourceSessionID: settings.sourceSession.id)
         return statuses[observer.id.lowercased()]?.applying(to: detail) ?? detail
+    }
+    private var hasFieldCoordinate: Bool {
+        guard let latitude = displayedObserver.lat, let longitude = displayedObserver.lon else { return false }
+        return !(latitude == 0 && longitude == 0)
+            && FieldCoordinate(latitude: latitude, longitude: longitude) != nil
     }
 
     var body: some View {
@@ -44,6 +50,16 @@ struct ObserverDetailScreen: View {
 
                 if isCurrentSource {
                     ObserverIdentityCard(observer: displayedObserver)
+                    if hasFieldCoordinate {
+                        Button {
+                            showsFieldTools = true
+                        } label: {
+                            FieldGuidanceLinkCard(
+                                entityName: displayedObserver.name ?? String(localized: "this observer")
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
 
                 if let analytics = viewModel.analytics {
@@ -89,46 +105,18 @@ struct ObserverDetailScreen: View {
             .padding(16)
             .adaptiveContentWidth()
         }
-        .background(NodeScopeBackground())
+        .background(MeshBackground(subdued: true).ignoresSafeArea())
         .navigationTitle(isCurrentSource ? displayedObserver.name ?? "Observer" : "Observer")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             recentItemsStore.record(observer: observer, source: favoriteSource)
         }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                favoriteButton
-                    .disabled(!isCurrentSource)
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button {
-                        UIPasteboard.general.string = observer.id
-                    } label: {
-                        Label("Copy Observer ID", systemImage: "doc.on.doc")
-                    }
-                    if let url = NodeScopeDeepLink.observer(observer.id).url {
-                        ShareLink(item: url) {
-                            Label("Share Observer Link", systemImage: "square.and.arrow.up")
-                        }
-                    }
-                    Divider()
-                    Button {
-                        prepareExport(.csv)
-                    } label: {
-                        Label("Export CSV", systemImage: "tablecells")
-                    }
-                    Button {
-                        prepareExport(.json)
-                    } label: {
-                        Label("Export JSON", systemImage: "curlybraces")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                }
-                .accessibilityLabel("Observer actions")
-                .disabled(!isCurrentSource)
-            }
+        .toolbar { observerToolbar }
+        .fullScreenCover(isPresented: $showsFieldTools) {
+            FieldToolsScreen(
+                initialObserver: displayedObserver,
+                closeAction: { showsFieldTools = false }
+            )
         }
         .task(id: "\(settings.sourceSession.id)|\(observer.id)") {
             await loadDetails()
@@ -139,6 +127,53 @@ struct ObserverDetailScreen: View {
             contentType: exportContentType,
             defaultFilename: exportFilename
         ) { _ in }
+    }
+
+    @ToolbarContentBuilder
+    private var observerToolbar: some ToolbarContent {
+        if hasFieldCoordinate {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showsFieldTools = true
+                } label: {
+                    Image(systemName: "location.viewfinder")
+                }
+                .accessibilityLabel("Guide to Observer in Field Tools")
+            }
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            favoriteButton
+                .disabled(!isCurrentSource)
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu {
+                Button {
+                    UIPasteboard.general.string = observer.id
+                } label: {
+                    Label("Copy Observer ID", systemImage: "doc.on.doc")
+                }
+                if let url = NodeScopeDeepLink.observer(observer.id).url {
+                    ShareLink(item: url) {
+                        Label("Share Observer Link", systemImage: "square.and.arrow.up")
+                    }
+                }
+                Divider()
+                Button {
+                    prepareExport(.csv)
+                } label: {
+                    Label("Export CSV", systemImage: "tablecells")
+                }
+                Button {
+                    prepareExport(.json)
+                } label: {
+                    Label("Export JSON", systemImage: "curlybraces")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .accessibilityLabel("Observer actions")
+            .disabled(!isCurrentSource)
+        }
     }
 
     private var favoriteButton: some View {
@@ -686,6 +721,6 @@ private struct ObserverAnalyticsCard<Content: View>: View {
             content
         }
         .padding(16)
-        .instrumentCard()
+        .instrumentCard(fillOpacity: 1)
     }
 }

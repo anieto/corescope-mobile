@@ -25,10 +25,15 @@ data class MeshCoreContactLink(val name: String, val publicKey: String, val type
         fun from(node: MeshNode): MeshCoreContactLink? = from(node.name, node.publicKey, node.role)
 
         fun from(name: String?, publicKey: String, role: String?): MeshCoreContactLink? {
+            val type = contactType(role) ?: return null
+            return from(name, publicKey, type)
+        }
+
+        fun from(name: String?, publicKey: String, type: Int): MeshCoreContactLink? {
             val key = publicKey.trim().lowercase()
             if (key.length != 64 || !key.all { it in '0'..'9' || it in 'a'..'f' }) return null
-            val type = contactType(role) ?: return null
             val label = name?.trim().takeUnless { it.isNullOrEmpty() } ?: key.take(8).uppercase()
+            if (type !in 1..4 || label.toByteArray(Charsets.UTF_8).size > 128) return null
             return MeshCoreContactLink(label, key, type)
         }
 

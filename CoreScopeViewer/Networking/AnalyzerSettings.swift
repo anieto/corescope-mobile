@@ -66,10 +66,13 @@ final class AnalyzerSettings {
                     guard sourceResolutionID == resolutionID else { return }
                     try selectBeacon(verifiedServerInfo: info, expectedSessionID: capturedSession.id, session: session)
                 } catch BeaconAPIError.server(let status, _) where status == 404 && !requiresBeacon {
-                    // Only an absent Beacon endpoint permits a positive CoreScope compatibility check.
-                    let backend = CoreScopeBackend(client: APIClient(baseURL: client.baseURL, session: session), sourceSession: capturedSession)
-                    _ = try await backend.mapDefaults()
-                    try capturedSession.check()
+                    // An absent Beacon endpoint permits a positive CoreScope compatibility check.
+                    try await Self.confirmCoreScope(baseURL: client.baseURL, session: session, sourceSession: capturedSession)
+                } catch is DecodingError where !requiresBeacon {
+                    // So does a successful answer that isn't Beacon JSON: CoreScope serves its web
+                    // page (200, HTML) for every unknown path, /api/v1/info included. Errors,
+                    // timeouts and throttling still never count as evidence of CoreScope.
+                    try await Self.confirmCoreScope(baseURL: client.baseURL, session: session, sourceSession: capturedSession)
                 }
             }
             guard sourceResolutionID == resolutionID, sourceSession.isCurrent, !Task.isCancelled else { return }
@@ -80,6 +83,13 @@ final class AnalyzerSettings {
             backendSelectionError = error is CancellationError
                 ? String(localized: "Source detection was interrupted. Retry to continue.") : error.localizedDescription
         }
+    }
+
+    /// The positive CoreScope check required before a custom host is treated as CoreScope.
+    private static func confirmCoreScope(baseURL: URL, session: URLSession, sourceSession: AnalyzerSourceSession) async throws {
+        let backend = CoreScopeBackend(client: APIClient(baseURL: baseURL, session: session), sourceSession: sourceSession)
+        _ = try await backend.mapDefaults()
+        try sourceSession.check()
     }
 
     // Detection must also call this if the backend kind changes without a host change.

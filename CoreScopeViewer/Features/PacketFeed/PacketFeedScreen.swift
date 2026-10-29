@@ -26,21 +26,22 @@ struct MapPacketWorkspaceScreen: View {
     @State private var compactPacketDetent: PresentationDetent = .medium
     @State private var selectedLivePacketGroupID: LiveObservationGroup.ID?
     @State private var replayingLivePacketGroupID: LiveObservationGroup.ID?
-    @State private var isHingedDevice: Bool?
+    @Environment(\.isHingedDevice) private var isHingedDevice
     @State private var isDuoPacketSidebarVisible = false
     @State private var isDuoPacketDetailsPresented = false
+    @State private var duoPrimaryWidth: CGFloat = 0
+    @State private var duoWorkspaceWidth: CGFloat = 0
+    @State private var duoTrailingInset: CGFloat = 0
+    @State private var isDuoSidebarToolbarShown = false
 
     var body: some View {
         Group {
             if horizontalSizeClass == .regular {
-                switch isHingedDevice {
-                case true:
+                if isHingedDevice {
                     duoWorkspace
                         .transition(.opacity)
-                case false, nil:
+                } else {
                     regularWorkspace
-                        .opacity(isHingedDevice == nil ? 0 : 1)
-                        .accessibilityHidden(isHingedDevice == nil)
                         .transition(.opacity)
                 }
             } else {
@@ -72,7 +73,6 @@ struct MapPacketWorkspaceScreen: View {
                 }
             }
         }
-        .observesDuoHinge($isHingedDevice)
         .onChange(of: horizontalSizeClass) { _, sizeClass in
             guard sizeClass == .regular else { return }
             isShowingCompactPackets = false
@@ -94,41 +94,65 @@ struct MapPacketWorkspaceScreen: View {
         }
     }
 
+    /// One map throughout, never resized: the sidebar slides in over the right screen and the
+    /// map is told how much is covered, so its controls move clear while its content and node
+    /// groups stay still, then it re-centres once the slide is done. Swapping to a second map flashed white; narrowing the
+    /// map re-grouped nodes on every frame. An invisible two-pane layout measures where the hinge
+    /// split falls, so the sidebar covers exactly the right screen.
     private var duoWorkspace: some View {
-        Group {
+        ZStack(alignment: .topTrailing) {
+            DuoTwoPaneLayout {
+                Color.clear
+                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { duoPrimaryWidth = $0 }
+            } secondary: {
+                Color.clear
+            }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+
+            MapScreen(
+                isTabActive: isTabActive && !(isDuoPacketSidebarVisible && isDuoPacketDetailsPresented),
+                resetID: resetID,
+                togglePacketSidebar: { setDuoPacketSidebarVisible(!isDuoPacketSidebarVisible) },
+                pinsPacketSidebarToggle: true,
+                centersBottomControlsInLeadingPane: !isDuoPacketSidebarVisible,
+                trailingObscuredWidth: isDuoPacketSidebarVisible ? duoSidebarWidth : 0
+            )
+
             if isDuoPacketSidebarVisible {
-                DuoTwoPaneLayout {
-                    MapScreen(
-                        isTabActive: isTabActive && !isDuoPacketDetailsPresented,
-                        resetID: resetID,
-                        togglePacketSidebar: { setDuoPacketSidebarVisible(false) },
-                        pinsPacketSidebarToggle: true
+                NavigationStack {
+                    MapLivePacketSidebar(
+                        selectedGroupID: $selectedLivePacketGroupID,
+                        routeReplayStarted: { replayingLivePacketGroupID = $0 },
+                        detailPresentationChanged: { isDuoPacketDetailsPresented = $0 }
                     )
-                } secondary: {
-                    NavigationStack {
-                        MapLivePacketSidebar(
-                            selectedGroupID: $selectedLivePacketGroupID,
-                            routeReplayStarted: { replayingLivePacketGroupID = $0 },
-                            detailPresentationChanged: { isDuoPacketDetailsPresented = $0 }
-                        )
-                        .toolbar(removing: .sidebarToggle)
-                    }
+                    .toolbar(removing: .sidebarToggle)
+                    // Its buttons sit in the side column, which does not slide; they show once
+                    // the sidebar has arrived and go before it leaves. Only the items go: hiding
+                    // the whole bar moved the content by the bar's height.
+                    .environment(\.showsPacketSidebarToolbarItems, isDuoSidebarToolbarShown)
                 }
-                .transition(
-                    .move(edge: .trailing)
-                        .combined(with: .opacity)
-                )
-            } else {
-                MapScreen(
-                    isTabActive: isTabActive,
-                    resetID: resetID,
-                    togglePacketSidebar: { setDuoPacketSidebarVisible(true) },
-                    pinsPacketSidebarToggle: true,
-                    centersBottomControlsInLeadingPane: true
-                )
-                .transition(.opacity)
+                .frame(width: duoSidebarWidth)
+                .frame(maxHeight: .infinity)
+                // Opaque, since the map runs on underneath.
+                .background {
+                    NodeScopeBackground()
+                        .ignoresSafeArea()
+                }
+                // Its background runs on under the side tab column, so it slides by that much
+                // more than its width; a plain move stopped short with that strip still showing.
+                .transition(.offset(x: duoSidebarWidth + duoTrailingInset))
+                // Above the map while leaving too, or the slide-out runs underneath it.
+                .zIndex(1)
             }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { duoWorkspaceWidth = $0 }
+        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.trailing } action: { duoTrailingInset = $0 }
+    }
+
+    /// The right screen: everything past the hinge split.
+    private var duoSidebarWidth: CGFloat {
+        max(0, duoWorkspaceWidth - duoPrimaryWidth)
     }
 
     private var regularWorkspace: some View {
@@ -163,9 +187,18 @@ struct MapPacketWorkspaceScreen: View {
     private func setDuoPacketSidebarVisible(_ isVisible: Bool) {
         if accessibilityReduceMotion {
             isDuoPacketSidebarVisible = isVisible
+            isDuoSidebarToolbarShown = isVisible
+        } else if isVisible {
+            isDuoSidebarToolbarShown = false
+            withAnimation(.smooth(duration: 0.3)) {
+                isDuoPacketSidebarVisible = true
+            } completion: {
+                if isDuoPacketSidebarVisible { isDuoSidebarToolbarShown = true }
+            }
         } else {
-            withAnimation(.smooth(duration: 0.38)) {
-                isDuoPacketSidebarVisible = isVisible
+            isDuoSidebarToolbarShown = false
+            withAnimation(.smooth(duration: 0.3)) {
+                isDuoPacketSidebarVisible = false
             }
         }
     }
@@ -215,6 +248,7 @@ private struct BeaconPacketSidebar: View {
     var toggleSidebar: (() -> Void)?
     var routeReplayStarted: ((LiveObservationGroup.ID) -> Void)?
     var detailPresentationChanged: ((Bool) -> Void)?
+    @Environment(\.showsPacketSidebarToolbarItems) private var showsToolbarItems
 
     @Environment(LiveFeedService.self) private var liveFeed
     @Environment(RegionFilterStore.self) private var regionFilter
@@ -291,7 +325,7 @@ private struct BeaconPacketSidebar: View {
                 }
             }
         }
-        .adaptiveSidebarListStyle()
+        .adaptiveSidebarListStyle(meshBackground: true)
         .navigationTitle("Live Packets")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: packetDetailsPresented) {
@@ -309,14 +343,14 @@ private struct BeaconPacketSidebar: View {
                         .accessibilityLabel("Close live packets")
                 }
             }
-            ToolbarItem(placement: .topBarTrailing) {
+            if showsToolbarItems { ToolbarItem(placement: .topBarTrailing) {
                 Button { showsFilters = true } label: {
                     Image(systemName: filterType == nil
                           ? "line.3.horizontal.decrease.circle"
                           : "line.3.horizontal.decrease.circle.fill")
                 }
                 .accessibilityLabel("Filter live packets")
-            }
+            } }
             if let toggleSidebar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: toggleSidebar) { Image(systemName: "list.bullet.rectangle") }
@@ -442,6 +476,7 @@ private struct BeaconPacketSummary: View {
                 }
             }
         }
+        .meshPageBackground()
         .navigationTitle("Packet Details")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -534,6 +569,7 @@ private struct CoreScopeMapLivePacketSidebar: View {
     var toggleSidebar: (() -> Void)?
     var routeReplayStarted: ((LiveObservationGroup.ID) -> Void)?
     var detailPresentationChanged: ((Bool) -> Void)?
+    @Environment(\.showsPacketSidebarToolbarItems) private var showsToolbarItems
 
     @Environment(LiveFeedService.self) private var liveFeed
     @Environment(RegionFilterStore.self) private var regionFilter
@@ -624,7 +660,7 @@ private struct CoreScopeMapLivePacketSidebar: View {
                     .textCase(.uppercase)
             }
         }
-        .adaptiveSidebarListStyle()
+        .adaptiveSidebarListStyle(meshBackground: true)
         .navigationTitle("Live Packets")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: packetDetailsPresented) {
@@ -641,7 +677,7 @@ private struct CoreScopeMapLivePacketSidebar: View {
                     .accessibilityLabel("Close live packets")
                 }
             }
-            ToolbarItem(placement: .topBarTrailing) {
+            if showsToolbarItems { ToolbarItem(placement: .topBarTrailing) {
                 Button { isFiltersPresented = true } label: {
                     Image(systemName: filterType == nil
                         ? "line.3.horizontal.decrease.circle"
@@ -649,7 +685,7 @@ private struct CoreScopeMapLivePacketSidebar: View {
                         .foregroundStyle(.primary)
                 }
                 .accessibilityLabel("Filter live packets")
-            }
+            } }
             if let toggleSidebar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: toggleSidebar) {
@@ -816,7 +852,7 @@ struct PacketFeedScreen: View {
             }
         }
         .scrollContentBackground(.hidden)
-        .background(NodeScopeBackground())
+        .background(MeshBackground(subdued: true).ignoresSafeArea())
         .listStyle(.plain)
         .adaptiveContentWidth()
         .navigationTitle("Live Packets")
@@ -898,7 +934,8 @@ private final class LiveObservationFeedModel {
             if let filterType, data.decoded?.header?.payloadType != filterType { continue }
 
             let region = data.observerId.flatMap { regionByObserverID[$0] }
-            if let selectedRegion, region != selectedRegion { continue }
+            // A quick pick selects several comma-separated codes.
+            if let selectedRegion, !selectedRegion.split(separator: ",").contains(where: { $0.caseInsensitiveCompare(region ?? "") == .orderedSame }) { continue }
 
             let hash = data.hash?.trimmingCharacters(in: .whitespacesAndNewlines)
             let hasHash = !(hash?.isEmpty ?? true)
@@ -1211,10 +1248,28 @@ private struct LivePacketFiltersSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Region") {
-                    regionButton(code: nil, title: "Entire Network")
-                    ForEach(regionFilter.options, id: \.self) { code in
-                        regionButton(code: code, title: regionFilter.label(for: code))
+                if regionFilter.availablePicks.isEmpty {
+                    Section("Region") {
+                        regionButton(code: nil, title: "Entire Network")
+                        ForEach(regionFilter.options, id: \.self) { code in
+                            regionButton(code: code, title: regionFilter.label(for: code))
+                        }
+                    }
+                } else {
+                    Section("Region") {
+                        regionButton(code: nil, title: "Entire Network")
+                    }
+                    Section("Region groups") {
+                        ForEach(regionFilter.availablePicks, id: \.self) { pick in
+                            selectionButton(title: pick.name, isSelected: regionFilter.isSelected(pick)) {
+                                regionFilter.select(pick)
+                            }
+                        }
+                    }
+                    Section("Regions") {
+                        ForEach(regionFilter.options, id: \.self) { code in
+                            regionButton(code: code, title: regionFilter.label(for: code))
+                        }
                     }
                 }
 
@@ -1225,6 +1280,7 @@ private struct LivePacketFiltersSheet: View {
                     }
                 }
             }
+            .meshPageBackground()
             .navigationTitle("Live Packet Filters")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1378,6 +1434,7 @@ private struct LivePacketDetailScreen: View {
             }
         }
         }
+        .meshPageBackground()
         .navigationTitle("Packet Details")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -1436,4 +1493,10 @@ private extension View {
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
     }
+}
+
+extension EnvironmentValues {
+    /// Off while the Duo's packet sidebar slides: its toolbar buttons sit in the side column,
+    /// which does not move with it.
+    @Entry var showsPacketSidebarToolbarItems = true
 }

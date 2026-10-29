@@ -1,0 +1,31 @@
+{
+  "schema": "org.nodescope.field.geometry",
+  "version": 1,
+  "earthRadiusMeters": 6371008.8,
+  "cases": [
+    {
+      "name": "austin-to-dallas",
+      "origin": { "latitude": 30.2672, "longitude": -97.7431 },
+      "destination": { "latitude": 32.7767, "longitude": -96.7970 },
+      "distanceMeters": 293095.4775595935,
+      "initialBearingDegrees": 17.57049352937031,
+      "cardinalDirection": "NNE"
+    },
+    {
+      "name": "east-across-date-line",
+      "origin": { "latitude": 0.0, "longitude": 179.9 },
+      "destination": { "latitude": 0.0, "longitude": -179.9 },
+      "distanceMeters": 22239.016046706758,
+      "initialBearingDegrees": 90.0,
+      "cardinalDirection": "E"
+    },
+    {
+      "name": "same-coordinate",
+      "origin": { "latitude": 30.0, "longitude": -97.0 },
+      "destination": { "latitude": 30.0, "longitude": -97.0 },
+      "distanceMeters": 0.0,
+      "initialBearingDegrees": null,
+      "cardinalDirection": null
+    }
+  ]
+}

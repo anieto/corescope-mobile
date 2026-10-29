@@ -25,9 +25,10 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     val state = session.states.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SessionState())
     private val feed = LiveFeed(container.preferences, container.packetSource, container.sourceRouter.liveReadiness)
     // Packet bookkeeping runs off the main thread, which only receives each finished state; on a
-    // busy network it otherwise competed with the map's animation for every frame.
+    // busy network it otherwise competed with the map's animation for every frame. The socket
+    // outlives a quick app switch or rotation, then closes in the background (Beacon's guidance).
     val live = feed.states.flowOn(kotlinx.coroutines.Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(0, 0), LiveFeedState())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(10_000, 0), LiveFeedState())
     fun reconnectLive() = feed.reconnect()
     fun refreshBeaconObservers() = feed.refreshObservers()
     fun retryBeaconMetadata() = feed.retryMetadataRecovery()
@@ -37,6 +38,14 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     val monitoredChannels: MonitoredChannelStore get() = container.monitoredChannels
     val diagnostics: AnalyzerDiagnostics get() = container.diagnostics
     val cacheStorage: CacheStorage get() = container.cacheStorage
+    val myNodesSnapshots get() = container.myNodesStorage.snapshots
+    fun myNodesRepositories(): MyNodesRepositories {
+        val selected = sourceStatus.value
+        check(selected.ready)
+        selected.session.checkCurrent()
+        return selected.beacon?.let { container.myNodesStorage.beacon(it.client, it.serverInfo) }
+            ?: container.myNodesStorage.coreScope(checkNotNull(selected.host), container.client, selected.session)
+    }
     val sourceIcons: org.nodescope.android.core.storage.SourceIcons get() = container.sourceIcons
     private val linkState = MutableStateFlow<PendingLink?>(null)
     /** A `nodescope://` link waiting to be opened; kept until the app shell is ready (after onboarding). */
@@ -113,6 +122,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
     fun setAppearance(mode: Appearance) = persist { container.preferences.setAppearance(mode) }
+    fun setBackgroundTexture(enabled: Boolean) = persist { container.preferences.setBackgroundTexture(enabled) }
     fun setDistanceUnit(unit: org.nodescope.android.core.storage.DistanceUnit) = persist { container.preferences.setDistanceUnit(unit) }
     fun setRegion(region: String?) = persist { container.preferences.setRegion(region) }
     fun selectDestination(destination: String) = persist { container.preferences.setDestination(destination) }

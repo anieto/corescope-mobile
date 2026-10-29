@@ -94,3 +94,9 @@ NodeScope is free and open-source software licensed under the
 Commercial use is allowed, but distributed modifications must remain under
 GPLv3 and their corresponding source must be made available to recipients.
 See [NOTICE](NOTICE) for the required attribution.
+
+Node Planner's line-of-sight engine includes modified GPLv3 source derived from
+[MeshCore One by Avi0n](https://github.com/Avi0n/MeshCoreOne). Terrain profiles
+use the [Open-Meteo Elevation API](https://open-meteo.com/en/docs/elevation-api)
+and Copernicus DEM 2021 GLO-90 data. Exact provenance and modifications are
+recorded in the [Node Planner source audit](docs/node-planner/meshcore-one-source-audit.md).

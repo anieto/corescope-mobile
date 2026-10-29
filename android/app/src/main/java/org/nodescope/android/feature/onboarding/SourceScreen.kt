@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.onboarding
 
+import org.nodescope.android.core.design.meshCardColors
 import androidx.core.net.toUri
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
@@ -58,7 +59,7 @@ fun SourceScreen(
         items(sources, key = { it.id }) { source ->
             val current = isCurrent(source)
             Card(onClick = { onSave(source.host) }, enabled = !saving,
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                colors = meshCardColors(),
                 modifier = Modifier.fillMaxWidth().semantics { selected = current }) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     SourceLogo(source, icons)

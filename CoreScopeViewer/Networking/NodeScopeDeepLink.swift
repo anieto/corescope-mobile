@@ -63,12 +63,18 @@ struct MeshCoreContactLink: Equatable, Sendable {
     }
 
     init?(name: String?, publicKey: String, role: String) {
+        guard let type = Self.contactType(for: role) else { return nil }
+        self.init(name: name, publicKey: publicKey, type: type)
+    }
+
+    init?(name: String?, publicKey: String, type: Int) {
         let key = publicKey.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard key.count == 64, key.allSatisfy(\.isHexDigit),
-              let type = Self.contactType(for: role) else {
+              (1...4).contains(type) else {
             return nil
         }
         let trimmedName = name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard trimmedName.utf8.count <= 128 else { return nil }
         self.name = trimmedName.isEmpty ? String(key.prefix(8)).uppercased() : trimmedName
         self.publicKey = key
         self.type = type

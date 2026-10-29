@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.channels
 
+import org.nodescope.android.core.design.meshCardColors
 import org.nodescope.android.core.network.BackendCapability
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -126,7 +127,7 @@ internal fun LiveChannelRefresh(feed: LiveFeedState, refresh: () -> Unit) {
 @Composable
 private fun ChannelCard(row: ChannelRow, now: Long, isSelected: Boolean, onClick: () -> Unit) {
     Card(onClick = onClick, modifier = Modifier.semantics { selected = isSelected },
-        colors = CardDefaults.cardColors(containerColor = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface)) {
+        colors = meshCardColors(selected = isSelected)) {
         Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Surface(shape = MaterialTheme.shapes.medium, color = if (row.monitored) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer) {
                 Icon(if (row.monitored) Icons.Outlined.Lock else Icons.Outlined.Tag, null, Modifier.padding(10.dp).size(20.dp),

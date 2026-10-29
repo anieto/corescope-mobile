@@ -28,6 +28,26 @@ class LiveFeedTest {
         assertEquals("radio", legacy.observerId)
         assertNull(parseLivePacket(buildJsonObject { put("hash", "missing-id") }, true))
     }
+
+    @Test fun sharedCoreScopeLiveFixturePreservesObservedWireSemantics() {
+        val text = requireNotNull(javaClass.classLoader?.getResourceAsStream("core/live-session.json"))
+            .bufferedReader().use { it.readText() }
+        val root = protocolJson.parseToJsonElement(text).jsonObject
+        val source = root.getValue("source").jsonObject
+        val frames = root.getValue("frames").jsonArray
+        assertEquals("corescope", source.getValue("backend").jsonPrimitive.content)
+        assertEquals("v3.14.0", source.getValue("release").jsonPrimitive.content)
+        assertEquals("9dbc287579a237ffa744dd0c91fa7227d09763ac", source.getValue("commit").jsonPrimitive.content)
+        assertEquals("heartbeat", frames[0].jsonObject.getValue("type").jsonPrimitive.content)
+        assertNull(frames[0].jsonObject["data"])
+        val packet = requireNotNull(parseLivePacket(frames[1].jsonObject.getValue("data").jsonObject, true, 1))
+        assertEquals("OBS-NORTH", packet.observerId)
+        assertEquals(3, packet.observations)
+        assertEquals("aa11000000000000000000000000000000000000000000000000000000000000", packet.resolvedPath[0])
+        assertNull(packet.resolvedPath[1])
+        assertNull(frames[2].jsonObject.getValue("data").jsonObject["decoded"])
+    }
+
     @Test fun explicitUnresolvedHopsAndAmbiguousPrefixesNeverJoinRoutes() {
         val nodes = listOf(node("aa11", 30.0), node("aa22", 31.0), node("bb11", 32.0))
         val observers = listOf(MeshObserver("obs", lat = 33.0, lon = -97.0))

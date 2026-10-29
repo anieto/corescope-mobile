@@ -1,0 +1,27 @@
+{
+  "revision": 3,
+  "generation": "synthetic-generation-a",
+  "doc": {
+    "v": 1,
+    "keys": {
+      "meshcore-favorites": "[\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\"]",
+      "meshcore-my-nodes": "[{\"pubkey\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"name\":\"Roof\",\"addedAt\":\"2026-10-01T00:00:00Z\",\"futureField\":{\"preserve\":true}}]",
+      "meshcore-theme": "dark"
+    }
+  },
+  "allowlist": [
+    {
+      "key": "meshcore-favorites",
+      "kind": "set"
+    },
+    {
+      "key": "meshcore-my-nodes",
+      "kind": "set",
+      "id": "pubkey"
+    },
+    {
+      "key": "meshcore-theme",
+      "kind": "scalar"
+    }
+  ]
+}

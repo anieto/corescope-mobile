@@ -102,6 +102,66 @@ internal interface MapOverlays {
     /** The debug map lab's sample route and its moving packet. */
     fun setSampleRoute(route: List<Coordinate>)
     fun setSamplePacket(point: Coordinate?)
+    /** Labelled place pins (Link Profile endpoints), drawn above everything and never tappable as nodes. */
+    fun setPins(pins: List<MapPin>) {}
+    /** A planned link (Link Profile), each stretch in its own colour and dashed where [PathStretch.dashed]. */
+    fun setLinkPath(stretches: List<PathStretch>) {}
+}
+
+/**
+ * One stretch of a planned link; [color] and [casing] are ARGB. A dashed stretch's casing is
+ * dashed in step with it, so it edges each dash without filling the gaps.
+ */
+internal data class PathStretch(val points: List<Coordinate>, val color: Int, val dashed: Boolean, val casing: Int = 0xBFFFFFFF.toInt())
+
+/** ARGB as the "#RRGGBB" string MapLibre expressions take. */
+internal fun Int.hexColor(): String = String.format("#%06X", this and 0xFFFFFF)
+
+/** A dropped pin, styled apart from node markers so a chosen place never reads as a node. */
+internal data class MapPin(val coordinate: Coordinate, val kind: Kind, val name: String) {
+    enum class Kind { POINT_A, POINT_B, TENTATIVE }
+}
+
+/** iOS Marker tints: A blue, B orange (brighter on dark maps), a tentative choice grey. */
+internal fun MapPin.Kind.color(dark: Boolean): Int = when (this) {
+    MapPin.Kind.POINT_A -> if (dark) 0xFF0A84FF.toInt() else 0xFF007AFF.toInt()
+    MapPin.Kind.POINT_B -> if (dark) 0xFFFF9F0A.toInt() else 0xFFFF9500.toInt()
+    MapPin.Kind.TENTATIVE -> 0xFF8E8E93.toInt()
+}
+
+internal val MapPin.Kind.glyph: String? get() = when (this) {
+    MapPin.Kind.POINT_A -> "A"
+    MapPin.Kind.POINT_B -> "B"
+    MapPin.Kind.TENTATIVE -> null
+}
+
+/** A teardrop pin with a white ring and a glyph (or dot), its tip at the bottom centre. */
+internal fun pinBitmap(fill: Int, glyph: String?, density: Float): android.graphics.Bitmap {
+    val width = 30f * density
+    val height = 40f * density
+    val radius = width / 2f - 2f * density
+    val center = width / 2f
+    val bitmap = android.graphics.Bitmap.createBitmap(width.toInt(), height.toInt(), android.graphics.Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(bitmap)
+    val shape = android.graphics.Path().apply {
+        addCircle(center, center, radius, android.graphics.Path.Direction.CW)
+        moveTo(center - radius * 0.62f, center + radius * 0.78f)
+        lineTo(center, height - 1.5f * density)
+        lineTo(center + radius * 0.62f, center + radius * 0.78f)
+        close()
+    }
+    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+    canvas.drawPath(shape, paint.apply { color = fill; style = android.graphics.Paint.Style.FILL })
+    canvas.drawPath(shape, paint.apply { color = android.graphics.Color.WHITE; style = android.graphics.Paint.Style.STROKE; strokeWidth = 2f * density })
+    paint.style = android.graphics.Paint.Style.FILL
+    if (glyph == null) canvas.drawCircle(center, center, radius * 0.32f, paint)
+    else {
+        paint.textSize = 15f * density
+        paint.typeface = android.graphics.Typeface.DEFAULT_BOLD
+        paint.textAlign = android.graphics.Paint.Align.CENTER
+        canvas.drawText(glyph, center, center - (paint.descent() + paint.ascent()) / 2f, paint)
+    }
+    return bitmap
 }
 
 /**
@@ -115,6 +175,8 @@ internal class MapTap(
     val expandGroup: (() -> Unit)?,
     /** Keys of the drawn routes under the finger (looked up only when needed). */
     val routeKeys: () -> List<String>,
+    /** Where on the map the finger landed, for screens that pick a place (not set for marker taps). */
+    val coordinate: Coordinate? = null,
 )
 
 /** iOS parity: names appear only when the view is close (≤ 0.08° tall) and shows at most 60 nodes. */

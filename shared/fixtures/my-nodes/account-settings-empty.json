@@ -1,0 +1,20 @@
+{
+  "revision": 0,
+  "generation": "",
+  "doc": null,
+  "allowlist": [
+    {
+      "key": "meshcore-favorites",
+      "kind": "set"
+    },
+    {
+      "key": "meshcore-my-nodes",
+      "kind": "set",
+      "id": "pubkey"
+    },
+    {
+      "key": "meshcore-theme",
+      "kind": "scalar"
+    }
+  ]
+}

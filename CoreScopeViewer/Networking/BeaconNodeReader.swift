@@ -8,6 +8,19 @@ struct BeaconNodeReader: Sendable {
         self.client = client
     }
 
+    private init(budgeting reader: BeaconNodeReader, budget: MyNodesRequestBudget, node: String) {
+        client = reader.client.budgetingRequests(budget, node: node)
+    }
+
+    /// Dashboard history gets one exact-key lookup and at most three observation pages.
+    /// A depleted shared batch returns the pages already read with partial coverage.
+    func myNodesObservationHistory(
+        publicKey: String, since: Date, budget: MyNodesRequestBudget
+    ) async throws -> ObservationHistory? {
+        let reader = BeaconNodeReader(budgeting: self, budget: budget, node: publicKey)
+        return try await reader.observationHistory(publicKey: publicKey, since: since, maximumPages: 3)
+    }
+
     func nodePage(
         region: String?, pageSize: Int = 200, cursor: AnalyzerCursor? = nil
     ) async throws -> AnalyzerPage<Node> {
@@ -236,10 +249,14 @@ struct BeaconNodeReader: Sendable {
         while pages < min(maximumPages, 19) {
             var query = [URLQueryItem(name: "limit", value: "200")]
             if let cursor { query.append(URLQueryItem(name: "cursor", value: cursor.queryValue)) }
-            let page: ObservationPage = try await client.get(
-                ["nodes", node.id, "observations"],
-                query: query
-            )
+            let page: ObservationPage
+            do {
+                page = try await client.get(["nodes", node.id, "observations"], query: query)
+            } catch MyNodesBudgetError.exhausted {
+                break
+            } catch MyNodesBudgetError.nodeExhausted {
+                break
+            }
             try page.items.forEach { try $0.validate() }
             for observation in page.items {
                 guard seenObservationIDs.insert(observation.id).inserted else { continue }

@@ -129,12 +129,13 @@ class FoundationUiTest {
         compose.onNodeWithText("LINKED").assertIsDisplayed() // node detail shows the public key
     }
 
-        @Test fun favoriteNodesCanBeAddedOpenedAndRemovedFromExplore() {
+    @Test fun favoritesPageOwnsAddingOpeningAndRemovingSavedNodes() {
         val library = NodeLibrary()
         val snapshot = AnalyzerSnapshot(listOf(MeshNode("favorite", "Saved node", "repeater", lastSeen = "2026-09-22")), 1, emptyMap(), null)
         compose.setContent { NodeScopeTheme(Appearance.DARK) {
             AppShell(AppPreferences(onboarded = true, destination = "EXPLORE"), SessionState(snapshot = snapshot), {}, {}, {}, {}, {}, nodeLibrary = library)
         } }
+        compose.onNodeWithText("Favorites").performScrollTo().performClick()
         compose.onNodeWithContentDescription("Add favorite node").performClick()
         compose.onNodeWithText("Saved node").performClick()
         compose.onNodeWithText("Favorite Nodes").assertIsDisplayed()
@@ -142,6 +143,7 @@ class FoundationUiTest {
         compose.onNodeWithContentDescription("Remove favorite").performClick()
         compose.onNodeWithContentDescription("Back").performClick()
         compose.onNodeWithText("Favorite Nodes").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Back").performClick()
         compose.onNodeWithText("Recently Viewed").assertIsDisplayed()
         compose.onNodeWithText("Clear").performClick()
         compose.onNodeWithText("Explore Your Mesh").assertIsDisplayed()

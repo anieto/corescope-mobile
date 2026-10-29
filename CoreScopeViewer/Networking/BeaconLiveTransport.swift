@@ -67,6 +67,8 @@ final class BeaconLiveTransport {
     private var awaiting: [String: Date] = [:]
     private var helloReceived = false
     private var ended = false
+    private var foregroundedAt: Date?
+    private var backoff: Task<Void, Error>?
 
     init(
         client: BeaconAPIClient, verifiedServerInfo: BeaconServerInfo,
@@ -104,6 +106,13 @@ final class BeaconLiveTransport {
         loop = Task { [weak self] in await self?.run() }
     }
 
+    /// iOS drops a suspended app's sockets; reconnect without backoff unless the server asked us to wait.
+    func resumeAfterForeground() {
+        guard loop != nil, !ended else { return }
+        foregroundedAt = now()
+        backoff?.cancel()
+    }
+
     func disconnect() {
         guard !ended else { return }
         ended = true
@@ -119,6 +128,7 @@ final class BeaconLiveTransport {
         var attempt = 0
         while !Task.isCancelled && !ended && client.sourceSession.isCurrent {
             var delay = BeaconLiveProtocol.reconnectDelay(attempt: attempt)
+            var coolingDown = false
             let started = now()
             do {
                 try await client.checkCooldown()
@@ -153,18 +163,37 @@ final class BeaconLiveTransport {
                 guard !Task.isCancelled, !ended, client.sourceSession.isCurrent else { return }
                 if case BeaconAPIError.rateLimited(let deadline) = error {
                     delay = max(delay, deadline.timeIntervalSince(now()))
+                    coolingDown = true
                 }
                 if socket?.response?.statusCode == 429 || socket?.closeCode == 1013 {
                     let retry = socket?.response?.value(forHTTPHeaderField: "Retry-After") ?? "60"
                     let deadline = await client.recordCooldown(retryAfter: retry)
                     delay = max(delay, deadline.timeIntervalSince(now()))
+                    coolingDown = true
                 }
                 guard !ended, client.sourceSession.isCurrent else { return }
                 emit(.disconnected(error.localizedDescription))
             }
             stopSocket()
             if now().timeIntervalSince(started) >= 60 { attempt = 0 } else { attempt = min(attempt + 1, 4) }
-            do { try await sleep(max(1, delay)) } catch { return }
+            // A drop right after returning to the foreground is the suspension, not the server.
+            if !coolingDown, let foregroundedAt, now().timeIntervalSince(foregroundedAt) < 5 {
+                self.foregroundedAt = nil
+                attempt = 0
+                continue
+            }
+            let sleep = self.sleep
+            let wait = max(1, delay)
+            let backoff = Task { try await sleep(wait) }
+            if !coolingDown { self.backoff = backoff }
+            _ = await withTaskCancellationHandler {
+                await backoff.result
+            } onCancel: {
+                backoff.cancel()
+            }
+            self.backoff = nil
+            if Task.isCancelled { return }
+            if case .failure = await backoff.result { attempt = 0 }
         }
     }
 

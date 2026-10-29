@@ -1,0 +1,243 @@
+{
+  "schemaVersion": 1,
+  "synthetic": true,
+  "upstreamCommit": "9dbc287579a237ffa744dd0c91fa7227d09763ac",
+  "upstreamScriptSHA256": "c1ab383f90526ce0ee3f733f48b2d0215ed7adee9425452ee23f962bf956d118",
+  "cases": [
+    {
+      "name": "independent-additions",
+      "allowlist": [
+        {
+          "key": "meshcore-favorites",
+          "kind": "set"
+        }
+      ],
+      "base": {
+        "meshcore-favorites": "[]"
+      },
+      "local": {
+        "meshcore-favorites": "[\"1111111111111111111111111111111111111111111111111111111111111111\"]"
+      },
+      "remote": {
+        "meshcore-favorites": "[\"2222222222222222222222222222222222222222222222222222222222222222\"]"
+      },
+      "expected": {
+        "meshcore-favorites": "[\"2222222222222222222222222222222222222222222222222222222222222222\",\"1111111111111111111111111111111111111111111111111111111111111111\"]"
+      }
+    },
+    {
+      "name": "remote-removal-survives",
+      "allowlist": [
+        {
+          "key": "meshcore-favorites",
+          "kind": "set"
+        }
+      ],
+      "base": {
+        "meshcore-favorites": "[\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\"]"
+      },
+      "local": {
+        "meshcore-favorites": "[\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\"]"
+      },
+      "remote": {
+        "meshcore-favorites": "[\"2222222222222222222222222222222222222222222222222222222222222222\"]"
+      },
+      "expected": {
+        "meshcore-favorites": "[\"2222222222222222222222222222222222222222222222222222222222222222\"]"
+      }
+    },
+    {
+      "name": "local-removal-survives",
+      "allowlist": [
+        {
+          "key": "meshcore-favorites",
+          "kind": "set"
+        }
+      ],
+      "base": {
+        "meshcore-favorites": "[\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\"]"
+      },
+      "local": {
+        "meshcore-favorites": "[\"2222222222222222222222222222222222222222222222222222222222222222\"]"
+      },
+      "remote": {
+        "meshcore-favorites": "[\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\"]"
+      },
+      "expected": {
+        "meshcore-favorites": "[\"2222222222222222222222222222222222222222222222222222222222222222\"]"
+      }
+    },
+    {
+      "name": "independent-removals",
+      "allowlist": [
+        {
+          "key": "meshcore-favorites",
+          "kind": "set"
+        }
+      ],
+      "base": {
+        "meshcore-favorites": "[\"1111111111111111111111111111111111111111111111111111111111111111\",\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\"]"
+      },
+      "local": {
+        "meshcore-favorites": "[\"2222222222222222222222222222222222222222222222222222222222222222\",\"3333333333333333333333333333333333333333333333333333333333333333\"]"
+      },
+      "remote": {
+        "meshcore-favorites": "[\"1111111111111111111111111111111111111111111111111111111111111111\",\"3333333333333333333333333333333333333333333333333333333333333333\"]"
+      },
+      "expected": {
+        "meshcore-favorites": "[\"3333333333333333333333333333333333333333333333333333333333333333\"]"
+      }
+    },
+    {
+      "name": "same-addition-deduplicates",
+      "allowlist": [
+        {
+          "key": "meshcore-favorites",
+          "kind": "set"
+        }
+      ],
+      "base": {
+        "meshcore-favorites": "[]"
+      },
+      "local": {
+        "meshcore-favorites": "[\"1111111111111111111111111111111111111111111111111111111111111111\"]"
+      },
+      "remote": {
+        "meshcore-favorites": "[\"1111111111111111111111111111111111111111111111111111111111111111\"]"
+      },
+      "expected": {
+        "meshcore-favorites": "[\"1111111111111111111111111111111111111111111111111111111111111111\"]"
+      }
+    },
+    {
+      "name": "intentional-readd-after-acknowledged-removal",
+      "allowlist": [
+        {
+          "key": "meshcore-favorites",
+          "kind": "set"
+        }
+      ],
+      "base": {
+        "meshcore-favorites": "[]"
+      },
+      "local": {
+        "meshcore-favorites": "[\"1111111111111111111111111111111111111111111111111111111111111111\"]"
+      },
+      "remote": {
+        "meshcore-favorites": "[]"
+      },
+      "expected": {
+        "meshcore-favorites": "[\"1111111111111111111111111111111111111111111111111111111111111111\"]"
+      }
+    },
+    {
+      "name": "local-object-edit-only",
+      "allowlist": [
+        {
+          "key": "meshcore-my-nodes",
+          "kind": "set",
+          "id": "pubkey"
+        }
+      ],
+      "base": {
+        "meshcore-my-nodes": "[{\"pubkey\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"name\":\"Roof\",\"addedAt\":\"2026-10-01T00:00:00Z\",\"futureField\":{\"preserve\":true}}]"
+      },
+      "local": {
+        "meshcore-my-nodes": "[{\"pubkey\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"name\":\"Local roof\",\"addedAt\":\"2026-10-01T00:00:00Z\",\"futureField\":{\"preserve\":true}}]"
+      },
+      "remote": {
+        "meshcore-my-nodes": "[{\"pubkey\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"name\":\"Roof\",\"addedAt\":\"2026-10-01T00:00:00Z\",\"futureField\":{\"preserve\":true}}]"
+      },
+      "expected": {
+        "meshcore-my-nodes": "[{\"pubkey\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"name\":\"Local roof\",\"addedAt\":\"2026-10-01T00:00:00Z\",\"futureField\":{\"preserve\":true}}]"
+      }
+    },
+    {
+      "name": "simultaneous-object-edit-remote-wins",
+      "allowlist": [
+        {
+          "key": "meshcore-my-nodes",
+          "kind": "set",
+          "id": "pubkey"
+        }
+      ],
+      "base": {
+        "meshcore-my-nodes": "[{\"pubkey\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"name\":\"Roof\",\"addedAt\":\"2026-10-01T00:00:00Z\",\"futureField\":{\"preserve\":true}}]"
+      },
+      "local": {
+        "meshcore-my-nodes": "[{\"pubkey\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"name\":\"Local roof\",\"addedAt\":\"2026-10-01T00:00:00Z\",\"futureField\":{\"preserve\":true}}]"
+      },
+      "remote": {
+        "meshcore-my-nodes": "[{\"pubkey\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"name\":\"Remote roof\",\"addedAt\":\"2026-10-01T00:00:00Z\",\"futureField\":{\"preserve\":true}}]"
+      },
+      "expected": {
+        "meshcore-my-nodes": "[{\"pubkey\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"name\":\"Remote roof\",\"addedAt\":\"2026-10-01T00:00:00Z\",\"futureField\":{\"preserve\":true}}]"
+      }
+    },
+    {
+      "name": "remote-removal-wins-local-object-edit",
+      "allowlist": [
+        {
+          "key": "meshcore-my-nodes",
+          "kind": "set",
+          "id": "pubkey"
+        }
+      ],
+      "base": {
+        "meshcore-my-nodes": "[{\"pubkey\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"name\":\"Roof\",\"addedAt\":\"2026-10-01T00:00:00Z\",\"futureField\":{\"preserve\":true}}]"
+      },
+      "local": {
+        "meshcore-my-nodes": "[{\"pubkey\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"name\":\"Local roof\",\"addedAt\":\"2026-10-01T00:00:00Z\",\"futureField\":{\"preserve\":true}}]"
+      },
+      "remote": {
+        "meshcore-my-nodes": "[]"
+      },
+      "expected": {
+        "meshcore-my-nodes": "[]"
+      }
+    },
+    {
+      "name": "local-removal-wins-remote-object-edit",
+      "allowlist": [
+        {
+          "key": "meshcore-my-nodes",
+          "kind": "set",
+          "id": "pubkey"
+        }
+      ],
+      "base": {
+        "meshcore-my-nodes": "[{\"pubkey\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"name\":\"Roof\",\"addedAt\":\"2026-10-01T00:00:00Z\",\"futureField\":{\"preserve\":true}}]"
+      },
+      "local": {
+        "meshcore-my-nodes": "[]"
+      },
+      "remote": {
+        "meshcore-my-nodes": "[{\"pubkey\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"name\":\"Remote roof\",\"addedAt\":\"2026-10-01T00:00:00Z\",\"futureField\":{\"preserve\":true}}]"
+      },
+      "expected": {
+        "meshcore-my-nodes": "[]"
+      }
+    },
+    {
+      "name": "unmodified-scalar-preserved",
+      "allowlist": [
+        {
+          "key": "meshcore-theme",
+          "kind": "scalar"
+        }
+      ],
+      "base": {
+        "meshcore-theme": "dark"
+      },
+      "local": {
+        "meshcore-theme": "dark"
+      },
+      "remote": {
+        "meshcore-theme": "light"
+      },
+      "expected": {
+        "meshcore-theme": "light"
+      }
+    }
+  ]
+}

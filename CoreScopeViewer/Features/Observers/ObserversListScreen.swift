@@ -115,7 +115,7 @@ struct ObserversListScreen: View {
                         .textCase(.uppercase)
                 }
             }
-            .adaptiveSidebarListStyle()
+            .adaptiveSidebarListStyle(meshBackground: true)
             .adaptiveScrollContentWidth()
             .toolbar(.hidden, for: .navigationBar)
             .overlay {
@@ -134,7 +134,7 @@ struct ObserversListScreen: View {
                     systemImage: "antenna.radiowaves.left.and.right",
                     description: Text("Choose an observer to see its activity and signal data.")
                 )
-                .background(NodeScopeBackground())
+                .background(MeshBackground(subdued: true).ignoresSafeArea())
             }
         }
         .sheet(isPresented: $isFiltersPresented) {
@@ -168,7 +168,7 @@ struct ObserversListScreen: View {
             if liveFeed.usesBrowseSnapshots {
                 liveFeed.refreshObservers()
             } else {
-                await viewModel.loadObservers()
+                await viewModel.loadObservers(forceRefresh: true)
             }
             updateVisibleObservers()
         }
@@ -230,7 +230,7 @@ struct ObserversListScreen: View {
             if liveFeed.usesBrowseSnapshots {
                 liveFeed.refreshObservers()
             } else {
-                await viewModel.loadObservers()
+                await viewModel.loadObservers(forceRefresh: true)
             }
             updateVisibleObservers()
         }
@@ -266,7 +266,7 @@ struct ObserversListScreen: View {
         availableModels = Array(Set(observerBaseline.compactMap(\.model))).sorted()
 
         let filtered = observerBaseline.map(applyingLiveStatus).filter { observer in
-            let matchesRegion = regionFilter.selectedRegion == nil || observer.iata == regionFilter.selectedRegion
+            let matchesRegion = regionFilter.includes(observer.iata)
             let matchesActivity = activityFilter == .all || observer.isRecentlySeen
             let matchesModel = selectedModel == nil || observer.model == selectedModel
             let matchesQuery = query.isEmpty
@@ -500,6 +500,7 @@ private struct ObserverFiltersSheet: View {
                     }
                 }
             }
+            .meshPageBackground()
             .navigationTitle("Observer Filters")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

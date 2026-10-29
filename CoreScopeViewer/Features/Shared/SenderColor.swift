@@ -19,7 +19,13 @@ enum SenderColor {
     }
 
     static func bubbleFill(for sender: String, colorScheme: ColorScheme) -> Color {
-        color(for: sender, colorScheme: colorScheme).opacity(colorScheme == .dark ? 0.34 : 0.16)
+        if colorScheme == .dark {
+            return color(for: sender, colorScheme: colorScheme).opacity(0.50)
+        }
+
+        // A pale fill lets some mesh through without a strong tint behind text.
+        return Color(hue: normalizedHue(for: sender), saturation: 0.14, brightness: 0.97)
+            .opacity(0.75)
     }
 
     static func bubbleStroke(for sender: String, colorScheme: ColorScheme) -> Color {

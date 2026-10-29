@@ -1,0 +1,394 @@
+{
+  "capturedAt": "2026-10-16T15:48:41.757477+00:00",
+  "scope": "anonymous GET sample; first-page node, not a complete dashboard or cache benchmark",
+  "sources": [
+    {
+      "host": "analyzer.meshtexas.org",
+      "backend": "corescope",
+      "facts": {
+        "accountsEnabled": true,
+        "version": "local-b5059cfa",
+        "bulkCount": 200,
+        "nodePageCount": 200,
+        "nodeTotal": 1822,
+        "analytics": {
+          "signalSamples": 453,
+          "coverageRows": 40,
+          "contextPresent": false,
+          "statsFields": [
+            "availabilityPct",
+            "avgPacketsPerDay",
+            "longestSilenceMs",
+            "longestSilenceStart",
+            "relayPct",
+            "signalGrade",
+            "snrMean",
+            "snrStdDev",
+            "totalPackets",
+            "uniqueObservers",
+            "uniquePeers"
+          ]
+        }
+      },
+      "requests": [
+        {
+          "operation": "client-capabilities",
+          "status": 200,
+          "bytes": 1345,
+          "shape": [
+            "cacheInvalidateMs",
+            "clientRfSamples",
+            "clientRxCoverage",
+            "customizer",
+            "distThresholds",
+            "externalUrls",
+            "healthThresholds",
+            "limits",
+            "liveMapMaxNodes",
+            "map",
+            "maxHopDist",
+            "pathTrust",
+            "perfSlowMs",
+            "propagationBufferMs",
+            "roles",
+            "snrThresholds",
+            "tiles",
+            "timestamps",
+            "userManagement",
+            "wsReconnectMs"
+          ],
+          "elapsedMs": 333
+        },
+        {
+          "operation": "version",
+          "status": 200,
+          "bytes": 572,
+          "shape": [
+            "buildTime",
+            "commit",
+            "counts",
+            "engine",
+            "goHeapInuseMB",
+            "goSysMB",
+            "hashMigrationComplete",
+            "neighborGraphCacheRebuildFailures",
+            "packetsLast24h",
+            "packetsLastHour",
+            "processRSSMB",
+            "signatureDrops",
+            "storeDataMB",
+            "totalNodes",
+            "totalNodesAllTime",
+            "totalObservations",
+            "totalObservers",
+            "totalPackets",
+            "totalTransmissions",
+            "trackedMB",
+            "version"
+          ],
+          "elapsedMs": 203
+        },
+        {
+          "operation": "nodes-first-page",
+          "status": 200,
+          "bytes": 179346,
+          "shape": [
+            "counts",
+            "has_more",
+            "nodes",
+            "total"
+          ],
+          "elapsedMs": 263
+        },
+        {
+          "operation": "observers",
+          "status": 200,
+          "bytes": 56443,
+          "shape": [
+            "observers",
+            "server_time"
+          ],
+          "elapsedMs": 190
+        },
+        {
+          "operation": "bulk-health",
+          "status": 200,
+          "bytes": 110574,
+          "shape": "array",
+          "elapsedMs": 281
+        },
+        {
+          "operation": "analytics-first",
+          "status": 200,
+          "bytes": 95195,
+          "shape": [
+            "activityTimeline",
+            "clockSkew",
+            "computedStats",
+            "hopDistribution",
+            "node",
+            "observerCoverage",
+            "packetTypeBreakdown",
+            "peerInteractions",
+            "snrTrend",
+            "timeRange",
+            "uptimeHeatmap"
+          ],
+          "elapsedMs": 231
+        },
+        {
+          "operation": "analytics-repeat",
+          "status": 200,
+          "bytes": 95195,
+          "shape": [
+            "activityTimeline",
+            "clockSkew",
+            "computedStats",
+            "hopDistribution",
+            "node",
+            "observerCoverage",
+            "packetTypeBreakdown",
+            "peerInteractions",
+            "snrTrend",
+            "timeRange",
+            "uptimeHeatmap"
+          ],
+          "elapsedMs": 218
+        }
+      ]
+    },
+    {
+      "host": "beacon.meshtexas.org",
+      "backend": "beacon",
+      "facts": {
+        "versionFields": [
+          "minAppVersion",
+          "minWebVersion",
+          "serverVersion"
+        ],
+        "nodePageCount": 200,
+        "nodeHasMore": true,
+        "observationsSampled": 600,
+        "observationHasMore": true
+      },
+      "requests": [
+        {
+          "operation": "version",
+          "status": 200,
+          "bytes": 74,
+          "shape": [
+            "minAppVersion",
+            "minWebVersion",
+            "serverVersion"
+          ],
+          "elapsedMs": 334
+        },
+        {
+          "operation": "nodes-first-page",
+          "status": 200,
+          "bytes": 79995,
+          "shape": [
+            "hasMore",
+            "items",
+            "nextCursor"
+          ],
+          "elapsedMs": 279
+        },
+        {
+          "operation": "observers-first-page",
+          "status": 200,
+          "bytes": 15685,
+          "shape": [
+            "hasMore",
+            "items"
+          ],
+          "elapsedMs": 250
+        },
+        {
+          "operation": "observation-page-1",
+          "status": 200,
+          "bytes": 32162,
+          "shape": [
+            "hasMore",
+            "items",
+            "nextCursor"
+          ],
+          "elapsedMs": 447
+        },
+        {
+          "operation": "observation-page-2",
+          "status": 200,
+          "bytes": 32113,
+          "shape": [
+            "hasMore",
+            "items",
+            "nextCursor"
+          ],
+          "elapsedMs": 193
+        },
+        {
+          "operation": "observation-page-3",
+          "status": 200,
+          "bytes": 31917,
+          "shape": [
+            "hasMore",
+            "items",
+            "nextCursor"
+          ],
+          "elapsedMs": 209
+        }
+      ]
+    },
+    {
+      "host": "map.meshcore.coloradomesh.org",
+      "backend": "beacon",
+      "facts": {
+        "versionFields": [
+          "minAppVersion",
+          "minWebVersion",
+          "serverVersion"
+        ],
+        "nodePageCount": 200,
+        "nodeHasMore": true,
+        "observationsSampled": 270,
+        "observationHasMore": false
+      },
+      "requests": [
+        {
+          "operation": "version",
+          "status": 200,
+          "bytes": 74,
+          "shape": [
+            "minAppVersion",
+            "minWebVersion",
+            "serverVersion"
+          ],
+          "elapsedMs": 533
+        },
+        {
+          "operation": "nodes-first-page",
+          "status": 200,
+          "bytes": 96204,
+          "shape": [
+            "hasMore",
+            "items",
+            "nextCursor"
+          ],
+          "elapsedMs": 434
+        },
+        {
+          "operation": "observers-first-page",
+          "status": 200,
+          "bytes": 9585,
+          "shape": [
+            "hasMore",
+            "items"
+          ],
+          "elapsedMs": 256
+        },
+        {
+          "operation": "observation-page-1",
+          "status": 200,
+          "bytes": 34381,
+          "shape": [
+            "hasMore",
+            "items",
+            "nextCursor"
+          ],
+          "elapsedMs": 348
+        },
+        {
+          "operation": "observation-page-2",
+          "status": 200,
+          "bytes": 11432,
+          "shape": [
+            "hasMore",
+            "items"
+          ],
+          "elapsedMs": 324
+        }
+      ]
+    },
+    {
+      "host": "dev.meshcore.ca",
+      "backend": "beacon",
+      "facts": {
+        "versionFields": [
+          "minAppVersion",
+          "minWebVersion",
+          "serverVersion"
+        ],
+        "nodePageCount": 200,
+        "nodeHasMore": true,
+        "observationsSampled": 524,
+        "observationHasMore": false
+      },
+      "requests": [
+        {
+          "operation": "version",
+          "status": 200,
+          "bytes": 74,
+          "shape": [
+            "minAppVersion",
+            "minWebVersion",
+            "serverVersion"
+          ],
+          "elapsedMs": 781
+        },
+        {
+          "operation": "nodes-first-page",
+          "status": 200,
+          "bytes": 84208,
+          "shape": [
+            "hasMore",
+            "items",
+            "nextCursor"
+          ],
+          "elapsedMs": 1905
+        },
+        {
+          "operation": "observers-first-page",
+          "status": 200,
+          "bytes": 38074,
+          "shape": [
+            "hasMore",
+            "items"
+          ],
+          "elapsedMs": 842
+        },
+        {
+          "operation": "observation-page-1",
+          "status": 200,
+          "bytes": 32568,
+          "shape": [
+            "hasMore",
+            "items",
+            "nextCursor"
+          ],
+          "elapsedMs": 15870
+        },
+        {
+          "operation": "observation-page-2",
+          "status": 200,
+          "bytes": 32387,
+          "shape": [
+            "hasMore",
+            "items",
+            "nextCursor"
+          ],
+          "elapsedMs": 446
+        },
+        {
+          "operation": "observation-page-3",
+          "status": 200,
+          "bytes": 20014,
+          "shape": [
+            "hasMore",
+            "items"
+          ],
+          "elapsedMs": 1090
+        }
+      ]
+    }
+  ]
+}

@@ -47,7 +47,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val model: AppViewModel = viewModel(factory = AppViewModel.factory(container))
             val preferences by model.preferences.collectAsStateWithLifecycle()
-            NodeScopeTheme(preferences?.appearance ?: Appearance.SYSTEM) {
+            NodeScopeTheme(preferences?.appearance ?: Appearance.SYSTEM, backgroundTexture = preferences?.backgroundTexture ?: true) {
                 val lightBars = MaterialTheme.colorScheme.background.luminance() > 0.3f
                 SideEffect {
                     WindowCompat.getInsetsController(window, window.decorView).apply {

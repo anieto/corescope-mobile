@@ -10,6 +10,10 @@ struct MapScreen: View {
     var pinsPacketSidebarToggle = false
     var centersBottomControlsInLeadingPane = false
     var bottomObscuredFraction: Double = 0
+    /// Width covered on the right by a panel drawn over the map (the Duo's packet sidebar). The
+    /// map itself is not resized, so its nodes stay put; its controls move clear of the panel,
+    /// and the camera pans alongside the panel's slide so the visible part stays centred.
+    var trailingObscuredWidth: CGFloat = 0
 
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(RegionFilterStore.self) private var regionFilter
@@ -19,6 +23,7 @@ struct MapScreen: View {
     @Environment(AppNavigationStore.self) private var appNavigationStore
     @Environment(AnalyzerSourceRegistry.self) private var analyzerSourceRegistry
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var viewModel = MapViewModel()
     @State private var liveFeedConsumer = UUID()
     @State private var isVisible = false
@@ -29,7 +34,6 @@ struct MapScreen: View {
     @State private var displayedNodes: [MeshNode] = []
     @State private var displayCoordinatesByNodeID: [String: CLLocationCoordinate2D] = [:]
     @State private var nodeClusters: [NodeCluster] = []
-    @State private var visibleNodesByCoordinate: [CoordinateKey: MeshNode] = [:]
     @State private var iataCoordinates: [String: CLLocationCoordinate2D] = [:]
     @State private var iataRadiusKm: [String: Double] = [:]
     @State private var mapDisplayStyle = MapDisplayStyle.persisted
@@ -65,12 +69,16 @@ struct MapScreen: View {
     @State private var lastHandledNavigationRequestID: UUID?
     @State private var isMapCameraMoving = false
     @State private var mapViewportSize = CGSize.zero
+    @Environment(\.isHingedDevice) private var isHingedDevice
+    /// The top inset outside the navigation stack (status bar and tab bar). The wide header is
+    /// placed from this: on the first appearance the hidden navigation bar's height is still in
+    /// the stack's own safe area, which dropped the header by a bar height until the next visit.
+    @State private var chromeTopInset: CGFloat = 0
 
     private struct NodeCluster: Identifiable, Sendable {
         let id: String
         let coordinate: CLLocationCoordinate2D
         let count: Int
-        let memberCoordinates: Set<CoordinateKey>
     }
 
     private func updateLiveFeedDemand() {
@@ -92,6 +100,14 @@ struct MapScreen: View {
         }
     }
 
+    /// One hop of one packet. Every observer of a packet reports its path, and
+    /// most hops are shared, so each is drawn once rather than once per observer.
+    private struct PacketSegmentKey: Hashable, Sendable {
+        let packetHash: String
+        let from: CoordinateKey
+        let to: CoordinateKey
+    }
+
     private struct DisplayRegion: Sendable {
         let centerLatitude: Double
         let centerLongitude: Double
@@ -109,63 +125,115 @@ struct MapScreen: View {
     private struct DisplayResult: Sendable {
         let nodes: [MeshNode]
         let clusters: [NodeCluster]
-        let nodesByCoordinate: [CoordinateKey: MeshNode]
         let displayCoordinatesByNodeID: [String: CLLocationCoordinate2D]
         let filteredCount: Int
     }
 
-    private enum MapDisplayStyle: String, CaseIterable, Identifiable {
-        case standard
-        case imagery
-        case hybrid
+    private struct WideMapHeader: View {
+        let isConnected: Bool
+        let isRefreshing: Bool
+        let togglePacketSidebar: (() -> Void)?
+        let retry: () -> Void
+        let search: () -> Void
+        @Binding var mapDisplayStyle: MapDisplayStyle
 
-        static let defaultsKey = "mapDisplayStyle"
+        var body: some View {
+            HStack(alignment: .top) {
+                HStack(spacing: 8) {
+                    if let togglePacketSidebar {
+                        Button(action: togglePacketSidebar) {
+                            Image(systemName: "list.bullet.rectangle")
+                                .frame(width: 44, height: 44)
+                        }
+                        .buttonStyle(.plain)
+                        .nodeScopeFloatingGlass(cornerRadius: 18)
+                        .accessibilityLabel("Toggle live packets")
+                    }
 
-        static var persisted: Self {
-            guard let rawValue = UserDefaults.standard.string(forKey: defaultsKey),
-                  let style = Self(rawValue: rawValue) else {
-                return .standard
+                    HStack(spacing: 7) {
+                        Circle()
+                            .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
+                            .frame(width: 7, height: 7)
+                        Text("Live Map")
+                            .font(.headline)
+                    }
+                    .padding(.horizontal, 14)
+                    .frame(height: 44)
+                    .nodeScopeFloatingGlass(cornerRadius: 18)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(isConnected ? "Live Map, connected" : "Live Map, reconnecting")
+
+                }
+
+                Spacer()
+
+                HStack(spacing: 2) {
+                    Button(action: retry) {
+                        Image(systemName: "arrow.clockwise")
+                            .frame(width: 44, height: 44)
+                    }
+                    .disabled(isRefreshing)
+                    .accessibilityLabel("Refresh map data")
+
+                    Button(action: search) {
+                        Image(systemName: "magnifyingglass")
+                            .frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel("Search nodes")
+
+                    Menu {
+                        ForEach(MapDisplayStyle.allCases) { style in
+                            Button {
+                                mapDisplayStyle = style
+                            } label: {
+                                if mapDisplayStyle == style {
+                                    Label(style.title, systemImage: "checkmark")
+                                } else {
+                                    Label(style.title, systemImage: style.systemImage)
+                                }
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "map")
+                            .frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel("Map style")
+                }
+                .buttonStyle(.plain)
+                .nodeScopeFloatingGlass(cornerRadius: 22)
             }
-            return style
+            .foregroundStyle(.primary)
         }
+    }
 
-        var id: String { rawValue }
+    private var usesWideMapHeader: Bool {
+        horizontalSizeClass == .regular
+    }
 
-        var title: String {
-            switch self {
-            case .standard: "Standard"
-            case .imagery: "Satellite"
-            case .hybrid: "Hybrid"
-            }
-        }
+    private var wideMapHeaderTopPadding: CGFloat {
+        isHingedDevice ? 32 : 8
+    }
 
-        var systemImage: String {
-            switch self {
-            case .standard: "map"
-            case .imagery: "globe.americas.fill"
-            case .hybrid: "map.fill"
-            }
-        }
-
-        var style: MapStyle {
-            switch self {
-            case .standard: .standard
-            case .imagery: .imagery
-            case .hybrid: .hybrid
-            }
-        }
+    private var wideMapStatusTopPadding: CGFloat {
+        isHingedDevice ? 84 : 60
     }
 
     var body: some View {
         NavigationStack {
-            GeometryReader { geometry in
-                TimelineView(
-                    .animation(
-                        minimumInterval: mapUpdateInterval,
-                        paused: !isTabActive || !pingsForDisplay.contains { !$0.isExpired() }
-                    )
-                ) { context in
-                    mapContent(at: context.date)
+                    GeometryReader { geometry in
+                Group {
+                    if isReplayMode {
+                        TimelineView(
+                            .animation(
+                                minimumInterval: mapUpdateInterval,
+                                paused: !isTabActive || !pingsForDisplay.contains { !$0.isExpired() }
+                            )
+                        ) { context in
+                            mapContent(at: context.date)
+                        }
+                    } else {
+                        mapContent(at: .now)
+                    }
                 }
                 .onAppear { mapViewportSize = geometry.size }
                 .onChange(of: geometry.size) { _, size in
@@ -180,11 +248,14 @@ struct MapScreen: View {
                 .onChange(of: bottomObscuredFraction) {
                     refitReplayForVisibleMapArea()
                 }
+                .onChange(of: trailingObscuredWidth) { oldWidth, newWidth in
+                    recenterAfterObscuredWidthChange(by: newWidth - oldWidth)
+                }
             }
                 .mapScope(mapScope)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    if isTabActive {
+                    if isTabActive && !usesWideMapHeader {
                         if #available(iOS 27.0, *), pinsPacketSidebarToggle,
                        let togglePacketSidebar {
                         ToolbarItem(placement: .topBarPinnedTrailing) {
@@ -248,8 +319,25 @@ struct MapScreen: View {
                     }
                     }
                 }
+                .toolbarVisibility(usesWideMapHeader ? .hidden : .automatic, for: .navigationBar)
                 .navigationDestination(item: $selectedNode) { node in
                     NodeDetailScreen(node: node)
+                }
+                .overlay(alignment: .top) {
+                    if isTabActive && usesWideMapHeader {
+                        WideMapHeader(
+                            isConnected: liveFeed.isConnected,
+                            isRefreshing: isRefreshingMap,
+                            togglePacketSidebar: togglePacketSidebar,
+                            retry: retryMapLoad,
+                            search: toggleMapSearch,
+                            mapDisplayStyle: $mapDisplayStyle
+                        )
+                        .padding(.horizontal, 20)
+                        .padding(.trailing, trailingObscuredWidth)
+                        .padding(.top, chromeTopInset + wideMapHeaderTopPadding)
+                        .ignoresSafeArea(.container, edges: .top)
+                    }
                 }
                 .overlay(alignment: .topLeading) {
                     VStack(alignment: .leading, spacing: 8) {
@@ -275,8 +363,9 @@ struct MapScreen: View {
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.leading, 12)
-                    .padding(.top, 12)
+                    .padding(.leading, usesWideMapHeader ? 20 : 12)
+                    .padding(.top, usesWideMapHeader ? chromeTopInset + wideMapStatusTopPadding : 12)
+                    .ignoresSafeArea(.container, edges: usesWideMapHeader ? .top : [])
                 }
                 .overlay(alignment: .bottomLeading) {
                     VStack(spacing: 10) {
@@ -303,12 +392,14 @@ struct MapScreen: View {
                         .accessibilityLabel("Center on my location")
                     }
                     .padding(.leading, 12)
-                    .padding(.bottom, 12)
+                    // MapKit reserves the lower-left corner for its logo and
+                    // legal attribution on every device class.
+                    .padding(.bottom, 36)
                 }
                 .overlay(alignment: .bottomTrailing) {
                     zoomControl
-                        .padding(.trailing, 12)
-                        .padding(.bottom, 12)
+                        .padding(.trailing, 12 + trailingObscuredWidth)
+                        .padding(.bottom, 36)
                 }
                 .overlay(alignment: .bottom) {
                     if packetReplayStore.isReplayActive || isReplayMode {
@@ -340,6 +431,7 @@ struct MapScreen: View {
                             }
                         }
                         .padding(.bottom, viewModel.nodes.isEmpty ? 12 : 44)
+                        .padding(.trailing, trailingObscuredWidth)
                     }
                 }
                 .overlay(alignment: .bottom) {
@@ -350,6 +442,7 @@ struct MapScreen: View {
                             .padding(.vertical, 4)
                             .background(.thinMaterial, in: Capsule())
                             .padding(.bottom, 12)
+                            .padding(.trailing, trailingObscuredWidth)
                     }
                 }
                 .overlay {
@@ -397,6 +490,7 @@ struct MapScreen: View {
                     }
                 }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { chromeTopInset = $0 }
         .sheet(isPresented: $isSearchPresented) {
             MapNodeSearchSheet(nodes: viewModel.nodes, selectNode: focusOnSearchedNode)
                 .presentationDetents([.medium, .large])
@@ -689,27 +783,24 @@ struct MapScreen: View {
 
     @ViewBuilder
     private func mapContent(at date: Date) -> some View {
-        let currentPings = pingsForDisplay.filter {
+        // Replay keeps its tuned MapKit rendering path. Live traffic is drawn
+        // entirely by the lightweight canvas overlay below, so its animation
+        // clock never invalidates the Map or its annotations.
+        let currentPings = isReplayMode ? pingsForDisplay.filter {
             $0.hasStarted(at: date) && !$0.isExpired(at: date)
-        }
+        } : []
         let completedPings = currentPings.filter {
             !$0.isPulse && $0.hasCompletedTravel(at: date)
         }
-        let anchoredPings = isReplayMode
-            ? completedPings
-            : Array(completedPings.suffix(40))
+        let anchoredPings = isReplayMode ? completedPings : []
         let routeCoordinates = Set(currentPings.flatMap {
             [CoordinateKey($0.start), CoordinateKey($0.end)]
         })
-        let routeNodes = routeCoordinates.compactMap { visibleNodesByCoordinate[$0] }
         let baseNodes = isReplayMode && showsReplayRouteOnly ? replayRouteNodes : displayedNodes
-        let mapNodes = Array(Dictionary(
-            baseNodes.map { ($0.id, $0) } + routeNodes.map { ($0.id, $0) },
-            uniquingKeysWith: { first, _ in first }
-        ).values)
+        let mapNodes = baseNodes
         let mapClusters = isReplayMode && showsReplayRouteOnly
             ? []
-            : nodeClusters.filter { $0.memberCoordinates.isDisjoint(with: routeCoordinates) }
+            : nodeClusters
         // MapKit's built-in annotation titles become expensive when hundreds
         // appear at once. Only render our lightweight labels when the map is
         // genuinely close and the visible marker count is bounded.
@@ -845,19 +936,28 @@ struct MapScreen: View {
                 updateDisplayedNodes(in: context.region)
             }
             .onTapGesture { screenPoint in
-                scheduleMapTap(at: screenPoint, using: proxy, date: date, nodes: mapNodes)
+                scheduleMapTap(at: screenPoint, using: proxy, date: .now, nodes: mapNodes)
             }
             .simultaneousGesture(
                 SpatialTapGesture(count: 2)
                     .onEnded { _ in cancelPendingMapTap() }
             )
             .overlay {
-                if !isMapCameraMoving {
+                if !isMapCameraMoving && isReplayMode {
                     MapTrafficCanvas(
                         pings: transientPings(from: currentPings, at: date),
                         date: date,
                         proxy: proxy,
-                        retainsCompletedPaths: isReplayMode
+                        retainsCompletedPaths: true,
+                        showsRouteAnchors: false
+                    )
+                    .allowsHitTesting(false)
+                } else if !isMapCameraMoving {
+                    LiveMapTrafficLayer(
+                        pings: pingsForDisplay,
+                        proxy: proxy,
+                        minimumInterval: mapUpdateInterval,
+                        isPaused: !isTabActive || !pingsForDisplay.contains { !$0.isExpired() }
                     )
                     .allowsHitTesting(false)
                 }
@@ -893,7 +993,6 @@ struct MapScreen: View {
             guard let result else { return }
             displayedNodes = result.nodes
             nodeClusters = result.clusters
-            visibleNodesByCoordinate = result.nodesByCoordinate
             displayCoordinatesByNodeID = result.displayCoordinatesByNodeID
             filteredNodeCount = result.filteredCount
         }
@@ -943,12 +1042,6 @@ struct MapScreen: View {
             return DisplayResult(
                 nodes: validNodes,
                 clusters: [],
-                nodesByCoordinate: Dictionary(
-                    validNodes.compactMap { node in
-                        node.coordinate.map { (CoordinateKey($0), node) }
-                    },
-                    uniquingKeysWith: { first, _ in first }
-                ),
                 displayCoordinatesByNodeID: Dictionary(
                     uniqueKeysWithValues: validNodes.compactMap { node in
                         node.coordinate.map { (node.id, $0) }
@@ -978,12 +1071,6 @@ struct MapScreen: View {
             return DisplayResult(
                 nodes: visibleNodes,
                 clusters: [],
-                nodesByCoordinate: Dictionary(
-                    visibleNodes.compactMap { node in
-                        node.coordinate.map { (CoordinateKey($0), node) }
-                    },
-                    uniquingKeysWith: { first, _ in first }
-                ),
                 displayCoordinatesByNodeID: spreadNearbyCoordinates(
                     for: visibleNodes,
                     region: region
@@ -1026,10 +1113,7 @@ struct MapScreen: View {
                         latitude: latitudeTotal / Double(cellNodes.count),
                         longitude: longitudeTotal / Double(cellNodes.count)
                     ),
-                    count: cellNodes.count,
-                    memberCoordinates: Set(cellNodes.compactMap { node in
-                        node.coordinate.map(CoordinateKey.init)
-                    })
+                    count: cellNodes.count
                 )
             )
         }
@@ -1037,12 +1121,6 @@ struct MapScreen: View {
         return DisplayResult(
             nodes: individualNodes,
             clusters: clusters.sorted { $0.id < $1.id },
-            nodesByCoordinate: Dictionary(
-                visibleNodes.compactMap { node in
-                    node.coordinate.map { (CoordinateKey($0), node) }
-                },
-                uniquingKeysWith: { first, _ in first }
-            ),
             displayCoordinatesByNodeID: Dictionary(
                 uniqueKeysWithValues: individualNodes.compactMap { node in
                     node.coordinate.map { (node.id, $0) }
@@ -1104,10 +1182,9 @@ struct MapScreen: View {
     }
 
     private var mapObserverOptions: [MapObserverOption] {
-        let selectedRegion = regionFilter.selectedRegion?.uppercased()
         return observerRegionLookup.observers
             .filter { observer in
-                selectedRegion == nil || observer.iata?.uppercased() == selectedRegion
+                regionFilter.includes(observer.iata)
             }
             .map { observer in
                 MapObserverOption(
@@ -1131,8 +1208,8 @@ struct MapScreen: View {
         if isLocatingUser {
             return "Locating you…"
         }
-        if let selectedRegion = regionFilter.selectedRegion {
-            return "Loading \(selectedRegion)…"
+        if let selection = regionFilter.selectionTitle {
+            return "Loading \(selection)…"
         }
         return "Loading all regions…"
     }
@@ -1676,6 +1753,24 @@ struct MapScreen: View {
         }
     }
 
+    /// Pans by half the change, alongside the covering panel's slide, so what was centred in the
+    /// visible part of the map stays centred: east when the panel opens, back west when it closes.
+    /// A camera move only re-groups nodes when it ends, so running it with the slide is smooth.
+    private func recenterAfterObscuredWidthChange(by delta: CGFloat) {
+        guard delta != 0, let region = visibleRegion, mapViewportSize.width > 0 else { return }
+        let degreesPerPoint = region.span.longitudeDelta / Double(mapViewportSize.width)
+        var longitude = region.center.longitude + Double(delta / 2) * degreesPerPoint
+        if longitude > 180 { longitude -= 360 }
+        if longitude < -180 { longitude += 360 }
+        let shifted = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: region.center.latitude, longitude: longitude),
+            span: region.span
+        )
+        withAnimation(.smooth(duration: 0.3)) {
+            cameraPosition = .region(shifted)
+        }
+    }
+
     private func centerCameraIfNeeded() {
         guard !hasCenteredCamera, let defaults = viewModel.mapDefaults else { return }
         let center = CLLocationCoordinate2D(latitude: defaults.latitude, longitude: defaults.longitude)
@@ -1702,6 +1797,14 @@ struct MapScreen: View {
                     to: CLLocationCoordinate2D(latitude: defaults.latitude, longitude: defaults.longitude),
                     radiusKm: 250
                 )
+            }
+            return
+        }
+
+        // A quick pick frames all of its regions together.
+        if let codes = regionFilter.selectedCodes, codes.count > 1 {
+            if let frame = RegionCameraFraming.areaFrame(codes: codes.sorted(), regionFilter: regionFilter) {
+                moveCamera(to: frame)
             }
             return
         }
@@ -1750,17 +1853,7 @@ struct MapScreen: View {
     }
 
     private var communitySourceViewport: (center: CLLocationCoordinate2D, radiusKm: Double)? {
-        guard let source = analyzerSourceRegistry.sources.first(where: {
-            $0.host.caseInsensitiveCompare(settings.host) == .orderedSame
-        }),
-        let latitude = source.mapLatitude,
-        let longitude = source.mapLongitude else {
-            return nil
-        }
-
-        let center = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-        guard CLLocationCoordinate2DIsValid(center) else { return nil }
-        return (center, source.mapRadiusKm ?? 250)
+        RegionCameraFraming.communityViewport(registry: analyzerSourceRegistry, host: settings.host)
     }
 
     private var communitySourceViewportSignature: String? {
@@ -1769,7 +1862,7 @@ struct MapScreen: View {
     }
 
     private var sourceRegionViewport: BeaconRegionReader.Frame? {
-        BeaconRegionReader.Frame.enclosing(Array(regionFilter.iataCoords.values))
+        RegionCameraFraming.allRegionsViewport(regionFilter: regionFilter)
     }
 
     private var sourceRegionViewportSignature: String? {
@@ -1796,11 +1889,9 @@ struct MapScreen: View {
         radiusKm: Double = 45,
         verticalBiasFraction: Double = 0
     ) {
-        let latitudeSpan = max((radiusKm * 2.4) / 111, 0.15)
-        let longitudeSpan = max(
-            latitudeSpan / max(cos(center.latitude * .pi / 180), 0.2),
-            0.15
-        )
+        let span = RegionCameraFraming.span(around: center, radiusKm: radiusKm)
+        let latitudeSpan = span.latitudeDelta
+        let longitudeSpan = span.longitudeDelta
         // Shifting the framed center south moves the requested coordinate
         // toward the top of the screen, clear of the bottom-anchored replay
         // controls. A fraction of 0 keeps the normal dead-center framing.
@@ -1939,6 +2030,13 @@ struct MapScreen: View {
     private func processIncomingEvents() {
         activePings.removeAll { $0.isExpired(at: .now) }
 
+        // On networks where dozens of observers hear each packet, drawing a hop
+        // per observation kept the map at its 100-segment cap and re-rendering
+        // continuously. A hop already shown for the same packet is skipped.
+        var drawnSegments = Set(activePings.compactMap { ping -> PacketSegmentKey? in
+            guard !ping.isPulse, let hash = ping.packetHash else { return nil }
+            return PacketSegmentKey(packetHash: hash, from: CoordinateKey(ping.start), to: CoordinateKey(ping.end))
+        })
         var newPings: [ActivePing] = []
         for event in liveFeed.recentEvents {
             guard event.type == "packet" else { continue }
@@ -1963,6 +2061,12 @@ struct MapScreen: View {
                         let p1 = subchain[index]
                         let p2 = subchain[index + 1]
                         if isValidHopDistance(from: p1, to: p2) {
+                            if let hash = event.data?.hash,
+                               !drawnSegments.insert(PacketSegmentKey(
+                                   packetHash: hash, from: CoordinateKey(p1), to: CoordinateKey(p2)
+                               )).inserted {
+                                continue
+                            }
                             let travelDuration = 0.66
                             let hopStart = observedAt.addingTimeInterval(Double(index) * travelDuration)
                             newPings.append(
@@ -1998,10 +2102,33 @@ struct MapScreen: View {
         }
 
         guard !newPings.isEmpty else { return }
-        activePings.append(contentsOf: newPings)
-        if activePings.count > 100 {
-            activePings.removeFirst(activePings.count - 100)
+        // Admit complete routes atomically. Removing the oldest individual
+        // segments at the limit amputates routes that are still traveling.
+        // Under overload, preserve animations already on screen and skip a
+        // whole newly arriving route instead.
+        for route in Self.groupedLiveRoutes(newPings) {
+            guard activePings.count + route.count <= 100 else { continue }
+            activePings.append(contentsOf: route)
         }
+    }
+
+    nonisolated private static func groupedLiveRoutes(_ pings: [ActivePing]) -> [[ActivePing]] {
+        var groups: [[ActivePing]] = []
+        var groupIndexByRouteID: [String: Int] = [:]
+
+        for ping in pings {
+            guard let routeID = ping.routeID else {
+                groups.append([ping])
+                continue
+            }
+            if let index = groupIndexByRouteID[routeID] {
+                groups[index].append(ping)
+            } else {
+                groupIndexByRouteID[routeID] = groups.count
+                groups.append([ping])
+            }
+        }
+        return groups
     }
 
     private func rebuildPathsForCurrentFilters() {
@@ -2022,7 +2149,7 @@ struct MapScreen: View {
         observerId: String?,
         observerName: String?
     ) -> Bool {
-        guard let selectedRegion = regionFilter.selectedRegion?.uppercased() else {
+        guard regionFilter.selectedCodes != nil else {
             return true
         }
 
@@ -2030,7 +2157,7 @@ struct MapScreen: View {
             let observerRegion = observerRegionLookup.iataById[observerId]
                 ?? observerRegionLookup.iataById[observerId.lowercased()]
             if let observerRegion {
-                return observerRegion.uppercased() == selectedRegion
+                return regionFilter.includes(observerRegion)
             }
         }
 
@@ -2038,7 +2165,7 @@ struct MapScreen: View {
             let observerRegion = observerRegionLookup.iataByName[observerName]
                 ?? observerRegionLookup.iataByName[observerName.lowercased()]
             if let observerRegion {
-                return observerRegion.uppercased() == selectedRegion
+                return regionFilter.includes(observerRegion)
             }
         }
 
@@ -2306,20 +2433,54 @@ struct MapScreen: View {
     }
 }
 
+private struct LiveMapTrafficLayer: View {
+    let pings: [ActivePing]
+    let proxy: MapProxy
+    let minimumInterval: TimeInterval
+    let isPaused: Bool
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: minimumInterval, paused: isPaused)) { context in
+            MapTrafficCanvas(
+                pings: pingsForFrame(at: context.date),
+                date: context.date,
+                proxy: proxy,
+                retainsCompletedPaths: true,
+                showsRouteAnchors: true
+            )
+        }
+    }
+
+    private func pingsForFrame(at date: Date) -> [ActivePing] {
+        // Canvas is inexpensive enough to retain every live segment through
+        // its normal fade. Segment-count caps can evict one hop while the rest
+        // of its route is still visible, which looks like a random mid-route
+        // disappearance on dense analyzers.
+        pings.filter { $0.hasStarted(at: date) && !$0.isExpired(at: date) }
+    }
+}
+
 private struct MapTrafficCanvas: View {
     let pings: [ActivePing]
     let date: Date
     let proxy: MapProxy
     let retainsCompletedPaths: Bool
+    let showsRouteAnchors: Bool
 
     var body: some View {
         Canvas { context, _ in
+            var routeAnchors: [TrafficCoordinateKey: (CLLocationCoordinate2D, Color)] = [:]
             for ping in pings where ping.hasStarted(at: date) && !ping.isExpired(at: date) {
                 guard let start = proxy.convert(ping.start, to: .local) else { continue }
 
                 if ping.isPulse {
                     drawPulse(ping, at: start, in: &context)
                     continue
+                }
+
+                if showsRouteAnchors {
+                    routeAnchors[TrafficCoordinateKey(ping.start)] = (ping.start, ping.pathColor)
+                    routeAnchors[TrafficCoordinateKey(ping.end)] = (ping.end, ping.pathColor)
                 }
 
                 if !ping.hasCompletedTravel(at: date) {
@@ -2331,6 +2492,13 @@ private struct MapTrafficCanvas: View {
                 if let pulseProgress = ping.arrivalPulseProgress(at: date),
                    let end = proxy.convert(ping.end, to: .local) {
                     drawArrivalPulse(ping, progress: pulseProgress, at: end, in: &context)
+                }
+            }
+
+            if showsRouteAnchors {
+                for (coordinate, color) in routeAnchors.values {
+                    guard let point = proxy.convert(coordinate, to: .local) else { continue }
+                    drawRouteAnchor(at: point, color: color, in: &context)
                 }
             }
         }
@@ -2423,6 +2591,16 @@ private struct MapTrafficCanvas: View {
         )
     }
 
+    private func drawRouteAnchor(
+        at point: CGPoint,
+        color: Color,
+        in context: inout GraphicsContext
+    ) {
+        let marker = Path(ellipseIn: circleRect(center: point, diameter: 9))
+        context.fill(marker, with: .color(.white.opacity(0.95)))
+        context.stroke(marker, with: .color(color), lineWidth: 2)
+    }
+
     private func circleRect(center: CGPoint, diameter: CGFloat) -> CGRect {
         CGRect(
             x: center.x - diameter / 2,
@@ -2430,6 +2608,16 @@ private struct MapTrafficCanvas: View {
             width: diameter,
             height: diameter
         )
+    }
+}
+
+private struct TrafficCoordinateKey: Hashable {
+    let latitude: Double
+    let longitude: Double
+
+    init(_ coordinate: CLLocationCoordinate2D) {
+        latitude = coordinate.latitude
+        longitude = coordinate.longitude
     }
 }
 
@@ -2493,21 +2681,8 @@ private struct MapRegionScopeControl: View {
                     Text("All Regions")
                 }
             }
-
-            if !regionFilter.options.isEmpty {
-                Divider()
-                ForEach(regionFilter.options, id: \.self) { code in
-                    Button {
-                        regionFilter.selectedRegion = code
-                    } label: {
-                        if regionFilter.selectedRegion == code {
-                            Label(regionFilter.label(for: code), systemImage: "checkmark")
-                        } else {
-                            Text(regionFilter.label(for: code))
-                        }
-                    }
-                }
-            }
+            RegionQuickPickButtons()
+            RegionCodeButtons()
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: "line.3.horizontal.decrease.circle.fill")
@@ -2532,6 +2707,8 @@ private struct MapRegionScopeControl: View {
         guard let selectedRegion = regionFilter.selectedRegion else {
             return "All Regions"
         }
+        if let pick = regionFilter.activePick { return pick.name }
+        if selectedRegion.contains(",") { return regionFilter.label(for: selectedRegion) }
         return "\(selectedRegion) · \(regionFilter.label(for: selectedRegion))"
     }
 }
@@ -2594,6 +2771,7 @@ private struct MapRouteDetailsSheet: View {
                     }
                 }
             }
+            .meshPageBackground()
             .navigationTitle("Route Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -2824,6 +3002,7 @@ private struct MapNodeFilterSheet: View {
                     }
                 }
             }
+            .meshPageBackground()
             .navigationTitle("Map Filters")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -3046,6 +3225,7 @@ private struct MapObserverPickerSheet: View {
                     }
                 }
             }
+            .meshPageBackground()
             .navigationTitle("Route Observer")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $query, prompt: "Name, ID, or region")
@@ -3149,6 +3329,7 @@ private struct MapNodeSearchSheet: View {
                 }
             }
             .padding(.top, 8)
+            .meshPageBackground()
             .navigationTitle("Search Nodes")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -3307,5 +3488,154 @@ private struct ReplayReceiverMarker: View {
             .allowsHitTesting(false)
             .accessibilityElement()
             .accessibilityLabel("Heard by \(name)")
+    }
+}
+
+/// How a map opens on the selected region, shared by the live map and Link Profile so both
+/// frame a region the same way.
+enum RegionCameraFraming {
+    /// The span that shows about [radiusKm] around [center], never closer than a small town.
+    static func span(around center: CLLocationCoordinate2D, radiusKm: Double) -> MKCoordinateSpan {
+        let latitudeSpan = max((radiusKm * 2.4) / 111, 0.15)
+        let longitudeSpan = max(latitudeSpan / max(cos(center.latitude * .pi / 180), 0.2), 0.15)
+        return MKCoordinateSpan(latitudeDelta: latitudeSpan, longitudeDelta: longitudeSpan)
+    }
+
+    /// The community registry's viewport for this analyzer, if it publishes one.
+    @MainActor
+    static func communityViewport(registry: AnalyzerSourceRegistry, host: String) -> (center: CLLocationCoordinate2D, radiusKm: Double)? {
+        guard let source = registry.sources.first(where: { $0.host.caseInsensitiveCompare(host) == .orderedSame }),
+              let latitude = source.mapLatitude,
+              let longitude = source.mapLongitude else { return nil }
+        let center = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+        guard CLLocationCoordinate2DIsValid(center) else { return nil }
+        return (center, source.mapRadiusKm ?? 250)
+    }
+
+    /// Every region the analyzer offers, from published centers or the bundled airport table.
+    @MainActor
+    static func allRegionsViewport(regionFilter: RegionFilterStore) -> BeaconRegionReader.Frame? {
+        BeaconRegionReader.Frame.enclosing(coordinates(codes: regionFilter.options, regionFilter: regionFilter))
+    }
+
+    /// A quick pick's area: each region's full view (its published radius, else 45 km, exactly
+    /// as when that region is selected alone), combined. Framing only the centers cut off
+    /// the parts of a city beyond its airport, such as south San Antonio.
+    @MainActor
+    static func areaFrame(codes: [String], regionFilter: RegionFilterStore) -> BeaconRegionReader.Frame? {
+        let boxes = coordinates(codes: codes, regionFilter: regionFilter).compactMap { point -> (north: Double, south: Double, east: Double, west: Double)? in
+            let center = CLLocationCoordinate2D(latitude: point.lat, longitude: point.lon)
+            guard CLLocationCoordinate2DIsValid(center) else { return nil }
+            let radius = point.radiusKm.flatMap { $0.isFinite && $0 > 0 ? min($0, 2000) : nil } ?? 45
+            let span = span(around: center, radiusKm: radius)
+            return (center.latitude + span.latitudeDelta / 2, center.latitude - span.latitudeDelta / 2,
+                    center.longitude + span.longitudeDelta / 2, center.longitude - span.longitudeDelta / 2)
+        }
+        guard let north = boxes.map(\.north).max(), let south = boxes.map(\.south).min(),
+              let east = boxes.map(\.east).max(), let west = boxes.map(\.west).min() else { return nil }
+        return BeaconRegionReader.Frame(
+            latitude: (north + south) / 2, longitude: (east + west) / 2,
+            latitudeDelta: min(180, north - south), longitudeDelta: min(360, east - west)
+        )
+    }
+
+    /// Centers for [codes]: the analyzer's published ones, else the bundled airport table.
+    @MainActor
+    private static func coordinates(codes: [String], regionFilter: RegionFilterStore) -> [IataCoordinate] {
+        codes.compactMap { code -> IataCoordinate? in
+            if let published = regionFilter.iataCoords.first(where: {
+                $0.key.caseInsensitiveCompare(code) == .orderedSame
+            })?.value {
+                return published
+            }
+            guard let fallback = AirportCoordinates.coordinate(for: code) else { return nil }
+            return IataCoordinate(lat: fallback.latitude, lon: fallback.longitude, radiusKm: nil)
+        }
+    }
+
+    /// The opening view without network lookups: a selected region's published center (and
+    /// radius) or its airport, else the community viewport, else every offered region. Nil
+    /// when nothing is known yet.
+    @MainActor
+    static func openingRegion(regionFilter: RegionFilterStore, registry: AnalyzerSourceRegistry, host: String) -> MKCoordinateRegion? {
+        if let codes = regionFilter.selectedCodes, codes.count > 1 {
+            return areaFrame(codes: codes.sorted(), regionFilter: regionFilter).map(region(for:))
+        }
+        if let selected = regionFilter.selectedRegion?.uppercased() {
+            if let published = regionFilter.iataCoords.first(where: { $0.key.uppercased() == selected })?.value {
+                let center = CLLocationCoordinate2D(latitude: published.lat, longitude: published.lon)
+                if CLLocationCoordinate2DIsValid(center) {
+                    let radius = published.radiusKm.flatMap { $0.isFinite && $0 > 0 ? min($0, 2000) : nil } ?? 45
+                    return MKCoordinateRegion(center: center, span: span(around: center, radiusKm: radius))
+                }
+            }
+            if let airport = AirportCoordinates.coordinate(for: selected) {
+                return MKCoordinateRegion(center: airport, span: span(around: airport, radiusKm: 45))
+            }
+            return nil
+        }
+        if let viewport = communityViewport(registry: registry, host: host) {
+            return MKCoordinateRegion(center: viewport.center, span: span(around: viewport.center, radiusKm: viewport.radiusKm))
+        }
+        return allRegionsViewport(regionFilter: regionFilter).map(region(for:))
+    }
+
+    private static func region(for frame: BeaconRegionReader.Frame) -> MKCoordinateRegion {
+        MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: frame.latitude, longitude: frame.longitude),
+            span: MKCoordinateSpan(latitudeDelta: frame.latitudeDelta, longitudeDelta: frame.longitudeDelta)
+        )
+    }
+}
+
+/// The map styles offered on the live map and in Link Profile; the choice is shared.
+enum MapDisplayStyle: String, CaseIterable, Identifiable {
+    case standard
+    case imagery
+    case hybrid
+
+    static let defaultsKey = "mapDisplayStyle"
+
+    static var persisted: Self {
+        guard let rawValue = UserDefaults.standard.string(forKey: defaultsKey),
+              let style = Self(rawValue: rawValue) else {
+            return .standard
+        }
+        return style
+    }
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .standard: "Standard"
+        case .imagery: "Satellite"
+        case .hybrid: "Hybrid"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .standard: "map"
+        case .imagery: "globe.americas.fill"
+        case .hybrid: "map.fill"
+        }
+    }
+
+    /// Link Profile keeps 3D terrain in every style.
+    var realisticStyle: MapStyle {
+        switch self {
+        case .standard: .standard(elevation: .realistic)
+        case .imagery: .imagery(elevation: .realistic)
+        case .hybrid: .hybrid(elevation: .realistic)
+        }
+    }
+
+    var style: MapStyle {
+        switch self {
+        case .standard: .standard
+        case .imagery: .imagery
+        case .hybrid: .hybrid
+        }
     }
 }

@@ -119,7 +119,7 @@ struct SupportDevelopmentScreen: View {
             }
         }
         .adaptiveContentWidth()
-        .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
+        .meshPageBackground()
         .navigationTitle("Support Development")
         .navigationBarTitleDisplayMode(.inline)
         .task {

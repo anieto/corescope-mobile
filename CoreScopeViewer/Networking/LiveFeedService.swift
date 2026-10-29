@@ -167,6 +167,10 @@ final class LiveFeedService {
         feed.connect()
     }
 
+    func resumeAfterForeground() {
+        feed?.resumeAfterForeground()
+    }
+
     func disconnect() {
         generation = UUID()
         eventTask?.cancel()

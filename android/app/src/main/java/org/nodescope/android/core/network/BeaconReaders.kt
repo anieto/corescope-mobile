@@ -123,7 +123,12 @@ internal fun beaconRole(nodeType: Int) = when (nodeType) {
     1 -> "companion"; 2 -> "repeater"; 3 -> "room"; 4 -> "sensor"; else -> "unknown"
 }
 
-class BeaconNodeReader(val client: BeaconApiClient, verifiedServerInfo: BeaconServerInfo) {
+class BeaconNodeReader(val client: BeaconApiClient, private val verifiedServerInfo: BeaconServerInfo) {
+    /** One exact-key lookup and at most three pages; exhausted batches retain partial history. */
+    suspend fun myNodesObservationHistory(publicKey: String, since: Long, budget: MyNodesRequestBudget): BeaconObservationHistory? =
+        BeaconNodeReader(client.budgetingRequests(budget, publicKey), verifiedServerInfo)
+            .observationHistory(publicKey, since, maximumPages = 3)
+
     init { verifiedServerInfo.requireSupported() }
 
     suspend fun nodePage(region: String?, pageSize: Int = 200, cursor: AnalyzerCursor? = null): AnalyzerPage<BeaconNode> {
@@ -195,7 +200,12 @@ class BeaconNodeReader(val client: BeaconApiClient, verifiedServerInfo: BeaconSe
         var pages = 0
         while (pages < minOf(maximumPages, 19)) {
             val query = mutableListOf("limit" to "200").apply { cursor?.let { add("cursor" to it) } }
-            val page = client.get(BeaconRawPage.serializer(), listOf("nodes", node.id, "observations"), query)
+            val page = try {
+                client.get(BeaconRawPage.serializer(), listOf("nodes", node.id, "observations"), query)
+            } catch (e: MyNodesBudgetException) {
+                if (e.reason == MyNodesBudgetFailure.EXHAUSTED || e.reason == MyNodesBudgetFailure.NODE_EXHAUSTED) break
+                throw e
+            }
             val items = decodeItems(page, BeaconObservation.serializer()).onEach { it.validate() }
             for (observation in items) {
                 if (!seenIds.add(observation.id)) continue

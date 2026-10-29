@@ -2,8 +2,12 @@ name: Android
 on:
   pull_request:
     paths: ['android/**', 'CommunitySources/**', 'shared/fixtures/**', '.github/workflows/android.yml']
+  # Only main on push, so work-in-progress branches don't email a failure per commit.
+  # Run it on any branch from the Actions tab when needed.
   push:
+    branches: [main]
     paths: ['android/**', 'CommunitySources/**', 'shared/fixtures/**', '.github/workflows/android.yml']
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:

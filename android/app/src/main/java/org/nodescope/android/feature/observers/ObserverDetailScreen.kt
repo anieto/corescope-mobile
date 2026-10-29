@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.observers
 
+import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -116,7 +117,7 @@ internal fun ObserverIdentityCard(observer: MeshObserver, now: Long, favorite: B
     var technicalExpanded by rememberSaveable(observer.id) { mutableStateOf(false) }
     val copy = rememberCopyAction()
     val context = androidx.compose.ui.platform.LocalContext.current
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+    Card(colors = meshCardColors()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 val tone = statusAccent(observer.online ?: observer.isActive(now))
@@ -180,7 +181,7 @@ internal fun ObserverIdentityCard(observer: MeshObserver, now: Long, favorite: B
 
 @Composable
 private fun AnalyticsNotice(message: String) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+    Card(colors = meshCardColors()) {
         Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Icon(Icons.Outlined.Info, null, Modifier.size(18.dp), tint = SignalBlue)
             Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -52,6 +52,8 @@ struct ChannelDetailScreen: View {
                 .adaptiveContentWidth(760)
             }
             .defaultScrollAnchor(.bottom, for: .alignment)
+            // Folding or resizing the pane keeps the newest messages in view.
+            .defaultScrollAnchor(.bottom, for: .sizeChanges)
             .onChange(of: orderedMessages.last?.id) {
                 scrollToBottom(proxy: proxy)
             }
@@ -59,7 +61,7 @@ struct ChannelDetailScreen: View {
                 scrollToBottom(proxy: proxy, animated: false)
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .meshPageBackground()
         .navigationTitle(channel.name)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -234,9 +236,9 @@ struct ChannelDetailScreen: View {
         var messages = viewModel.messages
         if !channel.isLocallyMonitored,
            settings.beaconBackend == nil,
-           let selectedRegion = regionFilter.selectedRegion {
+           regionFilter.selectedRegion != nil {
             messages = messages.filter { message in
-                message.observers.contains { observerRegionLookup.iataByName[$0] == selectedRegion }
+                message.observers.contains { regionFilter.includes(observerRegionLookup.iataByName[$0]) }
             }
         }
         return messages.sorted {

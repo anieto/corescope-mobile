@@ -132,6 +132,11 @@ struct CoreScopeBackend: AnalyzerBackend {
         try await get("/api/config/regions")
     }
 
+    func regionQuickPicks() async throws -> [RegionQuickPick] {
+        let response: RegionQuickPicksResponse = try await get("/api/config/region-quick-picks")
+        return response.quickPicks
+    }
+
     func iataCoordinates() async throws -> IataCoordsResponse {
         try await get("/api/iata-coords")
     }

@@ -24,6 +24,8 @@ struct OnboardingScreen: View {
                     overview
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .meshPageBackground()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if step == .overview {
@@ -61,9 +63,23 @@ struct OnboardingScreen: View {
         VStack(spacing: 24) {
             Spacer()
 
-            Image(systemName: "antenna.radiowaves.left.and.right.circle.fill")
-                .font(.system(size: 76))
-                .foregroundStyle(Color.accentColor)
+            if let appIcon = UIImage.appIcon {
+                Image(uiImage: appIcon)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 96, height: 96)
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .stroke(.white.opacity(0.15), lineWidth: 1)
+                    }
+                    .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+                    .accessibilityHidden(true)
+            } else {
+                Image(systemName: "antenna.radiowaves.left.and.right.circle.fill")
+                    .font(.system(size: 76))
+                    .foregroundStyle(Color.accentColor)
+            }
 
             VStack(spacing: 10) {
                 Text("Welcome to NodeScope")

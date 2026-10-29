@@ -33,7 +33,7 @@ fun visibleObservers(
         ObserverSort.NAME -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.displayName }
     }
     return observers.filter { observer ->
-        (region == null || observer.iata.equals(region, ignoreCase = true)) &&
+        org.nodescope.android.core.model.regionIncludes(region, observer.iata) &&
             (activity == ObserverActivity.ALL || observer.isActive(now)) &&
             (model == null || observer.model == model) &&
             (text.isEmpty() || listOfNotNull(observer.name, observer.id, observer.iata, observer.model).any { it.contains(text, ignoreCase = true) })

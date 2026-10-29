@@ -9,6 +9,7 @@ struct StorageSettingsScreen: View {
     @State private var isClearing = false
     @State private var showsClearConfirmation = false
     @State private var clearedAt: Date?
+    @State private var clearFailed = false
 
     var body: some View {
         List {
@@ -25,10 +26,15 @@ struct StorageSettingsScreen: View {
                     showsClearConfirmation = true
                 }
                 .disabled(isClearing || (usage?.bytes == 0 && usage?.fileCount == 0))
+                if clearFailed {
+                    Text("Favorites activity snapshots could not be cleared. Please try again.")
+                        .foregroundStyle(.secondary)
+                }
             } footer: {
                 Text("Current content can remain visible while NodeScope fetches fresh data. New requests will no longer use cached responses.")
             }
         }
+        .meshPageBackground()
         .navigationTitle("Storage")
         .navigationBarTitleDisplayMode(.inline)
         .task {
@@ -47,7 +53,7 @@ struct StorageSettingsScreen: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Downloaded analyzer responses will be removed. Favorites, monitored channels and keys, recent items, appearance, and analyzer settings will be kept.")
+            Text("Downloaded analyzer responses and Favorites activity comparison snapshots will be removed. Favorites, monitored channels and keys, recent items, appearance, and analyzer settings will be kept.")
         }
     }
 
@@ -61,15 +67,17 @@ struct StorageSettingsScreen: View {
     private func clearCache() async {
         guard !isClearing else { return }
         isClearing = true
-        await CacheStorageService.shared.clear()
+        let succeeded = await CacheStorageService.shared.clear()
+        clearFailed = !succeeded
 
         async let regions: Void = regionFilter.loadRegions()
+        async let picks: Void = regionFilter.loadQuickPicks()
         async let coordinates: Void = regionFilter.loadIataCoords()
         async let observerRegions: Void = observerRegionLookup.load()
-        _ = await (regions, coordinates, observerRegions)
+        _ = await (regions, picks, coordinates, observerRegions)
 
         usage = await CacheStorageService.shared.usage()
-        clearedAt = .now
+        clearedAt = succeeded ? .now : nil
         isClearing = false
     }
 }
@@ -126,6 +134,11 @@ private struct StorageContentsSection: View {
                 title: "Temporary network data",
                 detail: "Short-lived responses used to make revisiting screens faster",
                 systemImage: "arrow.triangle.2.circlepath"
+            )
+            StorageContentRow(
+                title: "Favorites activity snapshots",
+                detail: "Saved comparisons reset when you clear cached data",
+                systemImage: "clock.arrow.circlepath"
             )
         } header: {
             Text("What Is Cached")

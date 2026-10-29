@@ -5,7 +5,7 @@ struct AboutScreen: View {
         List {
             Section {
                 VStack(spacing: 10) {
-                    if let appIcon = Self.appIcon {
+                    if let appIcon = UIImage.appIcon {
                         Image(uiImage: appIcon)
                             .resizable()
                             .scaledToFit()
@@ -103,9 +103,29 @@ struct AboutScreen: View {
                     }
                 }
             }
+
+            Section("Acknowledgements") {
+                if let meshCoreOneURL = URL(string: "https://github.com/Avi0n/MeshCoreOne") {
+                    Link(destination: meshCoreOneURL) {
+                        ProjectLinkRow(icon: "antenna.radiowaves.left.and.right", title: "MeshCore One by Avi0n")
+                    }
+                }
+                if let openMeteoURL = URL(string: "https://open-meteo.com/en/docs/elevation-api") {
+                    Link(destination: openMeteoURL) {
+                        ProjectLinkRow(icon: "mountain.2.fill", title: "Open-Meteo & Copernicus Elevation Data")
+                    }
+                }
+                Text("Line-of-sight calculations include modified GPLv3 work from MeshCore One. Terrain data uses Copernicus DEM 2021 GLO-90 through Open-Meteo.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
+        .scrollContentBackground(.hidden)
         .adaptiveContentWidth()
-        .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
+        .background {
+            MeshBackground()
+                .ignoresSafeArea()
+        }
         .navigationTitle("About")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -118,11 +138,14 @@ struct AboutScreen: View {
         Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
     }
 
+}
+
+extension UIImage {
     /// `Image("AppIcon")` can't resolve an asset catalog app-icon set
     /// directly, so this reads the actual rendered icon filename Info.plist
     /// records for the app (the same one iOS shows on the home screen) and
-    /// loads it by name instead.
-    private static var appIcon: UIImage? {
+    /// loads it by name instead. Shared by About and onboarding.
+    static var appIcon: UIImage? {
         guard let icons = Bundle.main.infoDictionary?["CFBundleIcons"] as? [String: Any],
               let primary = icons["CFBundlePrimaryIcon"] as? [String: Any],
               let files = primary["CFBundleIconFiles"] as? [String],
@@ -133,6 +156,20 @@ struct AboutScreen: View {
     }
 }
 
+#Preview("About · Light") {
+    NavigationStack {
+        AboutScreen()
+    }
+    .preferredColorScheme(.light)
+}
+
+#Preview("About · Dark") {
+    NavigationStack {
+        AboutScreen()
+    }
+    .preferredColorScheme(.dark)
+}
+
 private struct ProjectLinkRow: View {
     let icon: String
     let title: String
@@ -141,16 +178,14 @@ private struct ProjectLinkRow: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.body)
-                .foregroundStyle(.secondary)
                 .frame(width: 24)
             Text(title)
                 .font(.subheadline)
             Spacer()
             Image(systemName: "arrow.up.right")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
         }
-        .foregroundStyle(.secondary)
+        .foregroundStyle(Color(uiColor: .link))
     }
 }
 

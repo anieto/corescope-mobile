@@ -124,6 +124,7 @@ class BeaconApiClient(
     private val http: OkHttpClient,
     private val rateLimit: BeaconRateLimit = BeaconRateLimit.shared,
     private val now: () -> Long = System::currentTimeMillis,
+    private val requestAllowance: MyNodesRequestAllowance? = null,
 ) {
     /** `https://host[:port]`, lowercase host, no default port, no path. */
     val origin: String
@@ -141,7 +142,10 @@ class BeaconApiClient(
 
     val cacheIdentifier: String get() = "beacon|$origin"
 
-    fun replacingSourceSession(session: AnalyzerSourceSession) = BeaconApiClient(origin, session, http, rateLimit, now)
+    fun replacingSourceSession(session: AnalyzerSourceSession) = BeaconApiClient(origin, session, http, rateLimit, now, requestAllowance)
+
+    fun budgetingRequests(budget: MyNodesRequestBudget, node: String) =
+        BeaconApiClient(origin, sourceSession, http.forMyNodes(), rateLimit, now, MyNodesRequestAllowance(budget, node))
 
     suspend fun checkCooldown() {
         sourceSession.check()
@@ -169,7 +173,7 @@ class BeaconApiClient(
             .build()
         val request = Request.Builder().url(url).header("Accept", "application/json").build()
         try {
-            val (status, body, retryAfter) = execute(request)
+            val (status, body, retryAfter) = requestAllowance?.perform { execute(request) } ?: execute(request)
             sourceSession.check()
             if (status == 429) {
                 val deadline = rateLimit.record(cacheIdentifier, retryAfter, now())

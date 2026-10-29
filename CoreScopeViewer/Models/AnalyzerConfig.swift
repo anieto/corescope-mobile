@@ -3,6 +3,18 @@ import Foundation
 /// GET /api/config/regions returns a flat { "IATA": "Display Name" } object.
 typealias RegionsMap = [String: String]
 
+/// GET /api/config/region-quick-picks: named groups of region codes (e.g. "Central Texas"
+/// = AUS, SAT, ACT). Choosing one selects all of its codes at once.
+struct RegionQuickPick: Codable, Sendable, Hashable {
+    let name: String
+    let description: String?
+    let regions: [String]
+}
+
+struct RegionQuickPicksResponse: Codable, Sendable {
+    let quickPicks: [RegionQuickPick]
+}
+
 /// GET /api/config/areas
 struct AreaFilter: Codable, Sendable, Identifiable, Hashable {
     let key: String

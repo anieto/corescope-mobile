@@ -143,4 +143,16 @@ class LiveRouteAnimationTest {
         assertTrue("Never more than 92% of the height is reserved", full.top + full.bottom <= 2000 * 0.92f + 1)
         assertEquals("No sheet keeps the old framing", replayFramingInsets(1080, 2000, 0, 2.625f), replayFramingInsets(1080, 2000, 0, 2.625f, 0f))
     }
+
+    /** Live routes redraw at most ~30 times a second; new or ending routes and replays draw at once. */
+    @Test fun liveRouteRedrawsAreCappedButChangesDrawImmediately() {
+        assertTrue(shouldDrawRouteFrame(1_000, null, routesChanged = false, replaying = false))
+        // 120 Hz frames are ~8 ms apart: only every fourth draws.
+        assertFalse(shouldDrawRouteFrame(1_008, 1_000, routesChanged = false, replaying = false))
+        assertFalse(shouldDrawRouteFrame(1_025, 1_000, routesChanged = false, replaying = false))
+        assertTrue(shouldDrawRouteFrame(1_033, 1_000, routesChanged = false, replaying = false))
+        assertTrue("A route arriving or ending draws now", shouldDrawRouteFrame(1_008, 1_000, routesChanged = true, replaying = false))
+        assertTrue("Replays keep the full frame rate", shouldDrawRouteFrame(1_008, 1_000, routesChanged = false, replaying = true))
+    }
 }
+

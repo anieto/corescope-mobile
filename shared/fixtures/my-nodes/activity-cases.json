@@ -1,0 +1,376 @@
+[
+  {
+    "name": "just inside recency",
+    "current": {
+      "lastSeen": 999100001,
+      "lastHeard": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "expectedState": "recentlyHeard",
+    "expectedEligible": true,
+    "baseline": null,
+    "expectedChange": null
+  },
+  {
+    "name": "exact recency boundary",
+    "current": {
+      "lastSeen": 999100000,
+      "lastHeard": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "expectedState": "notRecentlyHeard",
+    "expectedEligible": true,
+    "baseline": null,
+    "expectedChange": null
+  },
+  {
+    "name": "newer heard wins",
+    "current": {
+      "lastSeen": 999000001,
+      "lastHeard": 1000000000,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "expectedState": "recentlyHeard",
+    "expectedEligible": true,
+    "baseline": null,
+    "expectedChange": null
+  },
+  {
+    "name": "missing timestamps",
+    "current": {
+      "lastSeen": null,
+      "lastHeard": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "expectedState": "unknown",
+    "expectedEligible": false,
+    "baseline": null,
+    "expectedChange": null
+  },
+  {
+    "name": "small future skew",
+    "current": {
+      "lastSeen": 1000300000,
+      "lastHeard": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "expectedState": "recentlyHeard",
+    "expectedEligible": true,
+    "baseline": null,
+    "expectedChange": null
+  },
+  {
+    "name": "excess future skew",
+    "current": {
+      "lastSeen": 1000300001,
+      "lastHeard": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "expectedState": "unknown",
+    "expectedEligible": false,
+    "baseline": null,
+    "expectedChange": null
+  },
+  {
+    "name": "future newest is not hidden",
+    "current": {
+      "lastSeen": 1000000000,
+      "lastHeard": 1000300001,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "expectedState": "unknown",
+    "expectedEligible": false,
+    "baseline": null,
+    "expectedChange": null
+  },
+  {
+    "name": "freshness boundary",
+    "current": {
+      "lastSeen": 1000000000,
+      "lastHeard": null,
+      "fetchedAt": 999700000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "expectedState": "recentlyHeard",
+    "expectedEligible": true,
+    "baseline": null,
+    "expectedChange": null
+  },
+  {
+    "name": "stale cached display",
+    "current": {
+      "lastSeen": 1000000000,
+      "lastHeard": null,
+      "fetchedAt": 999699999,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "expectedState": "recentlyHeard",
+    "expectedEligible": false,
+    "baseline": null,
+    "expectedChange": null
+  },
+  {
+    "name": "fetch clock rollback",
+    "current": {
+      "lastSeen": 1000000000,
+      "lastHeard": null,
+      "fetchedAt": 1000000001,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "expectedState": "unknown",
+    "expectedEligible": false,
+    "baseline": null,
+    "expectedChange": null
+  },
+  {
+    "name": "failed or absent record",
+    "current": {
+      "lastSeen": 1000000000,
+      "lastHeard": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": false
+    },
+    "expectedState": "unknown",
+    "expectedEligible": false,
+    "baseline": null,
+    "expectedChange": null
+  },
+  {
+    "name": "confirmed newly active",
+    "current": {
+      "lastSeen": 1000000000,
+      "lastHeard": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "expectedState": "recentlyHeard",
+    "expectedEligible": true,
+    "baseline": {
+      "lastSeen": 997200000,
+      "lastHeard": null,
+      "fetchedAt": 999000000,
+      "evaluatedAt": 999000000,
+      "successfulRecord": true
+    },
+    "expectedChange": "newlyActive"
+  },
+  {
+    "name": "confirmed no longer recent",
+    "current": {
+      "lastSeen": 999000000,
+      "lastHeard": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "expectedState": "notRecentlyHeard",
+    "expectedEligible": true,
+    "baseline": {
+      "lastSeen": 999000000,
+      "lastHeard": null,
+      "fetchedAt": 999000000,
+      "evaluatedAt": 999000000,
+      "successfulRecord": true
+    },
+    "expectedChange": "noLongerRecentlyHeard"
+  },
+  {
+    "name": "timer cannot confirm silence",
+    "current": {
+      "lastSeen": 999100000,
+      "lastHeard": null,
+      "fetchedAt": 999800000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "expectedState": "notRecentlyHeard",
+    "expectedEligible": true,
+    "baseline": {
+      "lastSeen": 999100000,
+      "lastHeard": null,
+      "fetchedAt": 999800000,
+      "evaluatedAt": 999800000,
+      "successfulRecord": true
+    },
+    "expectedChange": null
+  },
+  {
+    "name": "unknown establishes baseline",
+    "current": {
+      "lastSeen": 1000000000,
+      "lastHeard": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "expectedState": "recentlyHeard",
+    "expectedEligible": true,
+    "baseline": {
+      "lastSeen": null,
+      "lastHeard": null,
+      "fetchedAt": 999999999,
+      "evaluatedAt": 999999999,
+      "successfulRecord": true
+    },
+    "expectedChange": null
+  },
+  {
+    "name": "stale baseline suppressed",
+    "current": {
+      "lastSeen": 1000000000,
+      "lastHeard": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "expectedState": "recentlyHeard",
+    "expectedEligible": true,
+    "baseline": {
+      "lastSeen": 997200000,
+      "lastHeard": null,
+      "fetchedAt": 998699999,
+      "evaluatedAt": 999000000,
+      "successfulRecord": true
+    },
+    "expectedChange": null
+  },
+  {
+    "name": "unchanged quiet state",
+    "current": {
+      "lastSeen": 998200000,
+      "lastHeard": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "expectedState": "notRecentlyHeard",
+    "expectedEligible": true,
+    "baseline": {
+      "lastSeen": 997200000,
+      "lastHeard": null,
+      "fetchedAt": 999000000,
+      "evaluatedAt": 999000000,
+      "successfulRecord": true
+    },
+    "expectedChange": null
+  },
+  {
+    "name": "older server timestamp suppressed",
+    "current": {
+      "lastSeen": 998000000,
+      "lastHeard": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "expectedState": "notRecentlyHeard",
+    "expectedEligible": true,
+    "baseline": {
+      "lastSeen": 999000000,
+      "lastHeard": null,
+      "fetchedAt": 999000000,
+      "evaluatedAt": 999000000,
+      "successfulRecord": true
+    },
+    "expectedChange": null
+  },
+  {
+    "name": "expired baseline",
+    "current": {
+      "lastSeen": 1000000000,
+      "lastHeard": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "expectedState": "recentlyHeard",
+    "expectedEligible": true,
+    "baseline": {
+      "lastSeen": 393399999,
+      "lastHeard": null,
+      "fetchedAt": 395199999,
+      "evaluatedAt": 395199999,
+      "successfulRecord": true
+    },
+    "expectedChange": null
+  },
+  {
+    "name": "seven day boundary",
+    "current": {
+      "lastSeen": 1000000000,
+      "lastHeard": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "expectedState": "recentlyHeard",
+    "expectedEligible": true,
+    "baseline": {
+      "lastSeen": 393400000,
+      "lastHeard": null,
+      "fetchedAt": 395200000,
+      "evaluatedAt": 395200000,
+      "successfulRecord": true
+    },
+    "expectedChange": "newlyActive"
+  },
+  {
+    "name": "visit clock rollback",
+    "current": {
+      "lastSeen": 1000000000,
+      "lastHeard": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "expectedState": "recentlyHeard",
+    "expectedEligible": true,
+    "baseline": {
+      "lastSeen": 998200001,
+      "lastHeard": null,
+      "fetchedAt": 1000000001,
+      "evaluatedAt": 1000000001,
+      "successfulRecord": true
+    },
+    "expectedChange": null
+  },
+  {
+    "name": "return to baseline removes net change",
+    "current": {
+      "lastSeen": 1000000000,
+      "lastHeard": null,
+      "fetchedAt": 1000000000,
+      "evaluatedAt": 1000000000,
+      "successfulRecord": true
+    },
+    "expectedState": "recentlyHeard",
+    "expectedEligible": true,
+    "baseline": {
+      "lastSeen": 999000000,
+      "lastHeard": null,
+      "fetchedAt": 999000000,
+      "evaluatedAt": 999000000,
+      "successfulRecord": true
+    },
+    "expectedChange": null
+  }
+]

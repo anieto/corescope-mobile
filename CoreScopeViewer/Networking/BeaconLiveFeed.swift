@@ -133,6 +133,11 @@ final class BeaconLiveFeed: AnalyzerLiveFeed, LivePacketDetailProvider, LiveObse
         transport.connect()
     }
 
+    func resumeAfterForeground() {
+        guard !ended else { return }
+        transport.resumeAfterForeground()
+    }
+
     func disconnect() {
         guard !ended else { return }
         ended = true

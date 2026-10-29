@@ -118,7 +118,7 @@ class FilterGroup<T>(val title: String, val options: List<T>, val selected: T, v
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilterSheet(title: String, regionControl: @Composable () -> Unit, groups: List<FilterGroup<*>>, onReset: () -> Unit, onDismiss: () -> Unit) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    MeshModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)

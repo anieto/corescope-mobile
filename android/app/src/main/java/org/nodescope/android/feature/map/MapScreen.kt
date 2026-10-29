@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.map
 
+import org.nodescope.android.core.design.MeshModalBottomSheet
 import kotlinx.coroutines.launch
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -61,15 +62,14 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         return
     }
     val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.3f
-    var mode by rememberSaveable { mutableIntStateOf(if (darkTheme) 2 else 0) }
-    var customStyle by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(darkTheme) { if (!customStyle) mode = if (darkTheme) 2 else 0 }
     var search by remember { mutableStateOf(false) }
     var layersOpen by remember { mutableStateOf(false) }
     val context = LocalContext.current
     // CARTO, or Google Maps (beta) when this build has a key; remembered across launches.
     var providerChoice by remember { mutableStateOf(loadMapProvider(context)) }
     fun choose(choice: MapProviderChoice) { providerChoice = choice; saveMapProvider(context, choice) }
+    // A picked CARTO style sticks; until then it follows the app theme.
+    val mode = providerChoice.cartoStyle(darkTheme)
     var filtersOpen by remember { mutableStateOf(false) }
     // Saved per analyzer, as on iOS.
     var filters by remember(host) { mutableStateOf(host?.let { loadMapFilters(context, it) } ?: MapFilters()) }
@@ -334,6 +334,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         } else CameraMove.Center(points[0], maxOf(ready.zoom, REPLAY_POINT_ZOOM))
         withTimeoutOrNull(1_500) { ready.animateAndWait(update, 300) }
     }
+    val replayingNow by rememberUpdatedState(routeReplay != null)
     LaunchedEffect(overlays) {
         val drawing = overlays ?: return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -341,6 +342,9 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             // cannot jump particles.
             val clockOffset = System.currentTimeMillis() - System.nanoTime() / 1_000_000
             var previousRoutes: List<LiveRoute>? = null
+            var previousKeys: List<String>? = null
+            var lastDrawnAt: Long? = null
+            var lastFrame: RouteFrame? = null
             while (isActive) {
                 var observedPaths = latestPaths
                 var now = 0L
@@ -350,14 +354,24 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                     val animate = ValueAnimator.areAnimatorsEnabled()
                     observedPaths = latestPaths
                     val active = observedPaths.filter { it.isActive(now) }
-                    // Temporary route markers only change when routes enter or leave.
-                    if (active != previousRoutes) {
-                        traced("NodeScope:anchors") { drawing.setRouteAnchors(active.flatMap { it.anchors }.distinctBy { it.anchorId }) }
-                        previousRoutes = active
+                    // A route entering or leaving draws at once. A route rebuilt because its packet
+                    // gained observations (dozens per packet on networks with many observers) waits
+                    // for the next capped redraw, which also refreshes its markers.
+                    val keys = active.map { it.key }
+                    val routesEnteredOrLeft = keys != previousKeys
+                    previousKeys = keys
+                    if (shouldDrawRouteFrame(now, lastDrawnAt, routesEnteredOrLeft, replayingNow)) {
+                        // Temporary route markers only change when the routes do.
+                        if (active != previousRoutes) {
+                            traced("NodeScope:anchors") { drawing.setRouteAnchors(active.flatMap { it.anchors }.distinctBy { it.anchorId }) }
+                            previousRoutes = active
+                        }
+                        // Named sections show the route work in system traces (no cost when not tracing).
+                        val frame = traced("NodeScope:frame") { routeFrame(active, now, animate) }
+                        if (frame != lastFrame) traced("NodeScope:draw") { drawing.setRouteFrame(frame) }
+                        lastFrame = frame
+                        lastDrawnAt = now
                     }
-                    // Named sections show the route work in system traces (no cost when not tracing).
-                    val frame = traced("NodeScope:frame") { routeFrame(active, now, animate) }
-                    traced("NodeScope:draw") { drawing.setRouteFrame(frame) }
                     anyActive = active.isNotEmpty()
                     // Keep drawing every frame while something is moving.
                     anyActive && animate
@@ -381,7 +395,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     }
     if (filtersOpen) MapFiltersSheet(filters, observerOptions, onChange = { filters = it }, onDismiss = { filtersOpen = false })
     routeDetail?.let { details -> RouteDetailsSheet(details, onNode = { routeDetail = null; currentOnNode(it) }, onDismiss = { routeDetail = null }) }
-    if (search) ModalBottomSheet(onDismissRequest = { search = false }) {
+    if (search) MeshModalBottomSheet(onDismissRequest = { search = false }) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.8f)) {
             Text("Search nodes", Modifier.padding(horizontal = 20.dp), style = MaterialTheme.typography.titleLarge)
             NodeBrowser(snapshot?.nodes.orEmpty(), snapshot?.total ?: 0) { key ->
@@ -409,28 +423,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             IconButton(onClick = { search = true }) { Icon(Icons.Outlined.Search, "Search nodes") }
             Box {
                 IconButton(onClick = { layersOpen = true }) { Icon(Icons.Outlined.Layers, "Map layers") }
-                DropdownMenu(layersOpen, { layersOpen = false }) {
-                    val google = BuildConfig.GOOGLE_MAPS_CONFIGURED
-                    // Grouped by provider when there is more than one.
-                    if (google) MenuSectionHeader(stringResource(R.string.map_provider_carto))
-                    listOf(R.string.standard, R.string.light, R.string.dark).forEachIndexed { index, label ->
-                        val chosen = providerChoice.provider == MapProvider.CARTO && mode == index
-                        DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = {
-                            mode = index; customStyle = true; choose(providerChoice.copy(provider = MapProvider.CARTO)); layersOpen = false
-                        }, trailingIcon = { if (chosen) Icon(Icons.Outlined.Check, null) })
-                    }
-                    if (google) {
-                        HorizontalDivider()
-                        MenuSectionHeader(stringResource(R.string.map_provider_google))
-                        listOf(GoogleMapType.MAP to R.string.google_map, GoogleMapType.SATELLITE to R.string.google_satellite,
-                            GoogleMapType.TERRAIN to R.string.google_terrain, GoogleMapType.HYBRID to R.string.google_hybrid).forEach { (type, label) ->
-                            val chosen = providerChoice.provider == MapProvider.GOOGLE && providerChoice.googleType == type
-                            DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = {
-                                choose(MapProviderChoice(MapProvider.GOOGLE, type)); layersOpen = false
-                            }, trailingIcon = { if (chosen) Icon(Icons.Outlined.Check, null) })
-                        }
-                    }
-                }
+                MapLayersMenu(layersOpen, { layersOpen = false }, providerChoice, darkTheme) { choose(it); layersOpen = false }
             }
         })
     Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -628,7 +621,7 @@ private fun MapLoadError.describe(): String = when (this) {
 
 /** A non-interactive group title inside a dropdown menu. */
 @Composable
-private fun MenuSectionHeader(title: String) {
+internal fun MenuSectionHeader(title: String) {
     Text(title, Modifier.padding(horizontal = 16.dp, vertical = 8.dp).semantics { heading() },
         style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
@@ -687,4 +680,33 @@ internal fun regionSpan(region: RegionCoordinate): Pair<Double, Double> {
     val radius = region.radiusKm?.takeIf { it.isFinite() && it > 0 }?.coerceAtMost(2000.0) ?: 45.0
     val latitude = ((radius * 2.4) / 111).coerceAtLeast(0.15)
     return latitude to (latitude / kotlin.math.cos(Math.toRadians(region.lat)).coerceAtLeast(0.2))
+}
+
+/** The map picker: CARTO's three styles and, in builds with a key, Google's four map types. */
+@Composable
+internal fun MapLayersMenu(expanded: Boolean, onDismiss: () -> Unit, choice: MapProviderChoice, darkTheme: Boolean,
+    onChoose: (MapProviderChoice) -> Unit) {
+    val mode = choice.cartoStyle(darkTheme)
+    DropdownMenu(expanded, onDismiss) {
+        val google = BuildConfig.GOOGLE_MAPS_CONFIGURED
+        // Grouped by provider when there is more than one.
+        if (google) MenuSectionHeader(stringResource(R.string.map_provider_carto))
+        listOf(R.string.standard, R.string.light, R.string.dark).forEachIndexed { index, label ->
+            val chosen = choice.provider == MapProvider.CARTO && mode == index
+            DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = {
+                onChoose(choice.copy(provider = MapProvider.CARTO, cartoStyle = index))
+            }, trailingIcon = { if (chosen) Icon(Icons.Outlined.Check, null) })
+        }
+        if (google) {
+            HorizontalDivider()
+            MenuSectionHeader(stringResource(R.string.map_provider_google))
+            listOf(GoogleMapType.MAP to R.string.google_map, GoogleMapType.SATELLITE to R.string.google_satellite,
+                GoogleMapType.TERRAIN to R.string.google_terrain, GoogleMapType.HYBRID to R.string.google_hybrid).forEach { (type, label) ->
+                val chosen = choice.provider == MapProvider.GOOGLE && choice.googleType == type
+                DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = {
+                    onChoose(choice.copy(provider = MapProvider.GOOGLE, googleType = type))
+                }, trailingIcon = { if (chosen) Icon(Icons.Outlined.Check, null) })
+            }
+        }
+    }
 }

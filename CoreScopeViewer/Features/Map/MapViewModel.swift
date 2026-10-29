@@ -101,7 +101,6 @@ final class MapViewModel {
     private var hasLoadedNodeRegion = false
     private var appliedCatalogID: UUID?
     private var appliedCatalogRegion: String?
-    private let automaticRefreshInterval: TimeInterval = 30
     private let staleCacheLifetime: TimeInterval = 7 * 24 * 60 * 60
 
     static func clearCachedResponses() async {
@@ -156,18 +155,13 @@ final class MapViewModel {
         let requestID = UUID()
         nodeLoadID = requestID
         hasLoadedNodeRegion = false
-        let cacheKey = "map-nodes-\(cacheNamespace)-\(region ?? "all")"
         let hadCachedNodes: Bool
-        if let cached: NodesResponse = await MapResponseCache.shared.value(
-            for: cacheKey,
-            maximumAge: staleCacheLifetime
-        ) {
-            let savedAt = await MapResponseCache.shared.savedAt(for: cacheKey)
+        if let cached = await FieldCatalogRepository.shared.cachedNodes(for: apiClient, region: region) {
             guard apiClient.sourceSession.isCurrent, nodeLoadID == requestID, !Task.isCancelled else { return }
-            nodes = cached.nodes
+            nodes = cached.value.nodes
             loadedNodeRegion = region
             hasLoadedNodeRegion = true
-            lastUpdatedAt = savedAt
+            lastUpdatedAt = cached.savedAt
             errorMessage = nil
             hadCachedNodes = true
         } else {
@@ -176,7 +170,9 @@ final class MapViewModel {
             errorMessage = nil
         }
 
-        guard forceRefresh || refreshIsDue(for: cacheKey) else {
+        guard await FieldCatalogRepository.shared.nodesNeedRefresh(
+            for: apiClient, region: region, force: forceRefresh
+        ) else {
             return
         }
 
@@ -192,16 +188,14 @@ final class MapViewModel {
             // through a node outside a small page silently fails to
             // resolve. The host has ~1,000 nodes today; ask for well above
             // that rather than re-checking `total` on every load.
-            let response = try await apiClient.nodes(region: region)
+            let catalog = try await FieldCatalogRepository.shared.refreshNodes(for: apiClient, region: region)
             try apiClient.sourceSession.check()
             guard nodeLoadID == requestID, !Task.isCancelled else { return }
-            nodes = response.nodes
+            nodes = catalog.value.nodes
             loadedNodeRegion = region
             hasLoadedNodeRegion = true
-            lastUpdatedAt = .now
+            lastUpdatedAt = catalog.savedAt
             errorMessage = nil
-            await MapResponseCache.shared.store(response, for: cacheKey)
-            recordRefresh(for: cacheKey)
         } catch {
             guard apiClient.sourceSession.isCurrent, nodeLoadID == requestID, !Task.isCancelled else { return }
             if error is CancellationError || (error as? URLError)?.code == .cancelled {
@@ -288,7 +282,7 @@ final class MapViewModel {
         guard let lastRefresh = UserDefaults.standard.object(forKey: key) as? Date else {
             return true
         }
-        return Date().timeIntervalSince(lastRefresh) >= automaticRefreshInterval
+        return Date().timeIntervalSince(lastRefresh) >= FieldRequestBudget.automaticCatalogRefreshInterval
     }
 
     private func recordRefresh(for cacheKey: String) {

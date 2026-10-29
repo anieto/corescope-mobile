@@ -35,7 +35,7 @@ fun endpoint(host: String, vararg segments: String): HttpUrl =
         segments.forEach(::addPathSegment)
     }.build()
 
-class HttpFailure(val status: Int) : IOException("Analyzer returned HTTP $status.")
+class HttpFailure(val status: Int, val retryAfter: String? = null) : IOException("Analyzer returned HTTP $status.")
 
 /** Cancellation closes the actual HTTP call, including while reading the body. */
 suspend fun OkHttpClient.read(url: HttpUrl): String = suspendCancellableCoroutine { continuation ->
@@ -48,7 +48,7 @@ suspend fun OkHttpClient.read(url: HttpUrl): String = suspendCancellableCoroutin
         override fun onResponse(call: Call, response: Response) {
             try {
                 val text = response.use {
-                    if (!it.isSuccessful) throw HttpFailure(it.code)
+                    if (!it.isSuccessful) throw HttpFailure(it.code, it.header("Retry-After"))
                     it.body?.string() ?: throw IOException("Empty analyzer response.")
                 }
                 continuation.resume(text)
@@ -102,6 +102,10 @@ class HttpAnalyzerRepository(private val client: BodySource,
         val defaults = async {
             optional { protocolJson.decodeFromString<MapDefaults>(client.read(endpoint(selection.host, "api", "config", "map"))) }
         }
+        // Older servers lack this endpoint (or answer with the web app): no quick picks then.
+        val picks = async {
+            optional { protocolJson.decodeFromString<RegionQuickPicksResponse>(client.read(endpoint(selection.host, "api", "config", "region-quick-picks"))).quickPicks }
+        }
         val nodesUrl = endpoint(selection.host, "api", "nodes").newBuilder()
             .addQueryParameter("limit", "5000").apply {
                 selection.region?.let { addQueryParameter("region", it) }
@@ -113,7 +117,8 @@ class HttpAnalyzerRepository(private val client: BodySource,
             response.total, regionResult.orEmpty(), mapResult,
             configurationIncomplete = regionResult == null || mapResult == null,
             regionCoordinates = regionCoordinatesFor(regionResult.orEmpty(), centers.await().orEmpty(),
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { airports() }))
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { airports() }),
+            quickPicks = picks.await().orEmpty())
     }
 }
 

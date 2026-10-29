@@ -13,3 +13,17 @@ changes and must not imply endorsement by the original author.
 
 NodeScope is an independent project and is not affiliated with or endorsed by
 the CoreScope or MeshCore projects.
+
+Node Planner's line-of-sight RF calculations include modified portions derived
+from MeshCore One by Avi0n, upstream commit
+9fba8e45ca14c38f4ed20e5ede157944fa1c246d:
+https://github.com/Avi0n/MeshCoreOne
+MeshCore One is licensed under GNU GPL v3.0. NodeScope's modifications add
+validated domain inputs, explicit provenance, link-budget output, and shared
+cross-platform numerical fixtures.
+
+Node Planner elevation profiles use Open-Meteo elevation data based on the
+Copernicus DEM 2021 GLO-90 dataset. Elevation data is provided under applicable
+CC BY 4.0 and Copernicus terms:
+https://open-meteo.com/en/docs/elevation-api
+https://dataspace.copernicus.eu/

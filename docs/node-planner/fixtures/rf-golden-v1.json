@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 1,
+  "engineID": "meshcore-one-los-compatible",
+  "engineVersion": 1,
+  "upstream": {
+    "project": "MeshCore One by Avi0n",
+    "commit": "9fba8e45ca14c38f4ed20e5ede157944fa1c246d"
+  },
+  "tolerances": {
+    "primitiveAbsolute": 1e-9,
+    "pathAbsolute": 1e-8
+  },
+  "primitiveCases": [
+    {
+      "id": "wavelength-915mhz",
+      "operation": "wavelength",
+      "input": { "frequencyMHz": 915.0 },
+      "expected": { "meters": 0.32764203060109287 }
+    },
+    {
+      "id": "fresnel-midpoint-10km-915mhz",
+      "operation": "fresnelRadius",
+      "input": {
+        "frequencyMHz": 915.0,
+        "distanceToAMeters": 5000.0,
+        "distanceToBMeters": 5000.0
+      },
+      "expected": { "meters": 28.620011818703574 }
+    },
+    {
+      "id": "earth-bulge-midpoint-10km-standard-k",
+      "operation": "earthBulge",
+      "input": {
+        "distanceToAMeters": 5000.0,
+        "distanceToBMeters": 5000.0,
+        "refractionK": 1.3333333333333333
+      },
+      "expected": { "meters": 1.4715115366504474 }
+    },
+    {
+      "id": "fspl-10km-915mhz",
+      "operation": "pathLoss",
+      "input": { "distanceMeters": 10000.0, "frequencyMHz": 915.0 },
+      "expected": { "decibels": 111.67842188132899 }
+    },
+    {
+      "id": "knife-edge-on-los-midpoint",
+      "operation": "diffractionLoss",
+      "input": {
+        "obstructionHeightMeters": 0.0,
+        "distanceToAMeters": 5000.0,
+        "distanceToBMeters": 5000.0,
+        "frequencyMHz": 915.0
+      },
+      "expected": { "decibels": 6.032852208563606 }
+    }
+  ],
+  "pathCases": [
+    {
+      "id": "flat-10km-clear",
+      "input": {
+        "profile": [
+          { "distanceMeters": 0.0, "elevationMeters": 0.0 },
+          { "distanceMeters": 5000.0, "elevationMeters": 0.0 },
+          { "distanceMeters": 10000.0, "elevationMeters": 0.0 }
+        ],
+        "heightAMeters": 50.0,
+        "heightBMeters": 50.0,
+        "frequencyMHz": 915.0,
+        "refractionK": 1.3333333333333333
+      },
+      "expected": {
+        "distanceMeters": 10000.0,
+        "freeSpacePathLossDB": 111.67842188132899,
+        "peakDiffractionLossDB": 0.0,
+        "totalPathLossDB": 111.67842188132899,
+        "worstClearancePercent": 169.5613851271561,
+        "clearanceStatus": "clear",
+        "obstructionCount": 0
+      }
+    },
+    {
+      "id": "flat-10km-marginal",
+      "input": {
+        "profile": [
+          { "distanceMeters": 0.0, "elevationMeters": 0.0 },
+          { "distanceMeters": 5000.0, "elevationMeters": 0.0 },
+          { "distanceMeters": 10000.0, "elevationMeters": 0.0 }
+        ],
+        "heightAMeters": 20.0,
+        "heightBMeters": 20.0,
+        "frequencyMHz": 915.0,
+        "refractionK": 1.3333333333333333
+      },
+      "expected": {
+        "distanceMeters": 10000.0,
+        "freeSpacePathLossDB": 111.67842188132899,
+        "peakDiffractionLossDB": 0.0,
+        "totalPathLossDB": 111.67842188132899,
+        "worstClearancePercent": 64.73962547856438,
+        "clearanceStatus": "marginal",
+        "obstructionCount": 0
+      }
+    },
+    {
+      "id": "midpoint-ridge-blocked",
+      "input": {
+        "profile": [
+          { "distanceMeters": 0.0, "elevationMeters": 0.0 },
+          { "distanceMeters": 5000.0, "elevationMeters": 30.0 },
+          { "distanceMeters": 10000.0, "elevationMeters": 0.0 }
+        ],
+        "heightAMeters": 10.0,
+        "heightBMeters": 10.0,
+        "frequencyMHz": 915.0,
+        "refractionK": 1.3333333333333333
+      },
+      "expected": {
+        "distanceMeters": 10000.0,
+        "freeSpacePathLossDB": 111.67842188132899,
+        "peakDiffractionLossDB": 14.313515197566385,
+        "totalPathLossDB": 125.99193707889538,
+        "worstClearancePercent": -75.0227207195579,
+        "clearanceStatus": "blocked",
+        "obstructionCount": 1
+      }
+    }
+  ],
+  "linkBudgetCases": [
+    {
+      "id": "basic-link-budget",
+      "input": {
+        "transmitPowerDBm": 22.0,
+        "gainADB": 3.0,
+        "gainBDB": 6.0,
+        "lossADB": 1.0,
+        "lossBDB": 2.0,
+        "totalPathLossDB": 111.67842188132899,
+        "receiverSensitivityDBm": -120.0
+      },
+      "expected": {
+        "receivePowerDBm": -83.67842188132899,
+        "linkMarginDB": 36.32157811867101
+      }
+    }
+  ]
+}

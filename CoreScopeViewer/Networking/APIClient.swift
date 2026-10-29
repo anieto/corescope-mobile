@@ -51,6 +51,16 @@ actor APIResponseCache {
         return entry.savedAt
     }
 
+    func store<Value: Codable & Sendable>(
+        _ value: Value,
+        for key: String,
+        savedAt: Date = .now
+    ) {
+        guard let data = try? JSONEncoder().encode(Entry(savedAt: savedAt, value: value)) else { return }
+        memoryData[key] = data
+        try? data.write(to: fileURL(for: key), options: .atomic)
+    }
+
     func refresh<Value: Codable & Sendable>(
         for key: String,
         session: AnalyzerSourceSession? = nil,
@@ -144,6 +154,7 @@ struct APIClient: Sendable {
     private let baseURL: URL
     private let session: URLSession
     private let decoder: JSONDecoder
+    private var requestAllowance: MyNodesRequestAllowance?
 
     /// Captures `settings.baseURL` at construction time rather than holding
     /// a reference to `AnalyzerSettings` itself, since AnalyzerSettings is a
@@ -158,6 +169,12 @@ struct APIClient: Sendable {
         self.baseURL = baseURL
         self.session = session
         self.decoder = Self.makeDecoder()
+    }
+
+    func budgetingRequests(_ budget: MyNodesRequestBudget, node: String) -> APIClient {
+        var copy = self
+        copy.requestAllowance = MyNodesRequestAllowance(budget: budget, node: node, cooldownKey: cacheIdentifier)
+        return copy
     }
 
     var cacheIdentifier: String {
@@ -195,7 +212,13 @@ struct APIClient: Sendable {
         }
         guard let url = components.url else { throw APIError.invalidURL }
 
-        let (data, response) = try await session.data(from: url)
+        let data: Data
+        let response: URLResponse
+        if let requestAllowance {
+            (data, response) = try await requestAllowance.data(for: URLRequest(url: url), session: session)
+        } else {
+            (data, response) = try await session.data(from: url)
+        }
         guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
         guard (200..<300).contains(http.statusCode) else { throw APIError.http(http.statusCode) }
 
