@@ -1,6 +1,6 @@
 # NodeScope 0.10.0 — Node Planner
 
-Status: active implementation. Prepared: 2026-10-24. Updated: 2026-10-25. Supersedes the 0.10.0
+Status: active implementation. Prepared: 2026-10-24. Updated: 2026-10-27. Supersedes the 0.10.0
 Field Tools plan.
 
 ## Product thesis
@@ -26,6 +26,7 @@ network.
 | Concept | User-facing term | Meaning |
 |---|---|---|
 | Feature | **Node Planner** | Workspace for modeling proposed deployments |
+| Saved point-to-point work | **Saved Link Profile** | Named A/B endpoints and assumptions, independent of candidate sites |
 | Saved work | **Deployment Plan** | Named collection of candidate sites and shared assumptions |
 | Proposed location | **Candidate Site** | A local draft coordinate for a node that does not yet exist |
 | Existing endpoint | **Potential Link** | Modeled path between a candidate site and a known node |
@@ -52,6 +53,8 @@ thresholds and inputs are visible.
   without requiring a saved deployment plan.
 - Show distance, bearing, terrain profile, geometric line of sight, first-Fresnel-zone context,
   predicted receive level and link margin when supported by the selected engine.
+- Save, reopen, rename, duplicate, update and delete standalone Link Profiles on both platforms,
+  following the [Saved Link Profiles implementation plan](saved-link-profiles.md).
 - Classify and rank potential links using documented, tested thresholds.
 - Render estimated coverage as a map overlay whose scale and styling cannot be confused with
   observed packets, routes or activity.
@@ -108,9 +111,21 @@ antenna height and the applicable RF assumptions, run the analysis and inspect:
 - distance, bearing, predicted receive level and link margin when a complete configuration exists;
 - result classification, provenance and limitations.
 
-A Link Profile can be used ephemerally, shared as an estimate, or promoted into a Deployment Plan
+A Link Profile can be used ephemerally, saved independently in **Saved Link Profiles**, shared as an
+estimate, or promoted into a Deployment Plan
 by turning either endpoint into a Candidate Site. Opening a Potential Link from a plan uses this
 same detail presentation with its endpoints and configuration prefilled.
+
+### Saved Link Profiles
+
+A separate local library preserves named point-to-point studies without requiring Candidate Sites
+or a Deployment Plan. It retains ordered endpoints, explicit radio assumptions and an optional
+historical analysis snapshot with provenance. Candidate Sites remains the broader coverage and
+potential-link planning workflow.
+
+See the [implementation plan](saved-link-profiles.md) for data, persistence, UX, platform work and
+acceptance criteria. Saving valid inputs does not require successful analysis. Candidate-site
+promotion is a later integration, not a prerequisite for the library.
 
 ### Link Profile workspace and selection contract
 
@@ -401,6 +416,17 @@ but the UI does not yet imply that analysis has run.
 - Validate shared golden fixtures on iOS and Android.
 
 Exit: potential links are explainable, reproducible and numerically within the approved tolerance.
+
+### C1 — Saved Link Profiles
+
+- Implement the shared versioned schema and durable local repositories on both platforms.
+- Add the library and explicit save/update/save-copy actions to the existing Link Profile editor.
+- Restore inputs atomically; preserve result provenance and distinguish historical/stale results.
+- Complete offline, recovery, lifecycle and adaptive-layout acceptance checks in the
+  [implementation plan](saved-link-profiles.md).
+
+Exit: profiles survive relaunch and can be reopened, edited, duplicated and deleted independently
+of candidate-site planning. A saved prediction is never presented as a freshly observed link.
 
 ### D — Estimated coverage
 
