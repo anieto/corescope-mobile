@@ -36,6 +36,14 @@
       "isDefault": false
     },
     {
+      "id": "ntxmesh",
+      "icon": "icons/ntxmesh.png",
+      "name": "NTXMesh",
+      "host": "ntxmesh.dhovin.me",
+      "subtitle": "DFW / North Texas Mesh",
+      "isDefault": false
+    },
+    {
       "id": "sacscope",
       "icon": "icons/sacscope.png",
       "name": "SacScope",
