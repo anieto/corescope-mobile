@@ -342,8 +342,10 @@ private struct LinkProfilePersistentMap: View {
                     // A thin solid line until the analysis colours it, so dashes always mean a result.
                     MapPolyline(coordinates: [pointA, pointB])
                         .stroke(.black.opacity(0.25), style: StrokeStyle(lineWidth: 4.5, lineCap: .round))
+                        .mapOverlayLevel(level: .aboveLabels)
                     MapPolyline(coordinates: [pointA, pointB])
                         .stroke(NodeScopeStyle.signal.opacity(0.85), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                        .mapOverlayLevel(level: .aboveLabels)
                 }
                 // The pending choice, exactly where the endpoint will go: on a known node it takes
                 // that node's place, so the node visibly changes into Point A or B.
@@ -429,17 +431,19 @@ private struct LinkProfilePersistentMap: View {
     /// Rounded dashes coloured by clearance, each on a dark halo of the same shape. MapKit's own
     /// dash pattern came out larger than asked and its phase couldn't line stretches up, so each
     /// dash is a short round-ended line laid out for where the camera last settled; until it has
-    /// settled, the route is solid.
+    /// settled, the route is solid. Like the A–B line, it is drawn above the map's labels.
     @MapContentBuilder
     private func analyzedRoute(_ result: NodePlannerLinkAnalysis) -> some MapContent {
         let pieces = LinkRouteDash.pieces(result: result, view: routeView)
         ForEach(pieces) { piece in
             MapPolyline(coordinates: piece.coordinates)
                 .stroke(.black.opacity(0.4), style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round))
+                .mapOverlayLevel(level: .aboveLabels)
         }
         ForEach(pieces) { piece in
             MapPolyline(coordinates: piece.coordinates)
                 .stroke(piece.clearance.color, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                .mapOverlayLevel(level: .aboveLabels)
         }
     }
 
