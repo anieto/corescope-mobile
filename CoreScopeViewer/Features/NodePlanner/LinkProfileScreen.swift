@@ -429,20 +429,30 @@ private struct LinkProfilePersistentMap: View {
     }
 
     /// Rounded dashes coloured by clearance, each on a dark halo of the same shape. MapKit's own
-    /// dash pattern came out larger than asked and its phase couldn't line stretches up, so each
-    /// dash is a short round-ended line laid out for where the camera last settled; until it has
-    /// settled, the route is solid. Like the A–B line, it is drawn above the map's labels.
+    /// dash pattern came out larger than asked and its phase couldn't line stretches up, so the
+    /// dashes are laid out for where the camera last settled; until it has settled, the route is
+    /// solid. Like the A–B line, it is drawn above the map's labels.
     @MapContentBuilder
     private func analyzedRoute(_ result: NodePlannerLinkAnalysis) -> some MapContent {
-        let pieces = LinkRouteDash.pieces(result: result, view: routeView)
-        ForEach(pieces) { piece in
+        let route = LinkRouteDash.route(result: result, view: routeView)
+        ForEach(route.solid) { piece in
             MapPolyline(coordinates: piece.coordinates)
                 .stroke(.black.opacity(0.4), style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round))
                 .mapOverlayLevel(level: .aboveLabels)
         }
-        ForEach(pieces) { piece in
+        ForEach(route.solid) { piece in
             MapPolyline(coordinates: piece.coordinates)
                 .stroke(piece.clearance.color, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                .mapOverlayLevel(level: .aboveLabels)
+        }
+        ForEach(route.halos) { halo in
+            MapPolygon(coordinates: halo.coordinates)
+                .foregroundStyle(.black.opacity(0.4))
+                .mapOverlayLevel(level: .aboveLabels)
+        }
+        ForEach(route.fills) { fill in
+            MapPolygon(coordinates: fill.coordinates)
+                .foregroundStyle(fill.clearance.color)
                 .mapOverlayLevel(level: .aboveLabels)
         }
     }
@@ -1607,8 +1617,10 @@ private struct LinkRouteView {
     let mapPointsPerPoint: Double
 }
 
-/// The analyzed route's dashes, as on Android: 8 pt pills with 5 pt gaps on the 4 pt line. Each
-/// dash is its own line with round ends, so the line between them is the pill less the width.
+/// The analyzed route's dashes, as on Android: 8 pt pills with 5 pt gaps on the 4 pt line, on
+/// 7 pt halos. Each dash is drawn as filled pill shapes rather than a stroked line: MapKit draws an
+/// overlay only in the map tiles its points touch, so a short line's round ends and edges were cut
+/// off wherever they crossed into a neighbouring tile, and a fill never leaves its own points.
 private enum LinkRouteDash {
     static let dash = 4.0
     static let period = 13.0
@@ -1619,41 +1631,79 @@ private enum LinkRouteDash {
         let clearance: NodePlannerPathClearance
     }
 
-    /// The route's pieces: dashes within half a screen of the view, counted from A so they stay
-    /// put as the camera moves; whole stretches until the camera has settled. Samples are evenly
-    /// spaced, so a sample's index gives its fraction of the way from A to B. A stretch shorter
-    /// than a gap still shows, as a dot at its middle.
-    static func pieces(result: NodePlannerLinkAnalysis, view: LinkRouteView?) -> [Piece] {
+    struct Route {
+        /// Whole stretches, stroked, until the camera has settled.
+        var solid: [Piece] = []
+        var halos: [Piece] = []
+        var fills: [Piece] = []
+    }
+
+    /// Dashes within half a screen of the view, counted from A so they stay put as the camera
+    /// moves. Samples are evenly spaced, so a sample's index gives its fraction of the way from A
+    /// to B. A dash that spans a colour change is split there with square inner ends, so it still
+    /// reads as one pill. A stretch shorter than a gap still shows, as a dot at its middle.
+    static func route(result: NodePlannerLinkAnalysis, view: LinkRouteView?) -> Route {
         let samples = result.terrain.samples
-        guard let first = samples.first, let last = samples.last, samples.count > 1 else { return [] }
+        guard let first = samples.first, let last = samples.last, samples.count > 1 else { return Route() }
         let a = MKMapPoint(first.mapCoordinate)
         let b = MKMapPoint(last.mapCoordinate)
-        func coordinate(_ fraction: Double) -> CLLocationCoordinate2D {
-            MKMapPoint(x: a.x + (b.x - a.x) * fraction, y: a.y + (b.y - a.y) * fraction).coordinate
+        func point(_ fraction: Double) -> MKMapPoint {
+            MKMapPoint(x: a.x + (b.x - a.x) * fraction, y: a.y + (b.y - a.y) * fraction)
         }
         let stretches = result.clearanceStretches.map {
             (from: Double($0.startIndex) / Double(samples.count - 1), to: Double($0.endIndex) / Double(samples.count - 1), clearance: $0.clearance)
         }
-        var pieces: [Piece] = []
-        func add(_ from: Double, _ to: Double, _ clearance: NodePlannerPathClearance) {
-            pieces.append(Piece(id: pieces.count, coordinates: [coordinate(from), coordinate(to)], clearance: clearance))
-        }
+        var route = Route()
         guard let view, let dashes = dashes(from: a, to: b, view: view) else {
-            stretches.forEach { add($0.from, $0.to, $0.clearance) }
-            return pieces
-        }
-        for stretch in stretches {
-            let before = pieces.count
-            for (start, end) in dashes where min(end, stretch.to) > max(start, stretch.from) {
-                add(max(start, stretch.from), min(end, stretch.to), stretch.clearance)
+            route.solid = stretches.enumerated().map { index, stretch in
+                Piece(id: index, coordinates: [point(stretch.from).coordinate, point(stretch.to).coordinate], clearance: stretch.clearance)
             }
-            if pieces.count == before, stretch.to > stretch.from, let (start, end) = dashes.first {
+            return route
+        }
+        func pill(_ from: Double, _ to: Double, width: Double, roundStart: Bool = true, roundEnd: Bool = true) -> [CLLocationCoordinate2D] {
+            pillOutline(from: point(from), to: point(to), radius: width / 2 * view.mapPointsPerPoint, roundStart: roundStart, roundEnd: roundEnd)
+        }
+        func addDash(_ start: Double, _ end: Double, clearance: NodePlannerPathClearance) {
+            route.halos.append(Piece(id: route.halos.count, coordinates: pill(start, end, width: 7), clearance: clearance))
+            route.fills.append(Piece(id: route.fills.count, coordinates: pill(start, end, width: 4), clearance: clearance))
+        }
+        for (start, end) in dashes {
+            let parts = stretches.filter { min(end, $0.to) > max(start, $0.from) }
+            guard let firstPart = parts.first else { continue }
+            route.halos.append(Piece(id: route.halos.count, coordinates: pill(start, end, width: 7), clearance: firstPart.clearance))
+            for part in parts {
+                let from = max(start, part.from)
+                let to = min(end, part.to)
+                route.fills.append(Piece(id: route.fills.count, coordinates: pill(from, to, width: 4, roundStart: from == start, roundEnd: to == end),
+                                         clearance: part.clearance))
+            }
+        }
+        if let (start, end) = dashes.first {
+            let half = (end - start) / 4
+            for stretch in stretches where stretch.to > stretch.from
+                && !dashes.contains(where: { min($0.1, stretch.to) > max($0.0, stretch.from) }) {
                 let middle = (stretch.from + stretch.to) / 2
-                let half = (end - start) / 4
-                add(middle - half, middle + half, stretch.clearance)
+                addDash(middle - half, middle + half, clearance: stretch.clearance)
             }
         }
-        return pieces
+        return route
+    }
+
+    /// A pill around the line from [from] to [to], in map points: a half circle at each round end,
+    /// square across a flat one.
+    private static func pillOutline(from: MKMapPoint, to: MKMapPoint, radius: Double, roundStart: Bool, roundEnd: Bool) -> [CLLocationCoordinate2D] {
+        let angle = atan2(to.y - from.y, to.x - from.x)
+        var outline: [MKMapPoint] = []
+        func end(_ center: MKMapPoint, startingAt start: Double, round: Bool) {
+            let steps = round ? 8 : 1
+            for step in 0...steps {
+                let a = start + .pi * Double(step) / Double(steps)
+                outline.append(MKMapPoint(x: center.x + radius * cos(a), y: center.y + radius * sin(a)))
+            }
+        }
+        end(to, startingAt: angle - .pi / 2, round: roundEnd)
+        end(from, startingAt: angle + .pi / 2, round: roundStart)
+        return outline.map(\.coordinate)
     }
 
     /// The dashes, as fractions from A to B, where the route passes within half a screen of the
