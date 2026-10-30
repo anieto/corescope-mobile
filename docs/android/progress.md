@@ -214,6 +214,17 @@ line is the dashed one; the legend swatches are solid to match (the chart's line
 dashed). Start Over became a "Reset" button beside the header, shown once a point is placed and
 no point is being chosen, so it works with the sheet collapsed. iPhone's panel floats 8 pt above
 the tab bar.
+Rounded dashes (both platforms, after tester feedback): the analyzed route is rounded dashes
+coloured by clearance, 8 pt pills with 5 pt gaps on the 4-wide line, each on a dark halo (black
+40%, 7 wide) that shares its shape, with the gaps open to the map. The pattern runs on across
+colour changes. iOS dashes each stretch natively and sets its dash phase from the scale the camera
+last settled at. Android can't do that on either engine (MapLibre has no dash offset, Google's
+pattern dashes are square), so `routeDashes` lays the dashes out as separate round-ended lines,
+counted from A, for the screen the camera last settled on and within half a screen of it, and
+redraws them when the camera settles. A stretch shorter than a gap still shows as a dot. The
+unanalyzed A–B line is now a thin solid blue line (2.5 wide at 85% over a 4.5-wide black 25%
+edge), so dashes always mean a result. Legend swatches are two rounded dashes. Mock-up compared
+light, pale, dark and satellite maps. Both platforms build; not yet checked on a device.
 The phone panel now floats over the map on both platforms: opening it covers the map instead of
 moving the camera (iOS: ZStack overlay, the map's safe area clears only the collapsed header;
 Android: a plain overlay replaced BottomSheetScaffold, suspected of blocking pinch). iOS map

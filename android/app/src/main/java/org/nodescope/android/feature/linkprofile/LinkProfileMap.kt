@@ -114,7 +114,13 @@ internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, point
                 a?.takeIf { pending != "A" }?.let { MapPin(it, MapPin.Kind.POINT_A, names["A"] ?: "Point A") },
                 b?.takeIf { pending != "B" }?.let { MapPin(it, MapPin.Kind.POINT_B, names["B"] ?: "Point B") },
                 tentative?.let { spot -> pending?.let { MapPin(spot, kind(it), current?.name ?: "Dropped pin") } }))
-            engine.overlays?.setLinkPath(if (a != null && b != null) linkPathStretches(a, b, analysis, dark) else emptyList())
+        }
+        // The route's dashes are laid out for the screen, so they are redrawn whenever the camera settles.
+        LaunchedEffect(engine.overlays, engine.camera, pointA, pointB, analysis, dark, camera) {
+            val a = pointA?.let { Coordinate.gps(it.latitude, it.longitude) }
+            val b = pointB?.let { Coordinate.gps(it.latitude, it.longitude) }
+            val screen = engine.camera?.takeIf { a != null && b != null }?.let { LinkPathScreen(it.toScreen(a!!), it.toScreen(b!!), it.width, it.height, density) }
+            engine.overlays?.setLinkPath(if (a != null && b != null) linkPathStretches(a, b, analysis, dark, screen) else emptyList())
         }
         // A known node under the finger wins; otherwise the tapped spot, or a group expands.
         val onTap: (MapTap) -> Boolean = { tap ->
@@ -167,35 +173,96 @@ internal val PathClearance.title: String get() = when (this) {
     PathClearance.OBSTRUCTED -> "Obstructed"
 }
 
-private const val UnanalyzedBlue = 0xFF299EFF.toInt()
+private const val UnanalyzedBlue = 0xD9299EFF.toInt()
 
-/** A faint edge that lifts the line off the map: light on light maps, dark on dark ones. */
-private fun casing(dark: Boolean) = if (dark) 0x99000000.toInt() else 0x8CFFFFFF.toInt()
+/** The unanalyzed line's faint dark edge. */
+private const val UnanalyzedCasing = 0x40000000
 
 /** The analyzed route's dark edge, the same on every map, as on iOS. */
 private const val RouteCasing = 0x66000000
 
 /**
- * The A–B line: one dashed blue line until analyzed, then a solid route coloured by clearance,
- * so a result never reads as the unanalyzed line. Samples are evenly spaced in latitude and longitude
- * ([LinkGeometry.samples]), so a distance along the path maps to the same fraction between A and B.
+ * The analyzed route's dash, as on iOS: 8 dp pills with 5 dp gaps on the 4 dp line. Each dash is
+ * its own short line with round ends, so the line between them is the pill less the width.
  */
-internal fun linkPathStretches(a: Coordinate, b: Coordinate, analysis: LinkAnalysis?, dark: Boolean): List<PathStretch> {
-    val unanalyzed = listOf(PathStretch(listOf(a, b), UnanalyzedBlue, dashed = true, casing(dark)))
+private const val DashDp = 4.0
+private const val DashPeriodDp = 13.0
+
+/** Where A and B are on screen, in pixels, and the screen they are on. */
+internal data class LinkPathScreen(val a: Pair<Float, Float>, val b: Pair<Float, Float>, val width: Int, val height: Int, val density: Float)
+
+/**
+ * The A–B line: a thin solid blue line until analyzed, then rounded dashes coloured by clearance,
+ * so dashes always mean a result. Neither map engine can carry a dash pattern across colour
+ * changes or round every dash, so the dashes are drawn as separate lines, laid out for the
+ * [screen] the camera last settled on and only where they are near it. Without a [screen] yet,
+ * the route is solid. Samples are evenly spaced in latitude and longitude ([LinkGeometry.samples]),
+ * so a distance along the path maps to the same fraction between A and B.
+ */
+internal fun linkPathStretches(a: Coordinate, b: Coordinate, analysis: LinkAnalysis?, dark: Boolean, screen: LinkPathScreen? = null): List<PathStretch> {
+    val unanalyzed = listOf(PathStretch(listOf(a, b), UnanalyzedBlue, UnanalyzedCasing, width = 2.5f, casingWidth = 4.5f))
     if (analysis == null) return unanalyzed
     val length = analysis.result.distanceMeters.takeIf { it > 0 } ?: return unanalyzed
     var delta = b.longitude - a.longitude
     if (delta > 180) delta -= 360
     if (delta < -180) delta += 360
-    fun at(meters: Double): Coordinate? {
-        val fraction = (meters / length).coerceIn(0.0, 1.0)
+    fun at(fraction: Double): Coordinate? {
         var longitude = a.longitude + fraction * delta
         if (longitude > 180) longitude -= 360
         if (longitude < -180) longitude += 360
         return Coordinate.gps(a.latitude + fraction * (b.latitude - a.latitude), longitude)
     }
-    return LinkProfileEngine.clearanceStretches(analysis.request).map { stretch ->
-        PathStretch(listOfNotNull(at(stretch.startMeters), at(stretch.endMeters)), stretch.clearance.argb(dark), dashed = false, RouteCasing)
+    val stretches = LinkProfileEngine.clearanceStretches(analysis.request).map { stretch ->
+        Triple((stretch.startMeters / length).coerceIn(0.0, 1.0), (stretch.endMeters / length).coerceIn(0.0, 1.0), stretch.clearance.argb(dark))
+    }
+    fun piece(from: Double, to: Double, color: Int) = PathStretch(listOfNotNull(at(from), at(to)), color, RouteCasing)
+    val fractions = screen?.let(::routeDashes) ?: return stretches.map { (from, to, color) -> piece(from, to, color) }
+    return stretches.flatMap { (from, to, color) ->
+        val pieces = fractions.mapNotNull { (start, end) ->
+            val s = maxOf(start, from)
+            val e = minOf(end, to)
+            if (e > s) piece(s, e, color) else null
+        }
+        // A stretch shorter than a gap still shows, as a dot at its middle.
+        if (pieces.isNotEmpty() || to <= from || fractions.isEmpty()) pieces
+        else fractions.first().let { (start, end) -> (end - start) / 4 }.let { half ->
+            listOf(piece((from + to) / 2 - half, (from + to) / 2 + half, color))
+        }
+    }
+}
+
+/**
+ * The dashes, as fractions from A to B, near the [screen]: within half a screen of it on every
+ * side, so a short pan still finds dashes drawn. Dashes are counted from A, so they stay put as the
+ * camera moves, and [DashPeriodDp] apart whatever the zoom.
+ */
+internal fun routeDashes(screen: LinkPathScreen): List<Pair<Double, Double>> {
+    val (ax, ay) = screen.a
+    val dx = (screen.b.first - ax).toDouble()
+    val dy = (screen.b.second - ay).toDouble()
+    val lengthDp = kotlin.math.hypot(dx, dy) / screen.density
+    if (lengthDp < 1) return emptyList()
+    // Clip the route to the screen widened by half on every side (Liang–Barsky).
+    var t0 = 0.0
+    var t1 = 1.0
+    fun clip(p: Double, q: Double): Boolean {
+        if (p == 0.0) return q >= 0
+        val r = q / p
+        if (p < 0) { if (r > t1) return false; if (r > t0) t0 = r } else { if (r < t0) return false; if (r < t1) t1 = r }
+        return true
+    }
+    val left = -screen.width / 2.0
+    val right = screen.width * 1.5
+    val top = -screen.height / 2.0
+    val bottom = screen.height * 1.5
+    if (!(clip(-dx, ax - left) && clip(dx, right - ax) && clip(-dy, ay - top) && clip(dy, bottom - ay))) return emptyList()
+    val period = DashPeriodDp / lengthDp
+    val dash = DashDp / lengthDp
+    val first = kotlin.math.floor(t0 / period).toLong()
+    val last = kotlin.math.ceil(t1 / period).toLong()
+    return (first..last).mapNotNull { index ->
+        val start = index * period
+        (start to minOf(start + dash, 1.0)).takeIf { start < 1.0 && start >= 0.0 }
     }
 }
 
@@ -212,13 +279,16 @@ private fun ClearanceLegend(modifier: Modifier) {
     }
 }
 
-/** A short line in the clearance's colour, then its name; shared with the chart legend. */
+/** Two rounded dashes in the clearance's colour, as on the map, then its name; shared with the chart legend. */
 @Composable
 internal fun ClearanceSwatch(color: androidx.compose.ui.graphics.Color, title: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         androidx.compose.foundation.Canvas(Modifier.size(18.dp, 4.dp)) {
-            drawLine(color, androidx.compose.ui.geometry.Offset(0f, size.height / 2), androidx.compose.ui.geometry.Offset(size.width, size.height / 2),
-                strokeWidth = size.height, cap = androidx.compose.ui.graphics.StrokeCap.Butt)
+            val y = size.height / 2
+            listOf(2f to 5f, 13f to 16f).forEach { (from, to) ->
+                drawLine(color, androidx.compose.ui.geometry.Offset(from.dp.toPx(), y), androidx.compose.ui.geometry.Offset(to.dp.toPx(), y),
+                    strokeWidth = size.height, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+            }
         }
         Text(title, style = MaterialTheme.typography.bodySmall)
     }

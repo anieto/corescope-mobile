@@ -332,17 +332,14 @@ internal class GoogleOverlays(private val context: Context, private val map: Goo
             .width(4 * screenDensity).color(0xFF299EFF.toInt())) else null
     }
 
-    /** A faint casing under each stretch, as on CARTO, dashed in step with a dashed stretch so the gaps stay open. */
+    /** Each stretch over its casing, with round ends, as on CARTO. */
     override fun setLinkPath(stretches: List<PathStretch>) {
         linkPath.forEach { it.remove() }
         linkPath = stretches.filter { it.points.size > 1 }.flatMap { stretch ->
             val points = stretch.points.map { LatLng(it.latitude, it.longitude) }
-            val dashes = listOf(Dash(3.5f * screenDensity), Gap(2.5f * screenDensity))
-            val casing = map.addPolyline(PolylineOptions().addAll(points).width((if (stretch.dashed) 6 else 7) * screenDensity).color(stretch.casing).zIndex(1f)
-                .apply { if (stretch.dashed) pattern(dashes) else { startCap(RoundCap()); endCap(RoundCap()); jointType(JointType.ROUND) } })
-            val line = map.addPolyline(PolylineOptions().addAll(points).width(4 * screenDensity).color(stretch.color).zIndex(2f)
-                .apply { if (stretch.dashed) pattern(dashes) else { startCap(RoundCap()); endCap(RoundCap()); jointType(JointType.ROUND) } })
-            listOf(casing, line)
+            fun line(width: Float, color: Int, z: Float) = map.addPolyline(PolylineOptions().addAll(points).width(width * screenDensity).color(color)
+                .zIndex(z).startCap(RoundCap()).endCap(RoundCap()).jointType(JointType.ROUND))
+            listOf(line(stretch.casingWidth, stretch.casing, 1f), line(stretch.width, stretch.color, 2f))
         }
     }
 

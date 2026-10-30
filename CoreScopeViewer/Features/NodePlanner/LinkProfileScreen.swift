@@ -311,6 +311,8 @@ private struct LinkProfilePersistentMap: View {
     // Opens on the region selected for the live map; until that is known, the known nodes.
     @State private var position: MapCameraPosition = .automatic
     @State private var hasFramedRegion = false
+    /// The map's scale when the camera last settled, for the route's dash phases.
+    @State private var metersPerPoint: Double?
     @Namespace private var mapScope
 
     var body: some View {
@@ -335,21 +337,13 @@ private struct LinkProfilePersistentMap: View {
                         .tint(LinkProfileEndpoint.pointB.color)
                 }
                 if let result = model.result {
-                    // A solid route coloured by clearance along the sampled path, on one dark
-                    // casing drawn under every stretch so colour changes don't break the edge.
-                    let stretches = Array(result.clearanceStretches.enumerated())
-                    let casing = StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round)
-                    let line = StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round)
-                    MapPolyline(coordinates: result.terrain.samples.map(\.mapCoordinate))
-                        .stroke(.black.opacity(0.4), style: casing)
-                    ForEach(stretches, id: \.offset) { _, stretch in
-                        MapPolyline(coordinates: result.terrain.samples[stretch.startIndex...stretch.endIndex].map(\.mapCoordinate))
-                            .stroke(stretch.clearance.color, style: line)
-                    }
+                    analyzedRoute(result)
                 } else if let pointA = model.coordinateA, let pointB = model.coordinateB {
-                    // Dashed until the analysis colours it.
+                    // A thin solid line until the analysis colours it, so dashes always mean a result.
                     MapPolyline(coordinates: [pointA, pointB])
-                        .stroke(NodeScopeStyle.signal, style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: [6, 6]))
+                        .stroke(.black.opacity(0.25), style: StrokeStyle(lineWidth: 4.5, lineCap: .round))
+                    MapPolyline(coordinates: [pointA, pointB])
+                        .stroke(NodeScopeStyle.signal.opacity(0.85), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
                 }
                 // The pending choice, exactly where the endpoint will go: on a known node it takes
                 // that node's place, so the node visibly changes into Point A or B.
@@ -404,6 +398,15 @@ private struct LinkProfilePersistentMap: View {
                     .padding(.top, promptTopClearance)
                 }
             }
+            // The route's dash phases are in points, so they need the scale once each move ends.
+            .onMapCameraChange(frequency: .onEnd) { context in
+                let center = context.camera.centerCoordinate
+                guard let point = proxy.convert(center, to: .local),
+                      let east = proxy.convert(CGPoint(x: point.x + 100, y: point.y), from: .local) else { return }
+                let meters = CLLocation(latitude: center.latitude, longitude: center.longitude)
+                    .distance(from: CLLocation(latitude: east.latitude, longitude: east.longitude))
+                metersPerPoint = meters > 0 ? meters / 100 : nil
+            }
         }
         .mapScope(mapScope)
         .accessibilityLabel("Map for selecting Point A and Point B")
@@ -422,6 +425,30 @@ private struct LinkProfilePersistentMap: View {
             position = .region(region)
             hasFramedRegion = true
         }
+    }
+
+    /// Rounded dashes coloured by clearance, each on a dark halo dashed in step. Each stretch picks
+    /// the pattern up where the one before left off, so the rhythm runs on across colour changes;
+    /// the phase is in points, so it is worked out from the scale the camera last settled at.
+    @MapContentBuilder
+    private func analyzedRoute(_ result: NodePlannerLinkAnalysis) -> some MapContent {
+        let samples = result.terrain.samples
+        let stretches = Array(result.clearanceStretches.enumerated())
+        let phases = stretches.map { _, stretch in routeDashPhase(at: stretch.startIndex, of: samples.count, meters: result.result.distanceMeters) }
+        ForEach(stretches, id: \.offset) { offset, stretch in
+            MapPolyline(coordinates: samples[stretch.startIndex...stretch.endIndex].map(\.mapCoordinate))
+                .stroke(.black.opacity(0.4), style: LinkRouteDash.style(width: 7, phase: phases[offset]))
+        }
+        ForEach(stretches, id: \.offset) { offset, stretch in
+            MapPolyline(coordinates: samples[stretch.startIndex...stretch.endIndex].map(\.mapCoordinate))
+                .stroke(stretch.clearance.color, style: LinkRouteDash.style(width: 4, phase: phases[offset]))
+        }
+    }
+
+    /// How far along the route, in points, sample [index] of [count] evenly spaced ones lies.
+    private func routeDashPhase(at index: Int, of count: Int, meters: Double) -> CGFloat {
+        guard let metersPerPoint, count > 1 else { return 0 }
+        return CGFloat(Double(index) / Double(count - 1) * meters / metersPerPoint)
     }
 
     /// Both endpoints while no endpoint is being chosen; a change of this pair re-fits the map.
@@ -1578,7 +1605,17 @@ extension NodePlannerPathClearance {
     }
 }
 
-/// A short line in the clearance's colour, then its name.
+/// The analyzed route's dash: 8 pt pills with 5 pt gaps on the 4 pt line. A round cap adds half
+/// the width at each end, so the stroked dash is the pill less the width; the halo shares the pattern.
+private enum LinkRouteDash {
+    static let pattern: [CGFloat] = [4, 9]
+
+    static func style(width: CGFloat, phase: CGFloat) -> StrokeStyle {
+        StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round, dash: pattern, dashPhase: phase)
+    }
+}
+
+/// Two rounded dashes in the clearance's colour, as on the map, then its name.
 private struct LinkProfileClearanceLegend: View {
     let clearance: NodePlannerPathClearance
 
@@ -1588,9 +1625,9 @@ private struct LinkProfileClearanceLegend: View {
         } icon: {
             Canvas { context, size in
                 var path = Path()
-                path.move(to: CGPoint(x: 0, y: size.height / 2))
-                path.addLine(to: CGPoint(x: size.width, y: size.height / 2))
-                context.stroke(path, with: .color(clearance.color), style: StrokeStyle(lineWidth: size.height))
+                path.move(to: CGPoint(x: size.height / 2, y: size.height / 2))
+                path.addLine(to: CGPoint(x: size.width - size.height / 2, y: size.height / 2))
+                context.stroke(path, with: .color(clearance.color), style: StrokeStyle(lineWidth: size.height, lineCap: .round, dash: [3, 8]))
             }
             .frame(width: 18, height: 4)
         }
