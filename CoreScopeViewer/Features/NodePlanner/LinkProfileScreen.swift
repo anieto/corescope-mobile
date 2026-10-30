@@ -445,14 +445,18 @@ private struct LinkProfilePersistentMap: View {
                 .stroke(piece.clearance.color, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
                 .mapOverlayLevel(level: .aboveLabels)
         }
+        // A filled shape's edge is drawn hard, so each pill's edge is a thin stroke, which MapKit
+        // smooths: the halo is a ring around the dash, and the dash is edged in its own colour.
         ForEach(route.halos) { halo in
             MapPolygon(coordinates: halo.coordinates)
-                .foregroundStyle(.black.opacity(0.4))
+                .foregroundStyle(.clear)
+                .stroke(.black.opacity(0.4), lineWidth: LinkRouteDash.haloRing)
                 .mapOverlayLevel(level: .aboveLabels)
         }
         ForEach(route.fills) { fill in
             MapPolygon(coordinates: fill.coordinates)
                 .foregroundStyle(fill.clearance.color)
+                .stroke(fill.clearance.color, lineWidth: LinkRouteDash.fillEdge)
                 .mapOverlayLevel(level: .aboveLabels)
         }
     }
@@ -1624,6 +1628,12 @@ private struct LinkRouteView {
 private enum LinkRouteDash {
     static let dash = 4.0
     static let period = 13.0
+    /// The dash's edge stroke and the halo's ring: the dash fills to 2 pt from its centre line and
+    /// the ring runs from there to 3.5 pt, so each outline sits mid-stroke.
+    static let fillEdge = 0.5
+    static let haloRing = 1.5
+    private static let fillRadius = 2 - fillEdge / 2
+    private static let haloRadius = 2 + haloRing / 2
 
     struct Piece: Identifiable {
         let id: Int
@@ -1660,21 +1670,21 @@ private enum LinkRouteDash {
             }
             return route
         }
-        func pill(_ from: Double, _ to: Double, width: Double, roundStart: Bool = true, roundEnd: Bool = true) -> [CLLocationCoordinate2D] {
-            pillOutline(from: point(from), to: point(to), radius: width / 2 * view.mapPointsPerPoint, roundStart: roundStart, roundEnd: roundEnd)
+        func pill(_ from: Double, _ to: Double, radius: Double, roundStart: Bool = true, roundEnd: Bool = true) -> [CLLocationCoordinate2D] {
+            pillOutline(from: point(from), to: point(to), radius: radius * view.mapPointsPerPoint, roundStart: roundStart, roundEnd: roundEnd)
         }
         func addDash(_ start: Double, _ end: Double, clearance: NodePlannerPathClearance) {
-            route.halos.append(Piece(id: route.halos.count, coordinates: pill(start, end, width: 7), clearance: clearance))
-            route.fills.append(Piece(id: route.fills.count, coordinates: pill(start, end, width: 4), clearance: clearance))
+            route.halos.append(Piece(id: route.halos.count, coordinates: pill(start, end, radius: haloRadius), clearance: clearance))
+            route.fills.append(Piece(id: route.fills.count, coordinates: pill(start, end, radius: fillRadius), clearance: clearance))
         }
         for (start, end) in dashes {
             let parts = stretches.filter { min(end, $0.to) > max(start, $0.from) }
             guard let firstPart = parts.first else { continue }
-            route.halos.append(Piece(id: route.halos.count, coordinates: pill(start, end, width: 7), clearance: firstPart.clearance))
+            route.halos.append(Piece(id: route.halos.count, coordinates: pill(start, end, radius: haloRadius), clearance: firstPart.clearance))
             for part in parts {
                 let from = max(start, part.from)
                 let to = min(end, part.to)
-                route.fills.append(Piece(id: route.fills.count, coordinates: pill(from, to, width: 4, roundStart: from == start, roundEnd: to == end),
+                route.fills.append(Piece(id: route.fills.count, coordinates: pill(from, to, radius: fillRadius, roundStart: from == start, roundEnd: to == end),
                                          clearance: part.clearance))
             }
         }
@@ -1695,7 +1705,7 @@ private enum LinkRouteDash {
         let angle = atan2(to.y - from.y, to.x - from.x)
         var outline: [MKMapPoint] = []
         func end(_ center: MKMapPoint, startingAt start: Double, round: Bool) {
-            let steps = round ? 8 : 1
+            let steps = round ? 16 : 1
             for step in 0...steps {
                 let a = start + .pi * Double(step) / Double(steps)
                 outline.append(MKMapPoint(x: center.x + radius * cos(a), y: center.y + radius * sin(a)))
