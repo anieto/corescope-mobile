@@ -189,6 +189,8 @@ private const val RouteCasing = 0x66000000
  */
 private const val DashDp = 4.0
 private const val DashPeriodDp = 13.0
+/** Below this length on screen there's room for only a few dashes, and short stretches turn into stray dots, so the route is solid. */
+private const val ShortestDashedDp = 80.0
 
 /** Where A and B are on screen, in pixels, and the screen they are on. */
 internal data class LinkPathScreen(val a: Pair<Float, Float>, val b: Pair<Float, Float>, val width: Int, val height: Int, val density: Float)
@@ -198,7 +200,7 @@ internal data class LinkPathScreen(val a: Pair<Float, Float>, val b: Pair<Float,
  * so dashes always mean a result. Neither map engine can carry a dash pattern across colour
  * changes or round every dash, so the dashes are drawn as separate lines, laid out for the
  * [screen] the camera last settled on and only where they are near it. Without a [screen] yet,
- * the route is solid. Samples are evenly spaced in latitude and longitude ([LinkGeometry.samples]),
+ * or while the route is short on screen, it is solid. Samples are evenly spaced in latitude and longitude ([LinkGeometry.samples]),
  * so a distance along the path maps to the same fraction between A and B.
  */
 internal fun linkPathStretches(a: Coordinate, b: Coordinate, analysis: LinkAnalysis?, dark: Boolean, screen: LinkPathScreen? = null): List<PathStretch> {
@@ -236,14 +238,14 @@ internal fun linkPathStretches(a: Coordinate, b: Coordinate, analysis: LinkAnaly
 /**
  * The dashes, as fractions from A to B, near the [screen]: within half a screen of it on every
  * side, so a short pan still finds dashes drawn. Dashes are counted from A, so they stay put as the
- * camera moves, and [DashPeriodDp] apart whatever the zoom.
+ * camera moves, and [DashPeriodDp] apart whatever the zoom. Null when the route is too short on screen to dash.
  */
-internal fun routeDashes(screen: LinkPathScreen): List<Pair<Double, Double>> {
+internal fun routeDashes(screen: LinkPathScreen): List<Pair<Double, Double>>? {
     val (ax, ay) = screen.a
     val dx = (screen.b.first - ax).toDouble()
     val dy = (screen.b.second - ay).toDouble()
     val lengthDp = kotlin.math.hypot(dx, dy) / screen.density
-    if (lengthDp < 1) return emptyList()
+    if (lengthDp < ShortestDashedDp) return null
     // Clip the route to the screen widened by half on every side (Liang–Barsky).
     var t0 = 0.0
     var t1 = 1.0

@@ -1633,6 +1633,9 @@ private struct LinkRouteView {
 private enum LinkRouteDash {
     static let dash = 4.0
     static let period = 13.0
+    /// Below this length on screen there's room for only a few dashes, and short stretches turn
+    /// into stray dots, so the route is drawn solid instead.
+    static let shortestDashed = 80.0
 
     struct Piece: Identifiable {
         let id: Int
@@ -1647,7 +1650,7 @@ private enum LinkRouteDash {
     }
 
     /// Dashes within half a screen of the view, counted from A so they stay put as the camera
-    /// moves; whole stretches until the camera has settled. Samples are evenly spaced, so a
+    /// moves; whole stretches until the camera has settled, or while the route is short on screen. Samples are evenly spaced, so a
     /// sample's index gives its fraction of the way from A to B. A dash that spans a colour change
     /// is split there with square inner ends, its outer ends rounded by a dot of the line's width,
     /// so it reads as one pill. A stretch shorter than a gap still shows, as a dot at its middle.
@@ -1704,12 +1707,12 @@ private enum LinkRouteDash {
     }
 
     /// The dashes, as fractions from A to B, where the route passes within half a screen of the
-    /// view (Liang–Barsky clipping); nil when the route is under a point long on screen.
+    /// view (Liang–Barsky clipping); nil when the route is too short on screen to dash.
     private static func dashes(from a: MKMapPoint, to b: MKMapPoint, view: LinkRouteView) -> [(Double, Double)]? {
         let dx = b.x - a.x
         let dy = b.y - a.y
         let length = hypot(dx, dy) / view.mapPointsPerPoint
-        guard length >= 1 else { return nil }
+        guard length >= shortestDashed else { return nil }
         let area = view.visible.insetBy(dx: -view.visible.width / 2, dy: -view.visible.height / 2)
         var t0 = 0.0
         var t1 = 1.0
