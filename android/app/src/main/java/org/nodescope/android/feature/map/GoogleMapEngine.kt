@@ -47,6 +47,8 @@ import kotlin.math.hypot
 
 /** Google's zoom is one level above MapLibre's for the same view (256- vs 512-pixel tiles). */
 private const val GOOGLE_ZOOM_OFFSET = 1.0
+/** A map style that hides businesses (shops, restaurants, hotels) and keeps every other place. */
+private const val HIDE_BUSINESSES = """[{"featureType":"poi.business","stylers":[{"visibility":"off"}]}]"""
 /** Nodes group only up to MapLibre zoom 8 (clusterMaxZoom 8), i.e. below Google zoom 10. */
 private const val GOOGLE_UNGROUPED_ZOOM = 10f
 
@@ -81,10 +83,11 @@ internal fun rememberGoogleMapEngine(): GoogleMapEngine {
 /**
  * Hosts [engine]'s MapView: lifecycle, map type, taps and camera reports. [bottomInset] becomes
  * map padding so Google's logo rides above the replay controls, without moving what is shown.
+ * [hidesBusinesses] drops shops and restaurants, whose icons and names Google draws over our lines.
  */
 @Composable
 internal fun GoogleMapEngineHost(engine: GoogleMapEngine, mapType: GoogleMapType, dark: Boolean, bottomInset: Int, savedCamera: SavedCamera,
-    onCameraIdle: (SavedCamera) -> Unit, onTap: (MapTap) -> Boolean, modifier: Modifier = Modifier) {
+    onCameraIdle: (SavedCamera) -> Unit, onTap: (MapTap) -> Boolean, modifier: Modifier = Modifier, hidesBusinesses: Boolean = false) {
     val view = engine.view
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -143,6 +146,9 @@ internal fun GoogleMapEngineHost(engine: GoogleMapEngine, mapType: GoogleMapType
         map ?: return@LaunchedEffect
         map.mapType = mapType.mapType
         map.setMapColorScheme(if (dark) MapColorScheme.DARK else MapColorScheme.LIGHT)
+    }
+    LaunchedEffect(map, hidesBusinesses) {
+        map?.setMapStyle(if (hidesBusinesses) MapStyleOptions(HIDE_BUSINESSES) else null)
     }
     LaunchedEffect(engine.camera, bottomInset) { (engine.camera as? GoogleCamera)?.setBottomInset(bottomInset) }
     key(view) { AndroidView(factory = { engine.container }, modifier = modifier) }

@@ -133,7 +133,9 @@ internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, point
         }
         when (engine) {
             is MapLibreEngine -> MapLibreEngineHost(engine, choice.cartoStyle(dark), retry, insetPx, camera, { camera = it }, onTap, Modifier.fillMaxSize())
-            is GoogleMapEngine -> GoogleMapEngineHost(engine, choice.googleType, dark, insetPx, camera, { camera = it }, onTap, Modifier.fillMaxSize())
+            // Google draws its labels over the route; dropping businesses clears most of them.
+            is GoogleMapEngine -> GoogleMapEngineHost(engine, choice.googleType, dark, insetPx, camera, { camera = it }, onTap, Modifier.fillMaxSize(),
+                hidesBusinesses = true)
         }
         if (analysis != null && endpoint == null) ClearanceLegend(Modifier.align(Alignment.TopStart).padding(8.dp))
         Box(Modifier.align(Alignment.TopEnd).padding(8.dp)) {
