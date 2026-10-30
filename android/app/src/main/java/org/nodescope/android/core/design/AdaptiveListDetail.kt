@@ -66,7 +66,7 @@ fun AdaptiveListDetail(
         // Back returns directly to the list, rather than stepping through every selected row.
         BackHandler(enabled = selectedId != null, onBack = onCloseDetail)
         ListDetailPaneScaffold(
-            modifier = if (twoPanes && wide) Modifier.background(paneCanvasColor()) else Modifier,
+            modifier = if (twoPanes && wide) Modifier.meshPageBackground(canvas = true) else Modifier,
             directive = directive,
             value = value,
             listPane = {
@@ -88,6 +88,7 @@ fun AdaptiveListDetail(
                         } else {
                             Column(Modifier.fillMaxSize().semantics { paneTitle = detailTitle }) {
                                 TopAppBar(
+                                    colors = meshTopAppBarColors(),
                                     windowInsets = WindowInsets(0, 0, 0, 0),
                                     title = { Text(detailTitle, style = MaterialTheme.typography.titleLarge,
                                         maxLines = 2, overflow = TextOverflow.Ellipsis) },

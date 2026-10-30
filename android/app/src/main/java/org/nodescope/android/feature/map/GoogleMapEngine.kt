@@ -47,6 +47,8 @@ import kotlin.math.hypot
 
 /** Google's zoom is one level above MapLibre's for the same view (256- vs 512-pixel tiles). */
 private const val GOOGLE_ZOOM_OFFSET = 1.0
+/** A map style that hides businesses (shops, restaurants, hotels) and keeps every other place. */
+private const val HIDE_BUSINESSES = """[{"featureType":"poi.business","stylers":[{"visibility":"off"}]}]"""
 /** Nodes group only up to MapLibre zoom 8 (clusterMaxZoom 8), i.e. below Google zoom 10. */
 private const val GOOGLE_UNGROUPED_ZOOM = 10f
 
@@ -81,10 +83,11 @@ internal fun rememberGoogleMapEngine(): GoogleMapEngine {
 /**
  * Hosts [engine]'s MapView: lifecycle, map type, taps and camera reports. [bottomInset] becomes
  * map padding so Google's logo rides above the replay controls, without moving what is shown.
+ * [hidesBusinesses] drops shops and restaurants, whose icons and names Google draws over our lines.
  */
 @Composable
 internal fun GoogleMapEngineHost(engine: GoogleMapEngine, mapType: GoogleMapType, dark: Boolean, bottomInset: Int, savedCamera: SavedCamera,
-    onCameraIdle: (SavedCamera) -> Unit, onTap: (MapTap) -> Boolean, modifier: Modifier = Modifier) {
+    onCameraIdle: (SavedCamera) -> Unit, onTap: (MapTap) -> Boolean, modifier: Modifier = Modifier, hidesBusinesses: Boolean = false) {
     val view = engine.view
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -143,6 +146,9 @@ internal fun GoogleMapEngineHost(engine: GoogleMapEngine, mapType: GoogleMapType
         map ?: return@LaunchedEffect
         map.mapType = mapType.mapType
         map.setMapColorScheme(if (dark) MapColorScheme.DARK else MapColorScheme.LIGHT)
+    }
+    LaunchedEffect(map, hidesBusinesses) {
+        map?.setMapStyle(if (hidesBusinesses) MapStyleOptions(HIDE_BUSINESSES) else null)
     }
     LaunchedEffect(engine.camera, bottomInset) { (engine.camera as? GoogleCamera)?.setBottomInset(bottomInset) }
     key(view) { AndroidView(factory = { engine.container }, modifier = modifier) }
@@ -332,17 +338,14 @@ internal class GoogleOverlays(private val context: Context, private val map: Goo
             .width(4 * screenDensity).color(0xFF299EFF.toInt())) else null
     }
 
-    /** A faint casing under each stretch, as on CARTO, dashed in step with a dashed stretch so the gaps stay open. */
+    /** Each stretch over its casing, with round ends, as on CARTO. */
     override fun setLinkPath(stretches: List<PathStretch>) {
         linkPath.forEach { it.remove() }
         linkPath = stretches.filter { it.points.size > 1 }.flatMap { stretch ->
             val points = stretch.points.map { LatLng(it.latitude, it.longitude) }
-            val dashes = listOf(Dash(3.5f * screenDensity), Gap(2.5f * screenDensity))
-            val casing = map.addPolyline(PolylineOptions().addAll(points).width((if (stretch.dashed) 6 else 7) * screenDensity).color(stretch.casing).zIndex(1f)
-                .apply { if (stretch.dashed) pattern(dashes) else { startCap(RoundCap()); endCap(RoundCap()); jointType(JointType.ROUND) } })
-            val line = map.addPolyline(PolylineOptions().addAll(points).width(4 * screenDensity).color(stretch.color).zIndex(2f)
-                .apply { if (stretch.dashed) pattern(dashes) else { startCap(RoundCap()); endCap(RoundCap()); jointType(JointType.ROUND) } })
-            listOf(casing, line)
+            fun line(width: Float, color: Int, z: Float) = map.addPolyline(PolylineOptions().addAll(points).width(width * screenDensity).color(color)
+                .zIndex(z).startCap(RoundCap()).endCap(RoundCap()).jointType(JointType.ROUND))
+            listOf(line(stretch.casingWidth, stretch.casing, 1f), line(stretch.width, stretch.color, 2f))
         }
     }
 

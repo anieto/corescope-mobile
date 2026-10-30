@@ -34,6 +34,22 @@
       "host": "analyzer.comchan.net",
       "subtitle": "Central Texas Meshcore",
       "isDefault": false
+    },
+    {
+      "id": "ntxmesh",
+      "icon": "icons/ntxmesh.png",
+      "name": "NTXMesh",
+      "host": "ntxmesh.dhovin.me",
+      "subtitle": "DFW / North Texas Mesh",
+      "isDefault": false
+    },
+    {
+      "id": "sacscope",
+      "icon": "icons/sacscope.png",
+      "name": "SacScope",
+      "host": "scope.sacmesh.org",
+      "subtitle": "Sacramento Valley and Surrounding Hills",
+      "isDefault": false
     }
   ]
 }

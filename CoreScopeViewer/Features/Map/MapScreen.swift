@@ -3622,12 +3622,14 @@ enum MapDisplayStyle: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Link Profile keeps 3D terrain in every style.
+    /// Link Profile's styles: 3D terrain on the standard map. Imagery stays flat: there MapKit
+    /// drapes overlays over the 3D ground and draws them about 2.5 times too thick, which ran the
+    /// route's dashes together.
     var realisticStyle: MapStyle {
         switch self {
         case .standard: .standard(elevation: .realistic)
-        case .imagery: .imagery(elevation: .realistic)
-        case .hybrid: .hybrid(elevation: .realistic)
+        case .imagery: .imagery
+        case .hybrid: .hybrid
         }
     }
 

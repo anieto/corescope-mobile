@@ -214,6 +214,27 @@ line is the dashed one; the legend swatches are solid to match (the chart's line
 dashed). Start Over became a "Reset" button beside the header, shown once a point is placed and
 no point is being chosen, so it works with the sheet collapsed. iPhone's panel floats 8 pt above
 the tab bar.
+Rounded dashes (both platforms, after tester feedback): the analyzed route is rounded dashes
+coloured by clearance, 8 pt pills with 5 pt gaps on the 4-wide line, each on a dark halo (black
+40%, 7 wide) that shares its shape, with the gaps open to the map. The pattern runs on across
+colour changes. Neither platform's own dashing works for this (MapLibre has no dash offset,
+Google's pattern dashes are square, and on device MapKit drew the pattern about 2.7 times too
+long with phases that didn't line stretches up), so both lay the dashes out as separate
+round-ended lines (`routeDashes` on Android, `LinkRouteDash` on iOS), counted from A, for the
+view the camera last settled on and within half a screen of it, and redraw them when the camera
+settles. A stretch shorter than a gap still shows as a dot. The
+unanalyzed A–B line is now a thin solid blue line (2.5 wide at 85% over a 4.5-wide black 25%
+edge), so dashes always mean a result. Legend swatches are two rounded dashes. Mock-up compared
+light, pale, dark and satellite maps. Below 80 pt (dp) on screen the route is the solid
+clearance line, since a few dashes and stray dots don't read. Both platforms draw the route
+above labels: iOS with `.mapOverlayLevel(.aboveLabels)`; Google's Android map can't, so its Link
+Profile hides businesses (`poi.business`) instead. iOS device findings: filled pill shapes came
+out as hexagons (MapKit simplifies small shapes); short dash lines lost half their stroke near
+tile edges until `LinkRoutePolyline` padded their bounds by 8 pt; and on realistic-elevation
+imagery MapKit drapes overlays over 3D ground and draws them about 2.5 times too thick, so Link
+Profile's Satellite and Hybrid maps are flat (Standard keeps 3D terrain). If the half dashes come
+back, the fallback is a UIKit `MKMapView` with its own overlay renderer. Checked on devices on
+both platforms.
 The phone panel now floats over the map on both platforms: opening it covers the map instead of
 moving the camera (iOS: ZStack overlay, the map's safe area clears only the collapsed header;
 Android: a plain overlay replaced BottomSheetScaffold, suspected of blocking pinch). iOS map

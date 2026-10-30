@@ -1,6 +1,8 @@
 package org.nodescope.android.feature.map
 
 import org.nodescope.android.core.design.MeshModalBottomSheet
+import org.nodescope.android.core.design.meshPageBackground
+import org.nodescope.android.core.design.meshTopAppBarColors
 import kotlinx.coroutines.launch
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -411,7 +413,8 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     val replayPanelMaxHeight = maxHeight * 0.35f
     Column(Modifier.fillMaxSize()) {
         // The app shell's Scaffold already applies the status-bar inset; don't add it twice.
-        TopAppBar(windowInsets = WindowInsets(0, 0, 0, 0), title = {
+        // The map's own screen is opaque, so the bar carries the mesh that runs on above it.
+        TopAppBar(modifier = Modifier.meshPageBackground(), colors = meshTopAppBarColors(), windowInsets = WindowInsets(0, 0, 0, 0), title = {
             Column {
                 Text("Live Map", style = MaterialTheme.typography.titleLarge)
                 ConnectionBadge(connection)

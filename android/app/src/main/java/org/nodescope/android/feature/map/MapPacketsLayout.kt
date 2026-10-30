@@ -1,6 +1,7 @@
 package org.nodescope.android.feature.map
 
 import org.nodescope.android.core.design.meshPageBackground
+import androidx.compose.ui.draw.clipToBounds
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -20,7 +21,6 @@ import org.nodescope.android.core.design.CardCornerMasks
 import org.nodescope.android.core.design.LocalWideLayout
 import org.nodescope.android.core.design.PaneGap
 import org.nodescope.android.core.design.firstPaneWidth
-import org.nodescope.android.core.design.paneCanvasColor
 import org.nodescope.android.core.design.paneCard
 import org.nodescope.android.core.design.rememberFoldSplit
 import org.nodescope.android.core.network.LiveFeedState
@@ -81,7 +81,7 @@ fun MapPacketsLayout(
             return@BoxWithConstraints
         }
         // Panel and map as two cards on the canvas; at a fold the gap between them sits on the crease.
-        Row(Modifier.fillMaxSize().background(paneCanvasColor())) {
+        Row(Modifier.fillMaxSize().meshPageBackground(canvas = true)) {
             Column(Modifier.width(atFold?.minus(PaneGap / 2) ?: PANEL_WIDTH).fillMaxHeight().paneCard().meshPageBackground()) {
                 Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -156,10 +156,13 @@ private fun PacketsSheetLayout(
     // what to show, as on iPhone.
     LaunchedEffect(replayingId) { if (replayingId != null && sheetState.currentValue != SheetValue.Hidden) sheetState.hide() }
     androidx.activity.compose.BackHandler(enabled = open) { hide() }
+    // Clipped: a hidden sheet waits just below the map, where the see-through tab bar would show it.
     BottomSheetScaffold(
+        modifier = Modifier.clipToBounds(),
         scaffoldState = scaffoldState, sheetPeekHeight = height / 2, sheetSwipeEnabled = true,
         sheetContent = {
-            Column(Modifier.fillMaxWidth().height(height * 0.85f).meshPageBackground()) {
+            // Laid out from the sheet itself, so the pattern rides along as it is dragged.
+            Column(Modifier.fillMaxWidth().height(height * 0.85f).meshPageBackground(anchored = false)) {
                 Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("Live packets", Modifier.weight(1f).semantics { heading() }, style = MaterialTheme.typography.titleLarge)
                     IconButton(onClick = ::hide) { Icon(Icons.Outlined.Close, "Close live packets") }
