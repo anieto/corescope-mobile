@@ -14,6 +14,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathOperation
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 
 /**
@@ -28,9 +29,14 @@ val PaneShape = RoundedCornerShape(PaneCorner)
 /** Space around cards and between panes. */
 val PaneGap = 8.dp
 
-/** The canvas behind cards and the navigation rail. */
+/**
+ * The canvas behind cards and the navigation rail. Light mode uses a darker slate than its
+ * surfaceContainerHigh, so the light cards stand off the canvas as dark mode's cards do.
+ */
 @Composable
-fun paneCanvasColor(): Color = MaterialTheme.colorScheme.surfaceContainerHigh
+fun paneCanvasColor(): Color =
+    if (MaterialTheme.colorScheme.background.luminance() < 0.3f) MaterialTheme.colorScheme.surfaceContainerHigh
+    else Color(0xFFCBD6E2)
 
 /** A pane drawn as a card with the screen background. */
 @Composable
