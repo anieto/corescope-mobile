@@ -54,7 +54,8 @@ private class MeshPlacement {
  * [anchored] pieces lay the pattern and gradient out across the whole window, so the bars, the
  * screens and the wide-layout canvas line up into one background with no seams. [canvas] is the
  * wide-layout canvas behind the cards and the navigation rail: the mesh under a wash of the canvas
- * colour, so the cards still stand apart. [region] limits drawing to a path (map corner masks).
+ * colour, so the cards still stand apart; in light wide layouts everything else is a card, lifted
+ * toward white. [region] limits drawing to a path (map corner masks).
  */
 @Composable
 fun Modifier.meshPageBackground(
@@ -67,6 +68,9 @@ fun Modifier.meshPageBackground(
     val texture = LocalBackgroundTexture.current
     // Strong enough that the cards and the navigation rail stand clear of the canvas.
     val wash = paneCanvasColor().copy(alpha = 0.88f)
+    // In light wide layouts the card mesh is too close in tone to the canvas, so cards (and the
+    // screens, bars and sheets in them) are lifted toward white. Dark cards already stand apart.
+    val lift = Color.White.copy(alpha = 0.5f).takeIf { !dark && !canvas && LocalWideLayout.current }
     val placement = remember { MeshPlacement() }
     val placed = if (anchored) onGloballyPositioned {
         placement.origin = it.positionInRoot()
@@ -118,6 +122,7 @@ fun Modifier.meshPageBackground(
             fun paint() = translate(-shift.x, -shift.y) {
                 drawRect(gradient, size = area)
                 if (canvas) drawRect(wash, size = area)
+                lift?.let { drawRect(it, size = area) }
                 if (texture) {
                     drawPath(links, linkBrush, style = stroke)
                     drawPath(dots, nodeBrush)
