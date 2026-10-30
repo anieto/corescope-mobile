@@ -435,13 +435,15 @@ private struct LinkProfilePersistentMap: View {
     @MapContentBuilder
     private func analyzedRoute(_ result: NodePlannerLinkAnalysis) -> some MapContent {
         let route = LinkRouteDash.route(result: result, view: routeView)
+        // Wide enough to take in the halo's round ends and edges, with room to spare.
+        let padding = (routeView?.mapPointsPerPoint ?? 0) * 8
         ForEach(route.halos) { halo in
-            MapPolyline(coordinates: halo.coordinates)
+            MapPolyline(LinkRoutePolyline.make(halo.coordinates, padding: padding))
                 .stroke(.black.opacity(0.4), style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round))
                 .mapOverlayLevel(level: .aboveLabels)
         }
         ForEach(route.fills) { fill in
-            MapPolyline(coordinates: fill.coordinates)
+            MapPolyline(LinkRoutePolyline.make(fill.coordinates, padding: padding))
                 .stroke(fill.clearance.color, style: StrokeStyle(lineWidth: 4, lineCap: fill.round ? .round : .butt, lineJoin: .round))
                 .mapOverlayLevel(level: .aboveLabels)
         }
@@ -1598,6 +1600,23 @@ extension NodePlannerPathClearance {
         case .marginal: "Marginal"
         case .obstructed: "Obstructed"
         }
+    }
+}
+
+/// A polyline whose bounds reach past its points. MapKit draws an overlay only in the map tiles
+/// its bounds touch, so a short dash lying near a tile's edge lost the part of its stroke that
+/// crossed into the next tile; padded bounds take that tile in too.
+private final class LinkRoutePolyline: MKPolyline {
+    private var padding = 0.0
+
+    static func make(_ coordinates: [CLLocationCoordinate2D], padding: Double) -> LinkRoutePolyline {
+        let polyline = LinkRoutePolyline(coordinates: coordinates, count: coordinates.count)
+        polyline.padding = padding
+        return polyline
+    }
+
+    override var boundingMapRect: MKMapRect {
+        super.boundingMapRect.insetBy(dx: -padding, dy: -padding)
     }
 }
 
