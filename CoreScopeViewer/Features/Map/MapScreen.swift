@@ -221,19 +221,15 @@ struct MapScreen: View {
     var body: some View {
         NavigationStack {
                     GeometryReader { geometry in
-                Group {
-                    if isReplayMode {
-                        TimelineView(
-                            .animation(
-                                minimumInterval: mapUpdateInterval,
-                                paused: !isTabActive || !pingsForDisplay.contains { !$0.isExpired() }
-                            )
-                        ) { context in
-                            mapContent(at: context.date)
-                        }
-                    } else {
-                        mapContent(at: .now)
-                    }
+                // One timeline for both modes, paused outside replay, so leaving a replay keeps the
+                // same Map: rebuilding it lost a camera the user had moved and showed the whole US.
+                TimelineView(
+                    .animation(
+                        minimumInterval: mapUpdateInterval,
+                        paused: !isReplayMode || !isTabActive || !pingsForDisplay.contains { !$0.isExpired() }
+                    )
+                ) { context in
+                    mapContent(at: isReplayMode ? context.date : .now)
                 }
                 .onAppear { mapViewportSize = geometry.size }
                 .onChange(of: geometry.size) { _, size in
