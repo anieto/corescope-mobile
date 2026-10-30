@@ -70,7 +70,7 @@ fun Modifier.meshPageBackground(
     val wash = paneCanvasColor().copy(alpha = 0.88f)
     // In light wide layouts the cards' mesh came through too strongly, so cards (and the screens,
     // bars and sheets in them) are a mostly opaque surface over it. Dark cards are left as they are.
-    val veil = MaterialTheme.colorScheme.background.copy(alpha = 0.7f).takeIf { !dark && !canvas && LocalWideLayout.current }
+    val veil = MaterialTheme.colorScheme.background.copy(alpha = 0.35f).takeIf { !dark && !canvas && LocalWideLayout.current }
     val placement = remember { MeshPlacement() }
     val placed = if (anchored) onGloballyPositioned {
         placement.origin = it.positionInRoot()
