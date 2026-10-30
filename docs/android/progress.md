@@ -225,7 +225,16 @@ view the camera last settled on and within half a screen of it, and redraw them 
 settles. A stretch shorter than a gap still shows as a dot. The
 unanalyzed A–B line is now a thin solid blue line (2.5 wide at 85% over a 4.5-wide black 25%
 edge), so dashes always mean a result. Legend swatches are two rounded dashes. Mock-up compared
-light, pale, dark and satellite maps. Android checked on a device; iOS rebuilt after the first device check.
+light, pale, dark and satellite maps. Below 80 pt (dp) on screen the route is the solid
+clearance line, since a few dashes and stray dots don't read. Both platforms draw the route
+above labels: iOS with `.mapOverlayLevel(.aboveLabels)`; Google's Android map can't, so its Link
+Profile hides businesses (`poi.business`) instead. iOS device findings: filled pill shapes came
+out as hexagons (MapKit simplifies small shapes); short dash lines lost half their stroke near
+tile edges until `LinkRoutePolyline` padded their bounds by 8 pt; and on realistic-elevation
+imagery MapKit drapes overlays over 3D ground and draws them about 2.5 times too thick, so Link
+Profile's Satellite and Hybrid maps are flat (Standard keeps 3D terrain). If the half dashes come
+back, the fallback is a UIKit `MKMapView` with its own overlay renderer. Checked on devices on
+both platforms.
 The phone panel now floats over the map on both platforms: opening it covers the map instead of
 moving the camera (iOS: ZStack overlay, the map's safe area clears only the collapsed header;
 Android: a plain overlay replaced BottomSheetScaffold, suspected of blocking pinch). iOS map
