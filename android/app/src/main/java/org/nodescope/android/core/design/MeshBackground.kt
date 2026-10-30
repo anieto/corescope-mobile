@@ -154,14 +154,11 @@ fun MeshModalBottomSheet(
     }
 }
 
-/**
- * iOS instrument-card fill; alpha affects the surface only, never text or icons. Light cards are
- * more solid, since the mesh's lines showed through white too clearly.
- */
+/** iOS instrument-card fill; alpha affects the surface only, never text or icons. */
 @Composable
 fun meshCardColor(): Color =
-    if (MaterialTheme.colorScheme.background.luminance() < 0.3f) Color(0.08f, 0.13f, 0.20f).copy(alpha = 0.80f)
-    else Color.White.copy(alpha = 0.92f)
+    (if (MaterialTheme.colorScheme.background.luminance() < 0.3f)
+        Color(0.08f, 0.13f, 0.20f) else Color.White).copy(alpha = 0.80f)
 
 @Composable
 fun meshCardColors(selected: Boolean = false): CardColors = CardDefaults.cardColors(
