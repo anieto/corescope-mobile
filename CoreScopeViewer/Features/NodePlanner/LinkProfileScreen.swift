@@ -311,8 +311,8 @@ private struct LinkProfilePersistentMap: View {
     // Opens on the region selected for the live map; until that is known, the known nodes.
     @State private var position: MapCameraPosition = .automatic
     @State private var hasFramedRegion = false
-    /// The map's scale when the camera last settled, for the route's dash phases.
-    @State private var metersPerPoint: Double?
+    /// Where the camera last settled, for laying out the route's dashes.
+    @State private var routeView: LinkRouteView?
     @Namespace private var mapScope
 
     var body: some View {
@@ -398,14 +398,13 @@ private struct LinkProfilePersistentMap: View {
                     .padding(.top, promptTopClearance)
                 }
             }
-            // The route's dash phases are in points, so they need the scale once each move ends.
+            // The route's dashes are laid out in points, so they need the scale once each move ends.
             .onMapCameraChange(frequency: .onEnd) { context in
-                let center = context.camera.centerCoordinate
-                guard let point = proxy.convert(center, to: .local),
+                guard let point = proxy.convert(context.camera.centerCoordinate, to: .local),
                       let east = proxy.convert(CGPoint(x: point.x + 100, y: point.y), from: .local) else { return }
-                let meters = CLLocation(latitude: center.latitude, longitude: center.longitude)
-                    .distance(from: CLLocation(latitude: east.latitude, longitude: east.longitude))
-                metersPerPoint = meters > 0 ? meters / 100 : nil
+                let center = MKMapPoint(context.camera.centerCoordinate)
+                let scale = hypot(MKMapPoint(east).x - center.x, MKMapPoint(east).y - center.y) / 100
+                routeView = scale > 0 ? LinkRouteView(visible: context.rect, mapPointsPerPoint: scale) : nil
             }
         }
         .mapScope(mapScope)
@@ -427,28 +426,21 @@ private struct LinkProfilePersistentMap: View {
         }
     }
 
-    /// Rounded dashes coloured by clearance, each on a dark halo dashed in step. Each stretch picks
-    /// the pattern up where the one before left off, so the rhythm runs on across colour changes;
-    /// the phase is in points, so it is worked out from the scale the camera last settled at.
+    /// Rounded dashes coloured by clearance, each on a dark halo of the same shape. MapKit's own
+    /// dash pattern came out larger than asked and its phase couldn't line stretches up, so each
+    /// dash is a short round-ended line laid out for where the camera last settled; until it has
+    /// settled, the route is solid.
     @MapContentBuilder
     private func analyzedRoute(_ result: NodePlannerLinkAnalysis) -> some MapContent {
-        let samples = result.terrain.samples
-        let stretches = Array(result.clearanceStretches.enumerated())
-        let phases = stretches.map { _, stretch in routeDashPhase(at: stretch.startIndex, of: samples.count, meters: result.result.distanceMeters) }
-        ForEach(stretches, id: \.offset) { offset, stretch in
-            MapPolyline(coordinates: samples[stretch.startIndex...stretch.endIndex].map(\.mapCoordinate))
-                .stroke(.black.opacity(0.4), style: LinkRouteDash.style(width: 7, phase: phases[offset]))
+        let pieces = LinkRouteDash.pieces(result: result, view: routeView)
+        ForEach(pieces) { piece in
+            MapPolyline(coordinates: piece.coordinates)
+                .stroke(.black.opacity(0.4), style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round))
         }
-        ForEach(stretches, id: \.offset) { offset, stretch in
-            MapPolyline(coordinates: samples[stretch.startIndex...stretch.endIndex].map(\.mapCoordinate))
-                .stroke(stretch.clearance.color, style: LinkRouteDash.style(width: 4, phase: phases[offset]))
+        ForEach(pieces) { piece in
+            MapPolyline(coordinates: piece.coordinates)
+                .stroke(piece.clearance.color, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
         }
-    }
-
-    /// How far along the route, in points, sample [index] of [count] evenly spaced ones lies.
-    private func routeDashPhase(at index: Int, of count: Int, meters: Double) -> CGFloat {
-        guard let metersPerPoint, count > 1 else { return 0 }
-        return CGFloat(Double(index) / Double(count - 1) * meters / metersPerPoint)
     }
 
     /// Both endpoints while no endpoint is being chosen; a change of this pair re-fits the map.
@@ -1605,13 +1597,94 @@ extension NodePlannerPathClearance {
     }
 }
 
-/// The analyzed route's dash: 8 pt pills with 5 pt gaps on the 4 pt line. A round cap adds half
-/// the width at each end, so the stroked dash is the pill less the width; the halo shares the pattern.
-private enum LinkRouteDash {
-    static let pattern: [CGFloat] = [4, 9]
+/// The visible map and its scale when the camera last settled.
+private struct LinkRouteView {
+    let visible: MKMapRect
+    let mapPointsPerPoint: Double
+}
 
-    static func style(width: CGFloat, phase: CGFloat) -> StrokeStyle {
-        StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round, dash: pattern, dashPhase: phase)
+/// The analyzed route's dashes, as on Android: 8 pt pills with 5 pt gaps on the 4 pt line. Each
+/// dash is its own line with round ends, so the line between them is the pill less the width.
+private enum LinkRouteDash {
+    static let dash = 4.0
+    static let period = 13.0
+
+    struct Piece: Identifiable {
+        let id: Int
+        let coordinates: [CLLocationCoordinate2D]
+        let clearance: NodePlannerPathClearance
+    }
+
+    /// The route's pieces: dashes within half a screen of the view, counted from A so they stay
+    /// put as the camera moves; whole stretches until the camera has settled. Samples are evenly
+    /// spaced, so a sample's index gives its fraction of the way from A to B. A stretch shorter
+    /// than a gap still shows, as a dot at its middle.
+    static func pieces(result: NodePlannerLinkAnalysis, view: LinkRouteView?) -> [Piece] {
+        let samples = result.terrain.samples
+        guard let first = samples.first, let last = samples.last, samples.count > 1 else { return [] }
+        let a = MKMapPoint(first.mapCoordinate)
+        let b = MKMapPoint(last.mapCoordinate)
+        func coordinate(_ fraction: Double) -> CLLocationCoordinate2D {
+            MKMapPoint(x: a.x + (b.x - a.x) * fraction, y: a.y + (b.y - a.y) * fraction).coordinate
+        }
+        let stretches = result.clearanceStretches.map {
+            (from: Double($0.startIndex) / Double(samples.count - 1), to: Double($0.endIndex) / Double(samples.count - 1), clearance: $0.clearance)
+        }
+        var pieces: [Piece] = []
+        func add(_ from: Double, _ to: Double, _ clearance: NodePlannerPathClearance) {
+            pieces.append(Piece(id: pieces.count, coordinates: [coordinate(from), coordinate(to)], clearance: clearance))
+        }
+        guard let view, let dashes = dashes(from: a, to: b, view: view) else {
+            stretches.forEach { add($0.from, $0.to, $0.clearance) }
+            return pieces
+        }
+        for stretch in stretches {
+            let before = pieces.count
+            for (start, end) in dashes where min(end, stretch.to) > max(start, stretch.from) {
+                add(max(start, stretch.from), min(end, stretch.to), stretch.clearance)
+            }
+            if pieces.count == before, stretch.to > stretch.from, let (start, end) = dashes.first {
+                let middle = (stretch.from + stretch.to) / 2
+                let half = (end - start) / 4
+                add(middle - half, middle + half, stretch.clearance)
+            }
+        }
+        return pieces
+    }
+
+    /// The dashes, as fractions from A to B, where the route passes within half a screen of the
+    /// view (Liang–Barsky clipping); nil when the route is under a point long on screen.
+    private static func dashes(from a: MKMapPoint, to b: MKMapPoint, view: LinkRouteView) -> [(Double, Double)]? {
+        let dx = b.x - a.x
+        let dy = b.y - a.y
+        let length = hypot(dx, dy) / view.mapPointsPerPoint
+        guard length >= 1 else { return nil }
+        let area = view.visible.insetBy(dx: -view.visible.width / 2, dy: -view.visible.height / 2)
+        var t0 = 0.0
+        var t1 = 1.0
+        for (p, q) in [(-dx, a.x - area.minX), (dx, area.maxX - a.x), (-dy, a.y - area.minY), (dy, area.maxY - a.y)] {
+            if p == 0 {
+                if q < 0 { return [] }
+                continue
+            }
+            let r = q / p
+            if p < 0 {
+                if r > t1 { return [] }
+                t0 = max(t0, r)
+            } else {
+                if r < t0 { return [] }
+                t1 = min(t1, r)
+            }
+        }
+        let step = period / length
+        let span = dash / length
+        let firstIndex = Int((t0 / step).rounded(.down))
+        let lastIndex = Int((t1 / step).rounded(.up))
+        guard firstIndex <= lastIndex else { return [] }
+        return (firstIndex...lastIndex).compactMap { index in
+            let start = Double(index) * step
+            return start >= 0 && start < 1 ? (start, min(start + span, 1)) : nil
+        }
     }
 }
 
