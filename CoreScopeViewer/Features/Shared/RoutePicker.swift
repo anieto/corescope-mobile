@@ -16,25 +16,43 @@ struct RoutePicker: View {
         if options.isEmpty {
             EmptyView()
         } else {
-            Menu {
-                ForEach(options.indices, id: \.self) { index in
-                    let option = options[index]
-                    // A toggle shows the menu's checkmark; its two texts give the item a title
-                    // and a subtitle line.
-                    Toggle(isOn: Binding(
-                        get: { index == self.index },
-                        set: { if $0 { selection = index } }
-                    )) {
-                        Text([option.name(index: index), option.othersBadge].compactMap { $0 }.joined(separator: "  "))
-                        Text(option.summary)
-                    }
-                    .accessibilityLabel(option.spokenLabel(index: index))
-                }
-            } label: {
-                RouteName(option: options[index], index: index, compact: compact)
-            }
-            .accessibilityLabel("Route: \(options[index].spokenLabel(index: index)). Change route")
+            // Equatable so the parent's frequent redraws (live map, replay) leave an open menu
+            // alone; rebuilding its items scrolled a long list back to the bottom.
+            RouteMenu(options: options, selected: index, compact: compact) { selection = $0 }
+                .equatable()
         }
+    }
+}
+
+private struct RouteMenu: View, Equatable {
+    let options: [RouteOption]
+    let selected: Int
+    let compact: Bool
+    let select: (Int) -> Void
+
+    nonisolated static func == (lhs: RouteMenu, rhs: RouteMenu) -> Bool {
+        lhs.options == rhs.options && lhs.selected == rhs.selected && lhs.compact == rhs.compact
+    }
+
+    var body: some View {
+        Menu {
+            ForEach(options.indices, id: \.self) { index in
+                let option = options[index]
+                // A toggle shows the menu's checkmark; its two texts give the item a title
+                // and a subtitle line.
+                Toggle(isOn: Binding(
+                    get: { index == selected },
+                    set: { if $0 { select(index) } }
+                )) {
+                    Text([option.name(index: index), option.othersBadge].compactMap { $0 }.joined(separator: "  "))
+                    Text(option.summary)
+                }
+                .accessibilityLabel(option.spokenLabel(index: index))
+            }
+        } label: {
+            RouteName(option: options[selected], index: selected, compact: compact)
+        }
+        .accessibilityLabel("Route: \(options[selected].spokenLabel(index: selected)). Change route")
     }
 }
 
