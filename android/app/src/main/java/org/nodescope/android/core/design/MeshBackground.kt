@@ -54,7 +54,8 @@ private class MeshPlacement {
  * [anchored] pieces lay the pattern and gradient out across the whole window, so the bars, the
  * screens and the wide-layout canvas line up into one background with no seams. [canvas] is the
  * wide-layout canvas behind the cards and the navigation rail: the mesh under a wash of the canvas
- * colour, so the cards still stand apart. [region] limits drawing to a path (map corner masks).
+ * colour, so the cards still stand apart; in light wide layouts the cards veil their mesh instead.
+ * [region] limits drawing to a path (map corner masks).
  */
 @Composable
 fun Modifier.meshPageBackground(
@@ -67,6 +68,9 @@ fun Modifier.meshPageBackground(
     val texture = LocalBackgroundTexture.current
     // Strong enough that the cards and the navigation rail stand clear of the canvas.
     val wash = paneCanvasColor().copy(alpha = 0.88f)
+    // In light wide layouts the cards' mesh came through too strongly, so cards (and the screens,
+    // bars and sheets in them) are a mostly opaque surface over it. Dark cards are left as they are.
+    val veil = MaterialTheme.colorScheme.background.copy(alpha = 0.7f).takeIf { !dark && !canvas && LocalWideLayout.current }
     val placement = remember { MeshPlacement() }
     val placed = if (anchored) onGloballyPositioned {
         placement.origin = it.positionInRoot()
@@ -122,6 +126,7 @@ fun Modifier.meshPageBackground(
                     drawPath(links, linkBrush, style = stroke)
                     drawPath(dots, nodeBrush)
                 }
+                veil?.let { drawRect(it, size = area) }
             }
             val path = region?.invoke(this)
             if (path != null) clipPath(path) { paint() } else clipRect { paint() }
