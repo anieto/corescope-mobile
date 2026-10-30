@@ -4,7 +4,7 @@ import androidx.lifecycle.createSavedStateHandle
 
 import androidx.compose.ui.draw.clip
 import org.nodescope.android.core.design.meshPageBackground
-import org.nodescope.android.core.design.paneCanvasColor
+import androidx.compose.ui.graphics.Color
 import org.nodescope.android.core.design.PaneShape
 import org.nodescope.android.core.design.PaneGap
 import org.nodescope.android.core.design.LocalWideLayout
@@ -359,9 +359,12 @@ internal fun AppShell(
         val largeText = LocalDensity.current.fontScale >= 1.5f
         // The screen's title bar. Phones show it across the top; wide layouts put it at the top of
         // the content card, so the navigation rail never moves when a screen gains or loses a bar.
+        // Settings and About use the full-strength mesh; the bars and canvas match the screen.
+        val strongMesh = entry?.destination?.let { it.hasRoute<SettingsRoute>() || it.hasRoute<AboutRoute>() } == true
         val appBar: @Composable () -> Unit = {
                 if (!paneOwnsHeader && (!isRoot || currentTab !in headerlessTabs)) TopAppBar(
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = if (expanded) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.surface),
+                    // The mesh behind the shell (or the card) shows through, as under iOS's bars.
+                    colors = org.nodescope.android.core.design.meshTopAppBarColors(),
                     // Inside the card the Scaffold already applied the status bar inset.
                     windowInsets = if (expanded) WindowInsets(0, 0, 0, 0) else TopAppBarDefaults.windowInsets,
                     title = {
@@ -406,13 +409,15 @@ internal fun AppShell(
                     }
                 })
             }
-        // Wide layouts put the rail on a tinted canvas and the content in rounded cards.
-        Scaffold(containerColor = if (expanded) paneCanvasColor() else MaterialTheme.colorScheme.background,
+        // One mesh behind the whole shell: the bars are see-through on phones, and wide layouts
+        // put the rail on the mesh canvas with the content in rounded cards. Every mesh piece is
+        // laid out across the window, so the screens line up with it.
+        Scaffold(Modifier.meshPageBackground(subdued = !strongMesh, canvas = expanded), containerColor = Color.Transparent,
             topBar = { if (!expanded) appBar() },
             bottomBar = {
                 if (!expanded && largeText) {
                     var navigationOpen by remember { mutableStateOf(false) }
-                    Surface(color = MaterialTheme.colorScheme.surface) {
+                    Surface(color = Color.Transparent) {
                         Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp)) {
                             FilledTonalButton(onClick = { navigationOpen = true }, modifier = Modifier.fillMaxWidth()) {
                                 Icon(Icons.Outlined.Menu, null)
@@ -430,7 +435,7 @@ internal fun AppShell(
                             }
                         }
                     }
-                } else if (!expanded) NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
+                } else if (!expanded) NavigationBar(containerColor = Color.Transparent, tonalElevation = 0.dp) {
                     Destination.entries.forEach { destination ->
                         NavigationBarItem(selected = currentTab == destination.name, onClick = { selectTab(destination) },
                             icon = { Icon(destination.icon, null) }, label = { Text(stringResource(destination.title)) })
@@ -439,7 +444,7 @@ internal fun AppShell(
             },
         ) { padding ->
             Row(Modifier.padding(padding).fillMaxSize()) {
-                if (expanded) NavigationRail(windowInsets = WindowInsets(0, 0, 0, 0), containerColor = paneCanvasColor()) {
+                if (expanded) NavigationRail(windowInsets = WindowInsets(0, 0, 0, 0), containerColor = Color.Transparent) {
                     Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
                         Destination.entries.forEach { destination ->
                             NavigationRailItem(selected = currentTab == destination.name, onClick = { selectTab(destination) },
@@ -450,7 +455,8 @@ internal fun AppShell(
                     }
                 }
                 CompositionLocalProvider(LocalWideLayout provides expanded) {
-                Column(Modifier.weight(1f).then(if (expanded) Modifier.padding(top = PaneGap, end = PaneGap, bottom = PaneGap).clip(PaneShape) else Modifier)) {
+                Column(Modifier.weight(1f).then(if (expanded) Modifier.padding(top = PaneGap, end = PaneGap, bottom = PaneGap).clip(PaneShape)
+                    .meshPageBackground(subdued = !strongMesh) else Modifier)) {
                     if (expanded) appBar()
                     if (isRoot && currentTab in listOf(Destination.MAP.name, Destination.EXPLORE.name)) {
                         if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
