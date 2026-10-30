@@ -65,7 +65,8 @@ fun Modifier.meshPageBackground(
 ): Modifier {
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.3f
     val texture = LocalBackgroundTexture.current
-    val wash = paneCanvasColor().copy(alpha = 0.6f)
+    // Strong enough that the cards and the navigation rail stand clear of the canvas.
+    val wash = paneCanvasColor().copy(alpha = 0.88f)
     val placement = remember { MeshPlacement() }
     val placed = if (anchored) onGloballyPositioned {
         placement.origin = it.positionInRoot()

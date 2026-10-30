@@ -1,6 +1,7 @@
 package org.nodescope.android.feature.map
 
 import org.nodescope.android.core.design.meshPageBackground
+import androidx.compose.ui.draw.clipToBounds
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -155,7 +156,9 @@ private fun PacketsSheetLayout(
     // what to show, as on iPhone.
     LaunchedEffect(replayingId) { if (replayingId != null && sheetState.currentValue != SheetValue.Hidden) sheetState.hide() }
     androidx.activity.compose.BackHandler(enabled = open) { hide() }
+    // Clipped: a hidden sheet waits just below the map, where the see-through tab bar would show it.
     BottomSheetScaffold(
+        modifier = Modifier.clipToBounds(),
         scaffoldState = scaffoldState, sheetPeekHeight = height / 2, sheetSwipeEnabled = true,
         sheetContent = {
             // Laid out from the sheet itself, so the pattern rides along as it is dragged.
