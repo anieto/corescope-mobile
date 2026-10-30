@@ -49,7 +49,7 @@ fun OnboardingScreen(
     }
     if (picking) {
         Column(Modifier.fillMaxSize()) {
-            TopAppBar(title = { Text("Analyzer source") }, windowInsets = WindowInsets(0, 0, 0, 0), navigationIcon = {
+            TopAppBar(title = { Text("Analyzer source") }, colors = org.nodescope.android.core.design.meshTopAppBarColors(), windowInsets = WindowInsets(0, 0, 0, 0), navigationIcon = {
                 IconButton(onClick = { picking = false }) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") }
             })
             SourceScreen(sources, host, saving = false, error = pickError, onSave = { chosen ->

@@ -1,6 +1,6 @@
 package org.nodescope.android.core.design
 
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -38,20 +38,22 @@ fun Modifier.paneCard(): Modifier = clip(PaneShape).background(MaterialTheme.col
 
 /**
  * Rounds the corners of content that can't be clipped, such as the map: MapLibre draws into
- * its own surface, which ignores clipping, so the corners are covered with the canvas color.
+ * its own surface, which ignores clipping, so the corners are covered with the canvas, mesh and all.
  */
 @Composable
-fun CardCornerMasks(modifier: Modifier = Modifier, color: Color = paneCanvasColor()) {
-    Canvas(modifier) {
+fun CardCornerMasks(modifier: Modifier = Modifier) {
+    Spacer(modifier.meshPageBackground(canvas = true, region = {
         val r = PaneCorner.toPx()
+        val corners = Path()
         fun corner(x: Float, y: Float, center: Offset) {
             val square = Path().apply { addRect(Rect(Offset(x, y), Size(r, r))) }
             val round = Path().apply { addOval(Rect(center, r)) }
-            drawPath(Path().apply { op(square, round, PathOperation.Difference) }, color)
+            corners.addPath(Path().apply { op(square, round, PathOperation.Difference) })
         }
         corner(0f, 0f, Offset(r, r))
         corner(size.width - r, 0f, Offset(size.width - r, r))
         corner(0f, size.height - r, Offset(r, size.height - r))
         corner(size.width - r, size.height - r, Offset(size.width - r, size.height - r))
-    }
+        corners
+    }))
 }
