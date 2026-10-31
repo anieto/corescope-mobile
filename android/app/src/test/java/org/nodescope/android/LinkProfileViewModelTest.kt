@@ -156,4 +156,41 @@ class LinkProfileViewModelTest {
             assertEquals("20", model.state.value.fields["Height A (m)"])
         } finally { Dispatchers.resetMain() }
     }
+
+    @Test fun undoRestoresPointsAfterPlacingMovingRemovingAndResetting() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        try {
+            val model = LinkProfileViewModel(LinkTerrainProviding { profile(it, 100.0) }, SavedStateHandle())
+            fun point(endpoint: String) = model.state.value.fields.let { it["Latitude $endpoint"] to it["Longitude $endpoint"] }
+            model.place("A", ProfileCoordinate(40.0, -90.0), "Hilltop")
+            assertEquals("Point A placed", model.state.value.undo?.message)
+            model.place("B", ProfileCoordinate(40.1, -90.0), null)
+            model.place("A", ProfileCoordinate(40.2, -90.2), null)
+            assertEquals("Point A moved", model.state.value.undo?.message)
+            assertTrue("A" !in model.state.value.names)
+            // Undo puts A back on its node, name and all.
+            model.undo()
+            assertNull(model.state.value.undo)
+            assertEquals("40.0" to "-90.0", point("A"))
+            assertEquals(mapOf("A" to "Hilltop"), model.state.value.names)
+            model.remove("B")
+            assertEquals("Point B removed", model.state.value.undo?.message)
+            assertEquals("" to "", point("B"))
+            model.undo()
+            assertEquals("40.1" to "-90.0", point("B"))
+            model.startOver()
+            assertEquals("Points cleared", model.state.value.undo?.message)
+            model.undo()
+            assertEquals("40.0" to "-90.0", point("A"))
+            assertEquals("40.1" to "-90.0", point("B"))
+            // An offer times out only if it is still the latest; typing a coordinate withdraws it.
+            model.place("B", ProfileCoordinate(40.3, -90.0), null)
+            val offer = model.state.value.undo!!
+            model.dismissUndo(offer.id + 1)
+            assertNotNull(model.state.value.undo)
+            model.edit("Latitude B", "40.31")
+            assertNull(model.state.value.undo)
+            advanceUntilIdle()
+        } finally { Dispatchers.resetMain() }
+    }
 }

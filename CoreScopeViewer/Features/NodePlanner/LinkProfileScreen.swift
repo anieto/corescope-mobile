@@ -9,7 +9,9 @@ struct LinkProfileScreen: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var model = LinkProfileModel()
     @State private var catalog = FieldToolsViewModel(reference: nil)
-    @State private var endpointPicker: LinkProfileEndpoint? = .pointA
+    /// A point being chosen anew from its card or pin; otherwise a touch & hold places the first
+    /// missing point, so a new profile needs no arming.
+    @State private var endpointPicker: LinkProfileEndpoint?
     @Environment(\.isHingedDevice) private var isHingedDevice
     @State private var isWideLayout = false
     /// Shared with the live map: picking a style here changes both.
@@ -27,7 +29,10 @@ struct LinkProfileScreen: View {
                             mapDisplayStyle: $mapDisplayStyle,
                             // The pane runs up under the status bar and the invisible bar, so
                             // the style button and legend start below them.
-                            promptTopClearance: geometry.safeAreaInsets.top
+                            promptTopClearance: geometry.safeAreaInsets.top,
+                            // The split widens the map pane by the system column's width, under
+                            // the editor; the style button, compass and Undo bar stay clear of it.
+                            trailingClearance: geometry.safeAreaInsets.trailing
                         )
                         .safeAreaPadding(.trailing)
                         .clipped()
@@ -305,6 +310,8 @@ private struct LinkProfilePersistentMap: View {
     var showsStyleMenu = true
     var promptLeadingClearance: CGFloat = 0
     var promptTopClearance: CGFloat = 0
+    /// How far the map runs on under another pane at its trailing edge.
+    var trailingClearance: CGFloat = 0
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(AnalyzerSourceRegistry.self) private var analyzerSourceRegistry
     @Environment(AnalyzerSettings.self) private var settings
@@ -313,28 +320,41 @@ private struct LinkProfilePersistentMap: View {
     @State private var hasFramedRegion = false
     /// Where the camera last settled, for laying out the route's dashes.
     @State private var routeView: LinkRouteView?
+    /// A tapped A or B marker, turned straight into its menu.
+    @State private var selectedPin: LinkProfileEndpoint?
+    @State private var menu: LinkProfileMapMenu?
+    @State private var mapSize = CGSize.zero
+    /// Ticks on every touch & hold the map acts on, for the haptic.
+    @State private var holds = 0
+    /// While a finger is held down, and when it last lifted: lifting off a pin that the hold
+    /// just placed reads to MapKit as a tap on that pin, which must not open its menu.
+    @State private var isHolding = false
+    @State private var holdEndedAt = Date.distantPast
+    @AppStorage(LinkProfileHeader.placedPointKey) private var hasPlacedPoint = false
     @Namespace private var mapScope
 
     var body: some View {
         MapReader { proxy in
-            Map(position: $position, scope: mapScope) {
+            Map(position: $position, selection: $selectedPin, scope: mapScope) {
                 // Native markers rather than SwiftUI annotations: each annotation was a view of its
                 // own that caught fingers, so a pinch starting on a node never reached the map.
-                // Choosing a node is handled by the map's tap below.
-                // A node that is an endpoint, or about to be, gives up its marker to the endpoint's.
+                // Choosing a node is handled by the map's touch & hold below.
+                // A node that is an endpoint gives up its marker to the endpoint's.
                 ForEach(knownNodes.filter { !occupied.contains(where: $0.coordinate.isSame) }, id: \.node.id) { known in
                     Marker(known.node.name ?? String(localized: "Known node"), systemImage: "antenna.radiowaves.left.and.right", coordinate: known.coordinate)
                         .tint(NodeScopeStyle.signal)
                 }
-                // Lettered in the endpoint's colour and named after the node it sits on. While a
-                // new spot is pending, it stands in for the endpoint's old marker.
-                if let pointA = model.coordinateA, pendingTentative?.endpoint != .pointA {
+                // Lettered in the endpoint's colour and named after the node it sits on. Tagged so a
+                // tap selects them, which opens their menu; the node markers stay untappable.
+                if let pointA = model.coordinateA {
                     Marker(model.nameA ?? String(localized: "Point A"), monogram: Text(verbatim: "A"), coordinate: pointA)
                         .tint(LinkProfileEndpoint.pointA.color)
+                        .tag(LinkProfileEndpoint.pointA)
                 }
-                if let pointB = model.coordinateB, pendingTentative?.endpoint != .pointB {
+                if let pointB = model.coordinateB {
                     Marker(model.nameB ?? String(localized: "Point B"), monogram: Text(verbatim: "B"), coordinate: pointB)
                         .tint(LinkProfileEndpoint.pointB.color)
+                        .tag(LinkProfileEndpoint.pointB)
                 }
                 if let result = model.result {
                     analyzedRoute(result)
@@ -346,12 +366,6 @@ private struct LinkProfilePersistentMap: View {
                     MapPolyline(coordinates: [pointA, pointB])
                         .stroke(NodeScopeStyle.signal.opacity(0.85), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
                         .mapOverlayLevel(level: .aboveLabels)
-                }
-                // The pending choice, exactly where the endpoint will go: on a known node it takes
-                // that node's place, so the node visibly changes into Point A or B.
-                if let tentative = pendingTentative {
-                    Marker(tentative.name ?? String(localized: "Dropped pin"), monogram: Text(verbatim: tentative.endpoint.letter), coordinate: tentative.coordinate)
-                        .tint(tentative.endpoint.color)
                 }
             }
             .mapStyle(mapDisplayStyle.realisticStyle)
@@ -368,21 +382,61 @@ private struct LinkProfilePersistentMap: View {
                 }
                 .padding()
                 .padding(.top, promptTopClearance)
+                .padding(.trailing, trailingClearance)
             }
-            // Attached only while choosing a point: a SwiftUI gesture on the map can hold back
-            // MapKit's own pinch and pan.
-            .simultaneousGesture(
-                SpatialTapGesture().onEnded { value in
-                    guard let activeEndpoint else { return }
-                    // A known node's marker under the finger wins over the spot itself.
-                    if let known = knownNode(at: value.location, proxy: proxy) {
-                        model.tentative = LinkProfileTentative(endpoint: activeEndpoint, coordinate: known.coordinate, name: known.node.name)
-                    } else if let coordinate = proxy.convert(value.location, from: .local) {
-                        model.tentative = LinkProfileTentative(endpoint: activeEndpoint, coordinate: coordinate, name: nil)
+            // Touch & hold places a point. A UIKit recognizer running alongside MapKit's own, as a
+            // SwiftUI gesture on the map can hold back its pinch and pan; taps and double-taps are
+            // left to the map, so zooming never places a point.
+            .gesture(LinkProfileMapLongPress { location in
+                isHolding = true
+                touchAndHold(at: location, proxy: proxy)
+            } ended: {
+                isHolding = false
+                holdEndedAt = .now
+            })
+            .onGeometryChange(for: CGSize.self) { $0.size } action: { mapSize = $0 }
+            .onChange(of: selectedPin) { _, endpoint in
+                guard let endpoint else { return }
+                selectedPin = nil
+                guard !isHolding, holdEndedAt.distance(to: .now) > 0.5 else { return }
+                guard let coordinate = model.coordinate(for: endpoint),
+                      let point = proxy.convert(coordinate, to: .local) else { return }
+                // At the middle of the marker's balloon, about 18 pt above its coordinate, so the
+                // arrow points at the letter whichever side the popover opens on.
+                menu = LinkProfileMapMenu(kind: .pin(endpoint), location: CGPoint(x: point.x, y: point.y - 18))
+            }
+            .popover(item: $menu, attachmentAnchor: .point(menuAnchor)) { menu in
+                menuContent(menu)
+                    .presentationCompactAdaptation(.popover)
+            }
+            .sensoryFeedback(.impact(weight: .medium), trigger: holds)
+            // A few seconds to take back a placement, move, removal or reset.
+            .overlay(alignment: .bottom) {
+                if let undo = model.undo {
+                    HStack(spacing: 12) {
+                        Text(undo.message)
+                        Button("Undo") {
+                            activeEndpoint = nil
+                            model.undoLastChange()
+                        }
+                        .fontWeight(.semibold)
                     }
-                },
-                including: activeEndpoint == nil ? .subviews : .all
-            )
+                    .font(.subheadline)
+                    .padding(.leading, 16)
+                    .padding(.trailing, 12)
+                    .padding(.vertical, 10)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(.bottom, 12)
+                    .padding(.trailing, trailingClearance)
+                    .transition(.opacity)
+                    .task(id: undo.id) {
+                        try? await Task.sleep(for: .seconds(4))
+                        guard !Task.isCancelled, model.undo?.id == undo.id else { return }
+                        withAnimation { model.undo = nil }
+                    }
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: model.undo?.id)
             // Prompts and confirmation live in the header; the map only carries the legend.
             .overlay(alignment: .topLeading) {
                 if model.result != nil, activeEndpoint == nil {
@@ -402,6 +456,9 @@ private struct LinkProfilePersistentMap: View {
             }
             // The route's dashes are laid out in points, so they need the scale once each move ends.
             .onMapCameraChange(frequency: .onEnd) { context in
+                // Not the opening automatic view of every node: a layout that settles just after
+                // the screen opens would then carry that on instead of framing the region.
+                if hasFramedRegion { model.lastCamera = context.camera }
                 guard let point = proxy.convert(context.camera.centerCoordinate, to: .local),
                       let east = proxy.convert(CGPoint(x: point.x + 100, y: point.y), from: .local) else { return }
                 let center = MKMapPoint(context.camera.centerCoordinate)
@@ -411,7 +468,16 @@ private struct LinkProfilePersistentMap: View {
         }
         .mapScope(mapScope)
         .accessibilityLabel("Map for selecting Point A and Point B")
-        .onChange(of: activeEndpoint) { _, _ in model.tentative = nil }
+        // A map made for another layout (a fold, an unfold, a resize) carries on from the last
+        // map's view, or shows the path; left automatic, MapKit would fit every known node.
+        .onAppear {
+            if let camera = model.lastCamera {
+                position = .camera(camera)
+                hasFramedRegion = true
+            } else if fittedEndpoints != nil {
+                fitEndpoints()
+            }
+        }
         // Once both endpoints are chosen, show the whole path.
         .onChange(of: fittedEndpoints) { _, endpoints in
             guard endpoints != nil else { return }
@@ -475,13 +541,102 @@ private struct LinkProfilePersistentMap: View {
         withAnimation(.easeInOut) { position = .rect(rect) }
     }
 
-    private var pendingTentative: LinkProfileTentative? {
-        model.tentative.flatMap { $0.endpoint == activeEndpoint ? $0 : nil }
+    /// Where endpoint markers stand.
+    private var occupied: [CLLocationCoordinate2D] {
+        [model.coordinateA, model.coordinateB].compactMap { $0 }
     }
 
-    /// Where endpoint markers stand: the endpoints and any pending choice.
-    private var occupied: [CLLocationCoordinate2D] {
-        [model.coordinateA, model.coordinateB, pendingTentative?.coordinate].compactMap { $0 }
+    /// The point a touch & hold places: the one being chosen anew, else the first missing one.
+    private var placingEndpoint: LinkProfileEndpoint? {
+        activeEndpoint ?? model.missingEndpoint
+    }
+
+    /// Places the next point where the finger is (on a known node, that node); with both placed,
+    /// offers to move either one there.
+    private func touchAndHold(at location: CGPoint, proxy: MapProxy) {
+        let known = knownNode(at: location, proxy: proxy)
+        guard let coordinate = known?.coordinate ?? proxy.convert(location, from: .local) else { return }
+        holds += 1
+        if let endpoint = placingEndpoint {
+            place(endpoint, at: coordinate, name: known?.node.name)
+        } else {
+            menu = LinkProfileMapMenu(kind: .move(coordinate: coordinate, name: known?.node.name), location: location)
+        }
+    }
+
+    private func place(_ endpoint: LinkProfileEndpoint, at coordinate: CLLocationCoordinate2D, name: String?) {
+        model.place(coordinate, for: endpoint, name: name)
+        activeEndpoint = nil
+        hasPlacedPoint = true
+    }
+
+    /// The popover's arrow points at the finger, or at the tapped marker.
+    private var menuAnchor: UnitPoint {
+        guard let menu, mapSize.width > 0, mapSize.height > 0 else { return .center }
+        return UnitPoint(x: menu.location.x / mapSize.width, y: menu.location.y / mapSize.height)
+    }
+
+    @ViewBuilder
+    private func menuContent(_ menu: LinkProfileMapMenu) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            switch menu.kind {
+            case let .move(coordinate, name):
+                menuTitle(name ?? String(localized: "Dropped pin"))
+                ForEach([LinkProfileEndpoint.pointA, .pointB]) { endpoint in
+                    Divider()
+                    menuButton {
+                        Label {
+                            Text("Move \(endpoint.letter) here")
+                        } icon: {
+                            Image(systemName: endpoint == .pointA ? "a.circle.fill" : "b.circle.fill")
+                                .foregroundStyle(endpoint.color)
+                        }
+                    } action: {
+                        place(endpoint, at: coordinate, name: name)
+                    }
+                }
+            case let .pin(endpoint):
+                menuTitle("Point \(endpoint.letter) · \(model.name(for: endpoint) ?? String(localized: "Dropped pin"))")
+                Divider()
+                menuButton {
+                    Label("Choose New Point", systemImage: "mappin.and.ellipse")
+                } action: {
+                    activeEndpoint = endpoint
+                }
+                Divider()
+                menuButton {
+                    Label("Remove", systemImage: "trash")
+                        .foregroundStyle(.red)
+                } action: {
+                    activeEndpoint = nil
+                    model.remove(endpoint)
+                }
+            }
+        }
+        .frame(minWidth: 220, alignment: .leading)
+    }
+
+    private func menuTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+    }
+
+    private func menuButton(@ViewBuilder label: () -> some View, action: @escaping () -> Void) -> some View {
+        Button {
+            menu = nil
+            action()
+        } label: {
+            label()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var knownNodes: [(node: MeshNode, coordinate: CLLocationCoordinate2D)] {
@@ -504,11 +659,79 @@ private struct LinkProfilePersistentMap: View {
     }
 }
 
-private struct LinkProfileTentative {
-    let endpoint: LinkProfileEndpoint
-    let coordinate: CLLocationCoordinate2D
-    /// The known node tapped, if any.
-    let name: String?
+/// What a touch & hold or a tap on an endpoint marker offers, at that spot on the map.
+private struct LinkProfileMapMenu: Identifiable {
+    enum Kind {
+        /// Both points are placed: move either one to [coordinate], the known node [name] if any.
+        case move(coordinate: CLLocationCoordinate2D, name: String?)
+        case pin(LinkProfileEndpoint)
+    }
+
+    let id = UUID()
+    let kind: Kind
+    let location: CGPoint
+}
+
+/// A touch & hold on the map, reported where the finger is. UIKit's recognizer rather than a
+/// SwiftUI gesture: it recognizes alongside MapKit's pan and pinch instead of holding them back.
+private struct LinkProfileMapLongPress: UIGestureRecognizerRepresentable {
+    let action: (CGPoint) -> Void
+    /// The finger lifted, or the hold was cancelled, after it began.
+    let ended: () -> Void
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator {
+        Coordinator()
+    }
+
+    func makeUIGestureRecognizer(context: Context) -> UILongPressGestureRecognizer {
+        let recognizer = UILongPressGestureRecognizer()
+        recognizer.minimumPressDuration = 0.5
+        // A slow pan is not a hold.
+        recognizer.allowableMovement = 10
+        recognizer.cancelsTouchesInView = false
+        recognizer.delegate = context.coordinator
+        return recognizer
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UILongPressGestureRecognizer, context: Context) {
+        switch recognizer.state {
+        case .began: action(context.converter.localLocation)
+        case .ended, .cancelled, .failed: ended()
+        default: break
+        }
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        func gestureRecognizer(
+            _ gestureRecognizer: UIGestureRecognizer,
+            shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+        ) -> Bool {
+            true
+        }
+    }
+}
+
+/// Both endpoints as they were before a placement, move, removal or reset, for Undo.
+private struct LinkProfilePlacement {
+    struct Point {
+        let coordinate: CLLocationCoordinate2D
+        let name: String?
+    }
+
+    let pointA: Point?
+    let pointB: Point?
+
+    func point(for endpoint: LinkProfileEndpoint) -> Point? {
+        endpoint == .pointA ? pointA : pointB
+    }
+}
+
+/// The last change to the endpoints, offered back for a few seconds.
+private struct LinkProfileUndo: Identifiable {
+    let id = UUID()
+    let message: LocalizedStringResource
+    let before: LinkProfilePlacement
 }
 
 private enum LinkProfileEndpoint: String, Identifiable {
@@ -583,8 +806,11 @@ private final class LinkProfileModel {
     /// The known node each endpoint was placed on; nil for a dropped pin or typed coordinates.
     var nameA: String?
     var nameB: String?
-    /// An unconfirmed tap while an endpoint is being chosen; confirmed from the header.
-    var tentative: LinkProfileTentative?
+    /// Taken back by Undo; typing a coordinate withdraws it.
+    var undo: LinkProfileUndo?
+    /// Where the map last settled. Each layout (Duo open or closed, iPad, iPhone) has a map of its
+    /// own, so a fold or unfold picks the view up here instead of opening on every node.
+    @ObservationIgnored var lastCamera: MapCamera?
     var radioPreset = LinkProfileRadioPreset.unitedStatesNarrow
     var frequencyMHz = 910.525
     var transmitPowerDBm = 22.0
@@ -623,6 +849,11 @@ private final class LinkProfileModel {
 
     func coordinate(for endpoint: LinkProfileEndpoint) -> CLLocationCoordinate2D? {
         endpoint == .pointA ? coordinateA : coordinateB
+    }
+
+    /// The first point not yet placed, which a touch & hold places unless another is being chosen.
+    var missingEndpoint: LinkProfileEndpoint? {
+        coordinateA == nil ? .pointA : coordinateB == nil ? .pointB : nil
     }
 
     func groundElevation(for endpoint: LinkProfileEndpoint) -> Double? {
@@ -748,15 +979,54 @@ private final class LinkProfileModel {
         scheduleAnalysis()
     }
 
-    /// Clears both endpoints and the result; heights and radio settings are kept.
+    /// Places or moves [endpoint] from the map, with Undo.
+    func place(_ coordinate: CLLocationCoordinate2D, for endpoint: LinkProfileEndpoint, name: String?) {
+        let before = placement
+        let moved = self.coordinate(for: endpoint) != nil
+        set(coordinate, for: endpoint, name: name)
+        undo = LinkProfileUndo(
+            message: moved ? "Point \(endpoint.letter) moved" : "Point \(endpoint.letter) placed",
+            before: before
+        )
+    }
+
+    func remove(_ endpoint: LinkProfileEndpoint) {
+        let before = placement
+        clear(endpoint)
+        undo = LinkProfileUndo(message: "Point \(endpoint.letter) removed", before: before)
+    }
+
+    /// Clears both endpoints and the result, with Undo; heights and radio settings are kept.
     func startOver() {
-        tentative = nil
+        let before = placement
         clear(.pointA)
         clear(.pointB)
+        undo = LinkProfileUndo(message: "Points cleared", before: before)
+    }
+
+    /// Puts both endpoints back as they were before the last change.
+    func undoLastChange() {
+        guard let undo else { return }
+        for endpoint in [LinkProfileEndpoint.pointA, .pointB] {
+            if let point = undo.before.point(for: endpoint) {
+                set(point.coordinate, for: endpoint, name: point.name)
+            } else {
+                clear(endpoint)
+            }
+        }
+        self.undo = nil
+    }
+
+    private var placement: LinkProfilePlacement {
+        LinkProfilePlacement(
+            pointA: coordinateA.map { LinkProfilePlacement.Point(coordinate: $0, name: nameA) },
+            pointB: coordinateB.map { LinkProfilePlacement.Point(coordinate: $0, name: nameB) }
+        )
     }
 
     /// Typed coordinates are no longer the known node they were placed on.
     func endpointCoordinatesChanged(_ endpoint: LinkProfileEndpoint) {
+        undo = nil
         switch endpoint {
         case .pointA: nameA = nil
         case .pointB: nameB = nil
@@ -846,13 +1116,17 @@ private final class LinkProfileModel {
     }
 }
 
-/// The always-visible line: what to do next while points are placed (choosing one is confirmed
-/// here, so the map stays clear), then analyzing, an error, or the verdict. Reset sits beside it
-/// once a point is placed, so starting over never needs the panel opened.
+/// The always-visible line: what to do next while points are placed (a touch & hold on the map
+/// places them, so the map stays clear), then analyzing, an error, or the verdict. Reset sits
+/// beside it once a point is placed, so starting over never needs the panel opened.
 private struct LinkProfileHeader: View {
+    /// Set once a point has ever been placed; until then the prompt says where coordinates go.
+    static let placedPointKey = "linkProfileHasPlacedPoint"
+
     @Bindable var model: LinkProfileModel
     @Binding var activeEndpoint: LinkProfileEndpoint?
     @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
+    @AppStorage(placedPointKey) private var hasPlacedPoint = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -860,7 +1134,7 @@ private struct LinkProfileHeader: View {
             if activeEndpoint == nil && (model.coordinateA != nil || model.coordinateB != nil) {
                 Button {
                     model.startOver()
-                    activeEndpoint = .pointA
+                    activeEndpoint = nil
                 } label: {
                     Label("Reset", systemImage: "arrow.counterclockwise")
                 }
@@ -871,38 +1145,24 @@ private struct LinkProfileHeader: View {
 
     private var status: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if let endpoint = activeEndpoint {
-                let tentative = model.tentative.flatMap { $0.endpoint == endpoint ? $0 : nil }
-                Text("Choose Point \(endpoint.letter)")
+            if let endpoint = activeEndpoint, model.coordinate(for: endpoint) != nil {
+                Text("Choose New Point \(endpoint.letter)")
                     .font(.headline)
-                Text(tentative.map { $0.name ?? String(localized: "Dropped pin") } ?? String(localized: "Tap the map or a known node."))
+                Text("Touch & hold the map to place it.")
                     .foregroundStyle(.secondary)
-                Text("Confirming sends its coordinates to Open-Meteo for elevation.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                HStack {
-                    Button("Cancel") {
-                        model.tentative = nil
-                        activeEndpoint = nil
-                    }
+                Button("Cancel") { activeEndpoint = nil }
                     .buttonStyle(.bordered)
-                    Button("Use Point \(endpoint.letter)") {
-                        guard let tentative else { return }
-                        model.set(tentative.coordinate, for: endpoint, name: tentative.name)
-                        model.tentative = nil
-                        activeEndpoint = endpoint == .pointA && model.coordinateB == nil ? .pointB : nil
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(tentative == nil)
-                }
-                .padding(.top, 4)
-            } else if model.coordinateA == nil || model.coordinateB == nil {
-                let next: LinkProfileEndpoint = model.coordinateA == nil ? .pointA : .pointB
-                Text("Place Point A and Point B to analyze the link.")
-                    .font(.headline)
-                Button("Choose Point \(next.letter)") { activeEndpoint = next }
-                    .buttonStyle(.borderedProminent)
                     .padding(.top, 4)
+            } else if let next = activeEndpoint ?? model.missingEndpoint {
+                Text("Place your points to analyze the link.")
+                    .font(.headline)
+                Text("Touch & hold the map to place Point \(next.letter).")
+                    .foregroundStyle(.secondary)
+                if !hasPlacedPoint {
+                    Text("Placing a point sends its coordinates to Open-Meteo for elevation.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             } else if let errorMessage = model.errorMessage {
                 Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.red)
@@ -1075,7 +1335,7 @@ private struct LinkProfilePointCard: View {
 
     @ViewBuilder
     private var actions: some View {
-        Button(hasCoordinate ? "Move on Map" : "Choose on Map", systemImage: "mappin.and.ellipse", action: choose)
+        Button(hasCoordinate ? "Choose New Point" : "Choose on Map", systemImage: "mappin.and.ellipse", action: choose)
         Button(showsCoordinates ? "Hide Coordinates" : "Enter Coordinates", systemImage: "number") {
             showsCoordinates.toggle()
         }

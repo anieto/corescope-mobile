@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.linkprofile
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,37 +17,39 @@ import org.nodescope.android.feature.map.*
 import kotlin.math.abs
 
 /**
- * The map's saveable state, held by the screen above its layout branches so the camera and an
- * unconfirmed tap survive folding, rotation and posture changes.
+ * The map's saveable state, held by the screen above its layout branches so the camera survives
+ * folding, rotation and posture changes.
  */
-internal class LinkProfileMapState(val camera: MutableState<List<Double>>, val tentative: MutableState<Tentative?>,
+internal class LinkProfileMapState(val camera: MutableState<List<Double>>,
     /** Whether the opening view has been chosen; a restored camera is never re-framed. */
     val framed: MutableState<Boolean>,
     /** The A and B last fitted on screen, so a restored camera is not re-fitted to the same pair. */
-    val fittedPath: MutableState<List<Double>?>) {
-    /** An unconfirmed tap and the endpoint it was made for; it never carries over from A to B. [name] is the known node tapped, if any. */
-    data class Tentative(val endpoint: String, val latitude: Double, val longitude: Double, val name: String? = null)
-}
+    val fittedPath: MutableState<List<Double>?>)
 
-private val tentativeSaver = androidx.compose.runtime.saveable.listSaver<LinkProfileMapState.Tentative?, Any>(
-    save = { it?.let { tap -> listOf(tap.endpoint, tap.latitude, tap.longitude, tap.name.orEmpty()) } ?: emptyList() },
-    restore = { values -> if (values.size == 4) LinkProfileMapState.Tentative(values[0] as String, values[1] as Double, values[2] as Double,
-        (values[3] as String).ifEmpty { null }) else null })
+/** What a touch & hold or a pin tap offers, at that spot on the map, in pixels. */
+private sealed interface LinkMapMenu {
+    val x: Float
+    val y: Float
+    /** Both points are placed: move either one to [spot], the known node [name] if there is one. */
+    data class Move(val spot: ProfileCoordinate, val name: String?, override val x: Float, override val y: Float) : LinkMapMenu
+    data class Pin(val endpoint: String, override val x: Float, override val y: Float) : LinkMapMenu
+}
 
 @Composable
 internal fun rememberLinkProfileMapState(origin: ProfileCoordinate?): LinkProfileMapState {
     val camera = rememberSaveable { mutableStateOf(listOf(origin?.latitude ?: 0.0, origin?.longitude ?: 0.0, if (origin != null) 10.0 else 1.0, 0.0, 0.0)) }
-    val tentative = rememberSaveable(stateSaver = tentativeSaver) { mutableStateOf<LinkProfileMapState.Tentative?>(null) }
     // An endpoint already centers the camera; otherwise the selected region frames it once loaded.
     val framed = rememberSaveable { mutableStateOf(origin != null) }
     val fittedPath = rememberSaveable { mutableStateOf<List<Double>?>(null) }
-    return remember(camera, tentative, framed, fittedPath) { LinkProfileMapState(camera, tentative, framed, fittedPath) }
+    return remember(camera, framed, fittedPath) { LinkProfileMapState(camera, framed, fittedPath) }
 }
 
 /**
- * The full-bleed map. While [endpoint] is being chosen, a tap leaves a tentative pin that the
- * screen's header confirms or cancels. [bottomInset] is the part covered by the results sheet:
- * the logo, attribution and path framing stay above it.
+ * The full-bleed map. A touch & hold places [endpoint], the next point to place (on a known node,
+ * that node); with both placed, it offers to move either one there. Tapping a pin offers Choose new
+ * point and Remove. Taps and double-taps are left to the map, so zooming never places a point.
+ * [bottomInset] is the part covered by the results sheet: the logo, attribution, path framing and
+ * the Undo bar stay above it.
  */
 @Composable
 internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, pointB: ProfileCoordinate?,
@@ -54,13 +57,13 @@ internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, point
     modifier: Modifier = Modifier, mapState: LinkProfileMapState = rememberLinkProfileMapState(pointA ?: pointB),
     snapshot: org.nodescope.android.core.model.AnalyzerSnapshot? = null, selectedRegion: String? = null,
     sourceViewport: org.nodescope.android.core.model.RegionCoordinate? = null, analysis: LinkAnalysis? = null,
-    bottomInset: androidx.compose.ui.unit.Dp = 0.dp, names: Map<String, String> = emptyMap()) {
+    bottomInset: androidx.compose.ui.unit.Dp = 0.dp, names: Map<String, String> = emptyMap(),
+    undo: LinkProfileViewModel.Undo? = null, onPlace: (String, ProfileCoordinate, String?) -> Unit = { _, _, _ -> },
+    onChooseNew: (String) -> Unit = {}, onRemove: (String) -> Unit = {}, onUndo: () -> Unit = {}, onUndoExpired: (Long) -> Unit = {}) {
     Box(modifier) {
-        var tentativePoint by mapState.tentative
-        val current = tentativePoint?.takeIf { it.endpoint == endpoint }
-        val latitude = current?.latitude
-        val longitude = current?.longitude
         var camera by mapState.camera
+        var menu by remember { mutableStateOf<LinkMapMenu?>(null) }
+        val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
         var retry by remember { mutableIntStateOf(0) }
         // The provider and style, shared with the live map: picking one here changes both.
         val context = LocalContext.current
@@ -96,24 +99,19 @@ internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, point
             mapState.fittedPath.value = path
             mapState.framed.value = true
         }
-        LaunchedEffect(engine.overlays, latitude, longitude, current?.name, pointA, pointB, nodes, analysis, dark, names) {
+        LaunchedEffect(engine.overlays, pointA, pointB, nodes, analysis, dark, names) {
             val a = pointA?.let { Coordinate.gps(it.latitude, it.longitude) }
             val b = pointB?.let { Coordinate.gps(it.latitude, it.longitude) }
-            val tentative = latitude?.let { lat -> longitude?.let { lon -> Coordinate.gps(lat, lon) } }
-            // As on iOS: a pending choice is drawn as the endpoint it will become, lettered and in
-            // its colour, and stands in for that endpoint's old pin. A node that is an endpoint, or
-            // about to be, gives up its own marker, so the pin visibly takes the node's place.
-            val pending = endpoint.takeIf { tentative != null }
-            val occupied = listOfNotNull(a, b, tentative)
+            // As on iOS: a node that is an endpoint gives up its own marker, so the pin visibly
+            // takes the node's place.
+            val occupied = listOfNotNull(a, b)
             fun isOccupied(node: org.nodescope.android.core.model.MeshNode) = node.coordinate?.let { spot ->
                 occupied.any { abs(it.latitude - spot.latitude) < 1e-7 && abs(it.longitude - spot.longitude) < 1e-7 }
             } == true
-            fun kind(letter: String) = if (letter == "A") MapPin.Kind.POINT_A else MapPin.Kind.POINT_B
             engine.overlays?.setNodes(nodeMarkers(nodes.filterNot(::isOccupied)), grouped = true)
             engine.overlays?.setPins(listOfNotNull(
-                a?.takeIf { pending != "A" }?.let { MapPin(it, MapPin.Kind.POINT_A, names["A"] ?: "Point A") },
-                b?.takeIf { pending != "B" }?.let { MapPin(it, MapPin.Kind.POINT_B, names["B"] ?: "Point B") },
-                tentative?.let { spot -> pending?.let { MapPin(spot, kind(it), current?.name ?: "Dropped pin") } }))
+                a?.let { MapPin(it, MapPin.Kind.POINT_A, names["A"] ?: "Point A") },
+                b?.let { MapPin(it, MapPin.Kind.POINT_B, names["B"] ?: "Point B") }))
         }
         // The route's dashes are laid out for the screen, so they are redrawn whenever the camera settles.
         LaunchedEffect(engine.overlays, engine.camera, pointA, pointB, analysis, dark, camera) {
@@ -122,22 +120,80 @@ internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, point
             val screen = engine.camera?.takeIf { a != null && b != null }?.let { LinkPathScreen(it.toScreen(a!!), it.toScreen(b!!), it.width, it.height, density) }
             engine.overlays?.setLinkPath(if (a != null && b != null) linkPathStretches(a, b, analysis, dark, screen) else emptyList())
         }
-        // A known node under the finger wins; otherwise the tapped spot, or a group expands.
+        // The A or B pin whose marker covers a spot: a pin stands above its tip, so the hit area
+        // runs from a little below the point to the top of the pin, as on iOS.
+        fun pinAt(spot: Coordinate): LinkMapMenu.Pin? {
+            val camera = engine.camera ?: return null
+            val (x, y) = camera.toScreen(spot)
+            return listOf("A" to pointA, "B" to pointB).mapNotNull { (letter, point) ->
+                val tip = point?.let { Coordinate.gps(it.latitude, it.longitude) } ?: return@mapNotNull null
+                val (px, py) = camera.toScreen(tip)
+                val dx = x - px
+                val dy = y - py
+                if (abs(dx) <= 20 * density && dy in -48 * density..12 * density) LinkMapMenu.Pin(letter, px, py - 40 * density) to kotlin.math.hypot(dx, dy + 20 * density)
+                else null
+            }.minByOrNull { it.second }?.first
+        }
+        // A tap on a pin opens its options; otherwise only a group expands.
         val onTap: (MapTap) -> Boolean = { tap ->
+            val pin = tap.coordinate?.let(::pinAt)
+            if (pin != null) { menu = pin; true } else { tap.expandGroup?.invoke(); tap.expandGroup != null }
+        }
+        // A known node under the finger wins over the spot itself.
+        val onLongPress: (MapTap) -> Unit = { tap ->
             val node = nodes.firstOrNull { it.publicKey == tap.nodeKey }
-            val spot = node?.coordinate ?: tap.coordinate?.takeIf { tap.expandGroup == null }
-            if (endpoint != null && spot != null) {
-                tentativePoint = LinkProfileMapState.Tentative(endpoint, spot.latitude, spot.longitude, node?.name?.takeIf { it.isNotBlank() })
-                true
-            } else { tap.expandGroup?.invoke(); tap.expandGroup != null }
+            val spot = (node?.coordinate ?: tap.coordinate)?.let { runCatching { ProfileCoordinate(it.latitude, it.longitude) }.getOrNull() }
+            val name = node?.name?.takeIf { it.isNotBlank() }
+            if (spot != null) {
+                haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                if (endpoint != null) { menu = null; onPlace(endpoint, spot, name) }
+                else Coordinate.gps(spot.latitude, spot.longitude)?.let { engine.camera?.toScreen(it) }?.let { (x, y) ->
+                    menu = LinkMapMenu.Move(spot, name, x, y)
+                }
+            }
         }
         when (engine) {
-            is MapLibreEngine -> MapLibreEngineHost(engine, choice.cartoStyle(dark), retry, insetPx, camera, { camera = it }, onTap, Modifier.fillMaxSize())
+            is MapLibreEngine -> MapLibreEngineHost(engine, choice.cartoStyle(dark), retry, insetPx, camera, { camera = it }, onTap, Modifier.fillMaxSize(),
+                onLongPress = onLongPress)
             // Google draws its labels over the route; dropping businesses clears most of them.
             is GoogleMapEngine -> GoogleMapEngineHost(engine, choice.googleType, dark, insetPx, camera, { camera = it }, onTap, Modifier.fillMaxSize(),
-                hidesBusinesses = true)
+                hidesBusinesses = true, onLongPress = onLongPress)
+        }
+        menu?.let { open ->
+            Box(Modifier.offset { androidx.compose.ui.unit.IntOffset(open.x.toInt(), open.y.toInt()) }) {
+                DropdownMenu(expanded = true, onDismissRequest = { menu = null }) {
+                    when (open) {
+                        is LinkMapMenu.Move -> {
+                            Text(open.name ?: "Dropped pin", Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            listOf("A", "B").forEach { letter ->
+                                DropdownMenuItem(text = { Text("Move $letter here") }, leadingIcon = { EndpointDot(letter, dark) }, onClick = {
+                                    menu = null
+                                    onPlace(letter, open.spot, open.name)
+                                })
+                            }
+                        }
+                        is LinkMapMenu.Pin -> {
+                            Text("Point ${open.endpoint} · ${names[open.endpoint] ?: "Dropped pin"}", Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            DropdownMenuItem(text = { Text("Choose new point") }, onClick = { menu = null; onChooseNew(open.endpoint) })
+                            DropdownMenuItem(text = { Text("Remove", color = MaterialTheme.colorScheme.error) }, onClick = { menu = null; onRemove(open.endpoint) })
+                        }
+                    }
+                }
+            }
         }
         if (analysis != null && endpoint == null) ClearanceLegend(Modifier.align(Alignment.TopStart).padding(8.dp))
+        // A few seconds to take back a placement, move, removal or reset, above the attribution.
+        undo?.let { offer ->
+            LaunchedEffect(offer.id) {
+                kotlinx.coroutines.delay(4_000)
+                onUndoExpired(offer.id)
+            }
+            Snackbar(Modifier.align(Alignment.BottomCenter).padding(horizontal = 16.dp)
+                .padding(bottom = bottomInset + if (engine is MapLibreEngine) 44.dp else 12.dp),
+                action = { TextButton(onClick = onUndo) { Text("Undo", color = SnackbarDefaults.actionColor) } }) { Text(offer.message) }
+        }
         Box(Modifier.align(Alignment.TopEnd).padding(8.dp)) {
             Surface(shape = MaterialTheme.shapes.medium, tonalElevation = 2.dp, shadowElevation = 2.dp) {
                 IconButton(onClick = { layersOpen = true }) { Icon(androidx.compose.material.icons.Icons.Outlined.Layers, "Map layers") }
@@ -295,5 +351,15 @@ internal fun ClearanceSwatch(color: androidx.compose.ui.graphics.Color, title: S
             }
         }
         Text(title, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+/** The endpoint's lettered dot, in its pin colour. */
+@Composable
+private fun EndpointDot(letter: String, dark: Boolean) {
+    val kind = if (letter == "A") MapPin.Kind.POINT_A else MapPin.Kind.POINT_B
+    Box(Modifier.size(22.dp).background(androidx.compose.ui.graphics.Color(kind.color(dark)), androidx.compose.foundation.shape.CircleShape),
+        contentAlignment = Alignment.Center) {
+        Text(letter, color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.labelMedium)
     }
 }

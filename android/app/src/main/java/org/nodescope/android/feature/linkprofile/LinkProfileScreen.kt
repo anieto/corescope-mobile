@@ -57,6 +57,7 @@ import org.nodescope.android.core.design.firstPaneWidth
 import org.nodescope.android.core.design.rememberFoldSplit
 import org.nodescope.android.core.design.rememberTabletopSplit
 import androidx.compose.ui.platform.LocalDensity
+import androidx.core.content.edit
 import org.nodescope.android.BuildConfig
 import java.text.DateFormat
 import java.util.Date
@@ -68,13 +69,20 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
     snapshot: org.nodescope.android.core.model.AnalyzerSnapshot? = null, selectedRegion: String? = null,
     sourceViewport: org.nodescope.android.core.model.RegionCoordinate? = null) {
     val state by model.state.collectAsStateWithLifecycle()
-    var selecting by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(if (state.fields.getValue("Latitude A").isBlank() && BuildConfig.MAPS_CONFIGURED) "A" else null) }
+    // A point chosen anew from its card or pin; otherwise the next touch & hold places the first
+    // missing point, so a new profile needs no arming at all.
+    var selecting by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
     fun coordinate(endpoint: String): ProfileCoordinate? = runCatching {
         ProfileCoordinate(state.fields.getValue("Latitude $endpoint").toDouble(), state.fields.getValue("Longitude $endpoint").toDouble())
     }.getOrNull()
+    val placing = selecting ?: listOf("A", "B").firstOrNull { coordinate(it) == null }?.takeIf { BuildConfig.MAPS_CONFIGURED }
+    // The Open-Meteo notice stays in the prompt until the first point is ever placed.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val preferences = remember { context.getSharedPreferences("link-profile", android.content.Context.MODE_PRIVATE) }
+    var hasPlacedPoint by remember { mutableStateOf(preferences.getBoolean("placed-point", false)) }
     androidx.activity.compose.BackHandler(enabled = selecting != null) { selecting = null }
     // Held here, above the layout branches below, so folding, rotating or changing posture keeps
-    // the camera, an unconfirmed tap and the scroll position (rememberSaveable restores by position).
+    // the camera and the scroll position (rememberSaveable restores by position).
     val mapState = rememberLinkProfileMapState(coordinate("A") ?: coordinate("B"))
     val scroll = rememberScrollState()
     val currentNodes by rememberUpdatedState(nodes)
@@ -82,34 +90,37 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
     val currentRegion by rememberUpdatedState(selectedRegion)
     val currentViewport by rememberUpdatedState(sourceViewport)
     val currentAnalysis by rememberUpdatedState(state.result)
-    val currentSelecting by rememberUpdatedState(selecting)
+    val currentPlacing by rememberUpdatedState(placing)
     val currentNames by rememberUpdatedState(state.names)
+    val currentUndo by rememberUpdatedState(state.undo)
     var mapInset by remember { mutableStateOf(0.dp) }
     // One map instance moves between layouts on a live posture change instead of being rebuilt.
     val map = remember {
         movableContentOf { modifier: Modifier ->
-            LinkProfileMap(currentSelecting, coordinate("A"), coordinate("B"), currentNodes, modifier, mapState,
-                currentSnapshot, currentRegion, currentViewport, currentAnalysis, mapInset, currentNames)
+            LinkProfileMap(currentPlacing, coordinate("A"), coordinate("B"), currentNodes, modifier, mapState,
+                currentSnapshot, currentRegion, currentViewport, currentAnalysis, mapInset, currentNames, currentUndo,
+                onPlace = { endpoint, point, name ->
+                    model.place(endpoint, point, name)
+                    selecting = null
+                    if (!hasPlacedPoint) { hasPlacedPoint = true; preferences.edit { putBoolean("placed-point", true) } }
+                },
+                onChooseNew = { selecting = it },
+                onRemove = { selecting = null; model.remove(it) },
+                onUndo = { selecting = null; mapState.fittedPath.value = null; model.undo() },
+                onUndoExpired = model::dismissUndo)
         }
     }
     fun choose(endpoint: String) {
-        mapState.tentative.value = null
         selecting = endpoint
     }
     val header: @Composable () -> Unit = {
-        LinkHeader(state, selecting, mapState.tentative.value?.takeIf { it.endpoint == selecting }, distanceUnit,
-            onChoose = ::choose,
-            onCancel = { mapState.tentative.value = null; selecting = null },
-            onUse = { tap ->
-                model.place(tap.endpoint, ProfileCoordinate(tap.latitude, tap.longitude), tap.name)
-                mapState.tentative.value = null
-                selecting = if (tap.endpoint == "A" && coordinate("B") == null) "B" else null
-            },
+        LinkHeader(state, selecting, placing, showsElevationNotice = !hasPlacedPoint, distanceUnit,
+            onCancel = { selecting = null },
             onRetry = model::analyze,
             onReset = {
                 model.startOver()
                 mapState.fittedPath.value = null
-                if (BuildConfig.MAPS_CONFIGURED) choose("A") else selecting = null
+                selecting = null
             })
     }
     val details: @Composable () -> Unit = {
@@ -208,14 +219,13 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
 }
 
 /**
- * The sheet's always-visible line: what to do next while points are being placed, then the
- * verdict. Choosing a point is confirmed here, so the map stays clear. Reset sits beside it once
- * a point is placed, so starting over never needs the sheet opened.
+ * The sheet's always-visible line: what to do next while points are being placed (a touch & hold
+ * on the map places [placing]), then the verdict. Reset sits beside it once a point is placed, so
+ * starting over never needs the sheet opened.
  */
 @Composable
-private fun LinkHeader(state: LinkProfileViewModel.State, selecting: String?, tentative: LinkProfileMapState.Tentative?,
-    distanceUnit: DistanceUnit, onChoose: (String) -> Unit, onCancel: () -> Unit,
-    onUse: (LinkProfileMapState.Tentative) -> Unit, onRetry: () -> Unit, onReset: () -> Unit) {
+private fun LinkHeader(state: LinkProfileViewModel.State, selecting: String?, placing: String?, showsElevationNotice: Boolean,
+    distanceUnit: DistanceUnit, onCancel: () -> Unit, onRetry: () -> Unit, onReset: () -> Unit) {
     fun placed(endpoint: String) = state.fields.getValue("Latitude $endpoint").isNotBlank() && state.fields.getValue("Longitude $endpoint").isNotBlank()
     val secondary = MaterialTheme.colorScheme.onSurfaceVariant
     val anyPlaced = listOf("Latitude A", "Longitude A", "Latitude B", "Longitude B").any { state.fields.getValue(it).isNotBlank() }
@@ -223,23 +233,16 @@ private fun LinkHeader(state: LinkProfileViewModel.State, selecting: String?, te
     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         val result = state.result
         when {
-            selecting != null -> {
-                Text("Choose Point $selecting", style = MaterialTheme.typography.titleMedium)
-                Text(when {
-                    tentative == null -> "Tap the map or a known node."
-                    tentative.name != null -> tentative.name
-                    else -> "Dropped pin"
-                }, color = secondary)
-                Text("Confirming sends its coordinates to Open-Meteo for elevation.", style = MaterialTheme.typography.bodySmall, color = secondary)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = onCancel) { Text("Cancel") }
-                    Button(onClick = { tentative?.let(onUse) }, enabled = tentative != null) { Text("Use Point $selecting") }
-                }
+            selecting != null && placed(selecting) -> {
+                Text("Choose new Point $selecting", style = MaterialTheme.typography.titleMedium)
+                Text("Touch & hold the map to place it.", color = secondary)
+                TextButton(onClick = onCancel) { Text("Cancel") }
             }
             !placed("A") || !placed("B") -> {
-                val next = if (!placed("A")) "A" else "B"
-                Text("Place Point A and Point B to analyze the link.", style = MaterialTheme.typography.titleMedium)
-                if (BuildConfig.MAPS_CONFIGURED) Button(onClick = { onChoose(next) }) { Text("Choose Point $next") }
+                Text("Place your points to analyze the link.", style = MaterialTheme.typography.titleMedium)
+                if (placing != null) Text("Touch & hold the map to place Point $placing.", color = secondary)
+                if (placing != null && showsElevationNotice) Text("Placing a point sends its coordinates to Open-Meteo for elevation.",
+                    style = MaterialTheme.typography.bodySmall, color = secondary)
             }
             state.loading -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
@@ -365,7 +368,7 @@ private fun PointCard(model: LinkProfileViewModel, state: LinkProfileViewModel.S
                 Text("Total height: ${total?.let { formatProfileHeight(it, distanceUnit) } ?: "—"}", style = MaterialTheme.typography.bodyMedium)
                 listOf("Gain $endpoint (dBi)", "Loss $endpoint (dB)").forEach { key -> ProfileField(key, state.fields.getValue(key)) { model.edit(key, it) } }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (BuildConfig.MAPS_CONFIGURED) TextButton(onClick = { onMove(endpoint) }) { Text(if (placed) "Move on map" else "Choose on map") }
+                    if (BuildConfig.MAPS_CONFIGURED) TextButton(onClick = { onMove(endpoint) }) { Text(if (placed) "Choose new point" else "Choose on map") }
                     TextButton(onClick = { coordinatesShown = !coordinatesShown }) { Text(if (coordinatesShown) "Hide coordinates" else "Enter coordinates") }
                 }
                 if (coordinatesShown) listOf("Latitude $endpoint", "Longitude $endpoint").forEach { key -> ProfileField(key, state.fields.getValue(key)) { model.edit(key, it) } }

@@ -90,13 +90,15 @@ internal fun rememberMapLibreEngine(): MapLibreEngine {
 @android.annotation.SuppressLint("LogNotTimber")
 @Composable
 internal fun MapLibreEngineHost(engine: MapLibreEngine, styleMode: Int, retry: Int, bottomInset: Int, savedCamera: SavedCamera,
-    onCameraIdle: (SavedCamera) -> Unit, onTap: (MapTap) -> Boolean, modifier: Modifier = Modifier) {
+    onCameraIdle: (SavedCamera) -> Unit, onTap: (MapTap) -> Boolean, modifier: Modifier = Modifier,
+    onLongPress: ((MapTap) -> Unit)? = null) {
     val view = engine.view
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val currentSavedCamera by rememberUpdatedState(savedCamera)
     val currentOnCameraIdle by rememberUpdatedState(onCameraIdle)
     val currentOnTap by rememberUpdatedState(onTap)
+    val currentOnLongPress by rememberUpdatedState(onLongPress)
     // A style that fails to load (often a brief CARTO or network hiccup) is tried again after
     // MAP_RETRY_DELAYS_MS before the error is shown; a manual retry or another style starts over.
     val scope = rememberCoroutineScope()
@@ -154,7 +156,8 @@ internal fun MapLibreEngineHost(engine: MapLibreEngine, styleMode: Int, retry: I
                 ready.addOnCameraIdleListener {
                     ready.cameraPosition.let { c -> c.target?.let { currentOnCameraIdle(listOf(it.latitude, it.longitude, c.zoom, c.bearing, c.tilt)) } }
                 }
-                ready.addOnMapClickListener { coordinate ->
+                // What is under the finger, for a tap or a long press.
+                fun tapAt(coordinate: LatLng): MapTap {
                     val point = ready.projection.toScreenLocation(coordinate)
                     val radius = 24 * context.resources.displayMetrics.density
                     val area = RectF(point.x-radius, point.y-radius, point.x+radius, point.y+radius)
@@ -166,7 +169,7 @@ internal fun MapLibreEngineHost(engine: MapLibreEngine, styleMode: Int, retry: I
                     } ?: Double.MAX_VALUE
                     val node = hits.filter { it.hasProperty("publicKey") }.minByOrNull(::distance)
                     val cluster = hits.filter { it.hasProperty("cluster_id") }.minByOrNull(::distance)
-                    currentOnTap(MapTap(
+                    return MapTap(
                         nodeKey = node?.getStringProperty("publicKey"),
                         nodeUnderFinger = node != null && distance(node) <= radius / 2,
                         expandGroup = cluster?.let { group -> {
@@ -179,7 +182,11 @@ internal fun MapLibreEngineHost(engine: MapLibreEngine, styleMode: Int, retry: I
                             ready.queryRenderedFeatures(area, "live-route-halo")
                                 .mapNotNull { line -> if (line.hasProperty("route")) line.getStringProperty("route") else null }
                         },
-                        coordinate = Coordinate.valid(coordinate.latitude, coordinate.longitude)))
+                        coordinate = Coordinate.valid(coordinate.latitude, coordinate.longitude))
+                }
+                ready.addOnMapClickListener { coordinate -> currentOnTap(tapAt(coordinate)) }
+                ready.addOnMapLongClickListener { coordinate ->
+                    currentOnLongPress?.let { it(tapAt(coordinate)); true } ?: false
                 }
                 engine.attach(ready)
             }

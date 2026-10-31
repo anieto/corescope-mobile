@@ -32,7 +32,12 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         val result: LinkAnalysis? = null, val error: String? = null,
         val elevations: Map<String, EndpointElevation> = emptyMap(),
         /** The known node each endpoint was placed on, by endpoint; absent for a dropped pin or typed coordinates. */
-        val names: Map<String, String> = emptyMap())
+        val names: Map<String, String> = emptyMap(),
+        /** The last placement, removal or reset, which Undo takes back for a few seconds. */
+        val undo: Undo? = null)
+    /** Both endpoints' coordinate fields and node names, as they were before a change. */
+    data class Placement(val fields: Map<String, String>, val names: Map<String, String>)
+    data class Undo(val message: String, val before: Placement, val id: Long = System.nanoTime())
     private val defaultHeight = if (distanceUnit == DistanceUnit.IMPERIAL) "6.096" else "6"
     private val mutable = MutableStateFlow(State((defaults + mapOf("Height A (m)" to defaultHeight, "Height B (m)" to defaultHeight))
         .mapValues { (key, value) -> saved.get<String>(key) ?: value }, saved["preset"] ?: "US/Canada Narrow",
@@ -89,7 +94,13 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         }
     }
 
+    /** A typed coordinate replaces whatever Undo would have restored. */
     fun edit(key: String, value: String) {
+        if (key.startsWith("Latitude ") || key.startsWith("Longitude ")) mutable.value = mutable.value.copy(undo = null)
+        update(key, value)
+    }
+
+    private fun update(key: String, value: String) {
         job?.cancel()
         saved[key] = value
         // Typed coordinates are no longer the known node they were placed on.
@@ -108,17 +119,48 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
 
     /** Places [endpoint] at [point], named after the known node it was chosen on, if any. */
     fun place(endpoint: String, point: ProfileCoordinate, name: String?) {
-        edit("Latitude $endpoint", point.latitude.toString())
-        edit("Longitude $endpoint", point.longitude.toString())
+        val before = placement()
+        val moved = coordinate(endpoint) != null
+        setPoint(endpoint, point.latitude.toString(), point.longitude.toString(), name)
+        offerUndo(if (moved) "Point $endpoint moved" else "Point $endpoint placed", before)
+    }
+    fun remove(endpoint: String) {
+        val before = placement()
+        setPoint(endpoint, "", "", null)
+        offerUndo("Point $endpoint removed", before)
+    }
+    /** Start over: both endpoints and the result are cleared; heights and radio settings are kept. */
+    fun startOver() {
+        val before = placement()
+        listOf("A", "B").forEach { endpoint -> setPoint(endpoint, "", "", null) }
+        offerUndo("Points cleared", before)
+    }
+    /** Puts both endpoints back as they were before the last placement, removal or reset. */
+    fun undo() {
+        val undo = mutable.value.undo ?: return
+        listOf("A", "B").forEach { endpoint ->
+            setPoint(endpoint, undo.before.fields["Latitude $endpoint"].orEmpty(), undo.before.fields["Longitude $endpoint"].orEmpty(),
+                undo.before.names[endpoint])
+        }
+        mutable.value = mutable.value.copy(undo = null)
+    }
+    /** Undo is offered for a few seconds; a newer offer outlives an older one's timer. */
+    fun dismissUndo(id: Long) {
+        if (mutable.value.undo?.id == id) mutable.value = mutable.value.copy(undo = null)
+    }
+    private fun placement() = mutable.value.let { state ->
+        Placement(state.fields.filterKeys { it.startsWith("Latitude ") || it.startsWith("Longitude ") }, state.names)
+    }
+    private fun offerUndo(message: String, before: Placement) {
+        mutable.value = mutable.value.copy(undo = Undo(message, before))
+    }
+    private fun setPoint(endpoint: String, latitude: String, longitude: String, name: String?) {
+        update("Latitude $endpoint", latitude)
+        update("Longitude $endpoint", longitude)
         if (name != null) {
             saved["Name $endpoint"] = name
             mutable.value = mutable.value.copy(names = mutable.value.names + (endpoint to name))
         }
-    }
-    /** Start over: both endpoints and the result are cleared; heights and radio settings are kept. */
-    fun startOver() = listOf("A", "B").forEach { endpoint ->
-        edit("Latitude $endpoint", "")
-        edit("Longitude $endpoint", "")
     }
     fun preset(name: String) {
         job?.cancel()

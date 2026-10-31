@@ -87,13 +87,15 @@ internal fun rememberGoogleMapEngine(): GoogleMapEngine {
  */
 @Composable
 internal fun GoogleMapEngineHost(engine: GoogleMapEngine, mapType: GoogleMapType, dark: Boolean, bottomInset: Int, savedCamera: SavedCamera,
-    onCameraIdle: (SavedCamera) -> Unit, onTap: (MapTap) -> Boolean, modifier: Modifier = Modifier, hidesBusinesses: Boolean = false) {
+    onCameraIdle: (SavedCamera) -> Unit, onTap: (MapTap) -> Boolean, modifier: Modifier = Modifier, hidesBusinesses: Boolean = false,
+    onLongPress: ((MapTap) -> Unit)? = null) {
     val view = engine.view
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val currentSavedCamera by rememberUpdatedState(savedCamera)
     val currentOnCameraIdle by rememberUpdatedState(onCameraIdle)
     val currentOnTap by rememberUpdatedState(onTap)
+    val currentOnLongPress by rememberUpdatedState(onLongPress)
     DisposableEffect(view, lifecycle) {
         var alive = true
         var started = false
@@ -120,7 +122,7 @@ internal fun GoogleMapEngineHost(engine: GoogleMapEngine, mapType: GoogleMapType
             val saved = currentSavedCamera
             map.moveCamera(CameraUpdateFactory.newCameraPosition(CameraPosition(LatLng(saved[0], saved[1]),
                 (saved[2] + GOOGLE_ZOOM_OFFSET).toFloat(), saved[4].toFloat(), saved[3].toFloat())))
-            val overlays = GoogleOverlays(context, map, camera, engine.routeLayer) { currentOnTap(it) }
+            val overlays = GoogleOverlays(context, map, camera, engine.routeLayer, { currentOnTap(it) }) { tap -> currentOnLongPress?.invoke(tap) }
             engine.routeLayer.map = map
             // The route layer follows every camera change, including gestures between route frames.
             map.setOnCameraMoveListener { engine.routeLayer.invalidate() }
@@ -249,7 +251,8 @@ private class NodeGrouping : NonHierarchicalDistanceBasedAlgorithm<NodeItem>() {
 private val roleColors = mapOf("repeater" to 0xFFFFAA44.toInt(), "room" to 0xFF299EFF.toInt(), "companion" to 0xFF45C99D.toInt(), "sensor" to 0xFFB18AFF.toInt())
 
 internal class GoogleOverlays(private val context: Context, private val map: GoogleMap, private val camera: GoogleCamera,
-    private val routeLayer: RouteLayer, private val onTap: (MapTap) -> Boolean) : MapOverlays {
+    private val routeLayer: RouteLayer, private val onTap: (MapTap) -> Boolean,
+    private val onLongPress: (MapTap) -> Unit = {}) : MapOverlays {
     private val screenDensity = context.resources.displayMetrics.density
     private val icons = mutableMapOf<String, BitmapDescriptor>()
     private val markers = MarkerManager(map)
@@ -273,8 +276,10 @@ internal class GoogleOverlays(private val context: Context, private val map: Goo
             true
         }
         replayNodes.setOnMarkerClickListener { marker -> tapNode(marker.tag as? String); true }
-        decorations.setOnMarkerClickListener { true }
-        map.setOnMapClickListener { point -> tapNear(point) }
+        // Place pins pass their taps on, at the pin's tip, for screens that offer pin options.
+        decorations.setOnMarkerClickListener { marker -> if (marker in pins) onTap(mapTapNear(marker.position)); true }
+        map.setOnMapClickListener { point -> onTap(mapTapNear(point)) }
+        map.setOnMapLongClickListener { point -> onLongPress(mapTapNear(point)) }
     }
 
     fun onCameraIdle() = nodes.onCameraIdle()
@@ -285,7 +290,7 @@ internal class GoogleOverlays(private val context: Context, private val map: Goo
      * Small markers are hard to hit exactly: a tap near one (24 dp) picks the nearest, as on CARTO,
      * including a route's node markers; otherwise a route under the finger opens its details.
      */
-    private fun tapNear(point: LatLng) {
+    private fun mapTapNear(point: LatLng): MapTap {
         val tap = map.projection.toScreenLocation(point)
         val shown = items.mapNotNull { item -> renderer.getMarker(item)?.let { item.marker.publicKey to it.position } } +
             replayNodes.markers.map { (it.tag as? String) to it.position } +
@@ -295,9 +300,9 @@ internal class GoogleOverlays(private val context: Context, private val map: Goo
             val screen = map.projection.toScreenLocation(position)
             key to hypot((screen.x - tap.x).toDouble(), (screen.y - tap.y).toDouble())
         }.minByOrNull { it.second }?.takeIf { it.second <= 24 * screenDensity }
-        onTap(MapTap(nearest?.first, nearest != null && nearest.second <= 12 * screenDensity, null,
+        return MapTap(nearest?.first, nearest != null && nearest.second <= 12 * screenDensity, null,
             { routeLayer.routesNear(tap.x.toFloat(), tap.y.toFloat(), 24 * screenDensity) },
-            Coordinate.valid(point.latitude, point.longitude)))
+            Coordinate.valid(point.latitude, point.longitude))
     }
 
     /** Zooms into a group far enough for it to come apart (groups end at MapLibre zoom 9). */
