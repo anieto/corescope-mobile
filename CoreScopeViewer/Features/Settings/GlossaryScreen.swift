@@ -34,17 +34,19 @@ struct GlossaryScreen: View {
     }
 }
 
-/// The opened term's row: the normal row surface with an accent tint and a leading bar on top, so
-/// it reads as highlighted in dark mode too rather than letting the page show through.
+/// The opened term's row: the normal row surface with a light accent tint and an accent border
+/// inset from the edges, so the section's rounded corners don't clip it and it reads as highlighted
+/// in dark mode too.
 private struct GlossaryFocusBackground: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        ZStack(alignment: .leading) {
+        ZStack {
             Color(uiColor: .secondarySystemGroupedBackground)
-            NodeScopeStyle.signal.opacity(colorScheme == .dark ? 0.20 : 0.10)
-            NodeScopeStyle.signal
-                .frame(width: 4)
+            NodeScopeStyle.signal.opacity(colorScheme == .dark ? 0.14 : 0.07)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(NodeScopeStyle.signal, lineWidth: 2)
+                .padding(3)
         }
     }
 }
