@@ -6,6 +6,8 @@ enum NodeScopeStyle {
     static let healthy = Color(red: 0.24, green: 0.78, blue: 0.48)
     static let deepNavy = Color(red: 0.035, green: 0.075, blue: 0.13)
     static let slate = Color(red: 0.08, green: 0.13, blue: 0.20)
+    /// Card surface in dark mode: a step lighter than `slate` so cards read against the page.
+    static let cardSlate = Color(red: 0.115, green: 0.175, blue: 0.255)
     // A darker, far less saturated pair used only for the page background
     // (not the instrument-card fill above), so cards keep contrasting
     // against it instead of nearly matching it near the bottom of the
@@ -96,7 +98,11 @@ struct InstrumentCardModifier: ViewModifier {
         content
             .background {
                 RoundedRectangle(cornerRadius: NodeScopeStyle.cornerRadius, style: .continuous)
-                    .fill((colorScheme == .dark ? NodeScopeStyle.slate : Color.white).opacity(fillOpacity))
+                    // Dark cards use a lighter slate than the page; contrast comes mostly from that,
+                    // the outline and the shadow, so the background mesh can still show through a little.
+                    .fill(colorScheme == .dark
+                        ? NodeScopeStyle.cardSlate.opacity(min(1, fillOpacity + 0.02))
+                        : Color.white.opacity(min(1, fillOpacity + 0.06)))
                     .overlay {
                         if isSelected {
                             RoundedRectangle(cornerRadius: NodeScopeStyle.cornerRadius, style: .continuous)
@@ -108,12 +114,12 @@ struct InstrumentCardModifier: ViewModifier {
                 RoundedRectangle(cornerRadius: NodeScopeStyle.cornerRadius, style: .continuous)
                     .stroke(
                         NodeScopeStyle.signal.opacity(
-                            isSelected ? (colorScheme == .dark ? 0.9 : 0.75) : (colorScheme == .dark ? 0.18 : 0.1)
+                            isSelected ? (colorScheme == .dark ? 0.9 : 0.75) : (colorScheme == .dark ? 0.28 : 0.18)
                         ),
                         lineWidth: isSelected ? 2 : 1
                     )
             }
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0.22 : 0.07), radius: 14, y: 6)
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.30 : 0.10), radius: 14, y: 6)
     }
 }
 

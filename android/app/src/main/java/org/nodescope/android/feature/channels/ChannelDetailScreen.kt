@@ -149,7 +149,7 @@ private fun ChatBubble(message: ConversationMessage, trailing: Boolean, onPacket
     val tone = senderColor(message.sender)
     Row(Modifier.fillMaxWidth(), horizontalArrangement = if (trailing) Arrangement.End else Arrangement.Start) {
         Column(Modifier.fillMaxWidth(0.86f), horizontalAlignment = if (trailing) Alignment.End else Alignment.Start, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(message.sender, Modifier.padding(horizontal = 4.dp), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = tone)
+            Text(message.sender, Modifier.padding(horizontal = 4.dp), style = MaterialTheme.typography.labelMedium, fontFamily = MonaspaceNeon, fontWeight = FontWeight.Bold, color = tone)
             Surface(color = senderBubbleFill(message.sender), shape = MaterialTheme.shapes.medium,
                 contentColor = MaterialTheme.colorScheme.onSurface,
                 border = BorderStroke(1.dp, senderBubbleStroke(message.sender))) {

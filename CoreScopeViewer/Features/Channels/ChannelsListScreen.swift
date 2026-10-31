@@ -102,10 +102,13 @@ struct ChannelsListScreen: View {
                             channelRow(channel)
                         }
                     } header: {
-                        Text("Server Monitored Channels")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(.secondary)
-                            .textCase(.uppercase)
+                        HStack(spacing: 4) {
+                            Text("Server Monitored Channels")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(.secondary)
+                                .textCase(.uppercase)
+                            LearnButton(term: .channel)
+                        }
                     }
                 }
             }
@@ -459,7 +462,7 @@ private struct ChannelsHeader: View {
     private var heading: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text("Channels")
-                .font(.largeTitle.bold())
+                .font(.monaspace(.largeTitle).bold())
             HStack(spacing: 6) {
                 Circle()
                     .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
@@ -498,7 +501,7 @@ private struct ChannelsHeader: View {
 
             Button(action: toggleSearch) {
                 Image(systemName: isSearchPresented ? "xmark" : "magnifyingglass")
-                    .font(.body.weight(.semibold))
+                    .font(.monaspace(.body).weight(.semibold))
                     .foregroundStyle(NodeScopeStyle.signal)
                     .frame(width: 40, height: 40)
                     .nodeScopeFloatingGlass(cornerRadius: 20)
@@ -651,7 +654,7 @@ private struct ChannelCard: View {
             VStack(alignment: .leading, spacing: 7) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(name)
-                        .font(.headline)
+                        .font(.monaspace(.headline))
                     Spacer()
                     if let messageCount {
                         HStack(spacing: 4) {
@@ -674,7 +677,7 @@ private struct ChannelCard: View {
                                 Image(systemName: "person.wave.2.fill")
                                 Text(lastSender)
                             }
-                            .font(.caption2.weight(.bold))
+                            .font(.monaspace(.caption2).weight(.bold))
                             .foregroundStyle(SenderColor.color(for: lastSender, colorScheme: colorScheme))
 
                             Text(lastMessage)

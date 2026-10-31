@@ -21,3 +21,12 @@ List {
 .meshPageBackground()
 .navigationTitle("New Page")
 ```
+
+# Typography
+
+NodeScope uses Monaspace Neon for headings and the values people scan; everything else stays in the system font.
+
+- Decide by what the text is, not by its text style. Neon: screen, card and section titles; names of nodes, observers, channels, senders and route observers, wherever they appear (lists, rows, details, map labels); identifiers (public keys, hashes, packet IDs, payload types, observer codes, hostnames); and the values people scan (counts, SNR, RSSI, hops). System font: sentences, descriptions, captions, status lines, button titles and control labels.
+- iOS: `.font(.monaspace(.headline))` takes any text style and keeps its size; add weights as usual (`.font(.monaspace(.subheadline).weight(.semibold))`). Don't add `.monospaced()` to a Monaspace font; it is already monospaced. Helpers live in `Features/Shared/AppFont.swift`.
+- Android: the theme's display, headline and title styles are already Monaspace Neon; use `MonaspaceNeon` (core/design/Theme.kt) instead of `FontFamily.Monospace` for values.
+- The font files ship unmodified (Reserved Font Name "Monaspace" under the SIL OFL 1.1); don't subset or rename them. The licence is bundled as `Monaspace-OFL.txt` and credited in About.

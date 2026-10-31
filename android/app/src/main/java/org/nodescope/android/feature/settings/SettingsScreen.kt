@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.settings
 
+import androidx.compose.ui.platform.LocalContext
+import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -8,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -18,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -41,7 +45,7 @@ private sealed interface SourceStatus {
 fun SettingsScreen(
     preferences: AppPreferences, connection: LiveConnection, sessionError: String?, sourceChangedAt: Long?,
     onAppearance: (Appearance) -> Unit, onSource: () -> Unit, onDiagnostics: () -> Unit, onStorage: () -> Unit,
-    onAbout: () -> Unit, onMapLab: () -> Unit, onSupport: (() -> Unit)? = null,
+    onAbout: () -> Unit, onGlossary: () -> Unit, onMapLab: () -> Unit, onSupport: (() -> Unit)? = null,
     onDistanceUnit: (DistanceUnit) -> Unit = {},
     onBackgroundTexture: (Boolean) -> Unit = {},
 ) {
@@ -76,10 +80,17 @@ fun SettingsScreen(
                 }
             }
             item {
-                Panel(stringResource(R.string.appearance), Icons.Outlined.Contrast) {
-                    AdaptiveChoiceRow(Appearance.entries, preferences.appearance, label = { mode ->
-                        stringResource(when (mode) { Appearance.SYSTEM -> R.string.system; Appearance.LIGHT -> R.string.light; Appearance.DARK -> R.string.dark })
-                    }, onSelect = onAppearance)
+                Panel("Display", Icons.Outlined.Contrast) {
+                    CaptionedChoice("Appearance") {
+                        AdaptiveChoiceRow(Appearance.entries, preferences.appearance, label = { mode ->
+                            stringResource(when (mode) { Appearance.SYSTEM -> R.string.system; Appearance.LIGHT -> R.string.light; Appearance.DARK -> R.string.dark })
+                        }, onSelect = onAppearance)
+                    }
+                    CaptionedChoice("Units") {
+                        AdaptiveChoiceRow(DistanceUnit.entries, preferences.distanceUnit, label = { unit ->
+                            when (unit) { DistanceUnit.IMPERIAL -> "Imperial (mi)"; DistanceUnit.METRIC -> "Metric (km)" }
+                        }, onSelect = onDistanceUnit)
+                    }
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("Background Texture", style = MaterialTheme.typography.titleSmall)
@@ -89,24 +100,22 @@ fun SettingsScreen(
                         Switch(checked = preferences.backgroundTexture, onCheckedChange = onBackgroundTexture,
                             modifier = Modifier.semantics { contentDescription = "Background Texture" })
                     }
+                    val context = LocalContext.current
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Term explanations", style = MaterialTheme.typography.titleSmall)
+                            Text("Show ⓘ beside terms like SNR and hops. The Glossary is always available.", style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = org.nodescope.android.feature.learn.LearnSettings.showsExplanations(context),
+                            onCheckedChange = { org.nodescope.android.feature.learn.LearnSettings.setShowsExplanations(context, it) },
+                            modifier = Modifier.semantics { contentDescription = "Term explanations" })
+                    }
                 }
             }
             item {
-                Panel("Units", Icons.Outlined.Straighten) {
-                    AdaptiveChoiceRow(DistanceUnit.entries, preferences.distanceUnit, label = { unit ->
-                        when (unit) { DistanceUnit.IMPERIAL -> "Imperial (mi)"; DistanceUnit.METRIC -> "Metric (km)" }
-                    }, onSelect = onDistanceUnit)
-                }
-            }
-            item {
-                Panel("Analyzer source", Icons.Outlined.Dns) {
+                Panel("Analyzer", Icons.Outlined.Dns) {
                     NavigationRow("Choose source", preferences.host, Icons.Outlined.Hub, onSource)
-                    Text("Choose the network you want to explore.", style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            item {
-                Panel("Connection", Icons.Outlined.SettingsInputAntenna) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         val live = connection == LiveConnection.LIVE
                         Box(Modifier.size(32.dp).background((statusAccent(live)).copy(alpha = 0.14f), MaterialTheme.shapes.small),
@@ -128,17 +137,25 @@ fun SettingsScreen(
                                 maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
                     }
+                    LearnLabel("Choose the network you want to explore.", GlossaryTerm.ANALYZER, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     NavigationRow("Analyzer diagnostics", "Check connection and features", Icons.Outlined.HealthAndSafety, onDiagnostics)
-                }
-            }
-            item {
-                Panel("Storage", Icons.Outlined.Storage) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     NavigationRow("Cache & storage", "Review or clear downloaded data", Icons.Outlined.SdStorage, onStorage)
                 }
             }
-            item { CardRow { NavigationRow("About & how to use", "NodeScope field guide", Icons.Outlined.Info, onAbout) } }
-            onSupport?.let { open -> item { CardRow { NavigationRow("Support development", "Buy me a coffee", Icons.Outlined.Favorite, open, external = true) } } }
+            item {
+                Panel("Help & support", Icons.Outlined.HelpOutline) {
+                    NavigationRow("About & how to use", "NodeScope field guide", Icons.Outlined.Info, onAbout)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    NavigationRow("Glossary", "What the terms in NodeScope mean", Icons.AutoMirrored.Outlined.MenuBook, onGlossary)
+                    onSupport?.let { open ->
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        NavigationRow("Support development", "Buy me a coffee", Icons.Outlined.Favorite, open, external = true)
+                    }
+                }
+            }
             if (BuildConfig.DEBUG) item {
                 TextButton(onClick = onMapLab) { Icon(Icons.Outlined.Science, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.map_lab)) }
             }
@@ -168,6 +185,16 @@ private fun Panel(title: String, icon: ImageVector, content: @Composable ColumnS
             Icon(icon, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
             Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        content()
+    }
+}
+
+/** A small title above a choice row, kept closer to its row than the panel's spacing. */
+@Composable
+private fun CaptionedChoice(title: String, content: @Composable () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
         content()
     }
 }

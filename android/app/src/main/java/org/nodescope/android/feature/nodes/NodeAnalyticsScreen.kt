@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.nodes
 
+import org.nodescope.android.feature.learn.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -102,7 +103,7 @@ fun NodeAnalyticsScreen(model: NodeAnalyticsViewModel, host: String, publicKey: 
                 }
             }
             if (analytics.hopDistribution.isNotEmpty()) item {
-                ChartCard("Hop count", "How far packets traveled", Icons.Outlined.Route) {
+                ChartCard("Hop count", "How far packets traveled", Icons.Outlined.Route, GlossaryTerm.HOP) {
                     BarChart("Hop count distribution", analytics.hopDistribution.map { ChartPoint("${it.hops} hops", it.count) }, MaterialTheme.colorScheme.primary)
                 }
             }
@@ -177,7 +178,7 @@ private fun BeaconSignalCard(points: List<SignalPoint>) {
         points.mapNotNull { p -> p.snr?.let { snr -> parseInstant(p.timestamp)?.let { it.toEpochMilli() to snr } } }.sortedBy { it.first }
     }
     val (from, to) = dataDomain(readings.map { it.first }) ?: return
-    ChartCard("Signal", "Reported SNR over time; Beacon does not identify the observer", Icons.Outlined.GraphicEq) {
+    ChartCard("Signal", "Reported SNR over time; Beacon does not identify the observer", Icons.Outlined.GraphicEq, GlossaryTerm.SNR) {
         TimeChart("Reported SNR over time", listOf(TimeSeries(SignalBlue, readings)), from, to, area = false, zeroBased = false,
             formatValue = { db(it) }, formatTime = { analyticsTimeLabel(it, to - from) })
     }
@@ -282,7 +283,7 @@ private fun SignalCard(points: List<SignalPoint>, observers: List<MeshObserver>,
     val counts = signals.mapNotNull { it.quality }.groupingBy { it }.eachCount()
     val floors = signals.mapNotNull { it.spreadingFactor }.distinct()
     val best = signals.first()
-    ChartCard("Signal", "How well observers hear this node (SNR)", Icons.Outlined.GraphicEq) {
+    ChartCard("Signal", "How well observers hear this node (SNR)", Icons.Outlined.GraphicEq, GlossaryTerm.SNR) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Heard by ${signals.size} observer${if (signals.size == 1) "" else "s"}" +
                 SignalQuality.entries.mapNotNull { q -> counts[q]?.let { " · $it ${q.label.lowercase()}" } }.joinToString(""),
@@ -463,12 +464,13 @@ private fun ListRow(icon: ImageVector, title: String, subtitle: String, value: S
 }
 
 @Composable
-private fun ChartCard(title: String, subtitle: String, icon: ImageVector, content: @Composable ColumnScope.() -> Unit) {
+private fun ChartCard(title: String, subtitle: String, icon: ImageVector, learn: GlossaryTerm? = null, content: @Composable ColumnScope.() -> Unit) {
     AnalyticsCard {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Icon(icon, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
             Column {
-                Text(title, style = MaterialTheme.typography.titleMedium)
+                if (learn != null) LearnLabel(title, learn, style = MaterialTheme.typography.titleMedium)
+                else Text(title, style = MaterialTheme.typography.titleMedium)
                 Text(subtitle, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

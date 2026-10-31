@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.packets
 
+import org.nodescope.android.feature.learn.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDropDown
@@ -71,7 +72,7 @@ fun RouteHearers(option: RouteOption) {
     if (option.heardBy.isEmpty() && option.alongTheWay.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         if (option.heardBy.isNotEmpty()) {
-            Text("Heard by", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            LearnLabel("Heard by", GlossaryTerm.HEARD_BY, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             option.heardBy.forEach { hearing ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(hearing.observer, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -80,8 +81,10 @@ fun RouteHearers(option: RouteOption) {
                 }
             }
         }
-        if (option.alongTheWay.isNotEmpty()) Text(
-            "Also heard along the way by " + option.alongTheWay.joinToString(", ") { "${it.observer} (${it.hops} hops)" },
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (option.alongTheWay.isNotEmpty()) Row(verticalAlignment = Alignment.Top) {
+            Text("Also heard along the way by " + option.alongTheWay.joinToString(", ") { "${it.observer} (${it.hops} hops)" },
+                Modifier.weight(1f, fill = false), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            LearnButton(GlossaryTerm.ALONG_THE_WAY)
+        }
     }
 }

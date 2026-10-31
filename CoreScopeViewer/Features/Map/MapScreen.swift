@@ -155,7 +155,7 @@ struct MapScreen: View {
                             .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
                             .frame(width: 7, height: 7)
                         Text("Live Map")
-                            .font(.headline)
+                            .font(.monaspace(.headline))
                     }
                     .padding(.horizontal, 14)
                     .frame(height: 44)
@@ -276,7 +276,7 @@ struct MapScreen: View {
                                 .fill(liveFeed.isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
                                 .frame(width: 7, height: 7)
                             Text("Live Map")
-                                .font(.headline)
+                                .font(.monaspace(.headline))
                                 .fixedSize()
                         }
                         .padding(.horizontal, 6)
@@ -368,7 +368,7 @@ struct MapScreen: View {
                         if let showLivePackets {
                             Button(action: showLivePackets) {
                                 Image(systemName: "list.bullet.rectangle")
-                                    .font(.title3.weight(.semibold))
+                                    .font(.monaspace(.title3).weight(.semibold))
                                     .foregroundStyle(colorScheme == .dark ? Color.white : Color.accentColor)
                                     .frame(width: 44, height: 44)
                             }
@@ -379,7 +379,7 @@ struct MapScreen: View {
 
                         Button(action: centerOnUserLocation) {
                             Image(systemName: "location.fill")
-                                .font(.title3.weight(.semibold))
+                                .font(.monaspace(.title3).weight(.semibold))
                                 .foregroundStyle(colorScheme == .dark ? Color.white : Color.accentColor)
                                 .frame(width: 44, height: 44)
                         }
@@ -432,13 +432,24 @@ struct MapScreen: View {
                 }
                 .overlay(alignment: .bottom) {
                     if !viewModel.nodes.isEmpty {
-                        Text("\(filteredNodeCount) nodes")
-                            .font(.caption)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(.thinMaterial, in: Capsule())
-                            .padding(.bottom, 12)
-                            .padding(.trailing, trailingObscuredWidth)
+                        HStack(spacing: 0) {
+                            Text("\(filteredNodeCount) nodes")
+                                .font(.caption)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(.thinMaterial, in: Capsule())
+                                .frame(maxWidth: .infinity)
+
+                            // Centred on the left screen, like the replay controls, rather than
+                            // on the hinge when the map spans both screens.
+                            if centersBottomControlsInLeadingPane {
+                                Color.clear
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 0)
+                            }
+                        }
+                        .padding(.bottom, 12)
+                        .padding(.trailing, trailingObscuredWidth)
                     }
                 }
                 .overlay {
@@ -835,7 +846,7 @@ struct MapScreen: View {
                                     .overlay(alignment: .top) {
                                         if showsNodeNames {
                                             Text(node.name ?? shortKey(node.publicKey))
-                                                .font(.caption2.weight(.semibold))
+                                                .font(.monaspace(.caption2).weight(.semibold))
                                                 .foregroundStyle(.primary)
                                                 .lineLimit(1)
                                                 .fixedSize(horizontal: true, vertical: false)
@@ -2800,21 +2811,34 @@ private struct MapRouteDetailsSheet: View {
         NavigationStack {
             List {
                 Section("Summary") {
-                    LabeledContent("Hops", value: "\(route.hops.count)")
+                    LabeledContent {
+                        Text("\(route.hops.count)")
+                    } label: {
+                        LearnLabel("Hops", term: .hop)
+                    }
                     LabeledContent("Age") {
                         Text(route.observedAt, style: .relative)
                     }
                     if let observerName = route.observerName, !observerName.isEmpty {
-                        LabeledContent("Observer", value: observerName)
+                        LabeledContent {
+                            Text(observerName)
+                                .font(.monaspace(.body))
+                        } label: {
+                            LearnLabel("Observer", term: .observer)
+                        }
                     }
                     if let snr = route.snr {
-                        LabeledContent("SNR") {
+                        LabeledContent {
                             Text("\(snr, format: .number.precision(.fractionLength(1))) dB")
+                        } label: {
+                            LearnLabel("SNR", term: .snr)
                         }
                     }
                     if let rssi = route.rssi {
-                        LabeledContent("RSSI") {
+                        LabeledContent {
                             Text("\(rssi, format: .number.precision(.fractionLength(0))) dBm")
+                        } label: {
+                            LearnLabel("RSSI", term: .rssi)
                         }
                     }
                     if let packetHash = route.packetHash, !packetHash.isEmpty {
@@ -2827,7 +2851,7 @@ private struct MapRouteDetailsSheet: View {
                     MapRouteMessageSection(sender: route.sender, messageText: messageText)
                 }
 
-                Section("Route") {
+                Section {
                     ForEach(route.hops) { hop in
                         if let node = hop.node {
                             NavigationLink {
@@ -2839,6 +2863,8 @@ private struct MapRouteDetailsSheet: View {
                             MapRouteHopRow(hop: hop, showsDisclosureIndicator: false)
                         }
                     }
+                } header: {
+                    LearnLabel("Route", term: .route)
                 }
             }
             .meshPageBackground()
@@ -2873,7 +2899,7 @@ private struct MapRouteMessageSection: View {
             VStack(alignment: .leading, spacing: 6) {
                 if let sender, !sender.isEmpty {
                     Text(sender)
-                        .font(.subheadline.weight(.semibold))
+                        .font(.monaspace(.subheadline).weight(.semibold))
                 }
                 Text(messageText)
                     .lineLimit(isExpanded ? nil : 4)
@@ -2914,7 +2940,7 @@ private struct MapRouteHopRow: View {
                     .foregroundStyle(.primary)
                 if let publicKey = hop.publicKey, !dynamicTypeSize.isAccessibilitySize {
                     Text(publicKey)
-                        .font(.caption.monospaced())
+                        .font(.monaspace(.caption))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -3490,13 +3516,13 @@ private struct MapNodeSearchRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(name)
-                    .font(.headline)
+                    .font(.monaspace(.headline))
                     .lineLimit(1)
                 HStack(spacing: 6) {
                     Text(role.capitalized)
                     Text("·")
                     Text(publicKey.prefix(10).uppercased())
-                        .font(.caption.monospaced())
+                        .font(.monaspace(.caption))
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)

@@ -238,14 +238,14 @@ private struct NodeAnalyticsLinkCard: View {
     var body: some View {
         HStack(spacing: 14) {
             Image(systemName: "chart.xyaxis.line")
-                .font(.title2)
+                .font(.monaspace(.title2))
                 .foregroundStyle(NodeScopeStyle.signal)
                 .frame(width: 48, height: 48)
                 .background(NodeScopeStyle.signal.opacity(0.13), in: Circle())
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("Node Analytics")
-                    .font(.headline)
+                    .font(.monaspace(.headline))
                 Text("Activity, signal, coverage, and peer trends")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -304,18 +304,21 @@ private struct NodeIdentityCard: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 12) {
                 Image(systemName: NodeRoleStyle.symbolName(for: node.role))
-                    .font(.title2.weight(.semibold))
+                    .font(.monaspace(.title2).weight(.semibold))
                     .foregroundStyle(.white)
                     .frame(width: 50, height: 50)
                     .background(NodeRoleStyle.color(for: node.role), in: Circle())
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(node.name ?? "Unnamed Node")
-                        .font(.title2.bold())
+                        .font(.monaspace(.title2).bold())
                     HStack(spacing: 6) {
                         Text(node.role.capitalized)
                             .font(.caption.weight(.bold))
                             .foregroundStyle(NodeRoleStyle.color(for: node.role))
+                        if let roleTerm = GlossaryTerm(role: node.role) {
+                            LearnButton(term: roleTerm)
+                        }
                         if let lastSeen = node.lastSeen {
                             Text("· Seen \(RelativeTime.string(from: lastSeen))")
                                 .font(.caption)
@@ -324,6 +327,9 @@ private struct NodeIdentityCard: View {
                             Text("· Heard \(RelativeTime.string(from: lastHeard))")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                        }
+                        if node.lastSeen != nil || node.lastHeard != nil {
+                            LearnButton(term: .lastHeard)
                         }
                     }
                 }
@@ -336,7 +342,7 @@ private struct NodeIdentityCard: View {
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Text(node.publicKey.uppercased())
-                    .font(.caption.monospaced())
+                    .font(.monaspace(.caption))
                     .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -382,7 +388,8 @@ private struct NodeHealthCard: View {
                 NodeMetricTile(value: stats.packetsToday.formatted(), label: "Today")
                 NodeMetricTile(
                     value: stats.avgSnr.map { String(format: "%.1f", $0) } ?? "—",
-                    label: "Avg SNR"
+                    label: "Avg SNR",
+                    learn: .snr
                 )
             }
 
@@ -401,14 +408,20 @@ private struct NodeHealthCard: View {
 private struct NodeMetricTile: View {
     let value: String
     let label: LocalizedStringKey
+    var learn: GlossaryTerm?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(value)
-                .font(.headline.monospacedDigit())
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+                .font(.monaspace(.headline))
+            HStack(spacing: 2) {
+                Text(label)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                if let learn {
+                    LearnButton(term: learn)
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
@@ -426,7 +439,7 @@ private struct NodeObserversCard: View {
     }
 
     var body: some View {
-        NodeDetailCard(title: "Heard By", symbol: "ear.badge.waveform") {
+        NodeDetailCard(title: "Heard By", symbol: "ear.badge.waveform", learn: .observer) {
             VStack(spacing: 0) {
                 ForEach(visibleObservers) { observer in
                     Button {
@@ -443,7 +456,7 @@ private struct NodeObserversCard: View {
                             }
                         VStack(alignment: .leading, spacing: 2) {
                             Text(observer.observerName ?? observer.observerId)
-                                .font(.subheadline.weight(.semibold))
+                                .font(.monaspace(.subheadline).weight(.semibold))
                                 .lineLimit(1)
                             HStack(spacing: 8) {
                                 if let iata = observer.iata { Text(iata) }
@@ -589,7 +602,7 @@ private struct NodeNeighborRow: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(name ?? displayPrefix ?? String(localized: "Unknown Node"))
-                    .font(.subheadline.weight(.semibold))
+                    .font(.monaspace(.subheadline).weight(.semibold))
                     .lineLimit(2)
                     .layoutPriority(1)
                 if let snr {
@@ -682,7 +695,7 @@ private struct NodeLinkRow: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(link.name)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.monaspace(.subheadline).weight(.semibold))
                     .lineLimit(2)
                     .layoutPriority(1)
                 Text(link.bidir ? "Bidirectional" : "One way")
@@ -729,7 +742,7 @@ private struct NodePathsCard: View {
                 ForEach(visiblePaths) { path in
                     VStack(alignment: .leading, spacing: 6) {
                         Text(path.hops.map(\.name).joined(separator: " → "))
-                            .font(.subheadline.weight(.medium))
+                            .font(.monaspace(.subheadline).weight(.medium))
                             .fixedSize(horizontal: false, vertical: true)
                         HStack(spacing: 10) {
                             Label("\(path.hops.count) hops", systemImage: "point.3.connected.trianglepath.dotted")
@@ -765,7 +778,7 @@ private struct ExpandSectionButton: View {
                 Spacer()
                 Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
             }
-            .font(.caption.weight(.bold))
+            .font(.monaspace(.caption).weight(.bold))
             .foregroundStyle(NodeScopeStyle.signal)
             .padding(.horizontal, 12)
             .padding(.vertical, 9)
@@ -778,19 +791,26 @@ private struct ExpandSectionButton: View {
 private struct NodeDetailCard<Content: View>: View {
     let title: LocalizedStringKey
     let symbol: String
+    let learn: GlossaryTerm?
     @ViewBuilder let content: Content
 
-    init(title: LocalizedStringKey, symbol: String, @ViewBuilder content: () -> Content) {
+    init(title: LocalizedStringKey, symbol: String, learn: GlossaryTerm? = nil, @ViewBuilder content: () -> Content) {
         self.title = title
         self.symbol = symbol
+        self.learn = learn
         self.content = content()
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label(title, systemImage: symbol)
-                .font(.headline)
-                .foregroundStyle(NodeScopeStyle.signal)
+            HStack(spacing: 4) {
+                Label(title, systemImage: symbol)
+                    .font(.monaspace(.headline))
+                    .foregroundStyle(NodeScopeStyle.signal)
+                if let learn {
+                    LearnButton(term: learn)
+                }
+            }
             content
         }
         .padding(16)
@@ -829,7 +849,7 @@ private struct MeshCoreContactSheet: View {
 
                     VStack(spacing: 4) {
                         Text(contact.name)
-                            .font(.headline)
+                            .font(.monaspace(.headline))
                         Text(typeLabel)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)

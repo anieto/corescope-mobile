@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.channels
 
+import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.meshCardColors
 import org.nodescope.android.core.network.BackendCapability
 import androidx.compose.foundation.layout.*
@@ -93,7 +94,12 @@ fun ChannelsScreen(
                 items(sections.monitored, key = { it.id }) { ChannelCard(it, now, it.id == selectedId) { onChannel(it) } }
             }
             if (sections.server.isNotEmpty()) {
-                item { SectionLabel("Server monitored channels") }
+                item {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        SectionLabel("Server monitored channels")
+                        LearnButton(GlossaryTerm.CHANNEL, Modifier.padding(top = 8.dp))
+                    }
+                }
                 items(sections.server, key = { it.id }) { ChannelCard(it, now, it.id == selectedId) { onChannel(it) } }
             }
             // Only once a load has finished: before the first load starts nothing is "loading" yet,

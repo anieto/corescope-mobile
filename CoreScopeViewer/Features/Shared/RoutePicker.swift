@@ -98,27 +98,33 @@ struct RouteHearersView: View {
         if !option.heardBy.isEmpty || !option.alongTheWay.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
                 if !option.heardBy.isEmpty {
-                    Text("Heard by")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 4) {
+                        Text("Heard by")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        LearnButton(term: .heardBy)
+                    }
                     ForEach(option.heardBy, id: \.self) { hearing in
                         HStack(alignment: .firstTextBaseline) {
                             Text(hearing.observer)
-                                .font(.subheadline)
+                                .font(.monaspace(.subheadline))
                                 .lineLimit(1)
                             Spacer(minLength: 8)
                             Text([hearing.region, hearing.signalText].compactMap { $0 }.joined(separator: " · "))
-                                .font(.caption.monospacedDigit())
+                                .font(.monaspace(.caption))
                                 .foregroundStyle(.secondary)
                         }
                     }
                 }
                 if !option.alongTheWay.isEmpty {
-                    Text("Also heard along the way by "
-                        + option.alongTheWay.map { "\($0.observer) (\($0.hops) hops)" }.joined(separator: ", "))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text("Also heard along the way by "
+                            + option.alongTheWay.map { "\($0.observer) (\($0.hops) hops)" }.joined(separator: ", "))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        LearnButton(term: .alongTheWay)
+                    }
                 }
             }
         }

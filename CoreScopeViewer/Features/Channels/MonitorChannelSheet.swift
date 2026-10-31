@@ -101,14 +101,14 @@ private struct AddChannelHeader: View {
     var body: some View {
         HStack(spacing: 14) {
             Image(systemName: "lock.shield.fill")
-                .font(.title2)
+                .font(.monaspace(.title2))
                 .foregroundStyle(NodeScopeStyle.signal)
                 .frame(width: 48, height: 48)
                 .background(NodeScopeStyle.signal.opacity(0.13), in: RoundedRectangle(cornerRadius: 15))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("Listen to a Channel")
-                    .font(.title2.bold())
+                    .font(.monaspace(.title2).bold())
                 Text("Keys are processed and stored on this device.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -128,7 +128,7 @@ private struct ChannelModeSelector: View {
                 } label: {
                     VStack(spacing: 7) {
                         Image(systemName: mode.symbol)
-                            .font(.title3.weight(.semibold))
+                            .font(.monaspace(.title3).weight(.semibold))
                         Text(mode.shortTitle)
                             .font(.caption.weight(.semibold))
                             .lineLimit(1)
@@ -156,7 +156,7 @@ private struct ChannelInputCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Label(mode.title, systemImage: mode.symbol)
-                .font(.headline)
+                .font(.monaspace(.headline))
                 .foregroundStyle(NodeScopeStyle.signal)
 
             switch mode {
@@ -202,10 +202,10 @@ private struct GeneratedKeyCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Generated Key", systemImage: "key.fill")
-                .font(.headline)
+                .font(.monaspace(.headline))
                 .foregroundStyle(NodeScopeStyle.activity)
             Text(channel.keyHex)
-                .font(.system(.subheadline, design: .monospaced, weight: .semibold))
+                .font(.monaspace(.subheadline).weight(.semibold))
                 .textSelection(.enabled)
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)

@@ -17,5 +17,11 @@
 			</array>
 		</dict>
 	</array>
+	<key>UIAppFonts</key>
+	<array>
+		<string>MonaspaceNeon-Regular.otf</string>
+		<string>MonaspaceNeon-SemiBold.otf</string>
+		<string>MonaspaceNeon-Bold.otf</string>
+	</array>
 </dict>
 </plist>

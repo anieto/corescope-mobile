@@ -322,10 +322,10 @@ private struct AccountIdentityCard: View {
     let user: CoreScopeAccountUser
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "person.crop.circle.fill").font(.largeTitle).foregroundStyle(NodeScopeStyle.signal)
+            Image(systemName: "person.crop.circle.fill").font(.monaspace(.largeTitle)).foregroundStyle(NodeScopeStyle.signal)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
-                Text(user.displayName.isEmpty ? user.email : user.displayName).font(.headline)
+                Text(user.displayName.isEmpty ? user.email : user.displayName).font(.monaspace(.headline))
                 Text(user.email).font(.subheadline).foregroundStyle(.secondary).textSelection(.enabled)
                 Label("Signed in", systemImage: "checkmark.circle").font(.caption).foregroundStyle(.secondary)
             }
@@ -356,7 +356,7 @@ private struct AccountSyncCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Sync & device favorites", systemImage: "arrow.triangle.2.circlepath").font(.headline)
+            Label("Sync & device favorites", systemImage: "arrow.triangle.2.circlepath").font(.monaspace(.headline))
             .accessibilityAddTraits(.isHeader)
             Text("Sync uploads only account edits. Device favorites stay local unless you import them.")
                 .font(.subheadline).foregroundStyle(.secondary)
@@ -381,7 +381,7 @@ private struct AccountResetCard: View {
     let resolve: (Bool) -> Void
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Account settings were reset", systemImage: "exclamationmark.triangle").font(.headline)
+            Label("Account settings were reset", systemImage: "exclamationmark.triangle").font(.monaspace(.headline))
             .accessibilityAddTraits(.isHeader)
             Text("Sync is paused. Use the server’s selections or restore your saved account favorites. Device favorites are unaffected.")
                 .font(.subheadline).foregroundStyle(.secondary)
@@ -405,7 +405,7 @@ private struct AccountSelectionsCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Account nodes", systemImage: "star").font(.headline)
+            Label("Account nodes", systemImage: "star").font(.monaspace(.headline))
             .accessibilityAddTraits(.isHeader)
             Text("\(keys.count) favorites · \(claimed.count) claimed nodes").font(.subheadline).foregroundStyle(.secondary)
             ForEach(keys, id: \.self) { key in
@@ -497,10 +497,10 @@ private struct AccountNodeIdentity: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            if let name { Text(name).font(.subheadline.weight(.semibold)) }
+            if let name { Text(name).font(.monaspace(.subheadline).weight(.semibold)) }
             else { Text("Name unavailable").font(.subheadline).foregroundStyle(.secondary) }
             Text("\(publicKey.prefix(12))…\(publicKey.suffix(6))")
-                .font(.caption.monospaced()).foregroundStyle(.secondary)
+                .font(.monaspace(.caption)).foregroundStyle(.secondary)
                 .accessibilityLabel("Public key \(publicKey)")
         }
         .accessibilityElement(children: .combine)
@@ -514,7 +514,7 @@ private struct AccountSignInCard: View {
     let signIn: () -> Void
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Label("Sign in", systemImage: "person.crop.circle.badge.checkmark").font(.headline)
+            Label("Sign in", systemImage: "person.crop.circle.badge.checkmark").font(.monaspace(.headline))
             .accessibilityAddTraits(.isHeader)
             TextField("Email", text: $email).textContentType(.username)
                 .keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()

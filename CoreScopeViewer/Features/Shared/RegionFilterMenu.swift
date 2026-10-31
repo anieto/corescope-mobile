@@ -118,6 +118,11 @@ struct RegionFilterSelectionScreen: View {
         .meshPageBackground()
         .navigationTitle("Region")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                LearnButton(term: .region)
+            }
+        }
     }
 
     private var regionRows: some View {

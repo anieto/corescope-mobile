@@ -61,6 +61,7 @@
     <string name="analyzer_diagnostics">Analyzer diagnostics</string>
     <string name="storage">Storage</string>
     <string name="about_title">About</string>
+    <string name="glossary">Glossary</string>
     <style name="Theme.NodeScope" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
     </style>

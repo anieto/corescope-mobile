@@ -108,6 +108,8 @@ fun ExploreScreen(model: ExploreViewModel?, host: String, snapshot: AnalyzerSnap
 
     var searching by remember { mutableStateOf(false) }
     var customizing by remember { mutableStateOf(false) }
+    // Recently Viewed shows a few items until expanded; it starts collapsed each launch.
+    var showsAllRecent by remember { mutableStateOf(false) }
     var preferences by remember(host) { mutableStateOf(loadGlancePreferences(context, host)) }
     val favorites = library.favorites
     val recent = library.state.recent.take(10)
@@ -194,9 +196,15 @@ fun ExploreScreen(model: ExploreViewModel?, host: String, snapshot: AnalyzerSnap
                         TextButton(onClick = library::clearRecent) { Text("Clear") }
                     }
                 }
-                items(recent, key = { "recent-${it.key}" }) { item ->
+                items(if (showsAllRecent) recent else recent.take(COLLAPSED_RECENT_COUNT), key = { "recent-${it.key}" }) { item ->
                     SavedRow(item, now = now, current = currentNode(item, nodes), onOpen = { open(item, actions) }) {
                         IconButton(onClick = { library.removeRecent(item) }) { Icon(Icons.Outlined.Close, "Remove ${item.title} from recent") }
+                    }
+                }
+                if (recent.size > COLLAPSED_RECENT_COUNT) item(key = "recent-toggle") {
+                    TextButton(onClick = { showsAllRecent = !showsAllRecent }) {
+                        Text(if (showsAllRecent) "Show less" else "Show all (${recent.size})")
+                        Icon(if (showsAllRecent) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null, Modifier.padding(start = 4.dp))
                     }
                 }
             }
@@ -389,8 +397,10 @@ private fun SavedRow(item: SavedItem, now: Long?, current: MeshNode?, onOpen: ()
             KindIcon(item.kind, current ?: item.node)
             Column(Modifier.weight(1f)) {
                 Text(current?.displayName?.takeIf { current.name != null } ?: item.title, style = MaterialTheme.typography.titleSmall)
+                // Without a time this is the favorites list, whose subtitle is a key, observer code or sender: data, in Neon.
                 Text(listOfNotNull(item.subtitle, now?.let { relativeTime(java.time.Instant.ofEpochMilli(item.at), it) }).joinToString(" · "),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontFamily = if (now == null) MonaspaceNeon else null)
                 detail?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             trailing()
@@ -529,3 +539,5 @@ private fun ResultRow(kind: SavedKind, node: MeshNode?, title: String, subtitle:
         }
     }
 }
+
+private const val COLLAPSED_RECENT_COUNT = 3

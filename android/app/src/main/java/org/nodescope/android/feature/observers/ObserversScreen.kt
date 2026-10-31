@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.observers
 
+import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -81,7 +82,8 @@ fun ObserversScreen(
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item {
                 BrowseHeader("Observers", feed.connection, "Network telemetry live", summary, filterCount, searching,
-                    onFilters = { showFilters = true }, onSearch = { searching = !searching; if (!searching) query = "" })
+                    onFilters = { showFilters = true }, onSearch = { searching = !searching; if (!searching) query = "" },
+                    titleAccessory = { LearnButton(GlossaryTerm.OBSERVER) })
             }
             if (searching) item { BrowseSearchField(query, { query = it }, "Search name, ID, region or model") }
             if (beaconSource) {

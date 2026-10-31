@@ -18,6 +18,7 @@ struct NodeScopeApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
+        AppFont.styleNavigationTitles()
         let settings = AnalyzerSettings()
         _settings = State(initialValue: settings)
         _liveFeed = State(initialValue: LiveFeedService(settings: settings))

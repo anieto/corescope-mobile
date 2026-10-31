@@ -158,7 +158,7 @@ private struct LinkProfileMapStyleMenu: View {
                 Image(systemName: "map")
             } else {
                 Image(systemName: "map")
-                    .font(.title3)
+                    .font(.monaspace(.title3))
                     .frame(width: 44, height: 44)
                     .background(.regularMaterial, in: Circle())
             }
@@ -173,7 +173,7 @@ private struct LinkProfileBackButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "chevron.backward")
-                .font(.title2.weight(.semibold))
+                .font(.monaspace(.title2).weight(.semibold))
                 .frame(width: 44, height: 44)
                 .background(.regularMaterial, in: Circle())
         }
@@ -284,7 +284,7 @@ private struct LinkProfileEditor: View {
         VStack(alignment: .leading, spacing: 16) {
             if usesCompactHeader {
                 Label("Link Profile", systemImage: "point.topleft.down.to.point.bottomright.curvepath")
-                    .font(.title2.bold())
+                    .font(.monaspace(.title2).bold())
             }
             LinkProfileHeader(model: model, activeEndpoint: $activeEndpoint)
             ScrollView {
@@ -444,6 +444,7 @@ private struct LinkProfilePersistentMap: View {
                         ForEach(NodePlannerPathClearance.allCases, id: \.self) { clearance in
                             LinkProfileClearanceLegend(clearance: clearance)
                         }
+                        LearnButton(term: .clearance)
                     }
                     .font(.caption)
                     .padding(.horizontal, 12)
@@ -1176,7 +1177,7 @@ private struct LinkProfileHeader: View {
                     Image(systemName: status.symbol)
                         .foregroundStyle(status.pathClearance.color)
                 }
-                .font(.headline)
+                .font(.monaspace(.headline))
                 Text(summary(result.result))
                     .foregroundStyle(.secondary)
             } else {
@@ -1264,13 +1265,13 @@ private struct LinkProfilePointCard: View {
             } label: {
                 HStack(spacing: 12) {
                     Text(endpoint.letter)
-                        .font(.headline.bold())
+                        .font(.monaspace(.headline).bold())
                         .foregroundStyle(.white)
                         .frame(width: 30, height: 30)
                         .background(endpoint.color, in: Circle())
                     VStack(alignment: .leading, spacing: 2) {
                         Text(title)
-                            .font(.headline)
+                            .font(.monaspace(.headline))
                             .foregroundStyle(.primary)
                         Text(summary)
                             .font(.subheadline)
@@ -1424,7 +1425,7 @@ private struct LinkProfileRadioSettings: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Radio settings")
-                .font(.headline)
+                .font(.monaspace(.headline))
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 8) { presets }
                 VStack(alignment: .leading, spacing: 8) { presets }
@@ -1536,12 +1537,14 @@ private struct LinkProfileResultCard: View {
                 if let linkMargin = result.result.linkMarginDB {
                     LinkProfileMetricRow(
                         label: "Link margin",
-                        value: linkMargin.formatted(.number.precision(.fractionLength(1))) + " dB"
+                        value: linkMargin.formatted(.number.precision(.fractionLength(1))) + " dB",
+                        learn: .linkMargin
                     )
                 }
                 LinkProfileMetricRow(
                     label: "Worst Fresnel clearance",
-                    value: result.result.worstClearancePercent.formatted(.number.precision(.fractionLength(0))) + "%"
+                    value: result.result.worstClearancePercent.formatted(.number.precision(.fractionLength(0))) + "%",
+                    learn: .clearance
                 )
                 LinkProfileMetricRow(
                     label: "Terrain source",
@@ -1626,8 +1629,11 @@ private struct LinkProfileTerrainCanvas: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Terrain profile")
-                .font(.subheadline.weight(.semibold))
+            HStack(spacing: 4) {
+                Text("Terrain profile")
+                    .font(.subheadline.weight(.semibold))
+                LearnButton(term: .fresnelZone)
+            }
 
             Canvas { context, size in
                 let coordinates = Coordinates(size: size, xRange: xRange, yRange: yRange)
@@ -2039,11 +2045,17 @@ private struct LinkProfileChartLegend: View {
 private struct LinkProfileMetricRow: View {
     let label: LocalizedStringResource
     let value: String
+    var learn: GlossaryTerm?
 
     var body: some View {
         GridRow {
-            Text(label)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 4) {
+                Text(label)
+                    .foregroundStyle(.secondary)
+                if let learn {
+                    LearnButton(term: learn)
+                }
+            }
             Text(value)
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }

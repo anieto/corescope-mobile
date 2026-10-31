@@ -1,5 +1,9 @@
 package org.nodescope.android.core.design
 
+import org.nodescope.android.R
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -41,11 +45,15 @@ fun NodeScopeTheme(appearance: Appearance, backgroundTexture: Boolean = true, co
         outline = Color(0xFF71859A), outlineVariant = Color(0xFFD6E1ED), surfaceTint = SignalBlue,
     )
     val typography = Typography().let { base -> base.copy(
-        displaySmall = base.displaySmall.copy(fontWeight = FontWeight.Medium, letterSpacing = (-1.2).sp),
-        headlineLarge = base.headlineLarge.copy(fontWeight = FontWeight.SemiBold, letterSpacing = (-0.5).sp),
-        headlineMedium = base.headlineMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp),
-        titleLarge = base.titleLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.4).sp),
-        titleMedium = base.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+        displayLarge = base.displayLarge.monaspace(),
+        displayMedium = base.displayMedium.monaspace(),
+        displaySmall = base.displaySmall.monaspace(FontWeight.Medium),
+        headlineLarge = base.headlineLarge.monaspace(FontWeight.Bold),
+        headlineMedium = base.headlineMedium.monaspace(FontWeight.Bold),
+        headlineSmall = base.headlineSmall.monaspace(FontWeight.SemiBold),
+        titleLarge = base.titleLarge.monaspace(FontWeight.Bold),
+        titleMedium = base.titleMedium.monaspace(FontWeight.SemiBold),
+        titleSmall = base.titleSmall.monaspace(FontWeight.SemiBold),
         labelSmall = base.labelSmall.copy(letterSpacing = 0.1.sp),
     ) }
     MaterialTheme(colorScheme = colors, typography = typography, shapes = Shapes(
@@ -63,3 +71,19 @@ fun statusAccent(active: Boolean): Color {
         if (dark) Color(0xFFFFB866) else Color(0xFF895000)
     }
 }
+
+/**
+ * Monaspace Neon, for headings and the values people scan (counts, SNR, hashes, keys); body and
+ * label text stay in the system font. Matches iOS (`AppFont`).
+ */
+val MonaspaceNeon = FontFamily(
+    Font(R.font.monaspace_neon_regular, FontWeight.Normal),
+    Font(R.font.monaspace_neon_regular, FontWeight.Medium),
+    Font(R.font.monaspace_neon_semibold, FontWeight.SemiBold),
+    Font(R.font.monaspace_neon_bold, FontWeight.Bold),
+)
+
+/** A heading style in Monaspace Neon, a touch smaller than the system size because its letters are wider. */
+private fun TextStyle.monaspace(weight: FontWeight? = fontWeight) = copy(
+    fontFamily = MonaspaceNeon, fontWeight = weight, fontSize = fontSize * 0.92f, lineHeight = lineHeight * 0.92f, letterSpacing = 0.sp,
+)

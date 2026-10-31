@@ -52,7 +52,7 @@ struct AnalyzerSourceLogo: View {
 
     private var symbol: some View {
         Image(systemName: source.isDefault ? "star.circle.fill" : "antenna.radiowaves.left.and.right.circle.fill")
-            .font(.title3)
+            .font(.monaspace(.title3))
             .foregroundStyle(source.isDefault ? .yellow : Color.accentColor)
     }
 }

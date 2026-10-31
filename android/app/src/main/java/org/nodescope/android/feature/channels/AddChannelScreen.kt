@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.channels
 
+import org.nodescope.android.core.design.MonaspaceNeon
 import org.nodescope.android.core.design.meshCardColors
 import android.content.Intent
 import androidx.compose.foundation.layout.*
@@ -88,7 +89,7 @@ fun AddChannelScreen(store: MonitoredChannelStore, onDone: () -> Unit) {
                     }
                     AddMode.PRIVATE -> {
                         OutlinedTextField(keyHex, { keyHex = it }, Modifier.fillMaxWidth(), label = { Text("32-character hexadecimal key") },
-                            singleLine = true, textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
+                            singleLine = true, textStyle = LocalTextStyle.current.copy(fontFamily = MonaspaceNeon),
                             keyboardOptions = plain.copy(keyboardType = KeyboardType.Password))
                         OutlinedTextField(label, { label = it }, Modifier.fillMaxWidth(), label = { Text("Display name (optional)") }, singleLine = true)
                     }
@@ -124,7 +125,7 @@ private fun GeneratedKey(channel: MonitoredChannel) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Generated key for ${channel.title}", style = MaterialTheme.typography.titleMedium)
             Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.small) {
-                Text(channel.keyHex, Modifier.fillMaxWidth().padding(12.dp), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodyMedium)
+                Text(channel.keyHex, Modifier.fillMaxWidth().padding(12.dp), fontFamily = MonaspaceNeon, style = MaterialTheme.typography.bodyMedium)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { copy("Channel key", channel.keyHex, true) }, Modifier.weight(1f)) {

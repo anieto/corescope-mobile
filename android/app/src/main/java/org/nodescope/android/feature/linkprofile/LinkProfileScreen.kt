@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.linkprofile
 
+import org.nodescope.android.feature.learn.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
@@ -398,8 +399,8 @@ private fun ProfileResult(analysis: LinkAnalysis, distanceUnit: DistanceUnit) {
                 MetricRow("Diffraction loss", "${dB(result.peakDiffractionLossDB)} dB")
                 MetricRow("Total path loss", "${dB(result.totalPathLossDB)} dB")
                 result.receivePowerDBm?.let { MetricRow("Predicted receive level", "${dB(it)} dBm") }
-                result.linkMarginDB?.let { MetricRow("Link margin", "${dB(it)} dB") }
-                MetricRow("Worst Fresnel clearance", "${dB(result.worstClearancePercent, 0)}%")
+                result.linkMarginDB?.let { MetricRow("Link margin", "${dB(it)} dB", GlossaryTerm.LINK_MARGIN) }
+                MetricRow("Worst Fresnel clearance", "${dB(result.worstClearancePercent, 0)}%", GlossaryTerm.CLEARANCE)
                 MetricRow("Terrain source", "Copernicus GLO-90 · Open-Meteo")
                 MetricRow("Calculated", DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(analysis.calculatedAt)))
             }
@@ -420,9 +421,10 @@ private fun ProfileResult(analysis: LinkAnalysis, distanceUnit: DistanceUnit) {
 
 /** A label/value row as on iOS: secondary label, value aligned to the trailing edge. */
 @Composable
-private fun MetricRow(label: String, value: String) {
+private fun MetricRow(label: String, value: String, learn: GlossaryTerm? = null) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (learn != null) LearnLabel(label, learn, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        else Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, Modifier.weight(1f), textAlign = TextAlign.End)
     }
 }
@@ -479,7 +481,7 @@ private fun TerrainChart(analysis: LinkAnalysis, distanceUnit: DistanceUnit) {
     val axisStyle = TextStyle(fontSize = 9.sp, color = secondary)
     val markerStyle = TextStyle(fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color.White)
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("Terrain profile", style = MaterialTheme.typography.titleSmall)
+        LearnLabel("Terrain profile", GlossaryTerm.FRESNEL_ZONE, style = MaterialTheme.typography.titleSmall)
         Canvas(Modifier.fillMaxWidth().height(240.dp).semantics {
             contentDescription = "Terrain elevation, line of sight, first Fresnel zone, and obstructed regions. " +
                 "Distance ${formatDistance(length / 1000, distanceUnit)}. Worst Fresnel clearance ${analysis.result.worstClearancePercent.roundToInt()} percent."

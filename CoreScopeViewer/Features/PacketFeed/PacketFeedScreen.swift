@@ -29,9 +29,11 @@ struct MapPacketWorkspaceScreen: View {
     @Environment(\.isHingedDevice) private var isHingedDevice
     @State private var isDuoPacketSidebarVisible = false
     @State private var isDuoPacketDetailsPresented = false
-    @State private var duoPrimaryWidth: CGFloat = 0
-    @State private var duoWorkspaceWidth: CGFloat = 0
+    @State private var duoSecondaryMinX: CGFloat = 0
+    @State private var duoWorkspaceMaxX: CGFloat = 0
     @State private var duoTrailingInset: CGFloat = 0
+    /// Half folded: the map's controls next to the packets pane keep clear of the crease.
+    @State private var isDuoPartiallyOpen = false
     @State private var isDuoSidebarToolbarShown = false
 
     var body: some View {
@@ -103,9 +105,11 @@ struct MapPacketWorkspaceScreen: View {
         ZStack(alignment: .topTrailing) {
             DuoTwoPaneLayout {
                 Color.clear
-                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { duoPrimaryWidth = $0 }
             } secondary: {
+                // Where the right screen starts. Measuring the left pane's width instead was off by
+                // the side tab column on iOS 27.1, whose split layout widens the left pane under it.
                 Color.clear
+                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minX } action: { duoSecondaryMinX = $0 }
             }
             .allowsHitTesting(false)
             .accessibilityHidden(true)
@@ -116,7 +120,7 @@ struct MapPacketWorkspaceScreen: View {
                 togglePacketSidebar: { setDuoPacketSidebarVisible(!isDuoPacketSidebarVisible) },
                 pinsPacketSidebarToggle: true,
                 centersBottomControlsInLeadingPane: !isDuoPacketSidebarVisible,
-                trailingObscuredWidth: isDuoPacketSidebarVisible ? duoSidebarWidth : 0
+                trailingObscuredWidth: isDuoPacketSidebarVisible ? duoSidebarWidth + duoCreaseMargin : 0
             )
 
             if isDuoPacketSidebarVisible {
@@ -146,13 +150,21 @@ struct MapPacketWorkspaceScreen: View {
                 .zIndex(1)
             }
         }
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { duoWorkspaceWidth = $0 }
+        .modifier(DuoFoldObserver(isPartiallyOpen: $isDuoPartiallyOpen))
+        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxX } action: { duoWorkspaceMaxX = $0 }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.trailing } action: { duoTrailingInset = $0 }
     }
 
-    /// The right screen: everything past the hinge split.
+    /// Room the map's controls leave beside the hinge when the device is half folded, where the
+    /// crease would otherwise run under them.
+    private var duoCreaseMargin: CGFloat {
+        isDuoPartiallyOpen ? 24 : 0
+    }
+
+    /// The right screen: from the hinge split to the workspace's trailing edge (the side tab column
+    /// sits beyond it).
     private var duoSidebarWidth: CGFloat {
-        max(0, duoWorkspaceWidth - duoPrimaryWidth)
+        max(0, duoWorkspaceMaxX - duoSecondaryMinX)
     }
 
     private var regularWorkspace: some View {
@@ -418,9 +430,11 @@ private struct BeaconPacketSummary: View {
                 }
             }
             Section("Packet") {
-                PacketDetailField(title: "Type", value: PayloadType.name(for: row.payloadType))
+                PacketDetailField(title: "Type", value: PayloadType.name(for: row.payloadType),
+                                  learn: PayloadType.name(for: row.payloadType) == "ADVERT" ? .advert : nil)
                 PacketDetailField(title: "Hash", value: row.hash, monospaced: true)
-                PacketDetailField(title: "Observations", value: max(viewModel.detail?.observationCount ?? 0, row.observationCount).formatted())
+                PacketDetailField(title: "Observations", value: max(viewModel.detail?.observationCount ?? 0, row.observationCount).formatted(),
+                                  learn: .observation)
             }
             Section("Heard") {
                 LabeledContent("First seen") {
@@ -430,13 +444,15 @@ private struct BeaconPacketSummary: View {
                         Text("Unknown")
                     }
                 }
-                LabeledContent("Last heard") {
+                LabeledContent {
                     Text(max(viewModel.detail?.packet.timestamp ?? row.lastHeard, row.lastHeard), format: .dateTime)
+                } label: {
+                    LearnLabel("Last heard", term: .lastHeard)
                 }
             }
             if let detail = viewModel.detail {
                 BeaconPacketObservations(observations: detail.observations)
-                Section("Route") {
+                Section {
                     if viewModel.routes.isEmpty {
                         Text("No fully resolved route is available. Uncertain hops are not replayed.")
                             .foregroundStyle(.secondary)
@@ -473,6 +489,8 @@ private struct BeaconPacketSummary: View {
                         .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
                         .disabled(!viewModel.belongsToSource(settings.sourceSession.id))
                     }
+                } header: {
+                    LearnLabel("Route", term: .route)
                 }
             }
         }
@@ -504,7 +522,7 @@ private struct BeaconPacketObservations: View {
             ForEach(observations) { observation in
                 VStack(alignment: .leading, spacing: 5) {
                     Text(observation.observerName ?? String(localized: "Unknown observer"))
-                        .font(.body.weight(.semibold))
+                        .font(.monaspace(.body).weight(.semibold))
                     if let region = observation.observerIata {
                         Label(region, systemImage: "globe.americas.fill")
                             .font(.caption)
@@ -549,6 +567,7 @@ private struct PacketDetailField: View {
     let title: LocalizedStringKey
     let value: String
     var monospaced = false
+    var learn: GlossaryTerm?
 
     var body: some View {
         LabeledContent {
@@ -558,7 +577,12 @@ private struct PacketDetailField: View {
                 .multilineTextAlignment(.trailing)
                 .textSelection(.enabled)
         } label: {
-            Text(title).foregroundStyle(.secondary)
+            HStack(spacing: 4) {
+                Text(title).foregroundStyle(.secondary)
+                if let learn {
+                    LearnButton(term: learn)
+                }
+            }
         }
     }
 }
@@ -1135,14 +1159,14 @@ private struct LivePacketCard: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: symbol)
-                .font(.title3.weight(.bold))
+                .font(.monaspace(.title3).weight(.bold))
                 .foregroundStyle(color)
                 .frame(width: 30)
 
             VStack(alignment: .leading, spacing: 9) {
                 HStack(spacing: 8) {
                     Text(payloadTypeName)
-                        .font(.subheadline.weight(.bold))
+                        .font(.monaspace(.subheadline).weight(.bold))
                         .foregroundStyle(color)
                         .lineLimit(1)
 
@@ -1206,7 +1230,7 @@ private struct LivePacketCard: View {
 
     private var packetTime: some View {
         Text(receivedAt, style: .relative)
-            .font(.caption.monospacedDigit())
+            .font(.monaspace(.caption))
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -1345,7 +1369,7 @@ private struct LivePacketDetailScreen: View {
                 if let version = data.decoded?.header?.payloadVersion {
                     detailRow("Payload Version", value: "\(version)")
                 }
-                detailRow("Observations", value: "\(group.observationCount)")
+                detailRow("Observations", value: "\(group.observationCount)", learn: .observation)
                 detailRow("Received", value: group.latestReceivedAt.formatted(date: .omitted, time: .standard))
             }
 
@@ -1362,7 +1386,7 @@ private struct LivePacketDetailScreen: View {
                         VStack(alignment: .leading, spacing: 5) {
                             HStack(alignment: .firstTextBaseline) {
                                 Text(observation.observerName ?? observation.observerId ?? "Unknown observer")
-                                    .font(.body.weight(.semibold))
+                                    .font(.monaspace(.body).weight(.semibold))
                                 Spacer(minLength: 8)
                                 if let index = RouteOptions.index(for: observation.resolvedPath ?? [], in: replayRoutes) {
                                     RouteTag(isShown: index == selectedRouteIndex, shownText: "Shown below") {
@@ -1393,7 +1417,7 @@ private struct LivePacketDetailScreen: View {
             }
 
             if !routeHops.isEmpty {
-                Section("Route") {
+                Section {
                     if replayRoutes.count > 1 {
                         RoutePicker(options: replayRoutes, selection: $selectedRouteIndex)
                             .tint(NodeScopeStyle.signal)
@@ -1421,6 +1445,8 @@ private struct LivePacketDetailScreen: View {
                         .tint(NodeScopeStyle.activity)
                         .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
                     }
+                } header: {
+                    LearnLabel("Route", term: .route)
                 }
                 .id(routeSectionID)
             }
@@ -1428,7 +1454,7 @@ private struct LivePacketDetailScreen: View {
             if let raw = data.raw, !raw.isEmpty {
                 Section("Raw Packet") {
                     Text(raw)
-                        .font(.caption.monospaced())
+                        .font(.monaspace(.caption))
                         .textSelection(.enabled)
                 }
             }
@@ -1476,8 +1502,8 @@ private struct LivePacketDetailScreen: View {
         )
     }
 
-    private func detailRow(_ label: LocalizedStringKey, value: String, monospaced: Bool = false) -> some View {
-        PacketDetailField(title: label, value: value, monospaced: monospaced)
+    private func detailRow(_ label: LocalizedStringKey, value: String, monospaced: Bool = false, learn: GlossaryTerm? = nil) -> some View {
+        PacketDetailField(title: label, value: value, monospaced: monospaced, learn: learn)
     }
 }
 
@@ -1499,4 +1525,28 @@ extension EnvironmentValues {
     /// Off while the Duo's packet sidebar slides: its toolbar buttons sit in the side column,
     /// which does not move with it.
     @Entry var showsPacketSidebarToolbarItems = true
+}
+
+/// Tracks whether the Duo is half folded. Hinge updates also arrive when nothing changed, so only a
+/// real change touches the state.
+private struct DuoFoldObserver: ViewModifier {
+    @Binding var isPartiallyOpen: Bool
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 27.1, *) {
+            content.onHingeChange { _, newContext in
+                let newValue = newContext.hinge?.status == .partiallyOpen
+                guard newValue != isPartiallyOpen else { return }
+                if accessibilityReduceMotion {
+                    isPartiallyOpen = newValue
+                } else {
+                    withAnimation(.smooth(duration: 0.3)) { isPartiallyOpen = newValue }
+                }
+            }
+        } else {
+            content
+        }
+    }
 }

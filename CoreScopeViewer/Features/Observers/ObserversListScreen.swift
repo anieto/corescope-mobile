@@ -373,8 +373,11 @@ private struct ObserversHeader: View {
 
     private var heading: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text("Observers")
-                .font(.largeTitle.bold())
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("Observers")
+                    .font(.monaspace(.largeTitle).bold())
+                LearnButton(term: .observer)
+            }
             HStack(spacing: 6) {
                 Circle()
                     .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
@@ -413,7 +416,7 @@ private struct ObserversHeader: View {
 
             Button(action: toggleSearch) {
                 Image(systemName: isSearchPresented ? "xmark" : "magnifyingglass")
-                    .font(.body.weight(.semibold))
+                    .font(.monaspace(.body).weight(.semibold))
                     .foregroundStyle(NodeScopeStyle.signal)
                     .frame(width: 40, height: 40)
                     .nodeScopeFloatingGlass(cornerRadius: 20)
@@ -549,10 +552,10 @@ private struct ObserverMetric: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Image(systemName: symbol)
-                .font(.caption.weight(.bold))
+                .font(.monaspace(.caption).weight(.bold))
                 .foregroundStyle(NodeScopeStyle.signal)
             Text(value)
-                .font(.headline.monospacedDigit())
+                .font(.monaspace(.headline))
             Text(label)
                 .font(.caption2.weight(.medium))
                 .foregroundStyle(.secondary)
@@ -592,7 +595,7 @@ private struct ObserverStatusCard: View {
             VStack(alignment: .leading, spacing: 9) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(name)
-                        .font(.headline)
+                        .font(.monaspace(.headline))
                         .lineLimit(1)
                     Spacer()
                     if let online {

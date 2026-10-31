@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.packets
 
+import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
@@ -115,7 +116,7 @@ private fun BeaconPacketRow(row: BeaconLiveRecovery.Row, now: Long, selected: Bo
                     if (row.observationCount > 1) MetricChip(row.observationCount.toString(), Icons.Outlined.Visibility)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(row.hash, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
+                    Text(row.hash, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontFamily = MonaspaceNeon,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(relativeTime(Instant.ofEpochMilli(row.lastHeard), now), style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -175,13 +176,13 @@ fun BeaconPacketDetailScreen(feed: LiveFeedState, browse: BrowseRepository?, hos
             DetailSection("Packet") {
                 DetailRow("Type", typeName)
                 DetailRow("Hash", hash, monospace = true)
-                DetailRow("Observations", maxOf(current?.observationCount ?: 0, row?.observationCount ?: 0).toString())
+                DetailRow("Observations", maxOf(current?.observationCount ?: 0, row?.observationCount ?: 0).toString(), learn = GlossaryTerm.OBSERVATION)
             }
         }
         item {
             DetailSection("Heard") {
                 DetailRow("First seen", row?.firstSeen?.let { dates.format(Instant.ofEpochMilli(it)) } ?: "Unknown")
-                DetailRow("Last heard", lastHeard?.let { dates.format(Instant.ofEpochMilli(it)) } ?: "Unknown")
+                DetailRow("Last heard", lastHeard?.let { dates.format(Instant.ofEpochMilli(it)) } ?: "Unknown", learn = GlossaryTerm.LAST_HEARD)
             }
         }
         if (current != null) {
@@ -200,7 +201,7 @@ fun BeaconPacketDetailScreen(feed: LiveFeedState, browse: BrowseRepository?, hos
                 }
             }
             item {
-                DetailSection("Route") {
+                DetailSection("Route", GlossaryTerm.ROUTE) {
                     if (routes.isEmpty()) {
                         Text("No fully resolved route is available. Uncertain hops are not replayed.",
                             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

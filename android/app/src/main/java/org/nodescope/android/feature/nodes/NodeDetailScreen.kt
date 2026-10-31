@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.nodes
 
+import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.meshCardColors
 import org.nodescope.android.core.design.MeshModalBottomSheet
 import android.content.ActivityNotFoundException
@@ -135,11 +136,14 @@ private fun IdentityCard(node: MeshNode, publicKey: String, favorite: Boolean, n
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(node.name?.takeIf(String::isNotBlank) ?: "Unnamed node", style = MaterialTheme.typography.titleLarge)
-                Text(node.role.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.labelMedium,
+                val roleTerm = GlossaryTerm.forRole(node.role)
+                if (roleTerm != null) LearnLabel(node.role.replaceFirstChar { it.uppercase() }, roleTerm, style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                else Text(node.role.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 // Beacon may not know when a node was last seen; never show "Seen Unknown".
                 parseInstant(node.lastSeen)?.let { seen ->
-                    Text("Seen ${relativeTime(seen, now)}", style = MaterialTheme.typography.bodySmall,
+                    LearnLabel("Seen ${relativeTime(seen, now)}", GlossaryTerm.LAST_HEARD, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -176,7 +180,7 @@ private fun IdentityCard(node: MeshNode, publicKey: String, favorite: Boolean, n
         if (identityExpanded) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Text("Public key", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            SelectionContainer { Text(publicKey.uppercase(), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall) }
+            SelectionContainer { Text(publicKey.uppercase(), fontFamily = MonaspaceNeon, style = MaterialTheme.typography.bodySmall) }
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 DateMetric("First seen", node.firstSeen, Modifier.weight(1f))
                 DateMetric("Last seen", node.lastSeen, Modifier.weight(1f))
@@ -246,7 +250,7 @@ private fun HealthCard(stats: NodeHealthStats) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MetricTile(stats.totalTransmissions?.let(::compactCount) ?: "—", "Transmissions", Modifier.weight(1f))
             MetricTile(stats.packetsToday?.let(::compactCount) ?: "—", "Today", Modifier.weight(1f))
-            MetricTile(stats.avgSnr?.let { "%.1f".format(it) } ?: "—", "Avg SNR", Modifier.weight(1f))
+            MetricTile(stats.avgSnr?.let { "%.1f".format(it) } ?: "—", "Avg SNR", Modifier.weight(1f), GlossaryTerm.SNR)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             stats.totalObservations?.let { MetricChip("${compactCount(it)} observations", Icons.Outlined.Hearing) }
@@ -258,7 +262,7 @@ private fun HealthCard(stats: NodeHealthStats) {
 @Composable
 private fun ObserversCard(observers: List<NodeObserverStat>, onObserver: (String, String) -> Unit) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    DetailCard("Heard by", Icons.Outlined.Sensors) {
+    DetailCard("Heard by", Icons.Outlined.Sensors, GlossaryTerm.OBSERVER) {
         Column {
             observers.take(if (expanded) observers.size else 3).forEachIndexed { index, observer ->
                 if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
@@ -350,7 +354,7 @@ private fun PathsCard(value: NodePaths) {
             value.paths.take(if (expanded) value.paths.size else 3).forEachIndexed { index, path ->
                 if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 Column(Modifier.padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(path.hops.joinToString(" → ") { it.label }, style = MaterialTheme.typography.bodyMedium)
+                    Text(path.hops.joinToString(" → ") { it.label }, style = MaterialTheme.typography.bodyMedium, fontFamily = MonaspaceNeon)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         MetricChip("${path.hops.size} hops", Icons.Outlined.Route, MaterialTheme.colorScheme.primary)
                         MetricChip("Seen ${path.count}×", Icons.Outlined.Visibility, MaterialTheme.colorScheme.primary)
@@ -371,22 +375,26 @@ private fun ExpandButton(expanded: Boolean, total: Int, noun: String, onClick: (
 }
 
 @Composable
-private fun MetricTile(value: String, label: String, modifier: Modifier) {
-    Surface(modifier.semantics(mergeDescendants = true) {}, color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.small) {
+private fun MetricTile(value: String, label: String, modifier: Modifier, learn: GlossaryTerm? = null) {
+    // Merged for TalkBack, except when it carries an ⓘ, which has to stay focusable on its own.
+    Surface(if (learn == null) modifier.semantics(mergeDescendants = true) {} else modifier,
+        color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.small) {
         Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(value, style = MaterialTheme.typography.titleMedium)
-            Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (learn != null) LearnLabel(label, learn, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            else Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
 @Composable
-private fun DetailCard(title: String? = null, icon: ImageVector? = null, content: @Composable ColumnScope.() -> Unit) {
+private fun DetailCard(title: String? = null, icon: ImageVector? = null, learn: GlossaryTerm? = null, content: @Composable ColumnScope.() -> Unit) {
     Card(colors = meshCardColors()) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             if (title != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 icon?.let { Icon(it, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary) }
                 Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                learn?.let { LearnButton(it, Modifier.offset(x = (-6).dp)) }
             }
             content()
         }

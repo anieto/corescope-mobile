@@ -166,7 +166,7 @@ private struct PacketMessageCard: View {
         PacketDetailCard(title: "Message", symbol: "message.fill") {
             VStack(alignment: .center, spacing: 6) {
                 Text(sender)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.monaspace(.subheadline).weight(.semibold))
                     .foregroundStyle(SenderColor.color(for: sender, colorScheme: colorScheme))
                 Text(text)
                     .font(.body)
@@ -200,15 +200,20 @@ private struct PacketIdentityCard: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 12) {
                 Image(systemName: "waveform.path.ecg.rectangle.fill")
-                    .font(.title2)
+                    .font(.monaspace(.title2))
                     .foregroundStyle(.white)
                     .frame(width: 48, height: 48)
                     .background(NodeScopeStyle.signal, in: RoundedRectangle(cornerRadius: 14))
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(type ?? "Loading packet")
-                        .font(.title2.bold())
+                    HStack(spacing: 4) {
+                        Text(type ?? "Loading packet")
+                            .font(.monaspace(.title2).bold())
+                        if type == "ADVERT" {
+                            LearnButton(term: .advert)
+                        }
+                    }
                     Text(hash.uppercased())
-                        .font(.caption.monospaced())
+                        .font(.monaspace(.caption))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .textSelection(.enabled)
@@ -216,12 +221,13 @@ private struct PacketIdentityCard: View {
             }
 
             HStack(spacing: 8) {
-                PacketMetricTile(value: observationCount?.formatted() ?? "—", label: "Observations", symbol: "ear.fill")
-                PacketMetricTile(value: hops?.formatted() ?? "—", label: "Hops", symbol: "point.3.connected.trianglepath.dotted")
+                PacketMetricTile(value: observationCount?.formatted() ?? "—", label: "Observations", symbol: "ear.fill", learn: .observation)
+                PacketMetricTile(value: hops?.formatted() ?? "—", label: "Hops", symbol: "point.3.connected.trianglepath.dotted", learn: .hop)
                 PacketMetricTile(
                     value: snr.map { String(format: "%.1f", $0) } ?? "—",
                     label: "SNR dB",
-                    symbol: "waveform"
+                    symbol: "waveform",
+                    learn: .snr
                 )
             }
         }
@@ -234,14 +240,21 @@ private struct PacketMetricTile: View {
     let value: String
     let label: LocalizedStringKey
     let symbol: String
+    var learn: GlossaryTerm?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Image(systemName: symbol)
-                .font(.caption.weight(.bold))
-                .foregroundStyle(NodeScopeStyle.signal)
+            HStack {
+                Image(systemName: symbol)
+                    .font(.monaspace(.caption).weight(.bold))
+                    .foregroundStyle(NodeScopeStyle.signal)
+                Spacer(minLength: 0)
+                if let learn {
+                    LearnButton(term: learn)
+                }
+            }
             Text(value)
-                .font(.headline.monospacedDigit())
+                .font(.monaspace(.headline))
             Text(label)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
@@ -259,7 +272,7 @@ private struct PacketRouteCard: View {
     let replay: () -> Void
 
     var body: some View {
-        PacketDetailCard(title: "Route", symbol: "point.topleft.down.curvedto.point.bottomright.up") {
+        PacketDetailCard(title: "Route", symbol: "point.topleft.down.curvedto.point.bottomright.up", learn: .route) {
             if routes.isEmpty {
                 Text("No mappable route was recorded for this packet.")
                     .font(.subheadline)
@@ -328,7 +341,7 @@ private struct PacketObserversCard: View {
     }
 
     var body: some View {
-        PacketDetailCard(title: "Observers", symbol: "antenna.radiowaves.left.and.right") {
+        PacketDetailCard(title: "Observers", symbol: "antenna.radiowaves.left.and.right", learn: .observer) {
             VStack(spacing: 0) {
                 ForEach(visibleObservations) { observation in
                     HStack(spacing: 10) {
@@ -339,7 +352,7 @@ private struct PacketObserversCard: View {
                             .background(NodeScopeStyle.healthy.opacity(0.13), in: Circle())
                         VStack(alignment: .leading, spacing: 2) {
                             Text(observation.observerName ?? "Unknown observer")
-                                .font(.subheadline.weight(.semibold))
+                                .font(.monaspace(.subheadline).weight(.semibold))
                                 .lineLimit(1)
                             HStack(spacing: 8) {
                                 Text(observation.observerIata ?? "Unknown region")
@@ -382,7 +395,7 @@ private struct PacketObserversCard: View {
                         Spacer()
                         Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                     }
-                    .font(.caption.weight(.bold))
+                    .font(.monaspace(.caption).weight(.bold))
                     .foregroundStyle(NodeScopeStyle.signal)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 9)
@@ -410,7 +423,7 @@ private struct PacketTechnicalCard: View {
                     Spacer()
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                 }
-                .font(.subheadline.weight(.semibold))
+                .font(.monaspace(.subheadline).weight(.semibold))
                 .foregroundStyle(NodeScopeStyle.signal)
             }
             .buttonStyle(.plain)
@@ -418,13 +431,13 @@ private struct PacketTechnicalCard: View {
             if isExpanded {
                 if let decodedJson = packet.decodedJson {
                     Text(decodedJson)
-                        .font(.caption2.monospaced())
+                        .font(.monaspace(.caption2))
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if let rawHex = packet.rawHex {
                     Text(rawHex.uppercased())
-                        .font(.caption2.monospaced())
+                        .font(.monaspace(.caption2))
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
@@ -437,19 +450,26 @@ private struct PacketTechnicalCard: View {
 private struct PacketDetailCard<Content: View>: View {
     let title: LocalizedStringKey
     let symbol: String
+    let learn: GlossaryTerm?
     @ViewBuilder let content: Content
 
-    init(title: LocalizedStringKey, symbol: String, @ViewBuilder content: () -> Content) {
+    init(title: LocalizedStringKey, symbol: String, learn: GlossaryTerm? = nil, @ViewBuilder content: () -> Content) {
         self.title = title
         self.symbol = symbol
+        self.learn = learn
         self.content = content()
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label(title, systemImage: symbol)
-                .font(.headline)
-                .foregroundStyle(NodeScopeStyle.signal)
+            HStack(spacing: 4) {
+                Label(title, systemImage: symbol)
+                    .font(.monaspace(.headline))
+                    .foregroundStyle(NodeScopeStyle.signal)
+                if let learn {
+                    LearnButton(term: learn)
+                }
+            }
             content
         }
         .padding(16)

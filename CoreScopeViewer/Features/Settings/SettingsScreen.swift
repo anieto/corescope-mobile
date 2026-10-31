@@ -10,6 +10,7 @@ struct SettingsScreen: View {
     @Environment(AppearanceSettings.self) private var appearanceSettings
     @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
     @AppStorage(AppearanceSettings.backgroundTextureDefaultsKey) private var backgroundTextureEnabled = true
+    @AppStorage(Glossary.showsExplanationsDefaultsKey) private var showsTermExplanations = true
     @State private var hostInput = ""
     @State private var sourceSaveStatus: SourceSaveStatus?
     @State private var sourceSaveID = UUID()
@@ -29,10 +30,20 @@ struct SettingsScreen: View {
                 VStack(alignment: .leading, spacing: 16) {
                     SettingsHeader(isConnected: liveFeed.isConnected)
 
-                    SettingsPanel(title: "Appearance", symbol: "circle.lefthalf.filled") {
+                    SettingsPanel(title: "Display", symbol: "circle.lefthalf.filled") {
+                        SettingsPickerCaption("Appearance")
                         Picker("Appearance", selection: $appearanceSettings.mode) {
                             ForEach(AppearanceSettings.Mode.allCases) { mode in
                                 Text(mode.label).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+
+                        SettingsPickerCaption("Units")
+                        Picker("Units", selection: $distanceUnit) {
+                            ForEach(DistanceUnit.allCases) { unit in
+                                Text(unit.label).tag(unit)
                             }
                         }
                         .pickerStyle(.segmented)
@@ -44,19 +55,16 @@ struct SettingsScreen: View {
                         Text("Show subtle network lines and nodes behind page content.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
+
+                        Divider()
+
+                        Toggle("Term Explanations", isOn: $showsTermExplanations)
+                        Text("Show \(Image(systemName: "info.circle")) beside terms like SNR and hops. The Glossary below is always available.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                     }
 
-                    SettingsPanel(title: "Units", symbol: "ruler") {
-                        Picker("Units", selection: $distanceUnit) {
-                            ForEach(DistanceUnit.allCases) { unit in
-                                Text(unit.label).tag(unit)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
-                    }
-
-                    SettingsPanel(title: "Analyzer Source", symbol: "server.rack") {
+                    SettingsPanel(title: "Analyzer", symbol: "server.rack") {
                         NavigationLink {
                             AnalyzerSourcePickerScreen(
                                 selectedHost: $hostInput,
@@ -72,17 +80,17 @@ struct SettingsScreen: View {
                         }
                         .buttonStyle(.plain)
 
-                        Text("Every screen uses the selected analyzer’s supported features and regions.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    SettingsPanel(title: "Connection", symbol: "wave.3.right") {
                         ConnectionStatusRow(
                             isConnected: liveFeed.isConnected,
-                            host: settings.host,
                             error: liveFeed.lastError
                         )
+
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            Text("Every screen uses the selected analyzer’s supported features and regions.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                            LearnButton(term: .analyzer)
+                        }
 
                         Divider()
 
@@ -96,9 +104,9 @@ struct SettingsScreen: View {
                             )
                         }
                         .buttonStyle(.plain)
-                    }
 
-                    SettingsPanel(title: "Storage", symbol: "externaldrive.fill") {
+                        Divider()
+
                         NavigationLink {
                             StorageSettingsScreen()
                         } label: {
@@ -111,34 +119,49 @@ struct SettingsScreen: View {
                         .buttonStyle(.plain)
                     }
 
-                    NavigationLink {
-                        AboutScreen()
-                    } label: {
-                        SettingsNavigationRow(
-                            title: "About & How to Use",
-                            value: "NodeScope field guide",
-                            symbol: "info.circle.fill"
-                        )
-                        .padding(16)
-                        .instrumentCard()
-                    }
-                    .buttonStyle(.plain)
+                    SettingsPanel(title: "Help & Support", symbol: "questionmark.circle") {
+                        NavigationLink {
+                            AboutScreen()
+                        } label: {
+                            SettingsNavigationRow(
+                                title: "About & How to Use",
+                                value: "NodeScope field guide",
+                                symbol: "info.circle.fill"
+                            )
+                        }
+                        .buttonStyle(.plain)
 
-                    NavigationLink {
-                        SupportDevelopmentScreen()
-                    } label: {
-                        SettingsNavigationRow(
-                            title: "Support Development",
-                            value: "Leave an optional one-time tip",
-                            symbol: "heart.fill"
-                        )
-                        .padding(16)
-                        .instrumentCard()
+                        Divider()
+
+                        NavigationLink {
+                            GlossaryScreen()
+                        } label: {
+                            SettingsNavigationRow(
+                                title: "Glossary",
+                                value: "What the terms in NodeScope mean",
+                                symbol: "book.closed.fill"
+                            )
+                        }
+                        .buttonStyle(.plain)
+
+                        Divider()
+
+                        NavigationLink {
+                            SupportDevelopmentScreen()
+                        } label: {
+                            SettingsNavigationRow(
+                                title: "Support Development",
+                                value: "Leave an optional one-time tip",
+                                symbol: "heart.fill"
+                            )
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 18)
+                // Room between the last card and the floating tab bar.
+                .padding(.bottom, 24)
                 .adaptiveContentWidth()
             }
             .background(MeshBackground().ignoresSafeArea())
@@ -209,7 +232,7 @@ private struct SettingsHeader: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 10) {
                 Text("Settings")
-                    .font(.largeTitle.bold())
+                    .font(.monaspace(.largeTitle).bold())
                 MeshNodeMotif(color: NodeScopeStyle.signal)
             }
             HStack(spacing: 6) {
@@ -239,7 +262,7 @@ private struct SettingsPanel<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Label(title, systemImage: symbol)
-                .font(.caption.weight(.bold))
+                .font(.monaspace(.caption).weight(.bold))
                 .foregroundStyle(NodeScopeStyle.signal)
                 .textCase(.uppercase)
             content
@@ -277,24 +300,29 @@ private struct SettingsNavigationRow: View {
     }
 }
 
+/// A small title above a segmented picker, whose own label is hidden.
+private struct SettingsPickerCaption: View {
+    let title: LocalizedStringKey
+
+    init(_ title: LocalizedStringKey) {
+        self.title = title
+    }
+
+    var body: some View {
+        Text(title)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .accessibilityHidden(true)
+    }
+}
+
 private struct ConnectionStatusRow: View {
     let isConnected: Bool
-    let host: String
     let error: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            ViewThatFits(in: .horizontal) {
-                HStack {
-                    connectionStatus
-                    Spacer()
-                    hostLabel
-                }
-                VStack(alignment: .leading, spacing: 6) {
-                    connectionStatus
-                    hostLabel
-                }
-            }
+        VStack(alignment: .leading, spacing: 8) {
+            connectionStatus
             if let error {
                 Label(error, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption)
@@ -312,13 +340,6 @@ private struct ConnectionStatusRow: View {
                 .font(.subheadline.weight(.semibold))
         }
         .fixedSize(horizontal: true, vertical: false)
-    }
-
-    private var hostLabel: some View {
-        Text(host)
-            .font(.caption.monospaced())
-            .foregroundStyle(.secondary)
-            .textSelection(.enabled)
     }
 }
 

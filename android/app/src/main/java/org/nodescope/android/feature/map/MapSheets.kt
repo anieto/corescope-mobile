@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.map
 
+import org.nodescope.android.core.design.MonaspaceNeon
+import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.MeshModalBottomSheet
 import android.content.Intent
 import androidx.compose.foundation.background
@@ -60,7 +62,7 @@ internal fun MapFiltersSheet(filters: MapFilters, observers: List<MeshObserver>,
                     .padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(selected = filters.activity == option, onClick = null)
                     Spacer(Modifier.width(12.dp))
-                    Text(option.title, style = MaterialTheme.typography.bodyLarge)
+                    Text(option.title, style = MaterialTheme.typography.bodyLarge, fontFamily = MonaspaceNeon)
                 }
             }
             SectionLabel("Node roles")
@@ -156,11 +158,11 @@ internal fun RouteDetailsSheet(details: RouteDetails, onNode: (String) -> Unit, 
                     }) { Icon(Icons.Outlined.Share, "Share route") }
                 }
                 SectionLabel("Summary")
-                SummaryRow("Hops", details.hopCount.toString())
+                SummaryRow("Hops", details.hopCount.toString(), GlossaryTerm.HOP)
                 SummaryRow("Age", age)
-                packet.observerName?.takeIf(String::isNotBlank)?.let { SummaryRow("Observer", it) }
-                packet.snr?.let { SummaryRow("SNR", String.format(Locale.US, "%.1f dB", it)) }
-                packet.rssi?.let { SummaryRow("RSSI", String.format(Locale.US, "%.0f dBm", it)) }
+                packet.observerName?.takeIf(String::isNotBlank)?.let { SummaryRow("Observer", it, GlossaryTerm.OBSERVER) }
+                packet.snr?.let { SummaryRow("SNR", String.format(Locale.US, "%.1f dB", it), GlossaryTerm.SNR) }
+                packet.rssi?.let { SummaryRow("RSSI", String.format(Locale.US, "%.0f dBm", it), GlossaryTerm.RSSI) }
                 packet.hash.takeIf(String::isNotBlank)?.let { SummaryRow("Packet", it.take(12).uppercase()) }
                 packet.payloadText?.trim()?.takeIf(String::isNotEmpty)?.let { message ->
                     SectionLabel("Message")
@@ -173,7 +175,10 @@ internal fun RouteDetailsSheet(details: RouteDetails, onNode: (String) -> Unit, 
                         Text(if (expanded) "Show less" else "Show more")
                     }
                 }
-                SectionLabel("Route")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SectionLabel("Route")
+                    LearnButton(GlossaryTerm.ROUTE, Modifier.padding(top = 8.dp))
+                }
             }
             items(details.stops, key = { it.position }) { stop ->
                 val key = stop.publicKey
@@ -188,7 +193,7 @@ internal fun RouteDetailsSheet(details: RouteDetails, onNode: (String) -> Unit, 
                     headlineContent = { Text(stop.title) },
                     supportingContent = when {
                         stop.receiver -> ({ Text("Received by") })
-                        key != null -> ({ Text(key, fontFamily = FontFamily.Monospace, maxLines = 1, overflow = TextOverflow.Ellipsis) })
+                        key != null -> ({ Text(key, fontFamily = MonaspaceNeon, maxLines = 1, overflow = TextOverflow.Ellipsis) })
                         else -> null
                     },
                     trailingContent = if (key != null) ({ Icon(Icons.Outlined.ChevronRight, null) }) else null,
@@ -199,9 +204,10 @@ internal fun RouteDetailsSheet(details: RouteDetails, onNode: (String) -> Unit, 
 }
 
 @Composable
-private fun SummaryRow(label: String, value: String) {
+private fun SummaryRow(label: String, value: String, learn: GlossaryTerm? = null) {
     Column(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (learn != null) LearnLabel(label, learn, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        else Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.bodyMedium)
     }
 }

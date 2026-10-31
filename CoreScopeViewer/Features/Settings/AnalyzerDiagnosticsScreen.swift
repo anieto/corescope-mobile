@@ -75,7 +75,7 @@ private struct AnalyzerDiagnosticSummarySection: View {
         Section("Connection") {
             LabeledContent("Analyzer") {
                 Text(host)
-                    .font(.caption.monospaced())
+                    .font(.monaspace(.caption))
                     .multilineTextAlignment(.trailing)
             }
 

@@ -338,7 +338,7 @@ private struct NodeAnalyticsIdentityHeader: View {
 
         HStack(spacing: 12) {
             Image(systemName: NodeRoleStyle.symbolName(for: role))
-                .font(.title3)
+                .font(.monaspace(.title3))
                 .foregroundStyle(.white)
                 .frame(width: 44, height: 44)
                 .background(tint, in: Circle())
@@ -346,10 +346,10 @@ private struct NodeAnalyticsIdentityHeader: View {
             VStack(alignment: .leading, spacing: 3) {
                 if let name, !name.isEmpty {
                     Text(name)
-                        .font(.headline)
+                        .font(.monaspace(.headline))
                 } else {
                     Text("Unnamed Node")
-                        .font(.headline)
+                        .font(.monaspace(.headline))
                 }
 
                 HStack(spacing: 6) {
@@ -426,7 +426,7 @@ private struct NodeAnalyticsSummaryCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Label("At a Glance", systemImage: "gauge.with.dots.needle.67percent")
-                .font(.headline)
+                .font(.monaspace(.headline))
                 .foregroundStyle(.primary)
                 .accessibilityAddTraits(.isHeader)
 
@@ -494,7 +494,7 @@ private struct NodeAnalyticsMetric: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(value)
-                .font(.title2.bold())
+                .font(.monaspace(.title2).bold())
                 .foregroundStyle(.primary)
             HStack(spacing: 5) {
                 Circle()
@@ -530,7 +530,7 @@ private struct BeaconNodeAnalyticsLimitationsNotice: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Label("Unavailable from Beacon", systemImage: "info.circle")
-                .font(.headline)
+                .font(.monaspace(.headline))
                 .accessibilityAddTraits(.isHeader)
             Text("Beacon node history does not identify observers or peers, so observer coverage, peer interactions, availability, longest silence, and signal grade cannot be calculated reliably.")
                 .font(.caption)
@@ -620,7 +620,7 @@ private struct NodeUptimeHeatmapCard: View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
                 Label("Activity by Time", systemImage: "calendar.day.timeline.leading")
-                    .font(.headline)
+                    .font(.monaspace(.headline))
                     .foregroundStyle(.primary)
                     .accessibilityAddTraits(.isHeader)
                 if countUnit == .observations {
@@ -739,7 +739,7 @@ private struct NodeUptimeHourLabels: View {
 
             ForEach(0..<24, id: \.self) { hour in
                 Text(hour.isMultiple(of: 3) ? String(format: "%02d", hour) : "")
-                    .font(.system(.caption2, design: .monospaced))
+                    .font(.monaspace(.caption2))
                     .foregroundStyle(.secondary)
                     .frame(
                         minWidth: 18,
@@ -882,7 +882,8 @@ private struct NodeSignalCard: View {
             NodeAnalyticsChartCard(
                 title: "Signal",
                 subtitle: "How well observers hear this node (SNR)",
-                symbol: "wave.3.right"
+                symbol: "wave.3.right",
+                learn: .snr
             ) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(headline(for: summaries))
@@ -982,7 +983,7 @@ private struct ObserverSignalRow: View {
                     HStack(spacing: 8) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(summary.observer)
-                                .font(.subheadline.weight(.semibold))
+                                .font(.monaspace(.subheadline).weight(.semibold))
                                 .lineLimit(1)
                             Text(typicalLine)
                                 .font(.caption2)
@@ -1265,7 +1266,8 @@ private struct NodeHopDistributionChart: View {
         NodeAnalyticsChartCard(
             title: "Hop Count",
             subtitle: "How far packets traveled",
-            symbol: "point.3.connected.trianglepath.dotted"
+            symbol: "point.3.connected.trianglepath.dotted",
+            learn: .hop
         ) {
             Chart(counts) { item in
                 BarMark(
@@ -1287,6 +1289,7 @@ private struct NodeAnalyticsChartCard<Content: View>: View {
     let title: LocalizedStringKey
     let subtitle: LocalizedStringResource
     let symbol: String
+    var learn: GlossaryTerm?
     @ViewBuilder let content: Content
 
     var body: some View {
@@ -1295,9 +1298,14 @@ private struct NodeAnalyticsChartCard<Content: View>: View {
                 Image(systemName: symbol)
                     .foregroundStyle(.primary)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.headline)
-                        .accessibilityAddTraits(.isHeader)
+                    HStack(spacing: 4) {
+                        Text(title)
+                            .font(.monaspace(.headline))
+                            .accessibilityAddTraits(.isHeader)
+                        if let learn {
+                            LearnButton(term: learn)
+                        }
+                    }
                     Text(subtitle)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -1319,11 +1327,14 @@ private struct NodeObserverCoverageCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Label("Observer Coverage", systemImage: "eye")
-                .font(.headline)
-                .foregroundStyle(.primary)
-                .accessibilityAddTraits(.isHeader)
-                .padding(.bottom, 8)
+            HStack(spacing: 4) {
+                Label("Observer Coverage", systemImage: "eye")
+                    .font(.monaspace(.headline))
+                    .foregroundStyle(.primary)
+                    .accessibilityAddTraits(.isHeader)
+                LearnButton(term: .observer)
+            }
+            .padding(.bottom, 8)
 
             ForEach(Array(sortedObservers.enumerated()), id: \.element.id) { index, observer in
                 if index > 0 {
@@ -1337,7 +1348,7 @@ private struct NodeObserverCoverageCard: View {
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(observer.observerName ?? observer.observerID)
-                            .font(.subheadline.weight(.semibold))
+                            .font(.monaspace(.subheadline).weight(.semibold))
                         Text("Last heard \(RelativeTime.string(from: observer.lastSeen))")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -1378,7 +1389,7 @@ private struct NodePeerInteractionsCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Label("Peer Interactions", systemImage: "person.2")
-                .font(.headline)
+                .font(.monaspace(.headline))
                 .foregroundStyle(.primary)
                 .accessibilityAddTraits(.isHeader)
                 .padding(.bottom, 8)
@@ -1395,7 +1406,7 @@ private struct NodePeerInteractionsCard: View {
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(peer.peerName)
-                            .font(.subheadline.weight(.semibold))
+                            .font(.monaspace(.subheadline).weight(.semibold))
                         Text("Last contact \(RelativeTime.string(from: peer.lastContact))")
                             .font(.caption)
                             .foregroundStyle(.secondary)

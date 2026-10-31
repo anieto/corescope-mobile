@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.packets
 
+import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -61,10 +62,11 @@ fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNod
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(packetIcon(shown.typeName), null, tint = tone)
                     Text(shown.typeName, style = MaterialTheme.typography.titleMedium, color = tone)
+                    if (shown.typeName == "ADVERT") LearnButton(GlossaryTerm.ADVERT)
                 }
                 DetailRow("Hash", latest.hash.ifEmpty { "Unavailable" }, monospace = true)
                 latest.payloadVersion?.let { DetailRow("Payload version", it.toString()) }
-                DetailRow("Observations", shown.observationCount.toString())
+                DetailRow("Observations", shown.observationCount.toString(), learn = GlossaryTerm.OBSERVATION)
                 DetailRow("Received", DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(shown.latestAt)) +
                     if (shown.isLive) "" else " (recent history)")
                 shown.region?.let { DetailRow("Region", it) }
@@ -95,7 +97,7 @@ fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNod
             }
         }
         if (shown.longestPath.isNotEmpty() || routes.isNotEmpty()) item {
-            DetailSection("Route") {
+            DetailSection("Route", GlossaryTerm.ROUTE) {
                 if (routes.size > 1) RoutePicker(routes, selectedRoute, { selectedRoute = it })
                 // Resolved routes carry full keys; otherwise show the path's hash prefixes.
                 val hops: List<Pair<String, MeshNode?>> = routes.getOrNull(selectedRoute)?.keys?.map { it to nodesByKey[it.lowercase()] }
@@ -103,8 +105,8 @@ fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNod
                 hops.forEachIndexed { index, (value, node) ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Hop ${index + 1}", Modifier.width(56.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(node?.displayName ?: "Unknown node", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(value.take(8).uppercase(), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelMedium,
+                        Text(node?.displayName ?: "Unknown node", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontFamily = MonaspaceNeon, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(value.take(8).uppercase(), fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -120,27 +122,31 @@ fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNod
             }
         }
         latest.rawHex?.let { raw ->
-            item { DetailSection("Raw packet") { SelectionContainer { Text(raw, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelMedium) } } }
+            item { DetailSection("Raw packet") { SelectionContainer { Text(raw, fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelMedium) } } }
         }
     }
 }
 
 @Composable
-internal fun DetailSection(title: String, content: @Composable ColumnScope.() -> Unit) {
+internal fun DetailSection(title: String, learn: GlossaryTerm? = null, content: @Composable ColumnScope.() -> Unit) {
     Card(colors = meshCardColors()) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(title.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (learn != null) LearnLabel(title.uppercase(), learn, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            else Text(title.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             content()
         }
     }
 }
 
 @Composable
-internal fun DetailRow(label: String, value: String, monospace: Boolean = false) {
-    Column(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+internal fun DetailRow(label: String, value: String, monospace: Boolean = false, learn: GlossaryTerm? = null) {
+    // Merged for TalkBack, except when it carries an ⓘ, which has to stay focusable on its own.
+    Column(Modifier.fillMaxWidth().then(if (learn == null) Modifier.semantics(mergeDescendants = true) {} else Modifier),
+        verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (learn != null) LearnLabel(label, learn, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        else Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         SelectionContainer {
-            Text(value, style = MaterialTheme.typography.bodyMedium, fontFamily = if (monospace) FontFamily.Monospace else null, textAlign = TextAlign.Start)
+            Text(value, style = MaterialTheme.typography.bodyMedium, fontFamily = if (monospace) MonaspaceNeon else null, textAlign = TextAlign.Start)
         }
     }
 }

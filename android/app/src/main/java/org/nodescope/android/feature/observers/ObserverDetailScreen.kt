@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.observers
 
+import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -87,7 +88,7 @@ fun ObserverDetailScreen(model: ObserversViewModel, host: String, observerId: St
                 }
             }
             if (analytics.snrDistribution.isNotEmpty()) item {
-                AnalyticsCard("SNR distribution (dB)", Icons.Outlined.GraphicEq) {
+                AnalyticsCard("SNR distribution (dB)", Icons.Outlined.GraphicEq, GlossaryTerm.SNR) {
                     BarChart("SNR distribution", analytics.snrDistribution.map { ChartPoint(it.range, it.count) }, ActivityAmber)
                 }
             }
@@ -171,7 +172,7 @@ internal fun ObserverIdentityCard(observer: MeshObserver, now: Long, favorite: B
                 ))
                 Text("Observer ID", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 SelectionContainer {
-                    Text(observer.id, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall,
+                    Text(observer.id, fontFamily = MonaspaceNeon, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -242,12 +243,13 @@ private fun MetricGrid(values: List<Pair<String, String>>) {
 }
 
 @Composable
-private fun AnalyticsCard(title: String, icon: ImageVector, content: @Composable ColumnScope.() -> Unit) {
+private fun AnalyticsCard(title: String, icon: ImageVector, learn: GlossaryTerm? = null, content: @Composable ColumnScope.() -> Unit) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(icon, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                 Text(title, style = MaterialTheme.typography.titleMedium)
+                learn?.let { LearnButton(it, Modifier.offset(x = (-6).dp)) }
             }
             content()
         }
@@ -262,7 +264,7 @@ private fun RecentPacketRow(packet: ObserverRecentPacket, now: Long) {
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
         }
         Column(Modifier.weight(1f)) {
-            Text(packet.hash.take(16), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelMedium)
+            Text(packet.hash.take(16), fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelMedium)
             Text(listOfNotNull(packet.snr?.let { "SNR %.1f dB".format(it) }, packet.rssi?.let { "RSSI %.0f dBm".format(it) })
                 .joinToString(" · ").ifEmpty { "No signal data" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
