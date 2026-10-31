@@ -29,8 +29,8 @@ struct MapPacketWorkspaceScreen: View {
     @Environment(\.isHingedDevice) private var isHingedDevice
     @State private var isDuoPacketSidebarVisible = false
     @State private var isDuoPacketDetailsPresented = false
-    @State private var duoPrimaryWidth: CGFloat = 0
-    @State private var duoWorkspaceWidth: CGFloat = 0
+    @State private var duoSecondaryMinX: CGFloat = 0
+    @State private var duoWorkspaceMaxX: CGFloat = 0
     @State private var duoTrailingInset: CGFloat = 0
     @State private var isDuoSidebarToolbarShown = false
 
@@ -103,9 +103,11 @@ struct MapPacketWorkspaceScreen: View {
         ZStack(alignment: .topTrailing) {
             DuoTwoPaneLayout {
                 Color.clear
-                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { duoPrimaryWidth = $0 }
             } secondary: {
+                // Where the right screen starts. Measuring the left pane's width instead was off by
+                // the side tab column on iOS 27.1, whose split layout widens the left pane under it.
                 Color.clear
+                    .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minX } action: { duoSecondaryMinX = $0 }
             }
             .allowsHitTesting(false)
             .accessibilityHidden(true)
@@ -146,13 +148,14 @@ struct MapPacketWorkspaceScreen: View {
                 .zIndex(1)
             }
         }
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { duoWorkspaceWidth = $0 }
+        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxX } action: { duoWorkspaceMaxX = $0 }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.trailing } action: { duoTrailingInset = $0 }
     }
 
-    /// The right screen: everything past the hinge split.
+    /// The right screen: from the hinge split to the workspace's trailing edge (the side tab column
+    /// sits beyond it).
     private var duoSidebarWidth: CGFloat {
-        max(0, duoWorkspaceWidth - duoPrimaryWidth)
+        max(0, duoWorkspaceMaxX - duoSecondaryMinX)
     }
 
     private var regularWorkspace: some View {
