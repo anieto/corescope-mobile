@@ -181,7 +181,7 @@ struct FavoriteChangesScreen: View {
                 LazyVStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: 12) {
                         FavoriteSourceIdentity(host: settings.host)
-                        Text("Activity since your last review").font(.headline)
+                        Text("Activity since your last review").font(.monaspace(.headline))
                         Text("Compares saved nodes and observers using the 15-minute recently-heard window. Silence does not mean offline.")
                             .font(.subheadline).foregroundStyle(.secondary)
                         Text("Fresh comparisons you view become the baseline for your next visit. History expires after 7 days.")
@@ -230,7 +230,7 @@ private struct FavoriteChangeCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(row.title).font(.headline)
+            Text(row.title).font(.monaspace(.headline))
             Text(row.message).font(.subheadline.weight(.semibold))
             if let activity = row.metric?.activity {
                 Text(activity.state == .recentlyHeard ? "Recently heard" :

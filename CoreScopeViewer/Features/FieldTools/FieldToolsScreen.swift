@@ -86,12 +86,12 @@ struct FieldGuidanceLinkCard: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "location.north.circle.fill")
-                .font(.title2)
+                .font(.monaspace(.title2))
                 .foregroundStyle(NodeScopeStyle.signal)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
                 Text("Guide to \(entityName)")
-                    .font(.headline)
+                    .font(.monaspace(.headline))
                     .foregroundStyle(.primary)
                 Text("See distance, direction, and recent network evidence")
                     .font(.subheadline)
@@ -683,7 +683,7 @@ struct FieldToolsScreen: View {
         Section {
             VStack(alignment: .leading, spacing: 12) {
                 Label("Deployment Planning", systemImage: "antenna.radiowaves.left.and.right")
-                    .font(.headline)
+                    .font(.monaspace(.headline))
                 Text("Coverage modeling and proposed-site comparisons are still being built.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -753,7 +753,7 @@ struct FieldToolsScreen: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text(selectedItem?.name ?? String(localized: "Field Map"))
-                        .font(.headline)
+                        .font(.monaspace(.headline))
                         .padding(.horizontal, 14)
                         .frame(minHeight: 44)
                         .nodeScopeFloatingGlass(cornerRadius: 18)
@@ -953,7 +953,7 @@ private struct FieldGettingStartedCard: View {
                 hasStartingPoint ? "Choose Nearby Equipment" : "Choose Your Starting Point",
                 systemImage: hasStartingPoint ? "dot.radiowaves.left.and.right" : "location.circle"
             )
-            .font(.headline)
+            .font(.monaspace(.headline))
 
             Text(hasStartingPoint
                 ? "Select a node or observer to see its distance and direction."
@@ -1048,7 +1048,7 @@ private struct FieldTargetSummary: View {
     private var identity: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(name)
-                .font(.headline)
+                .font(.monaspace(.headline))
                 .fixedSize(horizontal: false, vertical: true)
             Text(subtitle)
                 .font(.caption)
@@ -1336,7 +1336,7 @@ private struct FieldCompassGuidance: View {
         if let rotation, let headingSample {
             VStack(spacing: 2) {
                 Image(systemName: "location.north.fill")
-                    .font(.title3.weight(.semibold))
+                    .font(.monaspace(.title3).weight(.semibold))
                     .foregroundStyle(NodeScopeStyle.signal.readableForeground(for: colorScheme))
                     .rotationEffect(.degrees(rotation))
                     .accessibilityHidden(true)
@@ -1456,7 +1456,7 @@ private struct FieldCatalogRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.name)
-                    .font(.headline)
+                    .font(.monaspace(.headline))
                 Text(item.subtitle)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -1524,7 +1524,7 @@ private struct FieldCanvasHeader: View {
     @ViewBuilder
     private var content: some View {
         Label(activity.title, systemImage: activity.symbol)
-            .font(.headline)
+            .font(.monaspace(.headline))
         Text(referenceIsSet ? "Reference selected" : "Tap the map to set a reference")
             .font(.caption)
             .foregroundStyle(.secondary)

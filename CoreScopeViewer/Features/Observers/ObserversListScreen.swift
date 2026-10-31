@@ -375,7 +375,7 @@ private struct ObserversHeader: View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text("Observers")
-                    .font(.largeTitle.bold())
+                    .font(.monaspace(.largeTitle).bold())
                 LearnButton(term: .observer)
             }
             HStack(spacing: 6) {
@@ -416,7 +416,7 @@ private struct ObserversHeader: View {
 
             Button(action: toggleSearch) {
                 Image(systemName: isSearchPresented ? "xmark" : "magnifyingglass")
-                    .font(.body.weight(.semibold))
+                    .font(.monaspace(.body).weight(.semibold))
                     .foregroundStyle(NodeScopeStyle.signal)
                     .frame(width: 40, height: 40)
                     .nodeScopeFloatingGlass(cornerRadius: 20)
@@ -552,10 +552,10 @@ private struct ObserverMetric: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Image(systemName: symbol)
-                .font(.caption.weight(.bold))
+                .font(.monaspace(.caption).weight(.bold))
                 .foregroundStyle(NodeScopeStyle.signal)
             Text(value)
-                .font(.headline.monospacedDigit())
+                .font(.monaspace(.headline))
             Text(label)
                 .font(.caption2.weight(.medium))
                 .foregroundStyle(.secondary)
@@ -595,7 +595,7 @@ private struct ObserverStatusCard: View {
             VStack(alignment: .leading, spacing: 9) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(name)
-                        .font(.headline)
+                        .font(.monaspace(.headline))
                         .lineLimit(1)
                     Spacer()
                     if let online {
@@ -683,7 +683,7 @@ private struct ObserverEmptyState: View {
         VStack(spacing: 12) {
             MeshNodeMotif(color: NodeScopeStyle.signal)
             Text("No observers in range")
-                .font(.headline)
+                .font(.monaspace(.headline))
             Text("Try another region or pull to refresh the network.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)

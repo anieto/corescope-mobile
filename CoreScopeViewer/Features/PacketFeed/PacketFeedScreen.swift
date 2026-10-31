@@ -1147,7 +1147,7 @@ private struct LivePacketCard: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: symbol)
-                .font(.title3.weight(.bold))
+                .font(.monaspace(.title3).weight(.bold))
                 .foregroundStyle(color)
                 .frame(width: 30)
 
@@ -1218,7 +1218,7 @@ private struct LivePacketCard: View {
 
     private var packetTime: some View {
         Text(receivedAt, style: .relative)
-            .font(.caption.monospacedDigit())
+            .font(.monaspace(.caption))
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -1442,7 +1442,7 @@ private struct LivePacketDetailScreen: View {
             if let raw = data.raw, !raw.isEmpty {
                 Section("Raw Packet") {
                     Text(raw)
-                        .font(.caption.monospaced())
+                        .font(.monaspace(.caption))
                         .textSelection(.enabled)
                 }
             }

@@ -232,7 +232,7 @@ private struct SettingsHeader: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 10) {
                 Text("Settings")
-                    .font(.largeTitle.bold())
+                    .font(.monaspace(.largeTitle).bold())
                 MeshNodeMotif(color: NodeScopeStyle.signal)
             }
             HStack(spacing: 6) {
@@ -262,7 +262,7 @@ private struct SettingsPanel<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Label(title, systemImage: symbol)
-                .font(.caption.weight(.bold))
+                .font(.monaspace(.caption).weight(.bold))
                 .foregroundStyle(NodeScopeStyle.signal)
                 .textCase(.uppercase)
             content

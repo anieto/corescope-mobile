@@ -462,7 +462,7 @@ private struct ChannelsHeader: View {
     private var heading: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text("Channels")
-                .font(.largeTitle.bold())
+                .font(.monaspace(.largeTitle).bold())
             HStack(spacing: 6) {
                 Circle()
                     .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
@@ -501,7 +501,7 @@ private struct ChannelsHeader: View {
 
             Button(action: toggleSearch) {
                 Image(systemName: isSearchPresented ? "xmark" : "magnifyingglass")
-                    .font(.body.weight(.semibold))
+                    .font(.monaspace(.body).weight(.semibold))
                     .foregroundStyle(NodeScopeStyle.signal)
                     .frame(width: 40, height: 40)
                     .nodeScopeFloatingGlass(cornerRadius: 20)
@@ -654,7 +654,7 @@ private struct ChannelCard: View {
             VStack(alignment: .leading, spacing: 7) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(name)
-                        .font(.headline)
+                        .font(.monaspace(.headline))
                     Spacer()
                     if let messageCount {
                         HStack(spacing: 4) {

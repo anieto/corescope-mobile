@@ -238,14 +238,14 @@ private struct NodeAnalyticsLinkCard: View {
     var body: some View {
         HStack(spacing: 14) {
             Image(systemName: "chart.xyaxis.line")
-                .font(.title2)
+                .font(.monaspace(.title2))
                 .foregroundStyle(NodeScopeStyle.signal)
                 .frame(width: 48, height: 48)
                 .background(NodeScopeStyle.signal.opacity(0.13), in: Circle())
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("Node Analytics")
-                    .font(.headline)
+                    .font(.monaspace(.headline))
                 Text("Activity, signal, coverage, and peer trends")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -304,14 +304,14 @@ private struct NodeIdentityCard: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 12) {
                 Image(systemName: NodeRoleStyle.symbolName(for: node.role))
-                    .font(.title2.weight(.semibold))
+                    .font(.monaspace(.title2).weight(.semibold))
                     .foregroundStyle(.white)
                     .frame(width: 50, height: 50)
                     .background(NodeRoleStyle.color(for: node.role), in: Circle())
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(node.name ?? "Unnamed Node")
-                        .font(.title2.bold())
+                        .font(.monaspace(.title2).bold())
                     HStack(spacing: 6) {
                         Text(node.role.capitalized)
                             .font(.caption.weight(.bold))
@@ -342,7 +342,7 @@ private struct NodeIdentityCard: View {
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Text(node.publicKey.uppercased())
-                    .font(.caption.monospaced())
+                    .font(.monaspace(.caption))
                     .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -413,7 +413,7 @@ private struct NodeMetricTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(value)
-                .font(.headline.monospacedDigit())
+                .font(.monaspace(.headline))
             HStack(spacing: 2) {
                 Text(label)
                     .font(.caption2)
@@ -778,7 +778,7 @@ private struct ExpandSectionButton: View {
                 Spacer()
                 Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
             }
-            .font(.caption.weight(.bold))
+            .font(.monaspace(.caption).weight(.bold))
             .foregroundStyle(NodeScopeStyle.signal)
             .padding(.horizontal, 12)
             .padding(.vertical, 9)
@@ -805,7 +805,7 @@ private struct NodeDetailCard<Content: View>: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 4) {
                 Label(title, systemImage: symbol)
-                    .font(.headline)
+                    .font(.monaspace(.headline))
                     .foregroundStyle(NodeScopeStyle.signal)
                 if let learn {
                     LearnButton(term: learn)
@@ -849,7 +849,7 @@ private struct MeshCoreContactSheet: View {
 
                     VStack(spacing: 4) {
                         Text(contact.name)
-                            .font(.headline)
+                            .font(.monaspace(.headline))
                         Text(typeLabel)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)

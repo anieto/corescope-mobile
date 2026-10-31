@@ -67,11 +67,11 @@ struct ExploreScreen: View {
                 } label: {
                     HStack(spacing: 12) {
                         Image(systemName: "star.fill")
-                            .font(.title3)
+                            .font(.monaspace(.title3))
                             .foregroundStyle(NodeScopeStyle.signal)
                             .accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 5) {
-                            Text("Favorites").font(.headline).foregroundStyle(.primary)
+                            Text("Favorites").font(.monaspace(.headline)).foregroundStyle(.primary)
                             Text("\(visibleItems.count) saved items · View activity")
                                 .font(.subheadline).foregroundStyle(.secondary)
                         }
@@ -530,7 +530,7 @@ private struct NetworkAtAGlanceCard: View {
             HStack {
                 VStack(alignment: .leading, spacing: 5) {
                     Label("Network at a Glance", systemImage: "gauge.with.dots.needle.50percent")
-                        .font(.headline)
+                        .font(.monaspace(.headline))
                     Label("Entire network", systemImage: "globe.americas.fill")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
@@ -929,7 +929,7 @@ private struct GlanceMetric: View {
     private var content: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(value)
-                .font(.title2.bold())
+                .font(.monaspace(.title2).bold())
                 .foregroundStyle(color)
                 .contentTransition(.numericText())
             HStack(spacing: 4) {
@@ -990,7 +990,7 @@ private struct ExploreHeader: View {
     private var heading: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text("Explore")
-                .font(.largeTitle.bold())
+                .font(.monaspace(.largeTitle).bold())
             Text("\(count) saved item\(count == 1 ? "" : "s") on this analyzer")
                 .font(.caption.weight(.medium))
                 .foregroundStyle(.secondary)
@@ -1001,7 +1001,7 @@ private struct ExploreHeader: View {
         HStack(spacing: 10) {
             Button(action: search) {
                 Image(systemName: "magnifyingglass")
-                    .font(.body.weight(.semibold))
+                    .font(.monaspace(.body).weight(.semibold))
                     .foregroundStyle(NodeScopeStyle.signal)
                     .frame(width: 40, height: 40)
                     .nodeScopeFloatingGlass(cornerRadius: 20)
@@ -1021,7 +1021,7 @@ private struct FieldToolsExploreCard: View {
         Button(action: open) {
             HStack(spacing: 12) {
                 Image(systemName: "location.viewfinder")
-                    .font(.title3.weight(.semibold))
+                    .font(.monaspace(.title3).weight(.semibold))
                     .foregroundStyle(.white)
                     .frame(width: 44, height: 44)
                     .background(NodeScopeStyle.signal, in: Circle())
@@ -1029,7 +1029,7 @@ private struct FieldToolsExploreCard: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Node Planner")
-                        .font(.headline)
+                        .font(.monaspace(.headline))
                         .foregroundStyle(.primary)
                     Text("Evaluate proposed sites and point-to-point terrain paths")
                         .font(.subheadline)
@@ -1064,7 +1064,7 @@ private struct FavoriteRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.title)
-                    .font(.headline)
+                    .font(.monaspace(.headline))
                 if let subtitle = item.subtitle, !subtitle.isEmpty {
                     Text(subtitle)
                         .font(.caption)
@@ -1324,13 +1324,13 @@ private struct FavoriteNodeSearchRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(node.name ?? "Unnamed Node")
-                    .font(.headline)
+                    .font(.monaspace(.headline))
                     .lineLimit(1)
                 HStack(spacing: 6) {
                     Text(node.role.capitalized)
                     Text("·")
                     Text(node.publicKey.prefix(10).uppercased())
-                        .font(.caption.monospaced())
+                        .font(.monaspace(.caption))
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -1340,7 +1340,7 @@ private struct FavoriteNodeSearchRow: View {
 
             Button(action: toggleFavorite) {
                 Image(systemName: isFavorite ? "star.fill" : "star")
-                    .font(.body.weight(.semibold))
+                    .font(.monaspace(.body).weight(.semibold))
                     .foregroundStyle(NodeScopeStyle.signal)
                     .frame(width: 44, height: 44)
             }
@@ -1650,7 +1650,7 @@ private struct GlobalSearchSheet: View {
                         .background(color, in: Circle())
                     VStack(alignment: .leading, spacing: 3) {
                         Text(title)
-                            .font(.headline)
+                            .font(.monaspace(.headline))
                             .foregroundStyle(.primary)
                             .lineLimit(1)
                         if let subtitle, !subtitle.isEmpty {

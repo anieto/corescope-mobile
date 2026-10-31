@@ -155,7 +155,7 @@ struct MapScreen: View {
                             .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
                             .frame(width: 7, height: 7)
                         Text("Live Map")
-                            .font(.headline)
+                            .font(.monaspace(.headline))
                     }
                     .padding(.horizontal, 14)
                     .frame(height: 44)
@@ -276,7 +276,7 @@ struct MapScreen: View {
                                 .fill(liveFeed.isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
                                 .frame(width: 7, height: 7)
                             Text("Live Map")
-                                .font(.headline)
+                                .font(.monaspace(.headline))
                                 .fixedSize()
                         }
                         .padding(.horizontal, 6)
@@ -368,7 +368,7 @@ struct MapScreen: View {
                         if let showLivePackets {
                             Button(action: showLivePackets) {
                                 Image(systemName: "list.bullet.rectangle")
-                                    .font(.title3.weight(.semibold))
+                                    .font(.monaspace(.title3).weight(.semibold))
                                     .foregroundStyle(colorScheme == .dark ? Color.white : Color.accentColor)
                                     .frame(width: 44, height: 44)
                             }
@@ -379,7 +379,7 @@ struct MapScreen: View {
 
                         Button(action: centerOnUserLocation) {
                             Image(systemName: "location.fill")
-                                .font(.title3.weight(.semibold))
+                                .font(.monaspace(.title3).weight(.semibold))
                                 .foregroundStyle(colorScheme == .dark ? Color.white : Color.accentColor)
                                 .frame(width: 44, height: 44)
                         }
@@ -2928,7 +2928,7 @@ private struct MapRouteHopRow: View {
                     .foregroundStyle(.primary)
                 if let publicKey = hop.publicKey, !dynamicTypeSize.isAccessibilitySize {
                     Text(publicKey)
-                        .font(.caption.monospaced())
+                        .font(.monaspace(.caption))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -3504,13 +3504,13 @@ private struct MapNodeSearchRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(name)
-                    .font(.headline)
+                    .font(.monaspace(.headline))
                     .lineLimit(1)
                 HStack(spacing: 6) {
                     Text(role.capitalized)
                     Text("·")
                     Text(publicKey.prefix(10).uppercased())
-                        .font(.caption.monospaced())
+                        .font(.monaspace(.caption))
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)

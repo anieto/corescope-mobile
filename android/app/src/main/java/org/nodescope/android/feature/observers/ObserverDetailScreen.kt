@@ -172,7 +172,7 @@ internal fun ObserverIdentityCard(observer: MeshObserver, now: Long, favorite: B
                 ))
                 Text("Observer ID", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 SelectionContainer {
-                    Text(observer.id, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall,
+                    Text(observer.id, fontFamily = MonaspaceNeon, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -264,7 +264,7 @@ private fun RecentPacketRow(packet: ObserverRecentPacket, now: Long) {
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
         }
         Column(Modifier.weight(1f)) {
-            Text(packet.hash.take(16), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelMedium)
+            Text(packet.hash.take(16), fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelMedium)
             Text(listOfNotNull(packet.snr?.let { "SNR %.1f dB".format(it) }, packet.rssi?.let { "RSSI %.0f dBm".format(it) })
                 .joinToString(" · ").ifEmpty { "No signal data" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

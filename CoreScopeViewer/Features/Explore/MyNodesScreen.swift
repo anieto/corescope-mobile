@@ -33,7 +33,7 @@ struct MyNodesScreen: View {
                             description: Text("Add nodes in Favorites or save observers from their detail pages to follow them here."))
                     }
                     if !nodes.isEmpty {
-                        Text("Nodes").font(.headline).accessibilityAddTraits(.isHeader)
+                        Text("Nodes").font(.monaspace(.headline)).accessibilityAddTraits(.isHeader)
                         ForEach(nodes) { item in
                             MyNodesActivityRow(item: item, row: rows[item.entityID.lowercased()])
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -50,7 +50,7 @@ struct MyNodesScreen: View {
                         }
                     }
                     if !observers.isEmpty {
-                        Text("Favorite observers").font(.headline).accessibilityAddTraits(.isHeader)
+                        Text("Favorite observers").font(.monaspace(.headline)).accessibilityAddTraits(.isHeader)
                         ForEach(observers) { item in
                             MyNodesObserverRow(item: item, catalog: catalog)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -176,7 +176,7 @@ struct FavoriteSourceIdentity: View {
             AnalyzerSettings.normalizedHost($0.host) == AnalyzerSettings.normalizedHost(host)
         }?.name.trimmingCharacters(in: .whitespacesAndNewlines)
         VStack(alignment: .leading, spacing: 4) {
-            Text(name.flatMap { $0.isEmpty ? nil : $0 } ?? host).font(.headline)
+            Text(name.flatMap { $0.isEmpty ? nil : $0 } ?? host).font(.monaspace(.headline))
             if let name, !name.isEmpty, name.caseInsensitiveCompare(host) != .orderedSame {
                 Text(host).font(.subheadline).foregroundStyle(.secondary)
             }
@@ -259,10 +259,10 @@ private struct ActivityItemContent: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
                 Image(systemName: symbol)
-                    .font(.title3.weight(.semibold)).foregroundStyle(.white)
+                    .font(.monaspace(.title3).weight(.semibold)).foregroundStyle(.white)
                     .frame(width: 42, height: 42).background(color, in: Circle())
                     .accessibilityHidden(true)
-                Text(title).font(.headline).frame(maxWidth: .infinity, alignment: .leading)
+                Text(title).font(.monaspace(.headline)).frame(maxWidth: .infinity, alignment: .leading)
                 Image(systemName: "chevron.right").font(.caption.weight(.semibold))
                     .foregroundStyle(.tertiary).accessibilityHidden(true)
             }

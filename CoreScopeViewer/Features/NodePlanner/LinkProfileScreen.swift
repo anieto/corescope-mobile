@@ -158,7 +158,7 @@ private struct LinkProfileMapStyleMenu: View {
                 Image(systemName: "map")
             } else {
                 Image(systemName: "map")
-                    .font(.title3)
+                    .font(.monaspace(.title3))
                     .frame(width: 44, height: 44)
                     .background(.regularMaterial, in: Circle())
             }
@@ -173,7 +173,7 @@ private struct LinkProfileBackButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "chevron.backward")
-                .font(.title2.weight(.semibold))
+                .font(.monaspace(.title2).weight(.semibold))
                 .frame(width: 44, height: 44)
                 .background(.regularMaterial, in: Circle())
         }
@@ -284,7 +284,7 @@ private struct LinkProfileEditor: View {
         VStack(alignment: .leading, spacing: 16) {
             if usesCompactHeader {
                 Label("Link Profile", systemImage: "point.topleft.down.to.point.bottomright.curvepath")
-                    .font(.title2.bold())
+                    .font(.monaspace(.title2).bold())
             }
             LinkProfileHeader(model: model, activeEndpoint: $activeEndpoint)
             ScrollView {
@@ -1148,7 +1148,7 @@ private struct LinkProfileHeader: View {
         VStack(alignment: .leading, spacing: 6) {
             if let endpoint = activeEndpoint, model.coordinate(for: endpoint) != nil {
                 Text("Choose New Point \(endpoint.letter)")
-                    .font(.headline)
+                    .font(.monaspace(.headline))
                 Text("Touch & hold the map to place it.")
                     .foregroundStyle(.secondary)
                 Button("Cancel") { activeEndpoint = nil }
@@ -1156,7 +1156,7 @@ private struct LinkProfileHeader: View {
                     .padding(.top, 4)
             } else if let next = activeEndpoint ?? model.missingEndpoint {
                 Text("Place your points to analyze the link.")
-                    .font(.headline)
+                    .font(.monaspace(.headline))
                 Text("Touch & hold the map to place Point \(next.letter).")
                     .foregroundStyle(.secondary)
                 if !hasPlacedPoint {
@@ -1177,14 +1177,14 @@ private struct LinkProfileHeader: View {
                     Image(systemName: status.symbol)
                         .foregroundStyle(status.pathClearance.color)
                 }
-                .font(.headline)
+                .font(.monaspace(.headline))
                 Text(summary(result.result))
                     .foregroundStyle(.secondary)
             } else {
                 HStack(spacing: 10) {
                     ProgressView()
                     Text("Analyzing link…")
-                        .font(.headline)
+                        .font(.monaspace(.headline))
                 }
             }
         }
@@ -1265,13 +1265,13 @@ private struct LinkProfilePointCard: View {
             } label: {
                 HStack(spacing: 12) {
                     Text(endpoint.letter)
-                        .font(.headline.bold())
+                        .font(.monaspace(.headline).bold())
                         .foregroundStyle(.white)
                         .frame(width: 30, height: 30)
                         .background(endpoint.color, in: Circle())
                     VStack(alignment: .leading, spacing: 2) {
                         Text(title)
-                            .font(.headline)
+                            .font(.monaspace(.headline))
                             .foregroundStyle(.primary)
                         Text(summary)
                             .font(.subheadline)
@@ -1425,7 +1425,7 @@ private struct LinkProfileRadioSettings: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Radio settings")
-                .font(.headline)
+                .font(.monaspace(.headline))
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 8) { presets }
                 VStack(alignment: .leading, spacing: 8) { presets }

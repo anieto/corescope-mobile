@@ -338,7 +338,7 @@ private struct NodeAnalyticsIdentityHeader: View {
 
         HStack(spacing: 12) {
             Image(systemName: NodeRoleStyle.symbolName(for: role))
-                .font(.title3)
+                .font(.monaspace(.title3))
                 .foregroundStyle(.white)
                 .frame(width: 44, height: 44)
                 .background(tint, in: Circle())
@@ -346,10 +346,10 @@ private struct NodeAnalyticsIdentityHeader: View {
             VStack(alignment: .leading, spacing: 3) {
                 if let name, !name.isEmpty {
                     Text(name)
-                        .font(.headline)
+                        .font(.monaspace(.headline))
                 } else {
                     Text("Unnamed Node")
-                        .font(.headline)
+                        .font(.monaspace(.headline))
                 }
 
                 HStack(spacing: 6) {
@@ -426,7 +426,7 @@ private struct NodeAnalyticsSummaryCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Label("At a Glance", systemImage: "gauge.with.dots.needle.67percent")
-                .font(.headline)
+                .font(.monaspace(.headline))
                 .foregroundStyle(.primary)
                 .accessibilityAddTraits(.isHeader)
 
@@ -494,7 +494,7 @@ private struct NodeAnalyticsMetric: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(value)
-                .font(.title2.bold())
+                .font(.monaspace(.title2).bold())
                 .foregroundStyle(.primary)
             HStack(spacing: 5) {
                 Circle()
@@ -530,7 +530,7 @@ private struct BeaconNodeAnalyticsLimitationsNotice: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Label("Unavailable from Beacon", systemImage: "info.circle")
-                .font(.headline)
+                .font(.monaspace(.headline))
                 .accessibilityAddTraits(.isHeader)
             Text("Beacon node history does not identify observers or peers, so observer coverage, peer interactions, availability, longest silence, and signal grade cannot be calculated reliably.")
                 .font(.caption)
@@ -620,7 +620,7 @@ private struct NodeUptimeHeatmapCard: View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
                 Label("Activity by Time", systemImage: "calendar.day.timeline.leading")
-                    .font(.headline)
+                    .font(.monaspace(.headline))
                     .foregroundStyle(.primary)
                     .accessibilityAddTraits(.isHeader)
                 if countUnit == .observations {
@@ -739,7 +739,7 @@ private struct NodeUptimeHourLabels: View {
 
             ForEach(0..<24, id: \.self) { hour in
                 Text(hour.isMultiple(of: 3) ? String(format: "%02d", hour) : "")
-                    .font(.system(.caption2, design: .monospaced))
+                    .font(.monaspace(.caption2))
                     .foregroundStyle(.secondary)
                     .frame(
                         minWidth: 18,
@@ -1300,7 +1300,7 @@ private struct NodeAnalyticsChartCard<Content: View>: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 4) {
                         Text(title)
-                            .font(.headline)
+                            .font(.monaspace(.headline))
                             .accessibilityAddTraits(.isHeader)
                         if let learn {
                             LearnButton(term: learn)
@@ -1329,7 +1329,7 @@ private struct NodeObserverCoverageCard: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 4) {
                 Label("Observer Coverage", systemImage: "eye")
-                    .font(.headline)
+                    .font(.monaspace(.headline))
                     .foregroundStyle(.primary)
                     .accessibilityAddTraits(.isHeader)
                 LearnButton(term: .observer)
@@ -1389,7 +1389,7 @@ private struct NodePeerInteractionsCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Label("Peer Interactions", systemImage: "person.2")
-                .font(.headline)
+                .font(.monaspace(.headline))
                 .foregroundStyle(.primary)
                 .accessibilityAddTraits(.isHeader)
                 .padding(.bottom, 8)

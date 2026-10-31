@@ -180,7 +180,7 @@ private fun IdentityCard(node: MeshNode, publicKey: String, favorite: Boolean, n
         if (identityExpanded) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Text("Public key", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            SelectionContainer { Text(publicKey.uppercase(), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall) }
+            SelectionContainer { Text(publicKey.uppercase(), fontFamily = MonaspaceNeon, style = MaterialTheme.typography.bodySmall) }
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 DateMetric("First seen", node.firstSeen, Modifier.weight(1f))
                 DateMetric("Last seen", node.lastSeen, Modifier.weight(1f))

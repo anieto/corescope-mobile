@@ -154,7 +154,7 @@ private struct SupportDevelopmentIntroduction: View {
                     .foregroundStyle(NodeScopeStyle.activity)
                     .accessibilityHidden(true)
                 Text("Enjoying NodeScope?")
-                    .font(.title3.weight(.semibold))
+                    .font(.monaspace(.title3).weight(.semibold))
                 Text("If NodeScope has been useful, you can leave an optional tip to support its continued development.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)

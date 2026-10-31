@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.explore
 
+import org.nodescope.android.core.design.MonaspaceNeon
 import org.nodescope.android.core.design.meshCardColors
 import android.content.Context
 import androidx.compose.foundation.layout.*
@@ -398,7 +399,7 @@ private fun AccountNodeRow(name: String?, key: String, trailing: @Composable Row
             Text(name ?: "Name unavailable", style = MaterialTheme.typography.titleSmall,
                 color = if (name == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
             Text("${key.take(12)}…${key.takeLast(6)}", style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontFamily = MonaspaceNeon,
                 modifier = Modifier.semantics { contentDescription = "Public key $key" })
         }
         trailing()

@@ -22,7 +22,7 @@ private struct NodePlannerWelcome: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Plan before you deploy", systemImage: "antenna.radiowaves.left.and.right")
-                .font(.title2.bold())
+                .font(.monaspace(.title2).bold())
             Text("Evaluate proposed locations, terrain paths, and radio assumptions before installing a node.")
                 .foregroundStyle(.secondary)
         }
@@ -81,7 +81,7 @@ private struct NodePlannerToolCard: View {
     var body: some View {
         HStack(spacing: 14) {
             Image(systemName: icon)
-                .font(.headline)
+                .font(.monaspace(.headline))
                 .foregroundStyle(.white)
                 .frame(width: 44, height: 44)
                 .background(isEnabled ? NodeScopeStyle.signal : Color.secondary.opacity(0.5), in: Circle())
@@ -89,7 +89,7 @@ private struct NodePlannerToolCard: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.headline)
+                    .font(.monaspace(.headline))
                     .foregroundStyle(.primary)
                 Text(detail)
                     .font(.subheadline)

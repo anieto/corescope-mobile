@@ -277,13 +277,13 @@ private struct ObserverIdentityCard: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: "antenna.radiowaves.left.and.right")
-                    .font(.title2)
+                    .font(.monaspace(.title2))
                     .foregroundStyle(NodeScopeStyle.healthy)
                     .frame(width: 48, height: 48)
                     .background(NodeScopeStyle.healthy.opacity(0.13), in: Circle())
                 VStack(alignment: .leading, spacing: 3) {
                     Text(observer.name ?? observer.id)
-                        .font(.title2.bold())
+                        .font(.monaspace(.title2).bold())
                     HStack(spacing: 6) {
                         if let iata = observer.iata {
                             Label(iata, systemImage: "mappin.and.ellipse")
@@ -541,7 +541,7 @@ private struct RecentObserverPacketsCard: View {
                             .background(NodeScopeStyle.signal.opacity(0.11), in: Capsule())
                         VStack(alignment: .leading, spacing: 2) {
                             Text(packet.hash.uppercased())
-                                .font(.caption.monospaced())
+                                .font(.monaspace(.caption))
                                 .lineLimit(1)
                             Text(packet.timestamp, style: .relative)
                                 .font(.caption2)
@@ -719,7 +719,7 @@ private struct ObserverAnalyticsCard<Content: View>: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 4) {
                 Label(title, systemImage: symbol)
-                    .font(.headline)
+                    .font(.monaspace(.headline))
                     .foregroundStyle(NodeScopeStyle.signal)
                 if let learn {
                     LearnButton(term: learn)

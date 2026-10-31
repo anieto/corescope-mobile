@@ -87,6 +87,11 @@
 		318BF7DD307EC37B00C8BFAD /* BeaconNodeAnalyticsBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318BF7DC307EC37B00C8BFAD /* BeaconNodeAnalyticsBuilder.swift */; };
 		31A2B0023070000100FBA3B4 /* RouteOption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A2B0013070000100FBA3B4 /* RouteOption.swift */; };
 		31A2B0043070000100FBA3B4 /* RoutePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A2B0033070000100FBA3B4 /* RoutePicker.swift */; };
+		36723298AC874EAC5903B976 /* Monaspace-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = CCC3EF3BCC40156BFEC23CAA /* Monaspace-OFL.txt */; };
+		7942643E7AEE0FF022315862 /* MonaspaceNeon-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 018110344B462D94B123F8F3 /* MonaspaceNeon-Bold.otf */; };
+		5A2BF6C3CBC0FF87E26AA483 /* MonaspaceNeon-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 13D380B1339F9747DE599399 /* MonaspaceNeon-SemiBold.otf */; };
+		4AEBBBA4B1200C2E2CEA82EF /* MonaspaceNeon-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = 3F21B6371EF991370D1D03DF /* MonaspaceNeon-Regular.otf */; };
+		DB9DEC9ABF59879D2D850970 /* AppFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = E583994A85C1799754185206 /* AppFont.swift */; };
 		61E23F61BF8C5250F0A86106 /* glossary.json in Resources */ = {isa = PBXBuildFile; fileRef = 4C9B9243A3286306042C94FD /* glossary.json */; };
 		5D1CF26F5BFB0EA0CEB372DF /* GlossaryScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482B3FDFDF3F46A70BC134B5 /* GlossaryScreen.swift */; };
 		DB9F44BFCC24A15FC2881340 /* LearnButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF13FD215F4B08F58FE9D5B0 /* LearnButton.swift */; };
@@ -262,6 +267,11 @@
 		318BF7DC307EC37B00C8BFAD /* BeaconNodeAnalyticsBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeaconNodeAnalyticsBuilder.swift; sourceTree = "<group>"; };
 		31A2B0013070000100FBA3B4 /* RouteOption.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteOption.swift; sourceTree = "<group>"; };
 		31A2B0033070000100FBA3B4 /* RoutePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePicker.swift; sourceTree = "<group>"; };
+		CCC3EF3BCC40156BFEC23CAA /* Monaspace-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Monaspace-OFL.txt"; sourceTree = "<group>"; };
+		018110344B462D94B123F8F3 /* MonaspaceNeon-Bold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "MonaspaceNeon-Bold.otf"; sourceTree = "<group>"; };
+		13D380B1339F9747DE599399 /* MonaspaceNeon-SemiBold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "MonaspaceNeon-SemiBold.otf"; sourceTree = "<group>"; };
+		3F21B6371EF991370D1D03DF /* MonaspaceNeon-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "MonaspaceNeon-Regular.otf"; sourceTree = "<group>"; };
+		E583994A85C1799754185206 /* AppFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppFont.swift; sourceTree = "<group>"; };
 		4C9B9243A3286306042C94FD /* glossary.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = glossary.json; sourceTree = "<group>"; };
 		482B3FDFDF3F46A70BC134B5 /* GlossaryScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlossaryScreen.swift; sourceTree = "<group>"; };
 		FF13FD215F4B08F58FE9D5B0 /* LearnButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnButton.swift; sourceTree = "<group>"; };
@@ -537,6 +547,10 @@
 				6EDB07FE4BF732F4BA52606B /* Assets.xcassets */,
 				56D774144710835E31B1A30E /* iata-airports.csv */,
 				C779CBD001144856373F59F6 /* us-sources.json */,
+				CCC3EF3BCC40156BFEC23CAA /* Monaspace-OFL.txt */,
+				018110344B462D94B123F8F3 /* MonaspaceNeon-Bold.otf */,
+				13D380B1339F9747DE599399 /* MonaspaceNeon-SemiBold.otf */,
+				3F21B6371EF991370D1D03DF /* MonaspaceNeon-Regular.otf */,
 				4C9B9243A3286306042C94FD /* glossary.json */,
 				31CCA84E306DBC7A00D01155 /* LaunchScreen.storyboard */,
 			);
@@ -571,6 +585,7 @@
 				36B0A5E6DC5812474734F2C7 /* SenderColor.swift */,
 				3144E9F6305B2A4300B57F18 /* InstrumentSearchField.swift */,
 				31A2B0033070000100FBA3B4 /* RoutePicker.swift */,
+				E583994A85C1799754185206 /* AppFont.swift */,
 				FF13FD215F4B08F58FE9D5B0 /* LearnButton.swift */,
 				316FE009305E18ED00FBA3B4 /* LiquidGlassStyle.swift */,
 				31152DDF3069FCCF00146B37 /* AdaptiveListDetailNavigation.swift */,
@@ -797,6 +812,10 @@
 				7A58A4866E9870D60395F551 /* iata-airports.csv in Resources */,
 				31CCA84F306DBC7A00D01155 /* LaunchScreen.storyboard in Resources */,
 				748C3658362BEB182690BA21 /* us-sources.json in Resources */,
+				36723298AC874EAC5903B976 /* Monaspace-OFL.txt in Resources */,
+				7942643E7AEE0FF022315862 /* MonaspaceNeon-Bold.otf in Resources */,
+				5A2BF6C3CBC0FF87E26AA483 /* MonaspaceNeon-SemiBold.otf in Resources */,
+				4AEBBBA4B1200C2E2CEA82EF /* MonaspaceNeon-Regular.otf in Resources */,
 				61E23F61BF8C5250F0A86106 /* glossary.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -887,6 +906,7 @@
 				31DFA802308F9D3400B8C681 /* MeshBackground.swift in Sources */,
 				31DFA7EB308E9F4E00B8C681 /* NodePlannerRFEngine.swift in Sources */,
 				31A2B0043070000100FBA3B4 /* RoutePicker.swift in Sources */,
+				DB9DEC9ABF59879D2D850970 /* AppFont.swift in Sources */,
 				DB9F44BFCC24A15FC2881340 /* LearnButton.swift in Sources */,
 				16CC334CE0E2AE894A6E2811 /* ChannelMessagesCache.swift in Sources */,
 				F82F20C851C52EAC49BC3931 /* ChannelMonitorStore.swift in Sources */,

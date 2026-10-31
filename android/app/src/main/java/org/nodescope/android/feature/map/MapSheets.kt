@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.map
 
+import org.nodescope.android.core.design.MonaspaceNeon
 import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.MeshModalBottomSheet
 import android.content.Intent
@@ -192,7 +193,7 @@ internal fun RouteDetailsSheet(details: RouteDetails, onNode: (String) -> Unit, 
                     headlineContent = { Text(stop.title) },
                     supportingContent = when {
                         stop.receiver -> ({ Text("Received by") })
-                        key != null -> ({ Text(key, fontFamily = FontFamily.Monospace, maxLines = 1, overflow = TextOverflow.Ellipsis) })
+                        key != null -> ({ Text(key, fontFamily = MonaspaceNeon, maxLines = 1, overflow = TextOverflow.Ellipsis) })
                         else -> null
                     },
                     trailingContent = if (key != null) ({ Icon(Icons.Outlined.ChevronRight, null) }) else null,

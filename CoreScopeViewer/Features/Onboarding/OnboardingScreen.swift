@@ -83,7 +83,7 @@ struct OnboardingScreen: View {
 
             VStack(spacing: 10) {
                 Text("Welcome to NodeScope")
-                    .font(.largeTitle.weight(.bold))
+                    .font(.monaspace(.largeTitle).weight(.bold))
                 Text("Choose a community analyzer to explore its live nodes, routes, channels, and observers.")
                     .font(.body)
                     .foregroundStyle(Color.secondary)
@@ -99,7 +99,7 @@ struct OnboardingScreen: View {
                         .foregroundStyle(Color.accentColor)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(selectedSourceName)
-                            .font(.headline)
+                            .font(.monaspace(.headline))
                             .foregroundStyle(Color.primary)
                         Text(selectedHost.isEmpty ? "Choose an analyzer" : selectedHost)
                             .font(.caption)
@@ -150,7 +150,7 @@ struct OnboardingScreen: View {
 
             VStack(spacing: 8) {
                 Text("Follow the Mesh")
-                    .font(.largeTitle.weight(.bold))
+                    .font(.monaspace(.largeTitle).weight(.bold))
                 Text("NodeScope makes live activity easier to understand at a glance.")
                     .font(.body)
                     .foregroundStyle(Color.secondary)

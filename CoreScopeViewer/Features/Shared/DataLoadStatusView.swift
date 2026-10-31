@@ -6,7 +6,7 @@ struct BeaconFeatureNotice: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Beacon Support", systemImage: "info.circle")
-                .font(.subheadline.weight(.semibold))
+                .font(.monaspace(.subheadline).weight(.semibold))
                 .foregroundStyle(NodeScopeStyle.signal)
             Text(capability.beaconExplanation)
                 .font(.subheadline)

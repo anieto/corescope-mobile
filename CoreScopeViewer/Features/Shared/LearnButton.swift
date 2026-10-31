@@ -78,7 +78,7 @@ private struct LearnSummary: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(entry.term)
-                .font(.headline)
+                .font(.monaspace(.headline))
             Text(entry.summary)
                 .font(.subheadline)
                 .fixedSize(horizontal: false, vertical: true)

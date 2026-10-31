@@ -22,7 +22,7 @@ struct AboutScreen: View {
                             .foregroundStyle(Color.accentColor)
                     }
                     Text("NodeScope")
-                        .font(.title3.weight(.semibold))
+                        .font(.monaspace(.title3).weight(.semibold))
                     Text("Version \(Self.appVersion) (\(Self.buildNumber))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -115,7 +115,12 @@ struct AboutScreen: View {
                         ProjectLinkRow(icon: "mountain.2.fill", title: "Open-Meteo & Copernicus Elevation Data")
                     }
                 }
-                Text("Line-of-sight calculations include modified GPLv3 work from MeshCore One. Terrain data uses Copernicus DEM 2021 GLO-90 through Open-Meteo.")
+                if let monaspaceURL = URL(string: "https://github.com/githubnext/monaspace") {
+                    Link(destination: monaspaceURL) {
+                        ProjectLinkRow(icon: "textformat", title: "Monaspace Neon by GitHub")
+                    }
+                }
+                Text("Line-of-sight calculations include modified GPLv3 work from MeshCore One. Terrain data uses Copernicus DEM 2021 GLO-90 through Open-Meteo. Monaspace Neon is used under the SIL Open Font License 1.1.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

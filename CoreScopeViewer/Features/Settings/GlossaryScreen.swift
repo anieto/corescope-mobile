@@ -40,7 +40,7 @@ private struct GlossaryRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(entry.term)
-                .font(.headline)
+                .font(.monaspace(.headline))
             Text(entry.summary)
                 .font(.subheadline)
             if let detail = entry.detail {

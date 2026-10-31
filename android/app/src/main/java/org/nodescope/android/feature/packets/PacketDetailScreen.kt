@@ -106,7 +106,7 @@ fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNod
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Hop ${index + 1}", Modifier.width(56.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(node?.displayName ?: "Unknown node", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(value.take(8).uppercase(), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelMedium,
+                        Text(value.take(8).uppercase(), fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -122,7 +122,7 @@ fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNod
             }
         }
         latest.rawHex?.let { raw ->
-            item { DetailSection("Raw packet") { SelectionContainer { Text(raw, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelMedium) } } }
+            item { DetailSection("Raw packet") { SelectionContainer { Text(raw, fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelMedium) } } }
         }
     }
 }
@@ -146,7 +146,7 @@ internal fun DetailRow(label: String, value: String, monospace: Boolean = false,
         if (learn != null) LearnLabel(label, learn, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         else Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         SelectionContainer {
-            Text(value, style = MaterialTheme.typography.bodyMedium, fontFamily = if (monospace) FontFamily.Monospace else null, textAlign = TextAlign.Start)
+            Text(value, style = MaterialTheme.typography.bodyMedium, fontFamily = if (monospace) MonaspaceNeon else null, textAlign = TextAlign.Start)
         }
     }
 }

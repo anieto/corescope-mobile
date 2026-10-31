@@ -272,6 +272,13 @@ fun AboutScreen() {
             }
         }
         item {
+            Section("Font") {
+                Text("Headings and values use Monaspace Neon by GitHub, under the SIL Open Font License 1.1.",
+                    style = MaterialTheme.typography.bodyMedium)
+                LinkRow(Icons.Outlined.TextFields, "Monaspace") { uri.openUri("https://github.com/githubnext/monaspace") }
+            }
+        }
+        item {
             Section("License") {
                 Text("NodeScope · Copyright © 2026 BetweenThieves Development", style = MaterialTheme.typography.titleSmall)
                 Text("Free and open-source software licensed under GNU GPL version 3 with an application-store distribution exception. You may share and modify it under those terms. NodeScope comes with absolutely no warranty.",
@@ -319,6 +326,6 @@ private fun Section(title: String?, footer: String? = null, content: @Composable
 private fun IdentityRow(label: String, value: String, onCopy: () -> Unit) {
     Column(Modifier.fillMaxWidth().clickable(onClickLabel = "Copy $label", onClick = onCopy).padding(vertical = 4.dp)) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.bodyMedium, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontFamily = MonaspaceNeon)
     }
 }

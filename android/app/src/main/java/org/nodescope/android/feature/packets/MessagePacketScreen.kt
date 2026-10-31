@@ -92,7 +92,7 @@ fun MessagePacketScreen(model: PacketDetailViewModel, host: String, hash: String
                                 Text(type ?: "Loading packet", style = MaterialTheme.typography.titleLarge)
                                 if (type == "ADVERT") LearnButton(GlossaryTerm.ADVERT)
                             }
-                            SelectionContainer { Text(hash.uppercase(), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelMedium,
+                            SelectionContainer { Text(hash.uppercase(), fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                         }
                         PacketActions(onCopy = { copy("Packet hash", hash, false) }, onShare = {
@@ -190,8 +190,8 @@ private fun TechnicalCard(packet: PacketRecord) {
             Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null)
         }
         if (expanded) {
-            packet.decodedJson?.let { SelectionContainer { Text(it, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelMedium) } }
-            packet.rawHex?.let { SelectionContainer { Text(it.uppercase(), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelMedium,
+            packet.decodedJson?.let { SelectionContainer { Text(it, fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelMedium) } }
+            packet.rawHex?.let { SelectionContainer { Text(it.uppercase(), fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant) } }
         }
     }

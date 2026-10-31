@@ -200,20 +200,20 @@ private struct PacketIdentityCard: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 12) {
                 Image(systemName: "waveform.path.ecg.rectangle.fill")
-                    .font(.title2)
+                    .font(.monaspace(.title2))
                     .foregroundStyle(.white)
                     .frame(width: 48, height: 48)
                     .background(NodeScopeStyle.signal, in: RoundedRectangle(cornerRadius: 14))
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 4) {
                         Text(type ?? "Loading packet")
-                            .font(.title2.bold())
+                            .font(.monaspace(.title2).bold())
                         if type == "ADVERT" {
                             LearnButton(term: .advert)
                         }
                     }
                     Text(hash.uppercased())
-                        .font(.caption.monospaced())
+                        .font(.monaspace(.caption))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .textSelection(.enabled)
@@ -246,7 +246,7 @@ private struct PacketMetricTile: View {
         VStack(alignment: .leading, spacing: 5) {
             HStack {
                 Image(systemName: symbol)
-                    .font(.caption.weight(.bold))
+                    .font(.monaspace(.caption).weight(.bold))
                     .foregroundStyle(NodeScopeStyle.signal)
                 Spacer(minLength: 0)
                 if let learn {
@@ -254,7 +254,7 @@ private struct PacketMetricTile: View {
                 }
             }
             Text(value)
-                .font(.headline.monospacedDigit())
+                .font(.monaspace(.headline))
             Text(label)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
@@ -395,7 +395,7 @@ private struct PacketObserversCard: View {
                         Spacer()
                         Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                     }
-                    .font(.caption.weight(.bold))
+                    .font(.monaspace(.caption).weight(.bold))
                     .foregroundStyle(NodeScopeStyle.signal)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 9)
@@ -423,7 +423,7 @@ private struct PacketTechnicalCard: View {
                     Spacer()
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                 }
-                .font(.subheadline.weight(.semibold))
+                .font(.monaspace(.subheadline).weight(.semibold))
                 .foregroundStyle(NodeScopeStyle.signal)
             }
             .buttonStyle(.plain)
@@ -431,13 +431,13 @@ private struct PacketTechnicalCard: View {
             if isExpanded {
                 if let decodedJson = packet.decodedJson {
                     Text(decodedJson)
-                        .font(.caption2.monospaced())
+                        .font(.monaspace(.caption2))
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if let rawHex = packet.rawHex {
                     Text(rawHex.uppercased())
-                        .font(.caption2.monospaced())
+                        .font(.monaspace(.caption2))
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
@@ -464,7 +464,7 @@ private struct PacketDetailCard<Content: View>: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 4) {
                 Label(title, systemImage: symbol)
-                    .font(.headline)
+                    .font(.monaspace(.headline))
                     .foregroundStyle(NodeScopeStyle.signal)
                 if let learn {
                     LearnButton(term: learn)

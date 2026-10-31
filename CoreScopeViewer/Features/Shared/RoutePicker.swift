@@ -111,7 +111,7 @@ struct RouteHearersView: View {
                                 .lineLimit(1)
                             Spacer(minLength: 8)
                             Text([hearing.region, hearing.signalText].compactMap { $0 }.joined(separator: " · "))
-                                .font(.caption.monospacedDigit())
+                                .font(.monaspace(.caption))
                                 .foregroundStyle(.secondary)
                         }
                     }
