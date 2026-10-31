@@ -19,6 +19,7 @@ import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapLibreMapOptions
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression.*
@@ -78,7 +79,13 @@ internal fun rememberMapLibreEngine(): MapLibreEngine {
     // A MapView is destroyed with the lifecycle it was attached to, so a new lifecycle (e.g. the
     // navigation entry being replaced) gets a new MapView; a destroyed one is never reused,
     // which left the map blank and crashed MapLibre ("called after the MapView was destroyed").
-    return remember(context, lifecycle) { MapLibreEngine(MapView(context).apply { onCreate(null) }) }
+    // TextureView rather than the default SurfaceView: resizing a SurfaceView map (folding or
+    // unfolding a foldable, entering split screen) deadlocked the OpenGL render thread against
+    // the UI thread and froze the app (MapLibre fixed this only for its Vulkan renderer).
+    return remember(context, lifecycle) {
+        val options = MapLibreMapOptions.createFromAttributes(context).textureMode(true)
+        MapLibreEngine(MapView(context, options).apply { onCreate(null) })
+    }
 }
 
 /**
