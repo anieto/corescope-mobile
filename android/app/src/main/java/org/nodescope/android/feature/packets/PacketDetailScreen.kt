@@ -62,6 +62,7 @@ fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNod
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(packetIcon(shown.typeName), null, tint = tone)
                     Text(shown.typeName, style = MaterialTheme.typography.titleMedium, color = tone)
+                    if (shown.typeName == "ADVERT") LearnButton(GlossaryTerm.ADVERT)
                 }
                 DetailRow("Hash", latest.hash.ifEmpty { "Unavailable" }, monospace = true)
                 latest.payloadVersion?.let { DetailRow("Payload version", it.toString()) }
@@ -96,7 +97,7 @@ fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNod
             }
         }
         if (shown.longestPath.isNotEmpty() || routes.isNotEmpty()) item {
-            DetailSection("Route") {
+            DetailSection("Route", GlossaryTerm.ROUTE) {
                 if (routes.size > 1) RoutePicker(routes, selectedRoute, { selectedRoute = it })
                 // Resolved routes carry full keys; otherwise show the path's hash prefixes.
                 val hops: List<Pair<String, MeshNode?>> = routes.getOrNull(selectedRoute)?.keys?.map { it to nodesByKey[it.lowercase()] }
@@ -127,10 +128,11 @@ fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNod
 }
 
 @Composable
-internal fun DetailSection(title: String, content: @Composable ColumnScope.() -> Unit) {
+internal fun DetailSection(title: String, learn: GlossaryTerm? = null, content: @Composable ColumnScope.() -> Unit) {
     Card(colors = meshCardColors()) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(title.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (learn != null) LearnLabel(title.uppercase(), learn, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            else Text(title.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             content()
         }
     }

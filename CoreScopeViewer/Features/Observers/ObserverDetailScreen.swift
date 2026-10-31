@@ -497,7 +497,7 @@ private struct SNRDistributionCard: View {
     let buckets: [SnrBucket]
 
     var body: some View {
-        ObserverAnalyticsCard(title: "SNR Distribution", symbol: "waveform.path") {
+        ObserverAnalyticsCard(title: "SNR Distribution", symbol: "waveform.path", learn: .snr) {
             Chart(buckets) { bucket in
                 BarMark(
                     x: .value("SNR range", bucket.range),
@@ -705,19 +705,26 @@ private struct ObserverNoiseFloorCard: View {
 private struct ObserverAnalyticsCard<Content: View>: View {
     let title: LocalizedStringKey
     let symbol: String
+    let learn: GlossaryTerm?
     @ViewBuilder let content: Content
 
-    init(title: LocalizedStringKey, symbol: String, @ViewBuilder content: () -> Content) {
+    init(title: LocalizedStringKey, symbol: String, learn: GlossaryTerm? = nil, @ViewBuilder content: () -> Content) {
         self.title = title
         self.symbol = symbol
+        self.learn = learn
         self.content = content()
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label(title, systemImage: symbol)
-                .font(.headline)
-                .foregroundStyle(NodeScopeStyle.signal)
+            HStack(spacing: 4) {
+                Label(title, systemImage: symbol)
+                    .font(.headline)
+                    .foregroundStyle(NodeScopeStyle.signal)
+                if let learn {
+                    LearnButton(term: learn)
+                }
+            }
             content
         }
         .padding(16)

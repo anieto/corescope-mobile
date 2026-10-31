@@ -328,6 +328,9 @@ private struct NodeIdentityCard: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
+                        if node.lastSeen != nil || node.lastHeard != nil {
+                            LearnButton(term: .lastHeard)
+                        }
                     }
                 }
             }
@@ -385,7 +388,8 @@ private struct NodeHealthCard: View {
                 NodeMetricTile(value: stats.packetsToday.formatted(), label: "Today")
                 NodeMetricTile(
                     value: stats.avgSnr.map { String(format: "%.1f", $0) } ?? "—",
-                    label: "Avg SNR"
+                    label: "Avg SNR",
+                    learn: .snr
                 )
             }
 
@@ -404,14 +408,20 @@ private struct NodeHealthCard: View {
 private struct NodeMetricTile: View {
     let value: String
     let label: LocalizedStringKey
+    var learn: GlossaryTerm?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(value)
                 .font(.headline.monospacedDigit())
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 2) {
+                Text(label)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                if let learn {
+                    LearnButton(term: learn)
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
@@ -429,7 +439,7 @@ private struct NodeObserversCard: View {
     }
 
     var body: some View {
-        NodeDetailCard(title: "Heard By", symbol: "ear.badge.waveform") {
+        NodeDetailCard(title: "Heard By", symbol: "ear.badge.waveform", learn: .observer) {
             VStack(spacing: 0) {
                 ForEach(visibleObservers) { observer in
                     Button {
@@ -781,19 +791,26 @@ private struct ExpandSectionButton: View {
 private struct NodeDetailCard<Content: View>: View {
     let title: LocalizedStringKey
     let symbol: String
+    let learn: GlossaryTerm?
     @ViewBuilder let content: Content
 
-    init(title: LocalizedStringKey, symbol: String, @ViewBuilder content: () -> Content) {
+    init(title: LocalizedStringKey, symbol: String, learn: GlossaryTerm? = nil, @ViewBuilder content: () -> Content) {
         self.title = title
         self.symbol = symbol
+        self.learn = learn
         self.content = content()
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label(title, systemImage: symbol)
-                .font(.headline)
-                .foregroundStyle(NodeScopeStyle.signal)
+            HStack(spacing: 4) {
+                Label(title, systemImage: symbol)
+                    .font(.headline)
+                    .foregroundStyle(NodeScopeStyle.signal)
+                if let learn {
+                    LearnButton(term: learn)
+                }
+            }
             content
         }
         .padding(16)

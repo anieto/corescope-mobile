@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.observers
 
+import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -87,7 +88,7 @@ fun ObserverDetailScreen(model: ObserversViewModel, host: String, observerId: St
                 }
             }
             if (analytics.snrDistribution.isNotEmpty()) item {
-                AnalyticsCard("SNR distribution (dB)", Icons.Outlined.GraphicEq) {
+                AnalyticsCard("SNR distribution (dB)", Icons.Outlined.GraphicEq, GlossaryTerm.SNR) {
                     BarChart("SNR distribution", analytics.snrDistribution.map { ChartPoint(it.range, it.count) }, ActivityAmber)
                 }
             }
@@ -242,12 +243,13 @@ private fun MetricGrid(values: List<Pair<String, String>>) {
 }
 
 @Composable
-private fun AnalyticsCard(title: String, icon: ImageVector, content: @Composable ColumnScope.() -> Unit) {
+private fun AnalyticsCard(title: String, icon: ImageVector, learn: GlossaryTerm? = null, content: @Composable ColumnScope.() -> Unit) {
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(icon, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                 Text(title, style = MaterialTheme.typography.titleMedium)
+                learn?.let { LearnButton(it, Modifier.offset(x = (-6).dp)) }
             }
             content()
         }

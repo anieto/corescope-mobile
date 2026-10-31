@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.settings
 
+import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -102,7 +103,7 @@ fun SettingsScreen(
             item {
                 Panel("Analyzer source", Icons.Outlined.Dns) {
                     NavigationRow("Choose source", preferences.host, Icons.Outlined.Hub, onSource)
-                    Text("Choose the network you want to explore.", style = MaterialTheme.typography.bodySmall,
+                    LearnLabel("Choose the network you want to explore.", GlossaryTerm.ANALYZER, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }

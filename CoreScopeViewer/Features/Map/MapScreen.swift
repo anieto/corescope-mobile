@@ -2839,7 +2839,7 @@ private struct MapRouteDetailsSheet: View {
                     MapRouteMessageSection(sender: route.sender, messageText: messageText)
                 }
 
-                Section("Route") {
+                Section {
                     ForEach(route.hops) { hop in
                         if let node = hop.node {
                             NavigationLink {
@@ -2851,6 +2851,8 @@ private struct MapRouteDetailsSheet: View {
                             MapRouteHopRow(hop: hop, showsDisclosureIndicator: false)
                         }
                     }
+                } header: {
+                    LearnLabel("Route", term: .route)
                 }
             }
             .meshPageBackground()

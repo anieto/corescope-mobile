@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.packets
 
+import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.meshCardColors
 import android.content.Intent
 import org.nodescope.android.core.design.senderColor
@@ -87,7 +88,10 @@ fun MessagePacketScreen(model: PacketDetailViewModel, host: String, hash: String
                             Icon(Icons.Outlined.MonitorHeart, null, tint = MaterialTheme.colorScheme.surface)
                         }
                         Column(Modifier.weight(1f)) {
-                            Text(type ?: "Loading packet", style = MaterialTheme.typography.titleLarge)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(type ?: "Loading packet", style = MaterialTheme.typography.titleLarge)
+                                if (type == "ADVERT") LearnButton(GlossaryTerm.ADVERT)
+                            }
                             SelectionContainer { Text(hash.uppercase(), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                         }
@@ -98,16 +102,16 @@ fun MessagePacketScreen(model: PacketDetailViewModel, host: String, hash: String
                         })
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        MetricTile((detail?.observationCount ?: detail?.observations?.size)?.toString() ?: "—", "Observations", Icons.Outlined.Hearing, Modifier.weight(1f))
-                        MetricTile(detail?.path?.size?.toString() ?: "—", "Hops", Icons.Outlined.Route, Modifier.weight(1f))
-                        MetricTile(detail?.packet?.snr?.let { "%.1f".format(it) } ?: "—", "SNR dB", Icons.Outlined.GraphicEq, Modifier.weight(1f))
+                        MetricTile((detail?.observationCount ?: detail?.observations?.size)?.toString() ?: "—", "Observations", Icons.Outlined.Hearing, Modifier.weight(1f), GlossaryTerm.OBSERVATION)
+                        MetricTile(detail?.path?.size?.toString() ?: "—", "Hops", Icons.Outlined.Route, Modifier.weight(1f), GlossaryTerm.HOP)
+                        MetricTile(detail?.packet?.snr?.let { "%.1f".format(it) } ?: "—", "SNR dB", Icons.Outlined.GraphicEq, Modifier.weight(1f), GlossaryTerm.SNR)
                     }
                 }
             }
         }
         if (detail != null) {
             item {
-                PacketCard("Route", Icons.Outlined.Route) {
+                PacketCard("Route", Icons.Outlined.Route, GlossaryTerm.ROUTE) {
                     if (routes.isEmpty()) Text("No mappable route was recorded for this packet.", style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     else {
@@ -152,7 +156,7 @@ private fun PacketActions(onCopy: () -> Unit, onShare: () -> Unit) {
 @Composable
 private fun ObserversCard(observations: List<PacketObservation>) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    PacketCard("Observers", Icons.Outlined.Sensors) {
+    PacketCard("Observers", Icons.Outlined.Sensors, GlossaryTerm.OBSERVER) {
         Column {
             observations.take(if (expanded) observations.size else 3).forEachIndexed { index, observation ->
                 if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
@@ -194,11 +198,16 @@ private fun TechnicalCard(packet: PacketRecord) {
 }
 
 @Composable
-private fun MetricTile(value: String, label: String, icon: ImageVector, modifier: Modifier) {
-    Surface(modifier.semantics(mergeDescendants = true) { contentDescription = "$label: $value" }, color = SignalBlue.copy(alpha = 0.08f),
-        shape = MaterialTheme.shapes.small) {
+private fun MetricTile(value: String, label: String, icon: ImageVector, modifier: Modifier, learn: GlossaryTerm? = null) {
+    // Merged for TalkBack, except when it carries an ⓘ, which has to stay focusable on its own.
+    Surface(if (learn == null) modifier.semantics(mergeDescendants = true) { contentDescription = "$label: $value" } else modifier,
+        color = SignalBlue.copy(alpha = 0.08f), shape = MaterialTheme.shapes.small) {
         Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Icon(icon, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(icon, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.weight(1f))
+                learn?.let { LearnButton(it) }
+            }
             Text(value, style = MaterialTheme.typography.titleMedium)
             Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -206,12 +215,13 @@ private fun MetricTile(value: String, label: String, icon: ImageVector, modifier
 }
 
 @Composable
-private fun PacketCard(title: String, icon: ImageVector, content: @Composable ColumnScope.() -> Unit) {
+private fun PacketCard(title: String, icon: ImageVector, learn: GlossaryTerm? = null, content: @Composable ColumnScope.() -> Unit) {
     Card(colors = meshCardColors()) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(icon, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                 Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                learn?.let { LearnButton(it, Modifier.offset(x = (-6).dp)) }
             }
             content()
         }

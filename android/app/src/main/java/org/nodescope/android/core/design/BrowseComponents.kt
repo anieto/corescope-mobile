@@ -1,5 +1,6 @@
 package org.nodescope.android.core.design
 
+import org.nodescope.android.feature.learn.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -128,7 +129,10 @@ fun FilterSheet(title: String, regionControl: @Composable () -> Unit, groups: Li
                 Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
                 TextButton(onClick = onReset) { Text("Reset") }
             }
-            SectionLabel("Region")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                SectionLabel("Region")
+                LearnButton(GlossaryTerm.REGION, Modifier.padding(top = 8.dp))
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.Public, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.width(12.dp))

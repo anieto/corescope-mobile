@@ -174,7 +174,10 @@ internal fun RouteDetailsSheet(details: RouteDetails, onNode: (String) -> Unit, 
                         Text(if (expanded) "Show less" else "Show more")
                     }
                 }
-                SectionLabel("Route")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SectionLabel("Route")
+                    LearnButton(GlossaryTerm.ROUTE, Modifier.padding(top = 8.dp))
+                }
             }
             items(details.stops, key = { it.position }) { stop ->
                 val key = stop.publicKey

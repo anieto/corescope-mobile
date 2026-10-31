@@ -882,7 +882,8 @@ private struct NodeSignalCard: View {
             NodeAnalyticsChartCard(
                 title: "Signal",
                 subtitle: "How well observers hear this node (SNR)",
-                symbol: "wave.3.right"
+                symbol: "wave.3.right",
+                learn: .snr
             ) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(headline(for: summaries))
@@ -1265,7 +1266,8 @@ private struct NodeHopDistributionChart: View {
         NodeAnalyticsChartCard(
             title: "Hop Count",
             subtitle: "How far packets traveled",
-            symbol: "point.3.connected.trianglepath.dotted"
+            symbol: "point.3.connected.trianglepath.dotted",
+            learn: .hop
         ) {
             Chart(counts) { item in
                 BarMark(
@@ -1287,6 +1289,7 @@ private struct NodeAnalyticsChartCard<Content: View>: View {
     let title: LocalizedStringKey
     let subtitle: LocalizedStringResource
     let symbol: String
+    var learn: GlossaryTerm?
     @ViewBuilder let content: Content
 
     var body: some View {
@@ -1295,9 +1298,14 @@ private struct NodeAnalyticsChartCard<Content: View>: View {
                 Image(systemName: symbol)
                     .foregroundStyle(.primary)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.headline)
-                        .accessibilityAddTraits(.isHeader)
+                    HStack(spacing: 4) {
+                        Text(title)
+                            .font(.headline)
+                            .accessibilityAddTraits(.isHeader)
+                        if let learn {
+                            LearnButton(term: learn)
+                        }
+                    }
                     Text(subtitle)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -1319,11 +1327,14 @@ private struct NodeObserverCoverageCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Label("Observer Coverage", systemImage: "eye")
-                .font(.headline)
-                .foregroundStyle(.primary)
-                .accessibilityAddTraits(.isHeader)
-                .padding(.bottom, 8)
+            HStack(spacing: 4) {
+                Label("Observer Coverage", systemImage: "eye")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .accessibilityAddTraits(.isHeader)
+                LearnButton(term: .observer)
+            }
+            .padding(.bottom, 8)
 
             ForEach(Array(sortedObservers.enumerated()), id: \.element.id) { index, observer in
                 if index > 0 {

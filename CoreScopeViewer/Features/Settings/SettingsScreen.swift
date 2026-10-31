@@ -72,9 +72,12 @@ struct SettingsScreen: View {
                         }
                         .buttonStyle(.plain)
 
-                        Text("Every screen uses the selected analyzer’s supported features and regions.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            Text("Every screen uses the selected analyzer’s supported features and regions.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                            LearnButton(term: .analyzer)
+                        }
                     }
 
                     SettingsPanel(title: "Connection", symbol: "wave.3.right") {

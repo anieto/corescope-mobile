@@ -205,8 +205,13 @@ private struct PacketIdentityCard: View {
                     .frame(width: 48, height: 48)
                     .background(NodeScopeStyle.signal, in: RoundedRectangle(cornerRadius: 14))
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(type ?? "Loading packet")
-                        .font(.title2.bold())
+                    HStack(spacing: 4) {
+                        Text(type ?? "Loading packet")
+                            .font(.title2.bold())
+                        if type == "ADVERT" {
+                            LearnButton(term: .advert)
+                        }
+                    }
                     Text(hash.uppercased())
                         .font(.caption.monospaced())
                         .foregroundStyle(.secondary)
@@ -267,7 +272,7 @@ private struct PacketRouteCard: View {
     let replay: () -> Void
 
     var body: some View {
-        PacketDetailCard(title: "Route", symbol: "point.topleft.down.curvedto.point.bottomright.up") {
+        PacketDetailCard(title: "Route", symbol: "point.topleft.down.curvedto.point.bottomright.up", learn: .route) {
             if routes.isEmpty {
                 Text("No mappable route was recorded for this packet.")
                     .font(.subheadline)
@@ -336,7 +341,7 @@ private struct PacketObserversCard: View {
     }
 
     var body: some View {
-        PacketDetailCard(title: "Observers", symbol: "antenna.radiowaves.left.and.right") {
+        PacketDetailCard(title: "Observers", symbol: "antenna.radiowaves.left.and.right", learn: .observer) {
             VStack(spacing: 0) {
                 ForEach(visibleObservations) { observation in
                     HStack(spacing: 10) {
@@ -445,19 +450,26 @@ private struct PacketTechnicalCard: View {
 private struct PacketDetailCard<Content: View>: View {
     let title: LocalizedStringKey
     let symbol: String
+    let learn: GlossaryTerm?
     @ViewBuilder let content: Content
 
-    init(title: LocalizedStringKey, symbol: String, @ViewBuilder content: () -> Content) {
+    init(title: LocalizedStringKey, symbol: String, learn: GlossaryTerm? = nil, @ViewBuilder content: () -> Content) {
         self.title = title
         self.symbol = symbol
+        self.learn = learn
         self.content = content()
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label(title, systemImage: symbol)
-                .font(.headline)
-                .foregroundStyle(NodeScopeStyle.signal)
+            HStack(spacing: 4) {
+                Label(title, systemImage: symbol)
+                    .font(.headline)
+                    .foregroundStyle(NodeScopeStyle.signal)
+                if let learn {
+                    LearnButton(term: learn)
+                }
+            }
             content
         }
         .padding(16)
