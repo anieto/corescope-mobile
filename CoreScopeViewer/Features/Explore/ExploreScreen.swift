@@ -16,6 +16,9 @@ struct ExploreScreen: View {
     @State private var navigationPath = NavigationPath()
     @State private var visibleItems: [FavoriteItem] = []
     @State private var visibleRecentItems: [RecentItem] = []
+    /// Recently Viewed shows a few items until expanded; it starts collapsed each launch.
+    @State private var showsAllRecentItems = false
+    private static let collapsedRecentCount = 3
     @State private var nodeViewModel = MapViewModel()
     @State private var observerViewModel = ObserversViewModel()
     @State private var channelViewModel = ChannelsViewModel()
@@ -195,8 +198,27 @@ struct ExploreScreen: View {
     private var recentSection: some View {
         if !visibleRecentItems.isEmpty {
             Section {
-                ForEach(visibleRecentItems) { item in
+                let hiddenCount = visibleRecentItems.count - Self.collapsedRecentCount
+                ForEach(showsAllRecentItems ? visibleRecentItems : Array(visibleRecentItems.prefix(Self.collapsedRecentCount))) { item in
                     recentRow(item)
+                }
+                if hiddenCount > 0 {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) { showsAllRecentItems.toggle() }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text(showsAllRecentItems ? "Show Less" : "Show All (\(visibleRecentItems.count))")
+                            Image(systemName: showsAllRecentItems ? "chevron.up" : "chevron.down")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(NodeScopeStyle.signal)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 4)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .favoritesListRow(top: 2, bottom: 8)
                 }
             } header: {
                 HStack {
