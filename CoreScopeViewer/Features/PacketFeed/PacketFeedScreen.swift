@@ -32,6 +32,8 @@ struct MapPacketWorkspaceScreen: View {
     @State private var duoSecondaryMinX: CGFloat = 0
     @State private var duoWorkspaceMaxX: CGFloat = 0
     @State private var duoTrailingInset: CGFloat = 0
+    /// Half folded: the map's controls next to the packets pane keep clear of the crease.
+    @State private var isDuoPartiallyOpen = false
     @State private var isDuoSidebarToolbarShown = false
 
     var body: some View {
@@ -118,7 +120,7 @@ struct MapPacketWorkspaceScreen: View {
                 togglePacketSidebar: { setDuoPacketSidebarVisible(!isDuoPacketSidebarVisible) },
                 pinsPacketSidebarToggle: true,
                 centersBottomControlsInLeadingPane: !isDuoPacketSidebarVisible,
-                trailingObscuredWidth: isDuoPacketSidebarVisible ? duoSidebarWidth : 0
+                trailingObscuredWidth: isDuoPacketSidebarVisible ? duoSidebarWidth + duoCreaseMargin : 0
             )
 
             if isDuoPacketSidebarVisible {
@@ -148,8 +150,15 @@ struct MapPacketWorkspaceScreen: View {
                 .zIndex(1)
             }
         }
+        .modifier(DuoFoldObserver(isPartiallyOpen: $isDuoPartiallyOpen))
         .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxX } action: { duoWorkspaceMaxX = $0 }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.trailing } action: { duoTrailingInset = $0 }
+    }
+
+    /// Room the map's controls leave beside the hinge when the device is half folded, where the
+    /// crease would otherwise run under them.
+    private var duoCreaseMargin: CGFloat {
+        isDuoPartiallyOpen ? 24 : 0
     }
 
     /// The right screen: from the hinge split to the workspace's trailing edge (the side tab column
@@ -1516,4 +1525,28 @@ extension EnvironmentValues {
     /// Off while the Duo's packet sidebar slides: its toolbar buttons sit in the side column,
     /// which does not move with it.
     @Entry var showsPacketSidebarToolbarItems = true
+}
+
+/// Tracks whether the Duo is half folded. Hinge updates also arrive when nothing changed, so only a
+/// real change touches the state.
+private struct DuoFoldObserver: ViewModifier {
+    @Binding var isPartiallyOpen: Bool
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 27.1, *) {
+            content.onHingeChange { _, newContext in
+                let newValue = newContext.hinge?.status == .partiallyOpen
+                guard newValue != isPartiallyOpen else { return }
+                if accessibilityReduceMotion {
+                    isPartiallyOpen = newValue
+                } else {
+                    withAnimation(.smooth(duration: 0.3)) { isPartiallyOpen = newValue }
+                }
+            }
+        } else {
+            content
+        }
+    }
 }
