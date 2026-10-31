@@ -1,0 +1,122 @@
+{
+  "upstream": "481e5a482f10fc6956a98aed39aacdb59c3fb6ec",
+  "host": "darwin",
+  "results": [
+    {
+      "case": "calgary_30km",
+      "compute_seconds": 1.574545165989548,
+      "max_16_radial_seconds": 0.00552254100330174,
+      "region": [
+        2400.0,
+        2400.0,
+        51.99916666666667,
+        50.0,
+        -113.00083333333333,
+        -115.0,
+        9600.0,
+        4.0
+      ],
+      "missing_fixture_pages": [],
+      "itm_error_counts": [
+        0,
+        82473,
+        0,
+        441662,
+        664,
+        0
+      ],
+      "signal_sha256": "c6bb978191614e91476edb00ec9de3fbdcca36f363f78a5da688176a3c34657b",
+      "mask_sha256": "d10adb1cecd7b6a569cbfbcae9c0f91174a8d84b293fa39c5e3f44ab062a0a1c",
+      "signal_byte_mismatches": 0,
+      "mask_byte_mismatches": 0,
+      "process_peak_rss": 118669312
+    },
+    {
+      "case": "cape_town_20km",
+      "compute_seconds": 0.487994166003773,
+      "max_16_radial_seconds": 0.00250770800630562,
+      "region": [
+        1200.0,
+        2400.0,
+        -33.00083333333333,
+        -35.0,
+        19.0,
+        18.0,
+        7200.0,
+        2.0
+      ],
+      "missing_fixture_pages": [],
+      "itm_error_counts": [
+        31709,
+        0,
+        0,
+        144334,
+        510,
+        0
+      ],
+      "signal_sha256": "2200750c24a64ac2a3aa5184728bf852e7491569ea211144fde41bd5e6ea7a9d",
+      "mask_sha256": "e581ed6a877368ec4ac21c6f654d624cb913a32c18673bdfa53697387914057e",
+      "signal_byte_mismatches": 0,
+      "mask_byte_mismatches": 0,
+      "process_peak_rss": 127533056
+    },
+    {
+      "case": "london_15km",
+      "compute_seconds": 0.4290280829882249,
+      "max_16_radial_seconds": 0.0015946250059641898,
+      "region": [
+        2400.0,
+        1200.0,
+        51.99916666666667,
+        51.0,
+        1.0,
+        -1.0,
+        7200.0,
+        2.0
+      ],
+      "missing_fixture_pages": [],
+      "itm_error_counts": [
+        0,
+        0,
+        0,
+        131845,
+        673,
+        0
+      ],
+      "signal_sha256": "97c1ded079e98229a7a7118407acbd871272be09f37422e44e6ebe763585e02a",
+      "mask_sha256": "a1ef8b2fe8bd033b7a2621033c6304ad339c112308a075744bcf08bef7f0a8ef",
+      "signal_byte_mismatches": 0,
+      "mask_byte_mismatches": 0,
+      "process_peak_rss": 130449408
+    },
+    {
+      "case": "monterey_25km",
+      "compute_seconds": 0.8131950840179343,
+      "max_16_radial_seconds": 0.005552583985263482,
+      "region": [
+        2400.0,
+        1200.0,
+        36.99916666666667,
+        36.0,
+        -121.00083333333333,
+        -123.0,
+        7200.0,
+        2.0
+      ],
+      "missing_fixture_pages": [],
+      "itm_error_counts": [
+        0,
+        148327,
+        0,
+        136191,
+        528,
+        0
+      ],
+      "signal_sha256": "ec0bdf22a55fcd453e3b4af78d460f31fd55055ec7b218683c22aae7eff8d764",
+      "mask_sha256": "92ee136beae07337e934046d395b2cdc2a0501ef7ec8fcc2520b16c9386e8194",
+      "signal_byte_mismatches": 0,
+      "mask_byte_mismatches": 0,
+      "process_peak_rss": 133382144
+    }
+  ]
+}

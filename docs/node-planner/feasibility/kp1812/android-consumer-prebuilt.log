@@ -1,0 +1,32 @@
+Starting a Gradle Daemon, 1 incompatible Daemon could not be reused, use --status for details
+> Task :checkKotlinGradlePluginConfigurationErrors SKIPPED
+
+> Task :compileKotlin FAILED
+e: Incompatible classes were found in dependencies. Remove them from the classpath or use '-Xskip-metadata-version-check' to suppress errors
+e: file:///private/tmp/nodescope-kp1812-study/build/libs/kp1812-jvm-0.2.0.jar!/META-INF/org.meshtastic_kp1812.kotlin_module Module was compiled with an incompatible version of Kotlin. The binary version of its metadata is 2.4.0, expected version is 2.2.0.
+e: file:///private/tmp/nodescope-kp1812-consumer/src/main/kotlin/Probe.kt:2:15 Class 'org.meshtastic.kp1812.TerrainPath' was compiled with an incompatible version of Kotlin. The actual metadata version is 2.4.0, but the compiler version 2.2.0 can read versions up to 2.3.0.
+The class is loaded from /private/tmp/nodescope-kp1812-study/build/libs/kp1812-jvm-0.2.0.jar!/org/meshtastic/kp1812/TerrainPath.class
+
+[Incubating] Problems report is available at: file:///private/tmp/nodescope-kp1812-consumer/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileKotlin' (registered by plugin 'org.jetbrains.kotlin.jvm').
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.2/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 54s
+1 actionable task: 1 executed

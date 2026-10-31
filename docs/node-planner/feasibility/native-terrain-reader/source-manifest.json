@@ -1,0 +1,13 @@
+{
+  "tools/rf-study/coverage/native-terrain-reader/.gitignore": "09e6a672e6b89239bd9ec42b7ba39c1f1b089ebeed90cb17a1d0a94bce2e0eae",
+  "tools/rf-study/coverage/native-terrain-reader/Package.swift": "151be6d2406b62238467dce6a3b716ea98d45058b3611bd3b6651e8d7ea52446",
+  "tools/rf-study/coverage/native-terrain-reader/README.md": "b9a25b8fc9e7e78d0307fa433225cfc4789c2119bbf9506b82d0186fdafcb473",
+  "tools/rf-study/coverage/native-terrain-reader/Sources/TerrainReader/LeasedTerrainReader.swift": "5860a424f26a088201ae56ca35577efeff58f09cff7353d29132487945257e34",
+  "tools/rf-study/coverage/native-terrain-reader/Tests/TerrainReaderTests/ReaderTests.swift": "8d796aa840db1ee4b3553b3710544991312cb917e99338da65e3df1d39e160a7",
+  "tools/rf-study/coverage/native-terrain-reader/kotlin/build.gradle.kts": "3d1485e23d70029e250e6617e6b708be433b93a5c8bd1895d80b051eb6a99390",
+  "tools/rf-study/coverage/native-terrain-reader/kotlin/settings.gradle.kts": "7d8b5aa545820857ddfd7aefeb7e5566b6f87a2bf018927575fda5fab83a1cd3",
+  "tools/rf-study/coverage/native-terrain-reader/kotlin/src/main/kotlin/study/LeasedTerrainReader.kt": "689efbc6f4809bd0378b299b0a884cbe5b127d070cfb2c107971a61faed65bc6",
+  "tools/rf-study/coverage/native-terrain-reader/kotlin/src/test/kotlin/study/ReaderTest.kt": "e1be3bd7055551e5c31db22b9fa50deeabb39edd01f14a4ff077921de8b66ed3",
+  "tools/rf-study/coverage/native-terrain-reader/prepare_fixtures.py": "660164875ad84e89a799e66516aa5b0b8bdc5aad3aa6a71c6e63b8fed4867643",
+  "tools/rf-study/coverage/native-terrain-reader/run_kotlin_tests.py": "716d221a9bba86adfd6dfb00bf9296227c62b5654359452f74af443797942c32"
+}

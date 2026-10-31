@@ -1,0 +1,412 @@
+{
+  "accuracy_target_db": 0.25,
+  "max_platform_loss_delta_db": 3.648537472145108e-09,
+  "platforms": {
+    "ios": {
+      "synthetic": {
+        "rows": 56,
+        "states": {
+          "QUALIFIED": 56
+        },
+        "max_qualified_error_db": 0.0006923512877676785,
+        "failures": [],
+        "max_samples": 3346,
+        "max_geometry": 0,
+        "csv_sha256": "991f2715b37b2589ceed1a73325e31a3994e41c798aa1b09b9408b8cd025600c",
+        "previously_false_accepted": [
+          {
+            "kind": "ridge",
+            "distance_m": "1000.0",
+            "half_width_m": "0.75",
+            "offset_m": "1.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "1000.0",
+            "half_width_m": "0.75",
+            "offset_m": "2.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "1000.0",
+            "half_width_m": "0.75",
+            "offset_m": "3.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "1000.0",
+            "half_width_m": "0.75",
+            "offset_m": "4.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "1000.0",
+            "half_width_m": "2.0",
+            "offset_m": "1.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "1000.0",
+            "half_width_m": "2.0",
+            "offset_m": "2.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "1000.0",
+            "half_width_m": "2.0",
+            "offset_m": "3.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "1000.0",
+            "half_width_m": "5.0",
+            "offset_m": "1.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "1000.0",
+            "half_width_m": "15.0",
+            "offset_m": "1.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "1000.0",
+            "half_width_m": "30.0",
+            "offset_m": "1.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "10000.0",
+            "half_width_m": "0.75",
+            "offset_m": "1.0",
+            "state": "QUALIFIED",
+            "error_db": 6.480149750132114e-12
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "10000.0",
+            "half_width_m": "0.75",
+            "offset_m": "2.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "10000.0",
+            "half_width_m": "0.75",
+            "offset_m": "3.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "10000.0",
+            "half_width_m": "0.75",
+            "offset_m": "4.0",
+            "state": "QUALIFIED",
+            "error_db": 6.480149750132114e-12
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "10000.0",
+            "half_width_m": "2.0",
+            "offset_m": "1.0",
+            "state": "QUALIFIED",
+            "error_db": 2.4158453015843406e-12
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "10000.0",
+            "half_width_m": "2.0",
+            "offset_m": "2.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "10000.0",
+            "half_width_m": "2.0",
+            "offset_m": "3.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "10000.0",
+            "half_width_m": "5.0",
+            "offset_m": "1.0",
+            "state": "QUALIFIED",
+            "error_db": 9.947598300641403e-13
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "10000.0",
+            "half_width_m": "15.0",
+            "offset_m": "1.0",
+            "state": "QUALIFIED",
+            "error_db": 3.126388037344441e-13
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "10000.0",
+            "half_width_m": "30.0",
+            "offset_m": "1.0",
+            "state": "QUALIFIED",
+            "error_db": 1.4210854715202004e-13
+          }
+        ]
+      },
+      "terrain": {
+        "rows": 897,
+        "states": {
+          "QUALIFIED": 896,
+          "THRESHOLD_UNRESOLVED": 1
+        },
+        "max_qualified_error_db": 0.1202843130263318,
+        "failures": [],
+        "max_samples": 83708,
+        "max_geometry": 182674,
+        "csv_sha256": "b6b001878e7279fb6458453f6387816ed347437040a36c3d44bb7c8211b45cc7",
+        "states_by_site": {
+          "0": {
+            "QUALIFIED": 48
+          },
+          "1": {
+            "QUALIFIED": 47,
+            "THRESHOLD_UNRESOLVED": 1
+          },
+          "2": {
+            "QUALIFIED": 48
+          },
+          "3": {
+            "QUALIFIED": 753
+          }
+        }
+      }
+    },
+    "android": {
+      "synthetic": {
+        "rows": 56,
+        "states": {
+          "QUALIFIED": 56
+        },
+        "max_qualified_error_db": 0.0006923512877676785,
+        "failures": [],
+        "max_samples": 3346,
+        "max_geometry": 0,
+        "csv_sha256": "991f2715b37b2589ceed1a73325e31a3994e41c798aa1b09b9408b8cd025600c",
+        "previously_false_accepted": [
+          {
+            "kind": "ridge",
+            "distance_m": "1000.0",
+            "half_width_m": "0.75",
+            "offset_m": "1.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "1000.0",
+            "half_width_m": "0.75",
+            "offset_m": "2.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "1000.0",
+            "half_width_m": "0.75",
+            "offset_m": "3.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "1000.0",
+            "half_width_m": "0.75",
+            "offset_m": "4.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "1000.0",
+            "half_width_m": "2.0",
+            "offset_m": "1.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "1000.0",
+            "half_width_m": "2.0",
+            "offset_m": "2.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "1000.0",
+            "half_width_m": "2.0",
+            "offset_m": "3.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "1000.0",
+            "half_width_m": "5.0",
+            "offset_m": "1.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "1000.0",
+            "half_width_m": "15.0",
+            "offset_m": "1.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "1000.0",
+            "half_width_m": "30.0",
+            "offset_m": "1.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "10000.0",
+            "half_width_m": "0.75",
+            "offset_m": "1.0",
+            "state": "QUALIFIED",
+            "error_db": 6.480149750132114e-12
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "10000.0",
+            "half_width_m": "0.75",
+            "offset_m": "2.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "10000.0",
+            "half_width_m": "0.75",
+            "offset_m": "3.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "10000.0",
+            "half_width_m": "0.75",
+            "offset_m": "4.0",
+            "state": "QUALIFIED",
+            "error_db": 6.480149750132114e-12
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "10000.0",
+            "half_width_m": "2.0",
+            "offset_m": "1.0",
+            "state": "QUALIFIED",
+            "error_db": 2.4158453015843406e-12
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "10000.0",
+            "half_width_m": "2.0",
+            "offset_m": "2.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "10000.0",
+            "half_width_m": "2.0",
+            "offset_m": "3.0",
+            "state": "QUALIFIED",
+            "error_db": 0.0
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "10000.0",
+            "half_width_m": "5.0",
+            "offset_m": "1.0",
+            "state": "QUALIFIED",
+            "error_db": 9.947598300641403e-13
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "10000.0",
+            "half_width_m": "15.0",
+            "offset_m": "1.0",
+            "state": "QUALIFIED",
+            "error_db": 3.126388037344441e-13
+          },
+          {
+            "kind": "ridge",
+            "distance_m": "10000.0",
+            "half_width_m": "30.0",
+            "offset_m": "1.0",
+            "state": "QUALIFIED",
+            "error_db": 1.4210854715202004e-13
+          }
+        ]
+      },
+      "terrain": {
+        "rows": 897,
+        "states": {
+          "QUALIFIED": 896,
+          "THRESHOLD_UNRESOLVED": 1
+        },
+        "max_qualified_error_db": 0.12028431312577936,
+        "failures": [],
+        "max_samples": 83708,
+        "max_geometry": 182674,
+        "csv_sha256": "0a476c4fc7b0c78bf10832c245ecaf74a589883872a532c9c9721d2b1258c06b",
+        "states_by_site": {
+          "0": {
+            "QUALIFIED": 48
+          },
+          "1": {
+            "QUALIFIED": 47,
+            "THRESHOLD_UNRESOLVED": 1
+          },
+          "2": {
+            "QUALIFIED": 48
+          },
+          "3": {
+            "QUALIFIED": 753
+          }
+        }
+      }
+    }
+  },
+  "platform_parity_passed": true,
+  "accuracy_gate_passed": true
+}

@@ -1,6 +1,11 @@
 # Node Planner RF engine contract v1
 
-Status: implementation contract drafted 2026-10-25.
+Status: existing Link Profile v1 implementation contract drafted 2026-10-25.
+
+Scope clarification (2026-10-29): this contract is not approval to use the existing single-path
+kernel as the v0.10.1 coverage model. Candidate Sites requires the engine selection/validation gate
+in [its implementation plan](candidate-sites-implementation.md). Candidate-linked detail must use
+the selected coverage engine rather than silently substituting this v1 model.
 
 This contract defines the smallest deterministic core shared by the iOS and Android implementations.
 It is intentionally independent of SwiftUI, Compose, Core Location, map SDKs and network clients.

@@ -1,0 +1,119 @@
+{
+  "upstream": "481e5a482f10fc6956a98aed39aacdb59c3fb6ec",
+  "platform": "ios",
+  "device": "20981F8B-4A70-4F7E-A376-BAE2462A278E",
+  "results": [
+    {
+      "case": "calgary_30km",
+      "wall_seconds_including_launch_io": 32.719560792000266,
+      "metadata": {
+        "width": 2400,
+        "height": 2400,
+        "north": 51.9991666667,
+        "south": 50.0,
+        "east": -113.0008333333,
+        "west": -115.0,
+        "radials": 9600,
+        "pages": 4,
+        "pages_loaded": 4,
+        "itm_errnums": [
+          0,
+          82473,
+          0,
+          441662,
+          664,
+          0
+        ]
+      },
+      "region_matches_golden": true,
+      "signal_byte_mismatches": 0,
+      "signal_sha256": "c6bb978191614e91476edb00ec9de3fbdcca36f363f78a5da688176a3c34657b",
+      "mask_byte_mismatches": 0,
+      "mask_sha256": "d10adb1cecd7b6a569cbfbcae9c0f91174a8d84b293fa39c5e3f44ab062a0a1c"
+    },
+    {
+      "case": "cape_town_20km",
+      "wall_seconds_including_launch_io": 6.567963042005431,
+      "metadata": {
+        "width": 1200,
+        "height": 2400,
+        "north": -33.0008333333,
+        "south": -35.0,
+        "east": 19.0,
+        "west": 18.0,
+        "radials": 7200,
+        "pages": 2,
+        "pages_loaded": 2,
+        "itm_errnums": [
+          31709,
+          0,
+          0,
+          144334,
+          510,
+          0
+        ]
+      },
+      "region_matches_golden": true,
+      "signal_byte_mismatches": 0,
+      "signal_sha256": "2200750c24a64ac2a3aa5184728bf852e7491569ea211144fde41bd5e6ea7a9d",
+      "mask_byte_mismatches": 0,
+      "mask_sha256": "e581ed6a877368ec4ac21c6f654d624cb913a32c18673bdfa53697387914057e"
+    },
+    {
+      "case": "london_15km",
+      "wall_seconds_including_launch_io": 4.124562750017503,
+      "metadata": {
+        "width": 2400,
+        "height": 1200,
+        "north": 51.9991666667,
+        "south": 51.0,
+        "east": 1.0,
+        "west": -1.0,
+        "radials": 7200,
+        "pages": 2,
+        "pages_loaded": 2,
+        "itm_errnums": [
+          0,
+          0,
+          0,
+          131845,
+          673,
+          0
+        ]
+      },
+      "region_matches_golden": true,
+      "signal_byte_mismatches": 0,
+      "signal_sha256": "97c1ded079e98229a7a7118407acbd871272be09f37422e44e6ebe763585e02a",
+      "mask_byte_mismatches": 0,
+      "mask_sha256": "a1ef8b2fe8bd033b7a2621033c6304ad339c112308a075744bcf08bef7f0a8ef"
+    },
+    {
+      "case": "monterey_25km",
+      "wall_seconds_including_launch_io": 2.85183566698106,
+      "metadata": {
+        "width": 2400,
+        "height": 1200,
+        "north": 36.9991666667,
+        "south": 36.0,
+        "east": -121.0008333333,
+        "west": -123.0,
+        "radials": 7200,
+        "pages": 2,
+        "pages_loaded": 2,
+        "itm_errnums": [
+          0,
+          148327,
+          0,
+          136191,
+          528,
+          0
+        ]
+      },
+      "region_matches_golden": true,
+      "signal_byte_mismatches": 0,
+      "signal_sha256": "ec0bdf22a55fcd453e3b4af78d460f31fd55055ec7b218683c22aae7eff8d764",
+      "mask_byte_mismatches": 0,
+      "mask_sha256": "92ee136beae07337e934046d395b2cdc2a0501ef7ec8fcc2520b16c9386e8194"
+    }
+  ]
+}

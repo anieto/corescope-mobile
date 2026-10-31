@@ -1,0 +1,154 @@
+{
+  "platforms": {
+    "ios": {
+      "rows": 755,
+      "states_by_set": {
+        "original": {
+          "QUALIFIED": 167,
+          "ACCURACY_UNRESOLVED": 1
+        },
+        "holdout": {
+          "QUALIFIED": 143,
+          "ACCURACY_UNRESOLVED": 1
+        },
+        "refinement": {
+          "QUALIFIED": 438,
+          "ACCURACY_UNRESOLVED": 3
+        },
+        "limited": {
+          "WORK_LIMIT": 1
+        },
+        "threshold": {
+          "THRESHOLD_UNRESOLVED": 1
+        }
+      },
+      "max_qualified_error_db": 0.1292928459382381,
+      "p95_qualified_error_db": 0.01329903407946631,
+      "charged_sample_ratio_to_reference": 0.39481534603340945,
+      "final_spacing_counts": {
+        "5": 701,
+        "2": 38,
+        "1": 14
+      },
+      "cancellation_ms": 0.057209,
+      "metrics_including_reference_computation": {
+        "elapsed_ms": 18687.012083,
+        "process_peak_rss_bytes": 172507136
+      },
+      "csv_sha256": "9505417002c4f65d681734f825a3c65e30c3100b4e55598a20a0d42ce90b9de1",
+      "previous_problem_paths": [
+        {
+          "set": "original",
+          "bearing_deg": "240.0",
+          "distance_m": "100000.0",
+          "state": "QUALIFIED",
+          "loss_db": "199.30233540150508",
+          "diagnostic_last_loss_db": "199.30233540150508",
+          "samples_used": "83338",
+          "final_spacing_m": "2",
+          "passes": "4",
+          "last_delta_db": "8.280202450805518E-6",
+          "reference_state": "PREDICTED",
+          "reference_loss_db": "199.30258623709597",
+          "reference_samples": "100001",
+          "budget": "200000",
+          "threshold_loss_db": "152.0"
+        },
+        {
+          "set": "original",
+          "bearing_deg": "285.0",
+          "distance_m": "100000.0",
+          "state": "ACCURACY_UNRESOLVED",
+          "loss_db": "",
+          "diagnostic_last_loss_db": "207.81671584784394",
+          "samples_used": "183339",
+          "final_spacing_m": "1",
+          "passes": "5",
+          "last_delta_db": "0.0022302822727908733",
+          "reference_state": "PREDICTED",
+          "reference_loss_db": "207.81671584784394",
+          "reference_samples": "100001",
+          "budget": "200000",
+          "threshold_loss_db": "152.0"
+        }
+      ]
+    },
+    "android": {
+      "rows": 755,
+      "states_by_set": {
+        "original": {
+          "QUALIFIED": 167,
+          "ACCURACY_UNRESOLVED": 1
+        },
+        "holdout": {
+          "QUALIFIED": 143,
+          "ACCURACY_UNRESOLVED": 1
+        },
+        "refinement": {
+          "QUALIFIED": 438,
+          "ACCURACY_UNRESOLVED": 3
+        },
+        "limited": {
+          "WORK_LIMIT": 1
+        },
+        "threshold": {
+          "THRESHOLD_UNRESOLVED": 1
+        }
+      },
+      "max_qualified_error_db": 0.1292928459382381,
+      "p95_qualified_error_db": 0.01329903407946631,
+      "charged_sample_ratio_to_reference": 0.39481534603340945,
+      "final_spacing_counts": {
+        "5": 701,
+        "2": 38,
+        "1": 14
+      },
+      "cancellation_ms": 1.525167,
+      "metrics_including_reference_computation": {
+        "elapsed_ms": 15474.222799,
+        "process_peak_rss_bytes": 297910272
+      },
+      "csv_sha256": "3f6fbca5180deb1c01b3dea475a0748c9541fb471f02ed9e8cb953a9e8f9e469",
+      "previous_problem_paths": [
+        {
+          "set": "original",
+          "bearing_deg": "240.0",
+          "distance_m": "100000.0",
+          "state": "QUALIFIED",
+          "loss_db": "199.30233540050236",
+          "diagnostic_last_loss_db": "199.30233540050236",
+          "samples_used": "83338",
+          "final_spacing_m": "2",
+          "passes": "4",
+          "last_delta_db": "8.280202450805518E-6",
+          "reference_state": "PREDICTED",
+          "reference_loss_db": "199.30258623609325",
+          "reference_samples": "100001",
+          "budget": "200000",
+          "threshold_loss_db": "152.0"
+        },
+        {
+          "set": "original",
+          "bearing_deg": "285.0",
+          "distance_m": "100000.0",
+          "state": "ACCURACY_UNRESOLVED",
+          "loss_db": "",
+          "diagnostic_last_loss_db": "207.81671584784397",
+          "samples_used": "183339",
+          "final_spacing_m": "1",
+          "passes": "5",
+          "last_delta_db": "0.002230282273501416",
+          "reference_state": "PREDICTED",
+          "reference_loss_db": "207.81671584784397",
+          "reference_samples": "100001",
+          "budget": "200000",
+          "threshold_loss_db": "152.0"
+        }
+      ]
+    }
+  },
+  "failures": [],
+  "max_platform_loss_delta_db": 1.0027179087046534e-09,
+  "accuracy_target_db": 0.25,
+  "passed": true
+}

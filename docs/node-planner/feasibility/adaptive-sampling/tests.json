@@ -1,0 +1,32 @@
+[
+  {
+    "name": "study.WideTests",
+    "tests": "4",
+    "skipped": "0",
+    "failures": "0",
+    "errors": "0",
+    "timestamp": "2026-10-30T19:42:16.294Z",
+    "hostname": "M5-Air.local",
+    "time": "0.002"
+  },
+  {
+    "name": "study.AdaptiveTests",
+    "tests": "6",
+    "skipped": "0",
+    "failures": "0",
+    "errors": "0",
+    "timestamp": "2026-10-30T19:42:16.276Z",
+    "hostname": "M5-Air.local",
+    "time": "0.01"
+  },
+  {
+    "name": "study.CoverageStudyTest",
+    "tests": "6",
+    "skipped": "0",
+    "failures": "0",
+    "errors": "0",
+    "timestamp": "2026-10-30T19:42:16.288Z",
+    "hostname": "M5-Air.local",
+    "time": "0.005"
+  }
+]

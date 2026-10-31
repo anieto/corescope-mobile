@@ -1,0 +1,187 @@
+{
+  "cache_released": true,
+  "cancel_completed": 5,
+  "cancel_geometry": 97114,
+  "cancel_latency_ms": 0.142583,
+  "cancel_samples": 1,
+  "cancel_state": "CANCELLED",
+  "process_peak_rss_bytes": 43909120,
+  "runs": [
+    {
+      "elapsed_ms": 39973.809417,
+      "name": "r20_1000",
+      "result": {
+        "bytes_read": 4751360,
+        "capacity_bytes": 2097152,
+        "cells": 1681,
+        "completed": 1681,
+        "evictions": 81,
+        "failed_loads": 0,
+        "geometry": 24757622,
+        "geometry_budget": 150000000,
+        "minimum_geometry": 5024,
+        "minimum_samples": 5593240,
+        "peak_payload_bytes": 2097152,
+        "row_reads": 18560,
+        "sample_budget": 150000000,
+        "samples": 12873437,
+        "stale_publication_rejected": true,
+        "state": "COMPLETE"
+      }
+    },
+    {
+      "elapsed_ms": 13485.462334,
+      "name": "refine100",
+      "result": {
+        "bytes_read": 327680,
+        "capacity_bytes": 2097152,
+        "cells": 1681,
+        "completed": 1681,
+        "evictions": 0,
+        "failed_loads": 0,
+        "geometry": 31148418,
+        "geometry_budget": 150000000,
+        "minimum_geometry": 6724,
+        "minimum_samples": 6856725,
+        "peak_payload_bytes": 327680,
+        "row_reads": 1280,
+        "sample_budget": 150000000,
+        "samples": 16115568,
+        "stale_publication_rejected": true,
+        "state": "COMPLETE"
+      }
+    },
+    {
+      "elapsed_ms": 4395.623083,
+      "name": "refine200_small",
+      "result": {
+        "bytes_read": 356810752,
+        "capacity_bytes": 131072,
+        "cells": 441,
+        "completed": 441,
+        "evictions": 10885,
+        "failed_loads": 0,
+        "geometry": 8175020,
+        "geometry_budget": 150000000,
+        "minimum_geometry": 1764,
+        "minimum_samples": 1799201,
+        "peak_payload_bytes": 131072,
+        "row_reads": 1393792,
+        "sample_budget": 150000000,
+        "samples": 4219533,
+        "stale_publication_rejected": true,
+        "state": "COMPLETE"
+      }
+    },
+    {
+      "elapsed_ms": 2023.71875,
+      "name": "refine200_large",
+      "result": {
+        "bytes_read": 327680,
+        "capacity_bytes": 2097152,
+        "cells": 441,
+        "completed": 441,
+        "evictions": 0,
+        "failed_loads": 0,
+        "geometry": 8175020,
+        "geometry_budget": 150000000,
+        "minimum_geometry": 1764,
+        "minimum_samples": 1799201,
+        "peak_payload_bytes": 327680,
+        "row_reads": 1280,
+        "sample_budget": 150000000,
+        "samples": 4219533,
+        "stale_publication_rejected": true,
+        "state": "COMPLETE"
+      }
+    },
+    {
+      "elapsed_ms": 3082.080833,
+      "name": "r100_20000",
+      "result": {
+        "bytes_read": 61014016,
+        "capacity_bytes": 2097152,
+        "cells": 121,
+        "completed": 121,
+        "evictions": 1798,
+        "failed_loads": 0,
+        "geometry": 8711062,
+        "geometry_budget": 150000000,
+        "minimum_geometry": 320,
+        "minimum_samples": 1831904,
+        "peak_payload_bytes": 2097152,
+        "row_reads": 238336,
+        "sample_budget": 150000000,
+        "samples": 4207923,
+        "stale_publication_rejected": true,
+        "state": "COMPLETE"
+      }
+    },
+    {
+      "elapsed_ms": 797.523083,
+      "name": "sample_limited",
+      "result": {
+        "bytes_read": 294912,
+        "capacity_bytes": 2097152,
+        "cells": 441,
+        "completed": 182,
+        "evictions": 0,
+        "failed_loads": 0,
+        "geometry": 3562481,
+        "geometry_budget": 150000000,
+        "minimum_geometry": 1764,
+        "minimum_samples": 1799201,
+        "peak_payload_bytes": 294912,
+        "row_reads": 1152,
+        "sample_budget": 1799201,
+        "samples": 1799201,
+        "stale_publication_rejected": true,
+        "state": "WORK_LIMIT"
+      }
+    },
+    {
+      "elapsed_ms": 114.722125,
+      "name": "geometry_limited",
+      "result": {
+        "bytes_read": 229376,
+        "capacity_bytes": 2097152,
+        "cells": 441,
+        "completed": 26,
+        "evictions": 0,
+        "failed_loads": 0,
+        "geometry": 500000,
+        "geometry_budget": 500000,
+        "minimum_geometry": 1764,
+        "minimum_samples": 1799201,
+        "peak_payload_bytes": 229376,
+        "row_reads": 896,
+        "sample_budget": 150000000,
+        "samples": 251470,
+        "stale_publication_rejected": true,
+        "state": "WORK_LIMIT"
+      }
+    },
+    {
+      "elapsed_ms": 43202.700583,
+      "name": "reference100",
+      "result": {
+        "bytes_read": 557056,
+        "capacity_bytes": 2097152,
+        "cells": 6561,
+        "completed": 6561,
+        "evictions": 0,
+        "failed_loads": 0,
+        "geometry": 125628002,
+        "geometry_budget": 150000000,
+        "minimum_geometry": 26244,
+        "minimum_samples": 27135410,
+        "peak_payload_bytes": 557056,
+        "row_reads": 2176,
+        "sample_budget": 150000000,
+        "samples": 64712166,
+        "stale_publication_rejected": true,
+        "state": "COMPLETE"
+      }
+    }
+  ]
+}

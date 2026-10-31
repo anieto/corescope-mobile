@@ -1,0 +1,8 @@
+{
+  "source_commit": "a911b6ecd58f8c16ac8ae4becf6bdbba1784e5a9",
+  "serial": "emulator-5554",
+  "exit_code": 0,
+  "stdout": "JUnit version 4.13.2\n...end-to-end: 63 cases, worst |\u0394Lb| = 3.289329697508947E-9 dB (rburg_urban_with_clutter_3)\n...........\nTime: 0.27\n\nOK (14 tests)\n\n",
+  "stderr": "",
+  "device": "google/sdk_gphone16k_arm64/emu64a16k:17/CP41.260831.007/16416850:user/dev-keys"
+}

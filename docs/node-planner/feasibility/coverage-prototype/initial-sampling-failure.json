@@ -1,0 +1,25 @@
+{
+  "before_fix": true,
+  "cause": "ceil on unrounded geodesic distances near exact 30 m multiples",
+  "mismatches": [
+    {
+      "index": 6009,
+      "ios": {
+        "index": "6009",
+        "state": "PREDICTED",
+        "loss_db": "120.40290104931971",
+        "rx_dbm": "-98.40290104931971",
+        "margin_db": "31.59709895068029",
+        "samples": "61"
+      },
+      "android": {
+        "index": "6009",
+        "state": "PREDICTED",
+        "loss_db": "120.3588064363688",
+        "rx_dbm": "-98.3588064363688",
+        "margin_db": "31.641193563631205",
+        "samples": "62"
+      }
+    }
+  ]
+}

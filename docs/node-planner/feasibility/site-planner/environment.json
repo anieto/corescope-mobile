@@ -1,0 +1,13 @@
+{
+  "host": "macOS-27.2-arm64-arm-64bit-Mach-O",
+  "machine": "arm64",
+  "apple_clang": "Apple clang version 21.0.0 (clang-2100.3.34.2)\nTarget: arm64-apple-darwin27.2.0\nThread model: posix\nInstalledDir: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin\n",
+  "upstream": "481e5a482f10fc6956a98aed39aacdb59c3fb6ec",
+  "splat": "08f06f56470a8361a5609503a6b1cb02f07f48dc",
+  "ndk": "r27d",
+  "android_api_target": 26,
+  "android_emulator": "Pixel_10 API 37.2 arm64, 16 KiB pages",
+  "ios_simulator": "iPhone 18 Pro / iOS 27.0",
+  "flags": "-O2 -std=c++11; Android -Wl,-z,max-page-size=16384 -static-libstdc++; sensitivity run adds -ffp-contract=off",
+  "limitations": "simulators share host; timings include warmup/contention and are not physical-device benchmarks"
+}

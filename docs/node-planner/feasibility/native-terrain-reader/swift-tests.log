@@ -1,0 +1,74 @@
+warning: /Users/adamnieto/Library/org.swift.swiftpm/configuration is not accessible or not writable, disabling user-level cache features.
+warning: /Users/adamnieto/Library/org.swift.swiftpm/security is not accessible or not writable, disabling user-level cache features.
+warning: /Users/adamnieto/Library/Caches/org.swift.swiftpm is not accessible or not writable, disabling user-level cache features.
+warning: 'native-terrain-reader': failed storing manifest for 'native-terrain-reader' in cache: attempt to write a readonly database
+Building for debugging...
+[Planning deferred tasks]
+[28 / 52]
+[29 / 53] TerrainReader
+[41 / 92]
+[47 / 92]
+[49 / 92]
+[54 / 92]
+[58 / 92]
+[62 / 92]
+[64 / 92]
+[65 / 92]
+[68 / 92] TerrainReader
+[76 / 92] TerrainReader
+[82 / 93] TerrainReaderTests-product
+[83 / 98]
+[87 / 98] TerrainReaderTests-product
+[92 / 98] TerrainReaderTests-product
+[94 / 98] TerrainReaderTests-product
+Build complete! (5.54 sec)
+Test Suite 'All tests' started at 2026-10-31 12:35:23.966.
+Test Suite 'All tests' passed at 2026-10-31 12:35:23.967.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.001) seconds
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Test cancelledReadsKeepLeaseUntilClose(check:) started.
+◇ Test malformedDigestReleasePin(digest:) started.
+◇ Test missingFileReleasesPin() started.
+◇ Test truncationAfterOpenIsUnknownNotZero() started.
+◇ Test closeReleasesExactlyOnceAndPreventsReads() started.
+◇ Test signedSamplesAndRowCrossing() started.
+◇ Test invalidDimensionsReleasePin(side:) started.
+◇ Test checksumMismatchReleasesPin() started.
+◇ Test deinitReleasesPin() started.
+◇ Test cancellationDuringOpenReleasesPin(check:) started.
+◇ Test case passing 1 argument check → 1 to cancelledReadsKeepLeaseUntilClose(check:) started.
+◇ Test case passing 1 argument check → 3 to cancelledReadsKeepLeaseUntilClose(check:) started.
+◇ Test case passing 1 argument check → 2 to cancelledReadsKeepLeaseUntilClose(check:) started.
+◇ Test pinnedRealTileReplay() started.
+◇ Test invalidRangesNeverOverflow() started.
+◇ Test wrongFileSizeReleasesPin(size:) started.
+◇ Test case passing 1 argument side → 0 to invalidDimensionsReleasePin(side:) started.
+◇ Test case passing 1 argument check → 1 to cancellationDuringOpenReleasesPin(check:) started.
+◇ Test case passing 1 argument digest → "" to malformedDigestReleasePin(digest:) started.
+◇ Test case passing 1 argument side → 1 to invalidDimensionsReleasePin(side:) started.
+◇ Test case passing 1 argument digest → "xyz" to malformedDigestReleasePin(digest:) started.
+◇ Test case passing 1 argument check → 2 to cancellationDuringOpenReleasesPin(check:) started.
+◇ Test case passing 1 argument check → 3 to cancellationDuringOpenReleasesPin(check:) started.
+◇ Test case passing 1 argument size → 0 to wrongFileSizeReleasesPin(size:) started.
+◇ Test case passing 1 argument side → 8 to invalidDimensionsReleasePin(side:) started.
+◇ Test case passing 1 argument digest → "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" to malformedDigestReleasePin(digest:) started.
+◇ Test case passing 1 argument size → 17 to wrongFileSizeReleasesPin(size:) started.
+◇ Test case passing 1 argument size → 19 to wrongFileSizeReleasesPin(size:) started.
+◇ Test case passing 1 argument side → 3602 to invalidDimensionsReleasePin(side:) started.
+✔ Test checksumMismatchReleasesPin() passed after 0.004 seconds.
+◇ Test case passing 1 argument side → 9223372036854775807 to invalidDimensionsReleasePin(side:) started.
+✔ Test signedSamplesAndRowCrossing() passed after 0.004 seconds.
+✔ Test missingFileReleasesPin() passed after 0.004 seconds.
+✔ Test truncationAfterOpenIsUnknownNotZero() passed after 0.004 seconds.
+✔ Test cancelledReadsKeepLeaseUntilClose(check:) with 3 test cases passed after 0.004 seconds.
+✔ Test closeReleasesExactlyOnceAndPreventsReads() passed after 0.004 seconds.
+✔ Test deinitReleasesPin() passed after 0.004 seconds.
+✔ Test cancellationDuringOpenReleasesPin(check:) with 3 test cases passed after 0.004 seconds.
+✔ Test malformedDigestReleasePin(digest:) with 3 test cases passed after 0.005 seconds.
+✔ Test invalidRangesNeverOverflow() passed after 0.005 seconds.
+✔ Test wrongFileSizeReleasesPin(size:) with 3 test cases passed after 0.005 seconds.
+✔ Test invalidDimensionsReleasePin(side:) with 5 test cases passed after 0.005 seconds.
+✔ Test pinnedRealTileReplay() passed after 1.166 seconds.
+✔ Test run with 13 tests in 0 suites passed after 1.166 seconds.

@@ -1,0 +1,15 @@
+{
+  "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-27-0",
+  "device": {
+    "dataPath": "/Users/adamnieto/Library/Developer/CoreSimulator/Devices/20981F8B-4A70-4F7E-A376-BAE2462A278E/data",
+    "dataPathSize": 3284176896,
+    "logPath": "/Users/adamnieto/Library/Logs/CoreSimulator/20981F8B-4A70-4F7E-A376-BAE2462A278E",
+    "udid": "20981F8B-4A70-4F7E-A376-BAE2462A278E",
+    "lastUsedAt": "2026-10-30T19:23:07Z",
+    "isAvailable": true,
+    "logPathSize": 364544,
+    "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro",
+    "state": "Booted",
+    "name": "iPhone 18 Pro"
+  }
+}

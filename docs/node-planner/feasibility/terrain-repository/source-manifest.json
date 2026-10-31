@@ -1,0 +1,10 @@
+{
+  "scope": "host-side contract; no mobile adapter qualification",
+  "files": {
+    "tools/rf-study/coverage/terrain-repository/cache_key_vectors.py": "0af1db3568f781295bbd151aab66cb829f1b8db0120ef22e888da9e5c4d98f56",
+    "tools/rf-study/coverage/terrain-repository/repository.py": "369eca1ab8878932d0866bff27be315a377f2e862bc7f633bf04df015a07cef2",
+    "tools/rf-study/coverage/terrain-repository/run_study.py": "4fb416b954e14617e13d3982d0c14c92d0618f0b2ff1ab04af0ea5de76520f29",
+    "tools/rf-study/coverage/terrain-repository/test_repository.py": "4113b370452e05f5b5910844844f34a84e279414cc5cb983dc112bd54748db5d",
+    "tools/rf-study/coverage/wide/terrain-pins.json": "5863f61e260376be96fdeda525abaeec844723bf31eec328cb40f946d2ae0959"
+  }
+}

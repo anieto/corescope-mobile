@@ -1,7 +1,32 @@
-# NodeScope 0.10.0 — Node Planner
+# NodeScope 0.10.1 — Candidate Sites and Node Planner
 
-Status: active implementation. Prepared: 2026-10-24. Updated: 2026-10-27. Supersedes the 0.10.0
+Status: Candidate Sites planning; Link Profile foundation implemented. Prepared: 2026-10-24. Updated: 2026-10-29. Supersedes the 0.10.0
 Field Tools plan.
+
+## Release direction — 2026-10-29
+
+v0.10.0 established Link Profile and its terrain/RF foundation. v0.10.1 focuses on Candidate Sites:
+place a proposed installation, configure equipment, show estimated coverage on the map, identify
+known nodes that might receive it, and inspect each potential link using the existing Link Profile.
+Save this work as Deployment Plans and support comparison/export as specified below.
+
+The milestones below remain the implementation checklist, not a claim that coverage is already
+available. Start by auditing the existing point-to-point engine and terrain cache against bounded
+coverage requirements, then resolve numerical validation and mobile performance budgets before
+building the coverage UI. Implement matching calculations and terminology on iOS and Android.
+Saved Link Profiles is explicitly deferred; no standalone-library implementation is a prerequisite.
+
+## Detailed Candidate Sites implementation contract
+
+The [v0.10.1 implementation and validation plan](candidate-sites-implementation.md) defines the
+coverage workflow, separate generic/known-node receiver assumptions, terrain pipeline, engine
+feasibility gates, overlays, persistence, comparison and test matrix. Its specific v0.10.1 choices
+take precedence over broader descriptions below. Coverage is the release's central deliverable;
+Saved Link Profiles remains deferred. Initial engine studies are recorded in the
+[kp1812 feasibility report](kp1812-feasibility.md): prefer its shared kernel for a validated,
+terrain-backed prototype. That [prototype now passes](coverage-prototype.md) mobile-runtime parity,
+missing-data, exact-receiver and cancellation checks. Distribution, production terrain handling,
+sampling convergence and physical-device qualification remain Gate A work.
 
 ## Product thesis
 
@@ -26,7 +51,7 @@ network.
 | Concept | User-facing term | Meaning |
 |---|---|---|
 | Feature | **Node Planner** | Workspace for modeling proposed deployments |
-| Saved point-to-point work | **Saved Link Profile** | Named A/B endpoints and assumptions, independent of candidate sites |
+| Deferred point-to-point proposal | **Saved Link Profile** | Possible standalone A/B library; not in v0.10.1 |
 | Saved work | **Deployment Plan** | Named collection of candidate sites and shared assumptions |
 | Proposed location | **Candidate Site** | A local draft coordinate for a node that does not yet exist |
 | Existing endpoint | **Potential Link** | Modeled path between a candidate site and a known node |
@@ -39,13 +64,18 @@ thresholds and inputs are visible.
 
 ## Release scope
 
-### Required for 0.10.0
+### Required for 0.10.1
 
 - Open Node Planner from Explore and the Live Map without adding another root tab.
 - Create a deployment plan and place one or more candidate sites by map tap, coordinates or the
   device's current location after an explicit foreground-only permission request.
 - Configure proposed frequency, modem/radio preset, transmit power, antenna gain, cable loss,
   antenna height, receiver assumptions and maximum analysis range.
+- Offer study radius and detail controls, showing actual output spacing and a preflight workload
+  estimate. Support a coarse wide-area scan followed by finer analysis of a selected area, with
+  separate run provenance. Radius is an analysis boundary, not a prediction of maximum reach.
+  The measured 10 km/200 m setup is provisional; the earlier 20 km ceiling is not a fixed product
+  limit. Qualify larger ranges and detail presets through the implementation plan's experiments.
 - Load versioned elevation data for the bounded analysis area with visible source, resolution,
   completeness and cache status.
 - Analyze point-to-point paths from a candidate site to analyzer-known nodes with valid coordinates.
@@ -53,8 +83,6 @@ thresholds and inputs are visible.
   without requiring a saved deployment plan.
 - Show distance, bearing, terrain profile, geometric line of sight, first-Fresnel-zone context,
   predicted receive level and link margin when supported by the selected engine.
-- Save, reopen, rename, duplicate, update and delete standalone Link Profiles on both platforms,
-  following the [Saved Link Profiles implementation plan](saved-link-profiles.md).
 - Classify and rank potential links using documented, tested thresholds.
 - Render estimated coverage as a map overlay whose scale and styling cannot be confused with
   observed packets, routes or activity.
@@ -66,6 +94,8 @@ thresholds and inputs are visible.
 
 ### Deliberately deferred
 
+- Standalone Saved Link Profiles library; retain the [deferred proposal](saved-link-profiles.md)
+  for future demand evaluation. Deployment Plan persistence remains required.
 - Automatic site recommendation or optimization.
 - Combined multi-transmitter coverage and interference modeling.
 - Buildings, foliage, weather and high-resolution urban clutter unless an audited dataset and model
@@ -111,21 +141,16 @@ antenna height and the applicable RF assumptions, run the analysis and inspect:
 - distance, bearing, predicted receive level and link margin when a complete configuration exists;
 - result classification, provenance and limitations.
 
-A Link Profile can be used ephemerally, saved independently in **Saved Link Profiles**, shared as an
-estimate, or promoted into a Deployment Plan
+A Link Profile can be used ephemerally, shared as an estimate, or promoted into a Deployment Plan
 by turning either endpoint into a Candidate Site. Opening a Potential Link from a plan uses this
 same detail presentation with its endpoints and configuration prefilled.
 
-### Saved Link Profiles
+### Saved Link Profiles — deferred
 
-A separate local library preserves named point-to-point studies without requiring Candidate Sites
-or a Deployment Plan. It retains ordered endpoints, explicit radio assumptions and an optional
-historical analysis snapshot with provenance. Candidate Sites remains the broader coverage and
-potential-link planning workflow.
-
-See the [implementation plan](saved-link-profiles.md) for data, persistence, UX, platform work and
-acceptance criteria. Saving valid inputs does not require successful analysis. Candidate-site
-promotion is a later integration, not a prerequisite for the library.
+The standalone library is a feature under consideration, not a v0.10.1 requirement. Preserve the
+[proposal](saved-link-profiles.md) for future evaluation. Candidate Sites and Deployment Plans are
+the next priority: proposed-site placement, estimated coverage and potential links to known nodes.
+Plan persistence must not depend on implementing the standalone Link Profile library.
 
 ### Link Profile workspace and selection contract
 
@@ -257,7 +282,7 @@ analysis, discard endpoint edits or change the selected candidate/link.
 - Link Profile retains the map while the trailing inspector moves between endpoint selection,
   radio setup, analysis state, terrain profile and result detail.
 - A transient inspector or bottom panel may show a selected link breakdown, but three simultaneous
-  columns are not required for v0.10.0.
+  columns are not required for v0.10.1.
 - iPad multitasking and Stage Manager collapse through the same measured-width rules as iPhone; the
   app never assumes that iPad implies a wide window.
 
@@ -391,6 +416,38 @@ configuration with detected/default hardware claims.
 - Prototype one point-to-point terrain profile and one bounded coverage run on representative iOS
   and Android hardware.
 - Set time, memory, energy, terrain-download and cache-size budgets from measurements.
+- Completed: the [wider-area study](wide-coverage-study.md) executes configurable 10–100 km cases,
+  targeted refinement and tile crossings with matching mobile results. It exposed material
+  long-path sampling sensitivity.
+- Completed: the [adaptive sampling study](adaptive-sampling-study.md) accepts 748 of 753 terrain
+  paths within a 0.25 dB dense-reference target; five remain unresolved. All platform states match,
+  and budget/threshold fixtures behave explicitly. Six added policy tests pass (16 total).
+- Completed: the [bounded coverage study](bounded-coverage-study.md) enforces aggregate adaptive
+  work limits and an evicting local terrain-block cache. Small/large caches preserve predictions,
+  441 refinement cells match the historical run, and exhausted work remains explicitly unknown.
+  All 24 unit tests pass. The small cache exposes substantial rereading; do not use its capacity
+  as a shipping default.
+  The [expanded terrain/ridge gate](terrain-fixture-study.md) is now executed: 141 accepted real
+  paths meet the target, but 20 synthetic profiles are incorrectly accepted (up to 45.13 dB error).
+  The current repeated-agreement sampler therefore fails general accuracy qualification.
+  The subsequent [feature-profile candidate](feature-profile-study.md) now resolves all 20 saved
+  failures: 56 synthetic profiles and 896 of 897 terrain paths qualify within the unchanged target;
+  one remains threshold-unresolved. Both platforms agree and all 33 unit tests pass.
+  The [feature-aware coverage scheduler](feature-grid-study.md) now budgets both work counters,
+  rejects superseded results, and passes cache/refinement/platform parity checks with 39 unit tests.
+  An updated terrain-backed coverage preview is saved. Larger-grid timings remain substantial;
+  operation caps do not establish interactive performance.
+  The [host terrain repository contract](terrain-repository-study.md) now passes 50 failure tests
+  and an eight-tile replay, including staging quotas, pinned-set preflight, offline recovery and
+  cancellation cleanup. This is not yet a native mobile repository.
+  The [native leased HGT readers](native-terrain-reader-study.md) now pass 13 Swift/macOS and
+  12 Kotlin/JVM tests, each matching 576,505 reference samples. Native mobile execution and the
+  repository-to-reader connection are not yet qualified.
+  Next: implement native networking/cache adapters and connect leased readers to the tiled
+  sampler using the saved fixtures, resolve engine distribution, and qualify physical-device budgets and independent
+  accuracy fixtures before selecting defaults.
+  See the [adjustable extent/detail and experiment
+  specification](candidate-sites-implementation.md#adjustable-extent-and-detail).
 
 Exit: engine/provider decisions and numerical tolerances are documented; no production UI proceeds
 if mobile coverage computation is not viable.
@@ -416,17 +473,6 @@ but the UI does not yet imply that analysis has run.
 - Validate shared golden fixtures on iOS and Android.
 
 Exit: potential links are explainable, reproducible and numerically within the approved tolerance.
-
-### C1 — Saved Link Profiles
-
-- Implement the shared versioned schema and durable local repositories on both platforms.
-- Add the library and explicit save/update/save-copy actions to the existing Link Profile editor.
-- Restore inputs atomically; preserve result provenance and distinguish historical/stale results.
-- Complete offline, recovery, lifecycle and adaptive-layout acceptance checks in the
-  [implementation plan](saved-link-profiles.md).
-
-Exit: profiles survive relaunch and can be reopened, edited, duplicated and deleted independently
-of candidate-site planning. A saved prediction is never presented as a freshly observed link.
 
 ### D — Estimated coverage
 
@@ -497,7 +543,7 @@ them as they migrate so the release contains no ambiguous Field Tools terminolog
 3. Initial supported regions/frequencies and reviewed MeshCore presets.
 4. Classification thresholds and comparison with independent reference results.
 5. Maximum radius/resolution that meets mobile performance budgets.
-6. Whether 0.10.0 persistence supports multiple named plans or one active plan plus duplicates.
+6. Whether 0.10.1 persistence supports multiple named plans or one active plan plus duplicates.
 7. Whether Android coverage rendering can ship with numerical and visual parity in the same release.
 8. Record the exact MeshCore One commit and files reused or translated for each platform before
    implementation begins.

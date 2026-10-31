@@ -1,0 +1,21 @@
+{
+  "engine_commit": "a911b6ecd58f8c16ac8ae4becf6bdbba1784e5a9",
+  "wrapper_sources_sha256": {
+    "CoverageRunner.kt": "8b31224aa4befbf316c457083d81e60a6ebcb9532a928c499e5f9ab762f1ccf2",
+    "CoverageRunner.swift": "451c0647654dd81146d9477fad3ef361b909b9d3e9aecb2bf93640933c131bb6",
+    "CoverageStudy.kt": "4c299c31a9fdae028909bffbc33b5cffe92231ef132e94fe2a595e241ed64665",
+    "CoverageStudyTest.kt": "7a46c9bfe717cfbb3a13c1c774199d59f534c8b435a33c3088bcebb19bd5ecc1",
+    "README.md": "48061b5aeefbee4a2bed63c747426dbbafbc971071fdd17942a5a2a9b9a7890c",
+    "analyze.py": "0bf46d811c3e134906669830a3f647bd3ff53f279fe739b58ebd9e511e3ae4e3",
+    "prepare_build.py": "53b946c68f429f6eab861b8180a73f0c97419f9073df60011fa2a46d4d2d529e",
+    "prepare_terrain.py": "ffe3e5477afbe65ac7dbbb05dedcbc127c6c0a6d079eeeed3130d674d39f4742",
+    "run_android.py": "7526ef6987800e2fde2e65d4798815fe46f62a2339ae73fe6ade761edaeb6735"
+  },
+  "ios_kotlin": "2.4.20",
+  "android_kotlin": "2.2.20",
+  "android_jvm_target": 17,
+  "android_d8": "36.0.0",
+  "android_min_api": 26,
+  "ios_compile_target": "arm64-apple-ios17.0-simulator",
+  "swift": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.2.0"
+}

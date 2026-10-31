@@ -1,0 +1,113 @@
+{
+  "tolerance_db": 0.01,
+  "scenarios": {
+    "clean": {
+      "counts": {
+        "OUTSIDE_RADIUS": 2356,
+        "PREDICTED": 7840,
+        "NEAR_SITE": 5
+      },
+      "max_loss_difference_db": 6.506581939902389e-10,
+      "loss_range_db": [
+        80.66489600233812,
+        177.75549748555716
+      ],
+      "max_profile_samples": 335
+    },
+    "gap": {
+      "counts": {
+        "OUTSIDE_RADIUS": 2356,
+        "PREDICTED": 4562,
+        "MISSING_TERRAIN": 3278,
+        "NEAR_SITE": 5
+      },
+      "max_loss_difference_db": 6.506581939902389e-10,
+      "loss_range_db": [
+        80.66489600233812,
+        172.80680142735176
+      ],
+      "max_profile_samples": 335
+    }
+  },
+  "platforms": {
+    "ios": {
+      "boundary_checks_passed": true,
+      "decode_ms": 18.549917,
+      "process_peak_rss_bytes": 58785792,
+      "runs": [
+        {
+          "cancel_latency_ms": null,
+          "completed": 10201,
+          "compute_ms": 134.628584,
+          "max_step_ms": 3.834917,
+          "scenario": "clean",
+          "state": "COMPLETE"
+        },
+        {
+          "cancel_latency_ms": null,
+          "completed": 10201,
+          "compute_ms": 84.632834,
+          "max_step_ms": 0.520625,
+          "scenario": "gap",
+          "state": "COMPLETE"
+        },
+        {
+          "cancel_latency_ms": 0.004084,
+          "completed": 2174,
+          "compute_ms": 24.806167,
+          "max_step_ms": 0.471958,
+          "scenario": "cancel",
+          "state": "CANCELLED"
+        }
+      ]
+    },
+    "android": {
+      "decode_ms": 4.608209,
+      "runs": [
+        {
+          "scenario": "clean",
+          "state": "COMPLETE",
+          "completed": 10201,
+          "compute_ms": 202.269417,
+          "max_step_ms": 3.104542,
+          "cancel_latency_ms": null
+        },
+        {
+          "scenario": "gap",
+          "state": "COMPLETE",
+          "completed": 10201,
+          "compute_ms": 112.119875,
+          "max_step_ms": 1.366666,
+          "cancel_latency_ms": null
+        },
+        {
+          "scenario": "cancel",
+          "state": "CANCELLED",
+          "completed": 1530,
+          "compute_ms": 20.386958,
+          "max_step_ms": 0.731458,
+          "cancel_latency_ms": 0.003333
+        }
+      ],
+      "process_peak_rss_bytes": 152911872,
+      "boundary_checks_passed": true
+    }
+  },
+  "receiver_fixtures": {
+    "max_loss_difference_db": 4.121147867408581e-12,
+    "off_grid_loss_db": 140.23164363452833,
+    "nearest_display_cell_loss_db": 142.1612272830553,
+    "raised_receiver_loss_db": 136.0244108287476,
+    "note": "Synthetic receiver fixtures at exact coordinates, not observed mesh nodes"
+  },
+  "artifacts_sha256": {
+    "android-cancel.csv.gz": "9e5f2803df3a7a182d36e150bff46138b1a9ebba8a73e115a2ad79df4c7d4309",
+    "android-clean.csv.gz": "2118e44758bfd6a32746db063ac66d24e70ea9f098047928ecd33f2d390f05f9",
+    "android-gap.csv.gz": "eda8413d003b81b64522d7ede21350fbdeaa5824a230000f835f56cb353fcc8b",
+    "android-links.csv.gz": "fb2cd309ed74231efde4fa63454445114da5391a5eb946512112e850b34737f2",
+    "ios-cancel.csv.gz": "0b27b16423a5055f29b847676dcf174fd10dd1fce1a0a222cc48c6be37b0de58",
+    "ios-clean.csv.gz": "ca9cdb1eefc2b16df13e8324ce89e3c3517dd8f4e3ccd410c9db6e074026a3de",
+    "ios-gap.csv.gz": "12c97f36478d34c75931aaf95db55c83e6c90ebe4a4a519b1dde392b79fbcd1c",
+    "ios-links.csv.gz": "c8ee4765efa71420bd02c72124510a15620d343b02cde667d65a4e770fe9105b"
+  }
+}

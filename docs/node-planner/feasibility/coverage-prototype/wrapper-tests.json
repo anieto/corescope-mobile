@@ -1,0 +1,44 @@
+{
+  "suite": {
+    "name": "study.CoverageStudyTest",
+    "tests": "6",
+    "skipped": "0",
+    "failures": "0",
+    "errors": "0",
+    "timestamp": "2026-10-30T13:31:17.182Z",
+    "hostname": "M5-Air.local",
+    "time": "0.014"
+  },
+  "test_cases": [
+    {
+      "name": "invalidReceiverNeverReachesKernel",
+      "classname": "study.CoverageStudyTest",
+      "time": "0.009"
+    },
+    {
+      "name": "sampleCountIsStableAtExactSpacingMultiples",
+      "classname": "study.CoverageStudyTest",
+      "time": "0.0"
+    },
+    {
+      "name": "nodataDoesNotBecomeSeaLevel",
+      "classname": "study.CoverageStudyTest",
+      "time": "0.0"
+    },
+    {
+      "name": "ownedSnapshotAndTerminalCancellation",
+      "classname": "study.CoverageStudyTest",
+      "time": "0.0"
+    },
+    {
+      "name": "badPayloadsReturnTypedFailures",
+      "classname": "study.CoverageStudyTest",
+      "time": "0.002"
+    },
+    {
+      "name": "signedElevationOrientationAndInterpolation",
+      "classname": "study.CoverageStudyTest",
+      "time": "0.001"
+    }
+  ]
+}

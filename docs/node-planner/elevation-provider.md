@@ -2,6 +2,11 @@
 
 Decision date: 2026-10-25
 
+Scope clarification (2026-10-29): this provider decision applies to existing Link Profile v1.
+Candidate Sites requires a separately audited tiled terrain source and repository; do not implement
+area coverage as per-cell Open-Meteo path requests. See the
+[coverage terrain gate](candidate-sites-implementation.md#terrain-feasibility-gate-a2).
+
 Node Planner v1 will use the Open-Meteo Elevation API backed by Copernicus DEM 2021 GLO-90. This
 matches the provider and terrain resolution used by the audited MeshCore One implementation.
 

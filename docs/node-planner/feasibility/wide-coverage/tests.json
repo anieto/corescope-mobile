@@ -1,0 +1,80 @@
+[
+  {
+    "suite": {
+      "name": "study.WideTests",
+      "tests": "4",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-30T19:25:56.227Z",
+      "hostname": "M5-Air.local",
+      "time": "0.002"
+    },
+    "cases": [
+      {
+        "name": "sharedSamplerCrossesRasterSeamWithoutChangingSign",
+        "classname": "study.WideTests",
+        "time": "0.001"
+      },
+      {
+        "name": "preflightDoesNotAllocateOversizedJob",
+        "classname": "study.WideTests",
+        "time": "0.0"
+      },
+      {
+        "name": "nodataAndCancelledStatesRemainTyped",
+        "classname": "study.WideTests",
+        "time": "0.001"
+      },
+      {
+        "name": "boundsAndProfileSpacingIndependent",
+        "classname": "study.WideTests",
+        "time": "0.0"
+      }
+    ]
+  },
+  {
+    "suite": {
+      "name": "study.CoverageStudyTest",
+      "tests": "6",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-30T19:25:56.211Z",
+      "hostname": "M5-Air.local",
+      "time": "0.015"
+    },
+    "cases": [
+      {
+        "name": "invalidReceiverNeverReachesKernel",
+        "classname": "study.CoverageStudyTest",
+        "time": "0.01"
+      },
+      {
+        "name": "sampleCountIsStableAtExactSpacingMultiples",
+        "classname": "study.CoverageStudyTest",
+        "time": "0.0"
+      },
+      {
+        "name": "nodataDoesNotBecomeSeaLevel",
+        "classname": "study.CoverageStudyTest",
+        "time": "0.0"
+      },
+      {
+        "name": "ownedSnapshotAndTerminalCancellation",
+        "classname": "study.CoverageStudyTest",
+        "time": "0.001"
+      },
+      {
+        "name": "badPayloadsReturnTypedFailures",
+        "classname": "study.CoverageStudyTest",
+        "time": "0.002"
+      },
+      {
+        "name": "signedElevationOrientationAndInterpolation",
+        "classname": "study.CoverageStudyTest",
+        "time": "0.001"
+      }
+    ]
+  }
+]

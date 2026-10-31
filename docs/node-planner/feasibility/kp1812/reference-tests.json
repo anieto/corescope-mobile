@@ -1,0 +1,101 @@
+{
+  "source_commit": "a911b6ecd58f8c16ac8ae4becf6bdbba1784e5a9",
+  "suites": [
+    {
+      "file": "build/test-results/iosSimulatorArm64Test/TEST-iosSimulatorArm64Test.org.meshtastic.kp1812.EndToEndTest.xml",
+      "name": "iosSimulatorArm64Test.org.meshtastic.kp1812.EndToEndTest",
+      "tests": "3",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-30T13:08:23.215Z",
+      "hostname": "M5-Air.local",
+      "time": "0.001",
+      "stdout": "end-to-end: 63 cases, worst |\u0394Lb| = 3.289329697508947E-9 dB (rburg_urban_with_clutter_3)\n"
+    },
+    {
+      "file": "build/test-results/iosSimulatorArm64Test/TEST-iosSimulatorArm64Test.org.meshtastic.kp1812.ReferenceConformanceTest.xml",
+      "name": "iosSimulatorArm64Test.org.meshtastic.kp1812.ReferenceConformanceTest",
+      "tests": "11",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-30T13:08:23.216Z",
+      "hostname": "M5-Air.local",
+      "time": "0.001",
+      "stdout": ""
+    },
+    {
+      "file": "build/test-results/jvmTest/TEST-org.meshtastic.kp1812.EndToEndTest.xml",
+      "name": "EndToEndTest[jvm]",
+      "tests": "3",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-30T13:15:50.283Z",
+      "hostname": "M5-Air.local",
+      "time": "0.349",
+      "stdout": "end-to-end: 63 cases, worst |\u0394Lb| = 3.289329697508947E-9 dB (rburg_urban_with_clutter_3)\n"
+    },
+    {
+      "file": "build/test-results/jvmTest/TEST-org.meshtastic.kp1812.Kp1812BoundaryProbe.xml",
+      "name": "Kp1812BoundaryProbe[jvm]",
+      "tests": "1",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-30T13:15:50.635Z",
+      "hostname": "M5-Air.local",
+      "time": "0.004",
+      "stdout": "boundary valid returned 137.09304306564127 finite=true\nboundary negative_tx returned NaN finite=false\nboundary nan_terrain returned NaN finite=false\nboundary invalid_zone returned 137.09304306569425 finite=true\nboundary negative_clutter returned 128.99460513103537 finite=true\nboundary invalid_latitude returned 137.09304306548194 finite=true\nboundary singular_atmosphere returned NaN finite=false\n"
+    },
+    {
+      "file": "build/test-results/jvmTest/TEST-org.meshtastic.kp1812.ReferenceConformanceTest.xml",
+      "name": "ReferenceConformanceTest[jvm]",
+      "tests": "11",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-30T13:15:50.642Z",
+      "hostname": "M5-Air.local",
+      "time": "0.06",
+      "stdout": ""
+    },
+    {
+      "file": "build/test-results/macosArm64Test/TEST-macosArm64Test.org.meshtastic.kp1812.EndToEndTest.xml",
+      "name": "macosArm64Test.org.meshtastic.kp1812.EndToEndTest",
+      "tests": "3",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-30T13:15:52.596Z",
+      "hostname": "M5-Air.local",
+      "time": "0.001",
+      "stdout": "end-to-end: 63 cases, worst |\u0394Lb| = 3.289329697508947E-9 dB (rburg_urban_with_clutter_3)\n"
+    },
+    {
+      "file": "build/test-results/macosArm64Test/TEST-macosArm64Test.org.meshtastic.kp1812.Kp1812BoundaryProbe.xml",
+      "name": "macosArm64Test.org.meshtastic.kp1812.Kp1812BoundaryProbe",
+      "tests": "1",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-30T13:15:52.597Z",
+      "hostname": "M5-Air.local",
+      "time": "0.001",
+      "stdout": "boundary valid returned 137.09304306564127 finite=true\nboundary negative_tx returned NaN finite=false\nboundary nan_terrain returned NaN finite=false\nboundary invalid_zone returned 137.09304306569425 finite=true\nboundary negative_clutter returned 128.99460513103537 finite=true\nboundary invalid_latitude returned 137.09304306548194 finite=true\nboundary singular_atmosphere returned NaN finite=false\n"
+    },
+    {
+      "file": "build/test-results/macosArm64Test/TEST-macosArm64Test.org.meshtastic.kp1812.ReferenceConformanceTest.xml",
+      "name": "macosArm64Test.org.meshtastic.kp1812.ReferenceConformanceTest",
+      "tests": "11",
+      "skipped": "0",
+      "failures": "0",
+      "errors": "0",
+      "timestamp": "2026-10-30T13:15:52.599Z",
+      "hostname": "M5-Air.local",
+      "time": "0.236",
+      "stdout": ""
+    }
+  ]
+}

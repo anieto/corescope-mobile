@@ -1,0 +1,136 @@
+{
+  "cache_released": true,
+  "cancel_completed": 5,
+  "cancel_latency_ms": 0.004208,
+  "cancel_samples": 13336,
+  "cancel_state": "CANCELLED",
+  "process_peak_rss_bytes": 45383680,
+  "runs": [
+    {
+      "elapsed_ms": 4721.611666,
+      "name": "r20_small",
+      "result": {
+        "budget": 15000000,
+        "bytes_read": 190611456,
+        "capacity_bytes": 131072,
+        "cells": 441,
+        "completed": 441,
+        "evictions": 5813,
+        "failed_loads": 0,
+        "hits": 6347143,
+        "maximum_work": 7788708,
+        "minimum_work": 1417064,
+        "misses": 5817,
+        "peak_payload_bytes": 131072,
+        "row_reads": 744576,
+        "samples": 1588240,
+        "state": "COMPLETE"
+      }
+    },
+    {
+      "elapsed_ms": 1736.738583,
+      "name": "r20_large",
+      "result": {
+        "budget": 15000000,
+        "bytes_read": 4456448,
+        "capacity_bytes": 2097152,
+        "cells": 441,
+        "completed": 441,
+        "evictions": 72,
+        "failed_loads": 0,
+        "hits": 6352824,
+        "maximum_work": 7788708,
+        "minimum_work": 1417064,
+        "misses": 136,
+        "peak_payload_bytes": 2097152,
+        "row_reads": 17408,
+        "samples": 1588240,
+        "state": "COMPLETE"
+      }
+    },
+    {
+      "elapsed_ms": 3603.619708,
+      "name": "refine_small",
+      "result": {
+        "budget": 15000000,
+        "bytes_read": 272367616,
+        "capacity_bytes": 131072,
+        "cells": 441,
+        "completed": 441,
+        "evictions": 8308,
+        "failed_loads": 0,
+        "hits": 7940244,
+        "maximum_work": 9888064,
+        "minimum_work": 1799201,
+        "misses": 8312,
+        "peak_payload_bytes": 131072,
+        "row_reads": 1063936,
+        "samples": 1987139,
+        "state": "COMPLETE"
+      }
+    },
+    {
+      "elapsed_ms": 817.591709,
+      "name": "refine_large",
+      "result": {
+        "budget": 15000000,
+        "bytes_read": 327680,
+        "capacity_bytes": 2097152,
+        "cells": 441,
+        "completed": 441,
+        "evictions": 0,
+        "failed_loads": 0,
+        "hits": 7948546,
+        "maximum_work": 9888064,
+        "minimum_work": 1799201,
+        "misses": 10,
+        "peak_payload_bytes": 327680,
+        "row_reads": 1280,
+        "samples": 1987139,
+        "state": "COMPLETE"
+      }
+    },
+    {
+      "elapsed_ms": 3242.711125,
+      "name": "r100",
+      "result": {
+        "budget": 15000000,
+        "bytes_read": 236519424,
+        "capacity_bytes": 131072,
+        "cells": 121,
+        "completed": 121,
+        "evictions": 7214,
+        "failed_loads": 0,
+        "hits": 8412714,
+        "maximum_work": 10074152,
+        "minimum_work": 1831904,
+        "misses": 7218,
+        "peak_payload_bytes": 131072,
+        "row_reads": 923904,
+        "samples": 2104983,
+        "state": "COMPLETE"
+      }
+    },
+    {
+      "elapsed_ms": 1889.652167,
+      "name": "limited",
+      "result": {
+        "budget": 1799201,
+        "bytes_read": 249856000,
+        "capacity_bytes": 131072,
+        "cells": 441,
+        "completed": 402,
+        "evictions": 7621,
+        "failed_loads": 0,
+        "hits": 7188915,
+        "maximum_work": 9888064,
+        "minimum_work": 1799201,
+        "misses": 7625,
+        "peak_payload_bytes": 131072,
+        "row_reads": 976000,
+        "samples": 1799135,
+        "state": "WORK_LIMIT"
+      }
+    }
+  ]
+}

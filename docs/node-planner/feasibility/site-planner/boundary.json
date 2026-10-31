@@ -1,0 +1,8 @@
+{
+  "missing_terrain_computed_cells": 58990,
+  "missing_terrain_seconds": 1.1050226250081323,
+  "negative_tx_height_accepted": true,
+  "partial_16_radial_seconds": 0.005253749986877665,
+  "destroy_after_partial_seconds": 1.3584009138867259e-05,
+  "cancellation_note": "Caller stops scheduling chunks then destroys; no mid-chunk cancellation API. Host, synthetic absent terrain only."
+}

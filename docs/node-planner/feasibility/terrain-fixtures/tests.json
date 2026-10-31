@@ -1,0 +1,52 @@
+[
+  {
+    "name": "study.AdaptiveTests",
+    "tests": "6",
+    "skipped": "0",
+    "failures": "0",
+    "errors": "0",
+    "timestamp": "2026-10-31T00:40:19.632Z",
+    "hostname": "M5-Air.local",
+    "time": "0.011"
+  },
+  {
+    "name": "study.BoundedTests",
+    "tests": "8",
+    "skipped": "0",
+    "failures": "0",
+    "errors": "0",
+    "timestamp": "2026-10-31T00:40:19.644Z",
+    "hostname": "M5-Air.local",
+    "time": "0.022"
+  },
+  {
+    "name": "study.CoverageStudyTest",
+    "tests": "6",
+    "skipped": "0",
+    "failures": "0",
+    "errors": "0",
+    "timestamp": "2026-10-31T00:40:19.667Z",
+    "hostname": "M5-Air.local",
+    "time": "0.005"
+  },
+  {
+    "name": "study.TerrainFixtureTests",
+    "tests": "2",
+    "skipped": "0",
+    "failures": "0",
+    "errors": "0",
+    "timestamp": "2026-10-31T00:40:19.673Z",
+    "hostname": "M5-Air.local",
+    "time": "0.009"
+  },
+  {
+    "name": "study.WideTests",
+    "tests": "4",
+    "skipped": "0",
+    "failures": "0",
+    "errors": "0",
+    "timestamp": "2026-10-31T00:40:19.682Z",
+    "hostname": "M5-Air.local",
+    "time": "0.002"
+  }
+]

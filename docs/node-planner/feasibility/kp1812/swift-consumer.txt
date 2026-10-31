@@ -1,0 +1,1 @@
+flat_10km_loss_db=137.09304306564067 iterations=10000 elapsed_seconds=0.148811936378479

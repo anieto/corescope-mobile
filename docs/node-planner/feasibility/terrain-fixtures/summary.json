@@ -1,0 +1,778 @@
+{
+  "accuracy_target_db": 0.25,
+  "platform_tolerance_db": 0.01,
+  "platforms": {
+    "ios": {
+      "synthetic": {
+        "rows": 56,
+        "states": {
+          "QUALIFIED": 36,
+          "ACCURACY_UNRESOLVED": 20
+        },
+        "maximum_qualified_error_db": 45.12524444825782,
+        "accuracy_failures": 20,
+        "threshold_flips": 0,
+        "failures": [
+          {
+            "error_db": 45.12524444825782,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "1000.0",
+              "half_width_m": "0.75",
+              "offset_m": "1.0",
+              "state": "QUALIFIED",
+              "loss_db": "91.63194800640447",
+              "reference_loss_db": "136.7571924546623",
+              "finer_reference_loss_db": "136.7571924546623",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "337"
+            }
+          },
+          {
+            "error_db": 45.124719268339945,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "1000.0",
+              "half_width_m": "0.75",
+              "offset_m": "2.0",
+              "state": "QUALIFIED",
+              "loss_db": "91.63194800640447",
+              "reference_loss_db": "136.75666727474442",
+              "finer_reference_loss_db": "136.75666727474442",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "337"
+            }
+          },
+          {
+            "error_db": 45.1242323933228,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "1000.0",
+              "half_width_m": "0.75",
+              "offset_m": "3.0",
+              "state": "QUALIFIED",
+              "loss_db": "91.63194800640447",
+              "reference_loss_db": "136.75618039972727",
+              "finer_reference_loss_db": "136.75618039972727",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "337"
+            }
+          },
+          {
+            "error_db": 45.12378373065705,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "1000.0",
+              "half_width_m": "0.75",
+              "offset_m": "4.0",
+              "state": "QUALIFIED",
+              "loss_db": "91.63194800640447",
+              "reference_loss_db": "136.75573173706152",
+              "finer_reference_loss_db": "136.75573173706152",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "337"
+            }
+          },
+          {
+            "error_db": 8.36637540383279,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "1000.0",
+              "half_width_m": "2.0",
+              "offset_m": "1.0",
+              "state": "QUALIFIED",
+              "loss_db": "128.3908170508295",
+              "reference_loss_db": "136.7571924546623",
+              "finer_reference_loss_db": "136.7571924546623",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "2",
+              "samples_used": "838"
+            }
+          },
+          {
+            "error_db": 45.124719268339945,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "1000.0",
+              "half_width_m": "2.0",
+              "offset_m": "2.0",
+              "state": "QUALIFIED",
+              "loss_db": "91.63194800640447",
+              "reference_loss_db": "136.75666727474442",
+              "finer_reference_loss_db": "136.75666727474442",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "337"
+            }
+          },
+          {
+            "error_db": 45.1242323933228,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "1000.0",
+              "half_width_m": "2.0",
+              "offset_m": "3.0",
+              "state": "QUALIFIED",
+              "loss_db": "91.63194800640447",
+              "reference_loss_db": "136.75618039972727",
+              "finer_reference_loss_db": "136.75618039972727",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "337"
+            }
+          },
+          {
+            "error_db": 2.455899327695363,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "1000.0",
+              "half_width_m": "5.0",
+              "offset_m": "1.0",
+              "state": "QUALIFIED",
+              "loss_db": "134.30129312696693",
+              "reference_loss_db": "136.7571924546623",
+              "finer_reference_loss_db": "136.7571924546623",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "2",
+              "samples_used": "838"
+            }
+          },
+          {
+            "error_db": 0.7308781410025347,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "1000.0",
+              "half_width_m": "15.0",
+              "offset_m": "1.0",
+              "state": "QUALIFIED",
+              "loss_db": "136.02631431365975",
+              "reference_loss_db": "136.7571924546623",
+              "finer_reference_loss_db": "136.7571924546623",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "2",
+              "samples_used": "838"
+            }
+          },
+          {
+            "error_db": 0.3482369342391394,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "1000.0",
+              "half_width_m": "30.0",
+              "offset_m": "1.0",
+              "state": "QUALIFIED",
+              "loss_db": "136.40895552042315",
+              "reference_loss_db": "136.7571924546623",
+              "finer_reference_loss_db": "136.7571924546623",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "2",
+              "samples_used": "838"
+            }
+          },
+          {
+            "error_db": 19.451489473135865,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "10000.0",
+              "half_width_m": "0.75",
+              "offset_m": "1.0",
+              "state": "QUALIFIED",
+              "loss_db": "127.47187822112807",
+              "reference_loss_db": "146.92336769426393",
+              "finer_reference_loss_db": "146.92336769426393",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "3337"
+            }
+          },
+          {
+            "error_db": 19.4514380258953,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "10000.0",
+              "half_width_m": "0.75",
+              "offset_m": "2.0",
+              "state": "QUALIFIED",
+              "loss_db": "127.47187822112807",
+              "reference_loss_db": "146.92331624702337",
+              "finer_reference_loss_db": "146.92331624702337",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "3337"
+            }
+          },
+          {
+            "error_db": 19.45138695509067,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "10000.0",
+              "half_width_m": "0.75",
+              "offset_m": "3.0",
+              "state": "QUALIFIED",
+              "loss_db": "127.47187822112807",
+              "reference_loss_db": "146.92326517621873",
+              "finer_reference_loss_db": "146.92326517621873",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "3337"
+            }
+          },
+          {
+            "error_db": 19.451336260627073,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "10000.0",
+              "half_width_m": "0.75",
+              "offset_m": "4.0",
+              "state": "QUALIFIED",
+              "loss_db": "127.47187822112807",
+              "reference_loss_db": "146.92321448175514",
+              "finer_reference_loss_db": "146.92321448175514",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "3337"
+            }
+          },
+          {
+            "error_db": 8.120721254488643,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "10000.0",
+              "half_width_m": "2.0",
+              "offset_m": "1.0",
+              "state": "QUALIFIED",
+              "loss_db": "138.80264643977935",
+              "reference_loss_db": "146.923367694268",
+              "finer_reference_loss_db": "146.923367694268",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "2",
+              "samples_used": "8338"
+            }
+          },
+          {
+            "error_db": 19.4514380258953,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "10000.0",
+              "half_width_m": "2.0",
+              "offset_m": "2.0",
+              "state": "QUALIFIED",
+              "loss_db": "127.47187822112807",
+              "reference_loss_db": "146.92331624702337",
+              "finer_reference_loss_db": "146.92331624702337",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "3337"
+            }
+          },
+          {
+            "error_db": 19.45138695509067,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "10000.0",
+              "half_width_m": "2.0",
+              "offset_m": "3.0",
+              "state": "QUALIFIED",
+              "loss_db": "127.47187822112807",
+              "reference_loss_db": "146.92326517621873",
+              "finer_reference_loss_db": "146.92326517621873",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "3337"
+            }
+          },
+          {
+            "error_db": 2.4488819157238595,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "10000.0",
+              "half_width_m": "5.0",
+              "offset_m": "1.0",
+              "state": "QUALIFIED",
+              "loss_db": "144.47448577854556",
+              "reference_loss_db": "146.92336769426942",
+              "finer_reference_loss_db": "146.92336769426942",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "2",
+              "samples_used": "8338"
+            }
+          },
+          {
+            "error_db": 0.7424898198229073,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "10000.0",
+              "half_width_m": "15.0",
+              "offset_m": "1.0",
+              "state": "QUALIFIED",
+              "loss_db": "146.1808778744472",
+              "reference_loss_db": "146.9233676942701",
+              "finer_reference_loss_db": "146.9233676942701",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "2",
+              "samples_used": "8338"
+            }
+          },
+          {
+            "error_db": 0.36250848080345577,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "10000.0",
+              "half_width_m": "30.0",
+              "offset_m": "1.0",
+              "state": "QUALIFIED",
+              "loss_db": "146.5608592134668",
+              "reference_loss_db": "146.92336769427027",
+              "finer_reference_loss_db": "146.92336769427027",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "2",
+              "samples_used": "8338"
+            }
+          }
+        ],
+        "reference_refinement_max_delta_db": 1.1681350002845647e-05,
+        "csv_sha256": "2899c579e075092d3dee3e64029a771e49be72f44b8b55128550e79fecd46fca"
+      },
+      "terrain": {
+        "rows": 144,
+        "states": {
+          "QUALIFIED": 141,
+          "ACCURACY_UNRESOLVED": 2,
+          "THRESHOLD_UNRESOLVED": 1
+        },
+        "maximum_qualified_error_db": 0.05808427256926052,
+        "accuracy_failures": 0,
+        "threshold_flips": 0,
+        "failures": [],
+        "reference_refinement_max_delta_db": null,
+        "csv_sha256": "8454790230a433afd2a8f573a4d06e82c36dd787beaa6e80e21cbf6ba1aa9d34",
+        "states_by_site": {
+          "eastern_plains": {
+            "QUALIFIED": 47,
+            "ACCURACY_UNRESOLVED": 1
+          },
+          "foothills": {
+            "ACCURACY_UNRESOLVED": 1,
+            "QUALIFIED": 46,
+            "THRESHOLD_UNRESOLVED": 1
+          },
+          "western_mountains": {
+            "QUALIFIED": 48
+          }
+        }
+      }
+    },
+    "android": {
+      "synthetic": {
+        "rows": 56,
+        "states": {
+          "QUALIFIED": 36,
+          "ACCURACY_UNRESOLVED": 20
+        },
+        "maximum_qualified_error_db": 45.12524444825782,
+        "accuracy_failures": 20,
+        "threshold_flips": 0,
+        "failures": [
+          {
+            "error_db": 45.12524444825782,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "1000.0",
+              "half_width_m": "0.75",
+              "offset_m": "1.0",
+              "state": "QUALIFIED",
+              "loss_db": "91.63194800640447",
+              "reference_loss_db": "136.7571924546623",
+              "finer_reference_loss_db": "136.7571924546623",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "337"
+            }
+          },
+          {
+            "error_db": 45.124719268339945,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "1000.0",
+              "half_width_m": "0.75",
+              "offset_m": "2.0",
+              "state": "QUALIFIED",
+              "loss_db": "91.63194800640447",
+              "reference_loss_db": "136.75666727474442",
+              "finer_reference_loss_db": "136.75666727474442",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "337"
+            }
+          },
+          {
+            "error_db": 45.1242323933228,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "1000.0",
+              "half_width_m": "0.75",
+              "offset_m": "3.0",
+              "state": "QUALIFIED",
+              "loss_db": "91.63194800640447",
+              "reference_loss_db": "136.75618039972727",
+              "finer_reference_loss_db": "136.75618039972727",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "337"
+            }
+          },
+          {
+            "error_db": 45.12378373065705,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "1000.0",
+              "half_width_m": "0.75",
+              "offset_m": "4.0",
+              "state": "QUALIFIED",
+              "loss_db": "91.63194800640447",
+              "reference_loss_db": "136.75573173706152",
+              "finer_reference_loss_db": "136.75573173706152",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "337"
+            }
+          },
+          {
+            "error_db": 8.36637540383279,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "1000.0",
+              "half_width_m": "2.0",
+              "offset_m": "1.0",
+              "state": "QUALIFIED",
+              "loss_db": "128.3908170508295",
+              "reference_loss_db": "136.7571924546623",
+              "finer_reference_loss_db": "136.7571924546623",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "2",
+              "samples_used": "838"
+            }
+          },
+          {
+            "error_db": 45.124719268339945,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "1000.0",
+              "half_width_m": "2.0",
+              "offset_m": "2.0",
+              "state": "QUALIFIED",
+              "loss_db": "91.63194800640447",
+              "reference_loss_db": "136.75666727474442",
+              "finer_reference_loss_db": "136.75666727474442",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "337"
+            }
+          },
+          {
+            "error_db": 45.1242323933228,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "1000.0",
+              "half_width_m": "2.0",
+              "offset_m": "3.0",
+              "state": "QUALIFIED",
+              "loss_db": "91.63194800640447",
+              "reference_loss_db": "136.75618039972727",
+              "finer_reference_loss_db": "136.75618039972727",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "337"
+            }
+          },
+          {
+            "error_db": 2.455899327695363,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "1000.0",
+              "half_width_m": "5.0",
+              "offset_m": "1.0",
+              "state": "QUALIFIED",
+              "loss_db": "134.30129312696693",
+              "reference_loss_db": "136.7571924546623",
+              "finer_reference_loss_db": "136.7571924546623",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "2",
+              "samples_used": "838"
+            }
+          },
+          {
+            "error_db": 0.7308781410025347,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "1000.0",
+              "half_width_m": "15.0",
+              "offset_m": "1.0",
+              "state": "QUALIFIED",
+              "loss_db": "136.02631431365975",
+              "reference_loss_db": "136.7571924546623",
+              "finer_reference_loss_db": "136.7571924546623",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "2",
+              "samples_used": "838"
+            }
+          },
+          {
+            "error_db": 0.3482369342391394,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "1000.0",
+              "half_width_m": "30.0",
+              "offset_m": "1.0",
+              "state": "QUALIFIED",
+              "loss_db": "136.40895552042315",
+              "reference_loss_db": "136.7571924546623",
+              "finer_reference_loss_db": "136.7571924546623",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "2",
+              "samples_used": "838"
+            }
+          },
+          {
+            "error_db": 19.451489473135865,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "10000.0",
+              "half_width_m": "0.75",
+              "offset_m": "1.0",
+              "state": "QUALIFIED",
+              "loss_db": "127.47187822112807",
+              "reference_loss_db": "146.92336769426393",
+              "finer_reference_loss_db": "146.92336769426393",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "3337"
+            }
+          },
+          {
+            "error_db": 19.4514380258953,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "10000.0",
+              "half_width_m": "0.75",
+              "offset_m": "2.0",
+              "state": "QUALIFIED",
+              "loss_db": "127.47187822112807",
+              "reference_loss_db": "146.92331624702337",
+              "finer_reference_loss_db": "146.92331624702337",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "3337"
+            }
+          },
+          {
+            "error_db": 19.45138695509067,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "10000.0",
+              "half_width_m": "0.75",
+              "offset_m": "3.0",
+              "state": "QUALIFIED",
+              "loss_db": "127.47187822112807",
+              "reference_loss_db": "146.92326517621873",
+              "finer_reference_loss_db": "146.92326517621873",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "3337"
+            }
+          },
+          {
+            "error_db": 19.451336260627073,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "10000.0",
+              "half_width_m": "0.75",
+              "offset_m": "4.0",
+              "state": "QUALIFIED",
+              "loss_db": "127.47187822112807",
+              "reference_loss_db": "146.92321448175514",
+              "finer_reference_loss_db": "146.92321448175514",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "3337"
+            }
+          },
+          {
+            "error_db": 8.120721254488643,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "10000.0",
+              "half_width_m": "2.0",
+              "offset_m": "1.0",
+              "state": "QUALIFIED",
+              "loss_db": "138.80264643977935",
+              "reference_loss_db": "146.923367694268",
+              "finer_reference_loss_db": "146.923367694268",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "2",
+              "samples_used": "8338"
+            }
+          },
+          {
+            "error_db": 19.4514380258953,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "10000.0",
+              "half_width_m": "2.0",
+              "offset_m": "2.0",
+              "state": "QUALIFIED",
+              "loss_db": "127.47187822112807",
+              "reference_loss_db": "146.92331624702337",
+              "finer_reference_loss_db": "146.92331624702337",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "3337"
+            }
+          },
+          {
+            "error_db": 19.45138695509067,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "10000.0",
+              "half_width_m": "2.0",
+              "offset_m": "3.0",
+              "state": "QUALIFIED",
+              "loss_db": "127.47187822112807",
+              "reference_loss_db": "146.92326517621873",
+              "finer_reference_loss_db": "146.92326517621873",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "5",
+              "samples_used": "3337"
+            }
+          },
+          {
+            "error_db": 2.4488819157238595,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "10000.0",
+              "half_width_m": "5.0",
+              "offset_m": "1.0",
+              "state": "QUALIFIED",
+              "loss_db": "144.47448577854556",
+              "reference_loss_db": "146.92336769426942",
+              "finer_reference_loss_db": "146.92336769426942",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "2",
+              "samples_used": "8338"
+            }
+          },
+          {
+            "error_db": 0.7424898198229073,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "10000.0",
+              "half_width_m": "15.0",
+              "offset_m": "1.0",
+              "state": "QUALIFIED",
+              "loss_db": "146.1808778744472",
+              "reference_loss_db": "146.9233676942701",
+              "finer_reference_loss_db": "146.9233676942701",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "2",
+              "samples_used": "8338"
+            }
+          },
+          {
+            "error_db": 0.36250848080345577,
+            "threshold_flip": false,
+            "fixture": {
+              "kind": "ridge",
+              "distance_m": "10000.0",
+              "half_width_m": "30.0",
+              "offset_m": "1.0",
+              "state": "QUALIFIED",
+              "loss_db": "146.5608592134668",
+              "reference_loss_db": "146.92336769427027",
+              "finer_reference_loss_db": "146.92336769427027",
+              "reference_step_m": "0.25",
+              "final_spacing_m": "2",
+              "samples_used": "8338"
+            }
+          }
+        ],
+        "reference_refinement_max_delta_db": 1.1681350002845647e-05,
+        "csv_sha256": "2899c579e075092d3dee3e64029a771e49be72f44b8b55128550e79fecd46fca"
+      },
+      "terrain": {
+        "rows": 144,
+        "states": {
+          "QUALIFIED": 141,
+          "ACCURACY_UNRESOLVED": 2,
+          "THRESHOLD_UNRESOLVED": 1
+        },
+        "maximum_qualified_error_db": 0.05808427256926052,
+        "accuracy_failures": 0,
+        "threshold_flips": 0,
+        "failures": [],
+        "reference_refinement_max_delta_db": null,
+        "csv_sha256": "9bb2e7822690279694963b0cd29277e7aceb4789f6d546d2a98fcc9818378a3d",
+        "states_by_site": {
+          "eastern_plains": {
+            "QUALIFIED": 47,
+            "ACCURACY_UNRESOLVED": 1
+          },
+          "foothills": {
+            "ACCURACY_UNRESOLVED": 1,
+            "QUALIFIED": 46,
+            "THRESHOLD_UNRESOLVED": 1
+          },
+          "western_mountains": {
+            "QUALIFIED": 48
+          }
+        }
+      }
+    }
+  },
+  "max_platform_loss_delta_db": 2.3504753698944114e-10,
+  "platform_parity_passed": true,
+  "accuracy_gate_passed": false,
+  "synthetic_reference_check_passed": true
+}

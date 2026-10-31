@@ -1,0 +1,479 @@
+{
+  "platforms": {
+    "ios": {
+      "metrics": {
+        "cache_released": true,
+        "cancel_completed": 5,
+        "cancel_geometry": 97114,
+        "cancel_latency_ms": 0.142583,
+        "cancel_samples": 1,
+        "cancel_state": "CANCELLED",
+        "process_peak_rss_bytes": 43909120,
+        "runs": [
+          {
+            "elapsed_ms": 39973.809417,
+            "name": "r20_1000",
+            "result": {
+              "bytes_read": 4751360,
+              "capacity_bytes": 2097152,
+              "cells": 1681,
+              "completed": 1681,
+              "evictions": 81,
+              "failed_loads": 0,
+              "geometry": 24757622,
+              "geometry_budget": 150000000,
+              "minimum_geometry": 5024,
+              "minimum_samples": 5593240,
+              "peak_payload_bytes": 2097152,
+              "row_reads": 18560,
+              "sample_budget": 150000000,
+              "samples": 12873437,
+              "stale_publication_rejected": true,
+              "state": "COMPLETE"
+            }
+          },
+          {
+            "elapsed_ms": 13485.462334,
+            "name": "refine100",
+            "result": {
+              "bytes_read": 327680,
+              "capacity_bytes": 2097152,
+              "cells": 1681,
+              "completed": 1681,
+              "evictions": 0,
+              "failed_loads": 0,
+              "geometry": 31148418,
+              "geometry_budget": 150000000,
+              "minimum_geometry": 6724,
+              "minimum_samples": 6856725,
+              "peak_payload_bytes": 327680,
+              "row_reads": 1280,
+              "sample_budget": 150000000,
+              "samples": 16115568,
+              "stale_publication_rejected": true,
+              "state": "COMPLETE"
+            }
+          },
+          {
+            "elapsed_ms": 4395.623083,
+            "name": "refine200_small",
+            "result": {
+              "bytes_read": 356810752,
+              "capacity_bytes": 131072,
+              "cells": 441,
+              "completed": 441,
+              "evictions": 10885,
+              "failed_loads": 0,
+              "geometry": 8175020,
+              "geometry_budget": 150000000,
+              "minimum_geometry": 1764,
+              "minimum_samples": 1799201,
+              "peak_payload_bytes": 131072,
+              "row_reads": 1393792,
+              "sample_budget": 150000000,
+              "samples": 4219533,
+              "stale_publication_rejected": true,
+              "state": "COMPLETE"
+            }
+          },
+          {
+            "elapsed_ms": 2023.71875,
+            "name": "refine200_large",
+            "result": {
+              "bytes_read": 327680,
+              "capacity_bytes": 2097152,
+              "cells": 441,
+              "completed": 441,
+              "evictions": 0,
+              "failed_loads": 0,
+              "geometry": 8175020,
+              "geometry_budget": 150000000,
+              "minimum_geometry": 1764,
+              "minimum_samples": 1799201,
+              "peak_payload_bytes": 327680,
+              "row_reads": 1280,
+              "sample_budget": 150000000,
+              "samples": 4219533,
+              "stale_publication_rejected": true,
+              "state": "COMPLETE"
+            }
+          },
+          {
+            "elapsed_ms": 3082.080833,
+            "name": "r100_20000",
+            "result": {
+              "bytes_read": 61014016,
+              "capacity_bytes": 2097152,
+              "cells": 121,
+              "completed": 121,
+              "evictions": 1798,
+              "failed_loads": 0,
+              "geometry": 8711062,
+              "geometry_budget": 150000000,
+              "minimum_geometry": 320,
+              "minimum_samples": 1831904,
+              "peak_payload_bytes": 2097152,
+              "row_reads": 238336,
+              "sample_budget": 150000000,
+              "samples": 4207923,
+              "stale_publication_rejected": true,
+              "state": "COMPLETE"
+            }
+          },
+          {
+            "elapsed_ms": 797.523083,
+            "name": "sample_limited",
+            "result": {
+              "bytes_read": 294912,
+              "capacity_bytes": 2097152,
+              "cells": 441,
+              "completed": 182,
+              "evictions": 0,
+              "failed_loads": 0,
+              "geometry": 3562481,
+              "geometry_budget": 150000000,
+              "minimum_geometry": 1764,
+              "minimum_samples": 1799201,
+              "peak_payload_bytes": 294912,
+              "row_reads": 1152,
+              "sample_budget": 1799201,
+              "samples": 1799201,
+              "stale_publication_rejected": true,
+              "state": "WORK_LIMIT"
+            }
+          },
+          {
+            "elapsed_ms": 114.722125,
+            "name": "geometry_limited",
+            "result": {
+              "bytes_read": 229376,
+              "capacity_bytes": 2097152,
+              "cells": 441,
+              "completed": 26,
+              "evictions": 0,
+              "failed_loads": 0,
+              "geometry": 500000,
+              "geometry_budget": 500000,
+              "minimum_geometry": 1764,
+              "minimum_samples": 1799201,
+              "peak_payload_bytes": 229376,
+              "row_reads": 896,
+              "sample_budget": 150000000,
+              "samples": 251470,
+              "stale_publication_rejected": true,
+              "state": "WORK_LIMIT"
+            }
+          },
+          {
+            "elapsed_ms": 43202.700583,
+            "name": "reference100",
+            "result": {
+              "bytes_read": 557056,
+              "capacity_bytes": 2097152,
+              "cells": 6561,
+              "completed": 6561,
+              "evictions": 0,
+              "failed_loads": 0,
+              "geometry": 125628002,
+              "geometry_budget": 150000000,
+              "minimum_geometry": 26244,
+              "minimum_samples": 27135410,
+              "peak_payload_bytes": 557056,
+              "row_reads": 2176,
+              "sample_budget": 150000000,
+              "samples": 64712166,
+              "stale_publication_rejected": true,
+              "state": "COMPLETE"
+            }
+          }
+        ]
+      },
+      "states": {
+        "r20_1000": {
+          "OUTSIDE_RADIUS": 424,
+          "QUALIFIED": 1254,
+          "THRESHOLD_UNRESOLVED": 2,
+          "NEAR_SITE": 1
+        },
+        "refine100": {
+          "QUALIFIED": 1679,
+          "THRESHOLD_UNRESOLVED": 2
+        },
+        "refine200_small": {
+          "QUALIFIED": 441
+        },
+        "refine200_large": {
+          "QUALIFIED": 441
+        },
+        "r100_20000": {
+          "OUTSIDE_RADIUS": 40,
+          "QUALIFIED": 80,
+          "NEAR_SITE": 1
+        },
+        "sample_limited": {
+          "QUALIFIED": 181,
+          "WORK_LIMIT": 1,
+          "NOT_COMPUTED": 259
+        },
+        "geometry_limited": {
+          "QUALIFIED": 25,
+          "WORK_LIMIT": 1,
+          "NOT_COMPUTED": 415
+        },
+        "reference100": {
+          "QUALIFIED": 6529,
+          "THRESHOLD_UNRESOLVED": 32
+        }
+      },
+      "csv_sha256": {
+        "r20_1000": "1cf3840a256098a75f74528a727a7f8d700db334876757747ec02f33fc30006a",
+        "refine100": "69546a4da2d0f3cceb696f64ecdddc270875689f178be3928d07aa28fa193d4c",
+        "refine200_small": "7c97c56b22c5c698bc055a31f0d877e455d5c9fce13344ed8b5b2ae84790658e",
+        "refine200_large": "7c97c56b22c5c698bc055a31f0d877e455d5c9fce13344ed8b5b2ae84790658e",
+        "r100_20000": "87c612558a10ebcedeabc0357d805eb793433642d42f43882e01dca50261e72e",
+        "sample_limited": "bd666159ef116b0bc12a5baac19245209085b2b461a1f588ba0c1e9610d4581c",
+        "geometry_limited": "1fe9237f3a140f0863c2041be6e8be7ecc97d00386b5b8a1aa68bb4b0b82efa5",
+        "reference100": "425762808878b5640cd68f12587cb0e2f9aeea94b5b9ac22700df9018a22d0c2"
+      }
+    },
+    "android": {
+      "metrics": {
+        "runs": [
+          {
+            "name": "r20_1000",
+            "elapsed_ms": 13196.983423,
+            "result": {
+              "state": "COMPLETE",
+              "completed": 1681,
+              "cells": 1681,
+              "samples": 12873437,
+              "sample_budget": 150000000,
+              "geometry": 24757622,
+              "geometry_budget": 150000000,
+              "minimum_samples": 5593240,
+              "minimum_geometry": 5024,
+              "capacity_bytes": 2097152,
+              "peak_payload_bytes": 2097152,
+              "evictions": 81,
+              "row_reads": 18560,
+              "bytes_read": 4751360,
+              "failed_loads": 0,
+              "stale_publication_rejected": true
+            }
+          },
+          {
+            "name": "refine100",
+            "elapsed_ms": 16221.554591,
+            "result": {
+              "state": "COMPLETE",
+              "completed": 1681,
+              "cells": 1681,
+              "samples": 16115568,
+              "sample_budget": 150000000,
+              "geometry": 31148418,
+              "geometry_budget": 150000000,
+              "minimum_samples": 6856725,
+              "minimum_geometry": 6724,
+              "capacity_bytes": 2097152,
+              "peak_payload_bytes": 327680,
+              "evictions": 0,
+              "row_reads": 1280,
+              "bytes_read": 327680,
+              "failed_loads": 0,
+              "stale_publication_rejected": true
+            }
+          },
+          {
+            "name": "refine200_small",
+            "elapsed_ms": 3929.721877,
+            "result": {
+              "state": "COMPLETE",
+              "completed": 441,
+              "cells": 441,
+              "samples": 4219533,
+              "sample_budget": 150000000,
+              "geometry": 8175020,
+              "geometry_budget": 150000000,
+              "minimum_samples": 1799201,
+              "minimum_geometry": 1764,
+              "capacity_bytes": 131072,
+              "peak_payload_bytes": 131072,
+              "evictions": 10885,
+              "row_reads": 1393792,
+              "bytes_read": 356810752,
+              "failed_loads": 0,
+              "stale_publication_rejected": true
+            }
+          },
+          {
+            "name": "refine200_large",
+            "elapsed_ms": 2439.724209,
+            "result": {
+              "state": "COMPLETE",
+              "completed": 441,
+              "cells": 441,
+              "samples": 4219533,
+              "sample_budget": 150000000,
+              "geometry": 8175020,
+              "geometry_budget": 150000000,
+              "minimum_samples": 1799201,
+              "minimum_geometry": 1764,
+              "capacity_bytes": 2097152,
+              "peak_payload_bytes": 327680,
+              "evictions": 0,
+              "row_reads": 1280,
+              "bytes_read": 327680,
+              "failed_loads": 0,
+              "stale_publication_rejected": true
+            }
+          },
+          {
+            "name": "r100_20000",
+            "elapsed_ms": 2064.823626,
+            "result": {
+              "state": "COMPLETE",
+              "completed": 121,
+              "cells": 121,
+              "samples": 4207923,
+              "sample_budget": 150000000,
+              "geometry": 8711062,
+              "geometry_budget": 150000000,
+              "minimum_samples": 1831904,
+              "minimum_geometry": 320,
+              "capacity_bytes": 2097152,
+              "peak_payload_bytes": 2097152,
+              "evictions": 1798,
+              "row_reads": 238336,
+              "bytes_read": 61014016,
+              "failed_loads": 0,
+              "stale_publication_rejected": true
+            }
+          },
+          {
+            "name": "sample_limited",
+            "elapsed_ms": 822.941042,
+            "result": {
+              "state": "WORK_LIMIT",
+              "completed": 182,
+              "cells": 441,
+              "samples": 1799201,
+              "sample_budget": 1799201,
+              "geometry": 3562481,
+              "geometry_budget": 150000000,
+              "minimum_samples": 1799201,
+              "minimum_geometry": 1764,
+              "capacity_bytes": 2097152,
+              "peak_payload_bytes": 294912,
+              "evictions": 0,
+              "row_reads": 1152,
+              "bytes_read": 294912,
+              "failed_loads": 0,
+              "stale_publication_rejected": true
+            }
+          },
+          {
+            "name": "geometry_limited",
+            "elapsed_ms": 114.773333,
+            "result": {
+              "state": "WORK_LIMIT",
+              "completed": 26,
+              "cells": 441,
+              "samples": 251470,
+              "sample_budget": 150000000,
+              "geometry": 500000,
+              "geometry_budget": 500000,
+              "minimum_samples": 1799201,
+              "minimum_geometry": 1764,
+              "capacity_bytes": 2097152,
+              "peak_payload_bytes": 229376,
+              "evictions": 0,
+              "row_reads": 896,
+              "bytes_read": 229376,
+              "failed_loads": 0,
+              "stale_publication_rejected": true
+            }
+          },
+          {
+            "name": "reference100",
+            "elapsed_ms": 79774.375204,
+            "result": {
+              "state": "COMPLETE",
+              "completed": 6561,
+              "cells": 6561,
+              "samples": 64712166,
+              "sample_budget": 150000000,
+              "geometry": 125628002,
+              "geometry_budget": 150000000,
+              "minimum_samples": 27135410,
+              "minimum_geometry": 26244,
+              "capacity_bytes": 2097152,
+              "peak_payload_bytes": 557056,
+              "evictions": 0,
+              "row_reads": 2176,
+              "bytes_read": 557056,
+              "failed_loads": 0,
+              "stale_publication_rejected": true
+            }
+          }
+        ],
+        "process_peak_rss_bytes": 161005568,
+        "cancel_latency_ms": 0.019166,
+        "cancel_state": "CANCELLED",
+        "cancel_samples": 1,
+        "cancel_geometry": 97114,
+        "cancel_completed": 5,
+        "cache_released": true
+      },
+      "states": {
+        "r20_1000": {
+          "OUTSIDE_RADIUS": 424,
+          "QUALIFIED": 1254,
+          "THRESHOLD_UNRESOLVED": 2,
+          "NEAR_SITE": 1
+        },
+        "refine100": {
+          "QUALIFIED": 1679,
+          "THRESHOLD_UNRESOLVED": 2
+        },
+        "refine200_small": {
+          "QUALIFIED": 441
+        },
+        "refine200_large": {
+          "QUALIFIED": 441
+        },
+        "r100_20000": {
+          "OUTSIDE_RADIUS": 40,
+          "QUALIFIED": 80,
+          "NEAR_SITE": 1
+        },
+        "sample_limited": {
+          "QUALIFIED": 181,
+          "WORK_LIMIT": 1,
+          "NOT_COMPUTED": 259
+        },
+        "geometry_limited": {
+          "QUALIFIED": 25,
+          "WORK_LIMIT": 1,
+          "NOT_COMPUTED": 415
+        },
+        "reference100": {
+          "QUALIFIED": 6529,
+          "THRESHOLD_UNRESOLVED": 32
+        }
+      },
+      "csv_sha256": {
+        "r20_1000": "9f77ce213b6b1226cd62af4afa764b63f7dff396a78f3a018b9afedb16ad4aca",
+        "refine100": "65e129a8161d3346acdc1d6e423d430cc62b1fca2d34c902b8eed49762b0b1c9",
+        "refine200_small": "686108f9c726fdda78dfc6da2ada08fc0e701d2b0c7f3d1e749770cc57a36259",
+        "refine200_large": "686108f9c726fdda78dfc6da2ada08fc0e701d2b0c7f3d1e749770cc57a36259",
+        "r100_20000": "0800a5aeea58524efdc7cd1e11f9bafa524ab67012798f77ca9d3d8dd96a2664",
+        "sample_limited": "00605e6bbe576fec5c87447200c226a59b0d21eaee55f8dde119051ab562dcf0",
+        "geometry_limited": "5f72718d788ef0d9c970b946ee45c0d87f020f7e277af7762f987c19cd55c5fe",
+        "reference100": "1ba76038641433282cd9604ce9179e3065da5ade91261040fd24cfffdbc192f3"
+      }
+    }
+  },
+  "max_platform_loss_delta_db": 3.929855552087247e-09,
+  "max_previous_loss_delta_db": 0,
+  "passed": true
+}

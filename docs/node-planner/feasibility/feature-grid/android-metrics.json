@@ -1,0 +1,187 @@
+{
+  "runs": [
+    {
+      "name": "r20_1000",
+      "elapsed_ms": 13196.983423,
+      "result": {
+        "state": "COMPLETE",
+        "completed": 1681,
+        "cells": 1681,
+        "samples": 12873437,
+        "sample_budget": 150000000,
+        "geometry": 24757622,
+        "geometry_budget": 150000000,
+        "minimum_samples": 5593240,
+        "minimum_geometry": 5024,
+        "capacity_bytes": 2097152,
+        "peak_payload_bytes": 2097152,
+        "evictions": 81,
+        "row_reads": 18560,
+        "bytes_read": 4751360,
+        "failed_loads": 0,
+        "stale_publication_rejected": true
+      }
+    },
+    {
+      "name": "refine100",
+      "elapsed_ms": 16221.554591,
+      "result": {
+        "state": "COMPLETE",
+        "completed": 1681,
+        "cells": 1681,
+        "samples": 16115568,
+        "sample_budget": 150000000,
+        "geometry": 31148418,
+        "geometry_budget": 150000000,
+        "minimum_samples": 6856725,
+        "minimum_geometry": 6724,
+        "capacity_bytes": 2097152,
+        "peak_payload_bytes": 327680,
+        "evictions": 0,
+        "row_reads": 1280,
+        "bytes_read": 327680,
+        "failed_loads": 0,
+        "stale_publication_rejected": true
+      }
+    },
+    {
+      "name": "refine200_small",
+      "elapsed_ms": 3929.721877,
+      "result": {
+        "state": "COMPLETE",
+        "completed": 441,
+        "cells": 441,
+        "samples": 4219533,
+        "sample_budget": 150000000,
+        "geometry": 8175020,
+        "geometry_budget": 150000000,
+        "minimum_samples": 1799201,
+        "minimum_geometry": 1764,
+        "capacity_bytes": 131072,
+        "peak_payload_bytes": 131072,
+        "evictions": 10885,
+        "row_reads": 1393792,
+        "bytes_read": 356810752,
+        "failed_loads": 0,
+        "stale_publication_rejected": true
+      }
+    },
+    {
+      "name": "refine200_large",
+      "elapsed_ms": 2439.724209,
+      "result": {
+        "state": "COMPLETE",
+        "completed": 441,
+        "cells": 441,
+        "samples": 4219533,
+        "sample_budget": 150000000,
+        "geometry": 8175020,
+        "geometry_budget": 150000000,
+        "minimum_samples": 1799201,
+        "minimum_geometry": 1764,
+        "capacity_bytes": 2097152,
+        "peak_payload_bytes": 327680,
+        "evictions": 0,
+        "row_reads": 1280,
+        "bytes_read": 327680,
+        "failed_loads": 0,
+        "stale_publication_rejected": true
+      }
+    },
+    {
+      "name": "r100_20000",
+      "elapsed_ms": 2064.823626,
+      "result": {
+        "state": "COMPLETE",
+        "completed": 121,
+        "cells": 121,
+        "samples": 4207923,
+        "sample_budget": 150000000,
+        "geometry": 8711062,
+        "geometry_budget": 150000000,
+        "minimum_samples": 1831904,
+        "minimum_geometry": 320,
+        "capacity_bytes": 2097152,
+        "peak_payload_bytes": 2097152,
+        "evictions": 1798,
+        "row_reads": 238336,
+        "bytes_read": 61014016,
+        "failed_loads": 0,
+        "stale_publication_rejected": true
+      }
+    },
+    {
+      "name": "sample_limited",
+      "elapsed_ms": 822.941042,
+      "result": {
+        "state": "WORK_LIMIT",
+        "completed": 182,
+        "cells": 441,
+        "samples": 1799201,
+        "sample_budget": 1799201,
+        "geometry": 3562481,
+        "geometry_budget": 150000000,
+        "minimum_samples": 1799201,
+        "minimum_geometry": 1764,
+        "capacity_bytes": 2097152,
+        "peak_payload_bytes": 294912,
+        "evictions": 0,
+        "row_reads": 1152,
+        "bytes_read": 294912,
+        "failed_loads": 0,
+        "stale_publication_rejected": true
+      }
+    },
+    {
+      "name": "geometry_limited",
+      "elapsed_ms": 114.773333,
+      "result": {
+        "state": "WORK_LIMIT",
+        "completed": 26,
+        "cells": 441,
+        "samples": 251470,
+        "sample_budget": 150000000,
+        "geometry": 500000,
+        "geometry_budget": 500000,
+        "minimum_samples": 1799201,
+        "minimum_geometry": 1764,
+        "capacity_bytes": 2097152,
+        "peak_payload_bytes": 229376,
+        "evictions": 0,
+        "row_reads": 896,
+        "bytes_read": 229376,
+        "failed_loads": 0,
+        "stale_publication_rejected": true
+      }
+    },
+    {
+      "name": "reference100",
+      "elapsed_ms": 79774.375204,
+      "result": {
+        "state": "COMPLETE",
+        "completed": 6561,
+        "cells": 6561,
+        "samples": 64712166,
+        "sample_budget": 150000000,
+        "geometry": 125628002,
+        "geometry_budget": 150000000,
+        "minimum_samples": 27135410,
+        "minimum_geometry": 26244,
+        "capacity_bytes": 2097152,
+        "peak_payload_bytes": 557056,
+        "evictions": 0,
+        "row_reads": 2176,
+        "bytes_read": 557056,
+        "failed_loads": 0,
+        "stale_publication_rejected": true
+      }
+    }
+  ],
+  "process_peak_rss_bytes": 161005568,
+  "cancel_latency_ms": 0.019166,
+  "cancel_state": "CANCELLED",
+  "cancel_samples": 1,
+  "cancel_geometry": 97114,
+  "cancel_completed": 5,
+  "cache_released": true
+}

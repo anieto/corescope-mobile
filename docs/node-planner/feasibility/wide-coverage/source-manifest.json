@@ -1,0 +1,26 @@
+{
+  "engine_commit": "a911b6ecd58f8c16ac8ae4becf6bdbba1784e5a9",
+  "wide_sources_sha256": {
+    "preview.py": "6af36c05e8d8ae2566e48498a90fb8af846a93630b17dc00a1580ea3354d070c",
+    "WideTests.kt": "791f7821980338d21f17582c1e356c69d8d8aa7cb5fa1bccccbc6159309f5b56",
+    "prepare_build.py": "0e3553f4030b19de50a59978b2c456ed078ae8bac2e20b55e006798559e93ec0",
+    "verify_terrain.py": "6ba28a06e9420ee5f42e99300211bda52dce318c6b2df0d7939565c46babc713",
+    "WideStudy.kt": "1d623fc0b9af8a069fde6d07659fd225db66632253fc7232fcb0494357d850bf",
+    "terrain-pins.json": "5863f61e260376be96fdeda525abaeec844723bf31eec328cb40f946d2ae0959",
+    "README.md": "25103f064634e1bbed624161835b5e390a0f225580e112e6d4d730e24eb94d15",
+    "WideRunner.swift": "48a97736cb5322d7722cd07838973eb5beed8245499ee6d10f728b65f9306667",
+    "run_android.py": "450fe5751fb10d5933e68e3cc91f1a4ec4626fb207e07d866097f849005894e7",
+    "WideRunner.kt": "c97bd75aa216d291d9da44129feb6c69f74de42b6734f414045720905574d2cb",
+    "prepare.py": "25be7687665887b216711fc7714f59448bce3b4a0b1b16a8b189b106ab2a6e26",
+    "analyze.py": "52922634257de12d2640a6c51e8d5edac553afed6520ebd5a89e2404ba4ff001"
+  },
+  "shared_baseline_source_sha256": "4c299c31a9fdae028909bffbc33b5cffe92231ef132e94fe2a595e241ed64665",
+  "ios_kotlin": "2.4.20",
+  "android_kotlin": "2.2.20",
+  "android_jvm_target": 17,
+  "android_d8": "36.0.0",
+  "android_min_api": 26,
+  "ios_target": "arm64-apple-ios17.0-simulator",
+  "runtime_payload_sha256_verified_android": "0124603d82b6e2265ccf8b1ecad0a858679862482e10c104a08f506d01ee94c8",
+  "matrix_note": "Full matrix used original 10/15/30/90 m set. Follow-up adds 2/5 m diagnostic allowance without changing those paths."
+}
