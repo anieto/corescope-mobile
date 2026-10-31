@@ -66,14 +66,16 @@ Defer the Changes summary, dashboard signal/availability/coverage/telemetry, liv
 extra drill-down controls and dashboard exports. Detailed Node Analytics and its exports remain
 available. Background notifications remain out of scope.
 
-## 0.10.0 — Node Planner
+## 0.10 — Node Planner
 
 Help people evaluate proposed mesh deployments before installing hardware. The normal map shows
 where deployed nodes are; Node Planner estimates what a new node at a candidate site might reach.
 
 Detailed product behavior, analysis contracts, architecture, milestones, tests and release gates
-are in the [0.10.0 Node Planner plan](docs/node-planner/plan.md). The previous Field Tools plan and
+are in the [Node Planner plan](docs/node-planner/plan.md). The previous Field Tools plan and
 implementation record are retained as prototype history, not the release contract.
+
+Node Planner ships in steps. Its full scope:
 
 - Create locally saved deployment plans with one or more candidate sites.
 - Configure explicit radio, modem, antenna, cable, receiver and installation assumptions.
@@ -89,6 +91,38 @@ implementation record are retained as prototype history, not the release contrac
 - Keep plans local, location optional and foreground-only, and cached/offline limitations explicit.
 - Deliver matching calculations and terminology across iOS and Android with adaptive layouts for
   iPhone, iPhone Duo, iPad and Android foldables.
+
+### 0.10.1 — Link Profile (first public release)
+
+0.10.0 builds (iOS 7, Android versionCode 18) were made but never submitted; 0.10.1 is the first
+public release of the 0.10 work. Builds: iOS 0.10.1 (8), Android 0.10.1 (versionCode 19), archived
+and built on 2026-10-30 from `6b8bd79`. Store copy is in the
+[0.10.1 release notes](docs/node-planner/v0.10.1-release.md).
+
+- **Link Profile:** terrain between two points, line of sight, Fresnel zone clearance and an
+  estimated link margin from adjustable radio and antenna settings. Touch & hold the map or a known
+  node to place each point (Move A/B here, pin options, Undo); the analyzed path is a rounded
+  dashed line colored by clearance.
+- **Find a node:** distance and compass heading to any node or observer with a location.
+- CoreScope region groups in the region filter, the optional background texture, better iPad and
+  dual-screen layouts, and quicker live feed reconnects.
+- iOS fixes: live map route and region menus no longer jump while scrolling; returning to live
+  after a replay keeps the map view; on iPad, the map tab is placed correctly on first launch.
+- Not yet device-tested at release time: Android touch & hold.
+
+### 0.10.2 — Candidate Sites (in progress)
+
+- **Candidate Sites:** locally saved deployment plans with one or more proposed sites and their
+  radio, antenna, cable and installation assumptions; the first slice of the planning workflow
+  above. Research and terrain studies are in [docs/node-planner](docs/node-planner/).
+- **iPad map layout:** replace the Map tab's `NavigationSplitView` with an app-drawn two-pane
+  layout (as the Duo already does), then remove the 0.10.1 launch workaround
+  (`RootTabView.settleIPadMapLayout()`). On first launch iPadOS doesn't merge the top tab bar into
+  the split view's bar, which pushed both panes 64 pt down until the tab was revisited.
+- Builds: iOS 0.10.2 (9), Android 0.10.2 (versionCode 20).
+
+Still to come after 0.10.2: Potential Links, Estimated Coverage, comparing and exporting plans, and
+saved Link Profiles ([saved Link Profiles plan](docs/node-planner/saved-link-profiles.md)).
 
 ## 1.0.0 — Investigation depth and product maturity
 
@@ -147,5 +181,6 @@ and 3 are at parity. See [implementation progress](docs/android/progress.md).
 
 ## Current priority
 
-Prepare the next milestone, 0.10.0 Node Planner. Version 0.9.0 feature work is complete;
-store distribution and recorded validation follow-ups remain in its release notes.
+0.10.1 (Link Profile, Find a node) is being submitted to the App Store and Google Play. Next is
+0.10.2: Candidate Sites and
+the iPad two-pane map layout. Before that, finish device-testing Android touch & hold.
