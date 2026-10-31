@@ -31,6 +31,7 @@ struct SettingsScreen: View {
                     SettingsHeader(isConnected: liveFeed.isConnected)
 
                     SettingsPanel(title: "Display", symbol: "circle.lefthalf.filled") {
+                        SettingsPickerCaption("Appearance")
                         Picker("Appearance", selection: $appearanceSettings.mode) {
                             ForEach(AppearanceSettings.Mode.allCases) { mode in
                                 Text(mode.label).tag(mode)
@@ -39,6 +40,7 @@ struct SettingsScreen: View {
                         .pickerStyle(.segmented)
                         .labelsHidden()
 
+                        SettingsPickerCaption("Units")
                         Picker("Units", selection: $distanceUnit) {
                             ForEach(DistanceUnit.allCases) { unit in
                                 Text(unit.label).tag(unit)
@@ -295,6 +297,22 @@ private struct SettingsNavigationRow: View {
                 .foregroundStyle(.tertiary)
         }
         .contentShape(Rectangle())
+    }
+}
+
+/// A small title above a segmented picker, whose own label is hidden.
+private struct SettingsPickerCaption: View {
+    let title: LocalizedStringKey
+
+    init(_ title: LocalizedStringKey) {
+        self.title = title
+    }
+
+    var body: some View {
+        Text(title)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .accessibilityHidden(true)
     }
 }
 

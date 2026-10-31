@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -80,12 +81,16 @@ fun SettingsScreen(
             }
             item {
                 Panel("Display", Icons.Outlined.Contrast) {
-                    AdaptiveChoiceRow(Appearance.entries, preferences.appearance, label = { mode ->
-                        stringResource(when (mode) { Appearance.SYSTEM -> R.string.system; Appearance.LIGHT -> R.string.light; Appearance.DARK -> R.string.dark })
-                    }, onSelect = onAppearance)
-                    AdaptiveChoiceRow(DistanceUnit.entries, preferences.distanceUnit, label = { unit ->
-                        when (unit) { DistanceUnit.IMPERIAL -> "Imperial (mi)"; DistanceUnit.METRIC -> "Metric (km)" }
-                    }, onSelect = onDistanceUnit)
+                    CaptionedChoice("Appearance") {
+                        AdaptiveChoiceRow(Appearance.entries, preferences.appearance, label = { mode ->
+                            stringResource(when (mode) { Appearance.SYSTEM -> R.string.system; Appearance.LIGHT -> R.string.light; Appearance.DARK -> R.string.dark })
+                        }, onSelect = onAppearance)
+                    }
+                    CaptionedChoice("Units") {
+                        AdaptiveChoiceRow(DistanceUnit.entries, preferences.distanceUnit, label = { unit ->
+                            when (unit) { DistanceUnit.IMPERIAL -> "Imperial (mi)"; DistanceUnit.METRIC -> "Metric (km)" }
+                        }, onSelect = onDistanceUnit)
+                    }
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("Background Texture", style = MaterialTheme.typography.titleSmall)
@@ -180,6 +185,16 @@ private fun Panel(title: String, icon: ImageVector, content: @Composable ColumnS
             Icon(icon, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
             Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        content()
+    }
+}
+
+/** A small title above a choice row, kept closer to its row than the panel's spacing. */
+@Composable
+private fun CaptionedChoice(title: String, content: @Composable () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
         content()
     }
 }
