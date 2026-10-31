@@ -354,7 +354,7 @@ private fun PathsCard(value: NodePaths) {
             value.paths.take(if (expanded) value.paths.size else 3).forEachIndexed { index, path ->
                 if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 Column(Modifier.padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(path.hops.joinToString(" → ") { it.label }, style = MaterialTheme.typography.bodyMedium)
+                    Text(path.hops.joinToString(" → ") { it.label }, style = MaterialTheme.typography.bodyMedium, fontFamily = MonaspaceNeon)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         MetricChip("${path.hops.size} hops", Icons.Outlined.Route, MaterialTheme.colorScheme.primary)
                         MetricChip("Seen ${path.count}×", Icons.Outlined.Visibility, MaterialTheme.colorScheme.primary)

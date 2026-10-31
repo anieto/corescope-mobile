@@ -1530,7 +1530,7 @@ private struct FieldCanvasHeader: View {
             .foregroundStyle(.secondary)
         if let selectedName {
             Text(selectedName)
-                .font(.caption.weight(.semibold))
+                .font(.monaspace(.caption).weight(.semibold))
                 .foregroundStyle(NodeScopeStyle.signal.readableForeground(for: colorScheme))
                 .fixedSize(horizontal: false, vertical: true)
         }

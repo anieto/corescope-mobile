@@ -107,7 +107,7 @@ struct RouteHearersView: View {
                     ForEach(option.heardBy, id: \.self) { hearing in
                         HStack(alignment: .firstTextBaseline) {
                             Text(hearing.observer)
-                                .font(.subheadline)
+                                .font(.monaspace(.subheadline))
                                 .lineLimit(1)
                             Spacer(minLength: 8)
                             Text([hearing.region, hearing.signalText].compactMap { $0 }.joined(separator: " · "))

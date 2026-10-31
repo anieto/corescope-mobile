@@ -683,7 +683,7 @@ private struct ObserverEmptyState: View {
         VStack(spacing: 12) {
             MeshNodeMotif(color: NodeScopeStyle.signal)
             Text("No observers in range")
-                .font(.monaspace(.headline))
+                .font(.headline)
             Text("Try another region or pull to refresh the network.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)

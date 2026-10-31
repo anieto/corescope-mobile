@@ -835,7 +835,7 @@ struct MapScreen: View {
                                     .overlay(alignment: .top) {
                                         if showsNodeNames {
                                             Text(node.name ?? shortKey(node.publicKey))
-                                                .font(.caption2.weight(.semibold))
+                                                .font(.monaspace(.caption2).weight(.semibold))
                                                 .foregroundStyle(.primary)
                                                 .lineLimit(1)
                                                 .fixedSize(horizontal: true, vertical: false)
@@ -2811,6 +2811,7 @@ private struct MapRouteDetailsSheet: View {
                     if let observerName = route.observerName, !observerName.isEmpty {
                         LabeledContent {
                             Text(observerName)
+                                .font(.monaspace(.body))
                         } label: {
                             LearnLabel("Observer", term: .observer)
                         }
@@ -2887,7 +2888,7 @@ private struct MapRouteMessageSection: View {
             VStack(alignment: .leading, spacing: 6) {
                 if let sender, !sender.isEmpty {
                     Text(sender)
-                        .font(.subheadline.weight(.semibold))
+                        .font(.monaspace(.subheadline).weight(.semibold))
                 }
                 Text(messageText)
                     .lineLimit(isExpanded ? nil : 4)

@@ -983,7 +983,7 @@ private struct ObserverSignalRow: View {
                     HStack(spacing: 8) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(summary.observer)
-                                .font(.subheadline.weight(.semibold))
+                                .font(.monaspace(.subheadline).weight(.semibold))
                                 .lineLimit(1)
                             Text(typicalLine)
                                 .font(.caption2)
@@ -1348,7 +1348,7 @@ private struct NodeObserverCoverageCard: View {
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(observer.observerName ?? observer.observerID)
-                            .font(.subheadline.weight(.semibold))
+                            .font(.monaspace(.subheadline).weight(.semibold))
                         Text("Last heard \(RelativeTime.string(from: observer.lastSeen))")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -1406,7 +1406,7 @@ private struct NodePeerInteractionsCard: View {
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(peer.peerName)
-                            .font(.subheadline.weight(.semibold))
+                            .font(.monaspace(.subheadline).weight(.semibold))
                         Text("Last contact \(RelativeTime.string(from: peer.lastContact))")
                             .font(.caption)
                             .foregroundStyle(.secondary)

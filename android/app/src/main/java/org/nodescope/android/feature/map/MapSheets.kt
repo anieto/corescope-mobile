@@ -62,7 +62,7 @@ internal fun MapFiltersSheet(filters: MapFilters, observers: List<MeshObserver>,
                     .padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(selected = filters.activity == option, onClick = null)
                     Spacer(Modifier.width(12.dp))
-                    Text(option.title, style = MaterialTheme.typography.bodyLarge)
+                    Text(option.title, style = MaterialTheme.typography.bodyLarge, fontFamily = MonaspaceNeon)
                 }
             }
             SectionLabel("Node roles")

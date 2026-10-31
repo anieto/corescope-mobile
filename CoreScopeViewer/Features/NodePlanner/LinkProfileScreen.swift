@@ -1148,7 +1148,7 @@ private struct LinkProfileHeader: View {
         VStack(alignment: .leading, spacing: 6) {
             if let endpoint = activeEndpoint, model.coordinate(for: endpoint) != nil {
                 Text("Choose New Point \(endpoint.letter)")
-                    .font(.monaspace(.headline))
+                    .font(.headline)
                 Text("Touch & hold the map to place it.")
                     .foregroundStyle(.secondary)
                 Button("Cancel") { activeEndpoint = nil }
@@ -1156,7 +1156,7 @@ private struct LinkProfileHeader: View {
                     .padding(.top, 4)
             } else if let next = activeEndpoint ?? model.missingEndpoint {
                 Text("Place your points to analyze the link.")
-                    .font(.monaspace(.headline))
+                    .font(.headline)
                 Text("Touch & hold the map to place Point \(next.letter).")
                     .foregroundStyle(.secondary)
                 if !hasPlacedPoint {
@@ -1184,7 +1184,7 @@ private struct LinkProfileHeader: View {
                 HStack(spacing: 10) {
                     ProgressView()
                     Text("Analyzing link…")
-                        .font(.monaspace(.headline))
+                        .font(.headline)
                 }
             }
         }

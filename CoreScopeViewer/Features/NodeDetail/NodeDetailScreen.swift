@@ -456,7 +456,7 @@ private struct NodeObserversCard: View {
                             }
                         VStack(alignment: .leading, spacing: 2) {
                             Text(observer.observerName ?? observer.observerId)
-                                .font(.subheadline.weight(.semibold))
+                                .font(.monaspace(.subheadline).weight(.semibold))
                                 .lineLimit(1)
                             HStack(spacing: 8) {
                                 if let iata = observer.iata { Text(iata) }
@@ -602,7 +602,7 @@ private struct NodeNeighborRow: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(name ?? displayPrefix ?? String(localized: "Unknown Node"))
-                    .font(.subheadline.weight(.semibold))
+                    .font(.monaspace(.subheadline).weight(.semibold))
                     .lineLimit(2)
                     .layoutPriority(1)
                 if let snr {
@@ -695,7 +695,7 @@ private struct NodeLinkRow: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(link.name)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.monaspace(.subheadline).weight(.semibold))
                     .lineLimit(2)
                     .layoutPriority(1)
                 Text(link.bidir ? "Bidirectional" : "One way")
@@ -742,7 +742,7 @@ private struct NodePathsCard: View {
                 ForEach(visiblePaths) { path in
                     VStack(alignment: .leading, spacing: 6) {
                         Text(path.hops.map(\.name).joined(separator: " → "))
-                            .font(.subheadline.weight(.medium))
+                            .font(.monaspace(.subheadline).weight(.medium))
                             .fixedSize(horizontal: false, vertical: true)
                         HStack(spacing: 10) {
                             Label("\(path.hops.count) hops", systemImage: "point.3.connected.trianglepath.dotted")

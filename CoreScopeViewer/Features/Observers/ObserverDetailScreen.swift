@@ -534,7 +534,7 @@ private struct RecentObserverPacketsCard: View {
                 ForEach(packets.prefix(8)) { packet in
                     HStack(spacing: 10) {
                         Text(packet.payloadTypeName)
-                            .font(.caption2.weight(.bold))
+                            .font(.monaspace(.caption2).weight(.bold))
                             .foregroundStyle(NodeScopeStyle.signal)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 4)

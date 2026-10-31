@@ -166,7 +166,7 @@ private struct PacketMessageCard: View {
         PacketDetailCard(title: "Message", symbol: "message.fill") {
             VStack(alignment: .center, spacing: 6) {
                 Text(sender)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.monaspace(.subheadline).weight(.semibold))
                     .foregroundStyle(SenderColor.color(for: sender, colorScheme: colorScheme))
                 Text(text)
                     .font(.body)
@@ -352,7 +352,7 @@ private struct PacketObserversCard: View {
                             .background(NodeScopeStyle.healthy.opacity(0.13), in: Circle())
                         VStack(alignment: .leading, spacing: 2) {
                             Text(observation.observerName ?? "Unknown observer")
-                                .font(.subheadline.weight(.semibold))
+                                .font(.monaspace(.subheadline).weight(.semibold))
                                 .lineLimit(1)
                             HStack(spacing: 8) {
                                 Text(observation.observerIata ?? "Unknown region")

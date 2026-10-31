@@ -510,7 +510,7 @@ private struct BeaconPacketObservations: View {
             ForEach(observations) { observation in
                 VStack(alignment: .leading, spacing: 5) {
                     Text(observation.observerName ?? String(localized: "Unknown observer"))
-                        .font(.body.weight(.semibold))
+                        .font(.monaspace(.body).weight(.semibold))
                     if let region = observation.observerIata {
                         Label(region, systemImage: "globe.americas.fill")
                             .font(.caption)
@@ -1154,7 +1154,7 @@ private struct LivePacketCard: View {
             VStack(alignment: .leading, spacing: 9) {
                 HStack(spacing: 8) {
                     Text(payloadTypeName)
-                        .font(.subheadline.weight(.bold))
+                        .font(.monaspace(.subheadline).weight(.bold))
                         .foregroundStyle(color)
                         .lineLimit(1)
 
@@ -1374,7 +1374,7 @@ private struct LivePacketDetailScreen: View {
                         VStack(alignment: .leading, spacing: 5) {
                             HStack(alignment: .firstTextBaseline) {
                                 Text(observation.observerName ?? observation.observerId ?? "Unknown observer")
-                                    .font(.body.weight(.semibold))
+                                    .font(.monaspace(.body).weight(.semibold))
                                 Spacer(minLength: 8)
                                 if let index = RouteOptions.index(for: observation.resolvedPath ?? [], in: replayRoutes) {
                                     RouteTag(isShown: index == selectedRouteIndex, shownText: "Shown below") {

@@ -1067,7 +1067,7 @@ private struct FavoriteRow: View {
                     .font(.monaspace(.headline))
                 if let subtitle = item.subtitle, !subtitle.isEmpty {
                     Text(subtitle)
-                        .font(.caption)
+                        .font(.monaspace(.caption))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -1111,7 +1111,7 @@ private struct RecentRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.title)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.monaspace(.subheadline).weight(.semibold))
                     .lineLimit(1)
                 HStack(spacing: 6) {
                     if let subtitle = item.subtitle, !subtitle.isEmpty {

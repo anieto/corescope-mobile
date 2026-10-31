@@ -497,7 +497,7 @@ private struct AccountNodeIdentity: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            if let name { Text(name).font(.subheadline.weight(.semibold)) }
+            if let name { Text(name).font(.monaspace(.subheadline).weight(.semibold)) }
             else { Text("Name unavailable").font(.subheadline).foregroundStyle(.secondary) }
             Text("\(publicKey.prefix(12))…\(publicKey.suffix(6))")
                 .font(.monaspace(.caption)).foregroundStyle(.secondary)

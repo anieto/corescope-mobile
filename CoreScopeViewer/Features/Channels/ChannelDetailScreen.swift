@@ -303,7 +303,7 @@ private struct ChatBubbleRow: View {
 
             VStack(alignment: isTrailing ? .trailing : .leading, spacing: 3) {
                 Text(message.sender)
-                    .font(.caption.bold())
+                    .font(.monaspace(.caption).bold())
                     .foregroundStyle(SenderColor.color(for: message.sender, colorScheme: colorScheme))
                     .padding(isTrailing ? .trailing : .leading, 4)
 

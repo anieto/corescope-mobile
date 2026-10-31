@@ -116,7 +116,7 @@ private fun BeaconPacketRow(row: BeaconLiveRecovery.Row, now: Long, selected: Bo
                     if (row.observationCount > 1) MetricChip(row.observationCount.toString(), Icons.Outlined.Visibility)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(row.hash, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
+                    Text(row.hash, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontFamily = MonaspaceNeon,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(relativeTime(Instant.ofEpochMilli(row.lastHeard), now), style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)

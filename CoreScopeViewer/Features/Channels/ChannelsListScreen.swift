@@ -677,7 +677,7 @@ private struct ChannelCard: View {
                                 Image(systemName: "person.wave.2.fill")
                                 Text(lastSender)
                             }
-                            .font(.caption2.weight(.bold))
+                            .font(.monaspace(.caption2).weight(.bold))
                             .foregroundStyle(SenderColor.color(for: lastSender, colorScheme: colorScheme))
 
                             Text(lastMessage)
