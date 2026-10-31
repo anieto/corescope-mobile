@@ -38,6 +38,10 @@ struct RootTabView: View {
     }
 
     @State private var selectedTab: Tab = .map
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.isHingedDevice) private var isHingedDevice
+    /// Covers the iPad's first moments while the Map tab settles (see `settleIPadMapLayout`).
+    @State private var isSettlingLaunchLayout = true
     @State private var contextAction = TabBarContextActionStore()
     @AppStorage("lastSelectedTab") private var lastSelectedTabRawValue = Tab.map.rawValue
     @State private var resetIDs: [Tab: UUID] = Dictionary(
@@ -89,6 +93,15 @@ struct RootTabView: View {
             NodeScopeBackground()
         }
         .tabViewStyle(.tabBarOnly)
+        // The app's own background, already on screen while it opens, so the cover reads as the
+        // app still opening.
+        .overlay {
+            if isSettlingLaunchLayout && settlesIPadMapLayout {
+                NodeScopeBackground()
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+            }
+        }
         .onChange(of: packetReplayStore.requestID) {
             selectedTab = .map
         }
@@ -110,6 +123,11 @@ struct RootTabView: View {
             } else {
                 selectedTab = Tab(rawValue: lastSelectedTabRawValue) ?? .map
             }
+            if selectedTab == .map && settlesIPadMapLayout {
+                Task { await settleIPadMapLayout() }
+            } else {
+                isSettlingLaunchLayout = false
+            }
         }
         .onChange(of: selectedTab) {
             lastSelectedTabRawValue = selectedTab.rawValue
@@ -120,6 +138,24 @@ struct RootTabView: View {
         .task(id: "\(settings.sourceSession.id)|\(regionFilter.selectedRegion ?? "")") {
             await ChannelsViewModel.preload(settings: settings, region: regionFilter.selectedRegion)
         }
+    }
+
+    /// A regular iPad, where the Map tab is a split view; the Duo and iPhone lay it out otherwise.
+    private var settlesIPadMapLayout: Bool {
+        horizontalSizeClass == .regular && !isHingedDevice
+    }
+
+    /// The first time the Map tab shows on iPad, the top tab bar is not merged into its split
+    /// view's bar, which then sits under the tab bar and pushes both panes a bar's height down
+    /// until the tab is visited again. A frame on another tab does that visit, under a cover of the
+    /// app's background so it isn't seen.
+    private func settleIPadMapLayout() async {
+        try? await Task.sleep(for: .milliseconds(50))
+        selectedTab = .explore
+        try? await Task.sleep(for: .milliseconds(16))
+        selectedTab = .map
+        try? await Task.sleep(for: .milliseconds(100))
+        withAnimation(.easeOut(duration: 0.2)) { isSettlingLaunchLayout = false }
     }
 
     private var tabSelection: Binding<Tab> {
