@@ -110,7 +110,24 @@ and built on 2026-10-30 from `6b8bd79`. Store copy is in the
   after a replay keeps the map view; on iPad, the map tab is placed correctly on first launch.
 - Not yet device-tested at release time: Android touch & hold.
 
-### 0.10.2 — Candidate Sites (in progress)
+### 0.10.2 — Learn layer and refresh
+
+Builds: iOS 0.10.2 (1), Android 0.10.2 (versionCode 20), from `5480e54` on 2026-10-31. Store copy,
+which covers all of 0.10, is in the [0.10.2 release notes](docs/node-planner/v0.10.2-release.md).
+
+- **Learn layer:** an ⓘ beside terms newcomers meet (hops, SNR/RSSI, observers, node roles,
+  channels, Fresnel zone, link margin…) opens a short plain-language explanation, with a Glossary
+  under Settings for the full list. The text lives once in `glossary.json`, shared by both apps.
+  Settings → Display → Term Explanations hides the buttons.
+- **Typography:** Monaspace Neon for titles, names, identifiers and scanned values; body text stays
+  in the system font. The rule is in `AGENTS.md`.
+- Settings grouped into Display, Analyzer, and Help & Support; more contrast between cards and the
+  page (iOS); Explore shows three Recently Viewed items until expanded.
+- Fixes: Android map no longer freezes when a foldable folds or unfolds (MapLibre TextureView
+  mode); on iPhone Duo, Live Packets fills the right screen on iOS 27.1, map controls keep clear of
+  the crease when half folded, and the node count stays on the left screen.
+
+### 0.10.3 — Candidate Sites (in progress)
 
 - **Candidate Sites:** locally saved deployment plans with one or more proposed sites and their
   radio, antenna, cable and installation assumptions; the first slice of the planning workflow
@@ -119,12 +136,10 @@ and built on 2026-10-30 from `6b8bd79`. Store copy is in the
   layout (as the Duo already does), then remove the 0.10.1 launch workaround
   (`RootTabView.settleIPadMapLayout()`). On first launch iPadOS doesn't merge the top tab bar into
   the split view's bar, which pushed both panes 64 pt down until the tab was revisited.
-- **Learn layer:** an ⓘ beside terms newcomers meet (hops, SNR/RSSI, observers, node roles,
-  channels, Fresnel zone, link margin…) opens a short plain-language explanation, with a Glossary
-  under Settings for the full list. The text lives once in `glossary.json`, shared by both apps.
-- Builds: iOS 0.10.2 (9), Android 0.10.2 (versionCode 20).
+- Builds: iOS 0.10.3 (1), Android 0.10.3 (versionCode 21). The Candidate Sites branch started from
+  0.10.1 and needs updating from `main` first.
 
-Still to come after 0.10.2: Potential Links, Estimated Coverage, comparing and exporting plans, and
+Still to come after 0.10.3: Potential Links, Estimated Coverage, comparing and exporting plans, and
 saved Link Profiles ([saved Link Profiles plan](docs/node-planner/saved-link-profiles.md)).
 
 ## 1.0.0 — Investigation depth and product maturity
@@ -184,6 +199,6 @@ and 3 are at parity. See [implementation progress](docs/android/progress.md).
 
 ## Current priority
 
-0.10.1 (Link Profile, Find a node) is being submitted to the App Store and Google Play. Next is
-0.10.2: Candidate Sites and
-the iPad two-pane map layout. Before that, finish device-testing Android touch & hold.
+0.10.2 (Learn layer, Monaspace Neon, Settings refresh, foldable fixes) is uploaded to the App Store
+and Google Play. Next is 0.10.3: Candidate Sites and the iPad two-pane map layout. Android touch &
+hold still needs a device test.
