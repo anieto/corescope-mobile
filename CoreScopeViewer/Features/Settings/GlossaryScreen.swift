@@ -18,7 +18,7 @@ struct GlossaryScreen: View {
                         ForEach(section.entries) { entry in
                             GlossaryRow(entry: entry)
                                 .id(entry.id)
-                                .listRowBackground(focus?.rawValue == entry.id ? Color.accentColor.opacity(0.14) : nil)
+                                .listRowBackground(focus?.rawValue == entry.id ? GlossaryFocusBackground() : nil)
                         }
                     }
                 }
@@ -30,6 +30,21 @@ struct GlossaryScreen: View {
                 guard let focus else { return }
                 proxy.scrollTo(focus.rawValue, anchor: .top)
             }
+        }
+    }
+}
+
+/// The opened term's row: the normal row surface with an accent tint and a leading bar on top, so
+/// it reads as highlighted in dark mode too rather than letting the page show through.
+private struct GlossaryFocusBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            Color(uiColor: .secondarySystemGroupedBackground)
+            NodeScopeStyle.signal.opacity(colorScheme == .dark ? 0.20 : 0.10)
+            NodeScopeStyle.signal
+                .frame(width: 4)
         }
     }
 }
