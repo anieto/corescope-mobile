@@ -48,6 +48,9 @@ struct GlossarySection: Decodable, Identifiable, Hashable, Sendable {
 /// The plain-language explanations behind the app's info buttons and Glossary screen. The text is
 /// shared with Android (assets/glossary.json); an Android test keeps the two copies identical.
 enum Glossary {
+    /// Whether ⓘ buttons show beside terms. Settings → Glossary stays available either way.
+    static let showsExplanationsDefaultsKey = "showsTermExplanations"
+
     static let sections: [GlossarySection] = {
         struct Document: Decodable {
             let sections: [GlossarySection]

@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.settings
 
+import androidx.compose.ui.platform.LocalContext
 import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.animation.AnimatedVisibility
@@ -90,6 +91,17 @@ fun SettingsScreen(
                         }
                         Switch(checked = preferences.backgroundTexture, onCheckedChange = onBackgroundTexture,
                             modifier = Modifier.semantics { contentDescription = "Background Texture" })
+                    }
+                    val context = LocalContext.current
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Term explanations", style = MaterialTheme.typography.titleSmall)
+                            Text("Show ⓘ beside terms like SNR and hops. The Glossary is always available.", style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = org.nodescope.android.feature.learn.LearnSettings.showsExplanations(context),
+                            onCheckedChange = { org.nodescope.android.feature.learn.LearnSettings.setShowsExplanations(context, it) },
+                            modifier = Modifier.semantics { contentDescription = "Term explanations" })
                     }
                 }
             }

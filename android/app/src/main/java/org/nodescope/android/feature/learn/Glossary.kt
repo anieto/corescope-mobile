@@ -69,6 +69,27 @@ object Glossary {
 }
 
 /**
+ * Whether ⓘ buttons show beside terms, kept in its own preferences file and held as Compose state
+ * so every button updates as soon as Settings changes it. Settings → Glossary stays available either way.
+ */
+object LearnSettings {
+    private const val FILE = "learn"
+    private const val KEY = "shows-explanations"
+    private var state: MutableState<Boolean>? = null
+
+    private fun state(context: Context): MutableState<Boolean> = state ?: mutableStateOf(
+        context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE).getBoolean(KEY, true)
+    ).also { state = it }
+
+    fun showsExplanations(context: Context): Boolean = state(context).value
+
+    fun setShowsExplanations(context: Context, value: Boolean) {
+        state(context).value = value
+        context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putBoolean(KEY, value).apply()
+    }
+}
+
+/**
  * An ⓘ beside a term. It opens a short explanation from the glossary, with a way on to the full
  * Glossary, which opens in a sheet at that term.
  */
@@ -76,6 +97,7 @@ object Glossary {
 @Composable
 fun LearnButton(term: GlossaryTerm, modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    if (!LearnSettings.showsExplanations(context)) return
     val entry = remember(term) { Glossary.entry(context, term) } ?: return
     val tooltip = rememberTooltipState(isPersistent = true)
     val scope = rememberCoroutineScope()

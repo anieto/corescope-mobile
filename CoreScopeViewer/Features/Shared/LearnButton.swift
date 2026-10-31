@@ -4,6 +4,7 @@ import SwiftUI
 /// Glossary for more.
 struct LearnButton: View {
     let term: GlossaryTerm
+    @AppStorage(Glossary.showsExplanationsDefaultsKey) private var showsExplanations = true
     @State private var isShowingSummary = false
     @State private var isShowingGlossary = false
     /// Set from the popover; the Glossary opens once the popover has gone, since a sheet can't be
@@ -11,7 +12,7 @@ struct LearnButton: View {
     @State private var opensGlossaryAfterSummary = false
 
     var body: some View {
-        if let entry = Glossary.entry(term) {
+        if showsExplanations, let entry = Glossary.entry(term) {
             Button {
                 isShowingSummary = true
             } label: {

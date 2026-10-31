@@ -10,6 +10,7 @@ struct SettingsScreen: View {
     @Environment(AppearanceSettings.self) private var appearanceSettings
     @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
     @AppStorage(AppearanceSettings.backgroundTextureDefaultsKey) private var backgroundTextureEnabled = true
+    @AppStorage(Glossary.showsExplanationsDefaultsKey) private var showsTermExplanations = true
     @State private var hostInput = ""
     @State private var sourceSaveStatus: SourceSaveStatus?
     @State private var sourceSaveID = UUID()
@@ -42,6 +43,13 @@ struct SettingsScreen: View {
 
                         Toggle("Background Texture", isOn: $backgroundTextureEnabled)
                         Text("Show subtle network lines and nodes behind page content.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+
+                        Divider()
+
+                        Toggle("Term Explanations", isOn: $showsTermExplanations)
+                        Text("Show \(Image(systemName: "info.circle")) beside terms like SNR and hops. The Glossary below is always available.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
