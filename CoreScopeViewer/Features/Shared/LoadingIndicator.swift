@@ -98,11 +98,11 @@ struct InstrumentCardModifier: ViewModifier {
         content
             .background {
                 RoundedRectangle(cornerRadius: NodeScopeStyle.cornerRadius, style: .continuous)
-                    // Dark cards use a lighter slate than the page, and both modes fill more solidly than
-                    // the requested opacity suggests, so cards stand clear of the background mesh.
+                    // Dark cards use a lighter slate than the page; contrast comes mostly from that,
+                    // the outline and the shadow, so the background mesh can still show through a little.
                     .fill(colorScheme == .dark
-                        ? NodeScopeStyle.cardSlate.opacity(min(1, fillOpacity + 0.10))
-                        : Color.white.opacity(min(1, fillOpacity + 0.14)))
+                        ? NodeScopeStyle.cardSlate.opacity(min(1, fillOpacity + 0.02))
+                        : Color.white.opacity(min(1, fillOpacity + 0.06)))
                     .overlay {
                         if isSelected {
                             RoundedRectangle(cornerRadius: NodeScopeStyle.cornerRadius, style: .continuous)
