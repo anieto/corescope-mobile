@@ -432,13 +432,24 @@ struct MapScreen: View {
                 }
                 .overlay(alignment: .bottom) {
                     if !viewModel.nodes.isEmpty {
-                        Text("\(filteredNodeCount) nodes")
-                            .font(.caption)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(.thinMaterial, in: Capsule())
-                            .padding(.bottom, 12)
-                            .padding(.trailing, trailingObscuredWidth)
+                        HStack(spacing: 0) {
+                            Text("\(filteredNodeCount) nodes")
+                                .font(.caption)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(.thinMaterial, in: Capsule())
+                                .frame(maxWidth: .infinity)
+
+                            // Centred on the left screen, like the replay controls, rather than
+                            // on the hinge when the map spans both screens.
+                            if centersBottomControlsInLeadingPane {
+                                Color.clear
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 0)
+                            }
+                        }
+                        .padding(.bottom, 12)
+                        .padding(.trailing, trailingObscuredWidth)
                     }
                 }
                 .overlay {
