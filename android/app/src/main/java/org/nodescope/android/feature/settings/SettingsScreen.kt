@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -41,7 +42,7 @@ private sealed interface SourceStatus {
 fun SettingsScreen(
     preferences: AppPreferences, connection: LiveConnection, sessionError: String?, sourceChangedAt: Long?,
     onAppearance: (Appearance) -> Unit, onSource: () -> Unit, onDiagnostics: () -> Unit, onStorage: () -> Unit,
-    onAbout: () -> Unit, onMapLab: () -> Unit, onSupport: (() -> Unit)? = null,
+    onAbout: () -> Unit, onGlossary: () -> Unit, onMapLab: () -> Unit, onSupport: (() -> Unit)? = null,
     onDistanceUnit: (DistanceUnit) -> Unit = {},
     onBackgroundTexture: (Boolean) -> Unit = {},
 ) {
@@ -138,6 +139,7 @@ fun SettingsScreen(
                 }
             }
             item { CardRow { NavigationRow("About & how to use", "NodeScope field guide", Icons.Outlined.Info, onAbout) } }
+            item { CardRow { NavigationRow("Glossary", "What the terms in NodeScope mean", Icons.AutoMirrored.Outlined.MenuBook, onGlossary) } }
             onSupport?.let { open -> item { CardRow { NavigationRow("Support development", "Buy me a coffee", Icons.Outlined.Favorite, open, external = true) } } }
             if (BuildConfig.DEBUG) item {
                 TextButton(onClick = onMapLab) { Icon(Icons.Outlined.Science, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.map_lab)) }

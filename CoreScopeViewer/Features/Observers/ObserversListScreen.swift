@@ -373,8 +373,11 @@ private struct ObserversHeader: View {
 
     private var heading: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text("Observers")
-                .font(.largeTitle.bold())
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("Observers")
+                    .font(.largeTitle.bold())
+                LearnButton(term: .observer)
+            }
             HStack(spacing: 6) {
                 Circle()
                     .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)

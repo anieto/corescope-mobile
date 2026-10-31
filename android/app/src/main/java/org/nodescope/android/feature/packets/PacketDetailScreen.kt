@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.packets
 
+import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -64,7 +65,7 @@ fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNod
                 }
                 DetailRow("Hash", latest.hash.ifEmpty { "Unavailable" }, monospace = true)
                 latest.payloadVersion?.let { DetailRow("Payload version", it.toString()) }
-                DetailRow("Observations", shown.observationCount.toString())
+                DetailRow("Observations", shown.observationCount.toString(), learn = GlossaryTerm.OBSERVATION)
                 DetailRow("Received", DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(shown.latestAt)) +
                     if (shown.isLive) "" else " (recent history)")
                 shown.region?.let { DetailRow("Region", it) }
@@ -136,9 +137,12 @@ internal fun DetailSection(title: String, content: @Composable ColumnScope.() ->
 }
 
 @Composable
-internal fun DetailRow(label: String, value: String, monospace: Boolean = false) {
-    Column(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+internal fun DetailRow(label: String, value: String, monospace: Boolean = false, learn: GlossaryTerm? = null) {
+    // Merged for TalkBack, except when it carries an ⓘ, which has to stay focusable on its own.
+    Column(Modifier.fillMaxWidth().then(if (learn == null) Modifier.semantics(mergeDescendants = true) {} else Modifier),
+        verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (learn != null) LearnLabel(label, learn, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        else Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         SelectionContainer {
             Text(value, style = MaterialTheme.typography.bodyMedium, fontFamily = if (monospace) FontFamily.Monospace else null, textAlign = TextAlign.Start)
         }

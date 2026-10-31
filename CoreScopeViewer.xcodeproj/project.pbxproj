@@ -87,6 +87,10 @@
 		318BF7DD307EC37B00C8BFAD /* BeaconNodeAnalyticsBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318BF7DC307EC37B00C8BFAD /* BeaconNodeAnalyticsBuilder.swift */; };
 		31A2B0023070000100FBA3B4 /* RouteOption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A2B0013070000100FBA3B4 /* RouteOption.swift */; };
 		31A2B0043070000100FBA3B4 /* RoutePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A2B0033070000100FBA3B4 /* RoutePicker.swift */; };
+		61E23F61BF8C5250F0A86106 /* glossary.json in Resources */ = {isa = PBXBuildFile; fileRef = 4C9B9243A3286306042C94FD /* glossary.json */; };
+		5D1CF26F5BFB0EA0CEB372DF /* GlossaryScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482B3FDFDF3F46A70BC134B5 /* GlossaryScreen.swift */; };
+		DB9F44BFCC24A15FC2881340 /* LearnButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF13FD215F4B08F58FE9D5B0 /* LearnButton.swift */; };
+		77BD1A356D2325BE48E7390A /* Glossary.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1D39F7A4A3E8AEBEC9285BD /* Glossary.swift */; };
 		31A2B0063070000100FBA3B4 /* RouteOptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A2B0053070000100FBA3B4 /* RouteOptionTests.swift */; };
 		31C733CCC554E34636022A89 /* OnboardingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9AFF0E38F9E8C2C60829E93 /* OnboardingScreen.swift */; };
 		31CCA84D306D984400D01155 /* DuoLayoutContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31CCA84C306D984400D01155 /* DuoLayoutContext.swift */; };
@@ -258,6 +262,10 @@
 		318BF7DC307EC37B00C8BFAD /* BeaconNodeAnalyticsBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeaconNodeAnalyticsBuilder.swift; sourceTree = "<group>"; };
 		31A2B0013070000100FBA3B4 /* RouteOption.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteOption.swift; sourceTree = "<group>"; };
 		31A2B0033070000100FBA3B4 /* RoutePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePicker.swift; sourceTree = "<group>"; };
+		4C9B9243A3286306042C94FD /* glossary.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = glossary.json; sourceTree = "<group>"; };
+		482B3FDFDF3F46A70BC134B5 /* GlossaryScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlossaryScreen.swift; sourceTree = "<group>"; };
+		FF13FD215F4B08F58FE9D5B0 /* LearnButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnButton.swift; sourceTree = "<group>"; };
+		D1D39F7A4A3E8AEBEC9285BD /* Glossary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Glossary.swift; sourceTree = "<group>"; };
 		31A2B0053070000100FBA3B4 /* RouteOptionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteOptionTests.swift; sourceTree = "<group>"; };
 		31CCA84C306D984400D01155 /* DuoLayoutContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuoLayoutContext.swift; sourceTree = "<group>"; };
 		31CCA84E306DBC7A00D01155 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -504,6 +512,7 @@
 				EA006DDF6B3AF7AC55C16467 /* Packet.swift */,
 				B5A6EF6652A955D16C20CA75 /* PacketDetail.swift */,
 				31A2B0013070000100FBA3B4 /* RouteOption.swift */,
+				D1D39F7A4A3E8AEBEC9285BD /* Glossary.swift */,
 				316FE0153060985200FBA3B4 /* NodeAnalytics.swift */,
 				318BF7D6307EBCF900C8BFAD /* AnalyticsContext.swift */,
 				318BF7D8307EBE6000C8BFAD /* NeighborInsight.swift */,
@@ -528,6 +537,7 @@
 				6EDB07FE4BF732F4BA52606B /* Assets.xcassets */,
 				56D774144710835E31B1A30E /* iata-airports.csv */,
 				C779CBD001144856373F59F6 /* us-sources.json */,
+				4C9B9243A3286306042C94FD /* glossary.json */,
 				31CCA84E306DBC7A00D01155 /* LaunchScreen.storyboard */,
 			);
 			path = Resources;
@@ -537,6 +547,7 @@
 			isa = PBXGroup;
 			children = (
 				37795BF9DC79999D3E6DE8A3 /* AboutScreen.swift */,
+				482B3FDFDF3F46A70BC134B5 /* GlossaryScreen.swift */,
 				32A0B4E835C764626FE71370 /* AnalyzerSourceLogo.swift */,
 				4BA4982D8889A079D6CEBCB9 /* AnalyzerSourcePicker.swift */,
 				78E6E9CACE3528A4828C2A2D /* AppearanceSettings.swift */,
@@ -560,6 +571,7 @@
 				36B0A5E6DC5812474734F2C7 /* SenderColor.swift */,
 				3144E9F6305B2A4300B57F18 /* InstrumentSearchField.swift */,
 				31A2B0033070000100FBA3B4 /* RoutePicker.swift */,
+				FF13FD215F4B08F58FE9D5B0 /* LearnButton.swift */,
 				316FE009305E18ED00FBA3B4 /* LiquidGlassStyle.swift */,
 				31152DDF3069FCCF00146B37 /* AdaptiveListDetailNavigation.swift */,
 				31CCA84C306D984400D01155 /* DuoLayoutContext.swift */,
@@ -785,6 +797,7 @@
 				7A58A4866E9870D60395F551 /* iata-airports.csv in Resources */,
 				31CCA84F306DBC7A00D01155 /* LaunchScreen.storyboard in Resources */,
 				748C3658362BEB182690BA21 /* us-sources.json in Resources */,
+				61E23F61BF8C5250F0A86106 /* glossary.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -837,6 +850,7 @@
 				311510A23083DC7100199D51 /* MyNodesSignal.swift in Sources */,
 				67B0687608CD2E73C4D606AE /* APIClient.swift in Sources */,
 				991103E1F7308562934622AD /* AboutScreen.swift in Sources */,
+				5D1CF26F5BFB0EA0CEB372DF /* GlossaryScreen.swift in Sources */,
 				316FE00C305E1C9400FBA3B4 /* AnalyzerDiagnosticsService.swift in Sources */,
 				B5BD63C91E6B93FAA59ED007 /* ActivePing.swift in Sources */,
 				311D6C87307C45C400E2EB70 /* BeaconLiveTransport.swift in Sources */,
@@ -873,6 +887,7 @@
 				31DFA802308F9D3400B8C681 /* MeshBackground.swift in Sources */,
 				31DFA7EB308E9F4E00B8C681 /* NodePlannerRFEngine.swift in Sources */,
 				31A2B0043070000100FBA3B4 /* RoutePicker.swift in Sources */,
+				DB9F44BFCC24A15FC2881340 /* LearnButton.swift in Sources */,
 				16CC334CE0E2AE894A6E2811 /* ChannelMessagesCache.swift in Sources */,
 				F82F20C851C52EAC49BC3931 /* ChannelMonitorStore.swift in Sources */,
 				31DFA7DC308BA2EF00B8C681 /* FieldCatalogRepository.swift in Sources */,
@@ -933,6 +948,7 @@
 				311510B430842BDD00199D51 /* MyNodesBaseRepository.swift in Sources */,
 				01D4A148FE7AC5A25B15E907 /* PacketDetail.swift in Sources */,
 				31A2B0023070000100FBA3B4 /* RouteOption.swift in Sources */,
+				77BD1A356D2325BE48E7390A /* Glossary.swift in Sources */,
 				D0703CF5F57B875F611F2ADD /* PacketDetailScreen.swift in Sources */,
 				597B05A58DFD199CB78FAAC0 /* PacketDetailViewModel.swift in Sources */,
 				316FE014306070A900FBA3B4 /* NodeScopeDeepLink.swift in Sources */,

@@ -2800,21 +2800,33 @@ private struct MapRouteDetailsSheet: View {
         NavigationStack {
             List {
                 Section("Summary") {
-                    LabeledContent("Hops", value: "\(route.hops.count)")
+                    LabeledContent {
+                        Text("\(route.hops.count)")
+                    } label: {
+                        LearnLabel("Hops", term: .hop)
+                    }
                     LabeledContent("Age") {
                         Text(route.observedAt, style: .relative)
                     }
                     if let observerName = route.observerName, !observerName.isEmpty {
-                        LabeledContent("Observer", value: observerName)
+                        LabeledContent {
+                            Text(observerName)
+                        } label: {
+                            LearnLabel("Observer", term: .observer)
+                        }
                     }
                     if let snr = route.snr {
-                        LabeledContent("SNR") {
+                        LabeledContent {
                             Text("\(snr, format: .number.precision(.fractionLength(1))) dB")
+                        } label: {
+                            LearnLabel("SNR", term: .snr)
                         }
                     }
                     if let rssi = route.rssi {
-                        LabeledContent("RSSI") {
+                        LabeledContent {
                             Text("\(rssi, format: .number.precision(.fractionLength(0))) dBm")
+                        } label: {
+                            LearnLabel("RSSI", term: .rssi)
                         }
                     }
                     if let packetHash = route.packetHash, !packetHash.isEmpty {

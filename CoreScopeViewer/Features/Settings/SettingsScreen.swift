@@ -125,6 +125,19 @@ struct SettingsScreen: View {
                     .buttonStyle(.plain)
 
                     NavigationLink {
+                        GlossaryScreen()
+                    } label: {
+                        SettingsNavigationRow(
+                            title: "Glossary",
+                            value: "What the terms in NodeScope mean",
+                            symbol: "book.closed.fill"
+                        )
+                        .padding(16)
+                        .instrumentCard()
+                    }
+                    .buttonStyle(.plain)
+
+                    NavigationLink {
                         SupportDevelopmentScreen()
                     } label: {
                         SettingsNavigationRow(

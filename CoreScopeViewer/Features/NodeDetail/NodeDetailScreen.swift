@@ -316,6 +316,9 @@ private struct NodeIdentityCard: View {
                         Text(node.role.capitalized)
                             .font(.caption.weight(.bold))
                             .foregroundStyle(NodeRoleStyle.color(for: node.role))
+                        if let roleTerm = GlossaryTerm(role: node.role) {
+                            LearnButton(term: roleTerm)
+                        }
                         if let lastSeen = node.lastSeen {
                             Text("· Seen \(RelativeTime.string(from: lastSeen))")
                                 .font(.caption)

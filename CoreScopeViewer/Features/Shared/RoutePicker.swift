@@ -98,9 +98,12 @@ struct RouteHearersView: View {
         if !option.heardBy.isEmpty || !option.alongTheWay.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
                 if !option.heardBy.isEmpty {
-                    Text("Heard by")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 4) {
+                        Text("Heard by")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        LearnButton(term: .heardBy)
+                    }
                     ForEach(option.heardBy, id: \.self) { hearing in
                         HStack(alignment: .firstTextBaseline) {
                             Text(hearing.observer)
@@ -114,11 +117,14 @@ struct RouteHearersView: View {
                     }
                 }
                 if !option.alongTheWay.isEmpty {
-                    Text("Also heard along the way by "
-                        + option.alongTheWay.map { "\($0.observer) (\($0.hops) hops)" }.joined(separator: ", "))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text("Also heard along the way by "
+                            + option.alongTheWay.map { "\($0.observer) (\($0.hops) hops)" }.joined(separator: ", "))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        LearnButton(term: .alongTheWay)
+                    }
                 }
             }
         }

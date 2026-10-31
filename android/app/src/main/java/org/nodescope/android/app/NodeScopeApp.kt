@@ -1,5 +1,6 @@
 package org.nodescope.android.app
 
+import org.nodescope.android.feature.learn.*
 import androidx.lifecycle.createSavedStateHandle
 
 import androidx.compose.ui.draw.clip
@@ -91,7 +92,7 @@ private inline fun <reified T : Any> NavGraphBuilder.screen(noinline content: @C
         val scope = this
         val background = when (T::class) {
             MapRoute::class, MapLabRoute::class, NodeAnalyticsRoute::class, LinkProfileRoute::class -> Modifier.background(MaterialTheme.colorScheme.background)
-            SettingsRoute::class, AboutRoute::class -> Modifier.meshPageBackground(subdued = false)
+            SettingsRoute::class, AboutRoute::class, GlossaryRoute::class -> Modifier.meshPageBackground(subdued = false)
             else -> Modifier.meshPageBackground()
         }
         Box(Modifier.fillMaxSize().then(background)) { scope.content(entry) }
@@ -132,6 +133,7 @@ enum class Destination(val title: Int, val icon: ImageVector, val route: TopLeve
 @Serializable data object MyNodesRoute
 @Serializable data object StorageRoute
 @Serializable data object AboutRoute
+@Serializable data object GlossaryRoute
 @Serializable data class MessagePacketRoute(val hash: String, val sender: String = "", val text: String = "")
 @Serializable data object MapLabRoute
 @Serializable data class ChannelRoute(val id: String, val name: String)
@@ -389,6 +391,7 @@ internal fun AppShell(
                                 destination?.hasRoute<DiagnosticsRoute>() == true -> R.string.analyzer_diagnostics
                                 destination?.hasRoute<StorageRoute>() == true -> R.string.storage
                                 destination?.hasRoute<AboutRoute>() == true -> R.string.about_title
+                                destination?.hasRoute<GlossaryRoute>() == true -> R.string.glossary
                                 destination?.hasRoute<AddChannelRoute>() == true -> R.string.add_channel
                                 destination?.hasRoute<NodeAnalyticsRoute>() == true -> R.string.node_analytics
                                 else -> R.string.node_details
@@ -609,7 +612,7 @@ internal fun AppShell(
                                 onSource = { nav.navigate(SourceRoute) },
                                 onDiagnostics = { if (diagnostics != null) nav.navigate(DiagnosticsRoute) },
                                 onStorage = { if (cacheStorage != null) nav.navigate(StorageRoute) },
-                                onAbout = { nav.navigate(AboutRoute) }, onMapLab = { nav.navigate(MapLabRoute) },
+                                onAbout = { nav.navigate(AboutRoute) }, onGlossary = { nav.navigate(GlossaryRoute) }, onMapLab = { nav.navigate(MapLabRoute) },
                                 onSupport = { runCatching { uriHandler.openUri(SUPPORT_URL) } }, onDistanceUnit = onDistanceUnit, onBackgroundTexture = onBackgroundTexture)
                         }
                         screen<DiagnosticsRoute> { diagnostics?.let { DiagnosticsScreen(it, preferences.host, currentFeed.connection) } }
@@ -634,6 +637,7 @@ internal fun AppShell(
                         }
                         screen<StorageRoute> { cacheStorage?.let { StorageScreen(it) { onRefresh() } } }
                         screen<AboutRoute> { AboutScreen() }
+                        screen<GlossaryRoute> { GlossaryScreen() }
                         screen<NodeRoute> { backStack ->
                             val publicKey = backStack.toRoute<NodeRoute>().publicKey
                             val node = state.snapshot?.nodes?.firstOrNull { it.publicKey == publicKey } ?: library.node(publicKey)

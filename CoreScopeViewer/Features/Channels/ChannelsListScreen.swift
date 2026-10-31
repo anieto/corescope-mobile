@@ -102,10 +102,13 @@ struct ChannelsListScreen: View {
                             channelRow(channel)
                         }
                     } header: {
-                        Text("Server Monitored Channels")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(.secondary)
-                            .textCase(.uppercase)
+                        HStack(spacing: 4) {
+                            Text("Server Monitored Channels")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(.secondary)
+                                .textCase(.uppercase)
+                            LearnButton(term: .channel)
+                        }
                     }
                 }
             }

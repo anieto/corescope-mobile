@@ -1,0 +1,174 @@
+{
+  "version": 1,
+  "sections": [
+    {
+      "title": "The mesh",
+      "entries": [
+        {
+          "id": "node",
+          "term": "Node",
+          "summary": "Any MeshCore radio on the mesh: a companion, repeater, room server or sensor. Each one is identified by its public key, not its name.",
+          "detail": "Names can change or be shared by more than one node, which is why NodeScope keeps track of nodes by key."
+        },
+        {
+          "id": "companion",
+          "term": "Companion",
+          "summary": "A radio paired with a phone or computer app, used to send and receive messages. Companions don't pass on other people's traffic.",
+          "detail": "Most people's first node is a companion. To help the mesh reach further, add a repeater."
+        },
+        {
+          "id": "repeater",
+          "term": "Repeater",
+          "summary": "A fixed radio that rebroadcasts packets so they travel further. Repeaters on roofs, towers and hills are the backbone of the mesh.",
+          "detail": "A repeater's height and what's around it matter more than its power. Link Profile helps check a site before you install one."
+        },
+        {
+          "id": "room-server",
+          "term": "Room server",
+          "summary": "A node that hosts a shared message board. People log in to it, and it keeps messages for anyone who was out of range.",
+          "detail": null
+        },
+        {
+          "id": "sensor",
+          "term": "Sensor",
+          "summary": "A node that reports readings, such as temperature or battery level, over the mesh.",
+          "detail": null
+        },
+        {
+          "id": "observer",
+          "term": "Observer",
+          "summary": "A radio connected to the internet that reports everything it hears to an analyzer. Everything NodeScope shows comes from observers.",
+          "detail": "A packet that no observer heard doesn't appear in NodeScope, even if it reached people on the mesh. More observers give a fuller picture."
+        },
+        {
+          "id": "advert",
+          "term": "Advert",
+          "summary": "A short announcement a node broadcasts now and then with its name, type and, if shared, its location. Adverts are how nodes appear on the map.",
+          "detail": "A node that hasn't sent an advert recently can still be working; it may just be quiet."
+        },
+        {
+          "id": "analyzer",
+          "term": "Analyzer",
+          "summary": "The server that collects reports from observers, such as CoreScope or Beacon. NodeScope reads its data from the analyzer you choose in Settings.",
+          "detail": null
+        }
+      ]
+    },
+    {
+      "title": "Routes",
+      "entries": [
+        {
+          "id": "hop",
+          "term": "Hop",
+          "summary": "Each repeater that passed a packet along. Zero hops means the observer heard the sender directly.",
+          "detail": "More hops reach further, but every hop adds delay and another chance for the packet to be lost."
+        },
+        {
+          "id": "route",
+          "term": "Route",
+          "summary": "The chain of repeaters a packet travelled through to reach an observer. Different observers can hear the same packet over different routes.",
+          "detail": "NodeScope names each route after the observer that heard it."
+        },
+        {
+          "id": "unresolved-hop",
+          "term": "Unknown hop",
+          "summary": "A repeater in a route that can't be identified. Routes only carry a short part of each repeater's key, and sometimes no known node matches, or more than one does.",
+          "detail": null
+        },
+        {
+          "id": "flood",
+          "term": "Flood and direct",
+          "summary": "A flood packet is repeated by every repeater that hears it, to find the way. A direct packet follows a route that's already known, through specific repeaters.",
+          "detail": "Messages usually start as floods. Once a route is learned, later messages to the same node can go direct, which is quieter for the mesh."
+        },
+        {
+          "id": "observation",
+          "term": "Observation",
+          "summary": "One observer hearing one packet. A packet heard by five observers has five observations.",
+          "detail": null
+        },
+        {
+          "id": "heard-by",
+          "term": "Heard by",
+          "summary": "The observers that received this exact route, with the signal they heard it at.",
+          "detail": null
+        },
+        {
+          "id": "along-the-way",
+          "term": "Heard along the way",
+          "summary": "Observers that heard the same packet at an earlier point on its route, before it had made all of its hops.",
+          "detail": null
+        }
+      ]
+    },
+    {
+      "title": "Signal",
+      "entries": [
+        {
+          "id": "snr",
+          "term": "SNR",
+          "summary": "Signal-to-noise ratio, in dB: how far the signal stood above the background noise. Higher is better, and LoRa can still decode signals a little below zero.",
+          "detail": "Roughly: above 5 dB is solid, around 0 dB is workable, and well below zero is at the edge of what the radio can decode."
+        },
+        {
+          "id": "rssi",
+          "term": "RSSI",
+          "summary": "Received signal strength, in dBm. Closer to zero is stronger: −60 dBm is strong, −120 dBm is very weak.",
+          "detail": "RSSI counts noise as well as signal, so a strong RSSI with a poor SNR usually means a noisy location."
+        }
+      ]
+    },
+    {
+      "title": "Channels and regions",
+      "entries": [
+        {
+          "id": "channel",
+          "term": "Channel",
+          "summary": "A group chat on the mesh. Messages are encrypted with the channel's key, so only people with the key can read them.",
+          "detail": "The Public channel uses a key everyone knows, so anyone can read it. Never share anything private there."
+        },
+        {
+          "id": "region",
+          "term": "Region",
+          "summary": "An area code, often an airport code such as AUS, that observers are tagged with. Choosing a region shows only traffic heard in that area.",
+          "detail": "Region groups combine several nearby regions into one choice."
+        },
+        {
+          "id": "last-heard",
+          "term": "Last heard",
+          "summary": "When any observer last received something from this node. It doesn't tell you whether the node is on right now.",
+          "detail": "A node out of range of every observer can be working fine and still look quiet."
+        }
+      ]
+    },
+    {
+      "title": "Link Profile",
+      "entries": [
+        {
+          "id": "line-of-sight",
+          "term": "Line of sight",
+          "summary": "Whether a straight line between the two antennas clears the ground in between. It's necessary for a good link, but not enough on its own.",
+          "detail": null
+        },
+        {
+          "id": "fresnel-zone",
+          "term": "Fresnel zone",
+          "summary": "The football-shaped space around the line of sight that the radio signal fills. Hills that intrude into it weaken the link even when the line of sight is clear.",
+          "detail": "A common rule of thumb is to keep at least 60% of the zone clear. Link Profile shades the zone on its terrain chart."
+        },
+        {
+          "id": "clearance",
+          "term": "Clearance",
+          "summary": "How much of the Fresnel zone stays clear of terrain along the path. On the map and chart, green is clear, orange is marginal and red is obstructed.",
+          "detail": null
+        },
+        {
+          "id": "link-margin",
+          "term": "Link margin",
+          "summary": "How many dB the predicted signal exceeds what the receiver needs. Positive means the link should work on paper; 10 dB or more leaves room for fading.",
+          "detail": "It's an estimate from terrain alone. Buildings, trees and interference aren't included, so treat a small margin with caution."
+        }
+      ]
+    }
+  ]
+}

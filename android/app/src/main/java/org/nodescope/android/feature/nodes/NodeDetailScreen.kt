@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.nodes
 
+import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.meshCardColors
 import org.nodescope.android.core.design.MeshModalBottomSheet
 import android.content.ActivityNotFoundException
@@ -135,7 +136,10 @@ private fun IdentityCard(node: MeshNode, publicKey: String, favorite: Boolean, n
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(node.name?.takeIf(String::isNotBlank) ?: "Unnamed node", style = MaterialTheme.typography.titleLarge)
-                Text(node.role.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.labelMedium,
+                val roleTerm = GlossaryTerm.forRole(node.role)
+                if (roleTerm != null) LearnLabel(node.role.replaceFirstChar { it.uppercase() }, roleTerm, style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                else Text(node.role.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 // Beacon may not know when a node was last seen; never show "Seen Unknown".
                 parseInstant(node.lastSeen)?.let { seen ->

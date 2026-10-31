@@ -119,6 +119,9 @@ and built on 2026-10-30 from `6b8bd79`. Store copy is in the
   layout (as the Duo already does), then remove the 0.10.1 launch workaround
   (`RootTabView.settleIPadMapLayout()`). On first launch iPadOS doesn't merge the top tab bar into
   the split view's bar, which pushed both panes 64 pt down until the tab was revisited.
+- **Learn layer:** an ⓘ beside terms newcomers meet (hops, SNR/RSSI, observers, node roles,
+  channels, Fresnel zone, link margin…) opens a short plain-language explanation, with a Glossary
+  under Settings for the full list. The text lives once in `glossary.json`, shared by both apps.
 - Builds: iOS 0.10.2 (9), Android 0.10.2 (versionCode 20).
 
 Still to come after 0.10.2: Potential Links, Estimated Coverage, comparing and exporting plans, and

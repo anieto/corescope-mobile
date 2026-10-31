@@ -40,6 +40,7 @@ fun BrowseHeader(
     title: String, connection: LiveConnection, liveLabel: String, summary: String,
     filterCount: Int, searching: Boolean, onFilters: () -> Unit, onSearch: () -> Unit,
     addAction: (@Composable () -> Unit)? = null,
+    titleAccessory: (@Composable () -> Unit)? = null,
 ) {
     val largeText = LocalDensity.current.fontScale >= 1.5f
     val actions: @Composable RowScope.() -> Unit = {
@@ -59,7 +60,10 @@ fun BrowseHeader(
         val separateActions = largeText || maxWidth < 360.dp
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(title, Modifier.weight(1f), style = MaterialTheme.typography.headlineLarge)
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                    Text(title, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.headlineLarge)
+                    titleAccessory?.invoke()
+                }
                 if (!separateActions) actions()
             }
             if (separateActions) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, content = actions)

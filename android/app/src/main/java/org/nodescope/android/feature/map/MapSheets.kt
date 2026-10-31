@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.map
 
+import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.MeshModalBottomSheet
 import android.content.Intent
 import androidx.compose.foundation.background
@@ -156,11 +157,11 @@ internal fun RouteDetailsSheet(details: RouteDetails, onNode: (String) -> Unit, 
                     }) { Icon(Icons.Outlined.Share, "Share route") }
                 }
                 SectionLabel("Summary")
-                SummaryRow("Hops", details.hopCount.toString())
+                SummaryRow("Hops", details.hopCount.toString(), GlossaryTerm.HOP)
                 SummaryRow("Age", age)
-                packet.observerName?.takeIf(String::isNotBlank)?.let { SummaryRow("Observer", it) }
-                packet.snr?.let { SummaryRow("SNR", String.format(Locale.US, "%.1f dB", it)) }
-                packet.rssi?.let { SummaryRow("RSSI", String.format(Locale.US, "%.0f dBm", it)) }
+                packet.observerName?.takeIf(String::isNotBlank)?.let { SummaryRow("Observer", it, GlossaryTerm.OBSERVER) }
+                packet.snr?.let { SummaryRow("SNR", String.format(Locale.US, "%.1f dB", it), GlossaryTerm.SNR) }
+                packet.rssi?.let { SummaryRow("RSSI", String.format(Locale.US, "%.0f dBm", it), GlossaryTerm.RSSI) }
                 packet.hash.takeIf(String::isNotBlank)?.let { SummaryRow("Packet", it.take(12).uppercase()) }
                 packet.payloadText?.trim()?.takeIf(String::isNotEmpty)?.let { message ->
                     SectionLabel("Message")
@@ -199,9 +200,10 @@ internal fun RouteDetailsSheet(details: RouteDetails, onNode: (String) -> Unit, 
 }
 
 @Composable
-private fun SummaryRow(label: String, value: String) {
+private fun SummaryRow(label: String, value: String, learn: GlossaryTerm? = null) {
     Column(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (learn != null) LearnLabel(label, learn, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        else Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.bodyMedium)
     }
 }

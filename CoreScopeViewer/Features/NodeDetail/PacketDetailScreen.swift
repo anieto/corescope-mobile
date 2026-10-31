@@ -216,12 +216,13 @@ private struct PacketIdentityCard: View {
             }
 
             HStack(spacing: 8) {
-                PacketMetricTile(value: observationCount?.formatted() ?? "—", label: "Observations", symbol: "ear.fill")
-                PacketMetricTile(value: hops?.formatted() ?? "—", label: "Hops", symbol: "point.3.connected.trianglepath.dotted")
+                PacketMetricTile(value: observationCount?.formatted() ?? "—", label: "Observations", symbol: "ear.fill", learn: .observation)
+                PacketMetricTile(value: hops?.formatted() ?? "—", label: "Hops", symbol: "point.3.connected.trianglepath.dotted", learn: .hop)
                 PacketMetricTile(
                     value: snr.map { String(format: "%.1f", $0) } ?? "—",
                     label: "SNR dB",
-                    symbol: "waveform"
+                    symbol: "waveform",
+                    learn: .snr
                 )
             }
         }
@@ -234,12 +235,19 @@ private struct PacketMetricTile: View {
     let value: String
     let label: LocalizedStringKey
     let symbol: String
+    var learn: GlossaryTerm?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Image(systemName: symbol)
-                .font(.caption.weight(.bold))
-                .foregroundStyle(NodeScopeStyle.signal)
+            HStack {
+                Image(systemName: symbol)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(NodeScopeStyle.signal)
+                Spacer(minLength: 0)
+                if let learn {
+                    LearnButton(term: learn)
+                }
+            }
             Text(value)
                 .font(.headline.monospacedDigit())
             Text(label)

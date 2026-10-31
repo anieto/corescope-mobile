@@ -444,6 +444,7 @@ private struct LinkProfilePersistentMap: View {
                         ForEach(NodePlannerPathClearance.allCases, id: \.self) { clearance in
                             LinkProfileClearanceLegend(clearance: clearance)
                         }
+                        LearnButton(term: .clearance)
                     }
                     .font(.caption)
                     .padding(.horizontal, 12)
@@ -1536,12 +1537,14 @@ private struct LinkProfileResultCard: View {
                 if let linkMargin = result.result.linkMarginDB {
                     LinkProfileMetricRow(
                         label: "Link margin",
-                        value: linkMargin.formatted(.number.precision(.fractionLength(1))) + " dB"
+                        value: linkMargin.formatted(.number.precision(.fractionLength(1))) + " dB",
+                        learn: .linkMargin
                     )
                 }
                 LinkProfileMetricRow(
                     label: "Worst Fresnel clearance",
-                    value: result.result.worstClearancePercent.formatted(.number.precision(.fractionLength(0))) + "%"
+                    value: result.result.worstClearancePercent.formatted(.number.precision(.fractionLength(0))) + "%",
+                    learn: .clearance
                 )
                 LinkProfileMetricRow(
                     label: "Terrain source",
@@ -1626,8 +1629,11 @@ private struct LinkProfileTerrainCanvas: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Terrain profile")
-                .font(.subheadline.weight(.semibold))
+            HStack(spacing: 4) {
+                Text("Terrain profile")
+                    .font(.subheadline.weight(.semibold))
+                LearnButton(term: .fresnelZone)
+            }
 
             Canvas { context, size in
                 let coordinates = Coordinates(size: size, xRange: xRange, yRange: yRange)
@@ -2039,11 +2045,17 @@ private struct LinkProfileChartLegend: View {
 private struct LinkProfileMetricRow: View {
     let label: LocalizedStringResource
     let value: String
+    var learn: GlossaryTerm?
 
     var body: some View {
         GridRow {
-            Text(label)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 4) {
+                Text(label)
+                    .foregroundStyle(.secondary)
+                if let learn {
+                    LearnButton(term: learn)
+                }
+            }
             Text(value)
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
