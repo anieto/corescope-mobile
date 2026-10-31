@@ -163,6 +163,8 @@ struct SettingsScreen: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 18)
+                // Room between the last card and the floating tab bar.
+                .padding(.bottom, 24)
                 .adaptiveContentWidth()
             }
             .background(MeshBackground().ignoresSafeArea())
