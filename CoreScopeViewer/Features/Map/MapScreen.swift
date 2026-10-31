@@ -221,19 +221,15 @@ struct MapScreen: View {
     var body: some View {
         NavigationStack {
                     GeometryReader { geometry in
-                Group {
-                    if isReplayMode {
-                        TimelineView(
-                            .animation(
-                                minimumInterval: mapUpdateInterval,
-                                paused: !isTabActive || !pingsForDisplay.contains { !$0.isExpired() }
-                            )
-                        ) { context in
-                            mapContent(at: context.date)
-                        }
-                    } else {
-                        mapContent(at: .now)
-                    }
+                // One timeline for both modes, paused outside replay, so leaving a replay keeps the
+                // same Map: rebuilding it lost a camera the user had moved and showed the whole US.
+                TimelineView(
+                    .animation(
+                        minimumInterval: mapUpdateInterval,
+                        paused: !isReplayMode || !isTabActive || !pingsForDisplay.contains { !$0.isExpired() }
+                    )
+                ) { context in
+                    mapContent(at: isReplayMode ? context.date : .now)
                 }
                 .onAppear { mapViewportSize = geometry.size }
                 .onChange(of: geometry.size) { _, size in
@@ -2671,18 +2667,85 @@ private struct MapRegionScopeControl: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+        let picks = regionFilter.availablePicks
+        // Equatable so the map's frequent redraws leave an open menu alone; rebuilding its items
+        // scrolled a long region list away from where it was.
+        MapRegionScopeMenu(
+            title: title,
+            isAllSelected: regionFilter.selectedRegion == nil,
+            picks: picks.map { MapRegionScopeMenu.Item(id: $0.name, title: $0.name, isSelected: regionFilter.isSelected($0)) },
+            regions: regionFilter.options.map {
+                MapRegionScopeMenu.Item(id: $0, title: regionFilter.label(for: $0), isSelected: regionFilter.selectedRegion == $0)
+            },
+            isDark: colorScheme == .dark,
+            selectAll: { regionFilter.selectedRegion = nil },
+            selectPick: { name in
+                if let pick = regionFilter.availablePicks.first(where: { $0.name == name }) {
+                    regionFilter.select(pick)
+                }
+            },
+            selectRegion: { regionFilter.selectedRegion = $0 }
+        )
+        .equatable()
+    }
+
+    private var title: String {
+        guard let selectedRegion = regionFilter.selectedRegion else {
+            return "All Regions"
+        }
+        if let pick = regionFilter.activePick { return pick.name }
+        if selectedRegion.contains(",") { return regionFilter.label(for: selectedRegion) }
+        return "\(selectedRegion) · \(regionFilter.label(for: selectedRegion))"
+    }
+}
+
+/// The region menu itself, built from plain values, laid out as `RegionQuickPickButtons` and
+/// `RegionCodeButtons` lay out the shared menu.
+private struct MapRegionScopeMenu: View, Equatable {
+    struct Item: Hashable {
+        let id: String
+        let title: String
+        let isSelected: Bool
+    }
+
+    let title: String
+    let isAllSelected: Bool
+    let picks: [Item]
+    let regions: [Item]
+    let isDark: Bool
+    let selectAll: () -> Void
+    let selectPick: (String) -> Void
+    let selectRegion: (String) -> Void
+
+    nonisolated static func == (lhs: MapRegionScopeMenu, rhs: MapRegionScopeMenu) -> Bool {
+        lhs.title == rhs.title && lhs.isAllSelected == rhs.isAllSelected && lhs.picks == rhs.picks
+            && lhs.regions == rhs.regions && lhs.isDark == rhs.isDark
+    }
+
+    var body: some View {
         Menu {
-            Button {
-                regionFilter.selectedRegion = nil
-            } label: {
-                if regionFilter.selectedRegion == nil {
+            Button(action: selectAll) {
+                if isAllSelected {
                     Label("All Regions", systemImage: "checkmark")
                 } else {
                     Text("All Regions")
                 }
             }
-            RegionQuickPickButtons()
-            RegionCodeButtons()
+            if !picks.isEmpty {
+                Section("Region groups") {
+                    ForEach(picks, id: \.id) { item in
+                        button(item) { selectPick(item.id) }
+                    }
+                }
+            }
+            if !regions.isEmpty {
+                if picks.isEmpty {
+                    Divider()
+                    regionButtons
+                } else {
+                    Section("Regions") { regionButtons }
+                }
+            }
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: "line.3.horizontal.decrease.circle.fill")
@@ -2694,7 +2757,7 @@ private struct MapRegionScopeControl: View {
                     .font(.caption2.weight(.semibold))
             }
             .font(.caption.weight(.semibold))
-            .foregroundStyle(colorScheme == .dark ? Color.white : Color.accentColor)
+            .foregroundStyle(isDark ? Color.white : Color.accentColor)
             .frame(width: 150, alignment: .leading)
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
@@ -2703,13 +2766,20 @@ private struct MapRegionScopeControl: View {
         .accessibilityLabel("Region scope: \(title)")
     }
 
-    private var title: String {
-        guard let selectedRegion = regionFilter.selectedRegion else {
-            return "All Regions"
+    private var regionButtons: some View {
+        ForEach(regions, id: \.id) { item in
+            button(item) { selectRegion(item.id) }
         }
-        if let pick = regionFilter.activePick { return pick.name }
-        if selectedRegion.contains(",") { return regionFilter.label(for: selectedRegion) }
-        return "\(selectedRegion) · \(regionFilter.label(for: selectedRegion))"
+    }
+
+    private func button(_ item: Item, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            if item.isSelected {
+                Label(item.title, systemImage: "checkmark")
+            } else {
+                Text(item.title)
+            }
+        }
     }
 }
 
