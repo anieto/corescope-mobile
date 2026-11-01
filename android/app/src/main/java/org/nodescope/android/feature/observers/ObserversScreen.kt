@@ -116,7 +116,7 @@ fun ObserversScreen(
 
 @Composable
 private fun SummaryMetric(label: String, value: String, modifier: Modifier) {
-    Card(modifier.semantics(mergeDescendants = true) {}, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+    Card(modifier.semantics(mergeDescendants = true) {}, colors = meshCardColors()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(value, style = MaterialTheme.typography.titleMedium)
             Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
