@@ -884,6 +884,7 @@ private struct GlanceCustomizationSheet: View {
                 } footer: {
                     Text("Drag metrics into your preferred order and hide the ones you don’t need.")
                 }
+                .instrumentListRows()
             }
             .environment(\.editMode, .constant(.active))
             .meshPageBackground()

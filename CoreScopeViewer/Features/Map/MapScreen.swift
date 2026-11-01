@@ -3099,6 +3099,7 @@ private struct MapNodeFilterSheet: View {
                             filters = MapNodeFilterSelection()
                         }
                     }
+                    .instrumentListRows()
                 }
             }
             .meshPageBackground()
@@ -3143,6 +3144,7 @@ private struct MapActivityFilterSection: View {
                 }
             }
         }
+        .instrumentListRows()
     }
 }
 
@@ -3179,6 +3181,7 @@ private struct MapRoleFilterSection: View {
         } footer: {
             Text("Marker colors identify node roles on the map.")
         }
+        .instrumentListRows()
     }
 
     private func toggleRole(_ role: String) {
@@ -3279,6 +3282,7 @@ private struct MapObserverFilterSummarySection: View {
         } footer: {
             Text("Limits live and recent routes to packets received by the selected observer. Node markers are still controlled by the region, activity, and role filters.")
         }
+        .instrumentListRows()
     }
 }
 
@@ -3311,6 +3315,7 @@ private struct MapObserverPickerSheet: View {
                         isSelected: selectedObserverID == nil
                     )
                 }
+                .instrumentListRows()
 
                 ForEach(matchingObservers) { observer in
                     Button {
@@ -3323,6 +3328,7 @@ private struct MapObserverPickerSheet: View {
                         )
                     }
                 }
+                .instrumentListRows()
             }
             .meshPageBackground()
             .navigationTitle("Route Observer")
