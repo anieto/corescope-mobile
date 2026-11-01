@@ -451,6 +451,7 @@ private struct ObserverFiltersSheet: View {
                         }
                     }
                 }
+                .instrumentListRows()
 
                 Section("Activity") {
                     ForEach(ObserverActivityFilter.allCases) { option in
@@ -465,6 +466,7 @@ private struct ObserverFiltersSheet: View {
                         .buttonStyle(.plain)
                     }
                 }
+                .instrumentListRows()
 
                 Section("Hardware") {
                     Button {
@@ -488,6 +490,7 @@ private struct ObserverFiltersSheet: View {
                         .buttonStyle(.plain)
                     }
                 }
+                .instrumentListRows()
 
                 Section("Sort By") {
                     ForEach(ObserverSortOption.allCases) { option in
@@ -502,6 +505,7 @@ private struct ObserverFiltersSheet: View {
                         .buttonStyle(.plain)
                     }
                 }
+                .instrumentListRows()
             }
             .meshPageBackground()
             .navigationTitle("Observer Filters")

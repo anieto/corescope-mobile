@@ -545,6 +545,7 @@ private struct ChannelFiltersSheet: View {
                         }
                     }
                 }
+                .instrumentListRows()
 
             Section("Source") {
                 ForEach(ChannelSourceFilter.allCases) { option in
@@ -559,6 +560,7 @@ private struct ChannelFiltersSheet: View {
                     .buttonStyle(.plain)
                 }
             }
+            .instrumentListRows()
 
             Section("Activity") {
                 ForEach(ChannelActivityFilter.allCases) { option in
@@ -573,6 +575,7 @@ private struct ChannelFiltersSheet: View {
                     .buttonStyle(.plain)
                 }
             }
+            .instrumentListRows()
 
             Section("Sort By") {
                 ForEach(ChannelSortOption.allCases) { option in
@@ -587,6 +590,7 @@ private struct ChannelFiltersSheet: View {
                     .buttonStyle(.plain)
                 }
             }
+            .instrumentListRows()
             }
             .meshPageBackground()
             .navigationTitle("Channel Filters")

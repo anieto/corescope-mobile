@@ -2845,6 +2845,7 @@ private struct MapRouteDetailsSheet: View {
                         LabeledContent("Packet", value: String(packetHash.prefix(12)).uppercased())
                     }
                 }
+                .instrumentListRows()
 
                 if let messageText = route.messageText?.trimmingCharacters(in: .whitespacesAndNewlines),
                    !messageText.isEmpty {
@@ -2866,6 +2867,7 @@ private struct MapRouteDetailsSheet: View {
                 } header: {
                     LearnLabel("Route", term: .route)
                 }
+                .instrumentListRows()
             }
             .meshPageBackground()
             .navigationTitle("Route Details")
@@ -2919,6 +2921,7 @@ private struct MapRouteMessageSection: View {
             }
             .padding(.vertical, 2)
         }
+        .instrumentListRows()
     }
 }
 

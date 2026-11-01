@@ -1413,12 +1413,14 @@ private struct FieldCoordinateEntrySheet: View {
                     TextField("Longitude", text: $longitude)
                         .keyboardType(.numbersAndPunctuation)
                 }
+                .instrumentListRows()
 
                 Section {
                     Text("Latitude must be between −90 and 90. Longitude must be between −180 and 180.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                .instrumentListRows()
             }
             .meshPageBackground()
             .navigationTitle("Enter Coordinates")
