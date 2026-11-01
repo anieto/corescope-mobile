@@ -1206,6 +1206,10 @@ private struct FieldDirectionDial: View {
     let headingSample: FieldHeadingSample?
     let status: FieldHeadingStatus
     @Environment(\.colorScheme) private var colorScheme
+    /// Running angles that keep turning past 360° instead of wrapping, so crossing north animates a
+    /// few degrees rather than spinning most of the way around.
+    @State private var displayedArrowAngle: Double?
+    @State private var displayedNorthAngle: Double = 0
 
     private var deviceHeading: Double { headingSample?.trueHeadingDegrees ?? 0 }
 
@@ -1228,19 +1232,36 @@ private struct FieldDirectionDial: View {
                 .font(.monaspace(.caption2).weight(.bold))
                 .foregroundStyle(.secondary)
                 .offset(y: -27)
-                .rotationEffect(.degrees(-deviceHeading))
-            if let arrowRotation {
+                .rotationEffect(.degrees(displayedNorthAngle))
+            if let displayedArrowAngle {
                 Image(systemName: "location.north.fill")
                     .font(.system(size: 26, weight: .semibold))
                     .foregroundStyle(accent)
-                    .rotationEffect(.degrees(arrowRotation))
+                    .rotationEffect(.degrees(displayedArrowAngle))
             } else if status == .unavailable {
                 Image(systemName: "location.slash")
                     .foregroundStyle(.secondary)
             }
         }
         .frame(width: 72, height: 72)
-        .animation(.easeOut(duration: 0.25), value: arrowRotation)
+        .onAppear {
+            displayedArrowAngle = arrowRotation
+            displayedNorthAngle = -deviceHeading
+        }
+        .onChange(of: arrowRotation) { _, target in
+            guard let target else {
+                displayedArrowAngle = nil
+                return
+            }
+            withAnimation(.easeOut(duration: 0.25)) {
+                displayedArrowAngle = FieldGeometry.nearestEquivalentAngle(to: target, from: displayedArrowAngle)
+            }
+        }
+        .onChange(of: deviceHeading) { _, heading in
+            withAnimation(.easeOut(duration: 0.25)) {
+                displayedNorthAngle = FieldGeometry.nearestEquivalentAngle(to: -heading, from: displayedNorthAngle)
+            }
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Target direction")
         .accessibilityValue(accessibilityValue)
