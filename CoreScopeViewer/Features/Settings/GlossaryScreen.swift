@@ -13,14 +13,16 @@ struct GlossaryScreen: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
+                .instrumentListRows()
                 ForEach(Glossary.sections) { section in
                     Section(section.title) {
                         ForEach(section.entries) { entry in
                             GlossaryRow(entry: entry)
                                 .id(entry.id)
-                                .listRowBackground(focus?.rawValue == entry.id ? GlossaryFocusBackground() : nil)
+                                .listRowBackground(GlossaryRowBackground(isFocused: focus?.rawValue == entry.id))
                         }
                     }
+                    .instrumentListRows()
                 }
             }
             .meshPageBackground()
@@ -34,19 +36,22 @@ struct GlossaryScreen: View {
     }
 }
 
-/// The opened term's row: the normal row surface with a light accent tint and an accent border
+/// A glossary row surface. The opened term adds a light accent tint and an accent border
 /// inset from the edges, so the section's rounded corners don't clip it and it reads as highlighted
 /// in dark mode too.
-private struct GlossaryFocusBackground: View {
+private struct GlossaryRowBackground: View {
+    let isFocused: Bool
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ZStack {
-            Color(uiColor: .secondarySystemGroupedBackground)
-            NodeScopeStyle.signal.opacity(colorScheme == .dark ? 0.14 : 0.07)
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(NodeScopeStyle.signal, lineWidth: 2)
-                .padding(3)
+            InstrumentRowBackground()
+            if isFocused {
+                NodeScopeStyle.signal.opacity(colorScheme == .dark ? 0.14 : 0.07)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(NodeScopeStyle.signal, lineWidth: 2)
+                    .padding(3)
+            }
         }
     }
 }

@@ -65,6 +65,7 @@ struct AnalyzerSourcePickerScreen: View {
                     Text("Community sources are fetched from NodeScope’s source registry when available.")
                         .foregroundStyle(metadataColor)
                 }
+                .instrumentListRows()
 
                 Section {
                     TextField(
@@ -101,6 +102,7 @@ struct AnalyzerSourcePickerScreen: View {
                     Text("Enter the hostname for a compatible public analyzer. NodeScope connects directly to it.")
                         .foregroundStyle(metadataColor)
                 }
+                .instrumentListRows()
 
                 Section {
                     if let communitySourceRequestURL {
@@ -113,6 +115,7 @@ struct AnalyzerSourcePickerScreen: View {
                     Text("Suggest a public analyzer for the community list. Please confirm that its owner or operator permits it to be listed and used in NodeScope.")
                         .foregroundStyle(metadataColor)
                 }
+                .instrumentListRows()
             }
             .scrollDismissesKeyboard(.interactively)
             .onChange(of: isCustomHostFocused) { _, isFocused in
