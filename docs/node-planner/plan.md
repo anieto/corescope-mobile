@@ -1,14 +1,15 @@
-# NodeScope 0.10.1 — Candidate Sites and Node Planner
+# NodeScope 0.10.3 — Candidate Sites and Node Planner
 
-Status: Candidate Sites planning; Link Profile foundation implemented. Prepared: 2026-10-24. Updated: 2026-10-29. Supersedes the 0.10.0
+Status: Candidate Sites model, atomic storage, editor and confirmed map placement implemented; device validation pending. Prepared: 2026-10-24. Updated: 2026-11-01. Supersedes the 0.10.0
 Field Tools plan.
 
-## Release direction — 2026-10-29
+## Release direction — 2026-10-31
 
-v0.10.0 established Link Profile and its terrain/RF foundation. v0.10.1 focuses on Candidate Sites:
-place a proposed installation, configure equipment, show estimated coverage on the map, identify
-known nodes that might receive it, and inspect each potential link using the existing Link Profile.
-Save this work as Deployment Plans and support comparison/export as specified below.
+The current [roadmap](../../ROADMAP.md) assigns locally saved Deployment Plans and Candidate Sites
+to v0.10.3, alongside the separate iPad two-pane map layout task. Place proposed installations and
+record radio, antenna, cable and installation assumptions. Potential Links, Estimated Coverage,
+comparison/export and Saved Link Profiles follow after 0.10.3. The terrain experiments below are
+retained as evidence for those later stages; they are not prerequisites for a local site editor.
 
 The milestones below remain the implementation checklist, not a claim that coverage is already
 available. Start by auditing the existing point-to-point engine and terrain cache against bounded
@@ -454,6 +455,15 @@ if mobile coverage computation is not viable.
 
 ### B — Plans and candidate sites
 
+- Implemented: matching Swift/Kotlin version-1 models and validated JSON codecs, with 30 shared
+  acceptance/rejection fixtures. Unspecified assumptions stay null; no coverage results are stored.
+  Atomic stores now require a successful load, detect changed/deleted files, and preserve unreadable
+  data and prior saves on failure. Six storage tests per platform cover lifecycle and failure paths.
+  The manual-coordinate editor now opens from Node Planner on both platforms, with plan/site
+  lifecycle, explicit Save, discard/deletion confirmation and glossary-backed assumption fields.
+  Confirmed map placement/relocation now updates only the open site draft on both platforms.
+  See [the persisted-data contract](deployment-plan-contract.md). Next: foreground location,
+  unit preferences and device checks.
 - Replace Field Tools naming and routes with Node Planner.
 - Implement local plan/site/configuration models and atomic persistence.
 - Add candidate placement, editing, duplication and deletion.

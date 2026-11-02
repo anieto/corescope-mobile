@@ -123,6 +123,7 @@ enum class Destination(val title: Int, val icon: ImageVector, val route: TopLeve
 @Serializable data class NodeRoute(val publicKey: String)
 @Serializable data class NodeAnalyticsRoute(val publicKey: String)
 @Serializable data object NodePlannerRoute
+@Serializable data object CandidateSitesRoute
 @Serializable data object LinkProfileRoute
 @Serializable data object SourceRoute
 @Serializable data object PacketRoute
@@ -381,6 +382,7 @@ internal fun AppShell(
                             destination?.hasRoute<CoreScopeAccountRoute>() == true -> "CoreScope account"
                             destination?.hasRoute<FavoritesRoute>() == true -> "Favorites"
                             destination?.hasRoute<NodePlannerRoute>() == true -> "Node Planner"
+                            destination?.hasRoute<CandidateSitesRoute>() == true -> "Candidate Sites"
                             destination?.hasRoute<LinkProfileRoute>() == true -> "Link Profile"
                             else -> stringResource(when {
                                 destination?.hasRoute<SourceRoute>() == true -> R.string.analyzer
@@ -526,7 +528,18 @@ internal fun AppShell(
                                 ))
                         }
                         screen<NodePlannerRoute> {
-                            org.nodescope.android.feature.linkprofile.NodePlannerScreen { nav.navigate(LinkProfileRoute) }
+                            org.nodescope.android.feature.linkprofile.NodePlannerScreen(
+                                onLinkProfile = { nav.navigate(LinkProfileRoute) },
+                                onCandidateSites = { nav.navigate(CandidateSitesRoute) })
+                        }
+                        screen<CandidateSitesRoute> { backStack ->
+                            val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
+                            val model = viewModel<org.nodescope.android.feature.candidatesites.CandidatePlansViewModel>(backStack) {
+                                org.nodescope.android.feature.candidatesites.CandidatePlansViewModel(
+                                    org.nodescope.android.feature.candidatesites.DeploymentPlanStore(
+                                        java.io.File(context.filesDir, "CandidateSites/plans.json")))
+                            }
+                            org.nodescope.android.feature.candidatesites.CandidateSitesScreen(model)
                         }
                         screen<LinkProfileRoute> { backStack ->
                             val context = androidx.compose.ui.platform.LocalContext.current.applicationContext

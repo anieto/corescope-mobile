@@ -1,6 +1,6 @@
-# Candidate Sites — v0.10.1 implementation and validation plan
+# Candidate Sites — v0.10.3 implementation and subsequent analysis plan
 
-Status: isolated real-terrain prototype passes; production terrain/distribution/device gates unresolved. Updated 2026-10-30.
+Status: v0.10.3 plan/site model, atomic storage, editor and confirmed map placement implemented; device checks pending. Terrain studies are for subsequent analysis releases. Updated 2026-11-01.
 Platforms: iOS and Android. Parent: [Node Planner plan](plan.md).
 
 ## Outcome and reference tools
@@ -32,7 +32,15 @@ Reference review (2026-10-29):
 
 ## Scope decisions
 
-Required v0.10.1 vertical slice:
+The [current roadmap](../../ROADMAP.md) supersedes the original v0.10.1 release scope below.
+For v0.10.3, deliver local named plans, proposed site placement, editable assumptions and atomic
+save/reopen with equivalent semantics on both platforms. Do not expose analysis/results controls
+as working features. Potential Links, Estimated Coverage, comparison and export remain later work.
+The [version-1 model and atomic storage contract](deployment-plan-contract.md) is implemented;
+plan/site lifecycle, manual-coordinate UI and confirmed map placement are connected. Foreground
+location, unit preferences and device checks are next.
+
+Original end-to-end workflow retained for subsequent milestones (not all required for v0.10.3):
 
 1. Named local Deployment Plans with multiple named Candidate Sites; one selected site and one
    active coverage result on the map. No combined-transmitter/interference simulation.

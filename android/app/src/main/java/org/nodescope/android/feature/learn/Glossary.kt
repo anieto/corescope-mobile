@@ -36,7 +36,10 @@ enum class GlossaryTerm(val id: String) {
     HEARD_BY("heard-by"), ALONG_THE_WAY("along-the-way"),
     SNR("snr"), RSSI("rssi"),
     CHANNEL("channel"), REGION("region"), LAST_HEARD("last-heard"),
-    LINE_OF_SIGHT("line-of-sight"), FRESNEL_ZONE("fresnel-zone"), CLEARANCE("clearance"), LINK_MARGIN("link-margin");
+    LINE_OF_SIGHT("line-of-sight"), FRESNEL_ZONE("fresnel-zone"), CLEARANCE("clearance"), LINK_MARGIN("link-margin"),
+    DEPLOYMENT_PLAN("deployment-plan"), CANDIDATE_SITE("candidate-site"), PLANNING_COORDINATES("planning-coordinates"),
+    ANTENNA_HEIGHT("antenna-height"), RADIO_FREQUENCY("radio-frequency"), TRANSMIT_POWER("transmit-power"),
+    ANTENNA_GAIN("antenna-gain"), CABLE_LOSS("cable-loss"), ADDITIONAL_LOSS("additional-loss");
 
     companion object {
         /** The entry for a node's role as the analyzer reports it ("repeater", "room", …). */

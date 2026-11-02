@@ -675,7 +675,7 @@ private struct LinkProfileMapMenu: Identifiable {
 
 /// A touch & hold on the map, reported where the finger is. UIKit's recognizer rather than a
 /// SwiftUI gesture: it recognizes alongside MapKit's pan and pinch instead of holding them back.
-private struct LinkProfileMapLongPress: UIGestureRecognizerRepresentable {
+struct LinkProfileMapLongPress: UIGestureRecognizerRepresentable {
     let action: (CGPoint) -> Void
     /// The finger lifted, or the hold was cancelled, after it began.
     let ended: () -> Void

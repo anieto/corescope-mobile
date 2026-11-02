@@ -1,0 +1,3253 @@
+[
+  {
+    "name": "complete",
+    "valid": true,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "empty_library",
+    "valid": true,
+    "document": {
+      "schemaVersion": 1,
+      "plans": []
+    }
+  },
+  {
+    "name": "empty_plan",
+    "valid": true,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": null,
+          "sites": []
+        }
+      ]
+    }
+  },
+  {
+    "name": "unspecified_assumptions",
+    "valid": true,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {}
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "explicit_null",
+    "valid": true,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": null,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "west_date_line",
+    "valid": true,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -180.0,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "south_pole",
+    "valid": true,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": -90.0,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "negative_gain",
+    "valid": true,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": -3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "future_version",
+    "valid": false,
+    "document": {
+      "schemaVersion": 2,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "missing_version",
+    "valid": false,
+    "document": {
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "duplicate_plans",
+    "valid": false,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "duplicate_sites",
+    "valid": false,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            },
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "dangling_selection",
+    "valid": false,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "33333333-3333-4333-8333-333333333333",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "bad_id",
+    "valid": false,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "../outside",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "blank_name",
+    "valid": false,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "   ",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "control_name",
+    "valid": false,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "a\nb",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "utf8_name_over_limit",
+    "valid": false,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "utf8_name_at_limit",
+    "valid": true,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "time_reversed",
+    "valid": false,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 0,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "negative_time",
+    "valid": false,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": -1,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "east_date_line_noncanonical",
+    "valid": false,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": 180,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "invalid_latitude",
+    "valid": false,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 91,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "invalid_antennaHeightMeters",
+    "valid": false,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": -1,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "invalid_frequencyMHz",
+    "valid": false,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "invalid_transmitPowerDBm",
+    "valid": false,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 101,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "invalid_antennaGainDBi",
+    "valid": false,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 101,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "invalid_cableLossDB",
+    "valid": false,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": -1,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "invalid_additionalLossDB",
+    "valid": false,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": -1
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "unknown_metadata",
+    "valid": true,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ],
+      "futureOptionalMetadata": "ignored"
+    }
+  },
+  {
+    "name": "too_many_plans",
+    "valid": false,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "00000000-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000001-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000002-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000003-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000004-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000005-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000006-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000007-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000008-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000009-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000000a-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000000b-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000000c-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000000d-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000000e-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000000f-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000010-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000011-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000012-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000013-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000014-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000015-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000016-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000017-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000018-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000019-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000001a-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000001b-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000001c-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000001d-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000001e-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000001f-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000020-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000021-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000022-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000023-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000024-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000025-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000026-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000027-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000028-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000029-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000002a-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000002b-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000002c-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000002d-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000002e-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000002f-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000030-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000031-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000032-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000033-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000034-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000035-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000036-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000037-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000038-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000039-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000003a-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000003b-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000003c-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000003d-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000003e-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000003f-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000040-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000041-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000042-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000043-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000044-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000045-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000046-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000047-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000048-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000049-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000004a-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000004b-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000004c-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000004d-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000004e-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000004f-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000050-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000051-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000052-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000053-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000054-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000055-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000056-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000057-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000058-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000059-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000005a-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000005b-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000005c-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000005d-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000005e-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "0000005f-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000060-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000061-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000062-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000063-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "00000064-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge – Café",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {
+                "antennaHeightMeters": 12.0,
+                "frequencyMHz": 915.0,
+                "transmitPowerDBm": 22.0,
+                "antennaGainDBi": 3.0,
+                "cableLossDB": 1.5,
+                "additionalLossDB": 0.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

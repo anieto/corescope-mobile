@@ -57,14 +57,17 @@ private struct LinkProfileToolCard: View {
 
 private struct CandidateSitesToolCard: View {
     var body: some View {
-        NodePlannerToolCard(
-            icon: "mappin.and.ellipse",
-            title: "Candidate Sites",
-            detail: "Compare proposed node locations, potential links, and estimated coverage.",
-            availability: "Coming soon",
-            isEnabled: false
-        )
-        .accessibilityElement(children: .combine)
+        NavigationLink {
+            CandidateSitesScreen()
+        } label: {
+            NodePlannerToolCard(
+                icon: "mappin.and.ellipse",
+                title: "Candidate Sites",
+                detail: "Save proposed locations and equipment assumptions in deployment plans.",
+                isEnabled: true
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 

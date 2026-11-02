@@ -23,6 +23,12 @@
 		2D447FFABF6B77349DA614A1 /* SenderColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36B0A5E6DC5812474734F2C7 /* SenderColor.swift */; };
 		31084971307FC645007F4778 /* BeaconObserverAnalyticsReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31084970307FC645007F4778 /* BeaconObserverAnalyticsReader.swift */; };
 		31084973307FC947007F4778 /* BeaconChannelReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31084972307FC947007F4778 /* BeaconChannelReader.swift */; };
+		310F864A3096A423009EC5E8 /* DeploymentPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 310F86493096A423009EC5E8 /* DeploymentPlan.swift */; };
+		310F864C3096A44B009EC5E8 /* DeploymentPlanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 310F864B3096A44B009EC5E8 /* DeploymentPlanTests.swift */; };
+		310F864E3096B491009EC5E8 /* DeploymentPlanStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 310F864D3096B491009EC5E8 /* DeploymentPlanStore.swift */; };
+		310F86503096B4AA009EC5E8 /* DeploymentPlanStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 310F864F3096B4AA009EC5E8 /* DeploymentPlanStoreTests.swift */; };
+		310F86523096B5AD009EC5E8 /* CandidatePlansModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 310F86513096B5AD009EC5E8 /* CandidatePlansModel.swift */; };
+		310F86543096B5AD009EC5E8 /* CandidateSitesScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 310F86533096B5AD009EC5E8 /* CandidateSitesScreen.swift */; };
 		3115109E3083DB7E00199D51 /* MyNodesActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3115109D3083DB7E00199D51 /* MyNodesActivity.swift */; };
 		311510A03083DBAF00199D51 /* MyNodesActivityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3115109F3083DBAF00199D51 /* MyNodesActivityTests.swift */; };
 		311510A23083DC7100199D51 /* MyNodesSignal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311510A13083DC7100199D51 /* MyNodesSignal.swift */; };
@@ -88,6 +94,7 @@
 		31A2B0023070000100FBA3B4 /* RouteOption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A2B0013070000100FBA3B4 /* RouteOption.swift */; };
 		31A2B0043070000100FBA3B4 /* RoutePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A2B0033070000100FBA3B4 /* RoutePicker.swift */; };
 		31A2B0063070000100FBA3B4 /* RouteOptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A2B0053070000100FBA3B4 /* RouteOptionTests.swift */; };
+		31C6EC0230977267002AC226 /* CandidateSiteMapPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31C6EC0130977267002AC226 /* CandidateSiteMapPicker.swift */; };
 		31C733CCC554E34636022A89 /* OnboardingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9AFF0E38F9E8C2C60829E93 /* OnboardingScreen.swift */; };
 		31CCA84D306D984400D01155 /* DuoLayoutContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31CCA84C306D984400D01155 /* DuoLayoutContext.swift */; };
 		31CCA84F306DBC7A00D01155 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 31CCA84E306DBC7A00D01155 /* LaunchScreen.storyboard */; };
@@ -204,6 +211,12 @@
 		2FB247C32E6BA4792D18D413 /* RegionFilterStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionFilterStore.swift; sourceTree = "<group>"; };
 		31084970307FC645007F4778 /* BeaconObserverAnalyticsReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeaconObserverAnalyticsReader.swift; sourceTree = "<group>"; };
 		31084972307FC947007F4778 /* BeaconChannelReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeaconChannelReader.swift; sourceTree = "<group>"; };
+		310F86493096A423009EC5E8 /* DeploymentPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeploymentPlan.swift; sourceTree = "<group>"; };
+		310F864B3096A44B009EC5E8 /* DeploymentPlanTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeploymentPlanTests.swift; sourceTree = "<group>"; };
+		310F864D3096B491009EC5E8 /* DeploymentPlanStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeploymentPlanStore.swift; sourceTree = "<group>"; };
+		310F864F3096B4AA009EC5E8 /* DeploymentPlanStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeploymentPlanStoreTests.swift; sourceTree = "<group>"; };
+		310F86513096B5AD009EC5E8 /* CandidatePlansModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidatePlansModel.swift; sourceTree = "<group>"; };
+		310F86533096B5AD009EC5E8 /* CandidateSitesScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateSitesScreen.swift; sourceTree = "<group>"; };
 		3115109D3083DB7E00199D51 /* MyNodesActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyNodesActivity.swift; sourceTree = "<group>"; };
 		3115109F3083DBAF00199D51 /* MyNodesActivityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyNodesActivityTests.swift; sourceTree = "<group>"; };
 		311510A13083DC7100199D51 /* MyNodesSignal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyNodesSignal.swift; sourceTree = "<group>"; };
@@ -270,6 +283,7 @@
 		31A2B0013070000100FBA3B4 /* RouteOption.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteOption.swift; sourceTree = "<group>"; };
 		31A2B0033070000100FBA3B4 /* RoutePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePicker.swift; sourceTree = "<group>"; };
 		31A2B0053070000100FBA3B4 /* RouteOptionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteOptionTests.swift; sourceTree = "<group>"; };
+		31C6EC0130977267002AC226 /* CandidateSiteMapPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateSiteMapPicker.swift; sourceTree = "<group>"; };
 		31CCA84C306D984400D01155 /* DuoLayoutContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuoLayoutContext.swift; sourceTree = "<group>"; };
 		31CCA84E306DBC7A00D01155 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		31DC215A3064091D00F0E9C5 /* SupportDevelopmentScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportDevelopmentScreen.swift; sourceTree = "<group>"; };
@@ -431,6 +445,8 @@
 				31DFA7F0308E9FFF00B8C681 /* NodePlannerElevationProviderTests.swift */,
 				31DFA7F2308EA0CB00B8C681 /* NodePlannerLinkAnalyzerTests.swift */,
 				31DFA7F6308EA1B800B8C681 /* NodePlannerElevationCacheTests.swift */,
+				310F864B3096A44B009EC5E8 /* DeploymentPlanTests.swift */,
+				310F864F3096B4AA009EC5E8 /* DeploymentPlanStoreTests.swift */,
 			);
 			path = NodePlanner;
 			sourceTree = "<group>";
@@ -440,6 +456,7 @@
 			children = (
 				31DFA7EA308E9F4E00B8C681 /* NodePlannerRFEngine.swift */,
 				31DFA7F4308EA0CB00B8C681 /* NodePlannerLinkAnalyzer.swift */,
+				310F86493096A423009EC5E8 /* DeploymentPlan.swift */,
 			);
 			path = NodePlanner;
 			sourceTree = "<group>";
@@ -449,6 +466,9 @@
 			children = (
 				31DFA7FB308EA25500B8C681 /* LinkProfileScreen.swift */,
 				31DFA7FD308EA34100B8C681 /* NodePlannerScreen.swift */,
+				310F86513096B5AD009EC5E8 /* CandidatePlansModel.swift */,
+				310F86533096B5AD009EC5E8 /* CandidateSitesScreen.swift */,
+				31C6EC0130977267002AC226 /* CandidateSiteMapPicker.swift */,
 			);
 			path = NodePlanner;
 			sourceTree = "<group>";
@@ -689,6 +709,7 @@
 				31DFA7E6308BBDEE00B8C681 /* FieldEvidenceRepository.swift */,
 				31DFA7EE308E9FD700B8C681 /* NodePlannerElevationProvider.swift */,
 				31DFA7F8308EA1B800B8C681 /* NodePlannerElevationCache.swift */,
+				310F864D3096B491009EC5E8 /* DeploymentPlanStore.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -829,8 +850,10 @@
 			files = (
 				31DFA7E5308BB15800B8C681 /* FieldToolsPresentationTests.swift in Sources */,
 				3BE961FDCF2336382895F4C3 /* ModelDecodingTests.swift in Sources */,
+				310F864C3096A44B009EC5E8 /* DeploymentPlanTests.swift in Sources */,
 				31DFA7F3308EA0CB00B8C681 /* NodePlannerLinkAnalyzerTests.swift in Sources */,
 				036ACF59063991FAB8B4D9A0 /* URLPathEncodingTests.swift in Sources */,
+				310F86503096B4AA009EC5E8 /* DeploymentPlanStoreTests.swift in Sources */,
 				31DFA7DA308B052700B8C681 /* FieldSnapshotTests.swift in Sources */,
 				318BF7DB307EBE7000C8BFAD /* NeighborInsightTests.swift in Sources */,
 				31DFA7F1308E9FFF00B8C681 /* NodePlannerElevationProviderTests.swift in Sources */,
@@ -891,6 +914,8 @@
 				2CB0E2884918B39C50850A22 /* AnalyzerSourceRegistry.swift in Sources */,
 				311D6C7F307C422300E2EB70 /* BeaconNodeReader.swift in Sources */,
 				14C15315F31A80B68EECD9B5 /* AppearanceSettings.swift in Sources */,
+				310F864A3096A423009EC5E8 /* DeploymentPlan.swift in Sources */,
+				310F864E3096B491009EC5E8 /* DeploymentPlanStore.swift in Sources */,
 				EACC350C9F65CBA27A0B4D24 /* Channel.swift in Sources */,
 				311D6C8B307C473800E2EB70 /* BeaconLiveFeed.swift in Sources */,
 				316FE0183060985200FBA3B4 /* NodeAnalyticsViewModel.swift in Sources */,
@@ -899,6 +924,7 @@
 				311510BE30869BF200199D51 /* CoreScopeAccountClient.swift in Sources */,
 				3D366579F73DA99203CE929F /* ChannelDetailScreen.swift in Sources */,
 				3115109E3083DB7E00199D51 /* MyNodesActivity.swift in Sources */,
+				31C6EC0230977267002AC226 /* CandidateSiteMapPicker.swift in Sources */,
 				311510BA3086578200199D51 /* FavoriteChangesScreen.swift in Sources */,
 				90D4CE6F2C401B52C0B93D79 /* ChannelListCache.swift in Sources */,
 				3144E9F7305B2A4300B57F18 /* InstrumentSearchField.swift in Sources */,
@@ -910,6 +936,7 @@
 				DB9F44BFCC24A15FC2881340 /* LearnButton.swift in Sources */,
 				16CC334CE0E2AE894A6E2811 /* ChannelMessagesCache.swift in Sources */,
 				F82F20C851C52EAC49BC3931 /* ChannelMonitorStore.swift in Sources */,
+				310F86523096B5AD009EC5E8 /* CandidatePlansModel.swift in Sources */,
 				31DFA7DC308BA2EF00B8C681 /* FieldCatalogRepository.swift in Sources */,
 				DE7EBA2547154396308F7F57 /* ChannelsListScreen.swift in Sources */,
 				0C8DD2E83491E4744AEA1380 /* ChannelsViewModel.swift in Sources */,
@@ -948,6 +975,7 @@
 				316FE010305E2B2A00FBA3B4 /* CacheStorageService.swift in Sources */,
 				24D59BC2523DFDDA78B44597 /* Observer.swift in Sources */,
 				311510B830843F9600199D51 /* MyNodesScreen.swift in Sources */,
+				310F86543096B5AD009EC5E8 /* CandidateSitesScreen.swift in Sources */,
 				31DFA7E1308BA9DF00B8C681 /* FieldToolsScreen.swift in Sources */,
 				311510B03083EBFD00199D51 /* MyNodesVisitSession.swift in Sources */,
 				31DFA7D8308B052600B8C681 /* FieldSnapshot.swift in Sources */,
@@ -1029,7 +1057,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.10.2;
+				MARKETING_VERSION = 0.10.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.btdev.nodescope;
 				PRODUCT_MODULE_NAME = CoreScopeViewer;
 				PRODUCT_NAME = NodeScope;
@@ -1221,7 +1249,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.10.2;
+				MARKETING_VERSION = 0.10.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.btdev.nodescope;
 				PRODUCT_MODULE_NAME = CoreScopeViewer;
 				PRODUCT_NAME = NodeScope;

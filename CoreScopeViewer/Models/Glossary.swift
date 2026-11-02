@@ -15,6 +15,15 @@ enum GlossaryTerm: String, CaseIterable, Sendable {
     case lineOfSight = "line-of-sight"
     case fresnelZone = "fresnel-zone"
     case linkMargin = "link-margin"
+    case deploymentPlan = "deployment-plan"
+    case candidateSite = "candidate-site"
+    case planningCoordinates = "planning-coordinates"
+    case antennaHeight = "antenna-height"
+    case radioFrequency = "radio-frequency"
+    case transmitPower = "transmit-power"
+    case antennaGain = "antenna-gain"
+    case cableLoss = "cable-loss"
+    case additionalLoss = "additional-loss"
 }
 
 extension GlossaryTerm {

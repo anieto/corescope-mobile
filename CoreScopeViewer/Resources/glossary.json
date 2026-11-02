@@ -169,6 +169,65 @@
           "detail": "It's an estimate from terrain alone. Buildings, trees and interference aren't included, so treat a small margin with caution."
         }
       ]
+    },
+    {
+      "title": "Candidate Sites",
+      "entries": [
+        {
+          "id": "deployment-plan",
+          "term": "Deployment plan",
+          "summary": "A locally saved collection of proposed sites and the installation assumptions you enter. Saving a plan does not run a coverage analysis.",
+          "detail": null
+        },
+        {
+          "id": "candidate-site",
+          "term": "Candidate site",
+          "summary": "A proposed place to install a radio. It is a planning record, not a live node or proof that a link will work.",
+          "detail": null
+        },
+        {
+          "id": "planning-coordinates",
+          "term": "Planning coordinates",
+          "summary": "Latitude and longitude locate a site in decimal degrees. Negative latitude means south; negative longitude means west. These coordinates are not antenna height.",
+          "detail": null
+        },
+        {
+          "id": "antenna-height",
+          "term": "Antenna height",
+          "summary": "The antenna’s height above the ground at the proposed site, in meters. This is not elevation above sea level.",
+          "detail": null
+        },
+        {
+          "id": "radio-frequency",
+          "term": "Radio frequency",
+          "summary": "The operating frequency in megahertz (MHz). Enter the frequency you intend to use; a stored value does not establish channel compatibility or permission to transmit.",
+          "detail": null
+        },
+        {
+          "id": "transmit-power",
+          "term": "Transmit power",
+          "summary": "Power at the radio’s output, before antenna gain and cable losses, expressed in dBm. dBm is a logarithmic power unit referenced to one milliwatt; 20 dBm is 100 milliwatts.",
+          "detail": null
+        },
+        {
+          "id": "antenna-gain",
+          "term": "Antenna gain",
+          "summary": "How an antenna concentrates energy in a direction compared with an ideal antenna that radiates equally in every direction. dBi measures that comparison. Gain does not add transmitter power or improve every direction equally.",
+          "detail": null
+        },
+        {
+          "id": "cable-loss",
+          "term": "Cable loss",
+          "summary": "Signal lost between the radio and antenna in the feed cable and its connectors, in decibels (dB). Enter a positive loss; do not include it again under additional loss.",
+          "detail": null
+        },
+        {
+          "id": "additional-loss",
+          "term": "Additional loss",
+          "summary": "Other installation losses not already counted in cable loss, in decibels (dB). Enter a positive value, or leave it unspecified. This field is not a prediction of terrain blockage.",
+          "detail": null
+        }
+      ]
     }
   ]
 }

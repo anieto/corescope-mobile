@@ -137,6 +137,12 @@ which covers all of 0.10, is in the [0.10.2 release notes](docs/node-planner/v0.
   coverage scheduler, a download/cache contract, and Swift/Kotlin leased terrain readers. The
   readers pass host tests against 576,505 reference samples each; native cache/network integration
   and mobile validation remain outstanding. See the [reader study](docs/node-planner/native-terrain-reader-study.md).
+- **Candidate Sites data model:** Swift and Kotlin now share a versioned plan/site contract and
+  30 validation fixtures. Radio and installation assumptions remain unspecified until entered;
+  atomic save/reopen now protects unreadable libraries and detects changed files. The plan/site
+  editor is connected on both platforms, with manual coordinates, site duplication and glossary
+  explanations. Confirmed map placement/relocation is connected on both platforms; foreground
+  location, unit preferences and device layout checks remain.
 - **iPad map layout:** replace the Map tab's `NavigationSplitView` with an app-drawn two-pane
   layout (as the Duo already does), then remove the 0.10.1 launch workaround
   (`RootTabView.settleIPadMapLayout()`). On first launch iPadOS doesn't merge the top tab bar into
