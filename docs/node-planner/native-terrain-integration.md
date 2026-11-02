@@ -187,9 +187,32 @@ eviction of unrelated unpinned entries. The coordinator must enforce those assum
 check actual free space, handle write failures, and recompute after invalid-cache repair.
 The original cache-only preflight remains unchanged for its existing callers.
 
+## Bounded native HTTP attempts
+
+Both platforms now implement a cancellable single-attempt downloader that returns an owned
+private compressed artifact. It reserves expected compressed bytes plus one oversize probe
+before starting the request, validates HTTP 200, exact optional Content-Length, identity
+Content-Encoding, exact consumed length and SHA-256, then synchronizes the output. Failed
+attempts remove their temporary directory and retain consumed-byte accounting. Redirects,
+cookies, credentials, inherited proxies and automatic Android connection retries are disabled.
+Swift uses an ephemeral URLSession byte stream; Android uses OkHttp worker callbacks.
+Cancellation cancels the underlying session/call. Both configure idle and total request limits.
+
+The download allowance counts bytes consumed by the application, including invalid/failed
+response bodies, not TCP/TLS overhead or transport-library prefetch. Writes are at most 64 KiB;
+oversize bytes are never written. Concurrent budget reservations cannot double-spend remaining
+allowance. The job coordinator still needs to serialize tile preparation and enforce the
+full-pipeline disk estimate; the downloader alone does not reserve disk space.
+
+Swift host tests use URLProtocol fixtures for valid and malformed responses, budget exhaustion
+and stalled-request cancellation. Android MockWebServer exercises those cases over loopback
+HTTP, including rejected redirects and a total-timeout failure. Neither qualifies real provider
+compatibility or on-device throughput. A 404 remains an explicit HTTP status for the coordinator
+to classify; 429 and transient statuses are not automatically retried by this layer.
+
 ## Next implementation
 
-Implement the native cancellable HTTP downloader/coordinator against the existing
+Implement the native terrain coordinator around the bounded HTTP downloader and the existing
 [repository contract](terrain-repository-study.md): use the implemented identity/preflight types for
 bounded transfer and whole-job reservations; connect the implemented decoder/cache for publication,
 leases and offline reuse, and add explicit online repair of invalid cache entries.
@@ -198,6 +221,6 @@ footprint/halo selection, the feature-preserving profile sampler and the bounded
 Then package the reviewed propagation kernel and implement the shared run/node-result contract
 before connecting standalone Estimated Coverage UI and green/red/neutral known-node markers.
 
-Native networking, decoder/cache ownership, full engine integration, area raster rendering,
+Networking is implemented at the single-attempt level. Coordinator ownership, retries, full engine integration, area raster rendering,
 physical-device budgets and node classification are not completed by this slice. Existing saved
 site data and release version numbers are unchanged.

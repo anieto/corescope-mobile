@@ -143,3 +143,11 @@ Fourth native slice: bounded gzip decoding now validates pinned compressed hashe
 integrity and exact decoded dimensions on both platforms. Twenty-two shared fixtures and a local
 decode/cache/reopen integration test pass. Cancellable HTTP downloads and complete-pipeline disk
 reservations remain next; RF calculation and coverage UI are not yet connected.
+
+### Native HTTP progress
+
+Single-attempt cancellable terrain downloads are implemented on both platforms with bounded
+application-byte accounting, source hash/length checks, owned temporary files and failure cleanup.
+The full-pipeline disk estimate now includes both decoded copies during cache publication.
+These pieces are not yet connected to the coverage screen: terrain orchestration, retry/repair
+policy, enforced disk reservations, RF execution and known-node classification remain next.
