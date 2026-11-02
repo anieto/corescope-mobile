@@ -138,3 +138,8 @@ Third native slice: decoded-tile disk caches now provide exclusive ownership, st
 publication, persistent LRU, reader pinning and offline reuse. Ten new tests per platform pass.
 The compressed decoder/downloader and whole-job workspace reservations remain next; the low-level
 cache does not yet download terrain or recover damaged committed metadata automatically.
+
+Fourth native slice: bounded gzip decoding now validates pinned compressed hashes/lengths, gzip
+integrity and exact decoded dimensions on both platforms. Twenty-two shared fixtures and a local
+decode/cache/reopen integration test pass. Cancellable HTTP downloads and complete-pipeline disk
+reservations remain next; RF calculation and coverage UI are not yet connected.

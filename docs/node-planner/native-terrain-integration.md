@@ -129,11 +129,54 @@ Validation: iOS build including test targets passed; all 22 Swift host terrain t
 Android debug build/unit suite passed with 407 passed and 1 skipped. No simulator, UI tests, external
 network downloads or real-provider runs were performed.
 
+## Bounded gzip decoder — fourth native slice
+
+Both apps now decode a private immutable downloaded file into an explicitly owned temporary HGT
+artifact. The caller closes the artifact after cache publication; failures/cancellation remove
+partial decoded output. Input/output processing uses bounded chunks, optional gzip headers are
+limited to 64 KiB, source length/digest must match the descriptor, and output must exactly match
+the tile's signed-sample dimensions. A one-byte expansion probe detects oversized output before
+writing past that size. Source bytes are hashed during decode; decoded SHA-256 is retained for the
+cache's independent validation. No nodata/negative-height conversion occurs.
+
+The native contract accepts exactly one gzip member, including bounded optional extra/name/comment
+fields and header CRC. It rejects other wrappers, reserved flags, invalid compression methods,
+bad header/trailer CRC, bad ISIZE, truncated files, concatenated gzip members and all trailing
+bytes (including zero padding). This is intentionally stricter than the Python prototype's generic
+gzip reader. A future provider catalog must qualify this contract against its real payloads rather
+than assuming every standards-compliant gzip file is accepted.
+
+Swift uses system zlib in gzip-only mode; Android reuses the existing Okio dependency's GzipSource.
+The implementation also validates the bounded header before invoking the library. Library behavior
+was checked against the [zlib manual](https://zlib.net/manual.html) and
+[Okio GzipSource](https://raw.githubusercontent.com/square/okio/master/okio/src/zlibMain/kotlin/okio/GzipSource.kt).
+The checked-in shared fixtures, rather than those descriptions alone, verify the implementations
+actually compiled by this project.
+
+`shared/fixtures/coverage/terrain-gzip.json` contains 22 synthetic cases generated independently
+with Python gzip/zlib by `tools/node-planner/make_terrain_gzip_fixtures.py`. Three valid cases cover
+signed/nodata samples, optional fields/header CRC, and incompressible data spanning multiple input
+and output chunks. Rejection cases cover hash/length mismatch, damaged structure, excess expansion,
+invalid headers and extra data. Tests also cancel every observed checkpoint on a multi-chunk file,
+verify temporary-file cleanup and preserve an unrelated file on workspace failure. A complete
+local decode → cache publish → cache restart → signed sample read test passes on both platforms.
+
+Validation: iOS build including test targets passed; 26 Swift host terrain tests passed. Android
+debug build/unit suite passed with 411 passed and 1 skipped. Four new tests per platform execute
+these fixtures and integration paths. No HTTP download, simulator, UI or physical-device test was
+run. Provider payload compatibility, throughput and peak memory remain unqualified.
+
+The future download coordinator must reserve both its compressed file and decoder workspace in
+addition to cache staging. The current publish API copies the decoded artifact, so a job can hold
+two decoded copies temporarily; the existing preflight's cache-only reservation is insufficient
+for that complete pipeline until the coordinator accounts for the additional workspace. Decoder
+cancellation is cooperative between bounded operations, not an absolute latency guarantee.
+
 ## Next implementation
 
-Implement the native downloader/decoder against the existing
+Implement the native cancellable HTTP downloader/coordinator against the existing
 [repository contract](terrain-repository-study.md): use the implemented identity/preflight types for
-bounded transfer/decode and whole-job reservations; connect the decoded cache for publication,
+bounded transfer and whole-job reservations; connect the implemented decoder/cache for publication,
 leases and offline reuse, and add explicit online repair of invalid cache entries.
 It must supply the readers with verified decoded digests and consistent provenance. Wire geographic
 footprint/halo selection, the feature-preserving profile sampler and the bounded scheduler next.
