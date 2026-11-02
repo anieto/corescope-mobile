@@ -90,3 +90,28 @@ data class CoverageTerrainPreflight(
         }
     }
 }
+
+/**
+ * Conservative logical-byte estimate for one serialized download/decode/publish pipeline.
+ * Requires eviction of unrelated unpinned entries and cleanup between tiles and retries.
+ * This is not a filesystem free-space check or an acquired reservation.
+ */
+data class CoverageTerrainPipelinePreflight(
+    val cache: CoverageTerrainPreflight,
+    val temporaryWorkspaceBytes: Long,
+    val peakPipelineBytes: Long,
+    val fitsPipelineQuota: Boolean,
+) {
+    companion object {
+        fun make(requested: List<CoverageTerrainDescriptor>, inventory: List<CoverageTerrainInventoryEntry>,
+                 quota: Long, remainingDownloadBytes: Long, attempts: Int = 2): CoverageTerrainPipelinePreflight {
+            val cache = CoverageTerrainPreflight.make(requested, inventory, quota, remainingDownloadBytes, attempts)
+            val existing = inventory.map { it.key }.toSet()
+            // Pinned-set bytes already include the final/cache-stage decoded copy.
+            val workspace = requested.filter { it.cacheKey !in existing }
+                .maxOfOrNull { it.packedBytes + it.decodedBytes + 8192 } ?: 0
+            val peak = cache.pinnedSetReservationBytes + workspace
+            return CoverageTerrainPipelinePreflight(cache, workspace, peak, peak <= quota)
+        }
+    }
+}

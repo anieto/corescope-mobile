@@ -81,6 +81,30 @@ private struct PreflightFixture: Decodable {
 }
 
 struct CoverageTerrainDescriptorTests {
+    @Test func pipelineAccountsForBothDecodedCopiesAndWorkspace() throws {
+        let tile = try #require(coverageFixture("cache-identity", as: IdentityFixtures.self).vectors.first).spec.make()
+        let pinned = 4096 + tile.decodedBytes + 8192
+        let peak = pinned + tile.packedBytes + tile.decodedBytes + 8192
+        for quota in [peak - 1, peak] {
+            let result = try CoverageTerrainPipelinePreflight.make(requested: [tile, tile], inventory: [],
+                quota: quota, remainingDownloadBytes: 512_000_000)
+            #expect(result.peakPipelineBytes == peak)
+            #expect(result.fitsPipelineQuota == (quota == peak))
+            #expect(result.cache.canPreparePinnedSet)
+        }
+        let cached = CoverageTerrainInventoryEntry(key: tile.cacheKey, decodedBytes: tile.decodedBytes, pinned: true)
+        let offline = try CoverageTerrainPipelinePreflight.make(requested: [tile], inventory: [cached],
+            quota: pinned, remainingDownloadBytes: 0)
+        #expect(offline.temporaryWorkspaceBytes == 0)
+        #expect(offline.peakPipelineBytes == pinned)
+        #expect(offline.fitsPipelineQuota)
+        let outside = CoverageTerrainInventoryEntry(key: String(repeating: "f", count: 64), decodedBytes: 18, pinned: true)
+        let protected = try CoverageTerrainPipelinePreflight.make(requested: [tile], inventory: [outside],
+            quota: peak, remainingDownloadBytes: 512_000_000)
+        #expect(protected.peakPipelineBytes == peak + 18 + 8192)
+        #expect(!protected.fitsPipelineQuota)
+    }
+
     @Test func canonicalKeysMatchIndependentVectors() throws {
         let fixture = try coverageFixture("cache-identity", as: IdentityFixtures.self)
         #expect(fixture.vectors.count == 9)

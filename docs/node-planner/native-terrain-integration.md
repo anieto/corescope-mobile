@@ -172,6 +172,21 @@ two decoded copies temporarily; the existing preflight's cache-only reservation 
 for that complete pipeline until the coordinator accounts for the additional workspace. Decoder
 cancellation is cooperative between bounded operations, not an absolute latency guarantee.
 
+## Full-pipeline disk estimate
+
+Both native platforms now provide `CoverageTerrainPipelinePreflight` alongside the
+cache-only contract. It adds the largest missing tile's compressed file, private decoded
+output and 8 KiB workspace allowance to the complete pinned-set estimate. The pinned set
+already accounts for the cache publication copy. Duplicate requests do not increase the
+estimate; unrelated pinned entries remain protected; all-cached runs need no decode workspace.
+Boundary tests cover exact quota, one byte short, cached reuse and outside pins.
+
+This is a conservative logical-byte estimate, not an acquired reservation or a physical
+free-space guarantee. It assumes serialized transfers, cleanup between tiles/retries, and
+eviction of unrelated unpinned entries. The coordinator must enforce those assumptions,
+check actual free space, handle write failures, and recompute after invalid-cache repair.
+The original cache-only preflight remains unchanged for its existing callers.
+
 ## Next implementation
 
 Implement the native cancellable HTTP downloader/coordinator against the existing

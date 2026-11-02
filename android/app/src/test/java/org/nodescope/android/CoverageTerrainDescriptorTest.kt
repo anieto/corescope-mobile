@@ -7,6 +7,27 @@ import org.junit.Test
 import org.nodescope.android.feature.coverage.*
 
 class CoverageTerrainDescriptorTest {
+    @Test fun pipelineAccountsForBothDecodedCopiesAndWorkspace() {
+        val tile = descriptor(base())
+        val pinned = 4096 + tile.decodedBytes + 8192
+        val peak = pinned + tile.packedBytes + tile.decodedBytes + 8192
+        for (quota in listOf(peak - 1, peak)) {
+            val result = CoverageTerrainPipelinePreflight.make(listOf(tile, tile), emptyList(), quota, 512_000_000)
+            assertEquals(peak, result.peakPipelineBytes)
+            assertEquals(quota == peak, result.fitsPipelineQuota)
+            assertTrue(result.cache.canPreparePinnedSet)
+        }
+        val cached = CoverageTerrainInventoryEntry(tile.cacheKey, tile.decodedBytes, true)
+        val offline = CoverageTerrainPipelinePreflight.make(listOf(tile), listOf(cached), pinned, 0)
+        assertEquals(0L, offline.temporaryWorkspaceBytes)
+        assertEquals(pinned, offline.peakPipelineBytes)
+        assertTrue(offline.fitsPipelineQuota)
+        val outside = CoverageTerrainInventoryEntry("f".repeat(64), 18, true)
+        val protected = CoverageTerrainPipelinePreflight.make(listOf(tile), listOf(outside), peak, 512_000_000)
+        assertEquals(peak + 18 + 8192, protected.peakPipelineBytes)
+        assertFalse(protected.fitsPipelineQuota)
+    }
+
     private fun fixture(name: String) = Json.parseToJsonElement(File("../../shared/fixtures/coverage/$name.json").readText())
     private fun JsonObject.text(key: String) = getValue(key).jsonPrimitive.content
     private fun JsonObject.long(key: String) = getValue(key).jsonPrimitive.long

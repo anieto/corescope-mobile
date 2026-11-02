@@ -136,3 +136,27 @@ struct CoverageTerrainPreflight: Equatable, Sendable {
                     hasAllCachedTiles: missing.isEmpty)
     }
 }
+
+/// Conservative logical-byte estimate for one serialized download/decode/publish pipeline.
+/// Requires eviction of unrelated unpinned entries and cleanup between tiles and retries.
+/// This is not a filesystem free-space check or an acquired reservation.
+struct CoverageTerrainPipelinePreflight: Sendable {
+    let cache: CoverageTerrainPreflight
+    let temporaryWorkspaceBytes: Int64
+    let peakPipelineBytes: Int64
+    let fitsPipelineQuota: Bool
+
+    static func make(requested: [CoverageTerrainDescriptor], inventory: [CoverageTerrainInventoryEntry],
+                     quota: Int64, remainingDownloadBytes: Int64, attempts: Int = 2) throws -> Self {
+        let cache = try CoverageTerrainPreflight.make(requested: requested, inventory: inventory,
+            quota: quota, remainingDownloadBytes: remainingDownloadBytes, attempts: attempts)
+        let existing = Set(inventory.map(\.key))
+        // The pinned-set estimate already includes the final/cache-stage decoded copy.
+        // Retain the compressed download plus the decoder's private output until publish succeeds.
+        let workspace = requested.filter { !existing.contains($0.cacheKey) }
+            .map { $0.packedBytes + $0.decodedBytes + 8192 }.max() ?? 0
+        let peak = cache.pinnedSetReservationBytes + workspace
+        return Self(cache: cache, temporaryWorkspaceBytes: workspace,
+                    peakPipelineBytes: peak, fitsPipelineQuota: peak <= quota)
+    }
+}
