@@ -141,8 +141,8 @@ which covers all of 0.10, is in the [0.10.2 release notes](docs/node-planner/v0.
   30 validation fixtures. Radio and installation assumptions remain unspecified until entered;
   atomic save/reopen now protects unreadable libraries and detects changed files. The plan/site
   editor is connected on both platforms, with manual coordinates, site duplication and glossary
-  explanations. Confirmed map placement/relocation is connected on both platforms; foreground
-  location, unit preferences and device layout checks remain.
+  explanations. Confirmed map placement/relocation, on-demand foreground location and preferred
+  height units are connected on both platforms; device permission and layout checks remain.
 - **iPad map layout:** replace the Map tab's `NavigationSplitView` with an app-drawn two-pane
   layout (as the Duo already does), then remove the 0.10.1 launch workaround
   (`RootTabView.settleIPadMapLayout()`). On first launch iPadOS doesn't merge the top tab bar into

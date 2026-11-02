@@ -66,6 +66,28 @@ struct DeploymentPlanTests {
         }
     }
 
+    @Test func imperialHeightsConvertBeforeValidationAndStorage() throws {
+        let id = "22222222-2222-4222-8222-222222222222"
+        func input(_ height: String, feet: Bool = true) throws -> CandidateSite {
+            try CandidateSiteInput.make(id: id, name: "Ridge",
+                values: ["29", "-98", height, "915", "0", "-3", "0", ""], heightInFeet: feet)
+        }
+        #expect(try input("20").assumptions.antennaHeightMeters == 6.096)
+        #expect(try input("20,5").assumptions.antennaHeightMeters == 6.2484)
+        #expect(try input("20", feet: false).assumptions.antennaHeightMeters == 20)
+        #expect(try input("").assumptions.antennaHeightMeters == nil)
+        #expect(try input("0").assumptions.antennaHeightMeters == 0)
+        #expect(try input(String(10_000 / 0.3048)).assumptions.antennaHeightMeters == 10_000)
+        for text in ["-1", "32809", "1e999", "nan", "20 ft"] {
+            #expect(throws: DeploymentPlanError.invalidData) { try input(text) }
+        }
+        let site = try input("20")
+        let plan = DeploymentPlan(id: id, name: "Plan", createdAtMilliseconds: 0,
+            updatedAtMilliseconds: 0, selectedSiteID: site.id, sites: [site])
+        let decoded = try DeploymentPlanCodec.decode(DeploymentPlanCodec.encode(DeploymentPlanDocument(plans: [plan])))
+        #expect(decoded.plans.first?.sites.first?.assumptions.antennaHeightMeters == 6.096)
+    }
+
     @Test func missingAssumptionsStayUnknown() throws {
         let fixture = try #require(try fixtures().first { $0["name"] as? String == "unspecified_assumptions" })
         let object = try #require(fixture["document"])

@@ -97,7 +97,7 @@ Add/Edit site → Choose on map opens a dedicated picker on both platforms. Vali
 frame the initial view; otherwise it opens a world view without selecting a location. Touch and
 hold places or relocates a tentative pin. Use coordinates copies it into the site draft; Cancel
 leaves the draft coordinates unchanged. Apply site and Save plan remain separate explicit steps.
-No device-location permission or terrain analysis is requested. Manual coordinate entry remains
+Opening the map picker requests neither device-location permission nor terrain analysis. Manual coordinate entry remains
 available when a map cannot load or touch-and-hold is unsuitable.
 
 iOS reuses the Link Profile simultaneous long-press recognizer and the shared map-style preference.
@@ -110,5 +110,28 @@ Validation: iOS build-for-testing and Android debug assembly/unit suite passed. 
 tests were run. Touch-and-hold, cancel/confirm behavior, annotations, attribution, nested sheets,
 light/dark mode, large text and resize/fold layouts still require device validation.
 
-Next: optional foreground location, unit preferences, initial-region framing/search, and device
-validation. Coverage/known-node analysis stays outside this release slice.
+## Current location and height units — 2026-11-02
+
+Add/Edit site → Use current location requests foreground permission only after a tap, then copies
+one position fix into the draft. It reuses the native map location helpers, supports cancellation,
+and stops pending work when the editor closes or the app backgrounds. Denial, disabled services
+and unavailable fixes leave existing coordinates intact and offer manual/map placement instead.
+Coordinates and Apply are disabled while locating to prevent a late result overwriting new edits.
+Approximate location is accepted; the success message asks the person to check the pin on the map.
+Apply site and Save plan are still required to persist the chosen location.
+
+Antenna height opens in feet or meters according to Settings → Units. The unit is fixed for the
+open editor so changing a preference cannot reinterpret typed text; Android retains it across
+activity recreation. Imperial input converts with exactly 0.3048 meters per foot before validation.
+Version-1 storage stays metric, blank heights stay unknown, zero stays explicit, and applying an
+untouched height preserves the exact stored value. The maximum remains 10,000 meters; imperial
+UI describes its approximate feet equivalent without changing that storage guard.
+
+Validation: iOS build, 11 Swift host plan/storage tests, and Android debug assembly/unit tests
+passed. New tests cover decimal-comma feet, metric input, zero, blank, maximum height, out-of-range
+and malformed input, and the metric persistence round trip. Permission prompts, cancellation,
+approximate-location review, settings/reopen behavior and layouts require user device checks.
+No simulator or UI tests were run.
+
+Next: initial-region framing/search evaluation and device validation. Coverage/known-node analysis
+stays outside this release slice.

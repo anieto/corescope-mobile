@@ -59,7 +59,7 @@ enum class DeploymentPlanFailure { UNSUPPORTED_VERSION, INVALID_DATA, TOO_LARGE 
 /** Decimal input only; a blank optional value must remain unknown, never zero. */
 object CandidateSiteInput {
     private val decimal = Regex("""^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$""")
-    fun make(id: String, name: String, values: List<String>): CandidateSite {
+    fun make(id: String, name: String, values: List<String>, heightInFeet: Boolean = false): CandidateSite {
         valid(values.size == 8)
         val parsed = values.map { text ->
             val value = text.trim().replace(',', '.')
@@ -73,7 +73,8 @@ object CandidateSiteInput {
         valid(parsed[0] != null && parsed[1] != null)
         val longitude = requireNotNull(parsed[1])
         return CandidateSite(id, name, requireNotNull(parsed[0]), if (longitude == 180.0) -180.0 else longitude,
-            CandidateSiteAssumptions(parsed[2], parsed[3], parsed[4], parsed[5], parsed[6], parsed[7])).also { it.validate() }
+            CandidateSiteAssumptions(parsed[2]?.let { if (heightInFeet) it * 0.3048 else it },
+                parsed[3], parsed[4], parsed[5], parsed[6], parsed[7])).also { it.validate() }
     }
 }
 

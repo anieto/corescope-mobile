@@ -1,6 +1,6 @@
 # NodeScope 0.10.3 — Candidate Sites and Node Planner
 
-Status: Candidate Sites model, atomic storage, editor and confirmed map placement implemented; device validation pending. Prepared: 2026-10-24. Updated: 2026-11-01. Supersedes the 0.10.0
+Status: Candidate Sites model, atomic storage, editor, confirmed map placement, current location and height units implemented; device validation pending. Prepared: 2026-10-24. Updated: 2026-11-02. Supersedes the 0.10.0
 Field Tools plan.
 
 ## Release direction — 2026-10-31
@@ -462,8 +462,9 @@ if mobile coverage computation is not viable.
   The manual-coordinate editor now opens from Node Planner on both platforms, with plan/site
   lifecycle, explicit Save, discard/deletion confirmation and glossary-backed assumption fields.
   Confirmed map placement/relocation now updates only the open site draft on both platforms.
-  See [the persisted-data contract](deployment-plan-contract.md). Next: foreground location,
-  unit preferences and device checks.
+  Foreground location now fills the draft on demand, and height input follows the unit preference
+  while storage stays metric. See [the persisted-data contract](deployment-plan-contract.md).
+  Next: device checks and initial-region framing/search evaluation.
 - Replace Field Tools naming and routes with Node Planner.
 - Implement local plan/site/configuration models and atomic persistence.
 - Add candidate placement, editing, duplication and deletion.

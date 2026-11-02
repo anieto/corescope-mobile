@@ -93,7 +93,7 @@ private enum PlanValidation {
 
 /// Strict decimal parsing shared by the manual editor and its contract tests.
 enum CandidateSiteInput {
-    static func make(id: String, name: String, values: [String]) throws -> CandidateSite {
+    static func make(id: String, name: String, values: [String], heightInFeet: Bool = false) throws -> CandidateSite {
         guard values.count == 8 else { throw DeploymentPlanError.invalidData }
         let parsed = try values.map { text -> Double? in
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -107,7 +107,7 @@ enum CandidateSiteInput {
         guard let latitude = parsed[0], let longitude = parsed[1] else { throw DeploymentPlanError.invalidData }
         let site = CandidateSite(id: id, name: name, latitude: latitude,
             longitude: longitude == 180 ? -180 : longitude,
-            assumptions: CandidateSiteAssumptions(antennaHeightMeters: parsed[2], frequencyMHz: parsed[3],
+            assumptions: CandidateSiteAssumptions(antennaHeightMeters: parsed[2].map { heightInFeet ? $0 * 0.3048 : $0 }, frequencyMHz: parsed[3],
                 transmitPowerDBm: parsed[4], antennaGainDBi: parsed[5], cableLossDB: parsed[6], additionalLossDB: parsed[7]))
         try site.validate()
         return site

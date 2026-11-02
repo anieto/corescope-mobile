@@ -25,17 +25,15 @@ final class MapLocationManager: NSObject, @preconcurrency CLLocationManagerDeleg
             return
         }
 
-        if let cachedLocation = locationManager.location,
-           Date().timeIntervalSince(cachedLocation.timestamp) < 5 * 60 {
-            finish(with: cachedLocation.coordinate)
-            return
-        }
-
         switch locationManager.authorizationStatus {
         case .notDetermined:
             locationManager.requestWhenInUseAuthorization()
         case .authorizedAlways, .authorizedWhenInUse:
-            startLocationUpdate()
+            if let cachedLocation = locationManager.location, isUsable(cachedLocation) {
+                finish(with: cachedLocation.coordinate)
+            } else {
+                startLocationUpdate()
+            }
         case .denied, .restricted:
             finishWithFailure()
         @unknown default:
@@ -59,8 +57,23 @@ final class MapLocationManager: NSObject, @preconcurrency CLLocationManagerDeleg
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let coordinate = locations.last?.coordinate else { return }
-        finish(with: coordinate)
+        guard completion != nil, let location = locations.last(where: isUsable) else { return }
+        finish(with: location.coordinate)
+    }
+
+    /// Cancel when a caller leaves its editor, without delivering a late result into a draft.
+    func cancelRequest() {
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        locationManager.stopUpdatingLocation()
+        completion = nil
+        failure = nil
+    }
+
+    private func isUsable(_ location: CLLocation) -> Bool {
+        let age = Date().timeIntervalSince(location.timestamp)
+        return (0...120).contains(age) && location.horizontalAccuracy >= 0
+            && CLLocationCoordinate2DIsValid(location.coordinate)
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {

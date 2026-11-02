@@ -39,6 +39,25 @@ class DeploymentPlanTest {
         assertEquals(DeploymentPlanFailure.TOO_LARGE, error.reason)
     }
 
+    @Test fun imperialHeightsConvertBeforeValidationAndStorage() {
+        val id = "22222222-2222-4222-8222-222222222222"
+        fun input(height: String, feet: Boolean = true) = CandidateSiteInput.make(id, "Ridge",
+            listOf("29", "-98", height, "915", "0", "-3", "0", ""), heightInFeet = feet)
+        assertEquals(6.096, input("20").assumptions.antennaHeightMeters)
+        assertEquals(6.2484, input("20,5").assumptions.antennaHeightMeters)
+        assertEquals(20.0, input("20", false).assumptions.antennaHeightMeters)
+        assertNull(input("").assumptions.antennaHeightMeters)
+        assertEquals(0.0, input("0").assumptions.antennaHeightMeters)
+        assertEquals(10_000.0, input((10_000 / 0.3048).toString()).assumptions.antennaHeightMeters)
+        for (text in listOf("-1", "32809", "1e999", "nan", "20 ft")) {
+            assertThrows(DeploymentPlanException::class.java) { input(text) }
+        }
+        val site = input("20")
+        val plan = DeploymentPlan(id, "Plan", 0, 0, site.id, listOf(site))
+        val decoded = DeploymentPlanCodec.decode(DeploymentPlanCodec.encode(DeploymentPlanDocument(1, listOf(plan))))
+        assertEquals(6.096, decoded.plans.single().sites.single().assumptions.antennaHeightMeters)
+    }
+
     @Test fun missingAssumptionsStayUnknown() {
         val fixture = fixtures().first { it.jsonObject.getValue("name").jsonPrimitive.content == "unspecified_assumptions" }
         val document = DeploymentPlanCodec.decode(fixture.jsonObject.getValue("document").toString().toByteArray())

@@ -207,18 +207,27 @@ private struct CandidateSiteEditor: View {
     @State private var error: LocalizedStringResource?
     @State private var confirmDiscard = false
     @State private var showsMap = false
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var locationManager = MapLocationManager()
+    @State private var locating = false
+    @State private var locationMessage: LocalizedStringResource?
+    @State private var heightInFeet: Bool
     private let originalName: String
-    private let originalValues: [String]
+    @State private var originalValues: [String]
 
     init(site: CandidateSite?, apply: @escaping (CandidateSite) -> Void) {
         self.site = site
         self.apply = apply
-        let fields = [site?.latitude, site?.longitude, site?.assumptions.antennaHeightMeters,
+        // Freeze the display unit for this draft so typed numbers never change meaning.
+        let unit = UserDefaults.standard.string(forKey: DistanceUnit.defaultsKey).flatMap(DistanceUnit.init(rawValue:)) ?? .imperial
+        _heightInFeet = State(initialValue: unit == .imperial)
+        let displayedHeight = site?.assumptions.antennaHeightMeters.map { unit == .imperial ? $0 / 0.3048 : $0 }
+        let fields = [site?.latitude, site?.longitude, displayedHeight,
                       site?.assumptions.frequencyMHz, site?.assumptions.transmitPowerDBm,
                       site?.assumptions.antennaGainDBi, site?.assumptions.cableLossDB, site?.assumptions.additionalLossDB]
         let text = fields.map { $0.map { String($0) } ?? "" }
         originalName = site?.name ?? ""
-        originalValues = text
+        _originalValues = State(initialValue: text)
         _name = State(initialValue: site?.name ?? "")
         _values = State(initialValue: text)
     }
@@ -228,11 +237,30 @@ private struct CandidateSiteEditor: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     TextField("Site name", text: $name).font(.monaspace(.body)).textFieldStyle(.roundedBorder)
-                    Text("Coordinates are required. Leave unknown equipment values blank. Use meters and decimal degrees; a minus sign means south or west.")
+                    Text("Coordinates are required. Leave unknown equipment values blank. Coordinates use decimal degrees; a minus sign means south or west.")
                         .font(.subheadline).foregroundStyle(.secondary)
-                    Button("Choose on map", systemImage: "map") { showsMap = true }
+                    Button("Choose on map", systemImage: "map") { showsMap = true }.disabled(locating)
+                    Button("Use current location", systemImage: "location") {
+                        locating = true
+                        locationMessage = nil
+                        locationManager.requestCurrentLocation { coordinate in
+                            values[0] = String(coordinate.latitude)
+                            values[1] = String(coordinate.longitude == 180 ? -180 : coordinate.longitude)
+                            locating = false
+                            locationMessage = "Location added to this draft. Check the pin on the map, especially when using approximate location."
+                        } failure: {
+                            locating = false
+                            locationMessage = "Couldn't get your location. Check location permission and services in Settings, or choose a point on the map."
+                        }
+                    }.disabled(locating)
+                    if locating {
+                        ProgressView("Finding location…")
+                        Button("Cancel location request") { locationManager.cancelRequest(); locating = false }
+                    }
+                    if let locationMessage { Text(locationMessage).font(.caption).foregroundStyle(.secondary) }
                     ForEach(CandidateInputField.allCases) { field in
-                        CandidateNumericField(field: field, value: $values[field.rawValue])
+                        CandidateNumericField(field: field, heightInFeet: heightInFeet, value: $values[field.rawValue])
+                            .disabled(locating)
                     }
                     if let error { Text(error).foregroundStyle(.red) }
                 }.padding().frame(maxWidth: 640).frame(maxWidth: .infinity)
@@ -242,20 +270,24 @@ private struct CandidateSiteEditor: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
+                        locationManager.cancelRequest()
+                        locating = false
                         if name != originalName || values != originalValues { confirmDiscard = true } else { dismiss() }
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Apply") {
                         do {
-                            let result = try CandidateSiteInput.make(id: site?.id ?? UUID().uuidString.lowercased(),
-                                                                     name: name, values: values)
+                            var result = try CandidateSiteInput.make(id: site?.id ?? UUID().uuidString.lowercased(),
+                                                                     name: name, values: values, heightInFeet: heightInFeet)
+                            // Reopening and applying an untouched field must preserve its exact stored value.
+                            if values[2] == originalValues[2] { result.assumptions.antennaHeightMeters = site?.assumptions.antennaHeightMeters }
                             apply(result)
                             dismiss()
                         } catch {
                             self.error = "Check the site name, coordinates, and displayed numeric ranges. Try a shorter name if needed. Optional fields may be blank."
                         }
-                    }
+                    }.disabled(locating)
                 }
             }
             .sheet(isPresented: $showsMap) {
@@ -271,7 +303,12 @@ private struct CandidateSiteEditor: View {
                 Button("Discard changes", role: .destructive) { dismiss() }
                 Button("Keep editing", role: .cancel) {}
             }
-        }.interactiveDismissDisabled(name != originalName || values != originalValues)
+        }
+        .onDisappear { locationManager.cancelRequest(); locating = false }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { locationManager.cancelRequest(); locating = false }
+        }
+        .interactiveDismissDisabled(name != originalName || values != originalValues)
     }
 }
 
@@ -305,11 +342,19 @@ private enum CandidateInputField: Int, CaseIterable, Identifiable {
 
 private struct CandidateNumericField: View {
     let field: CandidateInputField
+    let heightInFeet: Bool
+    private var title: LocalizedStringKey {
+        field == .height && heightInFeet ? "Antenna height (ft)" : field.title
+    }
     @Binding var value: String
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            LearnLabel(field.title, term: field.term)
-            TextField(field.title, text: $value)
+            LearnLabel(title, term: field.term)
+            if field == .height && heightInFeet {
+                Text("Range: 0 to 10,000 meters (about 32,808 feet).")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            TextField(title, text: $value)
                 .font(.monaspace(.body)).keyboardType(.numbersAndPunctuation)
                 .textFieldStyle(.roundedBorder).autocorrectionDisabled()
         }.padding().instrumentCard()

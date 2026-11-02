@@ -1,5 +1,19 @@
 package org.nodescope.android.feature.candidatesites
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import org.nodescope.android.core.design.LocalDistanceUnit
+import org.nodescope.android.core.storage.DistanceUnit
+import org.nodescope.android.feature.map.LOCATION_PERMISSIONS
+import org.nodescope.android.feature.map.LocationResult
+import org.nodescope.android.feature.map.currentLocation
+import org.nodescope.android.feature.map.hasLocationPermission
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -144,7 +158,11 @@ private enum class CandidateInputField(val label: String, val term: GlossaryTerm
 
 @Composable
 private fun CandidateSiteEditor(site: CandidateSite?, close: () -> Unit, apply: (CandidateSite) -> Unit) {
-    val original = remember(site) { listOf(site?.latitude, site?.longitude, site?.assumptions?.antennaHeightMeters,
+    val preference = LocalDistanceUnit.current
+    // Keep this draft's unit stable across recomposition and activity recreation.
+    val heightInFeet = rememberSaveable { preference == DistanceUnit.IMPERIAL }
+    val original = remember(site, heightInFeet) { listOf(site?.latitude, site?.longitude,
+        site?.assumptions?.antennaHeightMeters?.let { if (heightInFeet) it / 0.3048 else it },
         site?.assumptions?.frequencyMHz, site?.assumptions?.transmitPowerDBm, site?.assumptions?.antennaGainDBi,
         site?.assumptions?.cableLossDB, site?.assumptions?.additionalLossDB).map { it?.toString().orEmpty() } }
     var name by rememberSaveable { mutableStateOf(site?.name.orEmpty()) }
@@ -152,25 +170,84 @@ private fun CandidateSiteEditor(site: CandidateSite?, close: () -> Unit, apply: 
     var showsMap by rememberSaveable { mutableStateOf(false) }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
     var discard by rememberSaveable { mutableStateOf(false) }
-    val cancel = { if (name != site?.name.orEmpty() || values != original) discard = true else close() }
+    val context = LocalContext.current
+    val locationScope = rememberCoroutineScope()
+    var locating by remember { mutableStateOf(false) }
+    var locationJob by remember { mutableStateOf<Job?>(null) }
+    var locationMessage by remember { mutableStateOf<String?>(null) }
+    fun locate() {
+        locationJob = locationScope.launch {
+            try {
+                when (val result = currentLocation(context)) {
+                    is LocationResult.Found -> {
+                        values = values.toMutableList().also {
+                            it[0] = result.coordinate.latitude.toString()
+                            it[1] = (if (result.coordinate.longitude == 180.0) -180.0 else result.coordinate.longitude).toString()
+                        }
+                        locationMessage = "Location added to this draft. Check the pin on the map, especially when using approximate location."
+                    }
+                    LocationResult.ServicesOff -> locationMessage = "Turn on location services, or choose a point on the map."
+                    LocationResult.Unavailable -> locationMessage = "Couldn't find your location. Try again, or choose a point on the map."
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                locationMessage = "Couldn't get your location. Check location permission and services in Settings, or choose a point on the map."
+            } finally {
+                locating = false
+            }
+        }
+    }
+    val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+        if (locating) {
+            if (grants.values.any { it }) locate()
+            else {
+                locating = false
+                locationMessage = "Location permission is off. Allow it in the app's settings, or choose a point on the map."
+            }
+        }
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { locationJob?.cancel(); locating = false }
+    val cancel = {
+        locationJob?.cancel()
+        locating = false
+        if (name != site?.name.orEmpty() || values != original) discard = true else close()
+    }
     CandidateEditorDialog(if (site == null) "Add site" else "Edit site", cancel, "Apply", {
         try {
-            val result = CandidateSiteInput.make(site?.id ?: UUID.randomUUID().toString(), name, values)
-            apply(result)
+            val result = CandidateSiteInput.make(site?.id ?: UUID.randomUUID().toString(), name, values, heightInFeet)
+            // Preserve the exact stored height when the displayed field was not edited.
+            apply(if (values[2] == original[2]) result.copy(assumptions = result.assumptions.copy(
+                antennaHeightMeters = site?.assumptions?.antennaHeightMeters)) else result)
         } catch (_: Exception) {
             error = "Check the site name, coordinates, and displayed numeric ranges. Try a shorter name if needed. Optional fields may be blank."
         }
-    }, true, false) {
+    }, !locating, false) {
         OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = { Text("Site name") }, singleLine = true,
             textStyle = LocalTextStyle.current.copy(fontFamily = MonaspaceNeon))
-        Text("Coordinates are required. Leave unknown equipment values blank. Use meters and decimal degrees; a minus sign means south or west.")
-        TextButton(onClick = { showsMap = true }) { Text("Choose on map") }
+        Text("Coordinates are required. Leave unknown equipment values blank. Coordinates use decimal degrees; a minus sign means south or west.")
+        TextButton(onClick = { showsMap = true }, enabled = !locating) { Text("Choose on map") }
+        TextButton(onClick = {
+            locating = true
+            locationMessage = null
+            if (hasLocationPermission(context)) locate() else locationPermission.launch(LOCATION_PERMISSIONS)
+        }, enabled = !locating) { Text("Use current location") }
+        if (locating) {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+            Text("Finding location…")
+            TextButton(onClick = { locationJob?.cancel(); locating = false }) { Text("Cancel location request") }
+        }
+        locationMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         CandidateInputField.entries.forEach { field -> key(field) {
+            val label = if (field == CandidateInputField.HEIGHT && heightInFeet) "Antenna height (ft)" else field.label
             Card(colors = meshCardColors(), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) { Text(field.label, Modifier.weight(1f)); LearnButton(field.term) }
+                    Row(verticalAlignment = Alignment.CenterVertically) { Text(label, Modifier.weight(1f)); LearnButton(field.term) }
+                    if (field == CandidateInputField.HEIGHT && heightInFeet) {
+                        Text("Range: 0 to 10,000 meters (about 32,808 feet).", style = MaterialTheme.typography.bodySmall)
+                    }
                     OutlinedTextField(values[field.ordinal], { text -> values = values.toMutableList().also { it[field.ordinal] = text } },
-                        Modifier.fillMaxWidth(), singleLine = true, label = { Text(field.label) },
+                        Modifier.fillMaxWidth(), singleLine = true, enabled = !locating, label = { Text(label) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                         textStyle = LocalTextStyle.current.copy(fontFamily = MonaspaceNeon))
                 }
