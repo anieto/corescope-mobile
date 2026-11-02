@@ -422,12 +422,14 @@ private struct BeaconPacketSummary: View {
         List {
             if viewModel.isLoading {
                 ProgressView("Loading packet…")
+                    .instrumentListRows()
             }
             if let error = viewModel.errorMessage {
                 Section {
                     Text(error).foregroundStyle(.secondary)
                     Button("Retry") { retryID = UUID() }
                 }
+                .instrumentListRows()
             }
             Section("Packet") {
                 PacketDetailField(title: "Type", value: PayloadType.name(for: row.payloadType),
@@ -436,6 +438,7 @@ private struct BeaconPacketSummary: View {
                 PacketDetailField(title: "Observations", value: max(viewModel.detail?.observationCount ?? 0, row.observationCount).formatted(),
                                   learn: .observation)
             }
+            .instrumentListRows()
             Section("Heard") {
                 LabeledContent("First seen") {
                     if let date = viewModel.detail?.packet.firstSeen ?? row.firstSeen {
@@ -450,6 +453,7 @@ private struct BeaconPacketSummary: View {
                     LearnLabel("Last heard", term: .lastHeard)
                 }
             }
+            .instrumentListRows()
             if let detail = viewModel.detail {
                 BeaconPacketObservations(observations: detail.observations)
                 Section {
@@ -492,6 +496,7 @@ private struct BeaconPacketSummary: View {
                 } header: {
                     LearnLabel("Route", term: .route)
                 }
+                .instrumentListRows()
             }
         }
         .meshPageBackground()
@@ -1279,10 +1284,12 @@ private struct LivePacketFiltersSheet: View {
                             regionButton(code: code, title: regionFilter.label(for: code))
                         }
                     }
+                    .instrumentListRows()
                 } else {
                     Section("Region") {
                         regionButton(code: nil, title: "Entire Network")
                     }
+                    .instrumentListRows()
                     Section("Region groups") {
                         ForEach(regionFilter.availablePicks, id: \.self) { pick in
                             selectionButton(title: pick.name, isSelected: regionFilter.isSelected(pick)) {
@@ -1290,11 +1297,13 @@ private struct LivePacketFiltersSheet: View {
                             }
                         }
                     }
+                    .instrumentListRows()
                     Section("Regions") {
                         ForEach(regionFilter.options, id: \.self) { code in
                             regionButton(code: code, title: regionFilter.label(for: code))
                         }
                     }
+                    .instrumentListRows()
                 }
 
                 Section("Packet Type") {
@@ -1303,6 +1312,7 @@ private struct LivePacketFiltersSheet: View {
                         packetTypeButton(type: type.rawValue, title: type.name)
                     }
                 }
+                .instrumentListRows()
             }
             .meshPageBackground()
             .navigationTitle("Live Packet Filters")
@@ -1372,12 +1382,14 @@ private struct LivePacketDetailScreen: View {
                 detailRow("Observations", value: "\(group.observationCount)", learn: .observation)
                 detailRow("Received", value: group.latestReceivedAt.formatted(date: .omitted, time: .standard))
             }
+            .instrumentListRows()
 
             if let preview = data.decoded?.payload?.text ?? data.decoded?.payload?.name, !preview.isEmpty {
                 Section("Payload") {
                     Text(preview)
                         .textSelection(.enabled)
                 }
+                .instrumentListRows()
             }
 
             Section("Observations") {
@@ -1415,6 +1427,7 @@ private struct LivePacketDetailScreen: View {
                     }
                 }
             }
+            .instrumentListRows()
 
             if !routeHops.isEmpty {
                 Section {
@@ -1448,6 +1461,7 @@ private struct LivePacketDetailScreen: View {
                 } header: {
                     LearnLabel("Route", term: .route)
                 }
+                .instrumentListRows()
                 .id(routeSectionID)
             }
 
@@ -1457,6 +1471,7 @@ private struct LivePacketDetailScreen: View {
                         .font(.monaspace(.caption))
                         .textSelection(.enabled)
                 }
+                .instrumentListRows()
             }
         }
         }

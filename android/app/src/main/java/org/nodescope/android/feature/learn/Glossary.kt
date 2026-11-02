@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import org.nodescope.android.core.design.meshCardColors
 
 @Serializable data class GlossaryEntry(val id: String, val term: String, val summary: String, val detail: String? = null)
 @Serializable data class GlossarySection(val title: String, val entries: List<GlossaryEntry>)
@@ -174,8 +175,8 @@ private fun GlossaryList(focus: GlossaryTerm?, modifier: Modifier = Modifier) {
             }
             items(section.entries, key = { it.id }) { entry ->
                 val focused = entry.id == focus?.id
-                Card(colors = CardDefaults.cardColors(
-                    containerColor = if (focused) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow)) {
+                Card(colors = if (focused) CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                    else meshCardColors()) {
                     Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(entry.term, style = MaterialTheme.typography.titleMedium)
                         Text(entry.summary, style = MaterialTheme.typography.bodyMedium)

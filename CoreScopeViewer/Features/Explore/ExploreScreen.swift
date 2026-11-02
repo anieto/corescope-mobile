@@ -396,9 +396,11 @@ private struct FavoritesScreen: View {
                     Label("Activity", systemImage: "waveform.path")
                 }
             }
+            .instrumentListRows()
             if items.isEmpty {
                 ContentUnavailableView("No favorites yet", systemImage: "star",
                     description: Text("Add a node here, or save observers and channels from their detail pages."))
+                    .instrumentListRows()
             }
             favoriteSection(kind: .channel, title: "Channels")
             favoriteSection(kind: .node, title: "Nodes")
@@ -438,6 +440,7 @@ private struct FavoritesScreen: View {
                     .foregroundStyle(.secondary)
                     .textCase(nil)
             }
+            .instrumentListRows()
         }
     }
 
@@ -881,6 +884,7 @@ private struct GlanceCustomizationSheet: View {
                 } footer: {
                     Text("Drag metrics into your preferred order and hide the ones you don’t need.")
                 }
+                .instrumentListRows()
             }
             .environment(\.editMode, .constant(.active))
             .meshPageBackground()

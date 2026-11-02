@@ -39,6 +39,7 @@ struct AnalyzerDiagnosticsScreen: View {
             } footer: {
                 Text("Diagnostics make read-only requests to the selected analyzer. No settings or analyzer data are changed.")
             }
+            .instrumentListRows()
         }
         .meshPageBackground()
         .navigationTitle("Analyzer Diagnostics")
@@ -108,6 +109,7 @@ private struct AnalyzerDiagnosticSummarySection: View {
                 }
             }
         }
+        .instrumentListRows()
     }
 }
 
@@ -128,6 +130,7 @@ private struct AnalyzerLiveUpdatesSection: View {
         } footer: {
             Text("The live stream uses a separate WebSocket connection, so it can reconnect independently of the read-only API.")
         }
+        .instrumentListRows()
     }
 
     private var detail: String {
@@ -175,6 +178,7 @@ private struct AnalyzerCapabilitiesSection: View {
                 )
             }
         }
+        .instrumentListRows()
     }
 }
 

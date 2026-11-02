@@ -116,6 +116,7 @@ struct SupportDevelopmentScreen: View {
                         }
                     }
                 }
+                .instrumentListRows()
             }
         }
         .adaptiveContentWidth()
@@ -164,6 +165,7 @@ private struct SupportDevelopmentIntroduction: View {
             .padding(.vertical, 8)
             .listRowBackground(Color.clear)
         }
+        .instrumentListRows()
     }
 }
 
@@ -199,6 +201,7 @@ private struct DevelopmentTipsSection: View {
         } footer: {
             Text("Tips are one-time purchases. They don't unlock features or include goods, services, or membership benefits.")
         }
+        .instrumentListRows()
     }
 }
 

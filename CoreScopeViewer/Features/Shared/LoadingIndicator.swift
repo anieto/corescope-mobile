@@ -123,6 +123,18 @@ struct InstrumentCardModifier: ViewModifier {
     }
 }
 
+/// Row surface for grouped Lists and Forms. It uses the same fill as `instrumentCard()`, so
+/// settings-style lists match the app's cards instead of the opaque system grey.
+struct InstrumentRowBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        colorScheme == .dark
+            ? NodeScopeStyle.cardSlate.opacity(0.82)
+            : Color.white.opacity(0.86)
+    }
+}
+
 private struct AdaptiveScrollContentWidthModifier: ViewModifier {
     let maxWidth: CGFloat
 
@@ -176,6 +188,11 @@ private struct AdaptiveSidebarListModifier: ViewModifier {
 extension View {
     func instrumentCard(isSelected: Bool = false, fillOpacity: Double = 0.80) -> some View {
         modifier(InstrumentCardModifier(isSelected: isSelected, fillOpacity: fillOpacity))
+    }
+
+    /// Gives grouped List or Form rows the card surface. Apply to each Section.
+    func instrumentListRows() -> some View {
+        listRowBackground(InstrumentRowBackground())
     }
 
     /// Keeps information-dense phone layouts readable on iPad while naturally

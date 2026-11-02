@@ -96,6 +96,7 @@ struct RegionFilterSelectionScreen: View {
             } label: {
                 selectionLabel(title: "Entire Network", isSelected: regionFilter.selectedRegion == nil)
             }
+            .instrumentListRows()
 
             if !regionFilter.availablePicks.isEmpty {
                 Section("Region groups") {
@@ -107,12 +108,14 @@ struct RegionFilterSelectionScreen: View {
                         }
                     }
                 }
+                .instrumentListRows()
             }
 
             if regionFilter.availablePicks.isEmpty {
                 regionRows
             } else {
                 Section("Regions") { regionRows }
+                    .instrumentListRows()
             }
         }
         .meshPageBackground()

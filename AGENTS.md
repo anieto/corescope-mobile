@@ -6,6 +6,7 @@ When creating or changing SwiftUI screens in `CoreScopeViewer`, follow the share
 - For adaptive sidebar lists, use `.adaptiveSidebarListStyle(meshBackground: true)` instead of adding another mesh background.
 - Keep the background attached to the page viewport, outside its scrolling content, so the pattern stays still while scrolling.
 - Cards, list rows, and reusable controls should not add their own mesh. Preserve their readable surfaces over the page background.
+- Grouped List and Form screens apply `.instrumentListRows()` to every Section, and to any row outside a Section, so rows use the same surface as `instrumentCard()` instead of the opaque system grey. Plain lists that draw their own card rows don't need it.
 - Keep actual maps and dedicated chart workspaces, including Node Analytics, free of decorative mesh. Link Profile uses subdued mesh behind its editor and compact controls panel, with an opaque result-card surface protecting the terrain chart. Sheets opened from these screens can use the standard subdued mesh.
 - Reserve the full-strength `MeshBackground()` treatment for About and Settings unless the user requests otherwise. Use the subdued page helper for new screens by default.
 - Reuse `Features/Shared/MeshBackground.swift`; do not duplicate its drawing code or introduce separate per-screen palettes.

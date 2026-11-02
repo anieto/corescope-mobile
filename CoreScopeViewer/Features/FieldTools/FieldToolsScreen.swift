@@ -421,6 +421,7 @@ struct FieldToolsScreen: View {
     @State private var showsTargetDetails = false
     @State private var displayedMapItems: [FieldCatalogItem] = []
     @State private var visibleMapRect: MKMapRect?
+    @State private var lastFramedReference: FieldCoordinate?
 
     init(
         initialReference: FieldCoordinate? = nil,
@@ -434,6 +435,19 @@ struct FieldToolsScreen: View {
         let initialItem = initialNode.map(FieldCatalogItem.node) ?? initialObserver.map(FieldCatalogItem.observer)
         _selectedItem = State(initialValue: initialItem)
         _pinnedItem = State(initialValue: initialItem)
+        // Without a starting point there is nothing else to frame, so open on the target itself
+        // instead of letting the map fall back to a whole-continent view.
+        if let coordinate = initialItem?.coordinate {
+            if let initialReference {
+                _position = State(initialValue: .rect(Self.guidanceRect(from: initialReference, to: coordinate)))
+                _lastFramedReference = State(initialValue: initialReference)
+            } else {
+                _position = State(initialValue: .region(MKCoordinateRegion(
+                    center: coordinate.clLocationCoordinate,
+                    span: MKCoordinateSpan(latitudeDelta: 0.03, longitudeDelta: 0.03)
+                )))
+            }
+        }
     }
 
     var body: some View {
@@ -462,10 +476,19 @@ struct FieldToolsScreen: View {
         .onChange(of: locationSession.sample) { _, sample in
             guard usesDeviceReference, let sample else { return }
             model.reference = sample.coordinate
-            position = .region(MKCoordinateRegion(
-                center: sample.coordinate.clLocationCoordinate,
-                span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
-            ))
+            if let target = pinnedItem?.coordinate {
+                // Reframe only after a real move, so GPS jitter doesn't keep nudging the map.
+                if let lastFramedReference,
+                   FieldGeometry.geometry(from: lastFramedReference, to: sample.coordinate).distanceMeters < 40 {
+                    return
+                }
+                frameGuidance(from: sample.coordinate, to: target)
+            } else {
+                position = .region(MKCoordinateRegion(
+                    center: sample.coordinate.clLocationCoordinate,
+                    span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
+                ))
+            }
         }
         .onChange(of: model.visibleItems) { _, items in
             if let pinnedItem,
@@ -480,6 +503,9 @@ struct FieldToolsScreen: View {
         }
         .onChange(of: pinnedItem?.id) {
             updateDisplayedMapItems(from: model.visibleItems)
+            if let reference = model.reference, let target = pinnedItem?.coordinate {
+                frameGuidance(from: reference, to: target)
+            }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active, usesDeviceReference {
@@ -712,6 +738,16 @@ struct FieldToolsScreen: View {
                             .stroke(NodeScopeStyle.activity, style: StrokeStyle(lineWidth: 3, dash: [7, 5]))
                     }
 
+                    // Always show the chosen target: before a starting point is set the other markers
+                    // are hidden, and a target missing from the current catalog wouldn't be drawn.
+                    if let target = pinnedItem ?? selectedItem,
+                       model.reference == nil || accessibilityVoiceOverEnabled || !displayedMapItems.contains(target),
+                       let coordinate = target.coordinate {
+                        Annotation(target.name, coordinate: coordinate.clLocationCoordinate) {
+                            FieldMapMarker(symbol: target.symbol, color: NodeScopeStyle.activity)
+                        }
+                    }
+
                     if model.reference != nil && !accessibilityVoiceOverEnabled {
                         ForEach(displayedMapItems) { item in
                             if let coordinate = item.coordinate {
@@ -752,7 +788,9 @@ struct FieldToolsScreen: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text(selectedItem?.name ?? String(localized: "Field Map"))
+                    Text(horizontalSizeClass == .compact
+                        ? String(localized: "Field Map")
+                        : selectedItem?.name ?? String(localized: "Field Map"))
                         .font(.monaspace(.headline))
                         .padding(.horizontal, 14)
                         .frame(minHeight: 44)
@@ -799,42 +837,23 @@ struct FieldToolsScreen: View {
             if let target = pinnedItem ?? selectedItem {
                 VStack {
                     Spacer()
-                    VStack(spacing: 8) {
-                        if model.reference == nil {
-                            FieldGettingStartedCard(
-                                hasStartingPoint: false,
-                                nearbyCount: model.visibleItems.count,
-                                useMyLocation: { showsLocationExplanation = true },
-                                enterCoordinates: { showsCoordinateEntry = true },
-                                showNearby: { showsNearbySheet = true }
-                            )
-                        }
-                        FieldTargetSummary(
-                            name: target.name,
-                            subtitle: target.subtitle,
-                            geometry: geometry(for: target),
-                            headingSample: usesDeviceReference && pinnedItem?.id == target.id
-                                ? locationSession.headingSample
-                                : nil,
-                            headingStatus: usesDeviceReference && pinnedItem?.id == target.id
-                                ? locationSession.headingStatus
-                                : .idle,
-                            isPinned: pinnedItem?.id == target.id,
-                            pin: { pinnedItem = target },
-                            unpin: { pinnedItem = nil }
-                        )
-                        if pinnedItem?.id == target.id {
-                            Button {
-                                showsTargetDetails = true
-                            } label: {
-                                Label("Network Evidence & Actions", systemImage: "waveform.path.ecg")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.large)
-                            .frame(maxWidth: 520)
-                        }
-                    }
+                    FieldGuidancePanel(
+                        name: target.name,
+                        subtitle: target.subtitle,
+                        geometry: geometry(for: target),
+                        headingSample: usesDeviceReference && pinnedItem?.id == target.id
+                            ? locationSession.headingSample
+                            : nil,
+                        headingStatus: usesDeviceReference && pinnedItem?.id == target.id
+                            ? locationSession.headingStatus
+                            : .idle,
+                        isPinned: pinnedItem?.id == target.id,
+                        pin: { pinnedItem = target },
+                        unpin: { pinnedItem = nil },
+                        useMyLocation: { showsLocationExplanation = true },
+                        enterCoordinates: { showsCoordinateEntry = true },
+                        showDetails: { showsTargetDetails = true }
+                    )
                     .padding(12)
                     .padding(.bottom, 24)
                 }
@@ -874,10 +893,47 @@ struct FieldToolsScreen: View {
         locationSession.stop()
         usesDeviceReference = false
         model.reference = coordinate
-        position = .region(MKCoordinateRegion(
-            center: coordinate.clLocationCoordinate,
-            span: MKCoordinateSpan(latitudeDelta: 0.2, longitudeDelta: 0.2)
-        ))
+        if let target = pinnedItem?.coordinate {
+            frameGuidance(from: coordinate, to: target)
+        } else {
+            position = .region(MKCoordinateRegion(
+                center: coordinate.clLocationCoordinate,
+                span: MKCoordinateSpan(latitudeDelta: 0.2, longitudeDelta: 0.2)
+            ))
+        }
+    }
+
+    /// Fits the starting point and the target on screen, leaving room for the controls at the top
+    /// and most of all for the guidance panel at the bottom.
+    private func frameGuidance(from reference: FieldCoordinate, to target: FieldCoordinate) {
+        lastFramedReference = reference
+        withAnimation(.easeInOut(duration: 0.4)) {
+            position = .rect(Self.guidanceRect(from: reference, to: target))
+        }
+    }
+
+    private static func guidanceRect(from reference: FieldCoordinate, to target: FieldCoordinate) -> MKMapRect {
+        let start = MKMapPoint(reference.clLocationCoordinate)
+        let end = MKMapPoint(target.clLocationCoordinate)
+        var rect = MKMapRect(
+            x: min(start.x, end.x),
+            y: min(start.y, end.y),
+            width: abs(start.x - end.x),
+            height: abs(start.y - end.y)
+        )
+        let minimumSide = 800 * MKMapPointsPerMeterAtLatitude(reference.latitude)
+        rect = rect.insetBy(
+            dx: -max(0, (minimumSide - rect.width) / 2),
+            dy: -max(0, (minimumSide - rect.height) / 2)
+        )
+        let width = rect.width
+        let height = rect.height
+        return MKMapRect(
+            x: rect.minX - width * 0.2,
+            y: rect.minY - height * 0.4,
+            width: width * 1.4,
+            height: height * 2.4
+        )
     }
 
     private func showCanvas() {
@@ -1000,7 +1056,9 @@ private struct FieldGettingStartedCard: View {
     }
 }
 
-private struct FieldTargetSummary: View {
+/// The bottom panel for a chosen node or observer: its name, then the direction dial and distance
+/// once a starting point is set, or the ways to set one before that.
+private struct FieldGuidancePanel: View {
     let name: String
     let subtitle: String
     let geometry: FieldGeometryResult?
@@ -1009,81 +1067,214 @@ private struct FieldTargetSummary: View {
     let isPinned: Bool
     let pin: () -> Void
     let unpin: () -> Void
+    let useMyLocation: () -> Void
+    let enterCoordinates: () -> Void
+    let showDetails: () -> Void
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 12) {
-                identity
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(name)
+                        .font(.monaspace(.headline))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 Spacer(minLength: 8)
-                FieldCompassGuidance(
-                    trueBearingDegrees: geometry?.initialBearingDegrees,
-                    headingSample: headingSample,
-                    status: headingStatus
-                )
-                distance
-                pinButton
+                if isPinned {
+                    Button("Stop", systemImage: "xmark", action: unpin)
+                        .font(.subheadline.weight(.semibold))
+                        .buttonStyle(.bordered)
+                        .buttonBorderShape(.capsule)
+                        .accessibilityLabel("Stop Guidance")
+                }
             }
 
-            VStack(alignment: .leading, spacing: 10) {
-                identity
-                HStack {
-                    FieldCompassGuidance(
-                        trueBearingDegrees: geometry?.initialBearingDegrees,
+            if let geometry {
+                HStack(spacing: 16) {
+                    FieldDirectionDial(
+                        trueBearingDegrees: geometry.initialBearingDegrees,
                         headingSample: headingSample,
                         status: headingStatus
                     )
-                    distance
-                    Spacer()
-                    pinButton
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(Measurement(value: geometry.distanceMeters, unit: UnitLength.meters),
+                             format: .measurement(width: .abbreviated, usage: .road))
+                            .font(.monaspace(.title).weight(.bold))
+                            .minimumScaleFactor(0.7)
+                            .lineLimit(1)
+                        Text(bearingLine(for: geometry))
+                            .font(.monaspace(.footnote))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Choose where you're starting from to see distance and direction.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) { startingPointActions }
+                        VStack(spacing: 8) { startingPointActions }
+                    }
+                    Label("Or tap the map to choose a place", systemImage: "hand.tap")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
+
+            if isPinned {
+                Divider()
+                Button(action: showDetails) {
+                    HStack {
+                        Label("Network Evidence & Actions", systemImage: "waveform.path.ecg")
+                            .font(.subheadline.weight(.semibold))
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(NodeScopeStyle.signal)
+            } else {
+                Button(action: pin) {
+                    Label("Guide Me", systemImage: "location.north")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .tint(NodeScopeStyle.signal)
+                .foregroundStyle(NodeScopeStyle.deepNavy)
+            }
         }
-        .padding(14)
-        .instrumentCard(isSelected: isPinned)
+        .padding(16)
+        // Nearly opaque: this sits over a busy map, and street labels must not show through.
+        .instrumentCard(fillOpacity: 0.96)
         .frame(maxWidth: 520)
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
     }
 
-    private var identity: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(name)
-                .font(.monaspace(.headline))
-                .fixedSize(horizontal: false, vertical: true)
-            Text(subtitle)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+    private func bearingLine(for geometry: FieldGeometryResult) -> String {
+        var parts: [String] = []
+        if let bearing = geometry.initialBearingDegrees {
+            let degrees = bearing.formatted(.number.precision(.fractionLength(0)))
+            if let direction = geometry.cardinalDirection {
+                parts.append("\(degrees)° \(direction.rawValue)")
+            } else {
+                parts.append("\(degrees)°")
+            }
         }
+        if let headingSample {
+            parts.append("±\(headingSample.accuracyDegrees.formatted(.number.precision(.fractionLength(0))))°")
+        } else if headingStatus == .calibrating {
+            parts.append(String(localized: "Calibrating"))
+        } else {
+            parts.append(String(localized: "North up"))
+        }
+        return parts.joined(separator: " · ")
     }
 
     @ViewBuilder
-    private var distance: some View {
-        if let geometry {
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(Measurement(value: geometry.distanceMeters, unit: UnitLength.meters),
-                     format: .measurement(width: .abbreviated, usage: .road))
-                    .font(.subheadline.weight(.semibold))
-                if let direction = geometry.cardinalDirection {
-                    Text("\(geometry.initialBearingDegrees ?? 0, format: .number.precision(.fractionLength(0)))° true · \(direction.rawValue)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        } else {
-            Text("Set a reference for distance")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private var pinButton: some View {
-        Button(action: isPinned ? unpin : pin) {
-            Label(isPinned ? "Stop Guidance" : "Guide Me", systemImage: isPinned ? "xmark" : "location.north")
+    private var startingPointActions: some View {
+        Button(action: useMyLocation) {
+            Label("Use My Location", systemImage: "location.fill")
+                .frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .tint(isPinned ? NodeScopeStyle.activity : NodeScopeStyle.signal)
+        .tint(NodeScopeStyle.signal)
         .foregroundStyle(NodeScopeStyle.deepNavy)
+
+        Button(action: enterCoordinates) {
+            Label("Enter Coordinates", systemImage: "number")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
+    }
+}
+
+/// A compass dial pointing at the target. With a device heading, the arrow is relative to the top of
+/// the phone and the N mark turns with it; without one the dial is north-up, like the map.
+private struct FieldDirectionDial: View {
+    let trueBearingDegrees: Double?
+    let headingSample: FieldHeadingSample?
+    let status: FieldHeadingStatus
+    @Environment(\.colorScheme) private var colorScheme
+    /// Running angles that keep turning past 360° instead of wrapping, so crossing north animates a
+    /// few degrees rather than spinning most of the way around.
+    @State private var displayedArrowAngle: Double?
+    @State private var displayedNorthAngle: Double = 0
+
+    private var deviceHeading: Double { headingSample?.trueHeadingDegrees ?? 0 }
+
+    private var arrowRotation: Double? {
+        guard let trueBearingDegrees else { return nil }
+        return FieldGeometry.relativeHeadingRotation(
+            trueBearingDegrees: trueBearingDegrees,
+            deviceTrueHeadingDegrees: deviceHeading
+        )
+    }
+
+    var body: some View {
+        let accent = NodeScopeStyle.signal.readableForeground(for: colorScheme)
+        ZStack {
+            Circle()
+                .fill(NodeScopeStyle.signal.opacity(colorScheme == .dark ? 0.14 : 0.10))
+            Circle()
+                .strokeBorder(NodeScopeStyle.signal.opacity(0.45), lineWidth: 1.5)
+            Text("N")
+                .font(.monaspace(.caption2).weight(.bold))
+                .foregroundStyle(.secondary)
+                .offset(y: -27)
+                .rotationEffect(.degrees(displayedNorthAngle))
+            if let displayedArrowAngle {
+                Image(systemName: "location.north.fill")
+                    .font(.system(size: 26, weight: .semibold))
+                    .foregroundStyle(accent)
+                    .rotationEffect(.degrees(displayedArrowAngle))
+            } else if status == .unavailable {
+                Image(systemName: "location.slash")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 72, height: 72)
+        .onAppear {
+            displayedArrowAngle = arrowRotation
+            displayedNorthAngle = -deviceHeading
+        }
+        .onChange(of: arrowRotation) { _, target in
+            guard let target else {
+                displayedArrowAngle = nil
+                return
+            }
+            withAnimation(.easeOut(duration: 0.25)) {
+                displayedArrowAngle = FieldGeometry.nearestEquivalentAngle(to: target, from: displayedArrowAngle)
+            }
+        }
+        .onChange(of: deviceHeading) { _, heading in
+            withAnimation(.easeOut(duration: 0.25)) {
+                displayedNorthAngle = FieldGeometry.nearestEquivalentAngle(to: -heading, from: displayedNorthAngle)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Target direction")
+        .accessibilityValue(accessibilityValue)
+    }
+
+    private var accessibilityValue: String {
+        guard let arrowRotation else { return String(localized: "Unknown") }
+        let degrees = arrowRotation.formatted(.number.precision(.fractionLength(0)))
+        if let headingSample {
+            let accuracy = headingSample.accuracyDegrees.formatted(.number.precision(.fractionLength(0)))
+            return String(localized: "\(degrees) degrees clockwise from the top of the device, accuracy plus or minus \(accuracy) degrees")
+        }
+        return String(localized: "\(degrees) degrees clockwise from north")
     }
 }
 
@@ -1318,47 +1509,6 @@ private struct FieldEvidenceFactView: View {
     }
 }
 
-private struct FieldCompassGuidance: View {
-    let trueBearingDegrees: Double?
-    let headingSample: FieldHeadingSample?
-    let status: FieldHeadingStatus
-    @Environment(\.colorScheme) private var colorScheme
-
-    private var rotation: Double? {
-        guard let trueBearingDegrees, let headingSample else { return nil }
-        return FieldGeometry.relativeHeadingRotation(
-            trueBearingDegrees: trueBearingDegrees,
-            deviceTrueHeadingDegrees: headingSample.trueHeadingDegrees
-        )
-    }
-
-    var body: some View {
-        if let rotation, let headingSample {
-            VStack(spacing: 2) {
-                Image(systemName: "location.north.fill")
-                    .font(.monaspace(.title3).weight(.semibold))
-                    .foregroundStyle(NodeScopeStyle.signal.readableForeground(for: colorScheme))
-                    .rotationEffect(.degrees(rotation))
-                    .accessibilityHidden(true)
-                Text("±\(headingSample.accuracyDegrees, format: .number.precision(.fractionLength(0)))°")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Target direction")
-            .accessibilityValue("\(rotation, format: .number.precision(.fractionLength(0))) degrees clockwise from the top of the device, accuracy plus or minus \(headingSample.accuracyDegrees, format: .number.precision(.fractionLength(0))) degrees")
-        } else if status == .calibrating {
-            ProgressView()
-                .controlSize(.small)
-                .accessibilityLabel("Calibrating compass")
-        } else if status == .unavailable {
-            Image(systemName: "location.slash")
-                .foregroundStyle(.secondary)
-                .accessibilityLabel("Compass unavailable")
-        }
-    }
-}
-
 private struct FieldLocationStatusLabel: View {
     let status: FieldLocationStatus
 
@@ -1413,12 +1563,14 @@ private struct FieldCoordinateEntrySheet: View {
                     TextField("Longitude", text: $longitude)
                         .keyboardType(.numbersAndPunctuation)
                 }
+                .instrumentListRows()
 
                 Section {
                     Text("Latitude must be between −90 and 90. Longitude must be between −180 and 180.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                .instrumentListRows()
             }
             .meshPageBackground()
             .navigationTitle("Enter Coordinates")

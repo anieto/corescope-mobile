@@ -33,6 +33,7 @@ struct StorageSettingsScreen: View {
             } footer: {
                 Text("Current content can remain visible while NodeScope fetches fresh data. New requests will no longer use cached responses.")
             }
+            .instrumentListRows()
         }
         .meshPageBackground()
         .navigationTitle("Storage")
@@ -112,6 +113,7 @@ private struct StorageUsageSection: View {
                 .foregroundStyle(.secondary)
             }
         }
+        .instrumentListRows()
     }
 
     private var formattedSize: String {
@@ -145,6 +147,7 @@ private struct StorageContentsSection: View {
         } footer: {
             Text("Favorites, monitored-channel keys, recent items, app preferences, and your selected analyzer are stored separately and are never removed here.")
         }
+        .instrumentListRows()
     }
 }
 

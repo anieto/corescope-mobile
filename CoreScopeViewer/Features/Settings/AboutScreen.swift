@@ -31,6 +31,7 @@ struct AboutScreen: View {
                 .padding(.vertical, 8)
                 .listRowBackground(Color.clear)
             }
+            .instrumentListRows()
 
             Section("What This Is") {
                 Text(
@@ -48,6 +49,7 @@ struct AboutScreen: View {
                 )
                 .foregroundStyle(.secondary)
             }
+            .instrumentListRows()
 
             Section("How to Use") {
                 HowToRow(
@@ -71,6 +73,7 @@ struct AboutScreen: View {
                     detail: "Available on Map, Channels, and Observers. Narrows everything to one region and zooms the map there automatically."
                 )
             }
+            .instrumentListRows()
 
             Section("Project Links") {
                 if let coreScopeURL = URL(string: "https://github.com/Kpa-clawbot/CoreScope") {
@@ -84,6 +87,7 @@ struct AboutScreen: View {
                     }
                 }
             }
+            .instrumentListRows()
 
             Section("License") {
                 VStack(alignment: .leading, spacing: 6) {
@@ -103,6 +107,7 @@ struct AboutScreen: View {
                     }
                 }
             }
+            .instrumentListRows()
 
             Section("Acknowledgements") {
                 if let meshCoreOneURL = URL(string: "https://github.com/Avi0n/MeshCoreOne") {
@@ -124,6 +129,7 @@ struct AboutScreen: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            .instrumentListRows()
         }
         .scrollContentBackground(.hidden)
         .adaptiveContentWidth()
