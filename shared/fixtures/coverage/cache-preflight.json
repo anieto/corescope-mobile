@@ -1,0 +1,545 @@
+[
+  {
+    "name": "empty",
+    "requested": [],
+    "inventory": [],
+    "quota": 100000,
+    "remaining_download_bytes": 1000,
+    "attempts": 2,
+    "expected": {
+      "tiles": 0,
+      "uncached_tiles": 0,
+      "expected_download_bytes": 0,
+      "maximum_attempt_bytes": 0,
+      "decoded_payload_bytes": 0,
+      "largest_staging_reservation": 0,
+      "pinned_set_reservation_bytes": 4096,
+      "worst_pinned_staging_bytes": 4096,
+      "can_prepare_pinned_set": true,
+      "cache_validation_pending": true,
+      "fits_download_budget": true,
+      "has_all_cached_tiles": true
+    }
+  },
+  {
+    "name": "one_missing",
+    "requested": [
+      {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      }
+    ],
+    "inventory": [],
+    "quota": 100000,
+    "remaining_download_bytes": 1000,
+    "attempts": 2,
+    "expected": {
+      "tiles": 1,
+      "uncached_tiles": 1,
+      "expected_download_bytes": 123,
+      "maximum_attempt_bytes": 248,
+      "decoded_payload_bytes": 50,
+      "largest_staging_reservation": 8365,
+      "pinned_set_reservation_bytes": 12338,
+      "worst_pinned_staging_bytes": 12461,
+      "can_prepare_pinned_set": true,
+      "cache_validation_pending": true,
+      "fits_download_budget": true,
+      "has_all_cached_tiles": false
+    }
+  },
+  {
+    "name": "duplicate_and_mirror",
+    "requested": [
+      {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      },
+      {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      },
+      {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "url": "https://mirror.example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      }
+    ],
+    "inventory": [],
+    "quota": 100000,
+    "remaining_download_bytes": 1000,
+    "attempts": 2,
+    "expected": {
+      "tiles": 1,
+      "uncached_tiles": 1,
+      "expected_download_bytes": 123,
+      "maximum_attempt_bytes": 248,
+      "decoded_payload_bytes": 50,
+      "largest_staging_reservation": 8365,
+      "pinned_set_reservation_bytes": 12338,
+      "worst_pinned_staging_bytes": 12461,
+      "can_prepare_pinned_set": true,
+      "cache_validation_pending": true,
+      "fits_download_budget": true,
+      "has_all_cached_tiles": false
+    }
+  },
+  {
+    "name": "cache_hit",
+    "requested": [
+      {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      }
+    ],
+    "inventory": [
+      {
+        "key": "26312d9bcbb59806578ac28bb1e8734f79cb0c6558c629f24cc19c9bdf7ba3a7",
+        "decoded_bytes": 50,
+        "pinned": false
+      }
+    ],
+    "quota": 100000,
+    "remaining_download_bytes": 0,
+    "attempts": 2,
+    "expected": {
+      "tiles": 1,
+      "uncached_tiles": 0,
+      "expected_download_bytes": 0,
+      "maximum_attempt_bytes": 0,
+      "decoded_payload_bytes": 50,
+      "largest_staging_reservation": 0,
+      "pinned_set_reservation_bytes": 12338,
+      "worst_pinned_staging_bytes": 12338,
+      "can_prepare_pinned_set": true,
+      "cache_validation_pending": true,
+      "fits_download_budget": true,
+      "has_all_cached_tiles": true
+    }
+  },
+  {
+    "name": "outside_pin",
+    "requested": [
+      {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      }
+    ],
+    "inventory": [
+      {
+        "key": "cde089f1de0e71fd22f6524f081d477b203248c240f56092b032f9a760c49cc6",
+        "decoded_bytes": 18,
+        "pinned": true
+      }
+    ],
+    "quota": 100000,
+    "remaining_download_bytes": 1000,
+    "attempts": 2,
+    "expected": {
+      "tiles": 1,
+      "uncached_tiles": 1,
+      "expected_download_bytes": 123,
+      "maximum_attempt_bytes": 248,
+      "decoded_payload_bytes": 50,
+      "largest_staging_reservation": 8365,
+      "pinned_set_reservation_bytes": 20548,
+      "worst_pinned_staging_bytes": 20671,
+      "can_prepare_pinned_set": true,
+      "cache_validation_pending": true,
+      "fits_download_budget": true,
+      "has_all_cached_tiles": false
+    }
+  },
+  {
+    "name": "evictable_unrelated",
+    "requested": [
+      {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      }
+    ],
+    "inventory": [
+      {
+        "key": "cde089f1de0e71fd22f6524f081d477b203248c240f56092b032f9a760c49cc6",
+        "decoded_bytes": 18,
+        "pinned": false
+      }
+    ],
+    "quota": 100000,
+    "remaining_download_bytes": 1000,
+    "attempts": 2,
+    "expected": {
+      "tiles": 1,
+      "uncached_tiles": 1,
+      "expected_download_bytes": 123,
+      "maximum_attempt_bytes": 248,
+      "decoded_payload_bytes": 50,
+      "largest_staging_reservation": 8365,
+      "pinned_set_reservation_bytes": 12338,
+      "worst_pinned_staging_bytes": 12461,
+      "can_prepare_pinned_set": true,
+      "cache_validation_pending": true,
+      "fits_download_budget": true,
+      "has_all_cached_tiles": false
+    }
+  },
+  {
+    "name": "two_missing",
+    "requested": [
+      {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      },
+      {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N51W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 200,
+        "side": 3,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      }
+    ],
+    "inventory": [],
+    "quota": 100000,
+    "remaining_download_bytes": 1000,
+    "attempts": 2,
+    "expected": {
+      "tiles": 2,
+      "uncached_tiles": 2,
+      "expected_download_bytes": 323,
+      "maximum_attempt_bytes": 650,
+      "decoded_payload_bytes": 68,
+      "largest_staging_reservation": 8410,
+      "pinned_set_reservation_bytes": 20548,
+      "worst_pinned_staging_bytes": 20748,
+      "can_prepare_pinned_set": true,
+      "cache_validation_pending": true,
+      "fits_download_budget": true,
+      "has_all_cached_tiles": false
+    }
+  },
+  {
+    "name": "mixed_hit",
+    "requested": [
+      {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      },
+      {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N51W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 200,
+        "side": 3,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      }
+    ],
+    "inventory": [
+      {
+        "key": "26312d9bcbb59806578ac28bb1e8734f79cb0c6558c629f24cc19c9bdf7ba3a7",
+        "decoded_bytes": 50,
+        "pinned": true
+      }
+    ],
+    "quota": 100000,
+    "remaining_download_bytes": 1000,
+    "attempts": 2,
+    "expected": {
+      "tiles": 2,
+      "uncached_tiles": 1,
+      "expected_download_bytes": 200,
+      "maximum_attempt_bytes": 402,
+      "decoded_payload_bytes": 68,
+      "largest_staging_reservation": 8410,
+      "pinned_set_reservation_bytes": 20548,
+      "worst_pinned_staging_bytes": 20748,
+      "can_prepare_pinned_set": true,
+      "cache_validation_pending": true,
+      "fits_download_budget": true,
+      "has_all_cached_tiles": false
+    }
+  },
+  {
+    "name": "exact_quota",
+    "requested": [
+      {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      }
+    ],
+    "inventory": [],
+    "quota": 12461,
+    "remaining_download_bytes": 1000,
+    "attempts": 2,
+    "expected": {
+      "tiles": 1,
+      "uncached_tiles": 1,
+      "expected_download_bytes": 123,
+      "maximum_attempt_bytes": 248,
+      "decoded_payload_bytes": 50,
+      "largest_staging_reservation": 8365,
+      "pinned_set_reservation_bytes": 12338,
+      "worst_pinned_staging_bytes": 12461,
+      "can_prepare_pinned_set": true,
+      "cache_validation_pending": true,
+      "fits_download_budget": true,
+      "has_all_cached_tiles": false
+    }
+  },
+  {
+    "name": "short_quota",
+    "requested": [
+      {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      }
+    ],
+    "inventory": [],
+    "quota": 12460,
+    "remaining_download_bytes": 1000,
+    "attempts": 2,
+    "expected": {
+      "tiles": 1,
+      "uncached_tiles": 1,
+      "expected_download_bytes": 123,
+      "maximum_attempt_bytes": 248,
+      "decoded_payload_bytes": 50,
+      "largest_staging_reservation": 8365,
+      "pinned_set_reservation_bytes": 12338,
+      "worst_pinned_staging_bytes": 12461,
+      "can_prepare_pinned_set": false,
+      "cache_validation_pending": true,
+      "fits_download_budget": true,
+      "has_all_cached_tiles": false
+    }
+  },
+  {
+    "name": "short_download_budget",
+    "requested": [
+      {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      }
+    ],
+    "inventory": [],
+    "quota": 100000,
+    "remaining_download_bytes": 122,
+    "attempts": 2,
+    "expected": {
+      "tiles": 1,
+      "uncached_tiles": 1,
+      "expected_download_bytes": 123,
+      "maximum_attempt_bytes": 248,
+      "decoded_payload_bytes": 50,
+      "largest_staging_reservation": 8365,
+      "pinned_set_reservation_bytes": 12338,
+      "worst_pinned_staging_bytes": 12461,
+      "can_prepare_pinned_set": true,
+      "cache_validation_pending": true,
+      "fits_download_budget": false,
+      "has_all_cached_tiles": false
+    }
+  },
+  {
+    "name": "exact_download_budget",
+    "requested": [
+      {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      }
+    ],
+    "inventory": [],
+    "quota": 100000,
+    "remaining_download_bytes": 123,
+    "attempts": 2,
+    "expected": {
+      "tiles": 1,
+      "uncached_tiles": 1,
+      "expected_download_bytes": 123,
+      "maximum_attempt_bytes": 248,
+      "decoded_payload_bytes": 50,
+      "largest_staging_reservation": 8365,
+      "pinned_set_reservation_bytes": 12338,
+      "worst_pinned_staging_bytes": 12461,
+      "can_prepare_pinned_set": true,
+      "cache_validation_pending": true,
+      "fits_download_budget": true,
+      "has_all_cached_tiles": false
+    }
+  },
+  {
+    "name": "three_attempts",
+    "requested": [
+      {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      },
+      {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N51W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 200,
+        "side": 3,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      }
+    ],
+    "inventory": [],
+    "quota": 100000,
+    "remaining_download_bytes": 1000,
+    "attempts": 3,
+    "expected": {
+      "tiles": 2,
+      "uncached_tiles": 2,
+      "expected_download_bytes": 323,
+      "maximum_attempt_bytes": 975,
+      "decoded_payload_bytes": 68,
+      "largest_staging_reservation": 8410,
+      "pinned_set_reservation_bytes": 20548,
+      "worst_pinned_staging_bytes": 20748,
+      "can_prepare_pinned_set": true,
+      "cache_validation_pending": true,
+      "fits_download_budget": true,
+      "has_all_cached_tiles": false
+    }
+  }
+]

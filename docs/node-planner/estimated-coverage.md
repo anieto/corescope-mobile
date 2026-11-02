@@ -129,3 +129,7 @@ two-pane map work remains recorded but must not displace the coverage-first impl
 First native slice: leased HGT readers and coordinate-to-tile/bilinear mosaics now compile in both
 apps, with 18 shared geographic fixtures and seven tests per platform. No coverage UI or RF run is
 connected yet. [Validation and next integration tasks](native-terrain-integration.md).
+
+Second native slice: validated cache identities and complete-set capacity/download preflight now
+match the Python repository contract on both platforms. Nine identity vectors and thirteen
+preflight fixtures pass; disk-cache ownership and the cancellable downloader remain next.

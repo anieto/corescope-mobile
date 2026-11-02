@@ -1,0 +1,286 @@
+{
+  "vectors": [
+    {
+      "name": "utf8",
+      "spec": {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      },
+      "identity": {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "decoder": "signed-be-hgt-v1",
+        "resolution_arcseconds": 900,
+        "nodata": -32768,
+        "footprint": {
+          "south": 50,
+          "north": 51,
+          "west": -115,
+          "east": -114
+        }
+      },
+      "canonical_utf8_json": "{\"attribution\":\"Terrain – Café\",\"compressed_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"dataset\":\"fixture-dem\",\"decoder\":\"signed-be-hgt-v1\",\"footprint\":{\"east\":-114,\"north\":51,\"south\":50,\"west\":-115},\"nodata\":-32768,\"packed_bytes\":123,\"resolution_arcseconds\":900,\"revision\":\"r1\",\"side\":5,\"source_type\":\"not independently resolved\",\"tile\":\"N50W115\",\"vertical_datum\":\"EGM96\"}",
+      "sha256_key": "26312d9bcbb59806578ac28bb1e8734f79cb0c6558c629f24cc19c9bdf7ba3a7"
+    },
+    {
+      "name": "transport_mirror",
+      "spec": {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "url": "https://mirror.example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      },
+      "identity": {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "decoder": "signed-be-hgt-v1",
+        "resolution_arcseconds": 900,
+        "nodata": -32768,
+        "footprint": {
+          "south": 50,
+          "north": 51,
+          "west": -115,
+          "east": -114
+        }
+      },
+      "canonical_utf8_json": "{\"attribution\":\"Terrain – Café\",\"compressed_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"dataset\":\"fixture-dem\",\"decoder\":\"signed-be-hgt-v1\",\"footprint\":{\"east\":-114,\"north\":51,\"south\":50,\"west\":-115},\"nodata\":-32768,\"packed_bytes\":123,\"resolution_arcseconds\":900,\"revision\":\"r1\",\"side\":5,\"source_type\":\"not independently resolved\",\"tile\":\"N50W115\",\"vertical_datum\":\"EGM96\"}",
+      "sha256_key": "26312d9bcbb59806578ac28bb1e8734f79cb0c6558c629f24cc19c9bdf7ba3a7"
+    },
+    {
+      "name": "revision",
+      "spec": {
+        "dataset": "fixture-dem",
+        "revision": "r2",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      },
+      "identity": {
+        "dataset": "fixture-dem",
+        "revision": "r2",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "decoder": "signed-be-hgt-v1",
+        "resolution_arcseconds": 900,
+        "nodata": -32768,
+        "footprint": {
+          "south": 50,
+          "north": 51,
+          "west": -115,
+          "east": -114
+        }
+      },
+      "canonical_utf8_json": "{\"attribution\":\"Terrain – Café\",\"compressed_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"dataset\":\"fixture-dem\",\"decoder\":\"signed-be-hgt-v1\",\"footprint\":{\"east\":-114,\"north\":51,\"south\":50,\"west\":-115},\"nodata\":-32768,\"packed_bytes\":123,\"resolution_arcseconds\":900,\"revision\":\"r2\",\"side\":5,\"source_type\":\"not independently resolved\",\"tile\":\"N50W115\",\"vertical_datum\":\"EGM96\"}",
+      "sha256_key": "fa1be2faa2c1e967ce1da67cff21de4fe84d1fa54042cd101420b86efc2ca292"
+    },
+    {
+      "name": "resolution",
+      "spec": {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 3601,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      },
+      "identity": {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 3601,
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "decoder": "signed-be-hgt-v1",
+        "resolution_arcseconds": 1,
+        "nodata": -32768,
+        "footprint": {
+          "south": 50,
+          "north": 51,
+          "west": -115,
+          "east": -114
+        }
+      },
+      "canonical_utf8_json": "{\"attribution\":\"Terrain – Café\",\"compressed_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"dataset\":\"fixture-dem\",\"decoder\":\"signed-be-hgt-v1\",\"footprint\":{\"east\":-114,\"north\":51,\"south\":50,\"west\":-115},\"nodata\":-32768,\"packed_bytes\":123,\"resolution_arcseconds\":1,\"revision\":\"r1\",\"side\":3601,\"source_type\":\"not independently resolved\",\"tile\":\"N50W115\",\"vertical_datum\":\"EGM96\"}",
+      "sha256_key": "f562bcf842f2a39787c387bd9e13482059d073078c2a61dc61f32fe21831eda4"
+    },
+    {
+      "name": "southern_western",
+      "spec": {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "S01W001",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      },
+      "identity": {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "S01W001",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "decoder": "signed-be-hgt-v1",
+        "resolution_arcseconds": 900,
+        "nodata": -32768,
+        "footprint": {
+          "south": -1,
+          "north": 0,
+          "west": -1,
+          "east": 0
+        }
+      },
+      "canonical_utf8_json": "{\"attribution\":\"Terrain – Café\",\"compressed_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"dataset\":\"fixture-dem\",\"decoder\":\"signed-be-hgt-v1\",\"footprint\":{\"east\":0,\"north\":0,\"south\":-1,\"west\":-1},\"nodata\":-32768,\"packed_bytes\":123,\"resolution_arcseconds\":900,\"revision\":\"r1\",\"side\":5,\"source_type\":\"not independently resolved\",\"tile\":\"S01W001\",\"vertical_datum\":\"EGM96\"}",
+      "sha256_key": "9ef28c46d9956d6ff9f1bdeccb24079b09edf0be2cdcb9a85e84f4abaa33324a"
+    },
+    {
+      "name": "eastern_boundary",
+      "spec": {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N00E179",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      },
+      "identity": {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N00E179",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain – Café",
+        "source_type": "not independently resolved",
+        "decoder": "signed-be-hgt-v1",
+        "resolution_arcseconds": 900,
+        "nodata": -32768,
+        "footprint": {
+          "south": 0,
+          "north": 1,
+          "west": 179,
+          "east": 180
+        }
+      },
+      "canonical_utf8_json": "{\"attribution\":\"Terrain – Café\",\"compressed_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"dataset\":\"fixture-dem\",\"decoder\":\"signed-be-hgt-v1\",\"footprint\":{\"east\":180,\"north\":1,\"south\":0,\"west\":179},\"nodata\":-32768,\"packed_bytes\":123,\"resolution_arcseconds\":900,\"revision\":\"r1\",\"side\":5,\"source_type\":\"not independently resolved\",\"tile\":\"N00E179\",\"vertical_datum\":\"EGM96\"}",
+      "sha256_key": "4ace419d1f896bb97ca888962f81abe3c4452916e47788c3803d5f1c5c8e1337"
+    },
+    {
+      "name": "escaping",
+      "spec": {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Quote \" / backslash \\ tab\t",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      },
+      "canonical_utf8_json": "{\"attribution\":\"Quote \\\" / backslash \\\\ tab\\t\",\"compressed_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"dataset\":\"fixture-dem\",\"decoder\":\"signed-be-hgt-v1\",\"footprint\":{\"east\":-114,\"north\":51,\"south\":50,\"west\":-115},\"nodata\":-32768,\"packed_bytes\":123,\"resolution_arcseconds\":900,\"revision\":\"r1\",\"side\":5,\"source_type\":\"not independently resolved\",\"tile\":\"N50W115\",\"vertical_datum\":\"EGM96\"}",
+      "sha256_key": "3178b937b4b54cf9c960f129595397cb944b07d287cb6dafba1924969567740c"
+    },
+    {
+      "name": "decomposed",
+      "spec": {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Café",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      },
+      "canonical_utf8_json": "{\"attribution\":\"Café\",\"compressed_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"dataset\":\"fixture-dem\",\"decoder\":\"signed-be-hgt-v1\",\"footprint\":{\"east\":-114,\"north\":51,\"south\":50,\"west\":-115},\"nodata\":-32768,\"packed_bytes\":123,\"resolution_arcseconds\":900,\"revision\":\"r1\",\"side\":5,\"source_type\":\"not independently resolved\",\"tile\":\"N50W115\",\"vertical_datum\":\"EGM96\"}",
+      "sha256_key": "fa2ae244e43e4e8eebfaa9d395bfb26ce99fb2fd407d336d6072b42107448073"
+    },
+    {
+      "name": "astral",
+      "spec": {
+        "dataset": "fixture-dem",
+        "revision": "r1",
+        "tile": "N50W115",
+        "compressed_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "packed_bytes": 123,
+        "side": 5,
+        "url": "https://example.com/tile",
+        "vertical_datum": "EGM96",
+        "attribution": "Terrain 🗺",
+        "source_type": "not independently resolved",
+        "origin_url": ""
+      },
+      "canonical_utf8_json": "{\"attribution\":\"Terrain 🗺\",\"compressed_sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"dataset\":\"fixture-dem\",\"decoder\":\"signed-be-hgt-v1\",\"footprint\":{\"east\":-114,\"north\":51,\"south\":50,\"west\":-115},\"nodata\":-32768,\"packed_bytes\":123,\"resolution_arcseconds\":900,\"revision\":\"r1\",\"side\":5,\"source_type\":\"not independently resolved\",\"tile\":\"N50W115\",\"vertical_datum\":\"EGM96\"}",
+      "sha256_key": "8fc2134230b35c46b3edf2f59b35b54ee1b4fff893408219392e6c9b1fdccd70"
+    }
+  ]
+}
