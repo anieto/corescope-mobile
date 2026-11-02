@@ -1,0 +1,280 @@
+{
+  "tiles": [
+    {
+      "south": 0,
+      "west": 0,
+      "side": 3,
+      "samples": [
+        100,
+        110,
+        120,
+        80,
+        90,
+        100,
+        60,
+        70,
+        80
+      ]
+    },
+    {
+      "south": 1,
+      "west": 0,
+      "side": 3,
+      "samples": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ]
+    },
+    {
+      "south": 0,
+      "west": 1,
+      "side": 3,
+      "samples": [
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300,
+        300
+      ]
+    },
+    {
+      "south": -1,
+      "west": -1,
+      "side": 3,
+      "samples": [
+        -10,
+        -20,
+        -30,
+        -40,
+        -50,
+        -60,
+        -70,
+        -80,
+        -90
+      ]
+    },
+    {
+      "south": 0,
+      "west": 179,
+      "side": 3,
+      "samples": [
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400,
+        400
+      ]
+    },
+    {
+      "south": 0,
+      "west": -180,
+      "side": 3,
+      "samples": [
+        500,
+        500,
+        500,
+        500,
+        500,
+        500,
+        500,
+        500,
+        500
+      ]
+    },
+    {
+      "south": 2,
+      "west": 2,
+      "side": 3,
+      "samples": [
+        -32768,
+        10,
+        20,
+        30,
+        40,
+        50,
+        60,
+        70,
+        80
+      ]
+    },
+    {
+      "south": 89,
+      "west": 0,
+      "side": 3,
+      "samples": [
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600,
+        600
+      ]
+    },
+    {
+      "south": -90,
+      "west": 0,
+      "side": 3,
+      "samples": [
+        700,
+        700,
+        700,
+        700,
+        700,
+        700,
+        700,
+        700,
+        700
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "name": "center",
+      "latitude": 0.5,
+      "longitude": 0.5,
+      "state": "elevation",
+      "meters": 90
+    },
+    {
+      "name": "interpolation",
+      "latitude": 0.25,
+      "longitude": 0.25,
+      "state": "elevation",
+      "meters": 75
+    },
+    {
+      "name": "north_owner",
+      "latitude": 1,
+      "longitude": 0.25,
+      "state": "elevation",
+      "meters": 200
+    },
+    {
+      "name": "east_owner",
+      "latitude": 0.25,
+      "longitude": 1,
+      "state": "elevation",
+      "meters": 300
+    },
+    {
+      "name": "southwest_exact",
+      "latitude": 0,
+      "longitude": 0,
+      "state": "elevation",
+      "meters": 60
+    },
+    {
+      "name": "southwest_interpolation",
+      "latitude": -0.25,
+      "longitude": -0.25,
+      "state": "elevation",
+      "meters": -40
+    },
+    {
+      "name": "west_of_date_line",
+      "latitude": 0.5,
+      "longitude": 179.75,
+      "state": "elevation",
+      "meters": 400
+    },
+    {
+      "name": "positive_date_line",
+      "latitude": 0.5,
+      "longitude": 180,
+      "state": "elevation",
+      "meters": 500
+    },
+    {
+      "name": "negative_date_line",
+      "latitude": 0.5,
+      "longitude": -180,
+      "state": "elevation",
+      "meters": 500
+    },
+    {
+      "name": "valid_next_to_nodata",
+      "latitude": 2.5,
+      "longitude": 2.5,
+      "state": "elevation",
+      "meters": 40
+    },
+    {
+      "name": "nodata_weighted",
+      "latitude": 2.75,
+      "longitude": 2.25,
+      "state": "nodata",
+      "meters": null
+    },
+    {
+      "name": "valid_south_edge",
+      "latitude": 2,
+      "longitude": 2,
+      "state": "elevation",
+      "meters": 60
+    },
+    {
+      "name": "north_pole",
+      "latitude": 90,
+      "longitude": 0.5,
+      "state": "elevation",
+      "meters": 600
+    },
+    {
+      "name": "south_pole",
+      "latitude": -90,
+      "longitude": 0.5,
+      "state": "elevation",
+      "meters": 700
+    },
+    {
+      "name": "missing_northeast_owner",
+      "latitude": 1,
+      "longitude": 1,
+      "state": "missing",
+      "south": 1,
+      "west": 1
+    },
+    {
+      "name": "no_south_border_fallback",
+      "latitude": 0,
+      "longitude": -0.5,
+      "state": "missing",
+      "south": 0,
+      "west": -1
+    },
+    {
+      "name": "outside_dataset",
+      "latitude": 40,
+      "longitude": -98,
+      "state": "missing",
+      "south": 40,
+      "west": -98
+    },
+    {
+      "name": "north_tile_missing",
+      "latitude": 3,
+      "longitude": 2.5,
+      "state": "missing",
+      "south": 3,
+      "west": 2
+    }
+  ]
+}

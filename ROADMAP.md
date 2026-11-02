@@ -137,6 +137,10 @@ which covers all of 0.10, is in the [0.10.2 release notes](docs/node-planner/v0.
   plans. Extend the site-only schema with typed studies and a tested migration after the unsaved
   coverage flow works. Pause further Candidate Sites polish. See the authoritative
   [product and delivery contract](docs/node-planner/estimated-coverage.md).
+- **Coverage implementation:** native tile readers and geographic sampling now compile on both
+  platforms; 18 shared geographic fixtures cover seams, date-line handling and missing terrain.
+  Download/cache ownership and RF/UI integration remain next. See the
+  [native integration report](docs/node-planner/native-terrain-integration.md).
 - **Release gate:** coverage integration and physical-device qualification remain incomplete.
   Do not ship the site library as a substitute for coverage or silently relax model fidelity.
 - **Candidate Sites progress:** merged the 0.10.2 baseline from `main`; development release

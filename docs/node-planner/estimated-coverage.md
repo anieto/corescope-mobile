@@ -123,3 +123,9 @@ Estimated Coverage is now the primary Node Planner target for 0.10.3, replacing 
 scope. Existing build numbers are unchanged. Engine/data/distribution and device qualification
 remain release gates; revise timing explicitly if they cannot be met. The separately planned iPad
 two-pane map work remains recorded but must not displace the coverage-first implementation sequence.
+
+## Implementation progress — 2026-11-02
+
+First native slice: leased HGT readers and coordinate-to-tile/bilinear mosaics now compile in both
+apps, with 18 shared geographic fixtures and seven tests per platform. No coverage UI or RF run is
+connected yet. [Validation and next integration tasks](native-terrain-integration.md).
