@@ -1,6 +1,6 @@
-# Candidate Sites — v0.10.3 implementation and subsequent analysis plan
+# Estimated Coverage — technical implementation and validation plan
 
-Status: v0.10.3 plan/site model, atomic storage, editor, confirmed map placement, current location and height units implemented; device checks pending. Terrain studies are for subsequent analysis releases. Updated 2026-11-02.
+Status: v0.10.3 plan/site model, atomic storage, editor, confirmed map placement, current location and height units implemented; device checks pending. Standalone coverage is now the primary target; terrain studies still require production integration. Updated 2026-11-02.
 Platforms: iOS and Android. Parent: [Node Planner plan](plan.md).
 
 ## Outcome and reference tools
@@ -30,62 +30,19 @@ Reference review (2026-10-29):
   checks native/browser outputs and worker determinism. Use similarly reproducible tests; a
   visually similar heatmap is not numerical validation.
 
-## Scope decisions
+## Current product scope and workflow — 2026-11-02
 
-The [current roadmap](../../ROADMAP.md) supersedes the original v0.10.1 release scope below.
-For v0.10.3, deliver local named plans, proposed site placement, editable assumptions and atomic
-save/reopen with equivalent semantics on both platforms. Do not expose analysis/results controls
-as working features. Potential Links, Estimated Coverage, comparison and export remain later work.
-The [version-1 model and atomic storage contract](deployment-plan-contract.md) is implemented;
-plan/site lifecycle, manual-coordinate UI and confirmed map placement are connected. Foreground
-location, unit preferences and device checks are next.
+The [Estimated Coverage product contract](estimated-coverage.md) supersedes the saved-sites-first
+scope. Estimated Coverage is a standalone peer of Link Profile, with one transmitter, explicit
+radio/receiver assumptions, adjustable analysis extent/detail, a terrain-aware overlay and known
+nearby nodes colored by predicted reception. No named/saved plan is required. Saved Plans later
+collects optional saved studies from both tools, with candidate sites as locations within plans.
 
-Original end-to-end workflow retained for subsequent milestones (not all required for v0.10.3):
-
-1. Named local Deployment Plans with multiple named Candidate Sites; one selected site and one
-   active coverage result on the map. No combined-transmitter/interference simulation.
-2. Candidate placement by confirmed map tap, manual coordinates or explicit foreground location.
-3. Editable transmitter configuration, a generic coverage receiver and known-node receiver defaults.
-4. An explicit Run Analysis action, download/compute progress, cancel, errors and stale state.
-5. A fixed-scale estimated-margin overlay, selected-cell inspection, known-node ranking and path
-   detail using the same propagation model/terrain as the coverage run.
-6. Atomic local save/reopen, duplicate/edit candidates, pairwise comparison and concise human-readable
-   plus versioned JSON export including assumptions and limitations.
-7. Offline saved-result viewing and cached-terrain reruns; equivalent semantics on both platforms.
-
-Deferred: standalone Saved Link Profiles; multi-site aggregate coverage; automatic highpoint/site
-optimization; cloud sync; directional antenna patterns; building/foliage/clutter layers; reverse-link
-predictions without independently specified radio budgets; import and GIS-format export; contour
-editing; drive-test ingestion; prediction of hop count, routing, capacity or real delivery probability.
-
-Do not add an unverified model or silently reduce fidelity to meet the version number. If feasibility
-fails, revise scope/release timing explicitly instead of calling a LOS-only view “coverage”.
-
-## Workspace and interaction
-
-Explore → Node Planner → Candidate Sites opens a persistent planning map. Live Map offers Plan a
-Site, prefilling only a deliberately selected coordinate. First use can start a draft without naming
-it; Save Plan requests the name. Opening a plan restores its saved input snapshot, not current remote
-node locations. No automatic terrain request or simulation on reopen.
-
-The header shows plan name, selected candidate, save status and plan actions. A compact bottom panel
-contains Site, Radio Setup and Results sections. Its summary always keeps candidate selection and
-Run/Cancel reachable. Wide layouts use a trailing inspector; foldable layouts keep map and inspector
-inside their respective usable regions. Reuse Link Profile's map/control layout patterns without
-coupling editor lifetimes. Maps and charts have no decorative mesh; lists/sheets use shared subdued
-backgrounds and readable cards.
-
-Placement: show a tentative pin, then Add Here; dragging/relocating invalidates the current result
-only when confirmed. Device location is optional and never persisted until explicitly added/saved.
-Pan/zoom, basemap, overlay opacity and selection changes do not rerun analysis. Site/radio edits mark
-results stale and require Run. Starting over, opening another plan or leaving dirty work presents
-Save/Discard/Cancel. Failed save retains the draft. Confirm destructive plan/site deletion.
-
-During a run show distinct Preparing Terrain, Computing Coverage and Evaluating Known Nodes stages,
-with stage-specific completed/total counts. Cancellation releases workers and requests, preserves
-completed historical results and never replaces them with an unlabeled partial map. No background
-execution promise: cancel safely when suspended unless an audited platform mechanism supports it.
-Persist inputs; do not resume a stale partial job after relaunch.
+Reuse existing site placement/configuration and atomic storage work. Pause Candidate Sites polish.
+Prioritize engine/terrain integration and one complete unsaved coverage flow, then extend the
+versioned storage model and connect Save/Open from both tools. See the product contract for exact
+navigation, cancellation/stale behavior, node colors, persistence migration and delivery order.
+The numerical and resource gates below remain required; a LOS-only circle is not coverage.
 
 ## Inputs and prediction meaning
 
@@ -303,6 +260,11 @@ not pixel count. Any farthest qualifying sample is labeled as such, not “range
 
 ## Known-node evaluation
 
+The [green/red/neutral status contract](estimated-coverage.md#known-node-colors-and-meaning) is
+authoritative: green for valid adjusted margin >= 0 dB, red below zero, neutral for unknown or
+not evaluated, and explicit stale styling. Initially use shared generic receiver assumptions;
+per-node overrides are deferred. Markers and an accessible list expose status without color alone.
+
 Capture a bounded analyzer snapshot at run start, with source, filters, timestamp and completeness.
 Include valid-coordinate known nodes within the selected radius even when outside the current
 viewport. Fetch/paginate according to backend capability; if capped or partial, show “N analyzed of
@@ -312,7 +274,7 @@ does not change the model; changing analysis scope marks node results stale.
 Calculate exact candidate-to-node paths with the shared kernel. Show name, distance, bearing,
 modeled margin, terrain state, receiver assumptions and node last-seen context. Rank valid results
 by descending adjusted margin, then distance and stable ID; put Unknown in a separate group with
-its reason. Out-of-range nodes are excluded with a count where known. Zero valid nodes does not
+its reason. Out-of-range nodes remain neutral context markers where available, with an excluded count. Zero valid nodes does not
 prevent a coverage run.
 
 Selecting a node highlights one proposed path and opens its matching terrain/LOS/Fresnel/model
@@ -402,10 +364,10 @@ This remains isolated prototype work before Candidate Sites UI or production dep
 | A1: Engine | Selected/pinned shared kernel, license/source audit, ABI, model domain, parameters | Native iOS/Android probe matches approved reference fixtures; short-range/warning policy recorded |
 | A2: Terrain | Selected dataset, decoder/cache, sampling and privacy contract | Cross-platform identical tile/sample fixtures; nodata/date-line/edge tests; bounded downloads |
 | A3: Feasibility/design | End-to-end bounded run and adaptive low-fidelity layouts | Measured budgets and compact/wide/fold states approved; numerical/performance limits frozen |
-| B: Plans | Typed models, repositories, site editor, save/open/duplicate/delete | Relaunch/migration/recovery and dirty-navigation tests |
+| B: Run contract | Standalone unsaved input/result state, known-node status fixtures | No plan required; matching classification and stale/cancel semantics |
 | C: Predictions | Coordinator, numeric grid, exact node paths and provenance | Determinism/cancel/stale-input tests and reference comparison report |
 | D: Map/results | Overlay adapters, legend, cell inspection, node list and matched link detail | Geographic alignment and accessible list parity on both Android map providers and iOS |
-| E: Compare/release | Comparison, exports, help/storage controls and device matrix | Acceptance walkthrough, builds/tests, limitations and numerical validation published |
+| E: Save/release | Shared Saved Plans for both tools, migration, help and device matrix; compare/export deferred | Reopen/migration tests, acceptance walkthrough, builds, limitations and numerical validation |
 
 Suggested iOS modules: Models/NodePlanner domain DTOs; Networking repositories; a shared native RF
 package; an observable planner session; CandidateSitesScreen and map overlay adapter. Android mirrors

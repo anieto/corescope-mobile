@@ -1,5 +1,10 @@
 # Deployment Plan storage contract — version 1
 
+Product direction revised 2026-11-02: this document describes the implemented site-only version-1
+format. The [standalone coverage and Saved Plans contract](estimated-coverage.md) governs future
+work. Preserve this library until typed Link Profile/coverage studies and tested migration are
+implemented; further site-editor polish is paused.
+
 This is the input model for the 0.10.3 local Candidate Sites workflow. Swift and Kotlin sources are
 in the application targets, together with atomic disk repositories and a manual-coordinate editor.
 No automatic terrain download or analysis is connected. The versioned JSON codec validates decoded

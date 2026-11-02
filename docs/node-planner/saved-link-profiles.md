@@ -1,18 +1,15 @@
 # Saved Link Profiles — implementation plan
 
-Status: deferred proposal, not implemented. Added: 2026-10-27. Deferred: 2026-10-29.
-No release target. Excluded from v0.10.1 on both platforms.
+Status: superseded proposal. Updated: 2026-11-02.
 Parent: [Node Planner release plan](plan.md).
 
-## Deferral decision
+## Current decision
 
-Retain this design for consideration rather than treating it as committed work. Demand for a
-standalone library is unvalidated; Link Profile may primarily serve one-time checks. Prioritize
-Candidate Sites and Deployment Plans for v0.10.1, where persistence supports an ongoing planning
-workflow. Revisit this proposal if users request multiple reusable A/B studies or deployment
-planning reveals that need. Last-used endpoint/settings restoration is also only a consideration,
-not an approved replacement feature. The implementation details below remain a proposal.
-
+Optional saving from Link Profile is now approved as part of the shared **Saved Plans** collection,
+alongside Estimated Coverage studies. Do not build a separate saved-profile library. Deliver the
+standalone coverage flow first, then extend storage and wire Save/Open from both tools. The
+[Estimated Coverage product contract](estimated-coverage.md) supersedes the deferral and separate
+library/navigation choices below. Preserve the remaining details as historical design material.
 
 ## Product boundary
 

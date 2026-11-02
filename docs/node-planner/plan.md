@@ -1,33 +1,23 @@
-# NodeScope 0.10.3 — Candidate Sites and Node Planner
+# NodeScope 0.10.3 — Estimated Coverage and Node Planner
 
 Status: Candidate Sites model, atomic storage, editor, confirmed map placement, current location and height units implemented; device validation pending. Prepared: 2026-10-24. Updated: 2026-11-02. Supersedes the 0.10.0
 Field Tools plan.
 
-## Release direction — 2026-10-31
+## Release direction — 2026-11-02
 
-The current [roadmap](../../ROADMAP.md) assigns locally saved Deployment Plans and Candidate Sites
-to v0.10.3, alongside the separate iPad two-pane map layout task. Place proposed installations and
-record radio, antenna, cable and installation assumptions. Potential Links, Estimated Coverage,
-comparison/export and Saved Link Profiles follow after 0.10.3. The terrain experiments below are
-retained as evidence for those later stages; they are not prerequisites for a local site editor.
+[Estimated Coverage and Saved Plans](estimated-coverage.md) is the current product contract and
+supersedes the earlier saved-sites-first scope and conflicting historical milestones below.
+Link Profile and Estimated Coverage are standalone peer tools. Neither requires a saved plan.
+Estimated Coverage includes terrain-aware area prediction and green/red/neutral known-node
+statuses. Saved Plans will collect optional saved studies from both tools; candidate sites are
+locations within plans. Pause Candidate Sites polish and prioritize a complete unsaved coverage
+flow, then extend persistence. Coverage is the primary Node Planner target for 0.10.3, subject to
+engine, terrain and device qualification; the iPad layout task remains separately recorded.
 
-The milestones below remain the implementation checklist, not a claim that coverage is already
-available. Start by auditing the existing point-to-point engine and terrain cache against bounded
-coverage requirements, then resolve numerical validation and mobile performance budgets before
-building the coverage UI. Implement matching calculations and terminology on iOS and Android.
-Saved Link Profiles is explicitly deferred; no standalone-library implementation is a prerequisite.
-
-## Detailed Candidate Sites implementation contract
-
-The [v0.10.1 implementation and validation plan](candidate-sites-implementation.md) defines the
-coverage workflow, separate generic/known-node receiver assumptions, terrain pipeline, engine
-feasibility gates, overlays, persistence, comparison and test matrix. Its specific v0.10.1 choices
-take precedence over broader descriptions below. Coverage is the release's central deliverable;
-Saved Link Profiles remains deferred. Initial engine studies are recorded in the
-[kp1812 feasibility report](kp1812-feasibility.md): prefer its shared kernel for a validated,
-terrain-backed prototype. That [prototype now passes](coverage-prototype.md) mobile-runtime parity,
-missing-data, exact-receiver and cancellation checks. Distribution, production terrain handling,
-sampling convergence and physical-device qualification remain Gate A work.
+Existing site editors/storage and terrain studies remain useful foundations, not a completed
+coverage feature. The [technical analysis contract](candidate-sites-implementation.md) retains
+its engine, terrain, sampling, budgets and rendering gates. Follow the new product contract for
+navigation, node status semantics, saving, migration and delivery order.
 
 ## Product thesis
 
@@ -52,7 +42,9 @@ network.
 | Concept | User-facing term | Meaning |
 |---|---|---|
 | Feature | **Node Planner** | Workspace for modeling proposed deployments |
-| Deferred point-to-point proposal | **Saved Link Profile** | Possible standalone A/B library; not in v0.10.1 |
+| Point-to-point tool | **Link Profile** | Standalone A/B analysis with optional saving |
+| Area tool | **Estimated Coverage** | Standalone terrain-aware footprint and known-node predictions |
+| Library | **Saved Plans** | Optional saved studies from either tool |
 | Saved work | **Deployment Plan** | Named collection of candidate sites and shared assumptions |
 | Proposed location | **Candidate Site** | A local draft coordinate for a node that does not yet exist |
 | Existing endpoint | **Potential Link** | Modeled path between a candidate site and a known node |
@@ -63,7 +55,10 @@ Avoid **Nearby**, **Field Tools**, **reachable** without qualification, and synt
 scores. Use **Likely**, **Marginal**, **Unlikely** and **Unknown** only when their deterministic
 thresholds and inputs are visible.
 
-## Release scope
+## Historical release scope
+
+The following original milestones are retained for technical context. The 2026-11-02
+[product contract](estimated-coverage.md) supersedes their release ordering and saved-profile deferral.
 
 ### Required for 0.10.1
 

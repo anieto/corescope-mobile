@@ -127,11 +127,18 @@ which covers all of 0.10, is in the [0.10.2 release notes](docs/node-planner/v0.
   mode); on iPhone Duo, Live Packets fills the right screen on iOS 27.1, map controls keep clear of
   the crease when half folded, and the node count stays on the left screen.
 
-### 0.10.3 — Candidate Sites (in progress)
+### 0.10.3 — Estimated Coverage and saved planning work (in progress)
 
-- **Candidate Sites:** locally saved deployment plans with one or more proposed sites and their
-  radio, antenna, cable and installation assumptions; the first slice of the planning workflow
-  above. Research and terrain studies are in [docs/node-planner](docs/node-planner/).
+- **Direction revised 2026-11-02:** Estimated Coverage is a standalone peer of Link Profile:
+  select a point, enter radio/antenna and receiver assumptions, and calculate a terrain-aware
+  map with known nearby nodes. Green means predicted above threshold, red below threshold;
+  unknown, stale and outside-analysis nodes are explicitly distinct. No saved plan is required.
+- **Saved Plans:** optional saving/review from both tools; candidate sites are locations within
+  plans. Extend the site-only schema with typed studies and a tested migration after the unsaved
+  coverage flow works. Pause further Candidate Sites polish. See the authoritative
+  [product and delivery contract](docs/node-planner/estimated-coverage.md).
+- **Release gate:** coverage integration and physical-device qualification remain incomplete.
+  Do not ship the site library as a substitute for coverage or silently relax model fidelity.
 - **Candidate Sites progress:** merged the 0.10.2 baseline from `main`; development release
   versions remain 0.10.2 until release preparation. Isolated terrain studies now include a bounded
   coverage scheduler, a download/cache contract, and Swift/Kotlin leased terrain readers. The
@@ -150,8 +157,8 @@ which covers all of 0.10, is in the [0.10.2 release notes](docs/node-planner/v0.
 - Builds: iOS 0.10.3 (1), Android 0.10.3 (versionCode 21). The Candidate Sites branch started from
   0.10.1 and needs updating from `main` first.
 
-Still to come after 0.10.3: Potential Links, Estimated Coverage, comparing and exporting plans, and
-saved Link Profiles ([saved Link Profiles plan](docs/node-planner/saved-link-profiles.md)).
+Still deferred: comparing/exporting plans, multi-transmitter coverage and advanced receiver overrides.
+Saving Link Profile studies belongs in the shared Saved Plans collection, not a separate library.
 
 ## 1.0.0 — Investigation depth and product maturity
 
@@ -211,5 +218,5 @@ and 3 are at parity. See [implementation progress](docs/android/progress.md).
 ## Current priority
 
 0.10.2 (Learn layer, Monaspace Neon, Settings refresh, foldable fixes) is uploaded to the App Store
-and Google Play. Next is 0.10.3: Candidate Sites and the iPad two-pane map layout. Android touch &
+and Google Play. Next is 0.10.3: standalone Estimated Coverage, optional shared Saved Plans, and the separately tracked iPad two-pane map layout. Android touch &
 hold still needs a device test.
