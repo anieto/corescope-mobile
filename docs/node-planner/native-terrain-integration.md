@@ -83,11 +83,58 @@ Android debug build/unit suite passed with 397 passed and 1 skipped. Five new te
 cover identity/preflight fixtures, bad descriptors, URL/source identity and invalid limits/inventory.
 No external downloads, simulator or UI tests were run.
 
+## Decoded-tile disk cache — third native slice
+
+Both apps now have a worker-owned disk cache for verified decoded HGT files. It uses an exclusive
+process lock, an ownership marker, bounded metadata, private staging directories and same-filesystem
+atomic publication. A second owner is rejected. Unowned directories are preserved. Startup removes
+recognized interrupted stages without following symbolic links outside the cache. Invalid committed
+metadata fails explicitly and is preserved rather than silently resetting the cache.
+
+Publish streams at most 64 KiB per copy, rejects short/oversized payloads and verifies the decoded
+SHA-256 before publication. Source URL, origin URL, fetch time, identity and decoded checksum are
+retained. The input must be the future decoder's private output; this API does not establish gzip
+CRC, compressed-source checksum or network provenance. Bad/cancelled staging leaves no committed
+partial tile. An invalid replacement preserves the existing tile. Replacement requires spare space
+for both old and staged entries; it is conservative rather than overwriting a tile in place.
+
+Acquire revalidates file contents on every lease. Active readers prevent eviction, replacement,
+clearing and owner closure. Acquiring a set either transfers all unique readers or releases every
+reader acquired by the attempt. LRU access sequence persists across restart. Clear removes only
+unpinned terrain; deployment plans live separately. Swift reader callbacks retain their cache owner;
+Android callers must retain the owner and explicitly close readers/owner in worker cleanup.
+
+Quota reservations bound cache-owned decoded payload/metadata/control files. The downloader must
+add compressed and decoder-workspace reservations before transfer. The low-level cache can evict
+unrelated unpinned entries while preparing a stage, even if that stage later fails. Its publication
+makes a new complete directory visible atomically; replacing an unpinned existing entry removes the
+old entry only after validation, but a failure at the final rename may leave a cache miss. No atomic
+replacement/power-loss durability guarantee is claimed. Saved plans are never involved.
+
+The native cache deliberately fails on invalid committed metadata or missing committed files rather
+than automatically deleting them. Online repair/quarantine and explicit cache-reset behavior need
+to be designed with the downloader; startup failure is not a successfully recovered online cache.
+The implementation assumes one serialized background worker and immutable pinned files. It does not
+provide concurrent-method safety, protection against a process ignoring the lock, or mobile storage
+pressure qualification.
+
+Ten new tests per platform cover offline reopen, repeated pins, pinned close/replacement rejection,
+LRU after restart, quota exhaustion, cancellation at every publication checkpoint, corrupt/short/long
+payloads, all-or-none acquisition, per-lease revalidation, ownership locks, interrupted-stage cleanup,
+unowned directory preservation, corrupt metadata and failed replacement. A Swift error-mapping
+mismatch on a missing ownership marker was found and fixed. Stage cleanup also explicitly avoids
+following nested symbolic links, with a regression test protecting an external sentinel file.
+
+Validation: iOS build including test targets passed; all 22 Swift host terrain tests passed.
+Android debug build/unit suite passed with 407 passed and 1 skipped. No simulator, UI tests, external
+network downloads or real-provider runs were performed.
+
 ## Next implementation
 
-Implement the native download/disk-cache owner against the existing
+Implement the native downloader/decoder against the existing
 [repository contract](terrain-repository-study.md): use the implemented identity/preflight types for
-bounded transfer/decode, atomic publication, offline recovery, pinning/LRU and complete-set acquisition.
+bounded transfer/decode and whole-job reservations; connect the decoded cache for publication,
+leases and offline reuse, and add explicit online repair of invalid cache entries.
 It must supply the readers with verified decoded digests and consistent provenance. Wire geographic
 footprint/halo selection, the feature-preserving profile sampler and the bounded scheduler next.
 Then package the reviewed propagation kernel and implement the shared run/node-result contract

@@ -133,3 +133,8 @@ connected yet. [Validation and next integration tasks](native-terrain-integratio
 Second native slice: validated cache identities and complete-set capacity/download preflight now
 match the Python repository contract on both platforms. Nine identity vectors and thirteen
 preflight fixtures pass; disk-cache ownership and the cancellable downloader remain next.
+
+Third native slice: decoded-tile disk caches now provide exclusive ownership, staged verified
+publication, persistent LRU, reader pinning and offline reuse. Ten new tests per platform pass.
+The compressed decoder/downloader and whole-job workspace reservations remain next; the low-level
+cache does not yet download terrain or recover damaged committed metadata automatically.
