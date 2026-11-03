@@ -244,3 +244,11 @@ skip terrain/RF work; near-site, long-range and polar paths outside the current 
 unsupported. Missing terrain and exhausted per-path budgets retain neutral reasons; cancellation
 throws rather than returning a prediction. Tests include a date-line path through convergence and
 run completion. The profile and RF callbacks still need production binding; no kernel is bundled.
+
+### Prepared terrain binding
+
+Exact-node evaluation now accepts the prepared mosaic directly on both platforms, forwarding
+cancellation and remaining per-path work budgets. File-backed integration verifies negative terrain
+heights, missing tiles and cancellation without releasing caller-owned reader pins. Only the RF
+callback remains injected for this path; production engine binding and the full map workflow remain
+unfinished.

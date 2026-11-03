@@ -2,6 +2,18 @@ import Foundation
 
 /// Exact-node orchestration; the caller owns one fixed model configuration and serialized terrain access.
 enum CoverageNodeEvaluator {
+    /// Borrows the prepared mosaic. Its owner retains and closes the pinned readers after the run.
+    static func evaluate(runID: UUID, transmitter: CoverageTerrainCoordinate, node: CoverageNodeSnapshot,
+                         radiusMeters: Double, budget: CoverageLinkBudget, mosaic: CoverageTerrainMosaic,
+                         cancelled: () -> Bool = { false },
+                         predictLoss: (CoverageTerrainProfile) throws -> Double) throws -> CoverageNodeEvaluation {
+        try evaluate(runID: runID, transmitter: transmitter, node: node, radiusMeters: radiusMeters,
+            budget: budget, cancelled: cancelled, profile: { path, spacing, samples, geometry in
+                try mosaic.profile(path: path, spacingMeters: spacing, sampleLimit: samples,
+                                   geometryLimit: geometry, cancelled: cancelled)
+            }, predictLoss: predictLoss)
+    }
+
     static func evaluate(runID: UUID, transmitter: CoverageTerrainCoordinate, node: CoverageNodeSnapshot,
                          radiusMeters: Double, budget: CoverageLinkBudget,
                          cancelled: () -> Bool = { false },

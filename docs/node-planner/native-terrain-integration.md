@@ -453,6 +453,19 @@ Production callbacks, shared full-study work accounting and model/terrain proven
 pending. The evaluator currently applies existing per-path limits; it is not the bounded area
 scheduler and does not bundle an RF kernel or connect a live catalog/map.
 
+## Prepared terrain bound to exact-node evaluation
+
+Both evaluators now accept a prepared geographic mosaic directly. The adapter forwards remaining
+per-path sample/geometry budgets and cancellation through geographic crossing discovery and terrain
+sampling. It borrows the mosaic; the run owner retains responsibility for closing its pinned readers.
+Tests use a file-backed negative-elevation tile through exact-node evaluation, convergence and status,
+then exercise missing-tile paths and cancellation during a model call. Pins remain owned until close.
+
+Xcode build and 63 Swift host tests passed. Android unit tests and debug assembly passed.
+No simulator or UI tests were run. RF responses remain controlled test values; production kernel
+binding, provider discovery and full-study scheduling are still outstanding. This slice establishes
+the terrain binding, not physical RF accuracy or a user-visible coverage map.
+
 ## Next implementation
 
 Resolve production RF engine packaging and distribution permissions, then connect its adapter

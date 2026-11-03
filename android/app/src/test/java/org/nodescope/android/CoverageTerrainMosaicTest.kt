@@ -24,6 +24,38 @@ private class MosaicFiles : AutoCloseable {
 }
 
 class CoverageTerrainMosaicTest {
+    @Test fun exactNodesUseFileBackedTerrainWithoutTakingOwnership() {
+        MosaicFiles().use { files ->
+            val reader = files.reader(List(121 * 121) { -20 }, side = 121)
+            CoverageTerrainMosaic(mapOf(CoverageTerrainTile(0, 0) to reader)).use { mosaic ->
+                val budget = CoverageLinkBudget(22.0, 3.0, 2.0, 1.0, 1.0, -130.0, 5.0)
+                val node = CoverageNodeSnapshot("source", "node", 0.5, 0.52)
+                val run = java.util.UUID.randomUUID()
+                var calls = 0
+                val result = CoverageNodeEvaluator.evaluate(run, CoverageTerrainCoordinate(0.5, 0.5), node,
+                    5000.0, budget, mosaic) { profile ->
+                    calls++
+                    assertTrue(profile.elevationsMeters.all { kotlin.math.abs(it + 20) < 1e-9 })
+                    140.0
+                }
+                assertEquals(3, calls)
+                assertEquals(CoverageNodeState.inCoverage, CoverageNodeStatus.resolve(node, run, 5000.0, result).state)
+                val missing = CoverageNodeSnapshot("source", "missing", 0.5, 1.01)
+                val unavailable = CoverageNodeEvaluator.evaluate(run, CoverageTerrainCoordinate(0.5, 0.99), missing,
+                    5000.0, budget, mosaic) { error("Missing tile reached the model") }
+                assertEquals(CoverageNodeReason.missingTerrain, CoverageNodeStatus.resolve(missing, run, 5000.0, unavailable).reason)
+                var cancelled = false
+                val failure = assertThrows(CoverageTerrainProfileFailure::class.java) {
+                    CoverageNodeEvaluator.evaluate(run, CoverageTerrainCoordinate(0.5, 0.5), node,
+                        5000.0, budget, mosaic, cancelled = { cancelled }) { cancelled = true; 140.0 }
+                }
+                assertEquals(CoverageTerrainProfileState.CANCELLED, failure.state)
+                assertEquals(0, files.released)
+            }
+            assertEquals(1, files.released)
+        }
+    }
+
     @Test fun geographicProfileReadsTerrainAndRetainsPins() {
         MosaicFiles().use { files ->
             val reader = files.reader(List(121 * 121) { 200 }, side = 121)

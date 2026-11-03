@@ -5,6 +5,17 @@ import kotlin.math.*
 
 /** Exact-node orchestration. Caller fixes model configuration and serializes terrain access. */
 object CoverageNodeEvaluator {
+    /** Borrows the prepared mosaic; its owner closes pinned readers after the run. */
+    fun evaluate(runID: UUID, transmitter: CoverageTerrainCoordinate, node: CoverageNodeSnapshot,
+                 radiusMeters: Double, budget: CoverageLinkBudget, mosaic: CoverageTerrainMosaic,
+                 cancelled: () -> Boolean = { false },
+                 predictLoss: (CoverageTerrainProfile) -> Double): CoverageNodeEvaluation =
+        evaluate(runID, transmitter, node, radiusMeters, budget, cancelled,
+            profile = { path, spacing, samples, geometry ->
+                mosaic.profile(path, spacing, samples, geometry, cancelled)
+            }, predictLoss = predictLoss)
+
+
     fun evaluate(runID: UUID, transmitter: CoverageTerrainCoordinate, node: CoverageNodeSnapshot,
                  radiusMeters: Double, budget: CoverageLinkBudget, cancelled: () -> Boolean = { false },
                  profile: (CoverageTerrainPath, Double, Int, Int) -> CoverageTerrainSampledPath,

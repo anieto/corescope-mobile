@@ -51,6 +51,47 @@ private final class MosaicFiles {
 }
 
 struct CoverageTerrainMosaicTests {
+    @Test func exactNodesUseFileBackedTerrainWithoutTakingOwnership() throws {
+        let files = try MosaicFiles()
+        let reader = try files.reader(samples: Array(repeating: -20, count: 121 * 121), side: 121)
+        let mosaic = try CoverageTerrainMosaic(readers: [CoverageTerrainTile(south: 0, west: 0): reader])
+        defer { mosaic.close() }
+        let budget = try CoverageLinkBudget(transmitPowerDbm: 22, transmitGainDbi: 3, receiveGainDbi: 2,
+            transmitLossDb: 1, receiveLossDb: 1, sensitivityDbm: -130, reserveDb: 5)
+        let node = CoverageNodeSnapshot(sourceID: "source", nodeID: "node", latitude: 0.5, longitude: 0.52)
+        let run = UUID()
+        var calls = 0
+        let result = try CoverageNodeEvaluator.evaluate(runID: run,
+            transmitter: CoverageTerrainCoordinate(latitude: 0.5, longitude: 0.5), node: node,
+            radiusMeters: 5000, budget: budget, mosaic: mosaic) { profile in
+                calls += 1
+                #expect(profile.elevationsMeters.allSatisfy { abs($0 + 20) < 1e-9 })
+                return 140
+            }
+        #expect(calls == 3)
+        #expect(CoverageNodeStatus.resolve(node: node, activeRunID: run, radiusMeters: 5000, evaluation: result).state == .inCoverage)
+        let missing = CoverageNodeSnapshot(sourceID: "source", nodeID: "missing", latitude: 0.5, longitude: 1.01)
+        let unavailable = try CoverageNodeEvaluator.evaluate(runID: run,
+            transmitter: CoverageTerrainCoordinate(latitude: 0.5, longitude: 0.99), node: missing,
+            radiusMeters: 5000, budget: budget, mosaic: mosaic) { _ in
+                Issue.record("Missing tile reached the model")
+                return 140
+            }
+        #expect(CoverageNodeStatus.resolve(node: missing, activeRunID: run, radiusMeters: 5000, evaluation: unavailable).reason == .missingTerrain)
+        var cancelled = false
+        #expect(throws: CoverageTerrainProfileFailure.cancelled) {
+            try CoverageNodeEvaluator.evaluate(runID: run,
+                transmitter: CoverageTerrainCoordinate(latitude: 0.5, longitude: 0.5), node: node,
+                radiusMeters: 5000, budget: budget, mosaic: mosaic, cancelled: { cancelled }) { _ in
+                    cancelled = true
+                    return 140
+                }
+        }
+        #expect(files.released == 0)
+        mosaic.close()
+        #expect(files.released == 1)
+    }
+
     @Test func geographicProfileReadsTerrainAndRetainsPins() throws {
         let files = try MosaicFiles()
         let reader = try files.reader(samples: Array(repeating: 200, count: 121 * 121), side: 121)
