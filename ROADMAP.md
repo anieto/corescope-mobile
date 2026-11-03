@@ -142,15 +142,17 @@ which covers all of 0.10, is in the [0.10.2 release notes](docs/node-planner/v0.
   Cache identity and bounded preflight now match shared reference vectors on both platforms.
   Decoded-tile caches now support locked ownership, verified publication, pinned readers and
   offline reuse. Bounded gzip decoding now passes 22 shared fixtures and cache integration tests.
-  Cancellable downloads, full-job reservations and RF/UI integration remain next. See the
+  Cancellable downloads and serialized terrain preparation now connect decode/cache publication,
+  offline reads, bounded retries and pipeline disk-budget checks. Cache repair, workspace recovery
+  and RF/UI integration remain next. See the
   [native integration report](docs/node-planner/native-terrain-integration.md).
 - **Release gate:** coverage integration and physical-device qualification remain incomplete.
   Do not ship the site library as a substitute for coverage or silently relax model fidelity.
 - **Candidate Sites progress:** merged the 0.10.2 baseline from `main`; development release
   versions remain 0.10.2 until release preparation. Isolated terrain studies now include a bounded
   coverage scheduler, a download/cache contract, and Swift/Kotlin leased terrain readers. The
-  readers pass host tests against 576,505 reference samples each; native cache/network integration
-  and mobile validation remain outstanding. See the [reader study](docs/node-planner/native-terrain-reader-study.md).
+  readers pass host tests against 576,505 reference samples each; native cache/network preparation
+  is now integrated, while full coverage execution and mobile validation remain outstanding. See the [reader study](docs/node-planner/native-terrain-reader-study.md).
 - **Candidate Sites data model:** Swift and Kotlin now share a versioned plan/site contract and
   30 validation fixtures. Radio and installation assumptions remain unspecified until entered;
   atomic save/reopen now protects unreadable libraries and detects changed files. The plan/site

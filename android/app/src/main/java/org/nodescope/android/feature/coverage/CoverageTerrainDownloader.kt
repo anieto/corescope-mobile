@@ -26,6 +26,7 @@ class CoverageTerrainDownloadBudget(limit: Long) {
     init {
         if (limit !in 0..512_000_000L) throw CoverageTerrainDownloadFailure(CoverageTerrainDownloadState.INVALID_LIMITS)
     }
+    val remainingBytes: Long @Synchronized get() = available
     @Synchronized internal fun reserve(count: Long) {
         if (count > available) throw CoverageTerrainDownloadFailure(CoverageTerrainDownloadState.DOWNLOAD_LIMIT)
         available -= count

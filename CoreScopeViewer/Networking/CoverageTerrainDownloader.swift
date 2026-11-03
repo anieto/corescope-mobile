@@ -15,6 +15,7 @@ final class CoverageTerrainDownloadBudget: @unchecked Sendable {
         guard (0...512_000_000).contains(limit) else { throw CoverageTerrainDownloadFailure.invalidLimits }
         available = limit
     }
+    var remainingBytes: Int64 { lock.withLock { available } }
     var receivedBytes: Int64 { lock.withLock { consumed } }
     fileprivate func reserve(_ count: Int64) throws {
         try lock.withLock {

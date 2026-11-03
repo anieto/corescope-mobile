@@ -151,3 +151,11 @@ application-byte accounting, source hash/length checks, owned temporary files an
 The full-pipeline disk estimate now includes both decoded copies during cache publication.
 These pieces are not yet connected to the coverage screen: terrain orchestration, retry/repair
 policy, enforced disk reservations, RF execution and known-node classification remain next.
+
+### Terrain preparation progress
+
+Both platforms now connect downloads, gzip decoding and cache publication into an exclusive
+preparation operation. It returns a complete set of verified pinned readers, supports offline
+reuse, enforces the logical pipeline quota, checks free disk space, retries selected transient
+failures, and releases partial reader sets on failure. Cache repair, workspace crash recovery,
+geographic tile selection, RF execution and the standalone map UI remain outstanding.

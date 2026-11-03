@@ -210,17 +210,50 @@ HTTP, including rejected redirects and a total-timeout failure. Neither qualifie
 compatibility or on-device throughput. A 404 remains an explicit HTTP status for the coordinator
 to classify; 429 and transient statuses are not automatically retried by this layer.
 
+## Serialized terrain preparation
+
+The cache now exposes an exclusive async `prepare` operation on both platforms. It validates
+the full request and budgets, verifies/pins existing requested tiles, evicts only unrelated
+unpinned entries to leave room for all missing tiles and the largest temporary workspace, and
+checks actual free space on cache/workspace destinations before downloading. It serially
+downloads, decodes, publishes and acquires each missing tile. Duplicate descriptors reuse one
+reader. Success transfers the complete pinned set; failure closes every reader opened by the
+operation while preserving any successfully committed tiles for reuse.
+
+Offline preparation requires a complete verified cache hit and never invokes the downloader.
+Default attempts are two, bounded to one through three. Selected transient HTTP statuses
+(408/500/502/503/504) and transport failures retry after cancellable delays using the same byte
+budget. Corruption, 404 and rate limiting do not immediately retry. Cache corruption still
+fails explicitly without deletion; online repair remains unimplemented.
+
+The cache remains owned by one serialized background worker; callers must not invoke other
+cache operations while preparation is suspended. Its process lock excludes other cache
+owners, but the disk estimate is logical accounting, not an OS reservation. External disk
+consumption and write/cleanup failures remain possible. Crash recovery for external download/
+decode workspaces and physical-device qualification remain outstanding.
+
+iOS declares disk-space reason E174.1 for avoiding terrain writes/downloads when space is
+insufficient, per [Apple's required-reason documentation](https://developer.apple.com/documentation/bundleresources/app-privacy-configuration/nsprivacyaccessedapitypes/nsprivacyaccessedapitypereasons).
+Free-space values are used locally and are not included in network requests.
+
+Integration tests cover download/decode/publication, signed samples, deduplication, offline
+reopen, preflight rejection before download, transient retries, cancellation and partial-set
+cleanup. They exercise synthetic terrain, not real provider qualification.
+
 ## Next implementation
 
-Implement the native terrain coordinator around the bounded HTTP downloader and the existing
-[repository contract](terrain-repository-study.md): use the implemented identity/preflight types for
-bounded transfer and whole-job reservations; connect the implemented decoder/cache for publication,
-leases and offline reuse, and add explicit online repair of invalid cache entries.
+Extend terrain preparation with explicit online repair and owned-workspace crash recovery against the
+[repository contract](terrain-repository-study.md).
 It must supply the readers with verified decoded digests and consistent provenance. Wire geographic
 footprint/halo selection, the feature-preserving profile sampler and the bounded scheduler next.
 Then package the reviewed propagation kernel and implement the shared run/node-result contract
 before connecting standalone Estimated Coverage UI and green/red/neutral known-node markers.
 
-Networking is implemented at the single-attempt level. Coordinator ownership, retries, full engine integration, area raster rendering,
+Terrain preparation now connects networking, decoding and caching. Full engine integration, area raster rendering,
 physical-device budgets and node classification are not completed by this slice. Existing saved
 site data and release version numbers are unchanged.
+
+Validation for this preparation slice: Xcode build including test targets and 34 Swift host tests
+passed. The Android coverage tests passed; the full 421-test suite had one skipped test and the
+existing `MyNodesBaseRepositoryTest.observerPagesShareBudgetAndWarmCache` failure (expected
+16 requests, observed 17), repeated on rerun. No simulator or UI tests were run.

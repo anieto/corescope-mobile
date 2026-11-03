@@ -27,6 +27,7 @@ final class CoverageTerrainDiskCache {
     private var pins: [String: Int] = [:]
     private var sequence: Int64 = 0
     private var closed = false
+    private var preparing = false
     private static let marker = Data("nodescope-coverage-cache-v1\n".utf8)
 
     init(root: URL, quota: Int64) throws {
@@ -66,6 +67,92 @@ final class CoverageTerrainDiskCache {
         try requireOpen()
         return try CoverageTerrainPreflight.make(requested: descriptors, inventory: inventory, quota: quota,
                                                  remainingDownloadBytes: remainingDownloadBytes, attempts: attempts)
+    }
+
+    /// Exclusive serialized-worker operation. Do not call other cache APIs while this awaits.
+    /// Returns a complete verified/pinned set; caller closes every reader on the same worker.
+    /// Cached corruption fails without deleting it; online repair is a separate operation.
+    func prepare(_ descriptors: [CoverageTerrainDescriptor], workspace: URL,
+                 budget: CoverageTerrainDownloadBudget, offline: Bool = false, attempts: Int = 2,
+                 download: (CoverageTerrainDescriptor, URL, CoverageTerrainDownloadBudget) async throws -> DownloadedCoverageTerrain = {
+                     try await CoverageTerrainDownloader.download($0, workspace: $1, budget: $2)
+                 }) async throws -> [String: LeasedTerrainReader] {
+        try requireOpen()
+        guard !preparing else { throw CoverageTerrainCacheFailure.busy }
+        preparing = true
+        defer { preparing = false }
+        try Task.checkCancellation()
+        let plan = try CoverageTerrainPipelinePreflight.make(requested: descriptors, inventory: inventory,
+            quota: quota, remainingDownloadBytes: budget.remainingBytes, attempts: attempts)
+        if offline && !plan.cache.hasAllCachedTiles { throw CoverageTerrainCacheFailure.missing }
+        guard plan.fitsPipelineQuota else { throw CoverageTerrainCacheFailure.quota }
+        if !offline && plan.cache.expectedDownloadBytes + Int64(plan.cache.uncachedTiles) > budget.remainingBytes {
+            throw CoverageTerrainDownloadFailure.downloadLimit
+        }
+        var seen = Set<String>()
+        let unique = descriptors.filter { seen.insert($0.cacheKey).inserted }
+        var readers: [String: LeasedTerrainReader] = [:]
+        do {
+            // Validate and pin existing requested entries before any eviction or network access.
+            for descriptor in unique where entries[descriptor.cacheKey] != nil {
+                readers[descriptor.cacheKey] = try acquire(descriptor, cancelled: { Task.isCancelled })
+            }
+            let missing = unique.filter { readers[$0.cacheKey] == nil }
+            if !missing.isEmpty {
+                let futureBytes = missing.reduce(Int64(0)) { $0 + $1.decodedBytes + 8192 }
+                let additional = futureBytes + plan.temporaryWorkspaceBytes
+                try makeRoom(for: additional, protecting: "")
+                // Conservative free-space check on both destinations, even if they share a volume.
+                // Other processes can consume space afterwards; every write still handles failure.
+                for location in [root, workspace] {
+                    let attributes = try FileManager.default.attributesOfFileSystem(forPath: location.path)
+                    guard let free = attributes[.systemFreeSize] as? NSNumber,
+                          free.int64Value >= additional else { throw CoverageTerrainCacheFailure.quota }
+                }
+            }
+            for descriptor in missing {
+                try Task.checkCancellation()
+                let packed = try await downloadWithRetries(descriptor, workspace: workspace, budget: budget,
+                    attempts: attempts, download: download)
+                defer { try? packed.close() }
+                try Task.checkCancellation()
+                let decoded = try CoverageTerrainDecoder.decode(descriptor, packedFile: packed.fileURL,
+                    workspace: workspace, cancelled: { Task.isCancelled })
+                defer { try? decoded.close() }
+                try publish(descriptor, decodedFile: decoded.fileURL, decodedSHA256: decoded.sha256,
+                    fetchedAtMilliseconds: Int64(Date().timeIntervalSince1970 * 1000),
+                    cancelled: { Task.isCancelled })
+                readers[descriptor.cacheKey] = try acquire(descriptor, cancelled: { Task.isCancelled })
+            }
+            try Task.checkCancellation()
+            return readers
+        } catch {
+            readers.values.forEach { $0.close() }
+            throw error
+        }
+    }
+
+    private func downloadWithRetries(_ descriptor: CoverageTerrainDescriptor, workspace: URL,
+        budget: CoverageTerrainDownloadBudget, attempts: Int,
+        download: (CoverageTerrainDescriptor, URL, CoverageTerrainDownloadBudget) async throws -> DownloadedCoverageTerrain
+    ) async throws -> DownloadedCoverageTerrain {
+        for attempt in 0..<attempts {
+            try Task.checkCancellation()
+            do { return try await download(descriptor, workspace, budget) }
+            catch {
+                try Task.checkCancellation()
+                let transient: Bool
+                if case CoverageTerrainDownloadFailure.httpStatus(let status) = error {
+                    transient = [408, 500, 502, 503, 504].contains(status)
+                } else if let network = error as? URLError {
+                    transient = [.timedOut, .networkConnectionLost, .cannotConnectToHost,
+                                 .dnsLookupFailed, .notConnectedToInternet].contains(network.code)
+                } else { transient = false }
+                guard transient, attempt + 1 < attempts else { throw error }
+                try await Task.sleep(for: .milliseconds(50 * (attempt + 1)))
+            }
+        }
+        throw CoverageTerrainRepositoryFailure.invalidLimits
     }
 
     /// Accepts a private, already-decoded file from the future validated download/decode adapter.

@@ -4,13 +4,14 @@ import Testing
 @testable import CoreScopeViewer
 
 private final class TerrainHTTPStub: URLProtocol, @unchecked Sendable {
+    static let gzip = Data(base64Encoded: "H4sIAAAAAAAC/2Ng/P+vgYGBBQAP46E6CAAAAA==") ?? Data()
     static let payload = Data((0..<150000).map { UInt8($0 % 251) })
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
         guard let url = request.url else { return }
         if url.path == "/stall" { return }
-        var body = Self.payload
+        var body = url.path == "/gzip" ? Self.gzip : Self.payload
         var status = 200
         var headers = [String: String]()
         switch url.path {
@@ -97,5 +98,111 @@ struct CoverageTerrainDownloaderTests {
         do { _ = try await task.value; Issue.record("Cancelled request succeeded") } catch {}
         #expect(budget.receivedBytes == 0)
         #expect(try FileManager.default.contentsOfDirectory(atPath: root.path).isEmpty)
+    }
+}
+
+struct CoverageTerrainPreparationTests {
+    private func descriptor(_ tile: String = "N00E000") throws -> CoverageTerrainDescriptor {
+        try CoverageTerrainDescriptor(dataset: "prepare", revision: "1", tile: tile,
+            compressedSHA256: SHA256.hash(data: TerrainHTTPStub.gzip).map { String(format: "%02x", $0) }.joined(),
+            packedBytes: Int64(TerrainHTTPStub.gzip.count), side: 2,
+            url: "https://example.invalid/gzip", verticalDatum: "test", attribution: "test")
+    }
+    private func workspace() throws -> URL {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false)
+        return root
+    }
+    private func download(_ spec: CoverageTerrainDescriptor, _ root: URL,
+                          _ budget: CoverageTerrainDownloadBudget) async throws -> DownloadedCoverageTerrain {
+        try await CoverageTerrainDownloader.download(spec, workspace: root, budget: budget,
+            protocolClasses: [TerrainHTTPStub.self])
+    }
+
+    @Test func downloadDecodePublishAndOfflineReopen() async throws {
+        let root = try workspace()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let spec = try descriptor()
+        let cacheURL = root.appendingPathComponent("cache")
+        let cache = try CoverageTerrainDiskCache(root: cacheURL, quota: 100000)
+        let budget = try CoverageTerrainDownloadBudget(limit: 1000)
+        let readers = try await cache.prepare([spec, spec], workspace: root, budget: budget, download: download)
+        #expect(readers.count == 1)
+        #expect(try readers[spec.cacheKey]?.read(start: 0, count: 4) == [1, -2, -32768, 4])
+        #expect(budget.receivedBytes == spec.packedBytes)
+        #expect(cache.inventory.allSatisfy { $0.pinned })
+        readers.values.forEach { $0.close() }
+        try cache.close()
+        let reopened = try CoverageTerrainDiskCache(root: cacheURL, quota: 100000)
+        let offline = try await reopened.prepare([spec], workspace: root,
+            budget: CoverageTerrainDownloadBudget(limit: 0), offline: true,
+            download: { _, _, _ in Issue.record("Offline network access"); throw CoverageTerrainCacheFailure.io })
+        #expect(try offline[spec.cacheKey]?.read(start: 0, count: 1) == [1])
+        offline.values.forEach { $0.close() }
+        try reopened.close()
+        #expect(try FileManager.default.contentsOfDirectory(atPath: root.path) == ["cache"])
+    }
+
+    @Test func rejectedPreflightDoesNotDownload() async throws {
+        let root = try workspace()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let spec = try descriptor()
+        let peak = 4096 + 8 + 8192 + spec.packedBytes + 8 + 8192
+        let cache = try CoverageTerrainDiskCache(root: root.appendingPathComponent("cache"), quota: peak - 1)
+        defer { try? cache.close() }
+        do {
+            _ = try await cache.prepare([spec], workspace: root, budget: CoverageTerrainDownloadBudget(limit: 1000),
+                download: { _, _, _ in Issue.record("Quota rejection downloaded"); throw CoverageTerrainCacheFailure.io })
+            Issue.record("Insufficient pipeline quota accepted")
+        } catch { #expect(error as? CoverageTerrainCacheFailure == .quota) }
+        #expect(cache.inventory.isEmpty)
+    }
+
+    @Test func partialFailureReleasesPinsAndKeepsCompletedTileReusable() async throws {
+        let root = try workspace()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let first = try descriptor(), second = try descriptor("N00E001")
+        let cache = try CoverageTerrainDiskCache(root: root.appendingPathComponent("cache"), quota: 100000)
+        var calls = 0
+        do {
+            _ = try await cache.prepare([first, second], workspace: root, budget: CoverageTerrainDownloadBudget(limit: 1000)) {
+                spec, directory, budget in
+                calls += 1
+                if calls == 2 { throw CoverageTerrainDownloadFailure.httpStatus(404) }
+                return try await download(spec, directory, budget)
+            }
+            Issue.record("Partial set escaped")
+        } catch { #expect(error as? CoverageTerrainDownloadFailure == .httpStatus(404)) }
+        #expect(calls == 2)
+        #expect(cache.inventory.count == 1)
+        #expect(cache.inventory.allSatisfy { !$0.pinned })
+        let reader = try cache.acquire(first)
+        reader.close()
+        try cache.close()
+        #expect(try FileManager.default.contentsOfDirectory(atPath: root.path) == ["cache"])
+    }
+
+    @Test func retryPolicyAndCancellationReleaseOwnership() async throws {
+        let root = try workspace()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let spec = try descriptor()
+        let cache = try CoverageTerrainDiskCache(root: root.appendingPathComponent("cache"), quota: 100000)
+        var calls = 0
+        let readers = try await cache.prepare([spec], workspace: root, budget: CoverageTerrainDownloadBudget(limit: 1000)) {
+            spec, directory, budget in
+            calls += 1
+            if calls == 1 { throw CoverageTerrainDownloadFailure.httpStatus(503) }
+            return try await download(spec, directory, budget)
+        }
+        #expect(calls == 2)
+        readers.values.forEach { $0.close() }
+        let second = try descriptor("N00E001")
+        do {
+            _ = try await cache.prepare([spec, second], workspace: root, budget: CoverageTerrainDownloadBudget(limit: 1000),
+                download: { _, _, _ in throw CancellationError() })
+            Issue.record("Cancellation accepted")
+        } catch { #expect(error is CancellationError) }
+        #expect(cache.inventory.allSatisfy { !$0.pinned })
+        try cache.close()
     }
 }

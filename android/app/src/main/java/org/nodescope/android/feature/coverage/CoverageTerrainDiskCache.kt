@@ -15,6 +15,10 @@ import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.security.MessageDigest
 import java.util.UUID
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -35,6 +39,7 @@ class CoverageTerrainDiskCache(private val root: File, private val quota: Long) 
     private val pins = mutableMapOf<String, Int>()
     private var sequence = 0L
     private var closed = false
+    private var preparing = false
     private val json = Json { encodeDefaults = true }
 
     init {
@@ -67,6 +72,81 @@ class CoverageTerrainDiskCache(private val root: File, private val quota: Long) 
     fun preflight(descriptors: List<CoverageTerrainDescriptor>, remainingDownloadBytes: Long, attempts: Int = 2): CoverageTerrainPreflight {
         requireOpen()
         return CoverageTerrainPreflight.make(descriptors, inventory, quota, remainingDownloadBytes, attempts)
+    }
+
+    /**
+     * Exclusive serialized-worker operation; do not call other cache APIs while suspended.
+     * Transfers a complete verified pinned set. Caller closes every reader on the same worker.
+     * Corrupt cached data is preserved and fails explicitly; repair is a separate operation.
+     */
+    suspend fun prepare(descriptors: List<CoverageTerrainDescriptor>, workspace: File,
+                        budget: CoverageTerrainDownloadBudget, offline: Boolean = false, attempts: Int = 2,
+                        download: suspend (CoverageTerrainDescriptor, File, CoverageTerrainDownloadBudget) -> DownloadedCoverageTerrain =
+                            { descriptor, directory, allowance -> CoverageTerrainDownloader.download(descriptor, directory, allowance) }
+    ): Map<String, LeasedTerrainReader> {
+        requireOpen()
+        if (preparing) fail(CoverageTerrainCacheState.BUSY)
+        preparing = true
+        val context = currentCoroutineContext()
+        val cancelled = { !context.isActive }
+        val readers = mutableMapOf<String, LeasedTerrainReader>()
+        try {
+            context.ensureActive()
+            val plan = CoverageTerrainPipelinePreflight.make(descriptors, inventory, quota, budget.remainingBytes, attempts)
+            if (offline && !plan.cache.hasAllCachedTiles) fail(CoverageTerrainCacheState.MISSING)
+            if (!plan.fitsPipelineQuota) fail(CoverageTerrainCacheState.QUOTA)
+            if (!offline && plan.cache.expectedDownloadBytes + plan.cache.uncachedTiles > budget.remainingBytes) {
+                throw CoverageTerrainDownloadFailure(CoverageTerrainDownloadState.DOWNLOAD_LIMIT)
+            }
+            val unique = descriptors.distinctBy { it.cacheKey }
+            for (descriptor in unique.filter { it.cacheKey in entries }) {
+                readers[descriptor.cacheKey] = acquire(descriptor, cancelled)
+            }
+            val missing = unique.filter { it.cacheKey !in readers }
+            if (missing.isNotEmpty()) {
+                val additional = missing.sumOf { it.decodedBytes + 8192 } + plan.temporaryWorkspaceBytes
+                makeRoom(additional, "")
+                // Conservative check on both destinations, even when on the same volume.
+                if (root.usableSpace < additional || workspace.usableSpace < additional) fail(CoverageTerrainCacheState.QUOTA)
+            }
+            for (descriptor in missing) {
+                context.ensureActive()
+                downloadWithRetries(descriptor, workspace, budget, attempts, download).use { packed ->
+                    context.ensureActive()
+                    CoverageTerrainDecoder.decode(descriptor, packed.file, workspace, cancelled).use { decoded ->
+                        publish(descriptor, decoded.file, decoded.sha256, System.currentTimeMillis(), cancelled)
+                        readers[descriptor.cacheKey] = acquire(descriptor, cancelled)
+                    }
+                }
+            }
+            context.ensureActive()
+            return readers
+        } catch (error: Exception) {
+            readers.values.forEach { try { it.close() } catch (closeError: Exception) { error.addSuppressed(closeError) } }
+            throw error
+        } finally { preparing = false }
+    }
+
+    private suspend fun downloadWithRetries(descriptor: CoverageTerrainDescriptor, workspace: File,
+        budget: CoverageTerrainDownloadBudget, attempts: Int,
+        download: suspend (CoverageTerrainDescriptor, File, CoverageTerrainDownloadBudget) -> DownloadedCoverageTerrain
+    ): DownloadedCoverageTerrain {
+        repeat(attempts) { attempt ->
+            currentCoroutineContext().ensureActive()
+            try { return download(descriptor, workspace, budget) }
+            catch (error: Exception) {
+                currentCoroutineContext().ensureActive()
+                val transient = when (error) {
+                    is CoverageTerrainDownloadFailure -> error.state == CoverageTerrainDownloadState.HTTP_STATUS &&
+                        error.status in listOf(408, 500, 502, 503, 504)
+                    is java.io.InterruptedIOException, is java.net.ConnectException, is java.net.UnknownHostException -> true
+                    else -> false
+                }
+                if (!transient || attempt + 1 == attempts) throw error
+                delay(50L * (attempt + 1))
+            }
+        }
+        throw CoverageTerrainRepositoryFailure(CoverageTerrainRepositoryState.INVALID_LIMITS)
     }
 
     /** Private decoded adapter output only; this verifies decoded hash/length, not gzip/source digest. */
