@@ -1,0 +1,100 @@
+[
+  {
+    "name": "stable-positive",
+    "losses": [
+      100,
+      100.05,
+      100.08
+    ],
+    "maximumLoss": 152,
+    "state": "qualified",
+    "passes": 3
+  },
+  {
+    "name": "stable-negative",
+    "losses": [
+      160,
+      160.05,
+      160.08
+    ],
+    "maximumLoss": 152,
+    "state": "qualified",
+    "passes": 3
+  },
+  {
+    "name": "guard-positive",
+    "losses": [
+      151.75,
+      151.75,
+      151.75,
+      151.75,
+      151.75
+    ],
+    "maximumLoss": 152,
+    "state": "thresholdUnresolved",
+    "passes": 5
+  },
+  {
+    "name": "guard-negative",
+    "losses": [
+      152.25,
+      152.25,
+      152.25,
+      152.25,
+      152.25
+    ],
+    "maximumLoss": 152,
+    "state": "thresholdUnresolved",
+    "passes": 5
+  },
+  {
+    "name": "just-outside-guard",
+    "losses": [
+      151.74999,
+      151.74999,
+      151.74999
+    ],
+    "maximumLoss": 152,
+    "state": "qualified",
+    "passes": 3
+  },
+  {
+    "name": "unstable",
+    "losses": [
+      100,
+      101,
+      102,
+      103,
+      104
+    ],
+    "maximumLoss": 152,
+    "state": "accuracyUnresolved",
+    "passes": 5
+  },
+  {
+    "name": "stability-resets",
+    "losses": [
+      100,
+      100.05,
+      110,
+      110.05,
+      110.08
+    ],
+    "maximumLoss": 152,
+    "state": "qualified",
+    "passes": 5
+  },
+  {
+    "name": "at-threshold",
+    "losses": [
+      152,
+      152,
+      152,
+      152,
+      152
+    ],
+    "maximumLoss": 152,
+    "state": "thresholdUnresolved",
+    "passes": 5
+  }
+]

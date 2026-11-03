@@ -345,10 +345,33 @@ Xcode build and 48 Swift host tests passed. Android debug assembly and coverage 
 the full 436-test suite hit the existing observer-page request-budget failure, with one skipped
 test. No simulator or UI tests were run.
 
+## Native RF convergence policy
+
+Swift and Kotlin now share the reviewed sampling convergence policy through eight decision
+fixtures. Profiles refine at 30, 10, 5, 2 and 1 m spacing. Qualification requires two consecutive
+loss changes no greater than 0.1 dB, spacing at most 5 m, and an absolute unrounded reception
+margin greater than 0.25 dB. Exhausted refinements return accuracy-unresolved or threshold-unresolved
+with no usable loss or margin. Invalid model output, missing terrain, work limits and cancellation
+remain explicit failures; cancellation during a synchronous model call discards its output.
+
+Terrain and geometry budgets apply cumulatively across passes for one path. The current mosaic
+adapter recomputes crossings on each pass and charges that work; it does not yet cache discovery
+or enforce a full-study scheduler budget. The initial RF policy retains the study's 250 m–100 km
+path domain. Shorter and longer paths require separate qualification.
+
+The propagation model is injected, not bundled. Tests use controlled losses to verify decisions,
+not physical RF accuracy. Integration tests run the policy over file-backed terrain profiles while
+preserving reader pins. Production kp1812 packaging and distribution permissions remain unresolved
+as documented in the [engine feasibility study](kp1812-feasibility.md); no third-party engine
+source or binary was imported in this slice.
+
+Xcode build including test targets and 51 Swift host tests passed. Android debug assembly passed;
+the 439-test unit suite had no failures and one skipped test. No simulator or UI tests were run.
+
 ## Next implementation
 
-Connect the bounded scheduler and reviewed RF engine/convergence policy to the geographic profile
-adapter. Preserve explicit limits, terrain/source failures and both work counters. Connect a qualified provider manifest
+Resolve production RF engine packaging and distribution permissions, then connect its adapter
+and the bounded scheduler to the geographic profile/convergence pipeline. Preserve explicit limits, terrain/source failures and both work counters. Connect a qualified provider manifest
 to footprint selection. Define explicit recovery for invalid metadata separately; never silently reset unknown
 cache contents. See the [repository contract](terrain-repository-study.md).
 Then package the reviewed propagation kernel and implement the shared run/node-result contract

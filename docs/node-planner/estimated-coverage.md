@@ -191,3 +191,13 @@ both platforms. It handles date-line wrapping and latitude turning points, count
 and preserves reader ownership through errors. The initial adapter supports paths up to 100 km
 within ±85° latitude; longer-range/polar qualification remains outstanding. RF convergence,
 scheduler integration, provider-manifest discovery and the standalone coverage UI remain next.
+
+### RF convergence progress
+
+Both platforms now refine terrain profiles under cumulative per-path work budgets and require
+stable loss estimates outside the 0.25 dB threshold guard before exposing an unrounded margin.
+Unstable or threshold-adjacent results expose no usable estimate, preventing later node coloring
+from treating them as confirmed coverage. Eight shared decision fixtures and terrain integration
+tests cover the policy. The model remains injected: production RF engine packaging/distribution,
+full-study scheduling, provider discovery and map UI are still outstanding. These tests validate
+policy behavior, not propagation accuracy. See the [integration report](native-terrain-integration.md).

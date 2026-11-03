@@ -60,6 +60,13 @@ struct CoverageTerrainMosaicTests {
         #expect(result.profile.elevationsMeters.allSatisfy { abs($0 - 200) < 1e-9 })
         #expect(result.profile.distancesMeters.last == 2000)
         #expect(result.geometryEvaluations > 0)
+        // A controlled model response tests the integration, not physical RF accuracy.
+        let converged = try CoverageRFConvergence.evaluate(distanceMeters: path.distanceMeters, maximumLossDb: 152,
+            profile: { spacing, samples, geometry in
+                try mosaic.profile(path: path, spacingMeters: spacing, sampleLimit: samples, geometryLimit: geometry)
+            }, predictLoss: { _ in 100 })
+        #expect(converged.state == .qualified)
+        #expect(converged.passes == 3)
         #expect(files.released == 0)
         let missing = try CoverageTerrainPath(latitude: 0.5, longitude: 0.999, bearingDegrees: 90, distanceMeters: 2000)
         #expect(throws: CoverageTerrainProfileFailure.missingTerrain) { try mosaic.profile(path: missing, spacingMeters: 30) }
