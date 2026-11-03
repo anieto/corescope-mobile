@@ -434,6 +434,25 @@ Xcode build and 59 Swift host tests passed. Android debug assembly and new run t
 the full 447-test suite had one skipped test and the existing observer-page request-budget failure
 (expected 16 requests, observed 17). No simulator or UI tests were run.
 
+## Exact-node evaluation orchestration
+
+Swift/Kotlin evaluators now compute spherical distance and initial bearing from transmitter to
+node coordinates, then pass that path through the profile callback, convergence, radio budget
+and node-status adapter. The calculation uses the same sphere as terrain path sampling and handles
+the date line. Outside-radius nodes skip terrain/RF work; the existing 250 m–100 km and ±85°
+model domain is enforced before profiling. Missing terrain, unresolved sampling and exhausted
+per-path budgets retain explicit reasons. Cancellation and invalid-input/model errors propagate;
+unrecognized exceptions are not disguised as missing terrain.
+
+Tests use controlled profile/model callbacks to verify endpoint alignment across the date line,
+convergence through run completion, skipped unsupported work, failure reasons and cancellation.
+Xcode build and 62 Swift host tests passed; Android unit tests and debug assembly passed.
+No simulator or UI tests were run. These tests do not qualify physical propagation accuracy.
+
+Production callbacks, shared full-study work accounting and model/terrain provenance remain
+pending. The evaluator currently applies existing per-path limits; it is not the bounded area
+scheduler and does not bundle an RF kernel or connect a live catalog/map.
+
 ## Next implementation
 
 Resolve production RF engine packaging and distribution permissions, then connect its adapter

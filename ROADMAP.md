@@ -155,7 +155,8 @@ which covers all of 0.10, is in the [0.10.2 release notes](docs/node-planner/v0.
   leaking obsolete margins. A convergence adapter now preserves threshold guards and verifies
   budget-consistent margins before status resolution. Node runs now freeze catalogs, disclose
   processing exclusions, reject late results and discard cancelled partial work; map/catalog
-  integration remains outstanding. See the
+  integration remains outstanding. Exact-node orchestration now derives paths and connects profile
+  callbacks to convergence/status, skipping unsupported or out-of-radius work. See the
   [native integration report](docs/node-planner/native-terrain-integration.md).
 - **Release gate:** coverage integration and physical-device qualification remain incomplete.
   Do not ship the site library as a substitute for coverage or silently relax model fidelity.

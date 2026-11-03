@@ -235,3 +235,12 @@ invalidation marks existing results stale and requires a new run. Empty catalogs
 The caller supplies evaluation order and cap; a 10,000-entry storage ceiling rejects oversized
 catalogs rather than silently truncating them. This is a defensive memory limit, not a qualified
 RF workload. Full radio/model/provenance snapshots, catalog fetching and UI wiring remain pending.
+
+### Exact-node evaluation orchestration
+
+Both platforms now derive a spherical path from transmitter to each node coordinate and connect
+its profile callback, radio budget, convergence and status adapter. Nodes beyond the study radius
+skip terrain/RF work; near-site, long-range and polar paths outside the current model domain remain
+unsupported. Missing terrain and exhausted per-path budgets retain neutral reasons; cancellation
+throws rather than returning a prediction. Tests include a date-line path through convergence and
+run completion. The profile and RF callbacks still need production binding; no kernel is bundled.

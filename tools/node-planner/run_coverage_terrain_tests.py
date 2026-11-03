@@ -16,6 +16,8 @@ let package = Package(name: "CoverageTerrain", platforms: [.macOS(.v13)], target
 ])
 ''')
     sources = [
+        ('CoreScopeViewer/Models/NodePlanner/CoverageNodeEvaluator.swift', 'Sources/CoreScopeViewer/CoverageNodeEvaluator.swift'),
+        ('CoreScopeViewerTests/NodePlanner/CoverageNodeEvaluatorTests.swift', 'Tests/CoverageTerrainTests/CoverageNodeEvaluatorTests.swift'),
         ('CoreScopeViewer/Models/NodePlanner/CoverageNodeRun.swift', 'Sources/CoreScopeViewer/CoverageNodeRun.swift'),
         ('CoreScopeViewerTests/NodePlanner/CoverageNodeRunTests.swift', 'Tests/CoverageTerrainTests/CoverageNodeRunTests.swift'),
         ('CoreScopeViewer/Models/NodePlanner/CoverageNodeStatus.swift', 'Sources/CoreScopeViewer/CoverageNodeStatus.swift'),
