@@ -14,6 +14,7 @@ struct CoverageStudyLimits: Sendable {
     }
 }
 struct CoverageStudyResult: Sendable {
+    let executionID: UUID
     let transmitter: CoverageTerrainCoordinate
     let grid: CoverageGrid
     let budget: CoverageLinkBudget
@@ -26,7 +27,7 @@ struct CoverageStudyResult: Sendable {
 enum CoverageStudy {
     static func evaluate(transmitter: CoverageTerrainCoordinate, grid: CoverageGrid, budget: CoverageLinkBudget,
                          nodes: [CoverageNodeSnapshot], catalogComplete: Bool, nodeLimit: Int,
-                         limits: CoverageStudyLimits, mosaic: CoverageTerrainMosaic,
+                         limits: CoverageStudyLimits, mosaic: CoverageTerrainMosaic, executionID: UUID = UUID(),
                          cancelled: () -> Bool = { false },
                          predictLoss: (CoverageTerrainProfile) throws -> Double) throws -> CoverageStudyResult {
         try limits.validate()
@@ -45,7 +46,7 @@ enum CoverageStudy {
             terrainLimit: limits.nodeSamples, geometryLimit: limits.nodeGeometry, modelCallLimit: limits.nodeModelCalls,
             cancelled: cancelled, profile: profile, predictLoss: predictLoss)
         if cancelled() { throw CoverageTerrainProfileFailure.cancelled }
-        return CoverageStudyResult(transmitter: transmitter, grid: grid, budget: budget, limits: limits,
+        return CoverageStudyResult(executionID: executionID, transmitter: transmitter, grid: grid, budget: budget, limits: limits,
                                    area: area, nodes: nodeResults)
     }
 }

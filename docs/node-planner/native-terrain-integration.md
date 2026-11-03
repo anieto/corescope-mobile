@@ -578,6 +578,24 @@ cancellation in node evaluation, empty catalogs and invalid combined limits. RF 
 test values. No simulator or UI tests were run. Production RF binding, source/model provenance,
 progress/UI ownership and geographic raster rendering remain pending.
 
+## Study publication generations
+
+Study execution now carries a caller-provided execution UUID through its result. Publication
+controllers accept only the active token once, reject incomplete node runs or mismatched area
+counts, and ignore late success/failure/cancellation from superseded jobs. Beginning a run clears
+prior display data. Input invalidation retains an already published result only in explicit stale
+state. iOS transitions are MainActor-isolated; Android transitions and phase/result snapshots are
+synchronized. Consumers must treat published result objects as read-only and honor the outer stale
+state when rendering, including nodes. This gate does not establish model/provenance validity.
+
+Owners still must pass the begin token into execution, signal worker cancellation separately,
+call invalidate on input changes, and bind the controller to the UI. No task launcher, observable
+screen state or automatic input observation is implemented here.
+
+Xcode build and 79 Swift host tests passed. Android assembly and publication tests passed;
+the full 467-test suite had one skipped test and the existing observer-cache request-count failure
+(expected 16, observed 17). No simulator or UI tests were run.
+
 ## Next implementation
 
 Resolve production RF engine packaging and distribution permissions, then connect its adapter

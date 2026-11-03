@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.coverage
 
+import java.util.UUID
+
 data class CoverageStudyLimits(val areaSamples: Int, val areaGeometry: Int, val nodeSamples: Int,
     val nodeGeometry: Int, val nodeModelCalls: Int) {
     fun validate() {
@@ -9,13 +11,13 @@ data class CoverageStudyLimits(val areaSamples: Int, val areaGeometry: Int, val 
         }
     }
 }
-data class CoverageStudyResult(val transmitter: CoverageTerrainCoordinate, val grid: CoverageGrid,
+data class CoverageStudyResult(val executionID: UUID, val transmitter: CoverageTerrainCoordinate, val grid: CoverageGrid,
     val budget: CoverageLinkBudget, val limits: CoverageStudyLimits, val area: CoverageAreaResult, val nodes: CoverageNodeBatchResult)
 /** Serialized worker operation borrowing terrain. No area-only result escapes node failure. */
 object CoverageStudy {
     fun evaluate(transmitter: CoverageTerrainCoordinate, grid: CoverageGrid, budget: CoverageLinkBudget,
                  nodes: List<CoverageNodeSnapshot>, catalogComplete: Boolean, nodeLimit: Int,
-                 limits: CoverageStudyLimits, mosaic: CoverageTerrainMosaic, cancelled: () -> Boolean = { false },
+                 limits: CoverageStudyLimits, mosaic: CoverageTerrainMosaic, executionID: UUID = UUID.randomUUID(), cancelled: () -> Boolean = { false },
                  predictLoss: (CoverageTerrainProfile) -> Double): CoverageStudyResult {
         limits.validate()
         require(nodes.size <= 10_000)
@@ -30,6 +32,6 @@ object CoverageStudy {
             grid.radiusMeters.toDouble(), budget, limits.nodeSamples, limits.nodeGeometry, limits.nodeModelCalls,
             cancelled, profile, predictLoss)
         if (cancelled()) throw CoverageTerrainProfileFailure(CoverageTerrainProfileState.CANCELLED)
-        return CoverageStudyResult(transmitter, grid, budget, limits, area, nodeResults)
+        return CoverageStudyResult(executionID, transmitter, grid, budget, limits, area, nodeResults)
     }
 }

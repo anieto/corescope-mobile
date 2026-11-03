@@ -300,3 +300,10 @@ separate explicit work allocations under a combined ceiling. Node work remains a
 area exhaustion. The operation returns both results and their transmitter/grid/radio inputs together;
 cancellation or node failure returns no area-only result. Production RF configuration/provenance,
 async UI ownership and geographic rendering remain unfinished.
+
+### Publication ownership
+
+Execution tokens now guard publication on both platforms. Superseded, cancelled and duplicate
+results are rejected; input changes retain published work only as explicitly stale. This controller
+still needs screen/view-model wiring, separate worker cancellation and input-change observation.
+It does not yet create a visible coverage map.
