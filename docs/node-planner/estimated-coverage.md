@@ -175,3 +175,11 @@ including date-line crossings. Source resolution fails explicitly for gaps or in
 the complete selected set can be prepared as a geographic sampler. Oversized footprints report a
 limit instead of silently shortening the requested range. This fetch footprint does not define
 the eventual terrain-shaped coverage overlay. Provider-manifest discovery and RF sampling remain next.
+
+### Profile-building progress
+
+Native Swift/Kotlin profile builders now retain supplied cell crossings and fitted interior peaks
+before merging regular samples, with explicit fit/data/work/cancellation failures. Geographic
+crossing discovery and RF convergence remain unconnected. The initial port retains the study's
+100 km per-profile qualification domain; this does not change the planned adjustable study radius,
+and longer-range RF support still requires qualification.

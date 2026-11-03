@@ -146,7 +146,8 @@ which covers all of 0.10, is in the [0.10.2 release notes](docs/node-planner/v0.
   offline reads, bounded retries and pipeline disk-budget checks. Confirmed corrupt payloads can
   now be repaired online; owned workspaces recover abandoned download/decode files. Radius/halo
   tile selection and source validation now feed prepared geographic mosaics. Provider discovery,
-  feature-preserving profiles and RF/UI integration remain next. See the
+  geographic crossing discovery and RF/UI integration remain next. Native profile construction
+  now preserves supplied crossings/interior peaks with bounded work and explicit failures. See the
   [native integration report](docs/node-planner/native-terrain-integration.md).
 - **Release gate:** coverage integration and physical-device qualification remain incomplete.
   Do not ship the site library as a substitute for coverage or silently relax model fidelity.

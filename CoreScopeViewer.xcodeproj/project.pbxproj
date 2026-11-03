@@ -136,6 +136,8 @@
 		31E0055A30994F3600178350 /* CoverageTerrainDownloaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E0055930994F3600178350 /* CoverageTerrainDownloaderTests.swift */; };
 		31E0055C30996C7100178350 /* CoverageTerrainFootprint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E0055B30996C7100178350 /* CoverageTerrainFootprint.swift */; };
 		31E0055E30996CA600178350 /* CoverageTerrainFootprintTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E0055D30996CA600178350 /* CoverageTerrainFootprintTests.swift */; };
+		31E0056030996DBA00178350 /* CoverageTerrainProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E0055F30996DBA00178350 /* CoverageTerrainProfile.swift */; };
+		31E0056230996DEB00178350 /* CoverageTerrainProfileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E0056130996DEB00178350 /* CoverageTerrainProfileTests.swift */; };
 		31E24AAD307DB13E00C096A7 /* sources-v2.json in Resources */ = {isa = PBXBuildFile; fileRef = 31E24AAC307DB13E00C096A7 /* sources-v2.json */; };
 		36723298AC874EAC5903B976 /* Monaspace-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = CCC3EF3BCC40156BFEC23CAA /* Monaspace-OFL.txt */; };
 		367D92626A31391FE48F86D8 /* DistanceFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235873A5D91CB7811DDE491B /* DistanceFormat.swift */; };
@@ -338,6 +340,8 @@
 		31E0055930994F3600178350 /* CoverageTerrainDownloaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageTerrainDownloaderTests.swift; sourceTree = "<group>"; };
 		31E0055B30996C7100178350 /* CoverageTerrainFootprint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageTerrainFootprint.swift; sourceTree = "<group>"; };
 		31E0055D30996CA600178350 /* CoverageTerrainFootprintTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageTerrainFootprintTests.swift; sourceTree = "<group>"; };
+		31E0055F30996DBA00178350 /* CoverageTerrainProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageTerrainProfile.swift; sourceTree = "<group>"; };
+		31E0056130996DEB00178350 /* CoverageTerrainProfileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageTerrainProfileTests.swift; sourceTree = "<group>"; };
 		31E24AAC307DB13E00C096A7 /* sources-v2.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "sources-v2.json"; sourceTree = "<group>"; };
 		32A0B4E835C764626FE71370 /* AnalyzerSourceLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerSourceLogo.swift; sourceTree = "<group>"; };
 		33B9A5F539B49B860F434D81 /* Channel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Channel.swift; sourceTree = "<group>"; };
@@ -479,6 +483,7 @@
 				31E00555309922DC00178350 /* CoverageTerrainDecoderTests.swift */,
 				31E0055930994F3600178350 /* CoverageTerrainDownloaderTests.swift */,
 				31E0055D30996CA600178350 /* CoverageTerrainFootprintTests.swift */,
+				31E0056130996DEB00178350 /* CoverageTerrainProfileTests.swift */,
 			);
 			path = NodePlanner;
 			sourceTree = "<group>";
@@ -493,6 +498,7 @@
 				31E005473098D6C600178350 /* CoverageTerrainMosaic.swift */,
 				31E0054B3098DD4100178350 /* CoverageTerrainDescriptor.swift */,
 				31E0055B30996C7100178350 /* CoverageTerrainFootprint.swift */,
+				31E0055F30996DBA00178350 /* CoverageTerrainProfile.swift */,
 			);
 			path = NodePlanner;
 			sourceTree = "<group>";
@@ -897,6 +903,7 @@
 				31DFA7DA308B052700B8C681 /* FieldSnapshotTests.swift in Sources */,
 				318BF7DB307EBE7000C8BFAD /* NeighborInsightTests.swift in Sources */,
 				31DFA7F1308E9FFF00B8C681 /* NodePlannerElevationProviderTests.swift in Sources */,
+				31E0056230996DEB00178350 /* CoverageTerrainProfileTests.swift in Sources */,
 				311D6C7D307BBA6500E2EB70 /* BeaconAPITests.swift in Sources */,
 				317433B230828A9F0060A385 /* MyNodesFoundationTests.swift in Sources */,
 				C9442265B47B2D20E681223B /* AnalyzerSourceLogoTests.swift in Sources */,
@@ -933,6 +940,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				311D6C77307B2AD900E2EB70 /* AnalyzerContracts.swift in Sources */,
+				31E0056030996DBA00178350 /* CoverageTerrainProfile.swift in Sources */,
 				31DFA7FC308EA25500B8C681 /* LinkProfileScreen.swift in Sources */,
 				311510A23083DC7100199D51 /* MyNodesSignal.swift in Sources */,
 				67B0687608CD2E73C4D606AE /* APIClient.swift in Sources */,

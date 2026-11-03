@@ -291,10 +291,39 @@ four locations and three ranges, along with limits and manifest errors. Offline 
 preserves explicit nodata through the prepared mosaic. Production provider-manifest discovery,
 profile sampling and RF execution remain unconnected.
 
+## Native feature-profile construction
+
+Swift and Kotlin now implement the profile-building portion of the
+[feature-preserving study](../../tools/rf-study/coverage/feature-profile/README.md). Given all DEM
+cell crossings and latitude-extremum splits, the builder retains those positions, fits each
+interval from endpoint/midpoint heights, checks both quarter points against a 0.01 m tolerance,
+retains interior fitted extrema and merges regularly spaced samples. Positions deduplicate on
+millimetre keys while retaining the exact requested endpoint, avoiding a rounded sample past
+the path end. Signed elevations remain signed.
+
+The current port retains the study's 100 km per-profile domain, 50,000 crossing/feature ceiling,
+250,000 terrain-evaluation ceiling and 1–30 m profile sample spacing. These are internal sampler
+limits, not a new user-facing radius or output-grid policy. Longer-range qualification remains
+required; the footprint selector's ability to cover larger areas does not establish RF support.
+The caller must supply **every** cell crossing: the builder cannot detect an omitted ridge from
+an incomplete crossing list. Geographic crossing discovery is not yet ported or connected.
+
+Missing data, nonfinite input, unresolved fits, work exhaustion and cancellation throw explicit
+failures with no partial profile result. The fit check remains an empirical safeguard, not a
+proof of RF error bounds. Loss convergence and threshold checks from the study are not part of
+this builder and must still be applied by the future RF adapter.
+
+Regression tests on each platform cover a narrow off-grid triangular ridge, a within-cell
+quadratic peak, exact endpoints, millimetre deduplication, missing data, fit rejection, work
+budgets and cancellation at every observed checkpoint. Xcode build and 44 Swift host tests
+passed. Android debug assembly and terrain tests passed; the full 432-test suite encountered
+the existing observer-page request-budget failure, with one skipped test.
+
 ## Next implementation
 
-Wire the feature-preserving profile sampler and bounded scheduler to prepared mosaics next,
-preserving verified digests and consistent source provenance. Connect a qualified provider manifest
+Port bounded geographic DEM-cell crossing discovery and connect it to the profile builder and
+prepared mosaics, preserving verified digests and consistent source provenance. Then connect
+the bounded scheduler and RF convergence policy. Connect a qualified provider manifest
 to footprint selection. Define explicit recovery for invalid metadata separately; never silently reset unknown
 cache contents. See the [repository contract](terrain-repository-study.md).
 Then package the reviewed propagation kernel and implement the shared run/node-result contract
