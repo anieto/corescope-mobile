@@ -415,6 +415,25 @@ identity; this adapter does not prove path provenance or replace the pending sna
 Xcode build and 56 Swift host tests passed. Android unit tests and debug assembly passed.
 No simulator or UI tests were run.
 
+## Frozen node run lifecycle
+
+Swift value-owned and Kotlin single-owner node runs now retain a fixed source/identity/coordinate
+catalog, explicit upstream completeness, selected work and exclusion counts. Callers provide order
+and processing cap. A defensive 10,000-entry ceiling rejects oversized input; it is not an RF
+throughput qualification. Duplicate identities and invalid coordinates fail before work starts.
+Android copies caller collections and exposes an unmodifiable selected list.
+
+Only matching, selected, previously unreported node results are accepted while running. Results
+publish after all selected entries are accounted for. Cancellation discards partial results and
+rejects late outputs; invalidation preserves stale status but requires a new run. Empty catalogs
+complete normally. Radio/model input snapshots, provenance, last-seen metadata, catalog pagination,
+area-job coordination and actual scheduler/UI ownership are still pending. Owners must call
+invalidation when inputs change and serialize access; this is not automatic input observation.
+
+Xcode build and 59 Swift host tests passed. Android debug assembly and new run tests passed;
+the full 447-test suite had one skipped test and the existing observer-page request-budget failure
+(expected 16 requests, observed 17). No simulator or UI tests were run.
+
 ## Next implementation
 
 Resolve production RF engine packaging and distribution permissions, then connect its adapter

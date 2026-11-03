@@ -225,3 +225,13 @@ margin and completed refinement; the 0.25 dB guard remains enforced before statu
 Integration tests exercise stable positive/negative predictions and both threshold boundaries.
 Callers must still provide the exact node path and matching run context; production model execution,
 full snapshot lifecycle and map wiring remain outstanding.
+
+### Node run lifecycle
+
+Native node runs now freeze catalog coordinates and source identities, track upstream completeness
+separately from processing exclusions, and reject late, duplicate or changed-node outputs. No
+partial green/red subset is published before completion. Cancellation discards partial results;
+invalidation marks existing results stale and requires a new run. Empty catalogs can complete.
+The caller supplies evaluation order and cap; a 10,000-entry storage ceiling rejects oversized
+catalogs rather than silently truncating them. This is a defensive memory limit, not a qualified
+RF workload. Full radio/model/provenance snapshots, catalog fetching and UI wiring remain pending.
