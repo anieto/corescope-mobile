@@ -208,3 +208,11 @@ Explicit radio/receiver assumptions now produce matching allowable loss, receive
 unrounded margin calculations on both platforms, verified by five shared fixtures. No defaults
 are inferred for unknown equipment. These calculations are ready for the RF adapter; they do not
 yet run the model or color known nodes. Run snapshots and node-status handling remain next.
+
+### Known-node status progress
+
+A native resolver now checks node source/identity/coordinates and run tokens before exposing
+predicted status. Outside-radius, cancelled and capped nodes stay not evaluated; missing or
+unresolved predictions stay unknown; obsolete inputs become stale. Eighteen shared fixtures
+verify parity and unrounded sign handling. This is status logic only: full run snapshots,
+convergence-result adaptation, catalog integration and map markers remain unconnected.

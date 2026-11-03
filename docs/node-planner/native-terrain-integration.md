@@ -383,6 +383,25 @@ test invalid values and overflow. Xcode build and 53 Swift host tests passed; An
 assembly and unit tests passed. No simulator or UI tests were run. Production RF execution,
 run snapshots and exact-node status handling remain unconnected.
 
+## Known-node status resolution
+
+Both platforms now resolve exact-node evaluations against source/ID/coordinate snapshots and an
+active run token. Changed nodes are not evaluated, changed input tokens are stale, and paths
+outside the study radius remain not evaluated rather than red. Missing terrain, unsupported
+paths, absent assumptions and unresolved estimates remain unknown; cancellation and processing
+caps remain not evaluated. Only finite qualified margins expose values, with unrounded zero
+included in predicted coverage. Non-predicted states expose no margin.
+
+Eighteen shared fixtures cover these decisions, source changes, invalid model values and tiny
+positive/negative margins. The caller must rotate the token whenever calculation inputs change
+and supply exact-coordinate qualified predictions; this resolver does not establish qualification,
+calculate distances, fingerprint inputs or implement a catalog snapshot lifecycle. A convergence
+adapter must preserve its threshold guard, so zero-margin policy tests do not bypass that guard.
+Catalog completeness, bounded scheduling, full run provenance and map wiring remain outstanding.
+
+Xcode build and 54 Swift host tests passed. Android unit tests and debug assembly passed.
+No simulator or UI tests were run.
+
 ## Next implementation
 
 Resolve production RF engine packaging and distribution permissions, then connect its adapter

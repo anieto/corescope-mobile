@@ -1,0 +1,98 @@
+[
+  {
+    "margin": -1,
+    "state": "belowThreshold",
+    "reason": "predicted"
+  },
+  {
+    "margin": -1e-06,
+    "state": "belowThreshold",
+    "reason": "predicted"
+  },
+  {
+    "margin": 0,
+    "state": "inCoverage",
+    "reason": "predicted"
+  },
+  {
+    "margin": 1e-06,
+    "state": "inCoverage",
+    "reason": "predicted"
+  },
+  {
+    "margin": 1,
+    "state": "inCoverage",
+    "reason": "predicted"
+  },
+  {
+    "unavailable": "missingTerrain",
+    "state": "unknown",
+    "reason": "missingTerrain"
+  },
+  {
+    "unavailable": "unsupportedPath",
+    "state": "unknown",
+    "reason": "unsupportedPath"
+  },
+  {
+    "unavailable": "missingAssumptions",
+    "state": "unknown",
+    "reason": "missingAssumptions"
+  },
+  {
+    "unavailable": "accuracyUnresolved",
+    "state": "unknown",
+    "reason": "accuracyUnresolved"
+  },
+  {
+    "unavailable": "thresholdUnresolved",
+    "state": "unknown",
+    "reason": "thresholdUnresolved"
+  },
+  {
+    "unavailable": "cancelled",
+    "state": "notEvaluated",
+    "reason": "cancelled"
+  },
+  {
+    "unavailable": "processingLimit",
+    "state": "notEvaluated",
+    "reason": "processingLimit"
+  },
+  {
+    "margin": 10,
+    "flag": "absent",
+    "state": "notEvaluated",
+    "reason": "noResult"
+  },
+  {
+    "margin": 10,
+    "flag": "moved",
+    "state": "notEvaluated",
+    "reason": "changedNode"
+  },
+  {
+    "margin": 10,
+    "flag": "sourceChanged",
+    "state": "notEvaluated",
+    "reason": "changedNode"
+  },
+  {
+    "margin": 10,
+    "flag": "stale",
+    "state": "stale",
+    "reason": "changedInputs"
+  },
+  {
+    "margin": 10,
+    "flag": "outside",
+    "state": "notEvaluated",
+    "reason": "outsideRadius"
+  },
+  {
+    "margin": 10,
+    "flag": "invalid",
+    "state": "unknown",
+    "reason": "invalidInput"
+  }
+]
