@@ -160,7 +160,8 @@ which covers all of 0.10, is in the [0.10.2 release notes](docs/node-planner/v0.
   now bind directly to this evaluator with cancellation and reader-ownership tests. A serialized
   node coordinator shares terrain/geometry/model budgets across the batch and withholds partial
   runs on cancellation. Native area layouts now preserve selected spacing/refinement bounds and
-  reject oversized grids; area execution and the production model remain pending. See the
+  reject oversized grids. Area-work preflight now checks minimum per-path and aggregate budgets
+  with 64-bit totals; area execution and the production model remain pending. See the
   [native integration report](docs/node-planner/native-terrain-integration.md).
 - **Release gate:** coverage integration and physical-device qualification remain incomplete.
   Do not ship the site library as a substitute for coverage or silently relax model fidelity.

@@ -269,3 +269,11 @@ with near-site and outside-radius masks. Excessive or misaligned requests fail r
 coarsening detail or shrinking radius. The 60,000-point study ceiling remains an internal bound;
 shipping presets and physical-device budgets are not qualified. Geographic raster mapping, area
 work preflight/execution and rendering remain pending.
+
+### Area-work preflight
+
+Native preflight now rejects grids that cannot fit even the minimum sampling/geometry work,
+checking per-path and aggregate limits separately. Accepted estimates are lower bounds, not a
+promise of completion; retained terrain features can require additional work. Estimates use
+64-bit totals and account for repeated native geometry discovery. Area execution and map rendering
+remain unconnected.

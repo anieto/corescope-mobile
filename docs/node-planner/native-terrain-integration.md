@@ -504,6 +504,24 @@ cover the study's 1,681-point wide/refined layouts, 121-point long-range workloa
 near-site/radius boundaries, excessive requests and integer-extreme inputs. No simulator or UI
 tests were run.
 
+## Native area-work preflight
+
+Both platforms now estimate necessary work for eligible grid points before area execution.
+Sampling lower bounds include uniform points for the first three refinement passes; feature
+retention adds more work. Geometry lower bounds include four axis endpoint queries per pass,
+12 per eligible point, matching the native adapter's repeated discovery rather than the earlier
+study's discovery-once assumption. Both per-path and aggregate budgets reject impossible requests.
+Acceptance is not a completion guarantee and does not qualify terrain/model accuracy.
+
+Estimates include 64-bit aggregate per-path ceilings, which may exceed the allowed job budget;
+these describe possible work, not a reservation or promise to execute it. The study's 150-million
+aggregate budget ceiling remains internal. All-excluded grids need no work, and preflight supports
+cancellation without terrain I/O. Geographic projection, area execution and rendering remain next.
+
+Xcode build and 71 Swift host tests passed. Android unit tests and debug assembly passed. Tests
+cover analytical single-point bounds, excluded points, independent path/job limits, cancellation
+and totals beyond signed 32-bit range. No simulator or UI tests were run.
+
 ## Next implementation
 
 Resolve production RF engine packaging and distribution permissions, then connect its adapter
