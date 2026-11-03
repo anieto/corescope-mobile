@@ -168,7 +168,8 @@ which covers all of 0.10, is in the [0.10.2 release notes](docs/node-planner/v0.
   cancelled completions; production RF binding, screen wiring and rendering remain pending. See the
   [native integration report](docs/node-planner/native-terrain-integration.md). Regional JSON catalog
   decoding now validates pinned records and resolves required study tiles on both platforms;
-  trusted catalog delivery and production-provider qualification remain outstanding.
+  bounded cancellable HTTPS catalog transport is also implemented. A configured trusted catalog
+  publisher and production-provider qualification remain outstanding.
 - **Coverage setup UI:** Estimated Coverage now opens beside Link Profile on iOS and Android.
   It supports confirmed map placement, manual coordinates, explicit radio/receiver inputs,
   radius/detail selection and neutral known-node markers/list. New terms have shared glossary

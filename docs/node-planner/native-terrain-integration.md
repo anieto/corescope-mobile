@@ -641,3 +641,25 @@ also tested natively. Swift host tests: 81 passed. Xcode build including test ta
 Android unit tests and debug assembly passed. No simulator, UI or real-provider network run was
 performed. Production RF binding, catalog transport, screen execution and result rendering remain
 outstanding.
+
+
+## Catalog transport (2026-11-03)
+
+`CoverageTerrainCatalogLoader` now fetches a caller-configured HTTPS catalog on both platforms,
+then passes its bounded body to the catalog decoder. It disables redirects, automatic retries,
+HTTP caching and cookies; rejects non-200 responses and non-identity content encoding; checks any
+advertised length; and enforces the 4 MiB limit while consuming the body even without a length
+header. Request/resource or call timeouts default to 30 seconds. Cancellation cancels the active
+request. It returns no partial catalog or files and does not persist a stale fallback.
+
+Controlled URLProtocol/OkHttp responses exercise successful fetch-to-footprint selection,
+malformed documents, declared and streamed size violations, length mismatches, encoding errors,
+HTTP errors/redirect responses, invalid endpoints and cancellation while awaiting a response.
+These are transport boundary tests, not live-provider or socket/TLS qualification. Swift host
+suite: 84 passed; Android unit suite and debug build passed; Xcode build including tests passed.
+No simulator or UI tests were run.
+
+No production catalog URL has been configured or deployed. The publisher must supply independently
+reviewed terrain pins and provenance; HTTPS transport alone does not qualify those records.
+Screen wiring, production RF binding and result rendering remain outstanding, and Calculate stays
+disabled. The new loader does not remove those release gates.
