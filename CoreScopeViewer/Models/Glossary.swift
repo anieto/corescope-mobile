@@ -24,6 +24,10 @@ enum GlossaryTerm: String, CaseIterable, Sendable {
     case antennaGain = "antenna-gain"
     case cableLoss = "cable-loss"
     case additionalLoss = "additional-loss"
+    case receiverSensitivity = "receiver-sensitivity"
+    case planningReserve = "planning-reserve"
+    case coverageDetail = "coverage-detail"
+    case studyRadius = "study-radius"
 }
 
 extension GlossaryTerm {

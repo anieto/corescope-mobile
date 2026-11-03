@@ -226,6 +226,26 @@
           "term": "Additional loss",
           "summary": "Other installation losses not already counted in cable loss, in decibels (dB). Enter a positive value, or leave it unspecified. This field is not a prediction of terrain blockage.",
           "detail": null
+        },
+        {
+          "id": "receiver-sensitivity",
+          "term": "Receiver sensitivity",
+          "summary": "The weakest signal a receiver is assumed to decode, in dBm. A more negative value means a weaker signal can be received. Use a value appropriate to the radio and modem settings."
+        },
+        {
+          "id": "planning-reserve",
+          "term": "Planning reserve",
+          "summary": "Extra signal margin you require beyond receiver sensitivity, in dB. This makes a plan more conservative but does not guarantee reception."
+        },
+        {
+          "id": "coverage-detail",
+          "term": "Coverage detail",
+          "summary": "The distance between calculated map samples. Smaller spacing shows more detail and requires more work. It does not improve the underlying terrain data or guarantee accuracy."
+        },
+        {
+          "id": "study-radius",
+          "term": "Study radius",
+          "summary": "The maximum distance from the proposed transmitter included in the calculation. It is a study boundary, not a prediction of circular coverage."
         }
       ]
     }

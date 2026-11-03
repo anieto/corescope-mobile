@@ -65,6 +65,7 @@
 		312714C2307AE67F00829346 /* AnalyzerLiveFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = 312714C1307AE67F00829346 /* AnalyzerLiveFeed.swift */; };
 		312714C4307AE6C000829346 /* CoreScopeBackendTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 312714C3307AE6C000829346 /* CoreScopeBackendTests.swift */; };
 		3144E9F7305B2A4300B57F18 /* InstrumentSearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3144E9F6305B2A4300B57F18 /* InstrumentSearchField.swift */; };
+		315E3A01309A973200BAEC98 /* EstimatedCoverageScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 315E3A00309A973200BAEC98 /* EstimatedCoverageScreen.swift */; };
 		316FDFF6305C483200FBA3B4 /* FavoritesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FDFF5305C483200FBA3B4 /* FavoritesStore.swift */; };
 		316FDFFB305C490A00FBA3B4 /* ExploreScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FDFFA305C490A00FBA3B4 /* ExploreScreen.swift */; };
 		316FDFFD305C4DDE00FBA3B4 /* RecentItemsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FDFFC305C4DDE00FBA3B4 /* RecentItemsStore.swift */; };
@@ -291,6 +292,7 @@
 		312714C1307AE67F00829346 /* AnalyzerLiveFeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerLiveFeed.swift; sourceTree = "<group>"; };
 		312714C3307AE6C000829346 /* CoreScopeBackendTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreScopeBackendTests.swift; sourceTree = "<group>"; };
 		3144E9F6305B2A4300B57F18 /* InstrumentSearchField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstrumentSearchField.swift; sourceTree = "<group>"; };
+		315E3A00309A973200BAEC98 /* EstimatedCoverageScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EstimatedCoverageScreen.swift; sourceTree = "<group>"; };
 		316FDFF5305C483200FBA3B4 /* FavoritesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesStore.swift; sourceTree = "<group>"; };
 		316FDFFA305C490A00FBA3B4 /* ExploreScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExploreScreen.swift; sourceTree = "<group>"; };
 		316FDFFC305C4DDE00FBA3B4 /* RecentItemsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentItemsStore.swift; sourceTree = "<group>"; };
@@ -580,6 +582,7 @@
 				310F86513096B5AD009EC5E8 /* CandidatePlansModel.swift */,
 				310F86533096B5AD009EC5E8 /* CandidateSitesScreen.swift */,
 				31C6EC0130977267002AC226 /* CandidateSiteMapPicker.swift */,
+				315E3A00309A973200BAEC98 /* EstimatedCoverageScreen.swift */,
 			);
 			path = NodePlanner;
 			sourceTree = "<group>";
@@ -1121,6 +1124,7 @@
 				895D2DD9450C64472E7693F6 /* NodeHealth.swift in Sources */,
 				31DFA800308EA9C600B8C681 /* TabBarContextActionStore.swift in Sources */,
 				73FBC544410EBB6331BE2670 /* NodeRoleStyle.swift in Sources */,
+				315E3A01309A973200BAEC98 /* EstimatedCoverageScreen.swift in Sources */,
 				316FE010305E2B2A00FBA3B4 /* CacheStorageService.swift in Sources */,
 				24D59BC2523DFDDA78B44597 /* Observer.swift in Sources */,
 				311510B830843F9600199D51 /* MyNodesScreen.swift in Sources */,

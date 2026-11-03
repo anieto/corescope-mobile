@@ -33,6 +33,12 @@ private struct NodePlannerToolGrid: View {
     var body: some View {
         VStack(spacing: 12) {
             LinkProfileToolCard()
+            NavigationLink {
+                EstimatedCoverageScreen()
+            } label: {
+                NodePlannerToolCard(icon: "antenna.radiowaves.left.and.right", title: "Estimated Coverage",
+                    detail: "Set up an area study and review known nodes around a proposed transmitter.", isEnabled: true)
+            }.buttonStyle(.plain)
             CandidateSitesToolCard()
         }
     }

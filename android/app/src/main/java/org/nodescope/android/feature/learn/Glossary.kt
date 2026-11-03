@@ -40,7 +40,9 @@ enum class GlossaryTerm(val id: String) {
     LINE_OF_SIGHT("line-of-sight"), FRESNEL_ZONE("fresnel-zone"), CLEARANCE("clearance"), LINK_MARGIN("link-margin"),
     DEPLOYMENT_PLAN("deployment-plan"), CANDIDATE_SITE("candidate-site"), PLANNING_COORDINATES("planning-coordinates"),
     ANTENNA_HEIGHT("antenna-height"), RADIO_FREQUENCY("radio-frequency"), TRANSMIT_POWER("transmit-power"),
-    ANTENNA_GAIN("antenna-gain"), CABLE_LOSS("cable-loss"), ADDITIONAL_LOSS("additional-loss");
+    ANTENNA_GAIN("antenna-gain"), CABLE_LOSS("cable-loss"), ADDITIONAL_LOSS("additional-loss"),
+    RECEIVER_SENSITIVITY("receiver-sensitivity"), PLANNING_RESERVE("planning-reserve"),
+    COVERAGE_DETAIL("coverage-detail"), STUDY_RADIUS("study-radius");
 
     companion object {
         /** The entry for a node's role as the analyzer reports it ("repeater", "room", …). */

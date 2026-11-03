@@ -91,7 +91,7 @@ private inline fun <reified T : Any> NavGraphBuilder.screen(noinline content: @C
     composable<T> { entry ->
         val scope = this
         val background = when (T::class) {
-            MapRoute::class, MapLabRoute::class, NodeAnalyticsRoute::class, LinkProfileRoute::class -> Modifier.background(MaterialTheme.colorScheme.background)
+            MapRoute::class, MapLabRoute::class, NodeAnalyticsRoute::class, LinkProfileRoute::class, EstimatedCoverageRoute::class -> Modifier.background(MaterialTheme.colorScheme.background)
             SettingsRoute::class, AboutRoute::class, GlossaryRoute::class -> Modifier.meshPageBackground(subdued = false)
             else -> Modifier.meshPageBackground()
         }
@@ -123,6 +123,7 @@ enum class Destination(val title: Int, val icon: ImageVector, val route: TopLeve
 @Serializable data class NodeRoute(val publicKey: String)
 @Serializable data class NodeAnalyticsRoute(val publicKey: String)
 @Serializable data object NodePlannerRoute
+@Serializable data object EstimatedCoverageRoute
 @Serializable data object CandidateSitesRoute
 @Serializable data object LinkProfileRoute
 @Serializable data object SourceRoute
@@ -382,6 +383,7 @@ internal fun AppShell(
                             destination?.hasRoute<CoreScopeAccountRoute>() == true -> "CoreScope account"
                             destination?.hasRoute<FavoritesRoute>() == true -> "Favorites"
                             destination?.hasRoute<NodePlannerRoute>() == true -> "Node Planner"
+                            destination?.hasRoute<EstimatedCoverageRoute>() == true -> "Estimated Coverage"
                             destination?.hasRoute<CandidateSitesRoute>() == true -> "Candidate Sites"
                             destination?.hasRoute<LinkProfileRoute>() == true -> "Link Profile"
                             else -> stringResource(when {
@@ -530,7 +532,11 @@ internal fun AppShell(
                         screen<NodePlannerRoute> {
                             org.nodescope.android.feature.linkprofile.NodePlannerScreen(
                                 onLinkProfile = { nav.navigate(LinkProfileRoute) },
-                                onCandidateSites = { nav.navigate(CandidateSitesRoute) })
+                                onCandidateSites = { nav.navigate(CandidateSitesRoute) },
+                                onEstimatedCoverage = { nav.navigate(EstimatedCoverageRoute) })
+                        }
+                        screen<EstimatedCoverageRoute> {
+                            org.nodescope.android.feature.coverage.EstimatedCoverageScreen(state.snapshot?.nodes.orEmpty())
                         }
                         screen<CandidateSitesRoute> { backStack ->
                             val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
