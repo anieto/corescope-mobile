@@ -27,6 +27,27 @@ enum CoverageNodePrediction: Sendable {
     /// Only an exact-coordinate, qualified prediction may use this case.
     case qualifiedMargin(Double)
     case unavailable(CoverageNodeReason)
+
+    /// Adapt only the convergence result for this exact node path and the run's fixed radio budget.
+    static func fromConvergence(_ result: CoverageRFConvergenceResult, budget: CoverageLinkBudget) -> CoverageNodePrediction {
+        switch result.state {
+        case .accuracyUnresolved:
+            return .unavailable(.accuracyUnresolved)
+        case .thresholdUnresolved:
+            return .unavailable(.thresholdUnresolved)
+        case .qualified:
+            guard let loss = result.lossDb, let margin = result.marginDb,
+                  let reception = try? budget.reception(pathLossDb: loss),
+                  margin == reception.adjustedMarginDb,
+                  (3...5).contains(result.passes), result.spacingMeters.isFinite,
+                  (1...5).contains(result.spacingMeters) else {
+                return .unavailable(.invalidInput)
+            }
+            // A threshold-adjacent estimate must never bypass the convergence guard.
+            guard abs(margin) > 0.25 else { return .unavailable(.thresholdUnresolved) }
+            return .qualifiedMargin(margin)
+        }
+    }
 }
 
 struct CoverageNodeEvaluation: Sendable {

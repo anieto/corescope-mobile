@@ -152,7 +152,8 @@ which covers all of 0.10, is in the [0.10.2 release notes](docs/node-planner/v0.
   production RF engine remains unbundled pending packaging/distribution resolution. Explicit
   radio link-budget arithmetic now matches shared fixtures on both platforms. Known-node status
   resolution now checks snapshot identity and run tokens, retaining neutral/stale states without
-  leaking obsolete margins; map/catalog integration remains outstanding. See the
+  leaking obsolete margins. A convergence adapter now preserves threshold guards and verifies
+  budget-consistent margins before status resolution; map/catalog integration remains outstanding. See the
   [native integration report](docs/node-planner/native-terrain-integration.md).
 - **Release gate:** coverage integration and physical-device qualification remain incomplete.
   Do not ship the site library as a substitute for coverage or silently relax model fidelity.

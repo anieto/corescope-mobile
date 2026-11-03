@@ -402,6 +402,19 @@ Catalog completeness, bounded scheduling, full run provenance and map wiring rem
 Xcode build and 54 Swift host tests passed. Android unit tests and debug assembly passed.
 No simulator or UI tests were run.
 
+## Convergence-to-node adapter
+
+Both platforms now adapt convergence outcomes to node predictions using the fixed radio budget.
+Unresolved states retain their reason; qualified results require matching unrounded budget margin,
+completed refinement and the existing threshold guard. Invalid or mismatched results expose no
+prediction. Tests pass controlled loss sequences through real convergence, budget and status code,
+including positive/negative results and exact threshold boundaries. These are integration tests
+of decision logic, not RF accuracy tests. The caller still owns exact-node path selection and run
+identity; this adapter does not prove path provenance or replace the pending snapshot lifecycle.
+
+Xcode build and 56 Swift host tests passed. Android unit tests and debug assembly passed.
+No simulator or UI tests were run.
+
 ## Next implementation
 
 Resolve production RF engine packaging and distribution permissions, then connect its adapter

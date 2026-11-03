@@ -216,3 +216,12 @@ predicted status. Outside-radius, cancelled and capped nodes stay not evaluated;
 unresolved predictions stay unknown; obsolete inputs become stale. Eighteen shared fixtures
 verify parity and unrounded sign handling. This is status logic only: full run snapshots,
 convergence-result adaptation, catalog integration and map markers remain unconnected.
+
+### Convergence-to-status integration
+
+The node prediction adapter now consumes convergence outcomes with the run's radio budget.
+Unresolved outcomes retain their reason. Qualified outcomes must have a finite, budget-consistent
+margin and completed refinement; the 0.25 dB guard remains enforced before status resolution.
+Integration tests exercise stable positive/negative predictions and both threshold boundaries.
+Callers must still provide the exact node path and matching run context; production model execution,
+full snapshot lifecycle and map wiring remain outstanding.

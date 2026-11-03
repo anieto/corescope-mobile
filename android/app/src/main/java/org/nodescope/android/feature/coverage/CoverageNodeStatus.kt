@@ -15,6 +15,28 @@ sealed interface CoverageNodePrediction {
     /** Only an exact-coordinate, qualified prediction may use this case. */
     data class QualifiedMargin(val margin: Double) : CoverageNodePrediction
     data class Unavailable(val reason: CoverageNodeReason) : CoverageNodePrediction
+    companion object {
+        /** Use only the exact-node result and the same fixed radio budget as its convergence run. */
+        fun fromConvergence(result: CoverageRFConvergenceResult, budget: CoverageLinkBudget): CoverageNodePrediction {
+            return when (result.state) {
+                CoverageRFConvergenceState.ACCURACY_UNRESOLVED -> Unavailable(CoverageNodeReason.accuracyUnresolved)
+                CoverageRFConvergenceState.THRESHOLD_UNRESOLVED -> Unavailable(CoverageNodeReason.thresholdUnresolved)
+                CoverageRFConvergenceState.QUALIFIED -> {
+                    val loss = result.lossDb ?: return Unavailable(CoverageNodeReason.invalidInput)
+                    val margin = result.marginDb ?: return Unavailable(CoverageNodeReason.invalidInput)
+                    val reception = try { budget.reception(loss) } catch (_: IllegalArgumentException) {
+                        return Unavailable(CoverageNodeReason.invalidInput)
+                    }
+                    if (margin != reception.adjustedMarginDb || result.passes !in 3..5 ||
+                        !result.spacingMeters.isFinite() || result.spacingMeters !in 1.0..5.0) {
+                        Unavailable(CoverageNodeReason.invalidInput)
+                    } else if (kotlin.math.abs(margin) <= 0.25) {
+                        Unavailable(CoverageNodeReason.thresholdUnresolved)
+                    } else QualifiedMargin(margin)
+                }
+            }
+        }
+    }
 }
 /** New run token required whenever inputs change; not a persistent fingerprint. */
 data class CoverageNodeEvaluation(val runID: UUID, val node: CoverageNodeSnapshot,
