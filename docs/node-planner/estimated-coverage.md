@@ -159,3 +159,11 @@ preparation operation. It returns a complete set of verified pinned readers, sup
 reuse, enforces the logical pipeline quota, checks free disk space, retries selected transient
 failures, and releases partial reader sets on failure. Cache repair, workspace crash recovery,
 geographic tile selection, RF execution and the standalone map UI remain outstanding.
+
+### Terrain recovery progress
+
+Online preparation now repairs confirmed corrupt, unpinned payloads after recalculating budgets.
+Offline corruption remains explicit. Download/decode files now live in an owned cache workspace
+with restart cleanup; Android cancellation waits for callback cleanup before releasing ownership.
+Invalid metadata still fails without resetting data. Geographic tile selection and propagation
+integration remain the next step toward the standalone coverage map.

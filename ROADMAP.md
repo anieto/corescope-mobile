@@ -143,8 +143,9 @@ which covers all of 0.10, is in the [0.10.2 release notes](docs/node-planner/v0.
   Decoded-tile caches now support locked ownership, verified publication, pinned readers and
   offline reuse. Bounded gzip decoding now passes 22 shared fixtures and cache integration tests.
   Cancellable downloads and serialized terrain preparation now connect decode/cache publication,
-  offline reads, bounded retries and pipeline disk-budget checks. Cache repair, workspace recovery
-  and RF/UI integration remain next. See the
+  offline reads, bounded retries and pipeline disk-budget checks. Confirmed corrupt payloads can
+  now be repaired online; owned workspaces recover abandoned download/decode files. Geographic
+  tile selection and RF/UI integration remain next. See the
   [native integration report](docs/node-planner/native-terrain-integration.md).
 - **Release gate:** coverage integration and physical-device qualification remain incomplete.
   Do not ship the site library as a substitute for coverage or silently relax model fidelity.

@@ -240,12 +240,37 @@ Integration tests cover download/decode/publication, signed samples, deduplicati
 reopen, preflight rejection before download, transient retries, cancellation and partial-set
 cleanup. They exercise synthetic terrain, not real provider qualification.
 
+## Payload repair and owned workspace recovery
+
+Online preparation now reclassifies confirmed decoded checksum/length corruption as a missing
+tile, recalculates the full pipeline and transfer budgets, and refetches only after those checks.
+A tile with an outstanding reader remains protected. Offline corruption and insufficient repair
+budgets preserve the existing payload and fail explicitly. Once an authorized repair removes a
+bad payload, a failed transfer leaves a cache miss for the next attempt.
+
+Preparation now uses a private `.workspace` inside the cache directory, under the same process
+lock and on the same filesystem. On restart or before another preparation, a matching workspace
+ownership marker permits cleanup of recognized download/decode UUID directories. All top-level
+workspace entries are validated before deletion; unknown files, invalid ownership and symbolic
+directory links fail closed. Nested symbolic links are removed without following their targets.
+Temporary directories from older callers outside the cache are deliberately not swept.
+
+Android cancellation now waits for the HTTP callback's cleanup to complete before returning,
+so the cache worker cannot reuse or close the workspace while that callback still writes.
+Tests cover partial-body cancellation, budget return, restart cleanup with a symbolic-link
+sentinel, unknown-file preservation, online repair, offline/underfunded preservation and pin
+protection.
+
+This repairs payload corruption with valid metadata. Invalid metadata, missing committed files
+at cache open, and unrecognized cache contents still fail explicitly and remain preserved.
+Power-loss durability and real-device filesystem qualification are not claimed.
+
 ## Next implementation
 
-Extend terrain preparation with explicit online repair and owned-workspace crash recovery against the
-[repository contract](terrain-repository-study.md).
-It must supply the readers with verified decoded digests and consistent provenance. Wire geographic
-footprint/halo selection, the feature-preserving profile sampler and the bounded scheduler next.
+Wire geographic footprint/halo selection, the feature-preserving profile sampler and the bounded
+scheduler to the prepared terrain readers next, preserving verified digests and consistent source
+provenance. Define explicit recovery for invalid metadata separately; never silently reset unknown
+cache contents. See the [repository contract](terrain-repository-study.md).
 Then package the reviewed propagation kernel and implement the shared run/node-result contract
 before connecting standalone Estimated Coverage UI and green/red/neutral known-node markers.
 

@@ -71,8 +71,8 @@ final class CoverageTerrainDiskCache {
 
     /// Exclusive serialized-worker operation. Do not call other cache APIs while this awaits.
     /// Returns a complete verified/pinned set; caller closes every reader on the same worker.
-    /// Cached corruption fails without deleting it; online repair is a separate operation.
-    func prepare(_ descriptors: [CoverageTerrainDescriptor], workspace: URL,
+    /// Online preparation refetches verified corrupt, unpinned payloads after budget checks.
+    func prepare(_ descriptors: [CoverageTerrainDescriptor],
                  budget: CoverageTerrainDownloadBudget, offline: Bool = false, attempts: Int = 2,
                  download: (CoverageTerrainDescriptor, URL, CoverageTerrainDownloadBudget) async throws -> DownloadedCoverageTerrain = {
                      try await CoverageTerrainDownloader.download($0, workspace: $1, budget: $2)
@@ -82,33 +82,44 @@ final class CoverageTerrainDiskCache {
         preparing = true
         defer { preparing = false }
         try Task.checkCancellation()
-        let plan = try CoverageTerrainPipelinePreflight.make(requested: descriptors, inventory: inventory,
+        let initialPlan = try CoverageTerrainPipelinePreflight.make(requested: descriptors, inventory: inventory,
             quota: quota, remainingDownloadBytes: budget.remainingBytes, attempts: attempts)
-        if offline && !plan.cache.hasAllCachedTiles { throw CoverageTerrainCacheFailure.missing }
-        guard plan.fitsPipelineQuota else { throw CoverageTerrainCacheFailure.quota }
-        if !offline && plan.cache.expectedDownloadBytes + Int64(plan.cache.uncachedTiles) > budget.remainingBytes {
-            throw CoverageTerrainDownloadFailure.downloadLimit
-        }
+        if offline && !initialPlan.cache.hasAllCachedTiles { throw CoverageTerrainCacheFailure.missing }
+        guard initialPlan.fitsPipelineQuota else { throw CoverageTerrainCacheFailure.quota }
         var seen = Set<String>()
         let unique = descriptors.filter { seen.insert($0.cacheKey).inserted }
         var readers: [String: LeasedTerrainReader] = [:]
         do {
             // Validate and pin existing requested entries before any eviction or network access.
+            var corruptKeys = Set<String>()
             for descriptor in unique where entries[descriptor.cacheKey] != nil {
-                readers[descriptor.cacheKey] = try acquire(descriptor, cancelled: { Task.isCancelled })
+                do { readers[descriptor.cacheKey] = try acquire(descriptor, cancelled: { Task.isCancelled }) }
+                catch TerrainReadFailure.corrupt where !offline {
+                    guard pins[descriptor.cacheKey, default: 0] == 0 else { throw CoverageTerrainCacheFailure.busy }
+                    corruptKeys.insert(descriptor.cacheKey)
+                }
             }
+            // Reclassify confirmed corruption as a miss before any deletion or download.
+            let plan = try CoverageTerrainPipelinePreflight.make(requested: descriptors,
+                inventory: inventory.filter { !corruptKeys.contains($0.key) }, quota: quota,
+                remainingDownloadBytes: budget.remainingBytes, attempts: attempts)
+            guard plan.fitsPipelineQuota else { throw CoverageTerrainCacheFailure.quota }
+            guard plan.cache.expectedDownloadBytes + Int64(plan.cache.uncachedTiles) <= budget.remainingBytes else {
+                throw CoverageTerrainDownloadFailure.downloadLimit
+            }
+            try Task.checkCancellation()
+            for key in corruptKeys { try remove(key) }
+            let workspace = root.appendingPathComponent(".workspace")
             let missing = unique.filter { readers[$0.cacheKey] == nil }
             if !missing.isEmpty {
                 let futureBytes = missing.reduce(Int64(0)) { $0 + $1.decodedBytes + 8192 }
                 let additional = futureBytes + plan.temporaryWorkspaceBytes
                 try makeRoom(for: additional, protecting: "")
-                // Conservative free-space check on both destinations, even if they share a volume.
-                // Other processes can consume space afterwards; every write still handles failure.
-                for location in [root, workspace] {
-                    let attributes = try FileManager.default.attributesOfFileSystem(forPath: location.path)
-                    guard let free = attributes[.systemFreeSize] as? NSNumber,
-                          free.int64Value >= additional else { throw CoverageTerrainCacheFailure.quota }
-                }
+                // Workspace and cache share a volume. Writes still handle later disk exhaustion.
+                let attributes = try FileManager.default.attributesOfFileSystem(forPath: root.path)
+                guard let free = attributes[.systemFreeSize] as? NSNumber,
+                      free.int64Value >= additional else { throw CoverageTerrainCacheFailure.quota }
+                try recoverWorkspace(create: true)
             }
             for descriptor in missing {
                 try Task.checkCancellation()
@@ -263,10 +274,11 @@ final class CoverageTerrainDiskCache {
 
     private func recover() throws {
         let children = try FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: [.isSymbolicLinkKey, .isDirectoryKey])
-        guard children.count <= 4098 else { throw CoverageTerrainCacheFailure.invalidCache }
+        guard children.count <= 4099 else { throw CoverageTerrainCacheFailure.invalidCache }
         for child in children {
             let name = child.lastPathComponent
             if name == "owner" || name == "lock" { continue }
+            if name == ".workspace" { try recoverWorkspace(create: false); continue }
             let resource = try child.resourceValues(forKeys: [.isSymbolicLinkKey, .isDirectoryKey])
             guard resource.isSymbolicLink != true, resource.isDirectory == true else { throw CoverageTerrainCacheFailure.invalidCache }
             if name.hasPrefix(".stage-"), UUID(uuidString: String(name.dropFirst(7))) != nil {
@@ -293,6 +305,34 @@ final class CoverageTerrainDiskCache {
                 try FileManager.default.removeItem(at: part)
             }
         }
+    }
+
+    /// The cache process lock also owns this workspace. Never sweep arbitrary caller directories.
+    private func recoverWorkspace(create: Bool) throws {
+        let directory = root.appendingPathComponent(".workspace")
+        if !FileManager.default.fileExists(atPath: directory.path) {
+            guard create else { throw CoverageTerrainCacheFailure.invalidCache }
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+        }
+        let info = try directory.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+        guard info.isDirectory == true, info.isSymbolicLink != true else { throw CoverageTerrainCacheFailure.invalidCache }
+        let children = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+        guard children.count <= 4097 else { throw CoverageTerrainCacheFailure.invalidCache }
+        let owner = directory.appendingPathComponent("owner")
+        let marker = Data("nodescope-coverage-workspace-v1\n".utf8)
+        if children.isEmpty { try marker.write(to: owner, options: .atomic); return }
+        guard try Self.regular(owner), try Self.smallData(owner) == marker else { throw CoverageTerrainCacheFailure.invalidCache }
+        var abandoned: [URL] = []
+        // Validate every entry before deleting any. Unknown files and symbolic links fail closed.
+        for child in children where child.lastPathComponent != "owner" {
+            let name = child.lastPathComponent
+            let prefix = name.hasPrefix(".download-") ? ".download-" : ".decode-"
+            let resource = try child.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+            guard name.hasPrefix(prefix), UUID(uuidString: String(name.dropFirst(prefix.count))) != nil,
+                  resource.isDirectory == true, resource.isSymbolicLink != true else { throw CoverageTerrainCacheFailure.invalidCache }
+            abandoned.append(child)
+        }
+        for child in abandoned { try FileManager.default.removeItem(at: child) }
     }
 
     private var used: Int64 { 4096 + entries.values.reduce(0) { $0 + $1.bytes + 8192 } }

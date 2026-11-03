@@ -77,9 +77,9 @@ class CoverageTerrainDiskCache(private val root: File, private val quota: Long) 
     /**
      * Exclusive serialized-worker operation; do not call other cache APIs while suspended.
      * Transfers a complete verified pinned set. Caller closes every reader on the same worker.
-     * Corrupt cached data is preserved and fails explicitly; repair is a separate operation.
+     * Online preparation refetches confirmed corrupt, unpinned payloads after budget checks.
      */
-    suspend fun prepare(descriptors: List<CoverageTerrainDescriptor>, workspace: File,
+    suspend fun prepare(descriptors: List<CoverageTerrainDescriptor>,
                         budget: CoverageTerrainDownloadBudget, offline: Boolean = false, attempts: Int = 2,
                         download: suspend (CoverageTerrainDescriptor, File, CoverageTerrainDownloadBudget) -> DownloadedCoverageTerrain =
                             { descriptor, directory, allowance -> CoverageTerrainDownloader.download(descriptor, directory, allowance) }
@@ -92,22 +92,34 @@ class CoverageTerrainDiskCache(private val root: File, private val quota: Long) 
         val readers = mutableMapOf<String, LeasedTerrainReader>()
         try {
             context.ensureActive()
-            val plan = CoverageTerrainPipelinePreflight.make(descriptors, inventory, quota, budget.remainingBytes, attempts)
-            if (offline && !plan.cache.hasAllCachedTiles) fail(CoverageTerrainCacheState.MISSING)
+            val initialPlan = CoverageTerrainPipelinePreflight.make(descriptors, inventory, quota, budget.remainingBytes, attempts)
+            if (offline && !initialPlan.cache.hasAllCachedTiles) fail(CoverageTerrainCacheState.MISSING)
+            if (!initialPlan.fitsPipelineQuota) fail(CoverageTerrainCacheState.QUOTA)
+            val unique = descriptors.distinctBy { it.cacheKey }
+            val corruptKeys = mutableSetOf<String>()
+            for (descriptor in unique.filter { it.cacheKey in entries }) {
+                try { readers[descriptor.cacheKey] = acquire(descriptor, cancelled) }
+                catch (error: TerrainReadFailure) {
+                    if (offline || error.state != TerrainReadState.CORRUPT) throw error
+                    if ((pins[descriptor.cacheKey] ?: 0) > 0) fail(CoverageTerrainCacheState.BUSY)
+                    corruptKeys.add(descriptor.cacheKey)
+                }
+            }
+            val plan = CoverageTerrainPipelinePreflight.make(descriptors, inventory.filter { it.key !in corruptKeys },
+                quota, budget.remainingBytes, attempts)
             if (!plan.fitsPipelineQuota) fail(CoverageTerrainCacheState.QUOTA)
-            if (!offline && plan.cache.expectedDownloadBytes + plan.cache.uncachedTiles > budget.remainingBytes) {
+            if (plan.cache.expectedDownloadBytes + plan.cache.uncachedTiles > budget.remainingBytes) {
                 throw CoverageTerrainDownloadFailure(CoverageTerrainDownloadState.DOWNLOAD_LIMIT)
             }
-            val unique = descriptors.distinctBy { it.cacheKey }
-            for (descriptor in unique.filter { it.cacheKey in entries }) {
-                readers[descriptor.cacheKey] = acquire(descriptor, cancelled)
-            }
+            context.ensureActive()
+            corruptKeys.forEach { remove(it) }
+            val workspace = File(root, ".workspace")
             val missing = unique.filter { it.cacheKey !in readers }
             if (missing.isNotEmpty()) {
                 val additional = missing.sumOf { it.decodedBytes + 8192 } + plan.temporaryWorkspaceBytes
                 makeRoom(additional, "")
-                // Conservative check on both destinations, even when on the same volume.
-                if (root.usableSpace < additional || workspace.usableSpace < additional) fail(CoverageTerrainCacheState.QUOTA)
+                if (root.usableSpace < additional) fail(CoverageTerrainCacheState.QUOTA)
+                recoverWorkspace(create = true)
             }
             for (descriptor in missing) {
                 context.ensureActive()
@@ -239,10 +251,11 @@ class CoverageTerrainDiskCache(private val root: File, private val quota: Long) 
 
     private fun recover() {
         val children = root.listFiles() ?: fail(CoverageTerrainCacheState.IO)
-        if (children.size > 4098) fail(CoverageTerrainCacheState.INVALID_CACHE)
+        if (children.size > 4099) fail(CoverageTerrainCacheState.INVALID_CACHE)
         for (child in children) {
             val name = child.name
             if (name == "owner" || name == "lock") continue
+            if (name == ".workspace") { recoverWorkspace(create = false); continue }
             if (Files.isSymbolicLink(child.toPath()) || !Files.isDirectory(child.toPath(), NOFOLLOW_LINKS)) fail(CoverageTerrainCacheState.INVALID_CACHE)
             if (name.startsWith(".stage-") && runCatching { UUID.fromString(name.removePrefix(".stage-")).toString() == name.removePrefix(".stage-") }.getOrDefault(false)) {
                 removeTree(child)
@@ -265,6 +278,35 @@ class CoverageTerrainDiskCache(private val root: File, private val quota: Long) 
                 Files.delete(part.toPath())
             }
         }
+    }
+
+    /** Cache process lock owns this workspace; never sweep arbitrary caller directories. */
+    private fun recoverWorkspace(create: Boolean) {
+        val directory = File(root, ".workspace")
+        if (!Files.exists(directory.toPath(), NOFOLLOW_LINKS)) {
+            if (!create) fail(CoverageTerrainCacheState.INVALID_CACHE)
+            Files.createDirectory(directory.toPath())
+        }
+        if (Files.isSymbolicLink(directory.toPath()) || !Files.isDirectory(directory.toPath(), NOFOLLOW_LINKS)) {
+            fail(CoverageTerrainCacheState.INVALID_CACHE)
+        }
+        val children = directory.listFiles() ?: fail(CoverageTerrainCacheState.IO)
+        if (children.size > 4097) fail(CoverageTerrainCacheState.INVALID_CACHE)
+        val owner = File(directory, "owner")
+        val marker = "nodescope-coverage-workspace-v1\n".toByteArray()
+        if (children.isEmpty()) { owner.writeBytes(marker); return }
+        if (!regular(owner) || !smallData(owner).contentEquals(marker)) fail(CoverageTerrainCacheState.INVALID_CACHE)
+        val abandoned = children.filter { it.name != "owner" }
+        for (child in abandoned) {
+            val prefix = if (child.name.startsWith(".download-")) ".download-" else ".decode-"
+            val suffix = child.name.removePrefix(prefix)
+            if (!child.name.startsWith(prefix) ||
+                !runCatching { UUID.fromString(suffix).toString() == suffix.lowercase() }.getOrDefault(false) ||
+                Files.isSymbolicLink(child.toPath()) || !Files.isDirectory(child.toPath(), NOFOLLOW_LINKS)) {
+                fail(CoverageTerrainCacheState.INVALID_CACHE)
+            }
+        }
+        abandoned.forEach { removeTree(it) }
     }
 
     private val used: Long get() = 4096 + entries.values.sumOf { it.bytes + 8192 }

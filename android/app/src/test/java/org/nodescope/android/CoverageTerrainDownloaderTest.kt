@@ -79,6 +79,24 @@ class CoverageTerrainDownloaderTest {
         } } finally { root.deleteRecursively() }
     }
 
+    @Test fun cancellationWaitsForPartialFileCleanup() = runBlocking {
+        val root = Files.createTempDirectory("terrain-cancel").toFile()
+        try { MockWebServer().use { server ->
+            server.start()
+            server.enqueue(MockResponse().setBody(Buffer().write(payload)).throttleBody(1024, 100, TimeUnit.MILLISECONDS))
+            val spec = descriptor(server)
+            val budget = CoverageTerrainDownloadBudget(spec.packedBytes + 1)
+            val job = launch { CoverageTerrainDownloader.download(spec, root, budget).close() }
+            withTimeout(5000) {
+                while (root.walkTopDown().none { it.isFile && it.length() > 0 }) delay(10)
+            }
+            job.cancelAndJoin()
+            assertTrue(root.listFiles()!!.isEmpty())
+            assertTrue(budget.receivedBytes > 0)
+            assertEquals(spec.packedBytes + 1, budget.remainingBytes + budget.receivedBytes)
+        } } finally { root.deleteRecursively() }
+    }
+
     @Test fun cancellationStopsPendingRequest() = runBlocking {
         val root = Files.createTempDirectory("terrain-download").toFile()
         try { MockWebServer().use { server ->
@@ -111,7 +129,7 @@ class CoverageTerrainPreparationTest {
             val cacheRoot = java.io.File(root, "cache")
             val budget = CoverageTerrainDownloadBudget(1000)
             CoverageTerrainDiskCache(cacheRoot, 100000).use { cache ->
-                val readers = cache.prepare(listOf(spec, spec), root, budget)
+                val readers = cache.prepare(listOf(spec, spec), budget)
                 assertEquals(1, readers.size)
                 assertArrayEquals(shortArrayOf(1, -2, -32768, 4), readers.getValue(spec.cacheKey).read(0, 4))
                 assertEquals(spec.packedBytes, budget.receivedBytes)
@@ -119,7 +137,7 @@ class CoverageTerrainPreparationTest {
                 readers.values.forEach { it.close() }
             }
             CoverageTerrainDiskCache(cacheRoot, 100000).use { cache ->
-                val readers = cache.prepare(listOf(spec), root, CoverageTerrainDownloadBudget(0), offline = true,
+                val readers = cache.prepare(listOf(spec), CoverageTerrainDownloadBudget(0), offline = true,
                     download = { _, _, _ -> error("Offline network access") })
                 assertArrayEquals(shortArrayOf(1), readers.getValue(spec.cacheKey).read(0, 1))
                 readers.values.forEach { it.close() }
@@ -137,7 +155,7 @@ class CoverageTerrainPreparationTest {
             val peak = 4096 + 8 + 8192 + spec.packedBytes + 8 + 8192
             CoverageTerrainDiskCache(java.io.File(root, "cache"), peak - 1).use { cache ->
                 try {
-                    cache.prepare(listOf(spec), root, CoverageTerrainDownloadBudget(1000),
+                    cache.prepare(listOf(spec), CoverageTerrainDownloadBudget(1000),
                         download = { _, _, _ -> error("Quota rejection downloaded") })
                     fail("Quota accepted")
                 } catch (error: CoverageTerrainCacheFailure) { assertEquals(CoverageTerrainCacheState.QUOTA, error.state) }
@@ -155,7 +173,7 @@ class CoverageTerrainPreparationTest {
             val first = descriptor(server)
             val second = descriptor(server, "N00E001")
             CoverageTerrainDiskCache(java.io.File(root, "cache"), 100000).use { cache ->
-                try { cache.prepare(listOf(first, second), root, CoverageTerrainDownloadBudget(1000)); fail("Partial set escaped") }
+                try { cache.prepare(listOf(first, second), CoverageTerrainDownloadBudget(1000)); fail("Partial set escaped") }
                 catch (error: CoverageTerrainDownloadFailure) { assertEquals(404, error.status) }
                 assertEquals(1, cache.inventory.size)
                 assertTrue(cache.inventory.none { it.pinned })
@@ -174,10 +192,10 @@ class CoverageTerrainPreparationTest {
             server.enqueue(MockResponse().setBody(Buffer().write(gzip)))
             val spec = descriptor(server)
             CoverageTerrainDiskCache(java.io.File(root, "cache"), 100000).use { cache ->
-                val readers = cache.prepare(listOf(spec), root, CoverageTerrainDownloadBudget(1000))
+                val readers = cache.prepare(listOf(spec), CoverageTerrainDownloadBudget(1000))
                 readers.values.forEach { it.close() }
                 try {
-                    cache.prepare(listOf(spec, descriptor(server, "N00E001")), root, CoverageTerrainDownloadBudget(1000),
+                    cache.prepare(listOf(spec, descriptor(server, "N00E001")), CoverageTerrainDownloadBudget(1000),
                         download = { _, _, _ -> throw CancellationException() })
                     fail("Cancellation accepted")
                 } catch (_: CancellationException) {}
@@ -186,4 +204,65 @@ class CoverageTerrainPreparationTest {
             assertEquals(2, server.requestCount)
         } } finally { root.deleteRecursively() }
     }
+    @Test fun corruptPayloadRepairsOnlineButOfflineAndBudgetFailurePreserveIt() = runBlocking {
+        val root = Files.createTempDirectory("terrain-repair").toFile()
+        try { MockWebServer().use { server ->
+            server.start()
+            repeat(2) { server.enqueue(MockResponse().setBody(Buffer().write(gzip))) }
+            val spec = descriptor(server)
+            val cacheRoot = java.io.File(root, "cache")
+            CoverageTerrainDiskCache(cacheRoot, 100000).use { cache ->
+                val first = cache.prepare(listOf(spec), CoverageTerrainDownloadBudget(1000))
+                val terrain = java.io.File(java.io.File(cacheRoot, spec.cacheKey), "terrain.hgt")
+                val corrupt = ByteArray(8)
+                terrain.writeBytes(corrupt)
+                try {
+                    cache.prepare(listOf(spec), CoverageTerrainDownloadBudget(1000))
+                    fail("Pinned corrupt tile replaced")
+                } catch (error: CoverageTerrainCacheFailure) { assertEquals(CoverageTerrainCacheState.BUSY, error.state) }
+                first.values.forEach { it.close() }
+                try {
+                    cache.prepare(listOf(spec), CoverageTerrainDownloadBudget(0), offline = true)
+                    fail("Corrupt offline tile accepted")
+                } catch (error: TerrainReadFailure) { assertEquals(TerrainReadState.CORRUPT, error.state) }
+                try {
+                    cache.prepare(listOf(spec), CoverageTerrainDownloadBudget(0))
+                    fail("Unfunded repair accepted")
+                } catch (error: CoverageTerrainDownloadFailure) { assertEquals(CoverageTerrainDownloadState.DOWNLOAD_LIMIT, error.state) }
+                assertArrayEquals(corrupt, terrain.readBytes())
+                val repaired = cache.prepare(listOf(spec), CoverageTerrainDownloadBudget(1000))
+                assertArrayEquals(shortArrayOf(1, -2, -32768, 4), repaired.getValue(spec.cacheKey).read(0, 4))
+                repaired.values.forEach { it.close() }
+            }
+            assertEquals(2, server.requestCount)
+        } } finally { root.deleteRecursively() }
+    }
+
+    @Test fun workspaceRecoveryCleansOwnedStagesWithoutFollowingLinks() = runBlocking {
+        val root = Files.createTempDirectory("terrain-recovery").toFile()
+        try { MockWebServer().use { server ->
+            server.start()
+            server.enqueue(MockResponse().setBody(Buffer().write(gzip)))
+            val spec = descriptor(server)
+            val cacheRoot = java.io.File(root, "cache")
+            CoverageTerrainDiskCache(cacheRoot, 100000).use { cache ->
+                cache.prepare(listOf(spec), CoverageTerrainDownloadBudget(1000)).values.forEach { it.close() }
+            }
+            val sentinel = java.io.File(root, "sentinel").also { it.writeBytes(byteArrayOf(7)) }
+            val work = java.io.File(cacheRoot, ".workspace")
+            for (prefix in listOf(".download-", ".decode-")) {
+                val stage = java.io.File(work, prefix + java.util.UUID.randomUUID()).also { it.mkdir() }
+                Files.createSymbolicLink(java.io.File(stage, "link").toPath(), sentinel.toPath())
+            }
+            CoverageTerrainDiskCache(cacheRoot, 100000).use {
+                assertEquals(listOf("owner"), work.list()!!.toList())
+                assertArrayEquals(byteArrayOf(7), sentinel.readBytes())
+            }
+            val unknown = java.io.File(work, "unrecognized").also { it.writeBytes(byteArrayOf(9)) }
+            try { CoverageTerrainDiskCache(cacheRoot, 100000).close(); fail("Unknown workspace file accepted") }
+            catch (error: CoverageTerrainCacheFailure) { assertEquals(CoverageTerrainCacheState.INVALID_CACHE, error.state) }
+            assertArrayEquals(byteArrayOf(9), unknown.readBytes())
+        } } finally { root.deleteRecursively() }
+    }
+
 }
