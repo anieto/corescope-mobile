@@ -537,6 +537,27 @@ the full 461-test suite had one skipped test and two failures outside coverage:
 observer request, and `MyNodesBaseRepositoryTest.observerPagesShareBudgetAndWarmCache` saw 17
 requests instead of 16. No simulator or UI tests were run.
 
+## Native area execution
+
+Swift/Kotlin now execute the bounded grid through preflight, geographic paths, profile callbacks
+and convergence. Results preserve row order and explicit qualified, near-site, outside-radius,
+missing-terrain, accuracy-unresolved, threshold-unresolved, work-limit and not-computed states.
+Only qualified samples expose unrounded loss and margin; qualification alone does not mean
+predicted reception. The displayed receiver threshold still determines that classification.
+
+Sampling and geometry allowances span all samples and refinement passes. Failed profiles retain
+full reservations because partial work is unknown. On work exhaustion, the affected sample is
+marked work-limit and subsequent samples remain not-computed; sampling is never coarsened.
+Cancellation or an unhandled invalid input/model failure throws without returning a partial area.
+Execution is synchronous and serialized; callers must place it off the UI thread. UI generation
+ownership, progress publication and resumable scheduling are not introduced by this entry point.
+
+Xcode build and 76 Swift host tests passed. Android assembly and the 464-test unit suite passed
+with one skipped test. Tests use controlled terrain/model callbacks to check masks, raw margins,
+threshold guards, shared charges, exhaustion, missing terrain and cancellation. No simulator or UI
+tests were run. Production RF binding, combined area/node allocation, provenance and geographic
+raster rendering remain unfinished.
+
 ## Next implementation
 
 Resolve production RF engine packaging and distribution permissions, then connect its adapter

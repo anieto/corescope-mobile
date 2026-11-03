@@ -284,3 +284,11 @@ Eligible area samples now produce geographic terrain paths from the transmitter,
 and date-line tests. Excluded samples have no path, while invalid origins and unsupported polar
 endpoints remain explicit failures. This connects grid locations to the terrain-path API; area
 execution, projected raster boundaries and rendering remain unfinished.
+
+### Native area execution
+
+Area execution now connects preflight, geographic sample paths and convergence under shared
+sampling/geometry budgets. Results preserve explicit unresolved/missing/uncomputed states and
+unrounded qualified estimates. Work exhaustion leaves later samples uncomputed; cancellation
+returns no partial area. This is worker logic with injected terrain/model callbacks, not yet a
+live coverage screen. Production RF binding, combined run ownership and rendering remain pending.
