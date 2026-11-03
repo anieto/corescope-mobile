@@ -149,7 +149,8 @@ which covers all of 0.10, is in the [0.10.2 release notes](docs/node-planner/v0.
   RF/scheduler/UI integration remain next. Geographic crossing discovery now feeds terrain-backed
   profiles, preserving cell crossings/interior peaks with bounded work and explicit failures. Native
   convergence now enforces stable losses, threshold guards and cumulative per-path budgets; the
-  production RF engine remains unbundled pending packaging/distribution resolution. See the
+  production RF engine remains unbundled pending packaging/distribution resolution. Explicit
+  radio link-budget arithmetic now matches shared fixtures on both platforms. See the
   [native integration report](docs/node-planner/native-terrain-integration.md).
 - **Release gate:** coverage integration and physical-device qualification remain incomplete.
   Do not ship the site library as a substitute for coverage or silently relax model fidelity.

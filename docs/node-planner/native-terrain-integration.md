@@ -368,6 +368,21 @@ source or binary was imported in this slice.
 Xcode build including test targets and 51 Swift host tests passed. Android debug assembly passed;
 the 439-test unit suite had no failures and one skipped test. No simulator or UI tests were run.
 
+## Explicit radio link budget
+
+Swift and Kotlin now calculate the maximum allowable path loss from explicitly supplied transmit
+power (dBm), antenna gains (dBi), feed/system losses (dB), sensitivity (dBm) and reserve (dB).
+The same budget derives receive level and unrounded adjusted margin from a qualified path loss.
+Margin arithmetic matches convergence exactly. No equipment defaults or node classification are
+introduced; negative antenna gains are valid, while negative losses/reserve and nonfinite or
+overflowing arithmetic are rejected. This arithmetic boundary does not validate model-specific
+radio limits or establish regulatory compliance.
+
+Five shared fixtures cover positive, zero, negative and near-zero margins. Both platforms also
+test invalid values and overflow. Xcode build and 53 Swift host tests passed; Android debug
+assembly and unit tests passed. No simulator or UI tests were run. Production RF execution,
+run snapshots and exact-node status handling remain unconnected.
+
 ## Next implementation
 
 Resolve production RF engine packaging and distribution permissions, then connect its adapter

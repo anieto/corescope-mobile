@@ -1,0 +1,7 @@
+[
+  {"inputs":[22,3,2,1,1,-130,5],"loss":140,"maximum":150,"receive":-115,"margin":10},
+  {"inputs":[22,3,2,1,1,-130,5],"loss":150,"maximum":150,"receive":-125,"margin":0},
+  {"inputs":[22,3,2,1,1,-130,5],"loss":160,"maximum":150,"receive":-135,"margin":-10},
+  {"inputs":[0,-3,-2,0,0,-100,0],"loss":95.000001,"maximum":95,"receive":-100.000001,"margin":-0.000001},
+  {"inputs":[0,-3,-2,0,0,-100,0],"loss":94.999999,"maximum":95,"receive":-99.999999,"margin":0.000001}
+]

@@ -201,3 +201,10 @@ from treating them as confirmed coverage. Eight shared decision fixtures and ter
 tests cover the policy. The model remains injected: production RF engine packaging/distribution,
 full-study scheduling, provider discovery and map UI are still outstanding. These tests validate
 policy behavior, not propagation accuracy. See the [integration report](native-terrain-integration.md).
+
+### Radio budget progress
+
+Explicit radio/receiver assumptions now produce matching allowable loss, receive level and
+unrounded margin calculations on both platforms, verified by five shared fixtures. No defaults
+are inferred for unknown equipment. These calculations are ready for the RF adapter; they do not
+yet run the model or color known nodes. Run snapshots and node-status handling remain next.
