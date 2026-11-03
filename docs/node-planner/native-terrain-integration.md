@@ -485,6 +485,25 @@ Tests cover independent shared budgets, successful refunds, failed reservations,
 invalid model output. No simulator or UI tests were run. Production engine, full run provenance,
 area scheduling and visible map integration remain outstanding.
 
+## Native area grid layout
+
+Swift/Kotlin now implement the study's local east/north grid layout with selectable spacing,
+full-radius or selected rectangular extents, north-to-south row order and near-site/outside-radius
+masks. Requests retain their radius and spacing; invalid bounds, unaligned extents and requests
+over 60,000 sample points fail explicitly. Points are generated on demand, without allocating a
+full raster during construction. Integer bounds are checked before extent arithmetic.
+
+The port retains the study's 1–100 km radius and discrete 50 m–20 km spacings as internal supported
+inputs, not shipping presets or a new long-range accuracy claim. It uses unrounded radial distance
+for masking; no tolerance extends the requested boundary. This is the layout portion only:
+work preflight, geographic mapping, area RF scheduling and rendered pixel extents remain pending.
+A circular study mask is not a circular predicted coverage footprint.
+
+Xcode build and 68 Swift host tests passed. Android unit tests and debug assembly passed. Tests
+cover the study's 1,681-point wide/refined layouts, 121-point long-range workload, row ordering,
+near-site/radius boundaries, excessive requests and integer-extreme inputs. No simulator or UI
+tests were run.
+
 ## Next implementation
 
 Resolve production RF engine packaging and distribution permissions, then connect its adapter

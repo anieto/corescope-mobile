@@ -261,3 +261,11 @@ status. Failed profile calls retain their reserved allowance because partial wor
 charges can therefore exceed actual work. Cancellation or unhandled failure returns no partial run.
 The coordinator does not yet schedule area cells, bind the production model or select device-qualified
 limits. Callers must run it off the UI thread and supply fixed model/terrain callbacks.
+
+### Native area layout
+
+The area grid now supports explicit spacing and selected refinement extents on both platforms,
+with near-site and outside-radius masks. Excessive or misaligned requests fail rather than silently
+coarsening detail or shrinking radius. The 60,000-point study ceiling remains an internal bound;
+shipping presets and physical-device budgets are not qualified. Geographic raster mapping, area
+work preflight/execution and rendering remain pending.
