@@ -1,0 +1,378 @@
+[
+  {
+    "name": "valid",
+    "document": {
+      "version": 1,
+      "dataset": "fixture",
+      "revision": "1",
+      "vertical_datum": "EGM96",
+      "attribution": "Synthetic test data",
+      "source_type": "synthetic",
+      "side": 2,
+      "tiles": [
+        {
+          "tile": "N00E000",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 100,
+          "url": "https://example.com/N00E000.hgt.gz"
+        },
+        {
+          "tile": "N00E001",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "bytes": 101,
+          "url": "https://example.com/N00E001.hgt.gz"
+        }
+      ]
+    },
+    "expected": "valid"
+  },
+  {
+    "name": "future-version",
+    "document": {
+      "version": 2,
+      "dataset": "fixture",
+      "revision": "1",
+      "vertical_datum": "EGM96",
+      "attribution": "Synthetic test data",
+      "source_type": "synthetic",
+      "side": 2,
+      "tiles": [
+        {
+          "tile": "N00E000",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 100,
+          "url": "https://example.com/N00E000.hgt.gz"
+        },
+        {
+          "tile": "N00E001",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "bytes": 101,
+          "url": "https://example.com/N00E001.hgt.gz"
+        }
+      ]
+    },
+    "expected": "unsupportedVersion"
+  },
+  {
+    "name": "missing-field",
+    "document": {
+      "version": 1,
+      "dataset": "fixture",
+      "revision": "1",
+      "vertical_datum": "EGM96",
+      "attribution": "Synthetic test data",
+      "side": 2,
+      "tiles": [
+        {
+          "tile": "N00E000",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 100,
+          "url": "https://example.com/N00E000.hgt.gz"
+        },
+        {
+          "tile": "N00E001",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "bytes": 101,
+          "url": "https://example.com/N00E001.hgt.gz"
+        }
+      ]
+    },
+    "expected": "invalidDocument"
+  },
+  {
+    "name": "empty",
+    "document": {
+      "version": 1,
+      "dataset": "fixture",
+      "revision": "1",
+      "vertical_datum": "EGM96",
+      "attribution": "Synthetic test data",
+      "source_type": "synthetic",
+      "side": 2,
+      "tiles": []
+    },
+    "expected": "invalidDocument"
+  },
+  {
+    "name": "duplicate",
+    "document": {
+      "version": 1,
+      "dataset": "fixture",
+      "revision": "1",
+      "vertical_datum": "EGM96",
+      "attribution": "Synthetic test data",
+      "source_type": "synthetic",
+      "side": 2,
+      "tiles": [
+        {
+          "tile": "N00E000",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 100,
+          "url": "https://example.com/N00E000.hgt.gz"
+        },
+        {
+          "tile": "N00E001",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "bytes": 101,
+          "url": "https://example.com/N00E001.hgt.gz"
+        },
+        {
+          "tile": "N00E000",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 100,
+          "url": "https://example.com/N00E000.hgt.gz"
+        }
+      ]
+    },
+    "expected": "duplicateTile"
+  },
+  {
+    "name": "same-coordinate-alias",
+    "document": {
+      "version": 1,
+      "dataset": "fixture",
+      "revision": "1",
+      "vertical_datum": "EGM96",
+      "attribution": "Synthetic test data",
+      "source_type": "synthetic",
+      "side": 2,
+      "tiles": [
+        {
+          "tile": "N00E000",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 100,
+          "url": "https://example.com/N00E000.hgt.gz"
+        },
+        {
+          "tile": "N00E001",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "bytes": 101,
+          "url": "https://example.com/N00E001.hgt.gz"
+        },
+        {
+          "tile": "S00W000",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 100,
+          "url": "https://example.com/N00E000.hgt.gz"
+        }
+      ]
+    },
+    "expected": "duplicateTile"
+  },
+  {
+    "name": "insecure-url",
+    "document": {
+      "version": 1,
+      "dataset": "fixture",
+      "revision": "1",
+      "vertical_datum": "EGM96",
+      "attribution": "Synthetic test data",
+      "source_type": "synthetic",
+      "side": 2,
+      "tiles": [
+        {
+          "tile": "N00E000",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 100,
+          "url": "http://example.com/tile"
+        },
+        {
+          "tile": "N00E001",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "bytes": 101,
+          "url": "https://example.com/N00E001.hgt.gz"
+        }
+      ]
+    },
+    "expected": "invalidDocument"
+  },
+  {
+    "name": "loopback",
+    "document": {
+      "version": 1,
+      "dataset": "fixture",
+      "revision": "1",
+      "vertical_datum": "EGM96",
+      "attribution": "Synthetic test data",
+      "source_type": "synthetic",
+      "side": 2,
+      "tiles": [
+        {
+          "tile": "N00E000",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 100,
+          "url": "http://localhost/tile"
+        },
+        {
+          "tile": "N00E001",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "bytes": 101,
+          "url": "https://example.com/N00E001.hgt.gz"
+        }
+      ]
+    },
+    "expected": "invalidDocument"
+  },
+  {
+    "name": "bad-hash",
+    "document": {
+      "version": 1,
+      "dataset": "fixture",
+      "revision": "1",
+      "vertical_datum": "EGM96",
+      "attribution": "Synthetic test data",
+      "source_type": "synthetic",
+      "side": 2,
+      "tiles": [
+        {
+          "tile": "N00E000",
+          "sha256": "invalid",
+          "bytes": 100,
+          "url": "https://example.com/N00E000.hgt.gz"
+        },
+        {
+          "tile": "N00E001",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "bytes": 101,
+          "url": "https://example.com/N00E001.hgt.gz"
+        }
+      ]
+    },
+    "expected": "invalidDocument"
+  },
+  {
+    "name": "fractional-size",
+    "document": {
+      "version": 1,
+      "dataset": "fixture",
+      "revision": "1",
+      "vertical_datum": "EGM96",
+      "attribution": "Synthetic test data",
+      "source_type": "synthetic",
+      "side": 2,
+      "tiles": [
+        {
+          "tile": "N00E000",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 1.5,
+          "url": "https://example.com/N00E000.hgt.gz"
+        },
+        {
+          "tile": "N00E001",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "bytes": 101,
+          "url": "https://example.com/N00E001.hgt.gz"
+        }
+      ]
+    },
+    "expected": "invalidDocument"
+  },
+  {
+    "name": "string-size",
+    "document": {
+      "version": 1,
+      "dataset": "fixture",
+      "revision": "1",
+      "vertical_datum": "EGM96",
+      "attribution": "Synthetic test data",
+      "source_type": "synthetic",
+      "side": 2,
+      "tiles": [
+        {
+          "tile": "N00E000",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": "100",
+          "url": "https://example.com/N00E000.hgt.gz"
+        },
+        {
+          "tile": "N00E001",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "bytes": 101,
+          "url": "https://example.com/N00E001.hgt.gz"
+        }
+      ]
+    },
+    "expected": "invalidDocument"
+  },
+  {
+    "name": "invalid-side",
+    "document": {
+      "version": 1,
+      "dataset": "fixture",
+      "revision": "1",
+      "vertical_datum": "EGM96",
+      "attribution": "Synthetic test data",
+      "source_type": "synthetic",
+      "side": 3600,
+      "tiles": [
+        {
+          "tile": "N00E000",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 100,
+          "url": "https://example.com/N00E000.hgt.gz"
+        },
+        {
+          "tile": "N00E001",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "bytes": 101,
+          "url": "https://example.com/N00E001.hgt.gz"
+        }
+      ]
+    },
+    "expected": "invalidDocument"
+  },
+  {
+    "name": "oversized-payload",
+    "document": {
+      "version": 1,
+      "dataset": "fixture",
+      "revision": "1",
+      "vertical_datum": "EGM96",
+      "attribution": "Synthetic test data",
+      "source_type": "synthetic",
+      "side": 2,
+      "tiles": [
+        {
+          "tile": "N00E000",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 40000001,
+          "url": "https://example.com/N00E000.hgt.gz"
+        },
+        {
+          "tile": "N00E001",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "bytes": 101,
+          "url": "https://example.com/N00E001.hgt.gz"
+        }
+      ]
+    },
+    "expected": "invalidDocument"
+  },
+  {
+    "name": "float-integral",
+    "document": {
+      "version": 1,
+      "dataset": "fixture",
+      "revision": "1",
+      "vertical_datum": "EGM96",
+      "attribution": "Synthetic test data",
+      "source_type": "synthetic",
+      "side": 2,
+      "tiles": [
+        {
+          "tile": "N00E000",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 100.0,
+          "url": "https://example.com/N00E000.hgt.gz"
+        },
+        {
+          "tile": "N00E001",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "bytes": 101,
+          "url": "https://example.com/N00E001.hgt.gz"
+        }
+      ]
+    },
+    "expected": "valid"
+  }
+]

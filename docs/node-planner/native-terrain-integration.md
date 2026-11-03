@@ -613,3 +613,31 @@ Validation for this preparation slice: Xcode build including test targets and 34
 passed. The Android coverage tests passed; the full 421-test suite had one skipped test and the
 existing `MyNodesBaseRepositoryTest.observerPagesShareBudgetAndWarmCache` failure (expected
 16 requests, observed 17), repeated on rerun. No simulator or UI tests were run.
+
+
+## Regional catalog decoding (2026-11-03)
+
+Both apps now decode a version-1 regional JSON catalog into validated terrain descriptors and
+resolve it through the existing study-footprint selector. The document is limited to 4 MiB and
+1–4096 entries. Global fields are `version`, `dataset`, `revision`, `side`, `vertical_datum`,
+`attribution`, and `source_type`; each `tiles` entry supplies `tile`, `sha256`, `bytes`, and `url`.
+The URL is retained as both download and origin provenance and must use HTTPS. Descriptor
+validation enforces payload bounds, digest syntax, sample dimensions and geographic bounds.
+Duplicate geographic tiles fail, including alternate zero-coordinate spellings. Unknown document
+fields are ignored; unsupported schema versions fail. Missing required tiles remain an explicit
+footprint failure, never a zero-filled elevation or smaller study area.
+
+This decoder accepts data already obtained by a caller. It does not fetch or authenticate a
+catalog, select a production endpoint, or establish that its declared checksums/provenance are
+trustworthy. A trusted regional-catalog delivery source remains required. The fixture is synthetic
+and must not be shipped as real terrain. Provider documentation was rechecked against the
+[AWS terrain registry](https://registry.opendata.aws/terrain-tiles/) and
+[Skadi format documentation](https://github.com/tilezen/joerd/blob/master/docs/formats.md);
+neither check qualifies a production catalog or supplies missing per-tile SHA-256 pins.
+
+Fourteen shared cases exercise valid selection, missing coverage, incompatible versions, malformed
+records, aliases/duplicates, insecure URLs and numeric validation. Malformed/oversized raw data is
+also tested natively. Swift host tests: 81 passed. Xcode build including test targets passed;
+Android unit tests and debug assembly passed. No simulator, UI or real-provider network run was
+performed. Production RF binding, catalog transport, screen execution and result rendering remain
+outstanding.
