@@ -51,4 +51,21 @@ struct CoverageGrid: Sendable {
         let state: CoverageGridPointState = distance < 250 ? .nearSite : (distance > Double(radiusMeters) ? .outsideRadius : .eligible)
         return CoverageGridPoint(eastMeters: east, northMeters: north, distanceMeters: distance, state: state)
     }
+
+    /// Local offsets define spherical distance and initial bearing from the transmitter.
+    /// Excluded samples have no RF path; malformed origins/indices throw instead of looking excluded.
+    func path(at index: Int, transmitter: CoverageTerrainCoordinate) throws -> CoverageTerrainPath? {
+        guard transmitter.latitude.isFinite, transmitter.longitude.isFinite,
+              (-85...85).contains(transmitter.latitude), (-180...180).contains(transmitter.longitude),
+              let point = point(at: index) else { throw CoverageGridFailure.invalidParameters }
+        guard point.state == .eligible else { return nil }
+        let angle = atan2(Double(point.eastMeters), Double(point.northMeters)) * 180 / Double.pi
+        let bearing = angle - 360 * floor(angle / 360)
+        let path = try CoverageTerrainPath(latitude: transmitter.latitude, longitude: transmitter.longitude,
+            bearingDegrees: bearing, distanceMeters: point.distanceMeters)
+        // Endpoint validation is early; profile crossing discovery also checks interior latitude extrema.
+        _ = try path.point(at: path.distanceMeters)
+        return path
+    }
+
 }

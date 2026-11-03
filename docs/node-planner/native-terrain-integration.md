@@ -522,6 +522,21 @@ Xcode build and 71 Swift host tests passed. Android unit tests and debug assembl
 cover analytical single-point bounds, excluded points, independent path/job limits, cancellation
 and totals beyond signed 32-bit range. No simulator or UI tests were run.
 
+## Geographic paths for area samples
+
+Grid samples now map to spherical distance/bearing paths from the transmitter on both platforms,
+using the existing terrain-path implementation. Near-site and outside-radius samples return no RF
+path; invalid indices/origins throw. Endpoints are checked against the current ±85° model domain,
+while profile crossing discovery still checks interior latitude extrema. Longitude wrapping is
+shared with exact-node terrain paths. These are sample-center paths, not projected raster pixel
+boundaries; geographic image rendering remains a separate step.
+
+Xcode build and 73 Swift host tests passed. Android assembly and new grid-path tests passed;
+the full 461-test suite had one skipped test and two failures outside coverage:
+`BeaconApiTest.beaconDiagnosticsMakeFourBoundedRequestsAndNoFalseFailures` missed an expected
+observer request, and `MyNodesBaseRepositoryTest.observerPagesShareBudgetAndWarmCache` saw 17
+requests instead of 16. No simulator or UI tests were run.
+
 ## Next implementation
 
 Resolve production RF engine packaging and distribution permissions, then connect its adapter

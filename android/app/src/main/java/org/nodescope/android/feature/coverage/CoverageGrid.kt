@@ -1,6 +1,6 @@
 package org.nodescope.android.feature.coverage
 
-import kotlin.math.hypot
+import kotlin.math.*
 
 enum class CoverageGridFailureState { invalidParameters, invalidBounds, unalignedExtent, cellBudget }
 class CoverageGridFailure(val state: CoverageGridFailureState) : Exception(state.name)
@@ -33,4 +33,20 @@ class CoverageGrid(val radiusMeters: Int, val spacingMeters: Int, val minEastMet
         val state = if (distance < 250) CoverageGridPointState.nearSite else if (distance > radiusMeters) CoverageGridPointState.outsideRadius else CoverageGridPointState.eligible
         return CoverageGridPoint(east, north, distance, state)
     }
+    /** Spherical distance/bearing from local offsets. Excluded samples have no RF path. */
+    fun path(index: Int, transmitter: CoverageTerrainCoordinate): CoverageTerrainPath? {
+        if (!transmitter.latitude.isFinite() || !transmitter.longitude.isFinite() ||
+            transmitter.latitude !in -85.0..85.0 || transmitter.longitude !in -180.0..180.0) {
+            throw CoverageGridFailure(CoverageGridFailureState.invalidParameters)
+        }
+        val point = point(index) ?: throw CoverageGridFailure(CoverageGridFailureState.invalidParameters)
+        if (point.state != CoverageGridPointState.eligible) return null
+        val angle = atan2(point.eastMeters.toDouble(), point.northMeters.toDouble()) * 180 / PI
+        val path = CoverageTerrainPath(transmitter.latitude, transmitter.longitude,
+            angle - 360 * floor(angle / 360), point.distanceMeters)
+        // Crossing discovery additionally checks interior latitude extrema.
+        path.point(path.distanceMeters)
+        return path
+    }
+
 }

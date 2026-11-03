@@ -277,3 +277,10 @@ checking per-path and aggregate limits separately. Accepted estimates are lower 
 promise of completion; retained terrain features can require additional work. Estimates use
 64-bit totals and account for repeated native geometry discovery. Area execution and map rendering
 remain unconnected.
+
+### Geographic grid paths
+
+Eligible area samples now produce geographic terrain paths from the transmitter, with cardinal
+and date-line tests. Excluded samples have no path, while invalid origins and unsupported polar
+endpoints remain explicit failures. This connects grid locations to the terrain-path API; area
+execution, projected raster boundaries and rendering remain unfinished.

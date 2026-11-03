@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import CoreScopeViewer
 
@@ -41,4 +42,35 @@ struct CoverageGridTests {
                 minEastMeters: -1000, maxEastMeters: 1000, minNorthMeters: -1000, maxNorthMeters: 1000)
         }
     }
+    @Test func geographicPathsMatchCardinalsAndWrapDateLine() throws {
+        let origin = CoverageTerrainCoordinate(latitude: 0, longitude: 179.999)
+        let degrees = 1000 / CoverageTerrainFootprint.earthRadiusMeters * 180 / Double.pi
+        for (east, north, bearing) in [(1000, 0, 90.0), (-1000, 0, 270), (0, 1000, 0), (0, -1000, 180)] {
+            let grid = try CoverageGrid(radiusMeters: 1000, spacingMeters: 50,
+                minEastMeters: east, maxEastMeters: east, minNorthMeters: north, maxNorthMeters: north)
+            let path = try #require(try grid.path(at: 0, transmitter: origin))
+            #expect(path.bearingDegrees == bearing)
+            #expect(path.distanceMeters == 1000)
+            let end = try path.point(at: 1000)
+            let longitude = origin.longitude + Double(east) / 1000 * degrees
+            let wrapped = longitude - 360 * floor((longitude + 180) / 360)
+            #expect(abs(end.longitude - wrapped) < 1e-9)
+            #expect(abs(end.latitude - Double(north) / 1000 * degrees) < 1e-9)
+        }
+    }
+    @Test func excludedAndUnsupportedGridPathsRemainDistinct() throws {
+        let grid = try CoverageGrid(radiusMeters: 1000, spacingMeters: 1000,
+            minEastMeters: -1000, maxEastMeters: 1000, minNorthMeters: -1000, maxNorthMeters: 1000)
+        let origin = CoverageTerrainCoordinate(latitude: 0, longitude: 0)
+        #expect(try grid.path(at: 0, transmitter: origin) == nil)
+        #expect(try grid.path(at: 4, transmitter: origin) == nil)
+        #expect(throws: CoverageGridFailure.invalidParameters) { try grid.path(at: -1, transmitter: origin) }
+        #expect(throws: CoverageGridFailure.invalidParameters) {
+            try grid.path(at: 1, transmitter: CoverageTerrainCoordinate(latitude: 90, longitude: 0))
+        }
+        #expect(throws: CoverageTerrainProfileFailure.accuracyUnresolved) {
+            try grid.path(at: 1, transmitter: CoverageTerrainCoordinate(latitude: 85, longitude: 0))
+        }
+    }
+
 }
