@@ -157,7 +157,9 @@ which covers all of 0.10, is in the [0.10.2 release notes](docs/node-planner/v0.
   processing exclusions, reject late results and discard cancelled partial work; map/catalog
   integration remains outstanding. Exact-node orchestration now derives paths and connects profile
   callbacks to convergence/status, skipping unsupported or out-of-radius work. Prepared mosaics
-  now bind directly to this evaluator with cancellation and reader-ownership tests. See the
+  now bind directly to this evaluator with cancellation and reader-ownership tests. A serialized
+  node coordinator shares terrain/geometry/model budgets across the batch and withholds partial
+  runs on cancellation; the area scheduler and production model remain pending. See the
   [native integration report](docs/node-planner/native-terrain-integration.md).
 - **Release gate:** coverage integration and physical-device qualification remain incomplete.
   Do not ship the site library as a substitute for coverage or silently relax model fidelity.

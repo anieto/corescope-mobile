@@ -252,3 +252,12 @@ cancellation and remaining per-path work budgets. File-backed integration verifi
 heights, missing tiles and cancellation without releasing caller-owned reader pins. Only the RF
 callback remains injected for this path; production engine binding and the full map workflow remain
 unfinished.
+
+### Bounded node batch
+
+A serialized worker coordinator now evaluates the frozen node set with shared terrain, geometry
+and model-call budgets across all refinements and nodes. Exhausted work yields not-evaluated
+status. Failed profile calls retain their reserved allowance because partial work is not reported;
+charges can therefore exceed actual work. Cancellation or unhandled failure returns no partial run.
+The coordinator does not yet schedule area cells, bind the production model or select device-qualified
+limits. Callers must run it off the UI thread and supply fixed model/terrain callbacks.

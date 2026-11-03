@@ -466,6 +466,25 @@ No simulator or UI tests were run. RF responses remain controlled test values; p
 binding, provider discovery and full-study scheduling are still outstanding. This slice establishes
 the terrain binding, not physical RF accuracy or a user-visible coverage map.
 
+## Shared node-batch work limits
+
+A synchronous serialized coordinator now constructs a frozen node run, evaluates selected paths
+and publishes only the completed run. Terrain, geometry and model-call limits span all nodes and
+refinement passes. Each profile reserves at most its remaining per-path and batch allowance;
+validated successful work refunds the unused portion. A failed profile retains its full reservation
+because its partial work is unknown. Reported charged work is therefore conservative, not necessarily
+actual executed work. Exhausted budgets produce processing-limit status without further callbacks.
+
+Cancellation and unhandled failures throw without returning the partially assembled run. Callers
+must execute off the UI thread, serialize terrain access and keep the model configuration fixed.
+The numeric validation ceilings are defensive bounds, not device-qualified settings or defaults.
+This is the node coordinator, not the area raster scheduler or a full-study allocation policy.
+
+Xcode build and 66 Swift host tests passed. Android unit tests and debug assembly passed.
+Tests cover independent shared budgets, successful refunds, failed reservations, cancellation and
+invalid model output. No simulator or UI tests were run. Production engine, full run provenance,
+area scheduling and visible map integration remain outstanding.
+
 ## Next implementation
 
 Resolve production RF engine packaging and distribution permissions, then connect its adapter
