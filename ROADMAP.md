@@ -163,7 +163,8 @@ which covers all of 0.10, is in the [0.10.2 release notes](docs/node-planner/v0.
   reject oversized grids. Area-work preflight now checks minimum per-path and aggregate budgets
   with 64-bit totals. Eligible grid samples now map to geographic terrain paths, including date-line
   wrapping. Native area execution now preserves sample masks and unresolved states under shared
-  budgets; production RF binding, combined run ownership and rendering remain pending. See the
+  budgets. A combined prepared-terrain operation now reserves node work independently and returns
+  area/node results together; production RF binding, UI publication and rendering remain pending. See the
   [native integration report](docs/node-planner/native-terrain-integration.md).
 - **Release gate:** coverage integration and physical-device qualification remain incomplete.
   Do not ship the site library as a substitute for coverage or silently relax model fidelity.

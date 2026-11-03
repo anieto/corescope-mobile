@@ -24,6 +24,44 @@ private class MosaicFiles : AutoCloseable {
 }
 
 class CoverageTerrainMosaicTest {
+    @Test fun combinedStudyReservesNodeWorkAndDiscardsCancelledArea() {
+        MosaicFiles().use { files ->
+            val reader = files.reader(List(121 * 121) { 200 }, side = 121)
+            CoverageTerrainMosaic(mapOf(CoverageTerrainTile(0, 0) to reader)).use { mosaic ->
+                val origin = CoverageTerrainCoordinate(0.5, 0.5)
+                val grid = CoverageGrid(5000, 1000, 1000, 1000, 0, 0)
+                val budget = CoverageLinkBudget(22.0, 3.0, 2.0, 1.0, 1.0, -130.0, 5.0)
+                val node = CoverageNodeSnapshot("source", "node", 0.5, 0.52)
+                for (areaSamples in listOf(337, 1_000_000)) {
+                    val limits = CoverageStudyLimits(areaSamples, 1_000_000, 1_000_000, 1_000_000, 5)
+                    val result = CoverageStudy.evaluate(origin, grid, budget, listOf(node), true, 1, limits, mosaic) { 140.0 }
+                    assertEquals(areaSamples == 337, result.area.workLimited)
+                    assertEquals(CoverageNodeState.inCoverage, result.nodes.run.status(node).state)
+                    assertTrue(result.area.chargedSamples <= limits.areaSamples)
+                    assertTrue(result.nodes.chargedTerrainEvaluations <= limits.nodeSamples)
+                }
+                val limits = CoverageStudyLimits(1_000_000, 1_000_000, 1_000_000, 1_000_000, 5)
+                var cancelled = false
+                val failure = assertThrows(CoverageTerrainProfileFailure::class.java) {
+                    CoverageStudy.evaluate(origin, grid, budget, listOf(node), true, 1, limits, mosaic,
+                        cancelled = { cancelled }) { profile ->
+                        if (profile.distancesMeters.last() > 1500) cancelled = true
+                        140.0
+                    }
+                }
+                assertEquals(CoverageTerrainProfileState.CANCELLED, failure.state)
+                val empty = CoverageStudy.evaluate(origin, grid, budget, emptyList(), false, 1, limits, mosaic) { 140.0 }
+                assertEquals(CoverageAreaState.qualified, empty.area.cells[0].state)
+                assertEquals(0, empty.nodes.run.receivedCount)
+                assertEquals(0, files.released)
+                assertThrows(CoverageTerrainProfileFailure::class.java) {
+                    CoverageStudyLimits(150_000_000, 0, 1, 0, 0).validate()
+                }
+            }
+            assertEquals(1, files.released)
+        }
+    }
+
     @Test fun exactNodesUseFileBackedTerrainWithoutTakingOwnership() {
         MosaicFiles().use { files ->
             val reader = files.reader(List(121 * 121) { -20 }, side = 121)

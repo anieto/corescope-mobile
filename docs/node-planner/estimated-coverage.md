@@ -292,3 +292,11 @@ sampling/geometry budgets. Results preserve explicit unresolved/missing/uncomput
 unrounded qualified estimates. Work exhaustion leaves later samples uncomputed; cancellation
 returns no partial area. This is worker logic with injected terrain/model callbacks, not yet a
 live coverage screen. Production RF binding, combined run ownership and rendering remain pending.
+
+### Combined study operation
+
+Area and exact-node execution now share one prepared mosaic and fixed radio/model callback, with
+separate explicit work allocations under a combined ceiling. Node work remains available after
+area exhaustion. The operation returns both results and their transmitter/grid/radio inputs together;
+cancellation or node failure returns no area-only result. Production RF configuration/provenance,
+async UI ownership and geographic rendering remain unfinished.

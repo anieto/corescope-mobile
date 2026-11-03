@@ -558,6 +558,26 @@ threshold guards, shared charges, exhaustion, missing terrain and cancellation. 
 tests were run. Production RF binding, combined area/node allocation, provenance and geographic
 raster rendering remain unfinished.
 
+## Combined prepared-terrain study operation
+
+Both platforms now run area and exact-node work against one borrowed prepared mosaic, fixed radio
+budget and model callback. Explicit area/node allowances are reserved separately and validated
+against a combined 150-million sample/geometry ceiling. The area cannot consume the node reserve;
+unused allowances are not silently transferred. Catalog validation precedes area work, and Android
+copies the input list before calculation. Results carry transmitter, grid, radio budget, allocations,
+area cells and the completed node run together.
+
+Cancellation or node failure returns no area-only study. Empty catalogs are valid. The operation
+retains caller ownership of terrain readers and must execute serially off the UI thread. The caller
+still must supply a fixed RF configuration: the closure is not a model/provenance snapshot, and
+these results are not yet a persistence format or an async UI publication boundary.
+
+Xcode build and 77 Swift host tests passed. Android unit tests and debug assembly passed.
+File-backed tests exercise successful studies, area exhaustion with successful reserved node work,
+cancellation in node evaluation, empty catalogs and invalid combined limits. RF outputs are controlled
+test values. No simulator or UI tests were run. Production RF binding, source/model provenance,
+progress/UI ownership and geographic raster rendering remain pending.
+
 ## Next implementation
 
 Resolve production RF engine packaging and distribution permissions, then connect its adapter

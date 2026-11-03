@@ -51,6 +51,49 @@ private final class MosaicFiles {
 }
 
 struct CoverageTerrainMosaicTests {
+    @Test func combinedStudyReservesNodeWorkAndDiscardsCancelledArea() throws {
+        let files = try MosaicFiles()
+        let reader = try files.reader(samples: Array(repeating: 200, count: 121 * 121), side: 121)
+        let mosaic = try CoverageTerrainMosaic(readers: [CoverageTerrainTile(south: 0, west: 0): reader])
+        defer { mosaic.close() }
+        let origin = CoverageTerrainCoordinate(latitude: 0.5, longitude: 0.5)
+        let grid = try CoverageGrid(radiusMeters: 5000, spacingMeters: 1000,
+            minEastMeters: 1000, maxEastMeters: 1000, minNorthMeters: 0, maxNorthMeters: 0)
+        let budget = try CoverageLinkBudget(transmitPowerDbm: 22, transmitGainDbi: 3, receiveGainDbi: 2,
+            transmitLossDb: 1, receiveLossDb: 1, sensitivityDbm: -130, reserveDb: 5)
+        let node = CoverageNodeSnapshot(sourceID: "source", nodeID: "node", latitude: 0.5, longitude: 0.52)
+        for areaSamples in [337, 1_000_000] {
+            let limits = CoverageStudyLimits(areaSamples: areaSamples, areaGeometry: 1_000_000,
+                nodeSamples: 1_000_000, nodeGeometry: 1_000_000, nodeModelCalls: 5)
+            let result = try CoverageStudy.evaluate(transmitter: origin, grid: grid, budget: budget,
+                nodes: [node], catalogComplete: true, nodeLimit: 1, limits: limits, mosaic: mosaic) { _ in 140 }
+            #expect(result.area.workLimited == (areaSamples == 337))
+            #expect(result.nodes.run.status(for: node).state == .inCoverage)
+            #expect(result.area.chargedSamples <= Int64(limits.areaSamples))
+            #expect(result.nodes.chargedTerrainEvaluations <= limits.nodeSamples)
+        }
+        let limits = CoverageStudyLimits(areaSamples: 1_000_000, areaGeometry: 1_000_000,
+            nodeSamples: 1_000_000, nodeGeometry: 1_000_000, nodeModelCalls: 5)
+        var cancelled = false
+        #expect(throws: CoverageTerrainProfileFailure.cancelled) {
+            try CoverageStudy.evaluate(transmitter: origin, grid: grid, budget: budget,
+                nodes: [node], catalogComplete: true, nodeLimit: 1, limits: limits, mosaic: mosaic,
+                cancelled: { cancelled }) { profile in
+                    if let distance = profile.distancesMeters.last, distance > 1500 { cancelled = true }
+                    return 140
+                }
+        }
+        let empty = try CoverageStudy.evaluate(transmitter: origin, grid: grid, budget: budget,
+            nodes: [], catalogComplete: false, nodeLimit: 1, limits: limits, mosaic: mosaic) { _ in 140 }
+        #expect(empty.area.cells[0].state == .qualified)
+        #expect(empty.nodes.run.receivedCount == 0)
+        #expect(files.released == 0)
+        #expect(throws: CoverageTerrainProfileFailure.invalidInput) {
+            try CoverageStudyLimits(areaSamples: 150_000_000, areaGeometry: 0,
+                nodeSamples: 1, nodeGeometry: 0, nodeModelCalls: 0).validate()
+        }
+    }
+
     @Test func exactNodesUseFileBackedTerrainWithoutTakingOwnership() throws {
         let files = try MosaicFiles()
         let reader = try files.reader(samples: Array(repeating: -20, count: 121 * 121), side: 121)
