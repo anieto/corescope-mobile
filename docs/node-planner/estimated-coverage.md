@@ -167,3 +167,11 @@ Offline corruption remains explicit. Download/decode files now live in an owned 
 with restart cleanup; Android cancellation waits for callback cleanup before releasing ownership.
 Invalid metadata still fails without resetting data. Geographic tile selection and propagation
 integration remain the next step toward the standalone coverage map.
+
+### Geographic selection progress
+
+Radius plus sampling halo now selects a conservative set of terrain tiles on iOS and Android,
+including date-line crossings. Source resolution fails explicitly for gaps or incompatible data;
+the complete selected set can be prepared as a geographic sampler. Oversized footprints report a
+limit instead of silently shortening the requested range. This fetch footprint does not define
+the eventual terrain-shaped coverage overlay. Provider-manifest discovery and RF sampling remain next.

@@ -134,11 +134,12 @@ struct CoverageTerrainPreparationTests {
         readers.values.forEach { $0.close() }
         try cache.close()
         let reopened = try CoverageTerrainDiskCache(root: cacheURL, quota: 100000)
-        let offline = try await reopened.prepare([spec],
+        let footprint = try CoverageTerrainFootprint.make(latitude: 0.5, longitude: 0.5, radiusMeters: 1000)
+        let offline = try await reopened.prepareMosaic(footprint: footprint, catalog: [spec],
             budget: CoverageTerrainDownloadBudget(limit: 0), offline: true,
             download: { _, _, _ in Issue.record("Offline network access"); throw CoverageTerrainCacheFailure.io })
-        #expect(try offline[spec.cacheKey]?.read(start: 0, count: 1) == [1])
-        offline.values.forEach { $0.close() }
+        #expect(try offline.sample(latitude: 0.5, longitude: 0.5) == .noData)
+        offline.close()
         try reopened.close()
         #expect(try FileManager.default.contentsOfDirectory(atPath: root.path) == ["cache"])
     }

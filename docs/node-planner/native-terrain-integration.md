@@ -265,11 +265,37 @@ This repairs payload corruption with valid metadata. Invalid metadata, missing c
 at cache open, and unrecognized cache contents still fail explicitly and remain preserved.
 Power-loss durability and real-device filesystem qualification are not claimed.
 
+## Geographic tile selection and mosaic preparation
+
+Both platforms now select one-degree terrain tiles from transmitter coordinates, requested radius
+and an explicit sampling halo. Selection conservatively encloses the spherical study disk, using
+the 6,371,008.8 m Earth radius in the reviewed coverage studies. It handles date-line wrapping,
+north/east seam ownership and zero-radius point requests. Bounds round outward to avoid excluding
+a boundary tile. The resulting rectangle is a terrain-fetch footprint, not the displayed coverage
+shape or a promise of reception.
+
+The 256-tile ceiling is enforced before returning a set: no radius or tile list is silently clipped.
+A nonzero disk touching a pole requires all longitude columns and therefore exceeds the current
+ceiling. The bounding rectangle can overfetch compared with an exact circle/tile intersection.
+The halo is supplied by the eventual profile sampler, independent of output-grid spacing.
+
+A bounded manifest resolver rejects missing coordinates, ambiguous source identities and mixtures
+of dataset, revision, vertical datum, sample dimensions or source type. Mirrors of the same
+identity reuse the first transport URL. The new `prepareMosaic` entry point resolves the entire
+footprint before downloading and transfers verified pinned readers to the geographic sampler.
+Closing that sampler releases the pins.
+
+Eight shared fixtures cover interior, seams, hemispheres, date line, sampling halo, longer range
+and point/pole ownership. Each platform additionally checks 7,200 radial path positions across
+four locations and three ranges, along with limits and manifest errors. Offline integration
+preserves explicit nodata through the prepared mosaic. Production provider-manifest discovery,
+profile sampling and RF execution remain unconnected.
+
 ## Next implementation
 
-Wire geographic footprint/halo selection, the feature-preserving profile sampler and the bounded
-scheduler to the prepared terrain readers next, preserving verified digests and consistent source
-provenance. Define explicit recovery for invalid metadata separately; never silently reset unknown
+Wire the feature-preserving profile sampler and bounded scheduler to prepared mosaics next,
+preserving verified digests and consistent source provenance. Connect a qualified provider manifest
+to footprint selection. Define explicit recovery for invalid metadata separately; never silently reset unknown
 cache contents. See the [repository contract](terrain-repository-study.md).
 Then package the reviewed propagation kernel and implement the shared run/node-result contract
 before connecting standalone Estimated Coverage UI and green/red/neutral known-node markers.

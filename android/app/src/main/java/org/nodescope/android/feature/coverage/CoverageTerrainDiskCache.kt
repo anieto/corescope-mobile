@@ -74,6 +74,26 @@ class CoverageTerrainDiskCache(private val root: File, private val quota: Long) 
         return CoverageTerrainPreflight.make(descriptors, inventory, quota, remainingDownloadBytes, attempts)
     }
 
+    /** Resolve every required tile first, then transfer verified reader ownership to a mosaic. */
+    suspend fun prepareMosaic(footprint: CoverageTerrainFootprint, catalog: List<CoverageTerrainDescriptor>,
+                             budget: CoverageTerrainDownloadBudget, offline: Boolean = false, attempts: Int = 2,
+                             download: suspend (CoverageTerrainDescriptor, File, CoverageTerrainDownloadBudget) -> DownloadedCoverageTerrain =
+                                 { descriptor, directory, allowance -> CoverageTerrainDownloader.download(descriptor, directory, allowance) }
+    ): CoverageTerrainMosaic {
+        val descriptors = footprint.resolve(catalog)
+        val readers = prepare(descriptors, budget, offline, attempts, download)
+        val geographic = mutableMapOf<CoverageTerrainTile, LeasedTerrainReader>()
+        for (descriptor in descriptors) {
+            val reader = readers[descriptor.cacheKey]
+            if (reader == null) {
+                readers.values.forEach { it.close() }
+                fail(CoverageTerrainCacheState.MISSING)
+            }
+            geographic[descriptor.coordinate] = reader
+        }
+        return CoverageTerrainMosaic(geographic)
+    }
+
     /**
      * Exclusive serialized-worker operation; do not call other cache APIs while suspended.
      * Transfers a complete verified pinned set. Caller closes every reader on the same worker.

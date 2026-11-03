@@ -134,6 +134,8 @@
 		31E00556309922DC00178350 /* CoverageTerrainDecoderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E00555309922DC00178350 /* CoverageTerrainDecoderTests.swift */; };
 		31E0055830994EEA00178350 /* CoverageTerrainDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E0055730994EEA00178350 /* CoverageTerrainDownloader.swift */; };
 		31E0055A30994F3600178350 /* CoverageTerrainDownloaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E0055930994F3600178350 /* CoverageTerrainDownloaderTests.swift */; };
+		31E0055C30996C7100178350 /* CoverageTerrainFootprint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E0055B30996C7100178350 /* CoverageTerrainFootprint.swift */; };
+		31E0055E30996CA600178350 /* CoverageTerrainFootprintTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E0055D30996CA600178350 /* CoverageTerrainFootprintTests.swift */; };
 		31E24AAD307DB13E00C096A7 /* sources-v2.json in Resources */ = {isa = PBXBuildFile; fileRef = 31E24AAC307DB13E00C096A7 /* sources-v2.json */; };
 		36723298AC874EAC5903B976 /* Monaspace-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = CCC3EF3BCC40156BFEC23CAA /* Monaspace-OFL.txt */; };
 		367D92626A31391FE48F86D8 /* DistanceFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235873A5D91CB7811DDE491B /* DistanceFormat.swift */; };
@@ -334,6 +336,8 @@
 		31E00555309922DC00178350 /* CoverageTerrainDecoderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageTerrainDecoderTests.swift; sourceTree = "<group>"; };
 		31E0055730994EEA00178350 /* CoverageTerrainDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageTerrainDownloader.swift; sourceTree = "<group>"; };
 		31E0055930994F3600178350 /* CoverageTerrainDownloaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageTerrainDownloaderTests.swift; sourceTree = "<group>"; };
+		31E0055B30996C7100178350 /* CoverageTerrainFootprint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageTerrainFootprint.swift; sourceTree = "<group>"; };
+		31E0055D30996CA600178350 /* CoverageTerrainFootprintTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageTerrainFootprintTests.swift; sourceTree = "<group>"; };
 		31E24AAC307DB13E00C096A7 /* sources-v2.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "sources-v2.json"; sourceTree = "<group>"; };
 		32A0B4E835C764626FE71370 /* AnalyzerSourceLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerSourceLogo.swift; sourceTree = "<group>"; };
 		33B9A5F539B49B860F434D81 /* Channel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Channel.swift; sourceTree = "<group>"; };
@@ -474,6 +478,7 @@
 				31E005513098E0CC00178350 /* CoverageTerrainDiskCacheTests.swift */,
 				31E00555309922DC00178350 /* CoverageTerrainDecoderTests.swift */,
 				31E0055930994F3600178350 /* CoverageTerrainDownloaderTests.swift */,
+				31E0055D30996CA600178350 /* CoverageTerrainFootprintTests.swift */,
 			);
 			path = NodePlanner;
 			sourceTree = "<group>";
@@ -487,6 +492,7 @@
 				31E005453098D66900178350 /* LeasedTerrainReader.swift */,
 				31E005473098D6C600178350 /* CoverageTerrainMosaic.swift */,
 				31E0054B3098DD4100178350 /* CoverageTerrainDescriptor.swift */,
+				31E0055B30996C7100178350 /* CoverageTerrainFootprint.swift */,
 			);
 			path = NodePlanner;
 			sourceTree = "<group>";
@@ -900,6 +906,7 @@
 				311510AC3083DE9100199D51 /* MyNodesSnapshotTests.swift in Sources */,
 				31DFA7DE308BA35700B8C681 /* FieldCatalogRepositoryTests.swift in Sources */,
 				311510A63083DCE600199D51 /* MyNodesComparisonTests.swift in Sources */,
+				31E0055E30996CA600178350 /* CoverageTerrainFootprintTests.swift in Sources */,
 				317433AC30827FFE0060A385 /* CoreScopeAccountSettingsTests.swift in Sources */,
 				31DFA7D2308AFEDF00B8C681 /* FieldGeometryTests.swift in Sources */,
 				31DFA7D6308B044900B8C681 /* FieldContractsTests.swift in Sources */,
@@ -960,6 +967,7 @@
 				311D6C8B307C473800E2EB70 /* BeaconLiveFeed.swift in Sources */,
 				316FE0183060985200FBA3B4 /* NodeAnalyticsViewModel.swift in Sources */,
 				31DFA7E7308BBDEE00B8C681 /* FieldEvidenceRepository.swift in Sources */,
+				31E0055C30996C7100178350 /* CoverageTerrainFootprint.swift in Sources */,
 				317433B030828A610060A385 /* MyNodesRequestBudget.swift in Sources */,
 				311510BE30869BF200199D51 /* CoreScopeAccountClient.swift in Sources */,
 				3D366579F73DA99203CE929F /* ChannelDetailScreen.swift in Sources */,

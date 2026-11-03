@@ -137,10 +137,11 @@ class CoverageTerrainPreparationTest {
                 readers.values.forEach { it.close() }
             }
             CoverageTerrainDiskCache(cacheRoot, 100000).use { cache ->
-                val readers = cache.prepare(listOf(spec), CoverageTerrainDownloadBudget(0), offline = true,
-                    download = { _, _, _ -> error("Offline network access") })
-                assertArrayEquals(shortArrayOf(1), readers.getValue(spec.cacheKey).read(0, 1))
-                readers.values.forEach { it.close() }
+                val footprint = CoverageTerrainFootprint.make(0.5, 0.5, 1000.0)
+                cache.prepareMosaic(footprint, listOf(spec), CoverageTerrainDownloadBudget(0), offline = true,
+                    download = { _, _, _ -> error("Offline network access") }).use { mosaic ->
+                    assertEquals(CoverageTerrainSample.NoData, mosaic.sample(0.5, 0.5))
+                }
             }
             assertEquals(1, server.requestCount)
             assertEquals(listOf("cache"), root.list()!!.toList())

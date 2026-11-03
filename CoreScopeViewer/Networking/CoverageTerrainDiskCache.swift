@@ -69,6 +69,26 @@ final class CoverageTerrainDiskCache {
                                                  remainingDownloadBytes: remainingDownloadBytes, attempts: attempts)
     }
 
+    /// Resolve the complete footprint before preparing any files, then transfer reader ownership.
+    func prepareMosaic(footprint: CoverageTerrainFootprint, catalog: [CoverageTerrainDescriptor],
+                       budget: CoverageTerrainDownloadBudget, offline: Bool = false, attempts: Int = 2,
+                       download: (CoverageTerrainDescriptor, URL, CoverageTerrainDownloadBudget) async throws -> DownloadedCoverageTerrain = {
+                           try await CoverageTerrainDownloader.download($0, workspace: $1, budget: $2)
+                       }) async throws -> CoverageTerrainMosaic {
+        let descriptors = try footprint.resolve(catalog: catalog)
+        let readers = try await prepare(descriptors, budget: budget, offline: offline, attempts: attempts, download: download)
+        var geographic: [CoverageTerrainTile: LeasedTerrainReader] = [:]
+        for descriptor in descriptors {
+            guard let reader = readers[descriptor.cacheKey] else {
+                readers.values.forEach { $0.close() }
+                throw CoverageTerrainCacheFailure.missing
+            }
+            geographic[descriptor.coordinate] = reader
+        }
+        // Mosaic takes ownership even if its construction fails.
+        return try CoverageTerrainMosaic(readers: geographic)
+    }
+
     /// Exclusive serialized-worker operation. Do not call other cache APIs while this awaits.
     /// Returns a complete verified/pinned set; caller closes every reader on the same worker.
     /// Online preparation refetches verified corrupt, unpinned payloads after budget checks.

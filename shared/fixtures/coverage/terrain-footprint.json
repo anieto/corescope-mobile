@@ -1,0 +1,222 @@
+[
+  {
+    "name": "interior",
+    "latitude": 0.5,
+    "longitude": 0.5,
+    "radius": 10000,
+    "halo": 0,
+    "tiles": [
+      [
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "equator-seams",
+    "latitude": 0,
+    "longitude": 0,
+    "radius": 1000,
+    "halo": 0,
+    "tiles": [
+      [
+        -1,
+        -1
+      ],
+      [
+        -1,
+        0
+      ],
+      [
+        0,
+        -1
+      ],
+      [
+        0,
+        0
+      ]
+    ]
+  },
+  {
+    "name": "date-line",
+    "latitude": 0.5,
+    "longitude": 179.999,
+    "radius": 1000,
+    "halo": 0,
+    "tiles": [
+      [
+        0,
+        -180
+      ],
+      [
+        0,
+        179
+      ]
+    ]
+  },
+  {
+    "name": "southwest",
+    "latitude": -0.5,
+    "longitude": -0.5,
+    "radius": 10000,
+    "halo": 0,
+    "tiles": [
+      [
+        -1,
+        -1
+      ]
+    ]
+  },
+  {
+    "name": "halo-crosses-seam",
+    "latitude": 0.5,
+    "longitude": 0.99,
+    "radius": 500,
+    "halo": 1000,
+    "tiles": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        1
+      ]
+    ]
+  },
+  {
+    "name": "long-range",
+    "latitude": 0.5,
+    "longitude": 0.5,
+    "radius": 200000,
+    "halo": 0,
+    "tiles": [
+      [
+        -2,
+        -2
+      ],
+      [
+        -2,
+        -1
+      ],
+      [
+        -2,
+        0
+      ],
+      [
+        -2,
+        1
+      ],
+      [
+        -2,
+        2
+      ],
+      [
+        -1,
+        -2
+      ],
+      [
+        -1,
+        -1
+      ],
+      [
+        -1,
+        0
+      ],
+      [
+        -1,
+        1
+      ],
+      [
+        -1,
+        2
+      ],
+      [
+        0,
+        -2
+      ],
+      [
+        0,
+        -1
+      ],
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        1,
+        -2
+      ],
+      [
+        1,
+        -1
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        2,
+        -2
+      ],
+      [
+        2,
+        -1
+      ],
+      [
+        2,
+        0
+      ],
+      [
+        2,
+        1
+      ],
+      [
+        2,
+        2
+      ]
+    ]
+  },
+  {
+    "name": "point-seam",
+    "latitude": 0,
+    "longitude": 180,
+    "radius": 0,
+    "halo": 0,
+    "tiles": [
+      [
+        0,
+        -180
+      ]
+    ]
+  },
+  {
+    "name": "north-pole-point",
+    "latitude": 90,
+    "longitude": 0,
+    "radius": 0,
+    "halo": 0,
+    "tiles": [
+      [
+        89,
+        0
+      ]
+    ]
+  }
+]
