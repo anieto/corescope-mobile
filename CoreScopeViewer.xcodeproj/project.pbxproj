@@ -138,6 +138,8 @@
 		31E0055E30996CA600178350 /* CoverageTerrainFootprintTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E0055D30996CA600178350 /* CoverageTerrainFootprintTests.swift */; };
 		31E0056030996DBA00178350 /* CoverageTerrainProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E0055F30996DBA00178350 /* CoverageTerrainProfile.swift */; };
 		31E0056230996DEB00178350 /* CoverageTerrainProfileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E0056130996DEB00178350 /* CoverageTerrainProfileTests.swift */; };
+		31E005643099832500178350 /* CoverageTerrainPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E005633099832500178350 /* CoverageTerrainPath.swift */; };
+		31E005663099838500178350 /* CoverageTerrainPathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E005653099838500178350 /* CoverageTerrainPathTests.swift */; };
 		31E24AAD307DB13E00C096A7 /* sources-v2.json in Resources */ = {isa = PBXBuildFile; fileRef = 31E24AAC307DB13E00C096A7 /* sources-v2.json */; };
 		36723298AC874EAC5903B976 /* Monaspace-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = CCC3EF3BCC40156BFEC23CAA /* Monaspace-OFL.txt */; };
 		367D92626A31391FE48F86D8 /* DistanceFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235873A5D91CB7811DDE491B /* DistanceFormat.swift */; };
@@ -342,6 +344,8 @@
 		31E0055D30996CA600178350 /* CoverageTerrainFootprintTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageTerrainFootprintTests.swift; sourceTree = "<group>"; };
 		31E0055F30996DBA00178350 /* CoverageTerrainProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageTerrainProfile.swift; sourceTree = "<group>"; };
 		31E0056130996DEB00178350 /* CoverageTerrainProfileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageTerrainProfileTests.swift; sourceTree = "<group>"; };
+		31E005633099832500178350 /* CoverageTerrainPath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageTerrainPath.swift; sourceTree = "<group>"; };
+		31E005653099838500178350 /* CoverageTerrainPathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageTerrainPathTests.swift; sourceTree = "<group>"; };
 		31E24AAC307DB13E00C096A7 /* sources-v2.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "sources-v2.json"; sourceTree = "<group>"; };
 		32A0B4E835C764626FE71370 /* AnalyzerSourceLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerSourceLogo.swift; sourceTree = "<group>"; };
 		33B9A5F539B49B860F434D81 /* Channel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Channel.swift; sourceTree = "<group>"; };
@@ -484,6 +488,7 @@
 				31E0055930994F3600178350 /* CoverageTerrainDownloaderTests.swift */,
 				31E0055D30996CA600178350 /* CoverageTerrainFootprintTests.swift */,
 				31E0056130996DEB00178350 /* CoverageTerrainProfileTests.swift */,
+				31E005653099838500178350 /* CoverageTerrainPathTests.swift */,
 			);
 			path = NodePlanner;
 			sourceTree = "<group>";
@@ -499,6 +504,7 @@
 				31E0054B3098DD4100178350 /* CoverageTerrainDescriptor.swift */,
 				31E0055B30996C7100178350 /* CoverageTerrainFootprint.swift */,
 				31E0055F30996DBA00178350 /* CoverageTerrainProfile.swift */,
+				31E005633099832500178350 /* CoverageTerrainPath.swift */,
 			);
 			path = NodePlanner;
 			sourceTree = "<group>";
@@ -895,6 +901,7 @@
 			files = (
 				31DFA7E5308BB15800B8C681 /* FieldToolsPresentationTests.swift in Sources */,
 				3BE961FDCF2336382895F4C3 /* ModelDecodingTests.swift in Sources */,
+				31E005663099838500178350 /* CoverageTerrainPathTests.swift in Sources */,
 				31E0055A30994F3600178350 /* CoverageTerrainDownloaderTests.swift in Sources */,
 				310F864C3096A44B009EC5E8 /* DeploymentPlanTests.swift in Sources */,
 				31DFA7F3308EA0CB00B8C681 /* NodePlannerLinkAnalyzerTests.swift in Sources */,
@@ -948,6 +955,7 @@
 				5D1CF26F5BFB0EA0CEB372DF /* GlossaryScreen.swift in Sources */,
 				316FE00C305E1C9400FBA3B4 /* AnalyzerDiagnosticsService.swift in Sources */,
 				B5BD63C91E6B93FAA59ED007 /* ActivePing.swift in Sources */,
+				31E005643099832500178350 /* CoverageTerrainPath.swift in Sources */,
 				311D6C87307C45C400E2EB70 /* BeaconLiveTransport.swift in Sources */,
 				31E005503098DFF500178350 /* CoverageTerrainDiskCache.swift in Sources */,
 				311510AA3083DDFB00199D51 /* MyNodesSnapshotStore.swift in Sources */,

@@ -24,6 +24,25 @@ private class MosaicFiles : AutoCloseable {
 }
 
 class CoverageTerrainMosaicTest {
+    @Test fun geographicProfileReadsTerrainAndRetainsPins() {
+        MosaicFiles().use { files ->
+            val reader = files.reader(List(121 * 121) { 200 }, side = 121)
+            CoverageTerrainMosaic(mapOf(CoverageTerrainTile(0, 0) to reader)).use { mosaic ->
+                val path = CoverageTerrainPath(0.5, 0.5, 90.0, 2000.0)
+                val result = mosaic.profile(path, 30.0)
+                assertTrue(result.profile.elevationsMeters.all { kotlin.math.abs(it - 200) < 1e-9 })
+                assertEquals(2000.0, result.profile.distancesMeters.last(), 0.0)
+                assertTrue(result.geometryEvaluations > 0)
+                assertEquals(0, files.released)
+                val missing = CoverageTerrainPath(0.5, 0.999, 90.0, 2000.0)
+                val error = assertThrows(CoverageTerrainProfileFailure::class.java) { mosaic.profile(missing, 30.0) }
+                assertEquals(CoverageTerrainProfileState.MISSING_TERRAIN, error.state)
+                assertEquals(0, files.released)
+            }
+            assertEquals(1, files.released)
+        }
+    }
+
     private fun failure(state: TerrainReadState, block: () -> Unit) {
         assertEquals(state, assertThrows(TerrainReadFailure::class.java, block).state)
     }

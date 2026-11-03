@@ -319,11 +319,36 @@ budgets and cancellation at every observed checkpoint. Xcode build and 44 Swift 
 passed. Android debug assembly and terrain tests passed; the full 432-test suite encountered
 the existing observer-page request-budget failure, with one skipped test.
 
+## Geographic crossings connected to terrain profiles
+
+Swift and Kotlin now discover every integer DEM row/column crossing for short spherical paths.
+The path splits at great-circle latitude extrema, searches monotone segments to 0.1 mm, and
+deduplicates positions at millimetre precision while retaining the exact endpoint. Longitude
+remains unwrapped for crossing discovery and normalizes only when reading the geographic mosaic,
+so date-line crossings do not become a spurious traversal across the globe.
+
+The mosaic's `profile` entry point derives sampling resolution from its readers, rejects mixed
+dimensions, discovers crossings and invokes the feature-profile builder using real tile samples.
+It retains its reader pins throughout success or failure. Missing tiles/nodata fail explicitly.
+The returned result reports geometry-search evaluations separately from terrain evaluations;
+the future scheduler must budget both.
+
+This adapter retains the initial 100 km path limit and explicitly rejects origins outside ±85°
+latitude or paths that leave that domain. Those are current implementation limits, not newly
+qualified long-range/polar RF support. The spherical approximation and empirical interpolation
+checks still require broader real-terrain and device qualification.
+
+Tests cover analytic equatorial crossing distances, east/west date-line crossings, latitude
+turning points, per-segment DEM-cell containment, work limits, cancellation checkpoints and a
+file-backed mosaic/profile integration including missing-terrain failure and pin ownership.
+Xcode build and 48 Swift host tests passed. Android debug assembly and coverage tests passed;
+the full 436-test suite hit the existing observer-page request-budget failure, with one skipped
+test. No simulator or UI tests were run.
+
 ## Next implementation
 
-Port bounded geographic DEM-cell crossing discovery and connect it to the profile builder and
-prepared mosaics, preserving verified digests and consistent source provenance. Then connect
-the bounded scheduler and RF convergence policy. Connect a qualified provider manifest
+Connect the bounded scheduler and reviewed RF engine/convergence policy to the geographic profile
+adapter. Preserve explicit limits, terrain/source failures and both work counters. Connect a qualified provider manifest
 to footprint selection. Define explicit recovery for invalid metadata separately; never silently reset unknown
 cache contents. See the [repository contract](terrain-repository-study.md).
 Then package the reviewed propagation kernel and implement the shared run/node-result contract

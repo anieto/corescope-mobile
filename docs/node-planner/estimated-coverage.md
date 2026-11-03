@@ -183,3 +183,11 @@ before merging regular samples, with explicit fit/data/work/cancellation failure
 crossing discovery and RF convergence remain unconnected. The initial port retains the study's
 100 km per-profile qualification domain; this does not change the planned adjustable study radius,
 and longer-range RF support still requires qualification.
+
+### Geographic profile integration progress
+
+Cell-crossing discovery now feeds the profile builder directly from prepared terrain mosaics on
+both platforms. It handles date-line wrapping and latitude turning points, counts geometric work,
+and preserves reader ownership through errors. The initial adapter supports paths up to 100 km
+within ±85° latitude; longer-range/polar qualification remains outstanding. RF convergence,
+scheduler integration, provider-manifest discovery and the standalone coverage UI remain next.

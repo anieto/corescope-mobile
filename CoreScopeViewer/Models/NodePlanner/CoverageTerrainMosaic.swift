@@ -83,6 +83,26 @@ final class CoverageTerrainMosaic {
         return .elevationMeters(elevation)
     }
 
+    /// Build a feature-preserving path without transferring or releasing this mosaic's pins.
+    func profile(path: CoverageTerrainPath, spacingMeters: Double, sampleLimit: Int = 250_000,
+                 geometryLimit: Int = 200_000, cancelled: () -> Bool = { false }) throws -> CoverageTerrainSampledPath {
+        guard !isClosed else { throw TerrainReadFailure.closed }
+        let dimensions = Set(readers.values.map(\.side))
+        guard let side = dimensions.first else { throw CoverageTerrainProfileFailure.missingTerrain }
+        guard dimensions.count == 1 else { throw CoverageTerrainProfileFailure.invalidInput }
+        let crossings = try path.crossings(intervalsPerDegree: side - 1, geometryLimit: geometryLimit, cancelled: cancelled)
+        let profile = try CoverageTerrainProfileSampler.build(distanceMeters: path.distanceMeters,
+            cellCrossingsMeters: crossings.distancesMeters, spacingMeters: spacingMeters,
+            sampleLimit: sampleLimit, cancelled: cancelled) { distance in
+                let point = try path.point(at: distance)
+                switch try sample(latitude: point.latitude, longitude: point.longitude, cancelled: cancelled) {
+                case .elevationMeters(let height): return height
+                case .missingTile, .noData: return nil
+                }
+            }
+        return CoverageTerrainSampledPath(profile: profile, geometryEvaluations: crossings.geometryEvaluations)
+    }
+
     func close() {
         guard !isClosed else { return }
         isClosed = true

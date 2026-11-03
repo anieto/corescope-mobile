@@ -71,6 +71,25 @@ class CoverageTerrainMosaic(readers: Map<CoverageTerrainTile, LeasedTerrainReade
         return CoverageTerrainSample.ElevationMeters(elevation)
     }
 
+    /** Build a path while retaining this mosaic's reader ownership. */
+    fun profile(path: CoverageTerrainPath, spacingMeters: Double, sampleLimit: Int = 250_000,
+                geometryLimit: Int = 200_000, cancelled: () -> Boolean = { false }): CoverageTerrainSampledPath {
+        if (closed) throw TerrainReadFailure(TerrainReadState.CLOSED)
+        val dimensions = readers.values.map { it.side }.toSet()
+        val side = dimensions.firstOrNull() ?: throw CoverageTerrainProfileFailure(CoverageTerrainProfileState.MISSING_TERRAIN)
+        if (dimensions.size != 1) throw CoverageTerrainProfileFailure(CoverageTerrainProfileState.INVALID_INPUT)
+        val crossings = path.crossings(side - 1, geometryLimit, cancelled)
+        val profile = CoverageTerrainProfileSampler.build(path.distanceMeters, crossings.distancesMeters,
+            spacingMeters, sampleLimit, cancelled) { distance ->
+            val point = path.point(distance)
+            when (val sample = sample(point.latitude, point.longitude, cancelled)) {
+                is CoverageTerrainSample.ElevationMeters -> sample.value
+                else -> null
+            }
+        }
+        return CoverageTerrainSampledPath(profile, crossings.geometryEvaluations)
+    }
+
     override fun close() {
         if (closed) return
         closed = true

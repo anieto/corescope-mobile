@@ -51,6 +51,23 @@ private final class MosaicFiles {
 }
 
 struct CoverageTerrainMosaicTests {
+    @Test func geographicProfileReadsTerrainAndRetainsPins() throws {
+        let files = try MosaicFiles()
+        let reader = try files.reader(samples: Array(repeating: 200, count: 121 * 121), side: 121)
+        let mosaic = try CoverageTerrainMosaic(readers: [CoverageTerrainTile(south: 0, west: 0): reader])
+        let path = try CoverageTerrainPath(latitude: 0.5, longitude: 0.5, bearingDegrees: 90, distanceMeters: 2000)
+        let result = try mosaic.profile(path: path, spacingMeters: 30)
+        #expect(result.profile.elevationsMeters.allSatisfy { abs($0 - 200) < 1e-9 })
+        #expect(result.profile.distancesMeters.last == 2000)
+        #expect(result.geometryEvaluations > 0)
+        #expect(files.released == 0)
+        let missing = try CoverageTerrainPath(latitude: 0.5, longitude: 0.999, bearingDegrees: 90, distanceMeters: 2000)
+        #expect(throws: CoverageTerrainProfileFailure.missingTerrain) { try mosaic.profile(path: missing, spacingMeters: 30) }
+        #expect(files.released == 0)
+        mosaic.close()
+        #expect(files.released == 1)
+    }
+
     @Test func sharedGeographicFixtures() throws {
         let fixture = try MosaicFixtures.load()
         #expect(fixture.cases.count == 18)
