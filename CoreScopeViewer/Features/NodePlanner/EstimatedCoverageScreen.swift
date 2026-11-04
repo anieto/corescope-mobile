@@ -15,7 +15,7 @@ struct EstimatedCoverageScreen: View {
     @State private var showsNodes = false
 
     private var coordinate: CLLocationCoordinate2D? {
-        guard let lat = Double(latitude), let lon = Double(longitude), lat.isFinite, lon.isFinite,
+        guard let lat = CoverageSetupValidation.number(latitude), let lon = CoverageSetupValidation.number(longitude), lat.isFinite, lon.isFinite,
               (-90...90).contains(lat), (-180...180).contains(lon) else { return nil }
         return CLLocationCoordinate2D(latitude: lat, longitude: lon)
     }
@@ -175,6 +175,7 @@ private struct CoverageInputField: Identifiable {
 private struct CoverageRadioFields: View {
     let fields: [CoverageInputField]
     @Binding var values: [String: String]
+    let showsRequired: Bool
     var body: some View {
         ForEach(fields) { field in
             VStack(alignment: .leading, spacing: 6) {
@@ -182,6 +183,7 @@ private struct CoverageRadioFields: View {
                 TextField("Enter value", text: Binding(get: { values[field.id, default: ""] }, set: { values[field.id] = $0 }))
                     .font(.monaspace(.body)).keyboardType(.numbersAndPunctuation)
                     .accessibilityLabel(field.title)
+                CoverageFieldIssue(field: field.id, text: values[field.id, default: ""], showsRequired: showsRequired)
             }
         }
     }
@@ -197,6 +199,8 @@ private struct EstimatedCoverageEditor: View {
     let nodeCount: Int
     let catalogLoading: Bool
     let catalogError: String?
+    @State private var showsRequired = false
+    @State private var workFits: Bool?
     private var grid: CoverageGrid? {
         try? CoverageGrid(radiusMeters: radius, spacingMeters: spacing,
             minEastMeters: -radius, maxEastMeters: radius, minNorthMeters: -radius, maxNorthMeters: radius)
@@ -206,19 +210,21 @@ private struct EstimatedCoverageEditor: View {
             Section {
                 LearnLabel("Coordinates", term: .planningCoordinates)
                 TextField("Latitude", text: $latitude).keyboardType(.numbersAndPunctuation).font(.monaspace(.body))
+                CoverageFieldIssue(field: "latitude", text: latitude, showsRequired: showsRequired)
                 TextField("Longitude", text: $longitude).keyboardType(.numbersAndPunctuation).font(.monaspace(.body))
+                CoverageFieldIssue(field: "longitude", text: longitude, showsRequired: showsRequired)
                 if catalogLoading { ProgressView("Loading known nodes") }
                 if let catalogError { Text(catalogError).font(.caption).foregroundStyle(.secondary) }
                 Button("Known nodes (\(nodeCount))") { showsNodes = true }
             } header: { Text("Transmitter location").font(.monaspace(.headline)) }
                 .instrumentListRows()
             Section {
-                CoverageRadioFields(fields: CoverageInputField.transmitter, values: $values)
+                CoverageRadioFields(fields: CoverageInputField.transmitter, values: $values, showsRequired: showsRequired)
             } header: { Text("Transmitter").font(.monaspace(.headline)) }.instrumentListRows()
             Section {
                 Text("Use the same assumed receiver for the coverage map and known nodes. These are not the nodes’ reported equipment settings.")
                     .font(.caption).foregroundStyle(.secondary)
-                CoverageRadioFields(fields: CoverageInputField.receiver, values: $values)
+                CoverageRadioFields(fields: CoverageInputField.receiver, values: $values, showsRequired: showsRequired)
             } header: { Text("Receiver assumptions").font(.monaspace(.headline)) }.instrumentListRows()
             Section {
                 Picker(selection: $radius) {
@@ -229,6 +235,15 @@ private struct EstimatedCoverageEditor: View {
                 } label: { LearnLabel("Sample spacing", term: .coverageDetail) }
                 if let grid {
                     LabeledContent("Map samples") { Text(grid.count.formatted()).font(.monaspace(.body)) }
+                    if workFits == nil {
+                        ProgressView("Checking calculation limits")
+                    } else if workFits == false {
+                        Text("This area needs more calculation work than the current limit allows. Choose wider spacing or a smaller radius.")
+                            .font(.subheadline).foregroundStyle(.red)
+                    } else {
+                        Text("Within the initial work limit. Terrain complexity may still prevent a complete result.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                 } else {
                     Text("This radius and detail exceed the current grid limit. Choose wider spacing or a smaller radius.")
                         .font(.subheadline).foregroundStyle(.orange)
@@ -237,10 +252,52 @@ private struct EstimatedCoverageEditor: View {
             Section {
                 Text("Coverage calculation is not available in this build. You can review the setup, but no coverage or node reception has been predicted.")
                     .font(.subheadline).foregroundStyle(.secondary)
+                Button("Review inputs") { showsRequired = true }
+                if showsRequired {
+                    let fields = values.merging(["latitude": latitude, "longitude": longitude]) { _, new in new }
+                    let keys = ["latitude", "longitude"] + (CoverageInputField.transmitter + CoverageInputField.receiver).map(\.id)
+                    let valid = keys.allSatisfy { CoverageSetupValidation.issue(field: $0, text: fields[$0, default: ""]) == nil }
+                    Text(valid ? "Field values pass basic checks. No coverage has been calculated." : "Review the highlighted fields above. All inputs are required.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
                 Button("Calculate coverage") {}.disabled(true)
                 Text("This setup is not saved when you leave the tool.").font(.caption).foregroundStyle(.secondary)
             }.instrumentListRows()
         }
         .meshPageBackground()
+        .task(id: "\(radius):\(spacing)") {
+            workFits = nil
+            guard let grid else { workFits = false; return }
+            let worker = Task.detached(priority: .userInitiated) {
+                (try? CoverageGridPreflight.estimate(grid: grid, sampleBudget: 150_000_000,
+                    geometryBudget: 150_000_000, cancelled: { Task.isCancelled })) != nil
+            }
+            let result = await withTaskCancellationHandler { await worker.value } onCancel: { worker.cancel() }
+            guard !Task.isCancelled else { return }
+            workFits = result
+        }
+    }
+}
+
+private struct CoverageFieldIssue: View {
+    let field: String
+    let text: String
+    let showsRequired: Bool
+    var body: some View {
+        if let issue = CoverageSetupValidation.issue(field: field, text: text), issue != .required || showsRequired {
+            Text(message(issue)).font(.caption).foregroundStyle(.red)
+        }
+    }
+    private func message(_ issue: CoverageSetupIssue) -> LocalizedStringKey {
+        switch issue {
+        case .required: "Enter a value."
+        case .number: "Enter a finite number using a decimal point."
+        case .latitude: "Coverage calculations support latitude from −85° to 85°."
+        case .longitude: "Longitude must be between −180° and 180°."
+        case .frequency: "Frequency must be between 30 and 6000 MHz."
+        case .height: "Antenna height must be between 1 and 3000 m above ground."
+        case .nonnegative: "Enter zero or a positive value."
+        case .unknownField: "This field is not supported."
+        }
     }
 }

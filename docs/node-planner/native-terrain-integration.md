@@ -694,3 +694,25 @@ and debug assembly passed; Xcode build including tests passed. Simulator and UI 
 
 The catalog establishes a reproducible integration dataset. Broad regional discovery/publication,
 production RF integration and screen execution/rendering remain unfinished; Calculate stays off.
+
+
+## Setup validation connected to both editors (2026-11-04)
+
+Estimated Coverage now displays inline errors for malformed/non-finite numbers, coordinates outside
+supported bounds, frequency outside 30–6000 MHz, antenna heights outside 1–3000 m and negative
+loss/reserve values. Blank fields remain quiet until Review inputs is selected. Both platforms use
+the same decimal/scientific-number syntax, trim surrounding whitespace, and reject hexadecimal,
+locale-comma and suffixed numeric forms. Twenty-eight shared cases cover these boundaries. The
+map's coordinate parser uses the same syntax while retaining geographical placement up to ±90°;
+positions beyond ±85° get an explicit calculation-domain error in the editor.
+
+Radius/detail changes now run the existing work preflight off the UI thread with cancellation and
+stale-result protection. The 150-million sample/geometry ceiling is an absolute preliminary bound,
+not an allocation for the future area-plus-node job. Passing still does not guarantee convergence
+or leave a particular node budget available. A 100 km / 1 km layout fits the grid-count cap but
+fails this work bound; the default 20 km / 1 km layout passes. Both cases have native tests.
+
+No propagation model, terrain availability or combined link-budget validation is implied by the
+field-check status. Calculate remains disabled. Swift host suite: 87 passed. Android unit tests
+and debug assembly passed; Xcode build including test targets passed. Visual, simulator and UI
+checks were not performed, per the user's testing preference.

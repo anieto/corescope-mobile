@@ -1,0 +1,142 @@
+[
+  {
+    "field": "latitude",
+    "text": "-85",
+    "issue": null
+  },
+  {
+    "field": "latitude",
+    "text": "85.1",
+    "issue": "latitude"
+  },
+  {
+    "field": "longitude",
+    "text": "180",
+    "issue": null
+  },
+  {
+    "field": "longitude",
+    "text": "181",
+    "issue": "longitude"
+  },
+  {
+    "field": "frequency",
+    "text": "30",
+    "issue": null
+  },
+  {
+    "field": "frequency",
+    "text": "6000",
+    "issue": null
+  },
+  {
+    "field": "frequency",
+    "text": "29.9",
+    "issue": "frequency"
+  },
+  {
+    "field": "frequency",
+    "text": "6001",
+    "issue": "frequency"
+  },
+  {
+    "field": "txHeight",
+    "text": "1",
+    "issue": null
+  },
+  {
+    "field": "rxHeight",
+    "text": "3000",
+    "issue": null
+  },
+  {
+    "field": "rxHeight",
+    "text": "0",
+    "issue": "height"
+  },
+  {
+    "field": "txHeight",
+    "text": "3001",
+    "issue": "height"
+  },
+  {
+    "field": "txLoss",
+    "text": "-1",
+    "issue": "nonnegative"
+  },
+  {
+    "field": "rxLoss",
+    "text": "0",
+    "issue": null
+  },
+  {
+    "field": "reserve",
+    "text": "-0.1",
+    "issue": "nonnegative"
+  },
+  {
+    "field": "power",
+    "text": "-10",
+    "issue": null
+  },
+  {
+    "field": "txGain",
+    "text": "-2.5",
+    "issue": null
+  },
+  {
+    "field": "sensitivity",
+    "text": "-130",
+    "issue": null
+  },
+  {
+    "field": "power",
+    "text": "NaN",
+    "issue": "number"
+  },
+  {
+    "field": "power",
+    "text": "Infinity",
+    "issue": "number"
+  },
+  {
+    "field": "power",
+    "text": "1e309",
+    "issue": "number"
+  },
+  {
+    "field": "power",
+    "text": "0x1.0p2",
+    "issue": "number"
+  },
+  {
+    "field": "power",
+    "text": "10f",
+    "issue": "number"
+  },
+  {
+    "field": "power",
+    "text": "1,5",
+    "issue": "number"
+  },
+  {
+    "field": "power",
+    "text": " 1.5e1 ",
+    "issue": null
+  },
+  {
+    "field": "power",
+    "text": ".5",
+    "issue": null
+  },
+  {
+    "field": "frequency",
+    "text": "\t ",
+    "issue": "required"
+  },
+  {
+    "field": "unknown",
+    "text": "1",
+    "issue": "unknownField"
+  }
+]

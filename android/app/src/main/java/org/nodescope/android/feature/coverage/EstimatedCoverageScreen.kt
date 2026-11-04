@@ -1,6 +1,10 @@
 package org.nodescope.android.feature.coverage
 
 import androidx.compose.foundation.layout.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.ensureActive
+import kotlin.coroutines.coroutineContext
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
@@ -32,7 +36,20 @@ fun EstimatedCoverageScreen(nodes: List<MeshNode>) {
     var radius by rememberSaveable { mutableIntStateOf(20_000) }
     var spacing by rememberSaveable { mutableIntStateOf(1000) }
     var showNodes by rememberSaveable { mutableStateOf(false) }
-    val selected = Coordinate.valid(latitude.toDoubleOrNull(), longitude.toDoubleOrNull())
+    var showsRequired by rememberSaveable { mutableStateOf(false) }
+    val grid = remember(radius, spacing) { try { CoverageGrid(radius, spacing, -radius, radius, -radius, radius) } catch (_: CoverageGridFailure) { null } }
+    val workFits by produceState<Boolean?>(null, radius, spacing) {
+        value = null
+        value = withContext(Dispatchers.Default) {
+            val context = coroutineContext
+            if (grid == null) false else try {
+                CoverageGridPreflight.estimate(grid, 150_000_000, 150_000_000,
+                    cancelled = { context.ensureActive(); false })
+                true
+            } catch (_: CoverageGridPreflightFailure) { false }
+        }
+    }
+    val selected = Coordinate.valid(CoverageSetupValidation.number(latitude), CoverageSetupValidation.number(longitude))
     val known = remember(nodes, selected) { nearestCoverageNodes(nodes, selected) }
     val map: @Composable (Modifier) -> Unit = { modifier ->
         CoverageSetupMap(selected, known, modifier) { latitude = it.latitude.toString(); longitude = it.longitude.toString() }
@@ -41,28 +58,41 @@ fun EstimatedCoverageScreen(nodes: List<MeshNode>) {
         Column(modifier.meshPageBackground().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             CoverageSetupCard("Transmitter location") {
                 LearnLabel("Coordinates", GlossaryTerm.PLANNING_COORDINATES)
-                CoverageInput("Latitude", latitude) { latitude = it }
-                CoverageInput("Longitude", longitude) { longitude = it }
+                CoverageInput("Latitude", latitude, "latitude", showsRequired) { latitude = it }
+                CoverageInput("Longitude", longitude, "longitude", showsRequired) { longitude = it }
                 TextButton(onClick = { showNodes = true }) { Text("Known nodes (${known.size})") }
             }
             CoverageSetupCard("Transmitter") {
-                CoverageRadioInputs(CoverageSetupFields.transmitter, values) { index, value -> values = values.toMutableList().also { it[index] = value } }
+                CoverageRadioInputs(CoverageSetupFields.transmitter, values, showsRequired) { index, value -> values = values.toMutableList().also { it[index] = value } }
             }
             CoverageSetupCard("Receiver assumptions") {
                 Text("Use the same assumed receiver for the coverage map and known nodes. These are not the nodes’ reported equipment settings.", style = MaterialTheme.typography.bodySmall)
-                CoverageRadioInputs(CoverageSetupFields.receiver, values) { index, value -> values = values.toMutableList().also { it[index] = value } }
+                CoverageRadioInputs(CoverageSetupFields.receiver, values, showsRequired) { index, value -> values = values.toMutableList().also { it[index] = value } }
             }
             CoverageSetupCard("Study area") {
                 LearnLabel("Study radius", GlossaryTerm.STUDY_RADIUS)
                 CoverageChoice(radius, listOf(5000 to "5 km", 20_000 to "20 km", 50_000 to "50 km", 100_000 to "100 km")) { radius = it }
                 LearnLabel("Sample spacing", GlossaryTerm.COVERAGE_DETAIL)
                 CoverageChoice(spacing, listOf(100 to "100 m", 200 to "200 m", 500 to "500 m", 1000 to "1 km", 2000 to "2 km")) { spacing = it }
-                val grid = remember(radius, spacing) { try { CoverageGrid(radius, spacing, -radius, radius, -radius, radius) } catch (_: CoverageGridFailure) { null } }
-                if (grid != null) Text("${grid.count} map samples", fontFamily = MonaspaceNeon)
+                if (grid != null) {
+                    Text("${grid.count} map samples", fontFamily = MonaspaceNeon)
+                    when (workFits) {
+                        null -> Text("Checking calculation limits", style = MaterialTheme.typography.bodySmall)
+                        false -> Text("This area needs more calculation work than the current limit allows. Choose wider spacing or a smaller radius.", color = MaterialTheme.colorScheme.error)
+                        true -> Text("Within the initial work limit. Terrain complexity may still prevent a complete result.", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
                 else Text("This radius and detail exceed the current grid limit. Choose wider spacing or a smaller radius.", color = MaterialTheme.colorScheme.error)
             }
             CoverageSetupCard("Calculation") {
                 Text("Coverage calculation is not available in this build. You can review the setup, but no coverage or node reception has been predicted.")
+                TextButton(onClick = { showsRequired = true }) { Text("Review inputs") }
+                if (showsRequired) {
+                    val entries = CoverageSetupFields.keys.zip(values) + listOf("latitude" to latitude, "longitude" to longitude)
+                    val valid = entries.all { (key, value) -> CoverageSetupValidation.issue(key, value) == null }
+                    Text(if (valid) "Field values pass basic checks. No coverage has been calculated."
+                        else "Review the highlighted fields above. All inputs are required.", style = MaterialTheme.typography.bodySmall)
+                }
                 Button(onClick = {}, enabled = false) { Text("Calculate coverage") }
                 Text("This setup is not saved when you leave the tool.", style = MaterialTheme.typography.bodySmall)
             }
@@ -99,6 +129,7 @@ internal fun nearestCoverageNodes(nodes: List<MeshNode>, selected: Coordinate?):
 
 private data class CoverageSetupField(val index: Int, val title: String, val term: GlossaryTerm)
 private object CoverageSetupFields {
+    val keys = listOf("frequency", "power", "txHeight", "txGain", "txLoss", "rxHeight", "rxGain", "rxLoss", "sensitivity", "reserve")
     val transmitter = listOf(
         CoverageSetupField(0, "Frequency (MHz)", GlossaryTerm.RADIO_FREQUENCY),
         CoverageSetupField(1, "Transmit power (dBm)", GlossaryTerm.TRANSMIT_POWER),
@@ -120,15 +151,27 @@ private object CoverageSetupFields {
         }
     }
 }
-@Composable private fun CoverageInput(label: String, value: String, change: (String) -> Unit) {
+@Composable private fun CoverageInput(label: String, value: String, field: String, showsRequired: Boolean, change: (String) -> Unit) {
+    val issue = CoverageSetupValidation.issue(field, value)?.takeIf { it != CoverageSetupIssue.required || showsRequired }
+    val error = issue?.let { when (it) {
+        CoverageSetupIssue.required -> "Enter a value."
+        CoverageSetupIssue.number -> "Enter a finite number using a decimal point."
+        CoverageSetupIssue.latitude -> "Coverage calculations support latitude from −85° to 85°."
+        CoverageSetupIssue.longitude -> "Longitude must be between −180° and 180°."
+        CoverageSetupIssue.frequency -> "Frequency must be between 30 and 6000 MHz."
+        CoverageSetupIssue.height -> "Antenna height must be between 1 and 3000 m above ground."
+        CoverageSetupIssue.nonnegative -> "Enter zero or a positive value."
+        CoverageSetupIssue.unknownField -> "This field is not supported."
+    } }
     OutlinedTextField(value, change, Modifier.fillMaxWidth(), label = { Text(label) }, singleLine = true,
+        isError = error != null, supportingText = if (error == null) null else ({ Text(error) }),
         textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = MonaspaceNeon),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text))
 }
-@Composable private fun CoverageRadioInputs(fields: List<CoverageSetupField>, values: List<String>, change: (Int, String) -> Unit) {
+@Composable private fun CoverageRadioInputs(fields: List<CoverageSetupField>, values: List<String>, showsRequired: Boolean, change: (Int, String) -> Unit) {
     fields.forEach { field ->
         Row(verticalAlignment = Alignment.CenterVertically) { Text(field.title, Modifier.weight(1f)); LearnButton(field.term) }
-        CoverageInput(field.title, values[field.index]) { change(field.index, it) }
+        CoverageInput(field.title, values[field.index], CoverageSetupFields.keys[field.index], showsRequired) { change(field.index, it) }
     }
 }
 @Composable private fun CoverageChoice(value: Int, options: List<Pair<Int, String>>, change: (Int) -> Unit) {

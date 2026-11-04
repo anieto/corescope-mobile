@@ -70,6 +70,8 @@
 		315E3A05309AA17500BAEC98 /* CoverageTerrainCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 315E3A04309AA17500BAEC98 /* CoverageTerrainCatalogTests.swift */; };
 		315E3A07309AA2BF00BAEC98 /* CoverageTerrainCatalogLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 315E3A06309AA2BF00BAEC98 /* CoverageTerrainCatalogLoader.swift */; };
 		315E3A09309AA2F300BAEC98 /* CoverageTerrainCatalogLoaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 315E3A08309AA2F300BAEC98 /* CoverageTerrainCatalogLoaderTests.swift */; };
+		315E3A0B309B790500BAEC98 /* CoverageSetupValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 315E3A0A309B790500BAEC98 /* CoverageSetupValidation.swift */; };
+		315E3A0D309B796F00BAEC98 /* CoverageSetupValidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 315E3A0C309B796F00BAEC98 /* CoverageSetupValidationTests.swift */; };
 		316FDFF6305C483200FBA3B4 /* FavoritesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FDFF5305C483200FBA3B4 /* FavoritesStore.swift */; };
 		316FDFFB305C490A00FBA3B4 /* ExploreScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FDFFA305C490A00FBA3B4 /* ExploreScreen.swift */; };
 		316FDFFD305C4DDE00FBA3B4 /* RecentItemsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316FDFFC305C4DDE00FBA3B4 /* RecentItemsStore.swift */; };
@@ -301,6 +303,8 @@
 		315E3A04309AA17500BAEC98 /* CoverageTerrainCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageTerrainCatalogTests.swift; sourceTree = "<group>"; };
 		315E3A06309AA2BF00BAEC98 /* CoverageTerrainCatalogLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageTerrainCatalogLoader.swift; sourceTree = "<group>"; };
 		315E3A08309AA2F300BAEC98 /* CoverageTerrainCatalogLoaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageTerrainCatalogLoaderTests.swift; sourceTree = "<group>"; };
+		315E3A0A309B790500BAEC98 /* CoverageSetupValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageSetupValidation.swift; sourceTree = "<group>"; };
+		315E3A0C309B796F00BAEC98 /* CoverageSetupValidationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageSetupValidationTests.swift; sourceTree = "<group>"; };
 		316FDFF5305C483200FBA3B4 /* FavoritesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesStore.swift; sourceTree = "<group>"; };
 		316FDFFA305C490A00FBA3B4 /* ExploreScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExploreScreen.swift; sourceTree = "<group>"; };
 		316FDFFC305C4DDE00FBA3B4 /* RecentItemsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentItemsStore.swift; sourceTree = "<group>"; };
@@ -553,6 +557,7 @@
 				31E0058F309A54BC00178350 /* CoverageStudyPublicationTests.swift */,
 				315E3A04309AA17500BAEC98 /* CoverageTerrainCatalogTests.swift */,
 				315E3A08309AA2F300BAEC98 /* CoverageTerrainCatalogLoaderTests.swift */,
+				315E3A0C309B796F00BAEC98 /* CoverageSetupValidationTests.swift */,
 			);
 			path = NodePlanner;
 			sourceTree = "<group>";
@@ -581,6 +586,7 @@
 				31E0058B309A53F200178350 /* CoverageStudy.swift */,
 				31E0058D309A54A400178350 /* CoverageStudyPublication.swift */,
 				315E3A02309AA14800BAEC98 /* CoverageTerrainCatalog.swift */,
+				315E3A0A309B790500BAEC98 /* CoverageSetupValidation.swift */,
 			);
 			path = NodePlanner;
 			sourceTree = "<group>";
@@ -989,6 +995,7 @@
 				31E0057A309A363900178350 /* CoverageNodeEvaluatorTests.swift in Sources */,
 				31E00586309A525F00178350 /* CoverageGridPreflightTests.swift in Sources */,
 				310F86503096B4AA009EC5E8 /* DeploymentPlanStoreTests.swift in Sources */,
+				315E3A0D309B796F00BAEC98 /* CoverageSetupValidationTests.swift in Sources */,
 				315E3A09309AA2F300BAEC98 /* CoverageTerrainCatalogLoaderTests.swift in Sources */,
 				31DFA7DA308B052700B8C681 /* FieldSnapshotTests.swift in Sources */,
 				318BF7DB307EBE7000C8BFAD /* NeighborInsightTests.swift in Sources */,
@@ -1148,6 +1155,7 @@
 				31DFA7E1308BA9DF00B8C681 /* FieldToolsScreen.swift in Sources */,
 				311510B03083EBFD00199D51 /* MyNodesVisitSession.swift in Sources */,
 				31DFA7D8308B052600B8C681 /* FieldSnapshot.swift in Sources */,
+				315E3A0B309B790500BAEC98 /* CoverageSetupValidation.swift in Sources */,
 				428DFF511FD959A5CF90835A /* ObserverDetailScreen.swift in Sources */,
 				311510A83083DDFB00199D51 /* MyNodesSnapshot.swift in Sources */,
 				C164A5108399198FAE295FE5 /* ObserverRegionLookup.swift in Sources */,
