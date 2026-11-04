@@ -47,6 +47,8 @@ struct MapScreen: View {
     @State private var replayPings: [ActivePing] = []
     /// Observers that heard the replayed route, labelled where the replay ends.
     @State private var replayReceivers: [ReplayReceiver] = []
+    /// Nodes hidden behind a replay's observer markers (see `refreshReplayHiddenNodes`).
+    @State private var replayHiddenNodeIDs: Set<String> = []
     @State private var isReplayMode = false
     @State private var showsReplayRouteOnly = true
     @State private var processedEventIds: Set<String> = []
@@ -834,7 +836,10 @@ struct MapScreen: View {
         })
         // During a replay a node with an observer on it is drawn as that observer, ringed in the
         // node's colour, rather than as a dot on top of the observer marker.
-        let observedNodeIDs: Set<String> = isReplayMode ? Set(replayReceivers.flatMap(\.nodeIDs)) : []
+        let observedNodeIDs: Set<String> = isReplayMode ? replayHiddenNodeIDs : []
+        // Observer names crowd a zoomed-out map; show them once zoomed in to about a metro area,
+        // or when there are only a few.
+        let showsObserverNames = (visibleRegion?.span.latitudeDelta ?? .infinity) <= 0.6 || replayReceivers.count <= 3
         let baseNodes = isReplayMode && showsReplayRouteOnly ? replayRouteNodes : displayedNodes
         let mapNodes = baseNodes
         let mapClusters = isReplayMode && showsReplayRouteOnly
@@ -928,6 +933,7 @@ struct MapScreen: View {
                             ReplayReceiverMarker(
                                 name: receiver.name,
                                 nodeColor: receiver.nodeRole.map { NodeRoleStyle.color(for: $0) },
+                                showsName: showsObserverNames,
                                 colorScheme: colorScheme
                             )
                         }
@@ -977,6 +983,7 @@ struct MapScreen: View {
                 isMapCameraMoving = false
                 visibleRegion = context.region
                 updateDisplayedNodes(in: context.region)
+                refreshReplayHiddenNodes()
                 startReplayAfterCamera()
             }
             .onTapGesture { screenPoint in
@@ -1618,6 +1625,29 @@ struct MapScreen: View {
         replayRouteGeometries().flatMap { $0.coordinates + $0.receivers.map(\.coordinate) }
     }
 
+    /// Nodes to hide behind the replay's observer markers: the ones at each observer's site, and
+    /// any other node that would sit under a marker at the current zoom (when zoomed out a node a
+    /// few hundred metres away lands right on it). They reappear once zoomed in enough to separate.
+    private func refreshReplayHiddenNodes() {
+        guard isReplayMode, !replayReceivers.isEmpty else {
+            if !replayHiddenNodeIDs.isEmpty { replayHiddenNodeIDs = [] }
+            return
+        }
+        var hidden = Set(replayReceivers.flatMap(\.nodeIDs))
+        if let pointsPerMapPoint = replayScreenPointsPerMapPoint() {
+            let radius = 9 / pointsPerMapPoint
+            let sites = replayReceivers.map { MKMapPoint($0.coordinate) }
+            for node in viewModel.nodes {
+                guard let coordinate = validCoordinate(node.coordinate) else { continue }
+                let point = MKMapPoint(coordinate)
+                if sites.contains(where: { hypot(point.x - $0.x, point.y - $0.y) <= radius }) {
+                    hidden.insert(node.id)
+                }
+            }
+        }
+        if hidden != replayHiddenNodeIDs { replayHiddenNodeIDs = hidden }
+    }
+
     /// Screen points per map point for the map as it's framed now (nil before the first layout).
     private func replayScreenPointsPerMapPoint() -> Double? {
         guard let region = visibleRegion, mapViewportSize.width > 0 else { return nil }
@@ -1733,6 +1763,7 @@ struct MapScreen: View {
         if recenter, let routeMapRect = replayRouteMapRect(for: coordinates) {
             replayPings = []
             replayReceivers = receivers
+            refreshReplayHiddenNodes()
             isReplayMode = true
             hasCenteredCamera = true
             isReplayAwaitingCamera = true
@@ -1846,6 +1877,7 @@ struct MapScreen: View {
         replayCameraFallback = nil
         replayPings = pings
         replayReceivers = receivers
+        refreshReplayHiddenNodes()
         isReplayMode = true
         hasCenteredCamera = true
         return true
@@ -3825,13 +3857,15 @@ private struct ReplayReceiverMarker: View {
     let name: String
     /// The role colour of a node at the observer's location, shown as a ring around it.
     let nodeColor: Color?
+    /// Hidden when zoomed out, where names crowd the map.
+    let showsName: Bool
     let colorScheme: ColorScheme
 
     var body: some View {
         Image(systemName: "antenna.radiowaves.left.and.right")
-            .font(.system(size: 8, weight: .bold))
+            .font(.system(size: 7, weight: .bold))
             .foregroundStyle(.white)
-            .frame(width: 18, height: 18)
+            .frame(width: 15, height: 15)
             .background(NodeScopeStyle.healthy, in: Circle())
             .overlay {
                 Circle().stroke(.white.opacity(0.9), lineWidth: 1.2)
@@ -3839,23 +3873,25 @@ private struct ReplayReceiverMarker: View {
             .overlay {
                 if let nodeColor {
                     Circle()
-                        .stroke(nodeColor, lineWidth: 2.5)
-                        .frame(width: 21.7, height: 21.7)
+                        .stroke(nodeColor, lineWidth: 2)
+                        .frame(width: 18.2, height: 18.2)
                 }
             }
             .overlay(alignment: .top) {
-                Text(name)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
-                    .background(
-                        colorScheme == .dark ? Color.black.opacity(0.72) : Color.white.opacity(0.85),
-                        in: Capsule()
-                    )
-                    .offset(y: nodeColor == nil ? 21 : 23)
+                if showsName {
+                    Text(name)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(
+                            colorScheme == .dark ? Color.black.opacity(0.72) : Color.white.opacity(0.85),
+                            in: Capsule()
+                        )
+                        .offset(y: nodeColor == nil ? 18 : 19)
+                }
             }
             .allowsHitTesting(false)
             .accessibilityElement()
