@@ -56,6 +56,11 @@ struct MapScreen: View {
     /// The replay was asked for from another screen: give the viewer a moment to take in the map
     /// before it plays. Used once, by the next replay that's drawn.
     @State private var replayNeedsLeadIn = false
+    /// The replay's own clock. Moving traffic isn't drawn while the camera moves (it would trail
+    /// the map), so the replay pauses while the user pans or zooms and resumes where it was,
+    /// instead of carrying on unseen and fading hops under their finger.
+    @State private var replayPausedAt: Date?
+    @State private var replayClockOffset: TimeInterval = 0
 
     private struct StartedReplay: Equatable {
         let request: UUID
@@ -257,10 +262,11 @@ struct MapScreen: View {
                 TimelineView(
                     .animation(
                         minimumInterval: mapUpdateInterval,
-                        paused: !isReplayMode || !isTabActive || !pingsForDisplay.contains { !$0.isExpired() }
+                        paused: !isReplayMode || !isTabActive
+                            || !pingsForDisplay.contains { !$0.isExpired(at: replayClock()) }
                     )
                 ) { context in
-                    mapContent(at: isReplayMode ? context.date : .now)
+                    mapContent(at: isReplayMode ? replayClock(context.date) : .now)
                 }
                 .onAppear { mapViewportSize = geometry.size }
                 .onChange(of: geometry.size) { _, size in
@@ -1002,6 +1008,7 @@ struct MapScreen: View {
             }
             .onMapCameraChange(frequency: .onEnd) { context in
                 isMapCameraMoving = false
+                resumeReplayClock()
                 visibleRegion = context.region
                 updateDisplayedNodes(in: context.region)
                 refreshReplayHiddenNodes()
@@ -1073,7 +1080,26 @@ struct MapScreen: View {
     private func noteCameraMovement() {
         if !isMapCameraMoving {
             isMapCameraMoving = true
+            if isReplayMode, !replayPings.isEmpty, replayPausedAt == nil {
+                replayPausedAt = .now
+            }
         }
+    }
+
+    /// The replay's time for a wall-clock `date`: frozen while paused, minus earlier pauses.
+    private func replayClock(_ date: Date = .now) -> Date {
+        (replayPausedAt ?? date).addingTimeInterval(-replayClockOffset)
+    }
+
+    private func resumeReplayClock() {
+        guard let pausedAt = replayPausedAt else { return }
+        replayClockOffset += Date.now.timeIntervalSince(pausedAt)
+        replayPausedAt = nil
+    }
+
+    private func resetReplayClock() {
+        replayPausedAt = nil
+        replayClockOffset = 0
     }
 
     private func transientPings(from pings: [ActivePing], at date: Date) -> [ActivePing] {
@@ -1297,7 +1323,7 @@ struct MapScreen: View {
 
     private var isReplayPlaying: Bool {
         // The button reflects packet travel, not the slower line fade-out.
-        isReplayAwaitingCamera || replayPings.contains { $0.travelProgress() < 1.0 }
+        isReplayAwaitingCamera || replayPings.contains { $0.travelProgress(at: replayClock()) < 1.0 }
     }
 
     private var replayControl: some View {
@@ -1610,6 +1636,7 @@ struct MapScreen: View {
 
     private func stopPacketReplay() {
         startedReplay = nil
+        resetReplayClock()
         replayNeedsLeadIn = false
         isReplayAwaitingCamera = false
         replayCameraFallback?.cancel()
@@ -1823,6 +1850,8 @@ struct MapScreen: View {
         // Each hop takes about as long as it looks on screen: on a zoomed-out map a hop between
         // neighbours is a few points long, and giving it the same 0.85 s as a long hop left the
         // signal dot sitting in place, which read as bouncing back and forth.
+        resetReplayClock()
+        if isMapCameraMoving { replayPausedAt = .now }
         let replayStart = Date.now.addingTimeInterval(replayNeedsLeadIn ? 0.75 : 0.5)
         replayNeedsLeadIn = false
         let pointsPerMapPoint = replayScreenPointsPerMapPoint()
