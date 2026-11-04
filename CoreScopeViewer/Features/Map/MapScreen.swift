@@ -834,9 +834,7 @@ struct MapScreen: View {
         })
         // During a replay a node with an observer on it is drawn as that observer, ringed in the
         // node's colour, rather than as a dot on top of the observer marker.
-        let observedNodeLocations: Set<CoordinateKey> = isReplayMode
-            ? Set(replayReceivers.filter { $0.nodeRole != nil }.map { CoordinateKey($0.coordinate) })
-            : []
+        let observedNodeIDs: Set<String> = isReplayMode ? Set(replayReceivers.flatMap(\.nodeIDs)) : []
         let baseNodes = isReplayMode && showsReplayRouteOnly ? replayRouteNodes : displayedNodes
         let mapNodes = baseNodes
         let mapClusters = isReplayMode && showsReplayRouteOnly
@@ -865,7 +863,7 @@ struct MapScreen: View {
                 }
 
                 ForEach(mapNodes) { node in
-                    if let coordinate = node.coordinate, !observedNodeLocations.contains(CoordinateKey(coordinate)) {
+                    if let coordinate = node.coordinate, !observedNodeIDs.contains(node.id) {
                         let displayCoordinate = displayCoordinatesByNodeID[node.id] ?? coordinate
                         Annotation("", coordinate: displayCoordinate, anchor: .center) {
                             let isHighlighted = node.id == highlightedNodeID
@@ -1667,20 +1665,26 @@ struct MapScreen: View {
         }
     }
 
-    /// Gives each observer the role of a node at its location, if there is one.
+    /// Gives each observer the nodes at its site: within 75 m, since an observer's own repeater
+    /// (or a room server and repeater on one device) often reports a slightly different position.
+    /// The ring takes the most network-relevant role among them.
     private func observersWithNodeRoles(_ receivers: [ReplayReceiver]) -> [ReplayReceiver] {
-        let locations = Set(receivers.map { CoordinateKey($0.coordinate) })
-        var roleByLocation: [CoordinateKey: String] = [:]
+        let rolePriority = ["repeater", "room", "companion", "sensor"]
+        func rank(_ role: String) -> Int { rolePriority.firstIndex(of: role.lowercased()) ?? rolePriority.count }
+        let sites = receivers.map { MKMapPoint($0.coordinate) }
+        var nodesBySite = Array(repeating: [MeshNode](), count: receivers.count)
         for node in viewModel.nodes {
             guard let coordinate = validCoordinate(node.coordinate) else { continue }
-            let location = CoordinateKey(coordinate)
-            if locations.contains(location), roleByLocation[location] == nil {
-                roleByLocation[location] = node.role
+            let point = MKMapPoint(coordinate)
+            for (index, site) in sites.enumerated() where site.distance(to: point) <= 75 {
+                nodesBySite[index].append(node)
             }
         }
-        return receivers.map { receiver in
+        return receivers.enumerated().map { index, receiver in
             var receiver = receiver
-            receiver.nodeRole = roleByLocation[CoordinateKey(receiver.coordinate)]
+            let nodes = nodesBySite[index]
+            receiver.nodeRole = nodes.map(\.role).min { rank($0) < rank($1) }
+            receiver.nodeIDs = nodes.map(\.id)
             return receiver
         }
     }
@@ -1764,7 +1768,7 @@ struct MapScreen: View {
             guard let pointsPerMapPoint else { return 0.85 }
             let a = MKMapPoint(from), b = MKMapPoint(to)
             let points = hypot(b.x - a.x, b.y - a.y) * pointsPerMapPoint
-            return min(max(points / 220, 0.3), 1.2)
+            return min(max(points / 140, 0.45), 1.5)
         }
 
         // Plan every hop first: when it starts (after the hops before it on its route) and how
@@ -1833,7 +1837,7 @@ struct MapScreen: View {
                 sender: packetReplayStore.sender,
                 messageText: packetReplayStore.messageText,
                 // Each hop bows to its own left, so A→B and B→A sit on opposite sides.
-                curvature: 0.15
+                curvature: 0.07
             )
         }
         // Starting here (Play Again, or a route already on screen) ends any wait for the camera.
@@ -3810,6 +3814,8 @@ private struct ReplayReceiver: Identifiable {
     /// The role of a node at the observer's location (usually its own repeater or companion),
     /// drawn as a ring around the observer instead of a separate dot on top of it.
     var nodeRole: String? = nil
+    /// The nodes the observer stands for, hidden while it's shown.
+    var nodeIDs: [String] = []
 
     var id: String { "\(name)|\(coordinate.latitude)|\(coordinate.longitude)" }
 }
@@ -3823,18 +3829,18 @@ private struct ReplayReceiverMarker: View {
 
     var body: some View {
         Image(systemName: "antenna.radiowaves.left.and.right")
-            .font(.system(size: 11, weight: .bold))
+            .font(.system(size: 8, weight: .bold))
             .foregroundStyle(.white)
-            .frame(width: 24, height: 24)
+            .frame(width: 18, height: 18)
             .background(NodeScopeStyle.healthy, in: Circle())
             .overlay {
-                Circle().stroke(.white.opacity(0.9), lineWidth: 1.5)
+                Circle().stroke(.white.opacity(0.9), lineWidth: 1.2)
             }
             .overlay {
                 if let nodeColor {
                     Circle()
-                        .stroke(nodeColor, lineWidth: 3)
-                        .frame(width: 28.5, height: 28.5)
+                        .stroke(nodeColor, lineWidth: 2.5)
+                        .frame(width: 21.7, height: 21.7)
                 }
             }
             .overlay(alignment: .top) {
@@ -3849,7 +3855,7 @@ private struct ReplayReceiverMarker: View {
                         colorScheme == .dark ? Color.black.opacity(0.72) : Color.white.opacity(0.85),
                         in: Capsule()
                     )
-                    .offset(y: nodeColor == nil ? 27 : 30)
+                    .offset(y: nodeColor == nil ? 21 : 23)
             }
             .allowsHitTesting(false)
             .accessibilityElement()
