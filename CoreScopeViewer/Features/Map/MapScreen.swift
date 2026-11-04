@@ -1818,7 +1818,7 @@ struct MapScreen: View {
         // Each hop takes about as long as it looks on screen: on a zoomed-out map a hop between
         // neighbours is a few points long, and giving it the same 0.85 s as a long hop left the
         // signal dot sitting in place, which read as bouncing back and forth.
-        let replayStart = Date.now.addingTimeInterval(replayNeedsLeadIn ? 0.75 : 0.25)
+        let replayStart = Date.now.addingTimeInterval(replayNeedsLeadIn ? 0.75 : 0.5)
         replayNeedsLeadIn = false
         let pointsPerMapPoint = replayScreenPointsPerMapPoint()
         func travelTime(_ from: CLLocationCoordinate2D, _ to: CLLocationCoordinate2D) -> TimeInterval {
