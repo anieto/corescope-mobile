@@ -68,6 +68,9 @@ struct MapScreen: View {
     @State private var highlightedNodeID: String?
     @State private var lastHandledNavigationRequestID: UUID?
     @State private var isMapCameraMoving = false
+    /// A replay is framed and waits for the camera to settle before it starts.
+    @State private var isReplayAwaitingCamera = false
+    @State private var replayCameraFallback: Task<Void, Never>?
     @State private var mapViewportSize = CGSize.zero
     @Environment(\.isHingedDevice) private var isHingedDevice
     /// The top inset outside the navigation stack (status bar and tab bar). The wide header is
@@ -521,6 +524,8 @@ struct MapScreen: View {
             incomingEventTask = nil
             selectedNode = nil
             pendingReplayRequestID = nil
+            isReplayAwaitingCamera = false
+            replayCameraFallback?.cancel()
             replayPings = []
             isReplayMode = false
             showsReplayRouteOnly = true
@@ -588,6 +593,8 @@ struct MapScreen: View {
                 iataCoordinates = [:]
                 iataRadiusKm = [:]
                 activePings = []
+                isReplayAwaitingCamera = false
+                replayCameraFallback?.cancel()
                 replayPings = []
                 isReplayMode = false
                 hasCenteredCamera = false
@@ -941,6 +948,7 @@ struct MapScreen: View {
                 isMapCameraMoving = false
                 visibleRegion = context.region
                 updateDisplayedNodes(in: context.region)
+                startReplayAfterCamera()
             }
             .onTapGesture { screenPoint in
                 scheduleMapTap(at: screenPoint, using: proxy, date: .now, nodes: mapNodes)
@@ -1232,7 +1240,7 @@ struct MapScreen: View {
 
     private var isReplayPlaying: Bool {
         // The button reflects packet travel, not the slower line fade-out.
-        replayPings.contains { $0.travelProgress() < 1.0 }
+        isReplayAwaitingCamera || replayPings.contains { $0.travelProgress() < 1.0 }
     }
 
     private var replayControl: some View {
@@ -1537,6 +1545,9 @@ struct MapScreen: View {
     }
 
     private func stopPacketReplay() {
+        isReplayAwaitingCamera = false
+        replayCameraFallback?.cancel()
+        replayCameraFallback = nil
         pendingReplayRequestID = nil
         replayPings = []
         replayReceivers = []
@@ -1615,6 +1626,33 @@ struct MapScreen: View {
             return false
         }
 
+        // The traffic canvas is hidden while the camera moves, but the replay clock keeps running,
+        // so starting now would reveal the route mid-replay once the map settles. Clear the old
+        // route, frame the new one, and start the replay when the camera comes to rest.
+        if recenter, let routeMapRect = replayRouteMapRect(for: coordinates) {
+            replayPings = []
+            replayReceivers = receivers
+            isReplayMode = true
+            hasCenteredCamera = true
+            isReplayAwaitingCamera = true
+            withAnimation {
+                cameraPosition = .rect(routeMapRect)
+            }
+            replayCameraFallback?.cancel()
+            replayCameraFallback = Task { @MainActor in
+                // A camera already showing this framing never moves or reports an end, so start
+                // right away; otherwise give a long flight time to settle before starting anyway.
+                try? await Task.sleep(for: .milliseconds(350))
+                guard !Task.isCancelled, isReplayAwaitingCamera else { return }
+                if isMapCameraMoving {
+                    try? await Task.sleep(for: .seconds(3))
+                    guard !Task.isCancelled, isReplayAwaitingCamera else { return }
+                }
+                startReplayAfterCamera()
+            }
+            return true
+        }
+
         let routeColor: Color = colorScheme == .dark
             ? Color(red: 0.35, green: 0.78, blue: 1.0)
             : .orange
@@ -1673,19 +1711,24 @@ struct MapScreen: View {
                 messageText: packetReplayStore.messageText
             )
         }
+        // Starting here (Play Again, or a route already on screen) ends any wait for the camera.
+        isReplayAwaitingCamera = false
+        replayCameraFallback?.cancel()
+        replayCameraFallback = nil
         replayPings = segments + finalHops
         replayReceivers = receivers
         isReplayMode = true
         hasCenteredCamera = true
-
-        guard recenter else { return true }
-
-        if let routeMapRect = replayRouteMapRect(for: coordinates) {
-            withAnimation {
-                cameraPosition = .rect(routeMapRect)
-            }
-        }
         return true
+    }
+
+    /// Starts a replay held by `replayPacketRoute` once the camera has framed its route.
+    private func startReplayAfterCamera() {
+        guard isReplayAwaitingCamera else { return }
+        isReplayAwaitingCamera = false
+        replayCameraFallback?.cancel()
+        replayCameraFallback = nil
+        replayPacketRoute(recenter: false)
     }
 
     private func replayRouteMapRect(for coordinates: [CLLocationCoordinate2D]) -> MKMapRect? {
