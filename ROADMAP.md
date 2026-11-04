@@ -155,6 +155,18 @@ Two CoreScope live map behaviours a user asked for, on branch `feature/live-map-
   own, as CoreScope's live map does. Grouping stays the default. Check large networks with the Map
   Lab stress test first, especially iOS MapKit annotations.
 
+### Node preview card (planned)
+
+Tapping a node on the map opens a small preview instead of going straight to the full node page, so
+a quick look ("who is this, when was it last heard") doesn't take the user off the map or interrupt a
+replay. Its own small branch, separate from the live map options.
+
+- Shows name, role colour and short key; last heard with a fresh/stale badge; battery and SNR/RSSI
+  when known; region; and whether it's a favourite.
+- Actions: **Details** (the full node page, as today), **Favourite**, **Center on Map**.
+- iPhone: a short sheet that can be pulled up to the full page. iPad and iPhone Duo: a popover
+  anchored to the node. Android to match.
+
 ## 1.0.0 — Investigation depth and product maturity
 
 Complete the core read-only investigation workflow and prepare NodeScope for a
