@@ -33,6 +33,7 @@ struct MapScreen: View {
     @State private var selectedNode: MeshNode?
     @State private var displayedNodes: [MeshNode] = []
     @State private var displayCoordinatesByNodeID: [String: CLLocationCoordinate2D] = [:]
+    @State private var fanOriginsByNodeID: [String: CLLocationCoordinate2D] = [:]
     @State private var nodeClusters: [NodeCluster] = []
     @State private var iataCoordinates: [String: CLLocationCoordinate2D] = [:]
     @State private var iataRadiusKm: [String: Double] = [:]
@@ -101,6 +102,62 @@ struct MapScreen: View {
     /// placed from this: on the first appearance the hidden navigation bar's height is still in
     /// the stack's own safe area, which dropped the header by a bar height until the next visit.
     @State private var chromeTopInset: CGFloat = 0
+
+    private struct MapNodeNameLabel: View {
+        let name: String
+        let side: LabelSide
+        let colorScheme: ColorScheme
+
+        var body: some View {
+            Text(name)
+                .font(.monaspace(.caption2).weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+                .background(
+                    colorScheme == .dark ? Color.black.opacity(0.72) : Color.white.opacity(0.82),
+                    in: Capsule()
+                )
+                .offset(side.offset)
+                .allowsHitTesting(false)
+        }
+    }
+
+    /// Which side of its 32 pt marker frame a node's name sits on.
+    enum LabelSide {
+        case below, above, left, right
+
+        /// Facing away from `towardHub` (a screen offset from the marker to its fan's hub).
+        init(awayFrom towardHub: CGSize) {
+            if abs(towardHub.width) > abs(towardHub.height) * 1.2 {
+                self = towardHub.width > 0 ? .left : .right
+            } else {
+                self = towardHub.height > 0 ? .above : .below
+            }
+        }
+
+        /// The frame edge the label is aligned to, and how far it's moved out from there so it
+        /// clears the marker by 4 pt (the frame is 32 pt, the marker 10 pt, so 25 = 16 + 9).
+        var alignment: Alignment {
+            switch self {
+            case .below: .top
+            case .above: .bottom
+            case .left: .trailing
+            case .right: .leading
+            }
+        }
+
+        var offset: CGSize {
+            switch self {
+            case .below: CGSize(width: 0, height: 25)
+            case .above: CGSize(width: 0, height: -25)
+            case .left: CGSize(width: -25, height: 0)
+            case .right: CGSize(width: 25, height: 0)
+            }
+        }
+    }
 
     /// From the centre of its frame toward a point `offset` away (a fanned marker's true position).
     private struct LeaderLine: Shape {
@@ -184,6 +241,8 @@ struct MapScreen: View {
         let clusters: [NodeCluster]
         let displayCoordinatesByNodeID: [String: CLLocationCoordinate2D]
         let filteredCount: Int
+        /// For fanned-out nodes, the point they fan out from (their group's centre).
+        var fanOriginsByNodeID: [String: CLLocationCoordinate2D] = [:]
     }
 
     private struct WideMapHeader: View {
@@ -901,25 +960,16 @@ struct MapScreen: View {
         let namedRouteNodeIDs: Set<String> = isReplayMode && latitudeSpan <= 0.08
             ? Set(replayRouteNodes.map(\.id))
             : []
-        // Of the names allowed at this zoom, only those that don't overlap a name already placed:
-        // observers first, then the replay's nodes, then the rest.
-        let labeledIDs = placedLabels(
-            observers: isReplayMode && showsObserverNames ? replayReceivers : [],
-            nodes: mapNodes.filter {
-                !observedNodeIDs.contains($0.id) && (showsNodeNames || namedRouteNodeIDs.contains($0.id))
-            },
-            routeNodeIDs: namedRouteNodeIDs,
-            markers: mapNodes.filter { !observedNodeIDs.contains($0.id) },
-            observerMarkers: isReplayMode ? replayReceivers : []
-        )
 
         // Close in, overlapping nodes fan out from where they really are. A faint line back to a dot
         // at the true position (as CoreScope's node map does) shows the marker has been moved.
+        // The lines meet at one hub per group, where the group really is: its nodes are within a
+        // marker's width of each other, so separate true-position dots only crossed and crowded.
         let fannedNodes: [FannedNode] = mapNodes.compactMap { node in
-            guard !observedNodeIDs.contains(node.id), let coordinate = node.coordinate,
+            guard !observedNodeIDs.contains(node.id),
                   let shown = displayCoordinatesByNodeID[node.id],
-                  CoordinateKey(shown) != CoordinateKey(coordinate) else { return nil }
-            return FannedNode(id: node.id, truePosition: coordinate, shownPosition: shown,
+                  let hub = fanOriginsByNodeID[node.id] else { return nil }
+            return FannedNode(id: node.id, truePosition: hub, shownPosition: shown,
                               color: NodeRoleStyle.color(for: node.role))
         }
         let truePositionDots = Dictionary(fannedNodes.map { (CoordinateKey($0.truePosition), $0) },
@@ -933,6 +983,23 @@ struct MapScreen: View {
                 return (node.id, CGSize(width: (truth.x - shown.x) * scale, height: (truth.y - shown.y) * scale))
             })
         } ?? [:]
+        // A fanned node's name goes on the side facing away from its hub, so a ring of names
+        // spreads out instead of stacking under the markers.
+        let labelSides: [String: LabelSide] = leaderOffsets.mapValues { towardHub in
+            LabelSide(awayFrom: towardHub)
+        }
+        // Of the names allowed at this zoom, only those that don't overlap a name already placed:
+        // observers first, then the replay's nodes, then the rest.
+        let labeledIDs = placedLabels(
+            observers: isReplayMode && showsObserverNames ? replayReceivers : [],
+            nodes: mapNodes.filter {
+                !observedNodeIDs.contains($0.id) && (showsNodeNames || namedRouteNodeIDs.contains($0.id))
+            },
+            routeNodeIDs: namedRouteNodeIDs,
+            markers: mapNodes.filter { !observedNodeIDs.contains($0.id) },
+            observerMarkers: isReplayMode ? replayReceivers : [],
+            labelSides: labelSides
+        )
 
         MapReader { proxy in
             Map(position: $cameraPosition, scope: mapScope) {
@@ -983,23 +1050,13 @@ struct MapScreen: View {
                                         }
                                     }
                                     .contentShape(Circle())
-                                    .overlay(alignment: .top) {
+                                    .overlay(alignment: (labelSides[node.id] ?? .below).alignment) {
                                         if labeledIDs.contains(Self.nodeLabelID(node.id)) {
-                                            Text(node.name ?? shortKey(node.publicKey))
-                                                .font(.monaspace(.caption2).weight(.semibold))
-                                                .foregroundStyle(.primary)
-                                                .lineLimit(1)
-                                                .fixedSize(horizontal: true, vertical: false)
-                                                .padding(.horizontal, 4)
-                                                .padding(.vertical, 2)
-                                                .background(
-                                                    colorScheme == .dark
-                                                        ? Color.black.opacity(0.72)
-                                                        : Color.white.opacity(0.82),
-                                                    in: Capsule()
-                                                )
-                                                .offset(y: 25)
-                                                .allowsHitTesting(false)
+                                            MapNodeNameLabel(
+                                                name: node.name ?? shortKey(node.publicKey),
+                                                side: labelSides[node.id] ?? .below,
+                                                colorScheme: colorScheme
+                                            )
                                         }
                                     }
                             .allowsHitTesting(false)
@@ -1151,6 +1208,7 @@ struct MapScreen: View {
             displayedNodes = result.nodes
             nodeClusters = result.clusters
             displayCoordinatesByNodeID = result.displayCoordinatesByNodeID
+            fanOriginsByNodeID = result.fanOriginsByNodeID
             filteredNodeCount = result.filteredCount
         }
     }
@@ -1260,14 +1318,14 @@ struct MapScreen: View {
         // Keep dense groups clustered until the map is close enough that
         // separating their markers doesn't misrepresent their locations.
         guard max(region.latitudeDelta, region.longitudeDelta) > 0.25 else {
+            var fanOrigins: [String: CLLocationCoordinate2D] = [:]
+            let coordinates = spreadNearbyCoordinates(for: visibleNodes, region: region, fanOrigins: &fanOrigins)
             return DisplayResult(
                 nodes: visibleNodes,
                 clusters: [],
-                displayCoordinatesByNodeID: spreadNearbyCoordinates(
-                    for: visibleNodes,
-                    region: region
-                ),
-                filteredCount: validNodes.count
+                displayCoordinatesByNodeID: coordinates,
+                filteredCount: validNodes.count,
+                fanOriginsByNodeID: fanOrigins
             )
         }
 
@@ -1324,7 +1382,8 @@ struct MapScreen: View {
 
     nonisolated private static func spreadNearbyCoordinates(
         for nodes: [MeshNode],
-        region: DisplayRegion
+        region: DisplayRegion,
+        fanOrigins: inout [String: CLLocationCoordinate2D]
     ) -> [String: CLLocationCoordinate2D] {
         // Shares of the visible span, so they stay about the same on screen at every zoom: nodes
         // within ~10 pt (one marker width) of each other are fanned out, to a ~19 pt radius, far
@@ -1373,6 +1432,7 @@ struct MapScreen: View {
                     latitude: origin.latitude + cos(angle) * latitudeRadius,
                     longitude: origin.longitude + sin(angle) * longitudeRadius
                 )
+                fanOrigins[node.id] = origin
             }
         }
 
@@ -1562,9 +1622,13 @@ struct MapScreen: View {
         nodes: [MeshNode],
         routeNodeIDs: Set<String>,
         markers: [MeshNode] = [],
-        observerMarkers: [ReplayReceiver] = []
+        observerMarkers: [ReplayReceiver] = [],
+        labelSides: [String: LabelSide] = [:]
     ) -> Set<String> {
-        struct Candidate { let id: String; let coordinate: CLLocationCoordinate2D; let width: CGFloat; let top: CGFloat }
+        struct Candidate {
+            let id: String; let coordinate: CLLocationCoordinate2D; let width: CGFloat; let top: CGFloat
+            var side: LabelSide = .below
+        }
         var candidates: [Candidate] = observers.map { observer in
             // caption2 semibold in a capsule, its top 10.5 pt below the observer's centre.
             Candidate(id: Self.observerLabelID(observer.id), coordinate: observer.coordinate,
@@ -1576,7 +1640,8 @@ struct MapScreen: View {
             // Monaspace caption2 (about 6.6 pt a character), its top 9 pt below the node.
             let name = node.name ?? shortKey(node.publicKey)
             candidates.append(Candidate(id: Self.nodeLabelID(node.id), coordinate: coordinate,
-                                        width: CGFloat(name.count) * 6.6 + 8, top: 9))
+                                        width: CGFloat(name.count) * 6.6 + 8, top: 9,
+                                        side: labelSides[node.id] ?? .below))
         }
         guard !candidates.isEmpty else { return [] }
         guard let region = visibleRegion, mapViewportSize.width > 0 else { return Set(candidates.map(\.id)) }
@@ -1610,10 +1675,16 @@ struct MapScreen: View {
         for candidate in candidates {
             let center = screenPoint(candidate.coordinate)
             let x = center.x, y = center.y
-            let box = CGRect(x: x - candidate.width / 2, y: y + candidate.top, width: candidate.width, height: 16)
-                .insetBy(dx: -2, dy: -1)
-            guard !placed.contains(where: { $0.intersects(box) }) else { continue }
-            placed.append(box)
+            let gap = candidate.top, w = candidate.width
+            let box: CGRect = switch candidate.side {
+            case .below: CGRect(x: x - w / 2, y: y + gap, width: w, height: 16)
+            case .above: CGRect(x: x - w / 2, y: y - gap - 16, width: w, height: 16)
+            case .left: CGRect(x: x - gap - w, y: y - 8, width: w, height: 16)
+            case .right: CGRect(x: x + gap, y: y - 8, width: w, height: 16)
+            }
+            let paddedBox = box.insetBy(dx: -2, dy: -1)
+            guard !placed.contains(where: { $0.intersects(paddedBox) }) else { continue }
+            placed.append(paddedBox)
             labeled.insert(candidate.id)
         }
         return labeled
