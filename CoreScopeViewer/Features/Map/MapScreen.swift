@@ -50,6 +50,10 @@ struct MapScreen: View {
     @State private var isReplayMode = false
     @State private var showsReplayRouteOnly = true
     @State private var processedEventIds: Set<String> = []
+    @AppStorage(LiveMapPreferences.realisticPropagationKey) private var realisticPropagation = false
+    /// Realistic propagation: each packet's observations, held by hash until its buffer ends.
+    @State private var heldPropagation: [String: HeldPropagation] = [:]
+    @State private var heldPropagationRelease: Task<Void, Never>?
     @State private var isInitialLoadComplete = false
     @State private var isChangingRegion = false
     @State private var isLocatingUser = false
@@ -77,6 +81,16 @@ struct MapScreen: View {
     /// placed from this: on the first appearance the hidden navigation bar's height is still in
     /// the stack's own safe area, which dropped the header by a bar height until the next visit.
     @State private var chromeTopInset: CGFloat = 0
+
+    private struct HeldObservation {
+        let key: String
+        let event: LiveEnvelope
+    }
+
+    private struct HeldPropagation {
+        let releaseAt: Date
+        var observations: [HeldObservation] = []
+    }
 
     private struct NodeCluster: Identifiable, Sendable {
         let id: String
@@ -577,6 +591,7 @@ struct MapScreen: View {
             // animations created under the previous scope before rebuilding
             // from region-filtered packet observations.
             activePings = []
+            discardHeldPropagation()
             processedEventIds = []
 
             async let minimumLoaderDuration: Void = keepRegionLoaderVisible()
@@ -593,6 +608,7 @@ struct MapScreen: View {
                 iataCoordinates = [:]
                 iataRadiusKm = [:]
                 activePings = []
+                discardHeldPropagation()
                 isReplayAwaitingCamera = false
                 replayCameraFallback?.cancel()
                 replayPings = []
@@ -603,6 +619,8 @@ struct MapScreen: View {
 
             viewModel.configure(settings: settings)
             await viewModel.loadMapDefaults()
+            // Off the critical path: the map shouldn't wait on it to show nodes.
+            Task { await viewModel.loadLiveMapConfig() }
 
             guard !Task.isCancelled else { return }
 
@@ -708,6 +726,10 @@ struct MapScreen: View {
         }
         .onChange(of: appNavigationStore.requestID) {
             handleNavigationRequest()
+        }
+        .onChange(of: realisticPropagation) { _, isOn in
+            // Turning it off shows anything still held straight away.
+            if !isOn { releaseHeldPropagation(all: true) }
         }
         .onChange(of: packetReplayStore.selectedRouteIndex) {
             guard isReplayMode else {
@@ -2062,6 +2084,7 @@ struct MapScreen: View {
         // Packets can arrive while the observer roster is still loading. Rebuild
         // their route segments now that each observer can anchor the final hop.
         activePings = []
+        discardHeldPropagation()
         processedEventIds = []
         processHistoricalPackets()
         processIncomingEvents()
@@ -2078,15 +2101,9 @@ struct MapScreen: View {
     }
 
     private func processIncomingEvents() {
-        activePings.removeAll { $0.isExpired(at: .now) }
-
-        // On networks where dozens of observers hear each packet, drawing a hop
-        // per observation kept the map at its 100-segment cap and re-rendering
-        // continuously. A hop already shown for the same packet is skipped.
-        var drawnSegments = Set(activePings.compactMap { ping -> PacketSegmentKey? in
-            guard !ping.isPulse, let hash = ping.packetHash else { return nil }
-            return PacketSegmentKey(packetHash: hash, from: CoordinateKey(ping.start), to: CoordinateKey(ping.end))
-        })
+        let now = Date.now
+        activePings.removeAll { $0.isExpired(at: now) }
+        var drawnSegments = drawnLiveSegments()
         var newPings: [ActivePing] = []
         for event in liveFeed.recentEvents {
             guard event.type == "packet" else { continue }
@@ -2101,56 +2118,90 @@ struct MapScreen: View {
                 continue
             }
 
-            let subchains = resolvedSubchains(for: event)
-            let pathColor = ActivePing.color(forHash: event.data?.hash ?? event.data?.raw, colorScheme: colorScheme)
-            let observedAt = Date.now
-
-            for (subchainIndex, subchain) in subchains.enumerated() {
-                if subchain.count >= 2 {
-                    for index in 0..<(subchain.count - 1) {
-                        let p1 = subchain[index]
-                        let p2 = subchain[index + 1]
-                        if isValidHopDistance(from: p1, to: p2) {
-                            if let hash = event.data?.hash,
-                               !drawnSegments.insert(PacketSegmentKey(
-                                   packetHash: hash, from: CoordinateKey(p1), to: CoordinateKey(p2)
-                               )).inserted {
-                                continue
-                            }
-                            let travelDuration = 0.66
-                            let hopStart = observedAt.addingTimeInterval(Double(index) * travelDuration)
-                            newPings.append(
-                                ActivePing(
-                                    from: p1,
-                                    to: p2,
-                                    createdAt: hopStart,
-                                    fadeStartsAt: hopStart.addingTimeInterval(travelDuration + 0.45),
-                                    duration: 0.55,
-                                    travelDuration: travelDuration,
-                                    color: pathColor,
-                                    routeID: "live-\(eventKey)-\(subchainIndex)",
-                                    segmentIndex: index,
-                                    packetHash: event.data?.hash,
-                                    observerName: event.data?.observerName,
-                                    observedAt: observedAt,
-                                    snr: event.data?.snr,
-                                    rssi: event.data?.rssi
-                                )
-                            )
-                        }
-                    }
-                } else if let onlyPoint = subchain.first {
-                    newPings.append(
-                        ActivePing(pulseAt: onlyPoint, createdAt: .now, duration: 3.0, color: pathColor)
-                    )
-                }
+            // Realistic propagation (CoreScope): observers report a packet over several seconds,
+            // so hold its observations for the buffer and then animate them as one transmission.
+            if realisticPropagation, let hash = event.data?.hash {
+                heldPropagation[hash, default: HeldPropagation(
+                    releaseAt: now.addingTimeInterval(viewModel.propagationBuffer)
+                )].observations.append(HeldObservation(key: eventKey, event: event))
+                continue
             }
+            newPings += livePings(for: event, eventKey: eventKey, observedAt: now, drawnSegments: &drawnSegments)
         }
 
         if processedEventIds.count > 500 {
             processedEventIds.subtract(processedEventIds.prefix(250))
         }
 
+        admitLiveRoutes(newPings)
+        scheduleHeldPropagationRelease()
+    }
+
+    /// Hops already on screen, by packet. On networks where dozens of observers hear each packet,
+    /// drawing a hop per observation kept the map at its 100-segment cap and re-rendering
+    /// continuously, so a hop already shown for the same packet is skipped.
+    private func drawnLiveSegments() -> Set<PacketSegmentKey> {
+        Set(activePings.compactMap { ping -> PacketSegmentKey? in
+            guard !ping.isPulse, let hash = ping.packetHash else { return nil }
+            return PacketSegmentKey(packetHash: hash, from: CoordinateKey(ping.start), to: CoordinateKey(ping.end))
+        })
+    }
+
+    /// The animated hops for one observation, starting at `observedAt`.
+    private func livePings(
+        for event: LiveEnvelope,
+        eventKey: String,
+        observedAt: Date,
+        drawnSegments: inout Set<PacketSegmentKey>
+    ) -> [ActivePing] {
+        var newPings: [ActivePing] = []
+        let subchains = resolvedSubchains(for: event)
+        let pathColor = ActivePing.color(forHash: event.data?.hash ?? event.data?.raw, colorScheme: colorScheme)
+
+        for (subchainIndex, subchain) in subchains.enumerated() {
+            if subchain.count >= 2 {
+                for index in 0..<(subchain.count - 1) {
+                    let p1 = subchain[index]
+                    let p2 = subchain[index + 1]
+                    if isValidHopDistance(from: p1, to: p2) {
+                        if let hash = event.data?.hash,
+                           !drawnSegments.insert(PacketSegmentKey(
+                               packetHash: hash, from: CoordinateKey(p1), to: CoordinateKey(p2)
+                           )).inserted {
+                            continue
+                        }
+                        let travelDuration = 0.66
+                        let hopStart = observedAt.addingTimeInterval(Double(index) * travelDuration)
+                        newPings.append(
+                            ActivePing(
+                                from: p1,
+                                to: p2,
+                                createdAt: hopStart,
+                                fadeStartsAt: hopStart.addingTimeInterval(travelDuration + 0.45),
+                                duration: 0.55,
+                                travelDuration: travelDuration,
+                                color: pathColor,
+                                routeID: "live-\(eventKey)-\(subchainIndex)",
+                                segmentIndex: index,
+                                packetHash: event.data?.hash,
+                                observerName: event.data?.observerName,
+                                observedAt: observedAt,
+                                snr: event.data?.snr,
+                                rssi: event.data?.rssi
+                            )
+                        )
+                    }
+                }
+            } else if let onlyPoint = subchain.first {
+                newPings.append(
+                    ActivePing(pulseAt: onlyPoint, createdAt: observedAt, duration: 3.0, color: pathColor)
+                )
+            }
+        }
+        return newPings
+    }
+
+    private func admitLiveRoutes(_ newPings: [ActivePing]) {
         guard !newPings.isEmpty else { return }
         // Admit complete routes atomically. Removing the oldest individual
         // segments at the limit amputates routes that are still traveling.
@@ -2160,6 +2211,49 @@ struct MapScreen: View {
             guard activePings.count + route.count <= 100 else { continue }
             activePings.append(contentsOf: route)
         }
+    }
+
+    /// Animates every held packet whose buffer has ended (or all of them), all paths together.
+    private func releaseHeldPropagation(all: Bool = false) {
+        let now = Date.now
+        let due = heldPropagation
+            .filter { all || $0.value.releaseAt <= now }
+            .sorted { $0.value.releaseAt < $1.value.releaseAt }
+        if !due.isEmpty {
+            activePings.removeAll { $0.isExpired(at: now) }
+            var drawnSegments = drawnLiveSegments()
+            var newPings: [ActivePing] = []
+            for (hash, held) in due {
+                heldPropagation[hash] = nil
+                for observation in held.observations {
+                    newPings += livePings(
+                        for: observation.event, eventKey: observation.key,
+                        observedAt: now, drawnSegments: &drawnSegments
+                    )
+                }
+            }
+            admitLiveRoutes(newPings)
+        }
+        scheduleHeldPropagationRelease()
+    }
+
+    private func scheduleHeldPropagationRelease() {
+        heldPropagationRelease?.cancel()
+        guard let next = heldPropagation.values.map(\.releaseAt).min() else {
+            heldPropagationRelease = nil
+            return
+        }
+        heldPropagationRelease = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(max(next.timeIntervalSinceNow, 0)))
+            guard !Task.isCancelled else { return }
+            releaseHeldPropagation()
+        }
+    }
+
+    private func discardHeldPropagation() {
+        heldPropagationRelease?.cancel()
+        heldPropagationRelease = nil
+        heldPropagation = [:]
     }
 
     nonisolated private static func groupedLiveRoutes(_ pings: [ActivePing]) -> [[ActivePing]] {
@@ -2183,6 +2277,7 @@ struct MapScreen: View {
 
     private func rebuildPathsForCurrentFilters() {
         activePings = []
+        discardHeldPropagation()
         processedEventIds = []
         processHistoricalPackets()
         processIncomingEvents()

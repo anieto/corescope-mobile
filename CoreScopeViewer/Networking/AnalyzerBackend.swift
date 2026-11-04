@@ -53,11 +53,15 @@ protocol AnalyzerBackend: FieldCatalogBackend {
     func regionQuickPicks() async throws -> [RegionQuickPick]
     func iataCoordinates() async throws -> IataCoordsResponse
     func mapDefaults() async throws -> MapDefaults
+    func liveMapConfig() async throws -> LiveMapClientConfig
 }
 
 extension AnalyzerBackend {
     /// Only CoreScope publishes quick picks; other backends offer single regions.
     func regionQuickPicks() async throws -> [RegionQuickPick] { [] }
+
+    /// Only CoreScope publishes a propagation buffer; others use the map's default.
+    func liveMapConfig() async throws -> LiveMapClientConfig { LiveMapClientConfig(propagationBufferMs: nil) }
 
     func packets(region: String?, limit: Int, payloadType: Int?) async throws -> [Packet] {
         try sourceSession.check()

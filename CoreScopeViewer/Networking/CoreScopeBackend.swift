@@ -145,6 +145,10 @@ struct CoreScopeBackend: AnalyzerBackend {
         try await get("/api/config/map")
     }
 
+    func liveMapConfig() async throws -> LiveMapClientConfig {
+        try await get("/api/config/client")
+    }
+
     static func packetQuery(region: String?, limit: Int, payloadType: Int?) -> [URLQueryItem] {
         var query = [URLQueryItem(name: "limit", value: String(limit))]
         if let payloadType {

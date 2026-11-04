@@ -24,6 +24,12 @@ struct AreaFilter: Codable, Sendable, Identifiable, Hashable {
 }
 
 /// GET /api/config/map
+/// GET /api/config/client — only the live map's propagation buffer is read: how long CoreScope's
+/// "Realistic" mode collects a packet's observations before animating them together.
+struct LiveMapClientConfig: Codable, Sendable {
+    let propagationBufferMs: Double?
+}
+
 struct MapDefaults: Codable, Sendable {
     let center: [Double]
     let zoom: Double

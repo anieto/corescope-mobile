@@ -11,6 +11,7 @@ struct SettingsScreen: View {
     @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
     @AppStorage(AppearanceSettings.backgroundTextureDefaultsKey) private var backgroundTextureEnabled = true
     @AppStorage(Glossary.showsExplanationsDefaultsKey) private var showsTermExplanations = true
+    @AppStorage(LiveMapPreferences.realisticPropagationKey) private var realisticPropagation = false
     @State private var hostInput = ""
     @State private var sourceSaveStatus: SourceSaveStatus?
     @State private var sourceSaveID = UUID()
@@ -60,6 +61,13 @@ struct SettingsScreen: View {
 
                         Toggle("Term Explanations", isOn: $showsTermExplanations)
                         Text("Show \(Image(systemName: "info.circle")) beside terms like SNR and hops. The Glossary below is always available.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+
+                        Divider()
+
+                        Toggle("Realistic Propagation", isOn: $realisticPropagation)
+                        Text("On the live map, wait for every observer to report a packet, then animate all of its paths together. Uses the analyzer's propagation delay (usually 5 seconds), so the map runs that far behind live.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
