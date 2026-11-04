@@ -832,6 +832,11 @@ struct MapScreen: View {
         let routeCoordinates = Set(currentPings.flatMap {
             [CoordinateKey($0.start), CoordinateKey($0.end)]
         })
+        // During a replay a node with an observer on it is drawn as that observer, ringed in the
+        // node's colour, rather than as a dot on top of the observer marker.
+        let observedNodeLocations: Set<CoordinateKey> = isReplayMode
+            ? Set(replayReceivers.filter { $0.nodeRole != nil }.map { CoordinateKey($0.coordinate) })
+            : []
         let baseNodes = isReplayMode && showsReplayRouteOnly ? replayRouteNodes : displayedNodes
         let mapNodes = baseNodes
         let mapClusters = isReplayMode && showsReplayRouteOnly
@@ -847,12 +852,12 @@ struct MapScreen: View {
             Map(position: $cameraPosition, scope: mapScope) {
                 ForEach(anchoredPings) { ping in
                     let opacity = ping.completedPathOpacity(at: date)
-                    MapPolyline(coordinates: [ping.start, ping.end])
+                    MapPolyline(coordinates: ping.pathCoordinates())
                         .stroke(
                             ping.pathColor.opacity(opacity * 0.18),
                             style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round)
                         )
-                    MapPolyline(coordinates: [ping.start, ping.end])
+                    MapPolyline(coordinates: ping.pathCoordinates())
                         .stroke(
                             ping.pathColor.opacity(opacity * 0.85),
                             style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
@@ -860,7 +865,7 @@ struct MapScreen: View {
                 }
 
                 ForEach(mapNodes) { node in
-                    if let coordinate = node.coordinate {
+                    if let coordinate = node.coordinate, !observedNodeLocations.contains(CoordinateKey(coordinate)) {
                         let displayCoordinate = displayCoordinatesByNodeID[node.id] ?? coordinate
                         Annotation("", coordinate: displayCoordinate, anchor: .center) {
                             let isHighlighted = node.id == highlightedNodeID
@@ -922,7 +927,11 @@ struct MapScreen: View {
                 if isReplayMode {
                     ForEach(replayReceivers) { receiver in
                         Annotation("", coordinate: receiver.coordinate, anchor: .center) {
-                            ReplayReceiverMarker(name: receiver.name, colorScheme: colorScheme)
+                            ReplayReceiverMarker(
+                                name: receiver.name,
+                                nodeColor: receiver.nodeRole.map { NodeRoleStyle.color(for: $0) },
+                                colorScheme: colorScheme
+                            )
                         }
                     }
                 }
@@ -1611,6 +1620,16 @@ struct MapScreen: View {
         replayRouteGeometries().flatMap { $0.coordinates + $0.receivers.map(\.coordinate) }
     }
 
+    /// Screen points per map point for the map as it's framed now (nil before the first layout).
+    private func replayScreenPointsPerMapPoint() -> Double? {
+        guard let region = visibleRegion, mapViewportSize.width > 0 else { return nil }
+        let halfWidth = region.span.longitudeDelta / 2
+        let west = MKMapPoint(CLLocationCoordinate2D(latitude: region.center.latitude, longitude: region.center.longitude - halfWidth))
+        let east = MKMapPoint(CLLocationCoordinate2D(latitude: region.center.latitude, longitude: region.center.longitude + halfWidth))
+        let width = abs(east.x - west.x)
+        return width > 0 ? Double(mapViewportSize.width) / width : nil
+    }
+
     /// One marker per observer location. With all routes shown, an observer that heard several
     /// of them (or observers sharing a site) gave MapKit identical, stacked annotations that it
     /// kept re-placing every frame, so the names jittered.
@@ -1636,16 +1655,33 @@ struct MapScreen: View {
     }
 
     /// Where a replayed route ends: the observers that heard exactly this path, at their
-    /// positions (skipping one that sits on the route's last node).
+    /// positions. One on the route's last node is kept (it's drawn as that node, ringed); the
+    /// replay just has no hop to draw to it.
     private func receivers(for route: RouteOption) -> [ReplayReceiver] {
-        let last = route.keys.last.flatMap { validCoordinate(viewModel.nodesByPubkey[$0.lowercased()]?.coordinate) }
-        return route.receivers(
+        route.receivers(
             coordinateById: observerRegionLookup.coordinateById,
             coordinateByName: observerRegionLookup.coordinateByName
         ).compactMap { receiver in
-            guard let coordinate = validCoordinate(receiver.coordinate),
-                  last.map({ CoordinateKey($0) != CoordinateKey(coordinate) }) ?? true else { return nil }
+            guard let coordinate = validCoordinate(receiver.coordinate) else { return nil }
             return ReplayReceiver(name: receiver.name, coordinate: coordinate)
+        }
+    }
+
+    /// Gives each observer the role of a node at its location, if there is one.
+    private func observersWithNodeRoles(_ receivers: [ReplayReceiver]) -> [ReplayReceiver] {
+        let locations = Set(receivers.map { CoordinateKey($0.coordinate) })
+        var roleByLocation: [CoordinateKey: String] = [:]
+        for node in viewModel.nodes {
+            guard let coordinate = validCoordinate(node.coordinate) else { continue }
+            let location = CoordinateKey(coordinate)
+            if locations.contains(location), roleByLocation[location] == nil {
+                roleByLocation[location] = node.role
+            }
+        }
+        return receivers.map { receiver in
+            var receiver = receiver
+            receiver.nodeRole = roleByLocation[CoordinateKey(receiver.coordinate)]
+            return receiver
         }
     }
 
@@ -1677,7 +1713,7 @@ struct MapScreen: View {
     private func replayPacketRoute(recenter: Bool = true) -> Bool {
         guard packetReplayStore.isReplayActive else { return false }
         let routes = replayRouteGeometries()
-        let receivers = Self.mergedReceivers(routes.flatMap(\.receivers))
+        let receivers = observersWithNodeRoles(Self.mergedReceivers(routes.flatMap(\.receivers)))
         let coordinates = routes.flatMap { $0.coordinates + $0.receivers.map(\.coordinate) }
         guard !routes.isEmpty else {
             // Do not leave the previous packet's replay visible when the new
@@ -1719,69 +1755,86 @@ struct MapScreen: View {
             : .orange
         let signalColor: Color = colorScheme == .dark ? .orange : .blue
 
-        // Only one replay hop moves at a time. The slightly slower replay pace
-        // makes the route readable while retaining CoreScope's linear motion.
-        let travelDuration = 0.85
+        // Each hop takes about as long as it looks on screen: on a zoomed-out map a hop between
+        // neighbours is a few points long, and giving it the same 0.85 s as a long hop left the
+        // signal dot sitting in place, which read as bouncing back and forth.
         let replayStart = Date.now.addingTimeInterval(0.25)
-        // A route's hops, then its final hops (from its last node to each observer) together.
-        let routeSteps = routes.map { $0.coordinates.count - 1 + ($0.receivers.isEmpty ? 0 : 1) }
+        let pointsPerMapPoint = replayScreenPointsPerMapPoint()
+        func travelTime(_ from: CLLocationCoordinate2D, _ to: CLLocationCoordinate2D) -> TimeInterval {
+            guard let pointsPerMapPoint else { return 0.85 }
+            let a = MKMapPoint(from), b = MKMapPoint(to)
+            let points = hypot(b.x - a.x, b.y - a.y) * pointsPerMapPoint
+            return min(max(points / 220, 0.3), 1.2)
+        }
+
+        // Plan every hop first: when it starts (after the hops before it on its route) and how
+        // long it travels. With all routes shown, hops they share are planned once, so the packet
+        // spreads out from a common trunk the way it propagated.
+        struct PlannedHop {
+            let from: CLLocationCoordinate2D, to: CLLocationCoordinate2D
+            let start: TimeInterval, travel: TimeInterval
+            let routeID: String, segmentIndex: Int, observerName: String?
+        }
+        let packetHash = packetReplayStore.packetHash
+        var plannedSegments = Set<PacketSegmentKey>()
+        func isNew(_ from: CLLocationCoordinate2D, _ to: CLLocationCoordinate2D) -> Bool {
+            CoordinateKey(from) != CoordinateKey(to) && plannedSegments.insert(
+                PacketSegmentKey(packetHash: packetHash, from: CoordinateKey(from), to: CoordinateKey(to))
+            ).inserted
+        }
+        var hops: [PlannedHop] = []
+        for route in routes {
+            let routeID = "replay-\(packetHash)-\(route.index)"
+            var elapsed: TimeInterval = 0
+            for (index, pair) in zip(route.coordinates, route.coordinates.dropFirst()).enumerated() {
+                let travel = travelTime(pair.0, pair.1)
+                if isNew(pair.0, pair.1) {
+                    hops.append(PlannedHop(from: pair.0, to: pair.1, start: elapsed, travel: travel,
+                                           routeID: routeID, segmentIndex: index, observerName: nil))
+                }
+                elapsed += travel
+            }
+            // The final hops, from the route's last node to each observer, travel together.
+            guard let last = route.coordinates.last else { continue }
+            for (index, receiver) in route.receivers.enumerated() where isNew(last, receiver.coordinate) {
+                hops.append(PlannedHop(from: last, to: receiver.coordinate, start: elapsed,
+                                       travel: travelTime(last, receiver.coordinate),
+                                       routeID: "\(routeID)-observer-\(index)", segmentIndex: 0,
+                                       observerName: receiver.name))
+            }
+        }
 
         // One route stays drawn until it finishes, then fades as one path, so it can be studied.
         // All routes leave a trail instead, like CoreScope: each hop holds briefly once it
         // arrives and then fades, so the packet is seen spreading rather than as a growing tree.
-        let lastTravelEnd = replayStart.addingTimeInterval(Double(routeSteps.max() ?? 0) * travelDuration)
+        let lastTravelEnd = replayStart.addingTimeInterval(hops.map { $0.start + $0.travel }.max() ?? 0)
         let fadeStart = lastTravelEnd.addingTimeInterval(0.75)
         let fadeDuration = 0.65
         let trailHold = 1.0
         let leavesTrail = packetReplayStore.showsAllRoutes
-        let packetHash = packetReplayStore.packetHash
-
-        func ping(
-            from: CLLocationCoordinate2D, to: CLLocationCoordinate2D, step: Int,
-            routeID: String, segmentIndex: Int = 0, observerName: String? = nil
-        ) -> ActivePing {
-            let hopStart = replayStart.addingTimeInterval(Double(step) * travelDuration)
+        let pings = hops.map { hop in
+            let hopStart = replayStart.addingTimeInterval(hop.start)
             return ActivePing(
-                from: from,
-                to: to,
+                from: hop.from,
+                to: hop.to,
                 createdAt: hopStart,
-                fadeStartsAt: leavesTrail ? hopStart.addingTimeInterval(travelDuration + trailHold) : fadeStart,
+                fadeStartsAt: leavesTrail ? hopStart.addingTimeInterval(hop.travel + trailHold) : fadeStart,
                 duration: fadeDuration,
-                travelDuration: travelDuration,
+                travelDuration: hop.travel,
                 color: routeColor,
                 signalColor: signalColor,
-                routeID: routeID,
-                segmentIndex: segmentIndex,
+                routeID: hop.routeID,
+                segmentIndex: hop.segmentIndex,
                 packetHash: packetHash,
-                observerName: observerName,
+                observerName: hop.observerName,
                 observedAt: packetReplayStore.observedAt,
                 snr: packetReplayStore.snr,
                 rssi: packetReplayStore.rssi,
                 sender: packetReplayStore.sender,
-                messageText: packetReplayStore.messageText
+                messageText: packetReplayStore.messageText,
+                // Each hop bows to its own left, so A→B and B→A sit on opposite sides.
+                curvature: 0.15
             )
-        }
-
-        // With all routes shown, hops they share are drawn once, so the packet spreads out from
-        // a common trunk the way it propagated.
-        var drawnSegments = Set<PacketSegmentKey>()
-        func isNew(_ from: CLLocationCoordinate2D, _ to: CLLocationCoordinate2D) -> Bool {
-            drawnSegments.insert(PacketSegmentKey(packetHash: packetHash, from: CoordinateKey(from), to: CoordinateKey(to))).inserted
-        }
-        var pings: [ActivePing] = []
-        for route in routes {
-            let routeID = "replay-\(packetHash)-\(route.index)"
-            for (index, pair) in zip(route.coordinates, route.coordinates.dropFirst()).enumerated()
-            where isNew(pair.0, pair.1) {
-                pings.append(ping(from: pair.0, to: pair.1, step: index, routeID: routeID, segmentIndex: index))
-            }
-            guard let last = route.coordinates.last else { continue }
-            for (index, receiver) in route.receivers.enumerated() where isNew(last, receiver.coordinate) {
-                pings.append(ping(
-                    from: last, to: receiver.coordinate, step: route.coordinates.count - 1,
-                    routeID: "\(routeID)-observer-\(index)", observerName: receiver.name
-                ))
-            }
         }
         // Starting here (Play Again, or a route already on screen) ends any wait for the camera.
         isReplayAwaitingCamera = false
@@ -2709,8 +2762,12 @@ private struct MapTrafficCanvas: View {
         guard opacity > 0 else { return }
 
         var path = Path()
-        path.move(to: start)
-        path.addLine(to: end)
+        if ping.curvature == 0 {
+            path.move(to: start)
+            path.addLine(to: end)
+        } else {
+            path.addLines(ping.pathCoordinates().compactMap { proxy.convert($0, to: .local) })
+        }
         context.stroke(
             path,
             with: .color(ping.pathColor.opacity(opacity * 0.18)),
@@ -2731,8 +2788,12 @@ private struct MapTrafficCanvas: View {
         let progress = ping.travelProgress(at: date)
         guard let current = proxy.convert(ping.coordinate(atFraction: progress), to: .local) else { return }
         var path = Path()
-        path.move(to: start)
-        path.addLine(to: current)
+        if ping.curvature == 0 {
+            path.move(to: start)
+            path.addLine(to: current)
+        } else {
+            path.addLines(ping.pathCoordinates(through: progress).compactMap { proxy.convert($0, to: .local) })
+        }
 
         context.stroke(
             path,
@@ -3746,6 +3807,9 @@ private struct MapNodeSearchRow: View {
 private struct ReplayReceiver: Identifiable {
     let name: String
     let coordinate: CLLocationCoordinate2D
+    /// The role of a node at the observer's location (usually its own repeater or companion),
+    /// drawn as a ring around the observer instead of a separate dot on top of it.
+    var nodeRole: String? = nil
 
     var id: String { "\(name)|\(coordinate.latitude)|\(coordinate.longitude)" }
 }
@@ -3753,6 +3817,8 @@ private struct ReplayReceiver: Identifiable {
 /// The labelled endpoint of a replay: an observer marker with its name always shown.
 private struct ReplayReceiverMarker: View {
     let name: String
+    /// The role colour of a node at the observer's location, shown as a ring around it.
+    let nodeColor: Color?
     let colorScheme: ColorScheme
 
     var body: some View {
@@ -3763,6 +3829,13 @@ private struct ReplayReceiverMarker: View {
             .background(NodeScopeStyle.healthy, in: Circle())
             .overlay {
                 Circle().stroke(.white.opacity(0.9), lineWidth: 1.5)
+            }
+            .overlay {
+                if let nodeColor {
+                    Circle()
+                        .stroke(nodeColor, lineWidth: 3)
+                        .frame(width: 28.5, height: 28.5)
+                }
             }
             .overlay(alignment: .top) {
                 Text(name)
@@ -3776,7 +3849,7 @@ private struct ReplayReceiverMarker: View {
                         colorScheme == .dark ? Color.black.opacity(0.72) : Color.white.opacity(0.85),
                         in: Capsule()
                     )
-                    .offset(y: 27)
+                    .offset(y: nodeColor == nil ? 27 : 30)
             }
             .allowsHitTesting(false)
             .accessibilityElement()

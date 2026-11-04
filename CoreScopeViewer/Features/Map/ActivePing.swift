@@ -1,5 +1,6 @@
 import CoreLocation
 import Foundation
+import MapKit
 import SwiftUI
 
 /// A short-lived animated marker of live packet traffic passing through the network.
@@ -33,6 +34,10 @@ struct ActivePing: Identifiable, Sendable {
     let rssi: Double?
     let sender: String?
     let messageText: String?
+    /// How far the hop bows to its left, as a share of its length (0 = straight). A replay bends
+    /// its hops so a route that doubles back between nearby nodes shows both directions side by
+    /// side instead of one line drawn twice.
+    let curvature: Double
 
     init(
         from start: CLLocationCoordinate2D,
@@ -51,10 +56,12 @@ struct ActivePing: Identifiable, Sendable {
         snr: Double? = nil,
         rssi: Double? = nil,
         sender: String? = nil,
-        messageText: String? = nil
+        messageText: String? = nil,
+        curvature: Double = 0
     ) {
         self.start = start
         self.end = end
+        self.curvature = curvature
         self.isPulse = false
         self.createdAt = createdAt
         self.fadeStartsAt = fadeStartsAt ?? createdAt
@@ -81,6 +88,7 @@ struct ActivePing: Identifiable, Sendable {
     ) {
         self.start = point
         self.end = point
+        self.curvature = 0
         self.isPulse = true
         self.createdAt = createdAt
         self.fadeStartsAt = createdAt
@@ -142,10 +150,29 @@ struct ActivePing: Identifiable, Sendable {
     }
 
     func coordinate(atFraction fraction: Double) -> CLLocationCoordinate2D {
-        CLLocationCoordinate2D(
-            latitude: start.latitude + (end.latitude - start.latitude) * fraction,
-            longitude: start.longitude + (end.longitude - start.longitude) * fraction
-        )
+        guard curvature != 0 else {
+            return CLLocationCoordinate2D(
+                latitude: start.latitude + (end.latitude - start.latitude) * fraction,
+                longitude: start.longitude + (end.longitude - start.longitude) * fraction
+            )
+        }
+        // A quadratic curve in map (Mercator) space, so it looks the same at every zoom.
+        let a = MKMapPoint(start), b = MKMapPoint(end)
+        let dx = b.x - a.x, dy = b.y - a.y
+        let control = MKMapPoint(x: (a.x + b.x) / 2 + dy * curvature, y: (a.y + b.y) / 2 - dx * curvature)
+        let t = fraction, u = 1 - fraction
+        return MKMapPoint(
+            x: u * u * a.x + 2 * u * t * control.x + t * t * b.x,
+            y: u * u * a.y + 2 * u * t * control.y + t * t * b.y
+        ).coordinate
+    }
+
+    /// The hop's path from its start up to `fraction` of the way: two points for a straight hop,
+    /// enough to look smooth for a curved one.
+    func pathCoordinates(through fraction: Double = 1) -> [CLLocationCoordinate2D] {
+        guard curvature != 0 else { return [start, coordinate(atFraction: fraction)] }
+        let samples = max(2, Int((16 * fraction).rounded(.up)))
+        return (0...samples).map { coordinate(atFraction: fraction * Double($0) / Double(samples)) }
     }
 
     static func color(forHash hashString: String?, colorScheme: ColorScheme) -> Color {
