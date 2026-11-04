@@ -915,15 +915,15 @@ struct MapScreen: View {
             Map(position: $cameraPosition, scope: mapScope) {
                 ForEach(fannedNodes) { node in
                     MapPolyline(coordinates: [node.truePosition, node.shownPosition])
-                        .stroke(node.color.opacity(0.55),
-                                style: StrokeStyle(lineWidth: 1.25, lineCap: .round, dash: [3, 3]))
+                        .stroke(node.color.opacity(0.8),
+                                style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [3, 3]))
                 }
                 ForEach(truePositionDots) { node in
                     Annotation("", coordinate: node.truePosition, anchor: .center) {
                         Circle()
                             .fill(node.color)
-                            .frame(width: 4, height: 4)
-                            .overlay { Circle().stroke(.white.opacity(0.9), lineWidth: 0.75) }
+                            .frame(width: 5, height: 5)
+                            .overlay { Circle().stroke(.white.opacity(0.9), lineWidth: 1) }
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
                     }
@@ -1299,8 +1299,14 @@ struct MapScreen: View {
         for nodes: [MeshNode],
         region: DisplayRegion
     ) -> [String: CLLocationCoordinate2D] {
-        let latitudeThreshold = region.latitudeDelta * 0.008
-        let longitudeThreshold = region.longitudeDelta * 0.008
+        // Shares of the visible span, so they stay about the same on screen at every zoom: nodes
+        // within ~10 pt (one marker width) of each other are fanned out, to a ~19 pt radius, far
+        // enough apart to tell the markers apart and to see the line back to the true position.
+        // Longitude is scaled from latitude so the threshold and fan are circles on screen (a share
+        // of the longitude span would follow the much narrower screen width).
+        let longitudeScale = 1 / max(cos(region.centerLatitude * .pi / 180), 0.2)
+        let latitudeThreshold = region.latitudeDelta * 0.012
+        let longitudeThreshold = latitudeThreshold * longitudeScale
         var groupedNodes: [[MeshNode]] = []
         for node in nodes.sorted(by: { $0.publicKey < $1.publicKey }) {
             guard let coordinate = node.coordinate else { continue }
@@ -1332,8 +1338,8 @@ struct MapScreen: View {
             // Scale with the viewport so nearby markers fan out by roughly
             // the same number of screen points at every zoom level.
             let radiusMultiplier = max(1, Double(group.count) / 6)
-            let latitudeRadius = region.latitudeDelta * 0.008 * radiusMultiplier
-            let longitudeRadius = region.longitudeDelta * 0.008 * radiusMultiplier
+            let latitudeRadius = region.latitudeDelta * 0.022 * radiusMultiplier
+            let longitudeRadius = latitudeRadius * longitudeScale
             for (index, node) in group.enumerated() {
                 let angle = (Double(index) / Double(group.count)) * 2 * Double.pi - Double.pi / 2
                 coordinates[node.id] = CLLocationCoordinate2D(
