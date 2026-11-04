@@ -53,6 +53,9 @@ struct MapScreen: View {
     /// (the request, the Map tab opening, the route selection that came with it); each started
     /// the replay again, so it was seen to begin and then restart.
     @State private var startedReplay: StartedReplay?
+    /// The replay was asked for from another screen: give the viewer a moment to take in the map
+    /// before it plays. Used once, by the next replay that's drawn.
+    @State private var replayNeedsLeadIn = false
 
     private struct StartedReplay: Equatable {
         let request: UUID
@@ -727,6 +730,7 @@ struct MapScreen: View {
             UserDefaults.standard.set(mapDisplayStyle.rawValue, forKey: MapDisplayStyle.defaultsKey)
         }
         .onChange(of: packetReplayStore.requestID) {
+            replayNeedsLeadIn = !isTabActive
             queuePacketReplay()
         }
         .onChange(of: packetReplayStore.stopRequestID) {
@@ -1601,6 +1605,7 @@ struct MapScreen: View {
 
     private func stopPacketReplay() {
         startedReplay = nil
+        replayNeedsLeadIn = false
         isReplayAwaitingCamera = false
         replayCameraFallback?.cancel()
         replayCameraFallback = nil
@@ -1813,7 +1818,8 @@ struct MapScreen: View {
         // Each hop takes about as long as it looks on screen: on a zoomed-out map a hop between
         // neighbours is a few points long, and giving it the same 0.85 s as a long hop left the
         // signal dot sitting in place, which read as bouncing back and forth.
-        let replayStart = Date.now.addingTimeInterval(0.25)
+        let replayStart = Date.now.addingTimeInterval(replayNeedsLeadIn ? 1.0 : 0.25)
+        replayNeedsLeadIn = false
         let pointsPerMapPoint = replayScreenPointsPerMapPoint()
         func travelTime(_ from: CLLocationCoordinate2D, _ to: CLLocationCoordinate2D) -> TimeInterval {
             guard let pointsPerMapPoint else { return 0.85 }
