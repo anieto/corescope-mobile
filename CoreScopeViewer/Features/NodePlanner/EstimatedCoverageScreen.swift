@@ -6,6 +6,7 @@ struct EstimatedCoverageScreen: View {
     @Environment(RegionFilterStore.self) private var regionFilter
     @State private var catalog = FieldToolsViewModel(reference: nil)
     @State private var knownNodes: [MeshNode] = []
+    @State private var locatedNodes: [MeshNode] = []
     @State private var latitude = ""
     @State private var longitude = ""
     @State private var values: [String: String] = [:]
@@ -36,16 +37,22 @@ struct EstimatedCoverageScreen: View {
                     .frame(width: wide ? 380 : nil)
             }
         }
+        .onChange(of: latitude) { refreshKnownNodes() }
+        .onChange(of: longitude) { refreshKnownNodes() }
         .navigationTitle("Estimated Coverage")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showsNodes) {
             NavigationStack {
                 List {
                     Section {
-                        Text("Known nodes are not evaluated yet. Showing up to 200 located nodes from the current catalog; this is not a complete inventory of nearby radios.")
+                        Text("Known nodes are not evaluated yet. After you select a transmitter, this list shows the nearest 200 located nodes available in the current catalog. It is not a complete inventory of nearby radios.")
                             .font(.subheadline).foregroundStyle(.secondary)
                     }.instrumentListRows()
                     Section {
+                        if knownNodes.isEmpty {
+                            Text(coordinate == nil ? "Select a transmitter location to find nearby known nodes." : "No located nodes are available in the current catalog.")
+                                .font(.subheadline).foregroundStyle(.secondary)
+                        }
                         ForEach(knownNodes) { node in
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(node.name ?? String(node.id.prefix(12))).font(.monaspace(.headline))
@@ -61,12 +68,31 @@ struct EstimatedCoverageScreen: View {
         }
         .task(id: "\(settings.sourceSession.id)|\(regionFilter.selectedRegion ?? "")") {
             knownNodes = []
+            locatedNodes = []
             catalog.configure(settings: settings)
             await catalog.load(region: regionFilter.selectedRegion)
             guard !Task.isCancelled else { return }
             var seen = Set<String>()
-            knownNodes = Array(catalog.nodes.lazy.filter { $0.coordinate != nil && seen.insert($0.id).inserted }.prefix(200))
+            locatedNodes = catalog.nodes.filter { $0.coordinate != nil && seen.insert($0.id).inserted }
+            refreshKnownNodes()
         }
+    }
+
+    private func refreshKnownNodes() {
+        guard let coordinate,
+              let origin = FieldCoordinate(latitude: coordinate.latitude, longitude: coordinate.longitude) else {
+            knownNodes = []
+            return
+        }
+        // Rank the full available catalog before capping markers; API order is not proximity.
+        let ranked = locatedNodes.compactMap { node -> (node: MeshNode, distance: Double)? in
+            guard let point = node.coordinate,
+                  let destination = FieldCoordinate(latitude: point.latitude, longitude: point.longitude) else { return nil }
+            return (node, FieldGeometry.geometry(from: origin, to: destination).distanceMeters)
+        }.sorted { left, right in
+            left.distance == right.distance ? left.node.id < right.node.id : left.distance < right.distance
+        }
+        knownNodes = ranked.prefix(200).map(\.node)
     }
 }
 

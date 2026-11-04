@@ -19,6 +19,8 @@ import org.nodescope.android.core.design.meshCardColors
 import org.nodescope.android.core.design.meshPageBackground
 import org.nodescope.android.core.model.Coordinate
 import org.nodescope.android.core.model.MeshNode
+import org.nodescope.android.core.model.FieldCoordinate
+import org.nodescope.android.core.model.FieldGeometry
 import org.nodescope.android.feature.learn.*
 import org.nodescope.android.feature.map.*
 
@@ -30,8 +32,8 @@ fun EstimatedCoverageScreen(nodes: List<MeshNode>) {
     var radius by rememberSaveable { mutableIntStateOf(20_000) }
     var spacing by rememberSaveable { mutableIntStateOf(1000) }
     var showNodes by rememberSaveable { mutableStateOf(false) }
-    val known = remember(nodes) { nodes.asSequence().filter { it.coordinate != null }.distinctBy { it.publicKey }.take(200).toList() }
     val selected = Coordinate.valid(latitude.toDoubleOrNull(), longitude.toDoubleOrNull())
+    val known = remember(nodes, selected) { nearestCoverageNodes(nodes, selected) }
     val map: @Composable (Modifier) -> Unit = { modifier ->
         CoverageSetupMap(selected, known, modifier) { latitude = it.latitude.toString(); longitude = it.longitude.toString() }
     }
@@ -73,13 +75,26 @@ fun EstimatedCoverageScreen(nodes: List<MeshNode>) {
     if (showNodes) AlertDialog(onDismissRequest = { showNodes = false }, title = { Text("Known nodes") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Known nodes are not evaluated yet. Showing up to 200 located nodes from the current catalog; this is not a complete inventory of nearby radios.")
+                Text("Known nodes are not evaluated yet. After you select a transmitter, this list shows the nearest 200 located nodes available in the current catalog. It is not a complete inventory of nearby radios.")
+                if (known.isEmpty()) Text(if (selected == null) "Select a transmitter location to find nearby known nodes."
+                    else "No located nodes are available in the current catalog.")
                 known.forEach { node ->
                     Text(node.displayName, fontFamily = MonaspaceNeon)
                     Text("Not evaluated", style = MaterialTheme.typography.bodySmall)
                 }
             }
         }, confirmButton = { TextButton(onClick = { showNodes = false }) { Text("Done") } })
+}
+
+internal fun nearestCoverageNodes(nodes: List<MeshNode>, selected: Coordinate?): List<MeshNode> {
+    val origin = selected?.let { FieldCoordinate.create(it.latitude, it.longitude) } ?: return emptyList()
+    // Rank before capping markers so API ordering cannot exclude a nearer node.
+    return nodes.asSequence().distinctBy { it.publicKey }.mapNotNull { node ->
+        val destination = node.coordinate?.let { FieldCoordinate.create(it.latitude, it.longitude) }
+            ?: return@mapNotNull null
+        node to FieldGeometry.geometry(origin, destination).distanceMeters
+    }.sortedWith(compareBy<Pair<MeshNode, Double>> { it.second }.thenBy { it.first.publicKey })
+        .take(200).map { it.first }.toList()
 }
 
 private data class CoverageSetupField(val index: Int, val title: String, val term: GlossaryTerm)

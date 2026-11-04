@@ -175,7 +175,9 @@ which covers all of 0.10, is in the [0.10.2 release notes](docs/node-planner/v0.
 - **Coverage setup UI:** Estimated Coverage now opens beside Link Profile on iOS and Android.
   It supports confirmed map placement, manual coordinates, explicit radio/receiver inputs,
   radius/detail selection and neutral known-node markers/list. New terms have shared glossary
-  entries. Calculate remains disabled: provider discovery, production RF binding, worker wiring
+  entries. Nearby-node selection now ranks the complete available catalog by transmitter distance
+  before applying the 200-marker cap, updates on relocation, and clears without a valid location.
+  Calculate remains disabled: provider discovery, production RF binding, worker wiring
   and result overlays are not connected. Setups are not yet saved.
 - **Release gate:** coverage integration and physical-device qualification remain incomplete.
   Do not ship the site library as a substitute for coverage or silently relax model fidelity.
