@@ -853,9 +853,10 @@ struct MapScreen: View {
         // During a replay a node with an observer on it is drawn as that observer, ringed in the
         // node's colour, rather than as a dot on top of the observer marker.
         let observedNodeIDs: Set<String> = isReplayMode ? replayHiddenNodeIDs : []
-        // Observer names crowd a zoomed-out map; show them once zoomed in to about a metro area,
-        // or when there are only a few.
-        let showsObserverNames = (visibleRegion?.span.latitudeDelta ?? .infinity) <= 0.6 || replayReceivers.count <= 3
+        // Replay labels step in with zoom: observer names once the map spans about a city
+        // (0.25° of latitude), then the route's node names closer still (0.08°).
+        let latitudeSpan = visibleRegion?.span.latitudeDelta ?? .infinity
+        let showsObserverNames = latitudeSpan <= 0.25
         let baseNodes = isReplayMode && showsReplayRouteOnly ? replayRouteNodes : displayedNodes
         let mapNodes = baseNodes
         let mapClusters = isReplayMode && showsReplayRouteOnly
@@ -864,8 +865,12 @@ struct MapScreen: View {
         // MapKit's built-in annotation titles become expensive when hundreds
         // appear at once. Only render our lightweight labels when the map is
         // genuinely close and the visible marker count is bounded.
-        let showsNodeNames = (visibleRegion?.span.latitudeDelta ?? .infinity) <= 0.08
+        let showsNodeNames = latitudeSpan <= 0.08
             && mapNodes.count <= 60
+        // A replay's own nodes are few, so they're named at that zoom however many others show.
+        let namedRouteNodeIDs: Set<String> = isReplayMode && latitudeSpan <= 0.08
+            ? Set(replayRouteNodes.map(\.id))
+            : []
 
         MapReader { proxy in
             Map(position: $cameraPosition, scope: mapScope) {
@@ -897,7 +902,7 @@ struct MapScreen: View {
                                     .frame(width: 32, height: 32)
                                     .contentShape(Circle())
                                     .overlay(alignment: .top) {
-                                        if showsNodeNames {
+                                        if showsNodeNames || namedRouteNodeIDs.contains(node.id) {
                                             Text(node.name ?? shortKey(node.publicKey))
                                                 .font(.monaspace(.caption2).weight(.semibold))
                                                 .foregroundStyle(.primary)
