@@ -1,0 +1,146 @@
+[
+  {
+    "latitude": 0,
+    "longitude": 0,
+    "points": [
+      {
+        "latitude": 0.0,
+        "longitude": 0.0,
+        "state": "unsupportedNearSite"
+      },
+      {
+        "latitude": 0.00449660181862269,
+        "longitude": 0.0,
+        "state": "unresolved"
+      },
+      {
+        "latitude": 2.753374509281796e-19,
+        "longitude": 0.004496601818630097,
+        "state": "aboveThreshold"
+      },
+      {
+        "latitude": -0.00449660181862269,
+        "longitude": 0.0,
+        "state": "aboveThreshold"
+      },
+      {
+        "latitude": -8.260123527845387e-19,
+        "longitude": -0.004496601818630097,
+        "state": "belowThreshold"
+      },
+      {
+        "latitude": 1.1013497867541619e-18,
+        "longitude": 0.017986407274491967,
+        "state": "outsideAnalysis"
+      }
+    ]
+  },
+  {
+    "latitude": 29.43,
+    "longitude": -98.62,
+    "points": [
+      {
+        "latitude": 29.43,
+        "longitude": -98.62,
+        "state": "unsupportedNearSite"
+      },
+      {
+        "latitude": 29.434496601818623,
+        "longitude": -98.62,
+        "state": "unresolved"
+      },
+      {
+        "latitude": 29.42999990045502,
+        "longitude": -98.61483716923301,
+        "state": "aboveThreshold"
+      },
+      {
+        "latitude": 29.425503398181377,
+        "longitude": -98.62,
+        "state": "aboveThreshold"
+      },
+      {
+        "latitude": 29.42999990045502,
+        "longitude": -98.62516283076701,
+        "state": "belowThreshold"
+      },
+      {
+        "latitude": 29.42999840728035,
+        "longitude": -98.59934867713446,
+        "state": "outsideAnalysis"
+      }
+    ]
+  },
+  {
+    "latitude": 10,
+    "longitude": 179.9999,
+    "points": [
+      {
+        "latitude": 10.0,
+        "longitude": 179.99990000000003,
+        "state": "unsupportedNearSite"
+      },
+      {
+        "latitude": 10.004496601818621,
+        "longitude": 179.99990000000003,
+        "state": "unresolved"
+      },
+      {
+        "latitude": 9.999999968887492,
+        "longitude": -179.9955340308506,
+        "state": "aboveThreshold"
+      },
+      {
+        "latitude": 9.995503398181377,
+        "longitude": 179.99990000000003,
+        "state": "aboveThreshold"
+      },
+      {
+        "latitude": 9.999999968887492,
+        "longitude": 179.9953340308506,
+        "state": "belowThreshold"
+      },
+      {
+        "latitude": 9.999999502199893,
+        "longitude": -179.9818361234199,
+        "state": "outsideAnalysis"
+      }
+    ]
+  },
+  {
+    "latitude": 84.9,
+    "longitude": -179.9999,
+    "points": [
+      {
+        "latitude": 84.90000000000005,
+        "longitude": -179.99990000000003,
+        "state": "unsupportedNearSite"
+      },
+      {
+        "latitude": 84.90449660181865,
+        "longitude": -179.99990000000003,
+        "state": "unresolved"
+      },
+      {
+        "latitude": 84.89999802294163,
+        "longitude": -179.94931632007786,
+        "state": "aboveThreshold"
+      },
+      {
+        "latitude": 84.89550339818136,
+        "longitude": -179.99990000000003,
+        "state": "aboveThreshold"
+      },
+      {
+        "latitude": 84.89999802294163,
+        "longitude": 179.9495163200778,
+        "state": "belowThreshold"
+      },
+      {
+        "latitude": 84.89996836715774,
+        "longitude": -179.7975660626007,
+        "state": "outsideAnalysis"
+      }
+    ]
+  }
+]

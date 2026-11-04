@@ -716,3 +716,34 @@ No propagation model, terrain availability or combined link-budget validation is
 field-check status. Calculate remains disabled. Swift host suite: 87 passed. Android unit tests
 and debug assembly passed; Xcode build including test targets passed. Visual, simulator and UI
 checks were not performed, per the user's testing preference.
+
+
+## Native geographic rasterization (2026-11-04)
+
+Both platforms now convert completed area samples into 256×256 straight-alpha RGBA Web Mercator
+tiles. Each pixel is located geographically, transformed back into the transmitter's spherical
+azimuthal-equidistant grid, and assigned the nearest sample without interpolating RF loss/margin.
+The exact radius and unsupported near-site distance are checked before lookup. Longitude wrapping
+works across the date line. Invalid origins, mismatched result lengths, nonfinite qualified values,
+and qualified values at excluded grid samples are rejected. Kotlin copies the supplied cell list;
+Swift retains immutable value data. Cancellation is checked on every output row and at completion.
+
+Above-threshold samples use translucent green; below-threshold and outside-analysis pixels are
+transparent. Unresolved/unsupported samples use gray diagonal hatching aligned across tile seams.
+The future legend and point inspection must distinguish below threshold from outside analysis and
+unsupported near-site areas from other unresolved outcomes. Rendering is categorical, not a signal
+strength gradient. It does not interpolate across terrain holes, assert precision finer than the
+sample grid, or extrapolate beyond the supported study area. Zooming changes the display, never
+recalculates or improves RF accuracy.
+
+Four shared origin/checkpoint sets cover ordinary geography, the equator, the date line and high
+latitude. Native tests also check projected pixel positions, alpha/channel order, hatching,
+invalid/NaN results and cancellation. Swift host suite: 90 passed. Xcode build including test
+targets and Android debug assembly passed. Android: 481 tests, 479 passed, one skipped, one failed
+in the previously observed unrelated `MyNodesBaseRepositoryTest.observerPagesShareBudgetAndWarmCache`.
+All new raster tests passed. No simulator/UI tests or physical-device rendering checks were run.
+
+This is the worker-side rasterizer, not a displayed overlay. Image encoding, map-provider adapters,
+cache/invalidation ownership and visual/performance qualification remain pending. It accepts area
+results and does not enforce publication-token/stale state; the eventual screen adapter must do so.
+The production RF and terrain-service integration are still unfinished. Calculate remains disabled.
