@@ -1611,6 +1611,30 @@ struct MapScreen: View {
         replayRouteGeometries().flatMap { $0.coordinates + $0.receivers.map(\.coordinate) }
     }
 
+    /// One marker per observer location. With all routes shown, an observer that heard several
+    /// of them (or observers sharing a site) gave MapKit identical, stacked annotations that it
+    /// kept re-placing every frame, so the names jittered.
+    private static func mergedReceivers(_ receivers: [ReplayReceiver]) -> [ReplayReceiver] {
+        var order: [CoordinateKey] = []
+        var namesByLocation: [CoordinateKey: [String]] = [:]
+        var coordinateByLocation: [CoordinateKey: CLLocationCoordinate2D] = [:]
+        for receiver in receivers {
+            let location = CoordinateKey(receiver.coordinate)
+            if namesByLocation[location] == nil {
+                order.append(location)
+                coordinateByLocation[location] = receiver.coordinate
+            }
+            if namesByLocation[location, default: []].contains(receiver.name) == false {
+                namesByLocation[location, default: []].append(receiver.name)
+            }
+        }
+        return order.compactMap { location in
+            guard let names = namesByLocation[location], let first = names.first,
+                  let coordinate = coordinateByLocation[location] else { return nil }
+            return ReplayReceiver(name: names.count > 1 ? "\(first) +\(names.count - 1)" : first, coordinate: coordinate)
+        }
+    }
+
     /// Where a replayed route ends: the observers that heard exactly this path, at their
     /// positions (skipping one that sits on the route's last node).
     private func receivers(for route: RouteOption) -> [ReplayReceiver] {
@@ -1653,7 +1677,7 @@ struct MapScreen: View {
     private func replayPacketRoute(recenter: Bool = true) -> Bool {
         guard packetReplayStore.isReplayActive else { return false }
         let routes = replayRouteGeometries()
-        let receivers = routes.flatMap(\.receivers)
+        let receivers = Self.mergedReceivers(routes.flatMap(\.receivers))
         let coordinates = routes.flatMap { $0.coordinates + $0.receivers.map(\.coordinate) }
         guard !routes.isEmpty else {
             // Do not leave the previous packet's replay visible when the new
@@ -1702,21 +1726,26 @@ struct MapScreen: View {
         // A route's hops, then its final hops (from its last node to each observer) together.
         let routeSteps = routes.map { $0.coordinates.count - 1 + ($0.receivers.isEmpty ? 0 : 1) }
 
-        // Keep the completed routes visible briefly, then fade them as one path.
+        // One route stays drawn until it finishes, then fades as one path, so it can be studied.
+        // All routes leave a trail instead, like CoreScope: each hop holds briefly once it
+        // arrives and then fades, so the packet is seen spreading rather than as a growing tree.
         let lastTravelEnd = replayStart.addingTimeInterval(Double(routeSteps.max() ?? 0) * travelDuration)
         let fadeStart = lastTravelEnd.addingTimeInterval(0.75)
         let fadeDuration = 0.65
+        let trailHold = 1.0
+        let leavesTrail = packetReplayStore.showsAllRoutes
         let packetHash = packetReplayStore.packetHash
 
         func ping(
             from: CLLocationCoordinate2D, to: CLLocationCoordinate2D, step: Int,
             routeID: String, segmentIndex: Int = 0, observerName: String? = nil
         ) -> ActivePing {
-            ActivePing(
+            let hopStart = replayStart.addingTimeInterval(Double(step) * travelDuration)
+            return ActivePing(
                 from: from,
                 to: to,
-                createdAt: replayStart.addingTimeInterval(Double(step) * travelDuration),
-                fadeStartsAt: fadeStart,
+                createdAt: hopStart,
+                fadeStartsAt: leavesTrail ? hopStart.addingTimeInterval(travelDuration + trailHold) : fadeStart,
                 duration: fadeDuration,
                 travelDuration: travelDuration,
                 color: routeColor,
