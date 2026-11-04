@@ -31,6 +31,7 @@ fun ChannelsScreen(
     regionControl: @Composable () -> Unit, onClearRegion: () -> Unit,
     onChannel: (ChannelRow) -> Unit, onAdd: () -> Unit,
     selectedId: String? = null,
+    resetRequest: Int = 0,
 ) {
     val channelState by model.channels.state.collectAsStateWithLifecycle()
     val packetState by model.packets.state.collectAsStateWithLifecycle()
@@ -41,6 +42,8 @@ fun ChannelsScreen(
     var query by rememberSaveable { mutableStateOf("") }
     var searching by rememberSaveable { mutableStateOf(false) }
     var showFilters by remember { mutableStateOf(false) }
+    // Reselecting the tab clears the search and closes the filters (iOS).
+    org.nodescope.android.core.design.OnTabReset(resetRequest) { query = ""; searching = false; showFilters = false }
     val now = rememberNow()
     // Beacon decrypts known channels on the server but exposes no payloads to decrypt here, so
     // phone-monitored channels are hidden (not removed) and never shadow a server channel.

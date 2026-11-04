@@ -7,6 +7,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.nodescope.android.core.design.AdaptiveListDetail
+import org.nodescope.android.core.design.OnTabReset
 import org.nodescope.android.core.model.AnalyzerSelection
 import org.nodescope.android.core.model.MeshChannel
 import org.nodescope.android.core.network.LiveFeedState
@@ -19,11 +20,17 @@ fun ChannelsListDetailScreen(
     regionControl: @Composable () -> Unit, onClearRegion: () -> Unit, onAdd: () -> Unit,
     packetContent: @Composable (hash: String, sender: String, text: String) -> Unit,
     initialId: String? = null, initialName: String = "", onExit: (() -> Unit)? = null,
+    resetRequest: Int = 0,
 ) {
     var selectedId by rememberSaveable(selection.host, initialId) { mutableStateOf(initialId) }
     var selectedName by rememberSaveable(selection.host, initialId) { mutableStateOf(initialName) }
     // A packet is a child of this conversation, even while the window folds/resizes.
     var packet by rememberSaveable(selection.host, selection.region, selectedId) { mutableStateOf<List<String>?>(null) }
+    // Reselecting the Channels tab returns to the list (as on iOS).
+    OnTabReset(resetRequest) {
+        packet = null
+        selectedId = null
+    }
     val contentStates = rememberSaveableStateHolder()
     val channels by model.channels.state.collectAsStateWithLifecycle()
     val messages by model.messages.state.collectAsStateWithLifecycle()
@@ -47,7 +54,7 @@ fun ChannelsListDetailScreen(
         listPane = { showSelection ->
             ChannelsScreen(model, selection, feed, regionControl, onClearRegion,
                 onChannel = { packet = null; selectedId = it.id; selectedName = it.name }, onAdd = onAdd,
-                selectedId = selectedId.takeIf { showSelection })
+                selectedId = selectedId.takeIf { showSelection }, resetRequest = resetRequest)
         },
         detailPane = { id ->
             val known = channels.value.takeIf { channels.key == selection }?.firstOrNull { it.id == id }

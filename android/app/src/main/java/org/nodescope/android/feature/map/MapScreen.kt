@@ -55,7 +55,8 @@ import org.nodescope.android.core.model.*
 @Composable
 fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (String) -> Unit, sampleRoute: List<Coordinate> = emptyList(), feed: () -> LiveFeedState = { LiveFeedState() }, onRefresh: () -> Unit = {}, regionControl: @Composable () -> Unit = {}, focusedCoordinate: Coordinate? = null, selectedRegion: String? = null, sourceViewport: RegionCoordinate? = null, routeReplay: RouteReplay? = null, onExitReplay: () -> Unit = {}, host: String? = null, showActiveNodes: Boolean = false, onActiveNodesShown: () -> Unit = {}, onShowPackets: (() -> Unit)? = null, onShowPacketsSheet: (() -> Unit)? = null,
     /** Share of the map's height covered by the live packets sheet (iOS `bottomObscuredFraction`). */
-    bottomObscuredFraction: Float = 0f, onLiveFeedDemand: (java.util.UUID, String, org.nodescope.android.core.network.LiveFeedDemand?) -> Unit = { _, _, _ -> }) {
+    bottomObscuredFraction: Float = 0f, onLiveFeedDemand: (java.util.UUID, String, org.nodescope.android.core.network.LiveFeedDemand?) -> Unit = { _, _, _ -> },
+    resetRequest: Int = 0) {
     if (!BuildConfig.MAPS_CONFIGURED) {
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.map_unavailable), style = MaterialTheme.typography.headlineSmall)
@@ -105,6 +106,11 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     var routeDetail by remember { mutableStateOf<RouteDetails?>(null) }
     var selectedNode by remember(host, selectedRegion) { mutableStateOf<MeshNode?>(null) }
     LaunchedEffect(routeReplay?.id) { selectedNode = null }
+    // Reselecting the Map tab closes the selected node, route details, search and filters (iOS);
+    // the shell ends any replay.
+    org.nodescope.android.core.design.OnTabReset(resetRequest) {
+        selectedNode = null; routeDetail = null; search = false; filtersOpen = false
+    }
     val currentAllNodes by rememberUpdatedState(snapshot?.nodes.orEmpty())
     // Replay mode (iOS): live traffic pauses; bottom controls replay the route, pick another
     // route, show only its nodes, or return to live.
