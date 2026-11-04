@@ -881,6 +881,15 @@ struct MapScreen: View {
         let namedRouteNodeIDs: Set<String> = isReplayMode && latitudeSpan <= 0.08
             ? Set(replayRouteNodes.map(\.id))
             : []
+        // Of the names allowed at this zoom, only those that don't overlap a name already placed:
+        // observers first, then the replay's nodes, then the rest.
+        let labeledIDs = placedLabels(
+            observers: isReplayMode && showsObserverNames ? replayReceivers : [],
+            nodes: mapNodes.filter {
+                !observedNodeIDs.contains($0.id) && (showsNodeNames || namedRouteNodeIDs.contains($0.id))
+            },
+            routeNodeIDs: namedRouteNodeIDs
+        )
 
         MapReader { proxy in
             Map(position: $cameraPosition, scope: mapScope) {
@@ -912,7 +921,7 @@ struct MapScreen: View {
                                     .frame(width: 32, height: 32)
                                     .contentShape(Circle())
                                     .overlay(alignment: .top) {
-                                        if showsNodeNames || namedRouteNodeIDs.contains(node.id) {
+                                        if labeledIDs.contains(Self.nodeLabelID(node.id)) {
                                             Text(node.name ?? shortKey(node.publicKey))
                                                 .font(.monaspace(.caption2).weight(.semibold))
                                                 .foregroundStyle(.primary)
@@ -964,7 +973,7 @@ struct MapScreen: View {
                             ReplayReceiverMarker(
                                 name: receiver.name,
                                 nodeColor: receiver.nodeRole.map { NodeRoleStyle.color(for: $0) },
-                                showsName: showsObserverNames,
+                                showsName: labeledIDs.contains(Self.observerLabelID(receiver.id)),
                                 colorScheme: colorScheme
                             )
                         }
@@ -1473,6 +1482,96 @@ struct MapScreen: View {
         String(key.prefix(8)).uppercased()
     }
 
+    nonisolated private static func nodeLabelID(_ id: String) -> String { "node:\(id)" }
+    nonisolated private static func observerLabelID(_ id: String) -> String { "observer:\(id)" }
+
+    /// The labels that fit: placed in priority order, each skipped if its box would overlap one
+    /// already placed. Boxes are estimated from the text length and each label's offset below its
+    /// marker, projected with the settled camera (`visibleRegion`), so this runs cheaply per frame.
+    private func placedLabels(
+        observers: [ReplayReceiver],
+        nodes: [MeshNode],
+        routeNodeIDs: Set<String>
+    ) -> Set<String> {
+        struct Candidate { let id: String; let coordinate: CLLocationCoordinate2D; let width: CGFloat; let top: CGFloat }
+        var candidates: [Candidate] = observers.map { observer in
+            // caption2 semibold in a capsule, its top 10.5 pt below the observer's centre.
+            Candidate(id: Self.observerLabelID(observer.id), coordinate: observer.coordinate,
+                      width: CGFloat(observer.name.count) * 6.2 + 10, top: observer.nodeRole == nil ? 10.5 : 11.5)
+        }
+        let orderedNodes = nodes.filter { routeNodeIDs.contains($0.id) } + nodes.filter { !routeNodeIDs.contains($0.id) }
+        for node in orderedNodes {
+            guard let coordinate = displayCoordinatesByNodeID[node.id] ?? node.coordinate else { continue }
+            // Monaspace caption2 (about 6.6 pt a character), its top 9 pt below the node.
+            let name = node.name ?? shortKey(node.publicKey)
+            candidates.append(Candidate(id: Self.nodeLabelID(node.id), coordinate: coordinate,
+                                        width: CGFloat(name.count) * 6.6 + 8, top: 9))
+        }
+        guard !candidates.isEmpty else { return [] }
+        guard let region = visibleRegion, mapViewportSize.width > 0 else { return Set(candidates.map(\.id)) }
+
+        let topLeft = MKMapPoint(CLLocationCoordinate2D(
+            latitude: min(region.center.latitude + region.span.latitudeDelta / 2, 85),
+            longitude: region.center.longitude - region.span.longitudeDelta / 2
+        ))
+        let bottomRight = MKMapPoint(CLLocationCoordinate2D(
+            latitude: max(region.center.latitude - region.span.latitudeDelta / 2, -85),
+            longitude: region.center.longitude + region.span.longitudeDelta / 2
+        ))
+        let width = bottomRight.x - topLeft.x
+        guard width > 0 else { return Set(candidates.map(\.id)) }
+        let scale = Double(mapViewportSize.width) / width
+
+        var placed: [CGRect] = []
+        var labeled = Set<String>()
+        for candidate in candidates {
+            let point = MKMapPoint(candidate.coordinate)
+            let x = (point.x - topLeft.x) * scale, y = (point.y - topLeft.y) * scale
+            let box = CGRect(x: x - candidate.width / 2, y: y + candidate.top, width: candidate.width, height: 16)
+                .insetBy(dx: -2, dy: -1)
+            guard !placed.contains(where: { $0.intersects(box) }) else { continue }
+            placed.append(box)
+            labeled.insert(candidate.id)
+        }
+        return labeled
+    }
+
+    /// Nodes drawn on top of one another where the user tapped, while zoomed out (closer in they
+    /// fan out and can be tapped one by one). Empty when the tap isn't on a stack.
+    private func stackedNodes(at screenPoint: CGPoint, using proxy: MapProxy, nodes: [MeshNode]) -> [MeshNode] {
+        guard let region = visibleRegion, max(region.span.latitudeDelta, region.span.longitudeDelta) > 0.25,
+              let tapped = nearestNode(to: screenPoint, using: proxy, nodes: nodes),
+              let tappedCoordinate = displayCoordinatesByNodeID[tapped.id] ?? tapped.coordinate,
+              let tappedPoint = proxy.convert(tappedCoordinate, to: .local) else { return [] }
+        let stack = nodes.filter { node in
+            guard let coordinate = displayCoordinatesByNodeID[node.id] ?? node.coordinate,
+                  let point = proxy.convert(coordinate, to: .local) else { return false }
+            return hypot(point.x - tappedPoint.x, point.y - tappedPoint.y) <= 10
+        }
+        return stack.count > 1 ? stack : []
+    }
+
+    /// Zooms in on a stack of nodes far enough that they fan out to be told apart.
+    private func zoomToNodes(_ nodes: [MeshNode]) {
+        let coordinates = nodes.compactMap(\.coordinate)
+        guard !coordinates.isEmpty else { return }
+        let latitudes = coordinates.map(\.latitude), longitudes = coordinates.map(\.longitude)
+        let center = CLLocationCoordinate2D(
+            latitude: (latitudes.min()! + latitudes.max()!) / 2,
+            longitude: (longitudes.min()! + longitudes.max()!) / 2
+        )
+        // Close enough for fanning (0.25° or less) unless the stack itself is wider than that.
+        let span = MKCoordinateSpan(
+            latitudeDelta: max((latitudes.max()! - latitudes.min()!) * 2.5, 0.05),
+            longitudeDelta: max((longitudes.max()! - longitudes.min()!) * 2.5, 0.05)
+        )
+        let region = MKCoordinateRegion(center: center, span: span)
+        withAnimation {
+            cameraPosition = .region(region)
+        }
+        visibleRegion = region
+    }
+
     private func nearestNode(
         to screenPoint: CGPoint,
         using proxy: MapProxy,
@@ -1511,6 +1610,8 @@ struct MapScreen: View {
                 zoomToCluster(cluster)
             } else if let route = nearestRoute(to: screenPoint, using: proxy, at: date) {
                 selectedRouteDetails = route
+            } else if case let stack = stackedNodes(at: screenPoint, using: proxy, nodes: nodes), !stack.isEmpty {
+                zoomToNodes(stack)
             } else if let node = nearestNode(to: screenPoint, using: proxy, nodes: nodes) {
                 selectedNode = node
             }
