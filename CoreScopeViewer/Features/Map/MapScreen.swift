@@ -102,6 +102,18 @@ struct MapScreen: View {
     /// the stack's own safe area, which dropped the header by a bar height until the next visit.
     @State private var chromeTopInset: CGFloat = 0
 
+    /// From the centre of its frame toward a point `offset` away (a fanned marker's true position).
+    private struct LeaderLine: Shape {
+        let offset: CGSize
+
+        func path(in rect: CGRect) -> Path {
+            var path = Path()
+            path.move(to: CGPoint(x: rect.midX, y: rect.midY))
+            path.addLine(to: CGPoint(x: rect.midX + offset.width, y: rect.midY + offset.height))
+            return path
+        }
+    }
+
     /// A node drawn away from its true position so overlapping markers can be told apart.
     private struct FannedNode: Identifiable {
         let id: String
@@ -896,7 +908,9 @@ struct MapScreen: View {
             nodes: mapNodes.filter {
                 !observedNodeIDs.contains($0.id) && (showsNodeNames || namedRouteNodeIDs.contains($0.id))
             },
-            routeNodeIDs: namedRouteNodeIDs
+            routeNodeIDs: namedRouteNodeIDs,
+            markers: mapNodes.filter { !observedNodeIDs.contains($0.id) },
+            observerMarkers: isReplayMode ? replayReceivers : []
         )
 
         // Close in, overlapping nodes fan out from where they really are. A faint line back to a dot
@@ -910,20 +924,25 @@ struct MapScreen: View {
         }
         let truePositionDots = Dictionary(fannedNodes.map { (CoordinateKey($0.truePosition), $0) },
                                           uniquingKeysWith: { first, _ in first }).values.sorted { $0.id < $1.id }
+        // Each fanned marker draws its own short line back to the true position, in screen points
+        // for the settled camera: a MapKit polyline this short didn't reliably render.
+        let pointsPerMapPoint = replayScreenPointsPerMapPoint()
+        let leaderOffsets: [String: CGSize] = pointsPerMapPoint.map { scale in
+            Dictionary(uniqueKeysWithValues: fannedNodes.map { node in
+                let shown = MKMapPoint(node.shownPosition), truth = MKMapPoint(node.truePosition)
+                return (node.id, CGSize(width: (truth.x - shown.x) * scale, height: (truth.y - shown.y) * scale))
+            })
+        } ?? [:]
 
         MapReader { proxy in
             Map(position: $cameraPosition, scope: mapScope) {
-                ForEach(fannedNodes) { node in
-                    MapPolyline(coordinates: [node.truePosition, node.shownPosition])
-                        .stroke(node.color.opacity(0.8),
-                                style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [3, 3]))
-                }
                 ForEach(truePositionDots) { node in
                     Annotation("", coordinate: node.truePosition, anchor: .center) {
+                        // Neutral, since several nodes can share it.
                         Circle()
-                            .fill(node.color)
-                            .frame(width: 5, height: 5)
-                            .overlay { Circle().stroke(.white.opacity(0.9), lineWidth: 1) }
+                            .fill(.white)
+                            .frame(width: 6, height: 6)
+                            .overlay { Circle().stroke(Color(white: 0.25).opacity(0.85), lineWidth: 1.25) }
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
                     }
@@ -955,6 +974,14 @@ struct MapScreen: View {
                                 isRouteHop: isRouteHop
                             )
                                     .frame(width: 32, height: 32)
+                                    .background {
+                                        if let offset = leaderOffsets[node.id] {
+                                            LeaderLine(offset: offset)
+                                                .stroke(NodeRoleStyle.color(for: node.role).opacity(0.85),
+                                                        style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [3, 2.5]))
+                                                .allowsHitTesting(false)
+                                        }
+                                    }
                                     .contentShape(Circle())
                                     .overlay(alignment: .top) {
                                         if labeledIDs.contains(Self.nodeLabelID(node.id)) {
@@ -1533,7 +1560,9 @@ struct MapScreen: View {
     private func placedLabels(
         observers: [ReplayReceiver],
         nodes: [MeshNode],
-        routeNodeIDs: Set<String>
+        routeNodeIDs: Set<String>,
+        markers: [MeshNode] = [],
+        observerMarkers: [ReplayReceiver] = []
     ) -> Set<String> {
         struct Candidate { let id: String; let coordinate: CLLocationCoordinate2D; let width: CGFloat; let top: CGFloat }
         var candidates: [Candidate] = observers.map { observer in
@@ -1564,11 +1593,23 @@ struct MapScreen: View {
         guard width > 0 else { return Set(candidates.map(\.id)) }
         let scale = Double(mapViewportSize.width) / width
 
-        var placed: [CGRect] = []
+        func screenPoint(_ coordinate: CLLocationCoordinate2D) -> CGPoint {
+            let point = MKMapPoint(coordinate)
+            return CGPoint(x: (point.x - topLeft.x) * scale, y: (point.y - topLeft.y) * scale)
+        }
+        // Markers are obstacles too, so a name never lies under another node.
+        var placed: [CGRect] = markers.compactMap { node in
+            guard let coordinate = displayCoordinatesByNodeID[node.id] ?? node.coordinate else { return nil }
+            let center = screenPoint(coordinate)
+            return CGRect(x: center.x - 6, y: center.y - 6, width: 12, height: 12)
+        } + observerMarkers.map { observer in
+            let center = screenPoint(observer.coordinate)
+            return CGRect(x: center.x - 9, y: center.y - 9, width: 18, height: 18)
+        }
         var labeled = Set<String>()
         for candidate in candidates {
-            let point = MKMapPoint(candidate.coordinate)
-            let x = (point.x - topLeft.x) * scale, y = (point.y - topLeft.y) * scale
+            let center = screenPoint(candidate.coordinate)
+            let x = center.x, y = center.y
             let box = CGRect(x: x - candidate.width / 2, y: y + candidate.top, width: candidate.width, height: 16)
                 .insetBy(dx: -2, dy: -1)
             guard !placed.contains(where: { $0.intersects(box) }) else { continue }
