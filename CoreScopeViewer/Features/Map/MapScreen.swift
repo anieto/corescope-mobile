@@ -49,6 +49,15 @@ struct MapScreen: View {
     @State private var replayReceivers: [ReplayReceiver] = []
     /// Nodes hidden behind a replay's observer markers (see `refreshReplayHiddenNodes`).
     @State private var replayHiddenNodeIDs: Set<String> = []
+    /// The replay request and route now showing. One tap on Replay reaches the map several ways
+    /// (the request, the Map tab opening, the route selection that came with it); each started
+    /// the replay again, so it was seen to begin and then restart.
+    @State private var startedReplay: StartedReplay?
+
+    private struct StartedReplay: Equatable {
+        let request: UUID
+        let routeIndex: Int
+    }
     @State private var isReplayMode = false
     @State private var showsReplayRouteOnly = true
     @State private var processedEventIds: Set<String> = []
@@ -540,6 +549,7 @@ struct MapScreen: View {
             incomingEventTask = nil
             selectedNode = nil
             pendingReplayRequestID = nil
+            startedReplay = nil
             isReplayAwaitingCamera = false
             replayCameraFallback?.cancel()
             replayPings = []
@@ -734,10 +744,12 @@ struct MapScreen: View {
             if !isOn { releaseHeldPropagation(all: true) }
         }
         .onChange(of: packetReplayStore.selectedRouteIndex) {
-            guard isReplayMode else {
+            guard isReplayMode, startedReplay?.request == packetReplayStore.requestID else {
+                // A new request's own route selection: the request starts it.
                 queuePacketReplay()
                 return
             }
+            guard startedReplay != currentReplay else { return }
             // Only re-fit the camera when the newly selected route would
             // actually fall outside the current viewport — switching between
             // routes that share the same on-screen area shouldn't jump the map.
@@ -1575,13 +1587,20 @@ struct MapScreen: View {
             pendingReplayRequestID = nil
             return
         }
+        // Already showing this request on this route: a repeat trigger, not a new replay.
+        if isReplayMode, startedReplay == currentReplay { return }
         selectedNode = nil
         pendingReplayRequestID = packetReplayStore.requestID
         guard !isChangingRegion else { return }
         replayPendingPacketIfNeeded()
     }
 
+    private var currentReplay: StartedReplay {
+        StartedReplay(request: packetReplayStore.requestID, routeIndex: packetReplayStore.selectedRouteIndex)
+    }
+
     private func stopPacketReplay() {
+        startedReplay = nil
         isReplayAwaitingCamera = false
         replayCameraFallback?.cancel()
         replayCameraFallback = nil
@@ -1763,6 +1782,7 @@ struct MapScreen: View {
         if recenter, let routeMapRect = replayRouteMapRect(for: coordinates) {
             replayPings = []
             replayReceivers = receivers
+            startedReplay = currentReplay
             refreshReplayHiddenNodes()
             isReplayMode = true
             hasCenteredCamera = true
@@ -1877,6 +1897,7 @@ struct MapScreen: View {
         replayCameraFallback = nil
         replayPings = pings
         replayReceivers = receivers
+        startedReplay = currentReplay
         refreshReplayHiddenNodes()
         isReplayMode = true
         hasCenteredCamera = true
