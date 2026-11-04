@@ -102,6 +102,14 @@ struct MapScreen: View {
     /// the stack's own safe area, which dropped the header by a bar height until the next visit.
     @State private var chromeTopInset: CGFloat = 0
 
+    /// A node drawn away from its true position so overlapping markers can be told apart.
+    private struct FannedNode: Identifiable {
+        let id: String
+        let truePosition: CLLocationCoordinate2D
+        let shownPosition: CLLocationCoordinate2D
+        let color: Color
+    }
+
     private struct HeldObservation {
         let key: String
         let event: LiveEnvelope
@@ -891,8 +899,36 @@ struct MapScreen: View {
             routeNodeIDs: namedRouteNodeIDs
         )
 
+        // Close in, overlapping nodes fan out from where they really are. A faint line back to a dot
+        // at the true position (as CoreScope's node map does) shows the marker has been moved.
+        let fannedNodes: [FannedNode] = mapNodes.compactMap { node in
+            guard !observedNodeIDs.contains(node.id), let coordinate = node.coordinate,
+                  let shown = displayCoordinatesByNodeID[node.id],
+                  CoordinateKey(shown) != CoordinateKey(coordinate) else { return nil }
+            return FannedNode(id: node.id, truePosition: coordinate, shownPosition: shown,
+                              color: NodeRoleStyle.color(for: node.role))
+        }
+        let truePositionDots = Dictionary(fannedNodes.map { (CoordinateKey($0.truePosition), $0) },
+                                          uniquingKeysWith: { first, _ in first }).values.sorted { $0.id < $1.id }
+
         MapReader { proxy in
             Map(position: $cameraPosition, scope: mapScope) {
+                ForEach(fannedNodes) { node in
+                    MapPolyline(coordinates: [node.truePosition, node.shownPosition])
+                        .stroke(node.color.opacity(0.55),
+                                style: StrokeStyle(lineWidth: 1.25, lineCap: .round, dash: [3, 3]))
+                }
+                ForEach(truePositionDots) { node in
+                    Annotation("", coordinate: node.truePosition, anchor: .center) {
+                        Circle()
+                            .fill(node.color)
+                            .frame(width: 4, height: 4)
+                            .overlay { Circle().stroke(.white.opacity(0.9), lineWidth: 0.75) }
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                    }
+                }
+
                 ForEach(anchoredPings) { ping in
                     let opacity = ping.completedPathOpacity(at: date)
                     MapPolyline(coordinates: ping.pathCoordinates())
