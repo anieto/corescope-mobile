@@ -89,6 +89,7 @@ struct MapScreen: View {
     @State private var displayUpdateID = UUID()
     @State private var isSearchPresented = false
     @State private var isMapFiltersPresented = false
+    @State private var isMapKeyPresented = false
     @State private var selectedRouteDetails: MapRouteDetails?
     @State private var highlightedNodeID: String?
     @State private var lastHandledNavigationRequestID: UUID?
@@ -460,6 +461,7 @@ struct MapScreen: View {
                                 activeFilterCount: nodeFilters.activeFilterCount,
                                 action: { isMapFiltersPresented = true }
                             )
+                            MapKeyButton { isMapKeyPresented = true }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         if isShowingMapLoadingIndicator {
@@ -619,6 +621,19 @@ struct MapScreen: View {
             MapNodeSearchSheet(nodes: viewModel.nodes, selectNode: focusOnSearchedNode)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $isMapKeyPresented) {
+            NavigationStack {
+                MapKeyScreen()
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Done") { isMapKeyPresented = false }
+                        }
+                    }
+            }
+            .tint(colorScheme == .dark ? Color.white : Color.accentColor)
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isMapFiltersPresented) {
             MapNodeFilterSheet(
@@ -3639,13 +3654,14 @@ private enum MapNodeActivityFilter: String, CaseIterable, Codable, Identifiable 
 
     var id: String { rawValue }
 
-    var title: LocalizedStringKey {
+    /// Read after "Last Heard" in the Map Filters menu.
+    var lastHeardTitle: LocalizedStringKey {
         switch self {
-        case .all: "Any Activity"
-        case .fifteenMinutes: "Last 15 Minutes"
-        case .oneHour: "Last Hour"
-        case .oneDay: "Last 24 Hours"
-        case .oneWeek: "Last 7 Days"
+        case .all: "Any Time"
+        case .fifteenMinutes: "Within 15 Minutes"
+        case .oneHour: "Within 1 Hour"
+        case .oneDay: "Within 24 Hours"
+        case .oneWeek: "Within 7 Days"
         }
     }
 
@@ -3691,6 +3707,169 @@ private struct MapNodeFilterButton: View {
     }
 }
 
+private struct MapKeyButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "info.circle")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.primary)
+                .frame(minWidth: 34, minHeight: 34)
+                .nodeScopeFloatingGlass(cornerRadius: 20)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Map key")
+        .accessibilityHint("Explains the markers, lines and colors on the map")
+    }
+}
+
+/// What the map's markers, lines and colours mean. Opened from the map's ⓘ and from Map Filters,
+/// so there's one key however it's reached. The symbols are the map's own, at map size.
+private struct MapKeyScreen: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    private static let roles: [(role: String, title: String, summary: String, term: GlossaryTerm)] = [
+        ("repeater", "Repeater", "Relays packets so they travel further.", .repeater),
+        ("room", "Room", "Hosts a shared message board.", .roomServer),
+        ("companion", "Companion", "Someone's radio, paired with an app.", .companion),
+        ("sensor", "Sensor", "Reports readings over the mesh.", .sensor)
+    ]
+
+    var body: some View {
+        List {
+            Section("Node Roles") {
+                ForEach(Self.roles, id: \.role) { item in
+                    MapKeyRow(title: LocalizedStringKey(item.title), summary: LocalizedStringKey(item.summary), term: item.term) {
+                        MapNodeIndicator(color: NodeRoleStyle.color(for: item.role), isHighlighted: false, isRouteHop: true)
+                    }
+                }
+            }
+            .instrumentListRows()
+
+            Section("On the Map") {
+                MapKeyRow(title: "Observer", summary: "Heard the packet in a replay. A ring shows the node it's on.", term: .observer) {
+                    ReplayReceiverMarker(name: "", nodeColor: NodeRoleStyle.color(for: "repeater"),
+                                         showsName: false, colorScheme: colorScheme)
+                }
+                MapKeyRow(title: "Grouped Nodes", summary: "Nearby nodes when zoomed out. Tap to zoom in.") {
+                    Text("12")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 20, height: 20)
+                        .background(.blue, in: Circle())
+                        .overlay { Circle().stroke(.white.opacity(0.8), lineWidth: 1) }
+                }
+                MapKeyRow(title: "Spread-Out Nodes", summary: "Shown apart so each can be tapped. The lines lead to where they are.") {
+                    MapKeySpreadSymbol()
+                }
+                MapKeyRow(title: "Live Packets", summary: "Each packet has its own color, on every path it took.") {
+                    MapKeyLinesSymbol(colors: [
+                        ActivePing.color(forHash: "a1", colorScheme: colorScheme),
+                        ActivePing.color(forHash: "b7", colorScheme: colorScheme)
+                    ], curved: false)
+                }
+                MapKeyRow(title: "Replayed Route", summary: "A packet's path, played hop by hop.", term: .route) {
+                    MapKeyLinesSymbol(colors: [colorScheme == .dark ? Color(red: 0.35, green: 0.78, blue: 1.0) : .orange],
+                                      curved: true)
+                }
+                MapKeyRow(title: "You", summary: "Your location, when you share it.") {
+                    Circle()
+                        .fill(Color.accentColor)
+                        .frame(width: 12, height: 12)
+                        .overlay { Circle().stroke(.white, lineWidth: 2) }
+                        .background { Circle().fill(Color.accentColor.opacity(0.22)).frame(width: 26, height: 26) }
+                }
+            }
+            .instrumentListRows()
+        }
+        .meshPageBackground()
+        .navigationTitle("Map Key")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct MapKeyRow<Symbol: View>: View {
+    let title: LocalizedStringKey
+    let summary: LocalizedStringKey
+    var term: GlossaryTerm?
+    @ViewBuilder let symbol: () -> Symbol
+
+    var body: some View {
+        HStack(spacing: 14) {
+            symbol()
+                .frame(width: 34, height: 30)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                Text(summary)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            if let term {
+                LearnButton(term: term)
+            }
+        }
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Two fanned markers and their dashed lines to the group's hub, as drawn on the map.
+private struct MapKeySpreadSymbol: View {
+    var body: some View {
+        Canvas { context, size in
+            let hub = CGPoint(x: size.width / 2, y: size.height * 0.72)
+            let left = CGPoint(x: size.width * 0.2, y: size.height * 0.3)
+            let right = CGPoint(x: size.width * 0.8, y: size.height * 0.3)
+            for (point, color) in [(left, NodeRoleStyle.color(for: "repeater")), (right, NodeRoleStyle.color(for: "room"))] {
+                var line = Path()
+                line.move(to: point)
+                line.addLine(to: hub)
+                context.stroke(line, with: .color(color.opacity(0.85)),
+                               style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [3, 2.5]))
+            }
+            let hubDot = Path(ellipseIn: CGRect(x: hub.x - 3, y: hub.y - 3, width: 6, height: 6))
+            context.fill(hubDot, with: .color(.white))
+            context.stroke(hubDot, with: .color(Color(white: 0.25).opacity(0.85)), lineWidth: 1.25)
+            for (point, color) in [(left, NodeRoleStyle.color(for: "repeater")), (right, NodeRoleStyle.color(for: "room"))] {
+                let dot = Path(ellipseIn: CGRect(x: point.x - 5, y: point.y - 5, width: 10, height: 10))
+                context.fill(dot, with: .color(color))
+                context.stroke(dot, with: .color(.white.opacity(0.9)), lineWidth: 1)
+            }
+        }
+    }
+}
+
+/// Short packet paths with the travelling signal dot, as drawn on the map.
+private struct MapKeyLinesSymbol: View {
+    let colors: [Color]
+    let curved: Bool
+
+    var body: some View {
+        Canvas { context, size in
+            for (index, color) in colors.enumerated() {
+                let y = colors.count == 1 ? size.height / 2 : size.height * (index == 0 ? 0.32 : 0.72)
+                let start = CGPoint(x: 2, y: y + (curved ? 4 : 2))
+                let end = CGPoint(x: size.width - 4, y: y - (curved ? 4 : 2))
+                var path = Path()
+                path.move(to: start)
+                if curved {
+                    path.addQuadCurve(to: end, control: CGPoint(x: size.width / 2, y: y - 8))
+                } else {
+                    path.addLine(to: end)
+                }
+                context.stroke(path, with: .color(color.opacity(0.18)), style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                context.stroke(path, with: .color(color.opacity(0.85)), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                let dot = Path(ellipseIn: CGRect(x: end.x - 3.5, y: end.y - 3.5, width: 7, height: 7))
+                context.fill(dot, with: .color(.white))
+                context.stroke(dot, with: .color(color), lineWidth: 1.5)
+            }
+        }
+    }
+}
+
 private struct MapNodeFilterSheet: View {
     @Binding var filters: MapNodeFilterSelection
     let observers: [MapObserverOption]
@@ -3708,8 +3887,10 @@ private struct MapNodeFilterSheet: View {
 
     var body: some View {
         NavigationStack {
+            // Grouped by what each part changes: which nodes are drawn, then which routes. What the
+            // map's symbols mean is on its own Map Key screen, also opened from the map's ⓘ.
             List {
-                MapActivityFilterSection(selection: $filters.activityFilter)
+                MapNodesShownSection(selection: $filters.activityFilter)
                 MapRoleFilterSection(selectedRoles: $filters.selectedRoles)
                 MapObserverFilterSummarySection(
                     selectedObserverTitle: selectedObserverTitle,
@@ -3724,6 +3905,18 @@ private struct MapNodeFilterSheet: View {
                     }
                     .instrumentListRows()
                 }
+
+                Section {
+                    NavigationLink {
+                        MapKeyScreen()
+                    } label: {
+                        Label("Map Key", systemImage: "info.circle")
+                            .foregroundStyle(.primary)
+                    }
+                } footer: {
+                    Text("What the markers, lines and colors on the map mean.")
+                }
+                .instrumentListRows()
             }
             .meshPageBackground()
             .navigationTitle("Map Filters")
@@ -3746,73 +3939,78 @@ private struct MapNodeFilterSheet: View {
     }
 }
 
-private struct MapActivityFilterSection: View {
+/// Which nodes are drawn, by when they were last heard. It filters node markers only, which
+/// "Activity" didn't make clear: people took it for a packet filter.
+private struct MapNodesShownSection: View {
     @Binding var selection: MapNodeActivityFilter
 
     var body: some View {
-        Section("Activity") {
-            ForEach(MapNodeActivityFilter.allCases) { filter in
-                Button {
-                    selection = filter
-                } label: {
-                    HStack {
-                        Text(filter.title)
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        if selection == filter {
-                            Image(systemName: "checkmark")
-                                .foregroundStyle(.primary)
-                        }
-                    }
+        Section {
+            Picker(selection: $selection) {
+                ForEach(MapNodeActivityFilter.allCases) { filter in
+                    Text(filter.lastHeardTitle).tag(filter)
                 }
+            } label: {
+                Label("Last Heard", systemImage: "clock")
+                    .foregroundStyle(.primary)
             }
+            .pickerStyle(.menu)
+        } header: {
+            Text("Nodes Shown")
+        } footer: {
+            Text("Hides nodes that haven't been heard from in this time. Live traffic and replays aren't affected.")
         }
         .instrumentListRows()
     }
 }
 
+/// Node roles to draw, each its own checkmark (no selection stored means all). The colour dots
+/// match the map's markers.
 private struct MapRoleFilterSection: View {
     @Binding var selectedRoles: Set<String>
 
-    private let roles = ["repeater", "room", "companion", "sensor"]
+    static let roles = ["repeater", "room", "companion", "sensor"]
+
+    private func isShown(_ role: String) -> Bool {
+        selectedRoles.isEmpty || selectedRoles.contains(role)
+    }
 
     var body: some View {
         Section {
-            Button {
-                selectedRoles = []
-            } label: {
-                MapRoleFilterRow(
-                    title: "All Roles",
-                    roles: roles,
-                    isSelected: selectedRoles.isEmpty
-                )
-            }
-
-            ForEach(roles, id: \.self) { role in
+            ForEach(Self.roles, id: \.self) { role in
                 Button {
-                    toggleRole(role)
+                    toggle(role)
                 } label: {
-                    MapRoleFilterRow(
-                        title: role.capitalized,
-                        roles: [role],
-                        isSelected: selectedRoles.contains(role)
-                    )
+                    MapRoleFilterRow(title: role.capitalized, role: role, isShown: isShown(role))
                 }
+                .accessibilityAddTraits(isShown(role) ? .isSelected : [])
             }
         } header: {
-            Text("Node Roles")
+            HStack {
+                Text("Node Roles")
+                Spacer()
+                if !selectedRoles.isEmpty {
+                    Button("Show All") { selectedRoles = [] }
+                        .font(.footnote.weight(.semibold))
+                        .textCase(nil)
+                }
+            }
         } footer: {
-            Text("Marker colors identify node roles on the map.")
+            Text("Colors match the dots on the map.")
         }
         .instrumentListRows()
     }
 
-    private func toggleRole(_ role: String) {
-        if selectedRoles.contains(role) {
-            selectedRoles.remove(role)
+    /// Showing every role is stored as no selection; the last shown role can't be turned off.
+    private func toggle(_ role: String) {
+        var shown = selectedRoles.isEmpty ? Set(Self.roles) : selectedRoles
+        if shown.contains(role) {
+            guard shown.count > 1 else { return }
+            shown.remove(role)
         } else {
-            selectedRoles.insert(role)
+            shown.insert(role)
         }
+        selectedRoles = shown == Set(Self.roles) ? [] : shown
     }
 }
 
@@ -3844,19 +4042,19 @@ private struct MapNodeIndicator: View {
 
 private struct MapRoleFilterRow: View {
     let title: String
-    let roles: [String]
-    let isSelected: Bool
+    let role: String
+    let isShown: Bool
 
     var body: some View {
         HStack(spacing: 12) {
-            MapRoleColorSwatch(roles: roles)
+            MapRoleColorSwatch(roles: [role])
             Text(title)
                 .foregroundStyle(.primary)
             Spacer()
-            if isSelected {
-                Image(systemName: "checkmark")
-                    .foregroundStyle(.primary)
-            }
+            Image(systemName: isShown ? "checkmark.circle.fill" : "circle")
+                .font(.title3)
+                .foregroundStyle(isShown ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
+                .accessibilityHidden(true)
         }
     }
 }
@@ -3889,7 +4087,7 @@ private struct MapObserverFilterSummarySection: View {
         Section {
             Button(action: action) {
                 HStack {
-                    Label("Choose Observer", systemImage: "antenna.radiowaves.left.and.right")
+                    Label("Heard By", systemImage: "antenna.radiowaves.left.and.right")
                         .foregroundStyle(.primary)
                     Spacer()
                     Text(selectedObserverTitle)
@@ -3901,9 +4099,9 @@ private struct MapObserverFilterSummarySection: View {
                 }
             }
         } header: {
-            Text("Route Observer")
+            Text("Routes")
         } footer: {
-            Text("Limits live and recent routes to packets received by the selected observer. Node markers are still controlled by the region, activity, and role filters.")
+            Text("Shows only packets received by the chosen observer. Node markers follow the filters above.")
         }
         .instrumentListRows()
     }
