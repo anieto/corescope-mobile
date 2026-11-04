@@ -253,6 +253,8 @@ internal fun AppShell(
     val initialTab = remember { Destination.entries.firstOrNull { it.name == preferences.destination } ?: Destination.MAP }
     val entry by nav.currentBackStackEntryAsState()
     var currentTab by rememberSaveable { mutableStateOf(initialTab.name) }
+    /** Per-tab count of reselections, so a tab screen can return to its top level. */
+    var tabResets by rememberSaveable { mutableStateOf(IntArray(Destination.entries.size)) }
     var focusedNode by rememberSaveable { mutableStateOf<String?>(null) }
     var focusedPosition by rememberSaveable { mutableStateOf<List<Double>?>(null) }
     val isRoot = entry == null || Destination.entries.any { entry!!.destination.hasRoute(it.route::class) }
@@ -265,7 +267,12 @@ internal fun AppShell(
         // Reselecting the current tab returns to its top level (as on iOS) and otherwise does
         // nothing: re-navigating to the showing tab rebuilt the screen, and on the map that
         // destroyed the MapView under it (blank map, then a crash).
-        if (currentTab == destination.name && (isRoot || nav.popBackStack(destination.route, false))) return
+        // Channels and Observers keep their open detail inside the screen rather than on the back
+        // stack, so they're also told to return to their list.
+        if (currentTab == destination.name && (isRoot || nav.popBackStack(destination.route, false))) {
+            tabResets = tabResets.copyOf().also { it[destination.ordinal]++ }
+            return
+        }
         currentTab = destination.name
         onDestination(destination.name)
         nav.navigate(destination.route) {
@@ -306,6 +313,11 @@ internal fun AppShell(
     val routeScope = rememberCoroutineScope()
     var routeLookup by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     var lookingUp by remember { mutableStateOf<String?>(null) }
+    // Reselecting the Map tab returns it to live (iOS): no replay, highlighted node or route lookup.
+    org.nodescope.android.core.design.OnTabReset(tabResets[Destination.MAP.ordinal]) {
+        routeLookup?.cancel(); routeLookup = null; lookingUp = null
+        replay = null; panelPacket = null; focusedNode = null; focusedPosition = null
+    }
     /** A packet's distinct routes from its full observation list, limited to the selected region. */
     suspend fun fullRoutes(host: String, region: String?, hash: String): List<RouteOption> {
         val detail = browse?.let { repository -> runCatching { repository.packetDetail(host, hash) }.getOrNull() } ?: return emptyList()
@@ -509,7 +521,8 @@ internal fun AppShell(
                                 }, onDetails = { nav.navigate(PacketDetailRoute(it)) }) { onShowPackets, onShowPacketsSheet, bottomObscuredFraction ->
                             MapScreen(mapSnapshot, focusedNode, ::openNode, feed = { currentFeed }, onRefresh = onRefresh, regionControl = { RegionMenu(preferences, state) { focusedNode = null; focusedPosition = null; onRegion(it) } }, focusedCoordinate = focusedPosition?.let { org.nodescope.android.core.model.Coordinate.gps(it[0], it[1]) }, selectedRegion = preferences.region, sourceViewport = sourceViewport, routeReplay = replay, onExitReplay = { replay = null },
                                 host = preferences.host, showActiveNodes = showActiveNodes, onActiveNodesShown = { showActiveNodes = false }, onShowPackets = onShowPackets,
-                                onShowPacketsSheet = onShowPacketsSheet, bottomObscuredFraction = bottomObscuredFraction, onLiveFeedDemand = onLiveFeedDemand)
+                                onShowPacketsSheet = onShowPacketsSheet, bottomObscuredFraction = bottomObscuredFraction, onLiveFeedDemand = onLiveFeedDemand,
+                                resetRequest = tabResets[Destination.MAP.ordinal])
                             }
                         }
                         screen<ExploreRoute> { backStack ->
@@ -592,7 +605,7 @@ internal fun AppShell(
                                             MessagePacketScreen(viewModel(backStack) { PacketDetailViewModel(repository) },
                                                 preferences.host, hash, sender, text, state.snapshot?.nodes.orEmpty()) { routes, selected -> startReplay(routes, selected, hash) }
                                         }
-                                    })
+                                    }, resetRequest = tabResets[Destination.CHANNELS.ordinal])
                             } ?: UnavailableScreen(R.string.channels, R.string.channels_unavailable)
                         }
                         screen<ChannelRoute> { backStack ->
@@ -616,7 +629,7 @@ internal fun AppShell(
                         screen<ObserversRoute> {
                             observersModel(browse, it)?.let { observers ->
                                 ObserversListDetailScreen(observers, selection, currentFeed, library, regionControl, { onRegion(null) },
-                                    activeOnlyRequest = observerActiveRequest)
+                                    activeOnlyRequest = observerActiveRequest, resetRequest = tabResets[Destination.OBSERVERS.ordinal])
                             } ?: UnavailableScreen(R.string.observers, R.string.observers_unavailable)
                         }
                         screen<ObserverRoute> { backStack ->

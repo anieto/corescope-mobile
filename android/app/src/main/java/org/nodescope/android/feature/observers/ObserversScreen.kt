@@ -35,6 +35,7 @@ fun ObserversScreen(
     regionControl: @Composable () -> Unit, onClearRegion: () -> Unit, onObserver: (MeshObserver) -> Unit,
     activeOnlyRequest: Long? = null,
     selectedId: String? = null,
+    resetRequest: Int = 0,
 ) {
     val state by model.observers.state.collectAsStateWithLifecycle()
     var activity by rememberSaveable { mutableStateOf(ObserverActivity.ALL) }
@@ -43,6 +44,8 @@ fun ObserversScreen(
     var query by rememberSaveable { mutableStateOf("") }
     var searching by rememberSaveable { mutableStateOf(false) }
     var showFilters by remember { mutableStateOf(false) }
+    // Reselecting the tab clears the search and closes the filters (iOS).
+    org.nodescope.android.core.design.OnTabReset(resetRequest) { query = ""; searching = false; showFilters = false }
     // Explore's "Observers online" asks for recently active observers only (iOS showActiveObservers).
     var handledActiveRequest by rememberSaveable { mutableStateOf<Long?>(null) }
     LaunchedEffect(activeOnlyRequest) {
