@@ -7,9 +7,12 @@ struct RoutePicker: View {
     let options: [RouteOption]
     @Binding var selection: Int
     var compact = false
+    /// Offers "All Routes" first (the map's replay), selected as `PacketReplayStore.allRoutes`.
+    var allowsAll = false
 
     private var index: Int {
-        options.indices.contains(selection) ? selection : 0
+        if allowsAll, selection == PacketReplayStore.allRoutes, options.count > 1 { return selection }
+        return options.indices.contains(selection) ? selection : 0
     }
 
     var body: some View {
@@ -18,7 +21,7 @@ struct RoutePicker: View {
         } else {
             // Equatable so the parent's frequent redraws (live map, replay) leave an open menu
             // alone; rebuilding its items scrolled a long list back to the bottom.
-            RouteMenu(options: options, selected: index, compact: compact) { selection = $0 }
+            RouteMenu(options: options, selected: index, compact: compact, allowsAll: allowsAll && options.count > 1) { selection = $0 }
                 .equatable()
         }
     }
@@ -28,14 +31,28 @@ private struct RouteMenu: View, Equatable {
     let options: [RouteOption]
     let selected: Int
     let compact: Bool
+    let allowsAll: Bool
     let select: (Int) -> Void
 
     nonisolated static func == (lhs: RouteMenu, rhs: RouteMenu) -> Bool {
         lhs.options == rhs.options && lhs.selected == rhs.selected && lhs.compact == rhs.compact
+            && lhs.allowsAll == rhs.allowsAll
     }
+
+    private var showsAll: Bool { allowsAll && selected == PacketReplayStore.allRoutes }
 
     var body: some View {
         Menu {
+            if allowsAll {
+                Toggle(isOn: Binding(
+                    get: { showsAll },
+                    set: { if $0 { select(PacketReplayStore.allRoutes) } }
+                )) {
+                    Text("All Routes")
+                    Text("\(options.count) routes together")
+                }
+                Divider()
+            }
             ForEach(options.indices, id: \.self) { index in
                 let option = options[index]
                 // A toggle shows the menu's checkmark; its two texts give the item a title
@@ -50,9 +67,25 @@ private struct RouteMenu: View, Equatable {
                 .accessibilityLabel(option.spokenLabel(index: index))
             }
         } label: {
-            RouteName(option: options[selected], index: selected, compact: compact)
+            if showsAll {
+                HStack(spacing: 4) {
+                    if compact {
+                        Image(systemName: "point.topleft.down.curvedto.point.bottomright.up")
+                    }
+                    Text("All \(options.count) routes")
+                        .lineLimit(1)
+                    Image(systemName: "chevron.down")
+                        .font(.caption2.weight(.semibold))
+                }
+                .font(compact ? .caption.weight(.semibold) : .subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+            } else {
+                RouteName(option: options[selected], index: selected, compact: compact)
+            }
         }
-        .accessibilityLabel("Route: \(options[selected].spokenLabel(index: selected)). Change route")
+        .accessibilityLabel(showsAll
+            ? "Route: all \(options.count) routes. Change route"
+            : "Route: \(options[selected].spokenLabel(index: selected)). Change route")
     }
 }
 

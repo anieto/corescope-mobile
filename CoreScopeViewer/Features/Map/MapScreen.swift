@@ -1311,7 +1311,8 @@ struct MapScreen: View {
                         get: { packetReplayStore.selectedRouteIndex },
                         set: { packetReplayStore.selectRoute(at: $0) }
                     ),
-                    compact: true
+                    compact: true,
+                    allowsAll: true
                 )
                 .layoutPriority(-1)
                 .padding(.horizontal, 10)
@@ -1587,16 +1588,32 @@ struct MapScreen: View {
         }
     }
 
-    private func currentRouteCoordinates() -> [CLLocationCoordinate2D] {
-        packetReplayStore.resolvedPath.compactMap { publicKey in
-            validCoordinate(viewModel.nodesByPubkey[publicKey.lowercased()]?.coordinate)
-        } + currentReceivers().map(\.coordinate)
+    /// A replayed route on the map: its located nodes and the observers it ends at.
+    private struct ReplayRouteGeometry {
+        let index: Int
+        let coordinates: [CLLocationCoordinate2D]
+        let receivers: [ReplayReceiver]
     }
 
-    /// Where the replayed route ends: the observers that heard exactly this path, at their
+    /// The shown routes that can be drawn (at least one located node and somewhere to go).
+    private func replayRouteGeometries() -> [ReplayRouteGeometry] {
+        packetReplayStore.shownRoutes.compactMap { index, route in
+            let coordinates = route.keys.compactMap { publicKey in
+                validCoordinate(viewModel.nodesByPubkey[publicKey.lowercased()]?.coordinate)
+            }
+            let receivers = receivers(for: route)
+            guard !coordinates.isEmpty, coordinates.count + receivers.count >= 2 else { return nil }
+            return ReplayRouteGeometry(index: index, coordinates: coordinates, receivers: receivers)
+        }
+    }
+
+    private func currentRouteCoordinates() -> [CLLocationCoordinate2D] {
+        replayRouteGeometries().flatMap { $0.coordinates + $0.receivers.map(\.coordinate) }
+    }
+
+    /// Where a replayed route ends: the observers that heard exactly this path, at their
     /// positions (skipping one that sits on the route's last node).
-    private func currentReceivers() -> [ReplayReceiver] {
-        guard let route = packetReplayStore.selectedRoute else { return [] }
+    private func receivers(for route: RouteOption) -> [ReplayReceiver] {
         let last = route.keys.last.flatMap { validCoordinate(viewModel.nodesByPubkey[$0.lowercased()]?.coordinate) }
         return route.receivers(
             coordinateById: observerRegionLookup.coordinateById,
@@ -1635,12 +1652,10 @@ struct MapScreen: View {
     @discardableResult
     private func replayPacketRoute(recenter: Bool = true) -> Bool {
         guard packetReplayStore.isReplayActive else { return false }
-        let receivers = currentReceivers()
-        let routeCoordinates = packetReplayStore.resolvedPath.compactMap { publicKey in
-            validCoordinate(viewModel.nodesByPubkey[publicKey.lowercased()]?.coordinate)
-        }
-        let coordinates = routeCoordinates + receivers.map(\.coordinate)
-        guard !routeCoordinates.isEmpty, coordinates.count >= 2 else {
+        let routes = replayRouteGeometries()
+        let receivers = routes.flatMap(\.receivers)
+        let coordinates = routes.flatMap { $0.coordinates + $0.receivers.map(\.coordinate) }
+        guard !routes.isEmpty else {
             // Do not leave the previous packet's replay visible when the new
             // route is waiting for locations. Keep this request retryable.
             stopPacketReplay()
@@ -1684,28 +1699,32 @@ struct MapScreen: View {
         // makes the route readable while retaining CoreScope's linear motion.
         let travelDuration = 0.85
         let replayStart = Date.now.addingTimeInterval(0.25)
-        let hopCount = routeCoordinates.count - 1
-        // The final hops, from the route's last node to each observer, travel together.
-        let finalHopCount = receivers.isEmpty ? 0 : 1
+        // A route's hops, then its final hops (from its last node to each observer) together.
+        let routeSteps = routes.map { $0.coordinates.count - 1 + ($0.receivers.isEmpty ? 0 : 1) }
 
-        // Keep the completed route visible briefly, then fade it as one path.
-        let lastTravelEnd = replayStart.addingTimeInterval(Double(hopCount + finalHopCount) * travelDuration)
+        // Keep the completed routes visible briefly, then fade them as one path.
+        let lastTravelEnd = replayStart.addingTimeInterval(Double(routeSteps.max() ?? 0) * travelDuration)
         let fadeStart = lastTravelEnd.addingTimeInterval(0.75)
         let fadeDuration = 0.65
+        let packetHash = packetReplayStore.packetHash
 
-        let segments = zip(routeCoordinates, routeCoordinates.dropFirst()).enumerated().map { index, pair in
+        func ping(
+            from: CLLocationCoordinate2D, to: CLLocationCoordinate2D, step: Int,
+            routeID: String, segmentIndex: Int = 0, observerName: String? = nil
+        ) -> ActivePing {
             ActivePing(
-                from: pair.0,
-                to: pair.1,
-                createdAt: replayStart.addingTimeInterval(Double(index) * travelDuration),
+                from: from,
+                to: to,
+                createdAt: replayStart.addingTimeInterval(Double(step) * travelDuration),
                 fadeStartsAt: fadeStart,
                 duration: fadeDuration,
                 travelDuration: travelDuration,
                 color: routeColor,
                 signalColor: signalColor,
-                routeID: "replay-\(packetReplayStore.packetHash)-\(packetReplayStore.selectedRouteIndex)",
-                segmentIndex: index,
-                packetHash: packetReplayStore.packetHash,
+                routeID: routeID,
+                segmentIndex: segmentIndex,
+                packetHash: packetHash,
+                observerName: observerName,
                 observedAt: packetReplayStore.observedAt,
                 snr: packetReplayStore.snr,
                 rssi: packetReplayStore.rssi,
@@ -1713,31 +1732,33 @@ struct MapScreen: View {
                 messageText: packetReplayStore.messageText
             )
         }
-        let finalHops = receivers.enumerated().map { index, receiver in
-            ActivePing(
-                from: routeCoordinates[routeCoordinates.count - 1],
-                to: receiver.coordinate,
-                createdAt: replayStart.addingTimeInterval(Double(hopCount) * travelDuration),
-                fadeStartsAt: fadeStart,
-                duration: fadeDuration,
-                travelDuration: travelDuration,
-                color: routeColor,
-                signalColor: signalColor,
-                routeID: "replay-\(packetReplayStore.packetHash)-\(packetReplayStore.selectedRouteIndex)-observer-\(index)",
-                packetHash: packetReplayStore.packetHash,
-                observerName: receiver.name,
-                observedAt: packetReplayStore.observedAt,
-                snr: packetReplayStore.snr,
-                rssi: packetReplayStore.rssi,
-                sender: packetReplayStore.sender,
-                messageText: packetReplayStore.messageText
-            )
+
+        // With all routes shown, hops they share are drawn once, so the packet spreads out from
+        // a common trunk the way it propagated.
+        var drawnSegments = Set<PacketSegmentKey>()
+        func isNew(_ from: CLLocationCoordinate2D, _ to: CLLocationCoordinate2D) -> Bool {
+            drawnSegments.insert(PacketSegmentKey(packetHash: packetHash, from: CoordinateKey(from), to: CoordinateKey(to))).inserted
+        }
+        var pings: [ActivePing] = []
+        for route in routes {
+            let routeID = "replay-\(packetHash)-\(route.index)"
+            for (index, pair) in zip(route.coordinates, route.coordinates.dropFirst()).enumerated()
+            where isNew(pair.0, pair.1) {
+                pings.append(ping(from: pair.0, to: pair.1, step: index, routeID: routeID, segmentIndex: index))
+            }
+            guard let last = route.coordinates.last else { continue }
+            for (index, receiver) in route.receivers.enumerated() where isNew(last, receiver.coordinate) {
+                pings.append(ping(
+                    from: last, to: receiver.coordinate, step: route.coordinates.count - 1,
+                    routeID: "\(routeID)-observer-\(index)", observerName: receiver.name
+                ))
+            }
         }
         // Starting here (Play Again, or a route already on screen) ends any wait for the camera.
         isReplayAwaitingCamera = false
         replayCameraFallback?.cancel()
         replayCameraFallback = nil
-        replayPings = segments + finalHops
+        replayPings = pings
         replayReceivers = receivers
         isReplayMode = true
         hasCenteredCamera = true
