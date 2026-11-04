@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "dataset": "mapzen-skadi-study",
+  "revision": "study-20261030",
+  "side": 3601,
+  "vertical_datum": "EGM96 per Skadi format documentation",
+  "attribution": "Mapzen Terrain Tiles; Canada terrain data contains information licensed under the Open Government Licence – Canada; SRTM data courtesy of the U.S. Geological Survey",
+  "source_type": "Multi-source terrain; per-pixel source and acquisition date not independently resolved",
+  "tiles": [
+    {
+      "tile": "N50W114",
+      "sha256": "3896df5a53f28ec307dbfd5395d35e9d6714d20a25969bc8ec38c6f1921aecc5",
+      "bytes": 3332909,
+      "url": "https://elevation-tiles-prod.s3.amazonaws.com/v2/skadi/N50/N50W114.hgt.gz"
+    },
+    {
+      "tile": "N50W115",
+      "sha256": "103ecf31c5dbf597767434a44b81f474e69c3d0e34764d6270de60ebd8cf8684",
+      "bytes": 11258288,
+      "url": "https://elevation-tiles-prod.s3.amazonaws.com/v2/skadi/N50/N50W115.hgt.gz"
+    },
+    {
+      "tile": "N50W116",
+      "sha256": "ee61f211c563c5f2e53471beb49514e66513c1f3a96b61983fe6de2d4b16870a",
+      "bytes": 16123465,
+      "url": "https://elevation-tiles-prod.s3.amazonaws.com/v2/skadi/N50/N50W116.hgt.gz"
+    },
+    {
+      "tile": "N50W117",
+      "sha256": "2f5d2c171b88af3d43f3fc3afde5c3e956fd0fb882e681adb9d80728e4775b4f",
+      "bytes": 16437129,
+      "url": "https://elevation-tiles-prod.s3.amazonaws.com/v2/skadi/N50/N50W117.hgt.gz"
+    },
+    {
+      "tile": "N51W114",
+      "sha256": "33971b0e5e8b300699769a7bca2bef91a5dd8de09ec8dade5f46536bd7327ba1",
+      "bytes": 3410565,
+      "url": "https://elevation-tiles-prod.s3.amazonaws.com/v2/skadi/N51/N51W114.hgt.gz"
+    },
+    {
+      "tile": "N51W115",
+      "sha256": "b494f6412411f2816ec8f44d3ab161300003c54419578d04338070b2ad75ff82",
+      "bytes": 5291023,
+      "url": "https://elevation-tiles-prod.s3.amazonaws.com/v2/skadi/N51/N51W115.hgt.gz"
+    },
+    {
+      "tile": "N51W116",
+      "sha256": "f69475d445ec17fb98c5002c35ab54180a469ecee9c71648f5f7089abc96afca",
+      "bytes": 12830890,
+      "url": "https://elevation-tiles-prod.s3.amazonaws.com/v2/skadi/N51/N51W116.hgt.gz"
+    },
+    {
+      "tile": "N51W117",
+      "sha256": "417fafab0d714ae16b9a19624af647b0ca88095b011b63687ad25185e205fe2c",
+      "bytes": 15378500,
+      "url": "https://elevation-tiles-prod.s3.amazonaws.com/v2/skadi/N51/N51W117.hgt.gz"
+    }
+  ]
+}

@@ -33,6 +33,24 @@ class CoverageTerrainCatalogTest {
         }
     }
 
+    @Test fun reviewedRegionalCatalogResolvesAndPreflights() {
+        val catalog = CoverageTerrainCatalog(File("../../docs/node-planner/feasibility/regional-terrain-catalog.json").readBytes())
+        assertEquals(8, catalog.descriptors.size)
+        assertEquals(84_062_769L, catalog.descriptors.sumOf { it.packedBytes })
+        val selected = catalog.resolve(CoverageTerrainFootprint.make(50.96, -115.16, 20_000.0, 100.0))
+        assertEquals(setOf("N50W116", "N50W115", "N51W116", "N51W115"), selected.map { it.tile }.toSet())
+        val preflight = CoverageTerrainPipelinePreflight.make(selected, emptyList(), 300_000_000L, 50_000_000L)
+        assertEquals(45_503_666L, preflight.cache.expectedDownloadBytes)
+        assertTrue(preflight.cache.fitsDownloadBudget)
+        assertTrue(preflight.fitsPipelineQuota)
+        val tooSmall = CoverageTerrainPipelinePreflight.make(selected, emptyList(), 100_000_000L, 40_000_000L)
+        assertFalse(tooSmall.cache.fitsDownloadBudget)
+        assertFalse(tooSmall.fitsPipelineQuota)
+        assertThrows(CoverageTerrainFootprintFailure::class.java) {
+            catalog.resolve(CoverageTerrainFootprint.make(29.43, -98.62, 20_000.0))
+        }
+    }
+
     @Test fun boundedMalformedInput() {
         assertEquals(CoverageTerrainCatalogState.OVERSIZED,
             assertThrows(CoverageTerrainCatalogFailure::class.java) {

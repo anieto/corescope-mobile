@@ -663,3 +663,34 @@ No production catalog URL has been configured or deployed. The publisher must su
 reviewed terrain pins and provenance; HTTPS transport alone does not qualify those records.
 Screen wiring, production RF binding and result rendering remain outstanding, and Calculate stays
 disabled. The new loader does not remove those release gates.
+
+
+## Reproducible real-terrain regional catalog (2026-11-03)
+
+The [regional catalog](feasibility/regional-terrain-catalog.json) now expresses the eight real
+Canadian Rockies Skadi tiles from the October 30 study in the native catalog schema. It preserves
+the reviewed SHA-256 pins, source URLs, recorded sizes, datum and attribution. Per-pixel source
+and acquisition-date uncertainty remain explicit. It is a development catalog covering the
+one-degree tiles at 50–52° N and 117–113° W, not worldwide service coverage. It is neither bundled
+in the app nor deployed to a public endpoint.
+
+Reproduce it from the repository root:
+
+```sh
+python3 tools/node-planner/build_study_catalog.py
+python3 tools/node-planner/build_study_catalog.py --check
+```
+
+The converter rejects disagreements between study evidence and reviewed pins, unexpected origins,
+duplicate/missing tiles and inconsistent payload totals. It performs no download, does not update
+pins, and does not imply current upstream availability. Eight tiles total 84,062,769 compressed
+bytes. Catalog SHA-256: `abb45aa950c3aaabab1e1439a1332a186ad3d020e96929f1e079f3cbd93b3de7`.
+
+Both native test suites now consume this same artifact. A 20 km study at 50.96, -115.16 with a
+100 m sampling halo selects four tiles and estimates 45,503,666 cold-download bytes. Tests verify
+adequate and insufficient download/disk budgets and explicit missing-tile failure for San Antonio.
+No new live download or RF prediction was performed. Swift: 85 tests passed; Android unit tests
+and debug assembly passed; Xcode build including tests passed. Simulator and UI tests were not run.
+
+The catalog establishes a reproducible integration dataset. Broad regional discovery/publication,
+production RF integration and screen execution/rendering remain unfinished; Calculate stays off.
