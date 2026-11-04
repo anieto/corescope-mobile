@@ -20,3 +20,6 @@ local.properties
 # Python contract-tool caches
 __pycache__/
 *.py[cod]
+
+# Android release outputs (signed bundle, R8 mapping); keep the mapping with the release, not in git
+android/app/release/
