@@ -142,6 +142,19 @@ which covers all of 0.10, is in the [0.10.2 release notes](docs/node-planner/v0.
 Still to come after 0.10.3: Potential Links, Estimated Coverage, comparing and exporting plans, and
 saved Link Profiles ([saved Link Profiles plan](docs/node-planner/saved-link-profiles.md)).
 
+### Live map options (planned)
+
+Two CoreScope live map behaviours a user asked for, on branch `feature/live-map-options`.
+
+- **Realistic propagation:** a live map toggle, like CoreScope's "Realistic", that holds a
+  packet's observations for the analyzer's propagation buffer (`propagationBufferMs` from
+  `/api/config/client`, 5000 ms by default) and then animates all of its paths together as one
+  transmission, instead of drawing each observation as it arrives. Off by default; while it's on
+  the map runs that far behind live.
+- **Ungrouped nodes:** a map setting that turns node clustering off so every node is drawn on its
+  own, as CoreScope's live map does. Grouping stays the default. Check large networks with the Map
+  Lab stress test first, especially iOS MapKit annotations.
+
 ## 1.0.0 — Investigation depth and product maturity
 
 Complete the core read-only investigation workflow and prepare NodeScope for a
