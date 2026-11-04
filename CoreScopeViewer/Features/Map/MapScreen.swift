@@ -70,6 +70,7 @@ struct MapScreen: View {
     @State private var showsReplayRouteOnly = true
     @State private var processedEventIds: Set<String> = []
     @AppStorage(LiveMapPreferences.realisticPropagationKey) private var realisticPropagation = false
+    @AppStorage(LiveMapPreferences.groupsNodesKey) private var groupsNodes = true
     /// Realistic propagation: each packet's observations, held by hash until its buffer ends.
     @State private var heldPropagation: [String: HeldPropagation] = [:]
     @State private var heldPropagationRelease: Task<Void, Never>?
@@ -749,6 +750,9 @@ struct MapScreen: View {
         .onChange(of: appNavigationStore.requestID) {
             handleNavigationRequest()
         }
+        .onChange(of: groupsNodes) {
+            updateDisplayedNodes()
+        }
         .onChange(of: realisticPropagation) { _, isOn in
             // Turning it off shows anything still held straight away.
             if !isOn { releaseHeldPropagation(all: true) }
@@ -1048,6 +1052,7 @@ struct MapScreen: View {
         let nodes = viewModel.nodes
         let displayRegion = (region ?? visibleRegion).map(DisplayRegion.init)
         let selectedRoles = nodeFilters.selectedRoles
+        let groupsNodes = groupsNodes
         let activityCutoff = nodeFilters.activityFilter.maximumAge.map {
             Date.now.addingTimeInterval(-$0)
         }
@@ -1060,7 +1065,8 @@ struct MapScreen: View {
                     nodes: nodes,
                     region: displayRegion,
                     selectedRoles: selectedRoles,
-                    activityCutoff: activityCutoff
+                    activityCutoff: activityCutoff,
+                    groupsNodes: groupsNodes
                 )
             }
             let result = await withTaskCancellationHandler {
@@ -1125,7 +1131,8 @@ struct MapScreen: View {
         nodes: [MeshNode],
         region: DisplayRegion?,
         selectedRoles: Set<String>,
-        activityCutoff: Date?
+        activityCutoff: Date?,
+        groupsNodes: Bool = true
     ) -> DisplayResult? {
         let validNodes = nodes.filter { node in
             guard !Task.isCancelled, let latitude = node.lat, let longitude = node.lon else { return false }
@@ -1162,6 +1169,21 @@ struct MapScreen: View {
                 && longitudeDifference <= longitudeLimit
         }
         guard !Task.isCancelled else { return nil }
+
+        // Settings → Display → Group Nearby Nodes off: every node on its own, as CoreScope's live
+        // map draws them. Zoomed out they stay at their real positions (fanning them out there
+        // would move them miles); close in, overlapping ones fan out as usual so each can be tapped.
+        if !groupsNodes, max(region.latitudeDelta, region.longitudeDelta) > 0.25 {
+            return DisplayResult(
+                nodes: visibleNodes,
+                clusters: [],
+                displayCoordinatesByNodeID: Dictionary(
+                    visibleNodes.compactMap { node in node.coordinate.map { (node.id, $0) } },
+                    uniquingKeysWith: { first, _ in first }
+                ),
+                filteredCount: validNodes.count
+            )
+        }
 
         // Keep dense groups clustered until the map is close enough that
         // separating their markers doesn't misrepresent their locations.

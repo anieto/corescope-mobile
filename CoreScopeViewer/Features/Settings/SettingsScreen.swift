@@ -12,6 +12,7 @@ struct SettingsScreen: View {
     @AppStorage(AppearanceSettings.backgroundTextureDefaultsKey) private var backgroundTextureEnabled = true
     @AppStorage(Glossary.showsExplanationsDefaultsKey) private var showsTermExplanations = true
     @AppStorage(LiveMapPreferences.realisticPropagationKey) private var realisticPropagation = false
+    @AppStorage(LiveMapPreferences.groupsNodesKey) private var groupsNodes = true
     @State private var hostInput = ""
     @State private var sourceSaveStatus: SourceSaveStatus?
     @State private var sourceSaveID = UUID()
@@ -68,6 +69,13 @@ struct SettingsScreen: View {
 
                         Toggle("Realistic Propagation", isOn: $realisticPropagation)
                         Text("On the live map, wait for every observer to report a packet, then animate all of its paths together. Uses the analyzer's propagation delay (usually 5 seconds), so the map runs that far behind live.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+
+                        Divider()
+
+                        Toggle("Group Nearby Nodes", isOn: $groupsNodes)
+                        Text("Combine nearby nodes on the live map into a numbered bubble when zoomed out. Turn off to show every node on its own; busy areas get crowded and the map can be slower.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }

@@ -77,6 +77,8 @@ private actor MapResponseCache {
 enum LiveMapPreferences {
     /// Realistic propagation (CoreScope "Realistic"): animate each packet's paths together.
     static let realisticPropagationKey = "liveMapRealisticPropagation"
+    /// Group nearby nodes into numbered bubbles when zoomed out (on by default).
+    static let groupsNodesKey = "liveMapGroupsNodes"
 }
 
 @Observable
