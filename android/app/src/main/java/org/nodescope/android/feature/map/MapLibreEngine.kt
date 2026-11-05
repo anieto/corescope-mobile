@@ -278,6 +278,7 @@ private data class MapLibreOverlays(val style: Style) : MapOverlays {
                 addStringProperty("color", line.color)
                 addNumberProperty("opacity", line.opacity)
                 addStringProperty("route", line.route)
+                addBooleanProperty("dashed", line.dashed)
             }
         }))
         dotSource?.setGeoJson(FeatureCollection.fromFeatures(frame.heads.map { (point, color) ->
@@ -424,10 +425,15 @@ private fun addOverlays(style: Style, dark: Boolean) {
     style.addLayer(labels(REPLAY_LABELS, REPLAY_NODES))
     // Live hops as on iOS: a soft halo under a thin core, a small white head, and arrival rings.
     style.addSource(GeoJsonSource("live-lines", emptyFeatures).apply { setOverrideSynchronousUpdate(true) })
-    style.addLayer(LineLayer("live-route-halo", "live-lines").withProperties(lineColor(get("color")), lineWidth(6f),
+    val solid = not(eq(get("dashed"), literal(true)))
+    style.addLayer(LineLayer("live-route-halo", "live-lines").withFilter(solid).withProperties(lineColor(get("color")), lineWidth(6f),
         lineOpacity(product(get("opacity"), literal(0.18f))), lineCap(Property.LINE_CAP_ROUND), lineJoin(Property.LINE_JOIN_ROUND)))
-    style.addLayer(LineLayer("live-route-lines", "live-lines").withProperties(lineColor(get("color")), lineWidth(2f),
+    style.addLayer(LineLayer("live-route-lines", "live-lines").withFilter(solid).withProperties(lineColor(get("color")), lineWidth(2f),
         lineOpacity(product(get("opacity"), literal(0.85f))), lineCap(Property.LINE_CAP_ROUND), lineJoin(Property.LINE_JOIN_ROUND)))
+    // Bridges over unresolved hops: dashed, no halo (dash lengths are in line widths).
+    style.addLayer(LineLayer("live-route-dashed", "live-lines").withFilter(eq(get("dashed"), literal(true))).withProperties(
+        lineColor(get("color")), lineWidth(2f), lineOpacity(product(get("opacity"), literal(0.85f))),
+        lineDasharray(arrayOf(2f, 2f)), lineJoin(Property.LINE_JOIN_ROUND)))
     style.addSource(GeoJsonSource("live-rings", emptyFeatures).apply { setOverrideSynchronousUpdate(true) })
     style.addLayer(CircleLayer("live-route-rings", "live-rings").withProperties(circleOpacity(0f), circleRadius(get("radius")),
         circleStrokeColor(get("color")), circleStrokeWidth(get("width")), circleStrokeOpacity(get("opacity"))))

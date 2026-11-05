@@ -468,6 +468,7 @@ internal class RouteLayer(context: Context) : View(context) {
     private val path = Path()
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND }
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val dashes = android.graphics.DashPathEffect(floatArrayOf(4 * density, 4 * density), 0f)
     // CARTO's label layers: 11 dp medium text, top-anchored 0.8 em under the point, wrapped at
     // 10 em, with a 1.6 dp halo; colliding labels are left out.
     private val labelPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -498,6 +499,13 @@ internal class RouteLayer(context: Context) : View(context) {
                 if (index == 0) path.moveTo(p.x.toFloat(), p.y.toFloat()) else path.lineTo(p.x.toFloat(), p.y.toFloat())
             }
             val color = parseColor(line.color)
+            if (line.dashed) {
+                // A bridge over unresolved hops: dashed, without the halo.
+                stroke.pathEffect = dashes
+                stroke.strokeWidth = 2 * density; stroke.color = withAlpha(color, line.opacity * 0.85f); canvas.drawPath(path, stroke)
+                stroke.pathEffect = null
+                continue
+            }
             stroke.strokeWidth = 6 * density; stroke.color = withAlpha(color, line.opacity * 0.18f); canvas.drawPath(path, stroke)
             stroke.strokeWidth = 2 * density; stroke.color = withAlpha(color, line.opacity * 0.85f); canvas.drawPath(path, stroke)
         }

@@ -267,7 +267,11 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     val currentNodes by rememberUpdatedState(snapshot?.nodes.orEmpty())
     val currentFilters by rememberUpdatedState(filters)
     val routeBuilder = remember { LiveRouteBuilder() }
-    val paths = remember { derivedStateOf { currentFeed().let { routeBuilder.build(it.visiblePackets, currentNodes, it.observers, currentFilters) } } }
+    // The settled zoom, read (not observed) when a route is built, so hops too short to see pass through.
+    val settledZoom = remember { doubleArrayOf(Double.NaN) }
+    val paths = remember { derivedStateOf { currentFeed().let {
+        routeBuilder.build(it.visiblePackets, currentNodes, it.observers, currentFilters, settledZoom[0].takeUnless(Double::isNaN))
+    } } }
     val replayRoute = remember(replayOption, replayStart, replayReady) {
         replayOption?.takeIf { replayReady }?.let { option ->
             // The observers that heard the route are its labelled endpoints.
@@ -457,7 +461,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             }
         })
     Box(Modifier.weight(1f).fillMaxWidth()) {
-        val onCameraIdle: (SavedCamera) -> Unit = { cameraValues = it; refreshLabels(currentDisplayedNodes) }
+        val onCameraIdle: (SavedCamera) -> Unit = { cameraValues = it; settledZoom[0] = it[2]; refreshLabels(currentDisplayedNodes) }
         when (engine) {
             is MapLibreEngine -> MapLibreEngineHost(engine, styleMode = mode, retry = retry, bottomInset = controlsInset, savedCamera = cameraValues,
                 onCameraIdle = onCameraIdle, onTap = ::onTap, modifier = Modifier.fillMaxSize())

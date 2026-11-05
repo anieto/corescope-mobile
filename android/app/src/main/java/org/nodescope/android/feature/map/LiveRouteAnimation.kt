@@ -33,10 +33,64 @@ internal object RouteTiming {
     const val LIVE_FRAME_INTERVAL = 33L
 }
 
+/**
+ * One hop. [curvature] bows it gently (iOS 0.07), so a packet that doubles back between nearby
+ * nodes shows two arcs rather than one line drawn twice. A [dashed] hop bridges hops the analyzer
+ * couldn't resolve: drawn faint and dashed, with no arrival ring, since no relay is claimed.
+ */
 internal class RouteHop(val start: Coordinate, val end: Coordinate, val startsAt: Long, val fadeStartsAt: Long, val fadeDuration: Long,
-    val travel: Long = RouteTiming.HOP_TRAVEL) {
-    private val track = RouteTrack(listOf(start, end))
-    fun position(fraction: Float): Coordinate = track.position(fraction) ?: end
+    val travel: Long = RouteTiming.HOP_TRAVEL, val curvature: Double = 0.0, val dashed: Boolean = false) {
+    private val track = if (curvature == 0.0) RouteTrack(listOf(start, end)) else null
+    fun position(fraction: Float): Coordinate = track?.position(fraction) ?: curvePoint(start, end, curvature, fraction.toDouble())
+    /** The hop from its start to [fraction] of the way: two points straight, enough to look smooth curved. */
+    fun points(fraction: Float = 1f): List<Coordinate> {
+        if (track != null) return listOf(start, position(fraction))
+        val samples = maxOf(2, kotlin.math.ceil(16 * fraction).toInt())
+        return (0..samples).map { curvePoint(start, end, curvature, fraction.toDouble() * it / samples) }
+    }
+}
+
+/** A quadratic curve in Web Mercator space, so it looks the same at every zoom (iOS `ActivePing`). */
+internal fun curvePoint(start: Coordinate, end: Coordinate, curvature: Double, t: Double): Coordinate {
+    val ax = Mercator.x(start.longitude); val ay = Mercator.y(start.latitude)
+    var bx = Mercator.x(end.longitude); val by = Mercator.y(end.latitude)
+    // The short way round across the antimeridian.
+    if (bx - ax > 0.5) bx -= 1.0 else if (ax - bx > 0.5) bx += 1.0
+    val dx = bx - ax; val dy = by - ay
+    val cx = (ax + bx) / 2 + dy * curvature; val cy = (ay + by) / 2 - dx * curvature
+    val u = 1 - t
+    val x = u * u * ax + 2 * u * t * cx + t * t * bx
+    val y = u * u * ay + 2 * u * t * cy + t * t * by
+    return Coordinate(Mercator.latitude(y), Mercator.longitude(((x % 1.0) + 1.0) % 1.0))
+}
+
+/** Bow of live and replayed hops (iOS). */
+internal const val HOP_CURVATURE = 0.07
+
+/**
+ * How long a hop takes (iOS `hopTravelTime`), in ms. A hop too short to see at [zoom] (under
+ * 6 dp) passes straight through: given its usual time, the head sat wiggling in one spot and a
+ * route that steps out to a neighbour and back read as ping-pong. Otherwise a steady
+ * [kilometresPerSecond] when given, else gentle (logarithmic) growth reaching [longest] at 40 km.
+ */
+internal fun hopTravelMs(start: Coordinate, end: Coordinate, shortest: Long, longest: Long, zoom: Double?,
+    kilometresPerSecond: Double? = null): Long {
+    if (zoom != null) {
+        val world = 512.0 * Math.pow(2.0, zoom)
+        val dx = (Mercator.x(end.longitude) - Mercator.x(start.longitude)) * world
+        val dy = (Mercator.y(end.latitude) - Mercator.y(start.latitude)) * world
+        if (kotlin.math.hypot(dx, dy) < 6) return 50
+    }
+    val kilometres = distanceKm(start, end)
+    if (kilometresPerSecond != null) return (kilometres / kilometresPerSecond * 1000).toLong().coerceIn(shortest, longest)
+    val growth = (longest - shortest) / kotlin.math.log2(41.0)
+    return minOf(shortest + (growth * kotlin.math.log2(1 + kilometres)).toLong(), longest)
+}
+
+internal fun distanceKm(a: Coordinate, b: Coordinate): Double {
+    val dLat = Math.toRadians(b.latitude - a.latitude); val dLon = Math.toRadians(b.longitude - a.longitude)
+    val h = sin(dLat / 2).let { it * it } + cos(Math.toRadians(a.latitude)) * cos(Math.toRadians(b.latitude)) * sin(dLon / 2).let { it * it }
+    return 2 * 6371.0 * kotlin.math.asin(kotlin.math.sqrt(h.coerceIn(0.0, 1.0)))
 }
 
 /**
@@ -52,18 +106,10 @@ internal class LiveRoute(val key: String, val receivedAt: Long, val color: Strin
     /** The observed packet, for route details when the route is tapped (none for a replay). */
     val packet: org.nodescope.android.core.model.LivePacket? = null,
     /** When the packet was observed, for route details; [receivedAt] is when the animation starts. */
-    val observedAt: Long = receivedAt) {
-    val hops: List<RouteHop> = if (replay) replayHops(subchains, receivedAt) else subchains.filter { it.size > 1 }.flatMap { chain ->
-        chain.zipWithNext().mapIndexed { index, (a, b) ->
-            if (historical) {
-                val arrived = receivedAt - RouteTiming.HOP_TRAVEL
-                RouteHop(a, b, arrived, arrived, RouteTiming.HISTORY_FADE)
-            } else {
-                val startsAt = receivedAt + index * RouteTiming.HOP_TRAVEL
-                RouteHop(a, b, startsAt, startsAt + RouteTiming.HOP_TRAVEL + RouteTiming.HOLD, RouteTiming.FADE)
-            }
-        }
-    }
+    val observedAt: Long = receivedAt,
+    /** The map's zoom when the route was built, so hops too short to see pass straight through. */
+    zoom: Double? = null) {
+    val hops: List<RouteHop> = if (replay) replayHops(subchains, receivedAt) else liveHops(subchains, receivedAt, historical, zoom)
     val pulses: List<Coordinate> = if (historical || replay) emptyList() else subchains.filter { it.size == 1 }.map { it.single() }
     private val startsAt: Long = hops.minOfOrNull { it.startsAt } ?: receivedAt
     val endsAt: Long = max(
@@ -90,9 +136,41 @@ data class RouteReplay(val id: Long, val routes: List<ReplayRoute>, val selected
     val options: List<org.nodescope.android.feature.packets.RouteOption> = emptyList())
 
 /** One hop's line; [route] and [hop] identify it from frame to frame. */
-internal data class RouteLine(val points: List<Coordinate>, val color: String, val opacity: Float, val route: String = "", val hop: Int = 0)
+internal data class RouteLine(val points: List<Coordinate>, val color: String, val opacity: Float, val route: String = "", val hop: Int = 0,
+    /** A bridge over unresolved hops: drawn dashed and fainter. */
+    val dashed: Boolean = false)
 internal data class RouteRing(val center: Coordinate, val color: String, val radius: Float, val width: Float, val opacity: Float)
 internal data class RouteFrame(val lines: List<RouteLine>, val heads: List<Pair<Coordinate, String>>, val rings: List<RouteRing>)
+
+/**
+ * Live hops follow one another across the whole path (iOS): each takes 0.3–1.0 s by its real
+ * length, and the pieces of a path split by unresolved hops are joined by a quick dashed bridge.
+ * A [historical] route has already arrived: every hop shows complete and fades over
+ * [RouteTiming.HISTORY_FADE].
+ */
+private fun liveHops(subchains: List<List<Coordinate>>, startsAt: Long, historical: Boolean, zoom: Double?): List<RouteHop> {
+    val hops = mutableListOf<RouteHop>()
+    var elapsed = 0L
+    var previousEnd: Coordinate? = null
+    for (chain in subchains) {
+        val from = previousEnd; val to = chain.firstOrNull()
+        if (from != null && to != null && from != to) {
+            hops += if (historical) RouteHop(from, to, startsAt - 200, startsAt - 200, RouteTiming.HISTORY_FADE, 200, HOP_CURVATURE, dashed = true)
+            else RouteHop(from, to, startsAt + elapsed, startsAt + elapsed + 200 + RouteTiming.HOLD, RouteTiming.FADE, 200, HOP_CURVATURE, dashed = true)
+            elapsed += 200
+        }
+        previousEnd = chain.lastOrNull() ?: previousEnd
+        for ((a, b) in chain.zipWithNext()) {
+            val travel = hopTravelMs(a, b, 300, 1_000, zoom)
+            hops += if (historical) {
+                val arrived = startsAt - travel
+                RouteHop(a, b, arrived, arrived, RouteTiming.HISTORY_FADE, travel, HOP_CURVATURE)
+            } else RouteHop(a, b, startsAt + elapsed, startsAt + elapsed + travel + RouteTiming.HOLD, RouteTiming.FADE, travel, HOP_CURVATURE)
+            elapsed += travel
+        }
+    }
+    return hops
+}
 
 /** Replay hops travel strictly one after another across every subchain, then fade as one route. */
 private fun replayHops(subchains: List<List<Coordinate>>, startsAt: Long): List<RouteHop> {
@@ -116,17 +194,18 @@ internal fun routeFrame(routes: List<LiveRoute>, now: Long, animate: Boolean): R
         for ((index, hop) in route.hops.withIndex()) {
             val elapsed = now - hop.startsAt
             if (elapsed < 0) continue
+            val strength = if (hop.dashed) 0.6f else 1f
             if (animate && elapsed < hop.travel) {
                 if (route !in transient) continue
-                val current = hop.position(elapsed.toFloat() / hop.travel)
-                lines += RouteLine(listOf(hop.start, current), route.color, 1f, route.key, index)
-                heads += current to route.color
+                val fraction = elapsed.toFloat() / hop.travel
+                lines += RouteLine(hop.points(fraction), route.color, strength, route.key, index, hop.dashed)
+                heads += hop.position(fraction) to route.color
                 continue
             }
             val fade = ((now - hop.fadeStartsAt).toFloat() / hop.fadeDuration).coerceIn(0f, 1f)
-            if (fade < 1f) lines += RouteLine(listOf(hop.start, hop.end), route.color, 1f - fade, route.key, index)
+            if (fade < 1f) lines += RouteLine(hop.points(), route.color, (1f - fade) * strength, route.key, index, hop.dashed)
             val arrival = elapsed - hop.travel
-            if (animate && route in transient && arrival < RouteTiming.ARRIVAL_PULSE) {
+            if (animate && route in transient && !hop.dashed && arrival < RouteTiming.ARRIVAL_PULSE) {
                 val p = arrival.toFloat() / RouteTiming.ARRIVAL_PULSE
                 rings += RouteRing(hop.end, route.color, (8 + p * 42) / 2, max(0.5f, 2.5f - p * 1.5f), (1 - p) * 0.9f)
             }
@@ -181,12 +260,19 @@ internal class LiveRouteBuilder {
      */
     private val starts = HashMap<String, Long>()
 
-    fun build(packets: List<LivePacket>, nodes: List<MeshNode>, observers: List<MeshObserver>, filters: MapFilters): List<LiveRoute> = traced("NodeScope:routes") {
+    fun build(packets: List<LivePacket>, nodes: List<MeshNode>, observers: List<MeshObserver>, filters: MapFilters,
+        zoom: Double? = null): List<LiveRoute> = traced("NodeScope:routes") {
         if (nodes !== this.nodes) { this.nodes = nodes; lookup = nodeLookup(nodes); routes.clear() }
         if (observers !== this.observers) { this.observers = observers; routes.clear() }
         // Recent history appears as already-arrived routes while it is under 12 s old, as on iOS.
         val historyCutoff = System.currentTimeMillis() - RouteTiming.HISTORY_FADE
-        val shown = packets.filter { (it.isLive || packetEpoch(it) > historyCutoff) && filters.showsRoute(it) }.take(40)
+        val candidates = packets.filter { (it.isLive || packetEpoch(it) > historyCutoff) && filters.showsRoute(it) }
+        // Each observer's first copy of a packet only (iOS): in a flood an observer also hears
+        // repeaters echoing the packet back, and drawing those echoes read as ping-pong.
+        val reached = HashSet<String>()
+        val firstCopies = candidates.sortedBy { if (it.isLive) it.receivedAt else packetEpoch(it) }
+            .filterTo(HashSet()) { reached.add("${it.hash}|${(it.observerId ?: it.observerName)?.lowercase()}") }
+        val shown = candidates.filter { it in firstCopies }.take(40)
         val result = shown.map { packet ->
             routes.getOrPut(packet) {
                 val color = listOf("#66B9FF", "#FFC27A", "#65DDB4", "#BEA1FF")[(packet.hash.hashCode() and Int.MAX_VALUE) % 4]
@@ -198,7 +284,7 @@ internal class LiveRouteBuilder {
                     if (now - observed < 2_000) maxOf(observed, now) else observed
                 } else observed
                 LiveRoute(packet.key, start, color, routeAnchors(packet, nodes, observers, lookup),
-                    packetRoute(packet, nodes, observers, lookup), historical = !packet.isLive, packet = packet, observedAt = observed)
+                    packetRoute(packet, nodes, observers, lookup), historical = !packet.isLive, packet = packet, observedAt = observed, zoom = zoom)
             }
         }
         routes.keys.retainAll(shown.toSet())
