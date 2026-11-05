@@ -49,6 +49,8 @@ protocol AnalyzerBackend: FieldCatalogBackend {
     func packetDetail(hash: String) async throws -> PacketDetailResponse
     func channels(region: String?) async throws -> ChannelsResponse
     func channelMessages(id: String, offset: Int) async throws -> ChannelMessagesResponse
+    /// A channel's newest `limit` messages, oldest first.
+    func recentChannelMessages(id: String, limit: Int) async throws -> ChannelMessagesResponse
     func regions() async throws -> RegionsMap
     func regionQuickPicks() async throws -> [RegionQuickPick]
     func iataCoordinates() async throws -> IataCoordsResponse
@@ -258,4 +260,11 @@ struct BeaconBackend: AnalyzerBackend {
         try await channelReader.messages(channelID: id, offset: offset)
     }
     func mapDefaults() async throws -> MapDefaults { try unavailable("Map defaults") }
+}
+
+extension AnalyzerBackend {
+    /// Backends without a smaller page return their usual first (newest) page.
+    func recentChannelMessages(id: String, limit: Int) async throws -> ChannelMessagesResponse {
+        try await channelMessages(id: id, offset: 0)
+    }
 }

@@ -118,6 +118,17 @@ struct CoreScopeBackend: AnalyzerBackend {
         return try await get("/api/channels", query: query)
     }
 
+    func recentChannelMessages(id: String, limit: Int) async throws -> ChannelMessagesResponse {
+        // Offset counts back from the newest message, so offset 0 is the latest page.
+        try await get(
+            "/api/channels/\(id.urlPathComponentEncoded)/messages",
+            query: [
+                URLQueryItem(name: "limit", value: String(limit)),
+                URLQueryItem(name: "offset", value: "0")
+            ]
+        )
+    }
+
     func channelMessages(id: String, offset: Int) async throws -> ChannelMessagesResponse {
         try await get(
             "/api/channels/\(id.urlPathComponentEncoded)/messages",

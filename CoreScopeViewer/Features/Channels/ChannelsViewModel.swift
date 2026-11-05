@@ -18,10 +18,31 @@ final class ChannelsViewModel {
     private var apiClient: (any AnalyzerBackend)?
     private var configuredSourceIdentifier: String?
 
+    /// A channel's latest message as heard in the selected region, by the same rule as the channel
+    /// screen: the message's listed observer is in the region. The server's own preview counts a
+    /// message if any observer in the region heard it, and since channel messages flood the whole
+    /// network that was nearly always the statewide latest. `text` is nil when none of the recent
+    /// messages were heard there.
+    struct RegionalPreview: Equatable, Sendable {
+        let text: String?
+        let sender: String?
+        let timestamp: Date?
+    }
+
+    /// By channel hash, for `regionalPreviewScope` (the region and source they were worked out for).
+    private(set) var regionalPreviews: [String: RegionalPreview] = [:]
+    private var regionalPreviewScope: String?
+    /// The server's `lastActivity` each preview was worked out at, so only channels with new
+    /// messages are fetched again when the list refreshes.
+    private var regionalPreviewActivity: [String: Date] = [:]
+
     func configure(settings: AnalyzerSettings) {
         let client = AnalyzerBackendFactory.make(settings: settings)
         if apiClient?.sourceSession.id != client.sourceSession.id {
             channels = []
+            regionalPreviews = [:]
+            regionalPreviewActivity = [:]
+            regionalPreviewScope = nil
             messages = []
             loadedMessageHash = nil
             hasOlderMessages = false
@@ -59,6 +80,55 @@ final class ChannelsViewModel {
             guard apiClient.sourceSession.isCurrent, !Task.isCancelled, !(error is CancellationError) else { return }
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// Works out `regionalPreviews` for the loaded channels. Only CoreScope sources: Beacon's
+    /// channel list isn't regional. `isInRegion` says whether an observer (by name) is in the
+    /// selected region.
+    func loadRegionalPreviews(region: String?, isInRegion: @escaping (String) -> Bool) async {
+        guard let apiClient, let region, apiClient.capabilities.contains(.serverChannels),
+              !(apiClient is BeaconBackend) else {
+            regionalPreviews = [:]
+            regionalPreviewActivity = [:]
+            regionalPreviewScope = nil
+            return
+        }
+        let scope = "\(apiClient.sourceSession.id)|\(region)"
+        if scope != regionalPreviewScope {
+            regionalPreviews = [:]
+            regionalPreviewActivity = [:]
+            regionalPreviewScope = scope
+        }
+        let stale = channels.filter { regionalPreviewActivity[$0.hash] != $0.lastActivity }
+        guard !stale.isEmpty else { return }
+
+        // A few at a time, so a long channel list doesn't open dozens of requests at once.
+        var fetched: [(channel: MeshChannel, messages: [ChannelMessage])] = []
+        for batch in stride(from: 0, to: stale.count, by: 6).map({ Array(stale[$0..<min($0 + 6, stale.count)]) }) {
+            let results = await withTaskGroup(of: (MeshChannel, [ChannelMessage]?).self) { group in
+                for channel in batch {
+                    group.addTask {
+                        let response = try? await apiClient.recentChannelMessages(id: channel.requestIdentifier, limit: 100)
+                        return (channel, response?.messages)
+                    }
+                }
+                var results: [(MeshChannel, [ChannelMessage]?)] = []
+                for await result in group { results.append(result) }
+                return results
+            }
+            guard !Task.isCancelled, apiClient.sourceSession.isCurrent, regionalPreviewScope == scope else { return }
+            fetched += results.compactMap { channel, messages in messages.map { (channel, $0) } }
+        }
+
+        var previews = regionalPreviews
+        for (channel, messages) in fetched {
+            let latest = messages
+                .filter { $0.observers.contains(where: isInRegion) }
+                .max { $0.timestamp < $1.timestamp }
+            previews[channel.hash] = RegionalPreview(text: latest?.text, sender: latest?.sender, timestamp: latest?.timestamp)
+            regionalPreviewActivity[channel.hash] = channel.lastActivity
+        }
+        regionalPreviews = previews
     }
 
     static func preload(settings: AnalyzerSettings, region: String?) async {
