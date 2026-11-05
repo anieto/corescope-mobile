@@ -20,6 +20,7 @@ struct MapScreen: View {
     @Environment(LiveFeedService.self) private var liveFeed
     @Environment(ObserverRegionLookup.self) private var observerRegionLookup
     @Environment(PacketReplayStore.self) private var packetReplayStore
+    @Environment(LiveTrafficPause.self) private var livePause
     @Environment(AppNavigationStore.self) private var appNavigationStore
     @Environment(AnalyzerSourceRegistry.self) private var analyzerSourceRegistry
     @Environment(\.colorScheme) private var colorScheme
@@ -302,6 +303,8 @@ struct MapScreen: View {
         let isConnected: Bool
         let isRefreshing: Bool
         let togglePacketSidebar: (() -> Void)?
+        /// Set while live traffic is paused: the title becomes a "Paused" button that resumes it.
+        var resumeLiveTraffic: (() -> Void)? = nil
         let retry: () -> Void
         let search: () -> Void
         @Binding var mapDisplayStyle: MapDisplayStyle
@@ -319,18 +322,25 @@ struct MapScreen: View {
                         .accessibilityLabel("Toggle live packets")
                     }
 
-                    HStack(spacing: 7) {
-                        Circle()
-                            .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
-                            .frame(width: 7, height: 7)
-                        Text("Live Map")
-                            .font(.monaspace(.headline))
+                    if let resumeLiveTraffic {
+                        LiveMapPausedButton(resume: resumeLiveTraffic)
+                            .padding(.horizontal, 14)
+                            .frame(height: 44)
+                            .nodeScopeFloatingGlass(cornerRadius: 18)
+                    } else {
+                        HStack(spacing: 7) {
+                            Circle()
+                                .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
+                                .frame(width: 7, height: 7)
+                            Text("Live Map")
+                                .font(.monaspace(.headline))
+                        }
+                        .padding(.horizontal, 14)
+                        .frame(height: 44)
+                        .nodeScopeFloatingGlass(cornerRadius: 18)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(isConnected ? "Live Map, connected" : "Live Map, reconnecting")
                     }
-                    .padding(.horizontal, 14)
-                    .frame(height: 44)
-                    .nodeScopeFloatingGlass(cornerRadius: 18)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel(isConnected ? "Live Map, connected" : "Live Map, reconnecting")
 
                 }
 
@@ -441,18 +451,7 @@ struct MapScreen: View {
                             .accessibilityLabel("Toggle live packets")
                         }
 
-                        HStack(spacing: 6) {
-                            Circle()
-                                .fill(liveFeed.isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
-                                .frame(width: 7, height: 7)
-                            Text("Live Map")
-                                .font(.monaspace(.headline))
-                                .fixedSize()
-                        }
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .accessibilityElement(children: .combine)
-                        .accessibilityLabel(liveFeed.isConnected ? "Live Map, connected" : "Live Map, reconnecting")
+                        CompactLiveMapTitle(isConnected: liveFeed.isConnected)
                     }
                     ToolbarItemGroup(placement: .topBarTrailing) {
                         Button(action: retryMapLoad) {
@@ -495,6 +494,7 @@ struct MapScreen: View {
                             isConnected: liveFeed.isConnected,
                             isRefreshing: isRefreshingMap,
                             togglePacketSidebar: togglePacketSidebar,
+                            resumeLiveTraffic: livePause.isPaused ? { livePause.resume() } : nil,
                             retry: retryMapLoad,
                             search: toggleMapSearch,
                             mapDisplayStyle: $mapDisplayStyle
@@ -855,6 +855,8 @@ struct MapScreen: View {
         .background {
             LiveFeedSequenceObserver(
                 beaconNodesChanged: { applyBeaconNodeUpdates() },
+                // Packets held for Realistic Propagation haven't started moving, so a pause drops them.
+                pauseStarted: { discardHeldPropagation() },
                 eventsChanged: {
                     if isInitialLoadComplete {
                         scheduleIncomingEventProcessing()
@@ -2730,6 +2732,11 @@ struct MapScreen: View {
             ), observationMatchesSelectedObserver(observerId: event.data?.observerId) else {
                 continue
             }
+            // Paused by hand: counted, not drawn, and never caught up on when live resumes.
+            if livePause.isPaused {
+                if let hash = event.data?.hash { livePause.noteArrival(hash: hash) }
+                continue
+            }
             guard isFirstCopy(of: event) else { continue }
 
             // Realistic propagation (CoreScope): observers report a packet over several seconds,
@@ -3348,8 +3355,10 @@ private struct LiveMapTrafficLayer: View {
 /// reading (and so redrawing on) those counters.
 private struct LiveFeedSequenceObserver: View {
     let beaconNodesChanged: () -> Void
+    let pauseStarted: () -> Void
     let eventsChanged: () -> Void
     @Environment(LiveFeedService.self) private var liveFeed
+    @Environment(LiveTrafficPause.self) private var livePause
 
     var body: some View {
         Color.clear
@@ -3357,6 +3366,7 @@ private struct LiveFeedSequenceObserver: View {
             .accessibilityHidden(true)
             .onChange(of: liveFeed.beaconNodeSequence) { beaconNodesChanged() }
             .onChange(of: liveFeed.eventSequence) { eventsChanged() }
+            .onChange(of: livePause.isPaused) { _, isPaused in if isPaused { pauseStarted() } }
     }
 }
 
@@ -4672,6 +4682,56 @@ private struct ReplayReceiver: Identifiable {
 }
 
 /// The labelled endpoint of a replay: an observer marker with its name always shown.
+/// The compact map's title: "Live Map" with its connection dot, or "Paused" while live traffic is
+/// paused by hand (tap to resume).
+private struct CompactLiveMapTitle: View {
+    let isConnected: Bool
+    @Environment(LiveTrafficPause.self) private var livePause
+
+    var body: some View {
+        Group {
+            if livePause.isPaused {
+                LiveMapPausedButton(resume: { livePause.resume() })
+            } else {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
+                        .frame(width: 7, height: 7)
+                    Text("Live Map")
+                        .font(.monaspace(.headline))
+                        .fixedSize()
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(isConnected ? "Live Map, connected" : "Live Map, reconnecting")
+            }
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+    }
+}
+
+/// The map's title while live traffic is paused: says so, and resumes it when tapped.
+private struct LiveMapPausedButton: View {
+    let resume: () -> Void
+
+    var body: some View {
+        Button(action: resume) {
+            HStack(spacing: 6) {
+                Image(systemName: "pause.fill")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(NodeScopeStyle.activity)
+                Text("Paused")
+                    .font(.monaspace(.headline))
+                    .foregroundStyle(.primary)
+                    .fixedSize()
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Live traffic paused")
+        .accessibilityHint("Resumes live traffic")
+    }
+}
+
 private struct ReplayReceiverMarker: View {
     let name: String
     /// The role colour of a node at the observer's location, shown as a ring around it.

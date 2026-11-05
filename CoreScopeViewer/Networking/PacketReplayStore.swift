@@ -71,3 +71,33 @@ final class PacketReplayStore {
         selectedRouteIndex = index
     }
 }
+
+/// Live traffic paused by hand, from the Live Packets panel or the map. The panel's list stops
+/// changing and the map stops drawing new traffic (anything already moving finishes), so the two
+/// stay in step. Packets keep arriving meanwhile; `newPacketCount` says how many, and resuming
+/// returns to live rather than replaying what was missed.
+@Observable
+@MainActor
+final class LiveTrafficPause {
+    private(set) var isPaused = false
+    private var newPacketHashes: Set<String> = []
+
+    var newPacketCount: Int { newPacketHashes.count }
+
+    func pause() {
+        guard !isPaused else { return }
+        newPacketHashes = []
+        isPaused = true
+    }
+
+    func resume() {
+        isPaused = false
+        newPacketHashes = []
+    }
+
+    /// Counts a packet that arrived while paused (by hash, so its other observations don't).
+    func noteArrival(hash: String) {
+        guard isPaused, !newPacketHashes.contains(hash) else { return }
+        newPacketHashes.insert(hash)
+    }
+}
