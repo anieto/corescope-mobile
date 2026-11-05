@@ -349,13 +349,15 @@ private struct BeaconPacketSidebar: View {
             }
         }
         .toolbar {
+            // On iPhone the sheet closes from the trailing corner, like Maps, with the filter
+            // leading; iPad and Duo have no close button and keep the filter trailing.
             if let close {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(action: close) { Image(systemName: "xmark") }
                         .accessibilityLabel("Close live packets")
                 }
             }
-            if showsToolbarItems { ToolbarItem(placement: .topBarTrailing) {
+            if showsToolbarItems { ToolbarItem(placement: close == nil ? .topBarTrailing : .topBarLeading) {
                 Button { showsFilters = true } label: {
                     Image(systemName: filterType == nil
                           ? "line.3.horizontal.decrease.circle"
@@ -698,15 +700,17 @@ private struct CoreScopeMapLivePacketSidebar: View {
             }
         }
         .toolbar {
+            // On iPhone the sheet closes from the trailing corner, like Maps, with the filter
+            // leading; iPad and Duo have no close button and keep the filter trailing.
             if let close {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(action: close) {
                         Image(systemName: "xmark")
                     }
                     .accessibilityLabel("Close live packets")
                 }
             }
-            if showsToolbarItems { ToolbarItem(placement: .topBarTrailing) {
+            if showsToolbarItems { ToolbarItem(placement: close == nil ? .topBarTrailing : .topBarLeading) {
                 Button { isFiltersPresented = true } label: {
                     Image(systemName: filterType == nil
                         ? "line.3.horizontal.decrease.circle"
