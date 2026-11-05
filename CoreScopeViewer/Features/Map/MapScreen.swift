@@ -2166,8 +2166,9 @@ struct MapScreen: View {
         if isMapCameraMoving { replayPausedAt = .now }
         let replayStart = Date.now.addingTimeInterval(replayNeedsLeadIn ? 0.75 : 0.5)
         replayNeedsLeadIn = false
+        let pointsPerMapPoint = replayScreenPointsPerMapPoint()
         func travelTime(_ from: CLLocationCoordinate2D, _ to: CLLocationCoordinate2D) -> TimeInterval {
-            Self.hopTravelTime(from: from, to: to, shortest: 0.45, longest: 1.5)
+            Self.hopTravelTime(from: from, to: to, shortest: 0.45, longest: 1.5, pointsPerMapPoint: pointsPerMapPoint)
         }
 
         // Plan every hop first: when it starts (after the hops before it on its route) and how
@@ -2657,8 +2658,16 @@ struct MapScreen: View {
         from start: CLLocationCoordinate2D,
         to end: CLLocationCoordinate2D,
         shortest: TimeInterval,
-        longest: TimeInterval
+        longest: TimeInterval,
+        pointsPerMapPoint: Double? = nil
     ) -> TimeInterval {
+        // A hop too short to see at this zoom (a kilometre or two between neighbours on a
+        // zoomed-out map) is passed straight through: given its usual time, the dot sat wiggling
+        // in one spot, and a route that steps out to a neighbour and back read as ping-pong.
+        if let pointsPerMapPoint {
+            let a = MKMapPoint(start), b = MKMapPoint(end)
+            if hypot(b.x - a.x, b.y - a.y) * pointsPerMapPoint < 6 { return 0.05 }
+        }
         let kilometres = MKMapPoint(start).distance(to: MKMapPoint(end)) / 1000
         // Gentle (logarithmic) growth that reaches `longest` at about 40 km.
         let growth = (longest - shortest) / log2(41)
@@ -2689,11 +2698,13 @@ struct MapScreen: View {
         for (subchainIndex, subchain) in subchains.enumerated() {
             if subchain.count >= 2 {
                 // Hops follow one another; each takes 0.3 to 1.0 s by its real length.
+                let pointsPerMapPoint = replayScreenPointsPerMapPoint()
                 var elapsed: TimeInterval = 0
                 for index in 0..<(subchain.count - 1) {
                     let p1 = subchain[index]
                     let p2 = subchain[index + 1]
-                    let travelDuration = Self.hopTravelTime(from: p1, to: p2, shortest: 0.3, longest: 1.0)
+                    let travelDuration = Self.hopTravelTime(from: p1, to: p2, shortest: 0.3, longest: 1.0,
+                                                            pointsPerMapPoint: pointsPerMapPoint)
                     let hopStart = observedAt.addingTimeInterval(elapsed)
                     elapsed += travelDuration
                     if isValidHopDistance(from: p1, to: p2) {
