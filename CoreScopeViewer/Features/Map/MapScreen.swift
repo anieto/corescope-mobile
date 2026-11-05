@@ -2894,12 +2894,14 @@ struct MapScreen: View {
     private func resolvedSubchains(for packet: Packet) -> [[CLLocationCoordinate2D]] {
         var hops: [String] = []
         var resolvedPubkeys: [String?] = []
+        var hasResolvedPath = false
 
         if let decodedJson = packet.decodedJson {
             if let jsonData = decodedJson.data(using: .utf8),
                let decoded = try? JSONDecoder().decode(DecodedJsonHelper.self, from: jsonData) {
                 hops = decoded.path?.hops ?? []
                 resolvedPubkeys = decoded.resolvedPath ?? []
+                hasResolvedPath = decoded.resolvedPath != nil
             }
         }
 
@@ -2910,10 +2912,15 @@ struct MapScreen: View {
         if hops.isEmpty, let rawHex = packet.rawHex {
             hops = parseHops(from: rawHex)
         }
+        if !hasResolvedPath, let field = packet.resolvedPath {
+            resolvedPubkeys = field.keys
+            hasResolvedPath = true
+        }
 
         return resolvedSubchains(
             hops: hops,
             resolvedPubkeys: resolvedPubkeys,
+            guessesUnresolvedHops: !hasResolvedPath && Self.hasMultibyteHops(hops),
             observerId: packet.observerId,
             observerName: packet.observerName
         )
@@ -2928,6 +2935,7 @@ struct MapScreen: View {
         return resolvedSubchains(
             hops: hops,
             resolvedPubkeys: resolvedPubkeys,
+            guessesUnresolvedHops: data.resolvedPath == nil && Self.hasMultibyteHops(hops),
             observerId: data.observerId,
             observerName: data.observerName
         )
@@ -2936,6 +2944,7 @@ struct MapScreen: View {
     private func resolvedSubchains(
         hops: [String],
         resolvedPubkeys: [String?],
+        guessesUnresolvedHops: Bool,
         observerId: String?,
         observerName: String?
     ) -> [[CLLocationCoordinate2D]] {
@@ -2956,7 +2965,12 @@ struct MapScreen: View {
                 coord = resolveCoordinate(keyOrPrefix: pubkey, nearCoordinate: referenceCoord)
             }
 
-            if coord == nil && index < hops.count {
+            // A hop the analyzer left unresolved stays unknown, as in replays: guessing the nearest
+            // node with the same short ID (five or six share each 1-byte ID here) drew paths that
+            // doubled back between neighbours, and a repeated ID the analyzer had rejected (a node
+            // relays a packet once) sent the packet back to where it had already been. Only a source
+            // that sends no resolved path at all falls back to guessing.
+            if coord == nil && guessesUnresolvedHops && index < hops.count {
                 let hop = hops[index]
                 coord = resolveCoordinate(keyOrPrefix: hop, nearCoordinate: referenceCoord)
             }
@@ -2990,6 +3004,13 @@ struct MapScreen: View {
         }
 
         return subchains
+    }
+
+    /// 2- or 3-byte hop IDs, specific enough to guess a node from when a source sends no resolved
+    /// path. 1-byte IDs are shared by five or six nodes each here, so a guess is close to random.
+    nonisolated private static func hasMultibyteHops(_ hops: [String]) -> Bool {
+        guard let first = hops.first else { return false }
+        return first.count > 2
     }
 
     private func extractHops(from data: LivePacketData) -> [String] {

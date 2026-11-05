@@ -54,6 +54,9 @@ struct Packet: Codable, Sendable, Identifiable, Hashable {
     let pathJson: String?
     let direction: String?
     let score: Double?
+    /// The analyzer's node for each hop (CoreScope's top-level `resolved_path`); nil when the
+    /// source doesn't send one. Unresolved hops are nil entries.
+    var resolvedPath: ResolvedPathField? = nil
 
     var id: String { hash.isEmpty ? "server:\(serverID.map(String.init) ?? "")" : hash }
 
@@ -75,6 +78,33 @@ struct Packet: Codable, Sendable, Identifiable, Hashable {
         case snr, rssi
         case pathJson = "path_json"
         case direction, score
+        case resolvedPath = "resolved_path"
+    }
+}
+
+/// A packet's resolved hop keys, read leniently: an array (`["ab…", null]`) or that array as a
+/// JSON string. Anything else reads as no keys rather than failing the whole packet.
+struct ResolvedPathField: Codable, Sendable, Hashable {
+    let keys: [String?]
+
+    init(keys: [String?]) { self.keys = keys }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let keys = try? container.decode([String?].self) {
+            self.keys = keys
+        } else if let text = try? container.decode(String.self),
+                  let data = text.data(using: .utf8),
+                  let keys = try? JSONDecoder().decode([String?].self, from: data) {
+            self.keys = keys
+        } else {
+            self.keys = []
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(keys)
     }
 }
 
