@@ -2173,15 +2173,16 @@ struct MapScreen: View {
             : .orange
         let signalColor: Color = colorScheme == .dark ? .orange : .blue
 
-        // Each hop's time comes from its real length (see `hopTravelTime`): 0.45 s for neighbours
-        // up to 1.5 s for long links, the same at any zoom.
+        // Each hop's time comes from its real length (see `hopTravelTime`) at a steady 90 km/s,
+        // between 0.45 and 1.5 s: the pace tuned earlier at region zoom, now the same at any zoom.
         resetReplayClock()
         if isMapCameraMoving { replayPausedAt = .now }
         let replayStart = Date.now.addingTimeInterval(replayNeedsLeadIn ? 0.75 : 0.5)
         replayNeedsLeadIn = false
         let pointsPerMapPoint = replayScreenPointsPerMapPoint()
         func travelTime(_ from: CLLocationCoordinate2D, _ to: CLLocationCoordinate2D) -> TimeInterval {
-            Self.hopTravelTime(from: from, to: to, shortest: 0.45, longest: 1.5, pointsPerMapPoint: pointsPerMapPoint)
+            Self.hopTravelTime(from: from, to: to, shortest: 0.45, longest: 1.5,
+                               pointsPerMapPoint: pointsPerMapPoint, kilometresPerSecond: 90)
         }
 
         // Plan every hop first: when it starts (after the hops before it on its route) and how
@@ -2690,7 +2691,8 @@ struct MapScreen: View {
         to end: CLLocationCoordinate2D,
         shortest: TimeInterval,
         longest: TimeInterval,
-        pointsPerMapPoint: Double? = nil
+        pointsPerMapPoint: Double? = nil,
+        kilometresPerSecond: Double? = nil
     ) -> TimeInterval {
         // A hop too short to see at this zoom (a kilometre or two between neighbours on a
         // zoomed-out map) is passed straight through: given its usual time, the dot sat wiggling
@@ -2700,6 +2702,10 @@ struct MapScreen: View {
             if hypot(b.x - a.x, b.y - a.y) * pointsPerMapPoint < 6 { return 0.05 }
         }
         let kilometres = MKMapPoint(start).distance(to: MKMapPoint(end)) / 1000
+        // A steady speed, held between `shortest` and `longest`.
+        if let kilometresPerSecond {
+            return min(max(kilometres / kilometresPerSecond, shortest), longest)
+        }
         // Gentle (logarithmic) growth that reaches `longest` at about 40 km.
         let growth = (longest - shortest) / log2(41)
         return min(shortest + growth * log2(1 + kilometres), longest)
