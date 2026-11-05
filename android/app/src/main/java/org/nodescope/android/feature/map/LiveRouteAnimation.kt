@@ -260,8 +260,18 @@ internal class LiveRouteBuilder {
      */
     private val starts = HashMap<String, Long>()
 
+    /** When each packet was first seen, for Realistic Propagation. */
+    private val firstSeen = HashMap<String, Long>()
+    private var holdMs: Long? = null
+
+    /**
+     * [holdMs] set (Realistic Propagation, iOS): every observation of a packet waits until that long
+     * after the packet was first seen, then all of its paths animate together. The analyzer's
+     * buffer is how long it waits for every observer, so the map runs that far behind live.
+     */
     fun build(packets: List<LivePacket>, nodes: List<MeshNode>, observers: List<MeshObserver>, filters: MapFilters,
-        zoom: Double? = null): List<LiveRoute> = traced("NodeScope:routes") {
+        zoom: Double? = null, holdMs: Long? = null): List<LiveRoute> = traced("NodeScope:routes") {
+        if (holdMs != this.holdMs) { this.holdMs = holdMs; routes.clear(); starts.clear() }
         if (nodes !== this.nodes) { this.nodes = nodes; lookup = nodeLookup(nodes); routes.clear() }
         if (observers !== this.observers) { this.observers = observers; routes.clear() }
         // Recent history appears as already-arrived routes while it is under 12 s old, as on iOS.
@@ -281,7 +291,9 @@ internal class LiveRouteBuilder {
                 // their own timing rather than replaying.
                 val start = if (packet.isLive) starts.getOrPut(packet.key) {
                     val now = System.currentTimeMillis()
-                    if (now - observed < 2_000) maxOf(observed, now) else observed
+                    val arrival = if (now - observed < 2_000) maxOf(observed, now) else observed
+                    // Held: from the packet's first sighting, or now if that has already passed.
+                    holdMs?.let { hold -> maxOf(firstSeen.getOrPut(packet.hash) { arrival } + hold, arrival) } ?: arrival
                 } else observed
                 LiveRoute(packet.key, start, color, routeAnchors(packet, nodes, observers, lookup),
                     packetRoute(packet, nodes, observers, lookup), historical = !packet.isLive, packet = packet, observedAt = observed, zoom = zoom)
@@ -289,6 +301,7 @@ internal class LiveRouteBuilder {
         }
         routes.keys.retainAll(shown.toSet())
         starts.keys.retainAll(shown.mapTo(HashSet()) { it.key })
+        if (firstSeen.size > 400) firstSeen.keys.retainAll(packets.mapTo(HashSet()) { it.hash })
         result
     }
 }

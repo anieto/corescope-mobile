@@ -269,8 +269,12 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     val routeBuilder = remember { LiveRouteBuilder() }
     // The settled zoom, read (not observed) when a route is built, so hops too short to see pass through.
     val settledZoom = remember { doubleArrayOf(Double.NaN) }
+    // Settings → Live Map → Realistic Propagation: hold each packet for the analyzer's buffer
+    // (5 s when it doesn't say), then animate all of its paths together.
+    val realistic = LiveMapSettings.realisticPropagation(context)
+    val currentHold by rememberUpdatedState(if (realistic) snapshot?.propagationBufferMs ?: 5_000L else null)
     val paths = remember { derivedStateOf { currentFeed().let {
-        routeBuilder.build(it.visiblePackets, currentNodes, it.observers, currentFilters, settledZoom[0].takeUnless(Double::isNaN))
+        routeBuilder.build(it.visiblePackets, currentNodes, it.observers, currentFilters, settledZoom[0].takeUnless(Double::isNaN), currentHold)
     } } }
     val replayRoute = remember(replayOption, replayStart, replayReady) {
         replayOption?.takeIf { replayReady }?.let { option ->
