@@ -88,7 +88,9 @@ internal fun rememberGoogleMapEngine(): GoogleMapEngine {
 @Composable
 internal fun GoogleMapEngineHost(engine: GoogleMapEngine, mapType: GoogleMapType, dark: Boolean, bottomInset: Int, savedCamera: SavedCamera,
     onCameraIdle: (SavedCamera) -> Unit, onTap: (MapTap) -> Boolean, modifier: Modifier = Modifier, hidesBusinesses: Boolean = false,
-    onLongPress: ((MapTap) -> Unit)? = null) {
+    onLongPress: ((MapTap) -> Unit)? = null,
+    /** The user started panning or zooming (not a move the app made). */
+    onGestureMove: (() -> Unit)? = null) {
     val view = engine.view
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -96,6 +98,7 @@ internal fun GoogleMapEngineHost(engine: GoogleMapEngine, mapType: GoogleMapType
     val currentOnCameraIdle by rememberUpdatedState(onCameraIdle)
     val currentOnTap by rememberUpdatedState(onTap)
     val currentOnLongPress by rememberUpdatedState(onLongPress)
+    val currentOnGestureMove by rememberUpdatedState(onGestureMove)
     DisposableEffect(view, lifecycle) {
         var alive = true
         var started = false
@@ -126,6 +129,9 @@ internal fun GoogleMapEngineHost(engine: GoogleMapEngine, mapType: GoogleMapType
             engine.routeLayer.map = map
             // The route layer follows every camera change, including gestures between route frames.
             map.setOnCameraMoveListener { engine.routeLayer.invalidate() }
+            map.setOnCameraMoveStartedListener { reason ->
+                if (reason == com.google.android.gms.maps.GoogleMap.OnCameraMoveStartedListener.REASON_GESTURE) currentOnGestureMove?.invoke()
+            }
             map.setOnCameraIdleListener {
                 engine.routeLayer.invalidate()
                 overlays.onCameraIdle()
@@ -327,6 +333,7 @@ internal class GoogleOverlays(private val context: Context, private val map: Goo
 
     /** Google markers have no text of their own, so names are drawn on the route layer. */
     override fun setNodeLabelsVisible(visible: Boolean) { routeLayer.labelsVisible = visible }
+    override fun setObserverLabelsVisible(visible: Boolean) { routeLayer.observerLabelsVisible = visible }
 
     override fun setRouteAnchors(markers: List<MapMarker>) { routeLayer.anchors = markers }
 
@@ -461,6 +468,10 @@ internal class RouteLayer(context: Context) : View(context) {
         set(value) { field = value; if (labelsVisible) invalidate() }
     var labelsVisible = false
         set(value) { if (field != value) { field = value; invalidate() } }
+    /** A replay's observer names, shown once zoomed in to about a city. */
+    var observerLabelsVisible = false
+        set(value) { if (field != value) { field = value; invalidate() } }
+    private val observerIcons = HashMap<String?, android.graphics.Bitmap>()
     /** White names with a dark halo (dark, satellite and hybrid maps), else dark with a light halo. */
     var lightLabels = false
         set(value) { if (field != value) { field = value; invalidate() } }
@@ -515,14 +526,22 @@ internal class RouteLayer(context: Context) : View(context) {
             canvas.drawCircle(p.x.toFloat(), p.y.toFloat(), ring.radius * density, stroke)
         }
         for ((point, color) in frame.heads) dot(canvas, screen(point), 3.5f, 0xFFFFFFFF.toInt(), 1.5f, parseColor(color))
-        for (anchor in anchors) dot(canvas, screen(anchor.coordinate), 6f, roleColors[anchor.role.lowercase()] ?: 0xFF65DDB4.toInt(), 2f, 0xFFFFFFFF.toInt())
-        // A replayed route's observers are always labelled, as on CARTO.
-        val receivers = anchors.filter { it.role == "observer" && it.name != null }
-        if (receivers.isNotEmpty()) drawLabels(canvas, receivers, ::screen, fresh = !labels)
+        for (anchor in anchors) if (anchor.role != "observer")
+            dot(canvas, screen(anchor.coordinate), 6f, roleColors[anchor.role.lowercase()] ?: 0xFF65DDB4.toInt(), 2f, 0xFFFFFFFF.toInt())
+        // A replay's observers: ringed antenna markers on top, named once zoomed in to about a city.
+        val receivers = anchors.filter { it.role == "observer" }
+        for (receiver in receivers) {
+            val icon = observerIcons.getOrPut(receiver.ringRole) { observerMarkerBitmap(receiver.ringRole?.let { roleColors[it.lowercase()] }, density) }
+            val at = screen(receiver.coordinate)
+            canvas.drawBitmap(icon, at.x - icon.width / 2f, at.y - icon.height / 2f, null)
+        }
+        val named = receivers.filter { it.name != null }
+        if (observerLabelsVisible && named.isNotEmpty()) drawLabels(canvas, named, ::screen, fresh = !labels, offsetEm = 1.1f)
     }
 
     /** [fresh] starts collision checks over; otherwise these labels also avoid ones already drawn. */
-    private fun drawLabels(canvas: Canvas, markers: List<MapMarker>, screen: (Coordinate) -> android.graphics.Point, fresh: Boolean = true) {
+    private fun drawLabels(canvas: Canvas, markers: List<MapMarker>, screen: (Coordinate) -> android.graphics.Point, fresh: Boolean = true,
+        offsetEm: Float = 0.8f) {
         if (fresh) placedLabels.clear()
         val textColor = if (lightLabels) 0xFFFFFFFF.toInt() else 0xFF14243A.toInt()
         val haloColor = if (lightLabels) 0xB8000000.toInt() else 0xD9FFFFFF.toInt()
@@ -536,7 +555,7 @@ internal class RouteLayer(context: Context) : View(context) {
             }
             val textWidth = (0 until layout.lineCount).maxOf { layout.getLineWidth(it) }
             val left = at.x - layout.width / 2f
-            val top = at.y + 0.8f * labelPaint.textSize
+            val top = at.y + offsetEm * labelPaint.textSize
             val bounds = RectF(at.x - textWidth / 2, top, at.x + textWidth / 2, top + layout.height)
             if (placedLabels.any { RectF.intersects(it, bounds) }) continue
             placedLabels += bounds

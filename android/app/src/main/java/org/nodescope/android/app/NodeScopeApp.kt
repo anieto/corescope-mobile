@@ -297,11 +297,16 @@ internal fun AppShell(
             val receivers = route.receivers(observers)
             val last = route.keys.lastOrNull()?.let { lookup[it.lowercase()]?.coordinate }
             val finalHops = if (last == null) emptyList() else receivers.map { it.second }.filter { it != last }.map { listOf(last, it) }
-            ReplayRoute(routeSubchains(route.keys, nodes) + finalHops, route.keys.mapNotNull { lookup[it.lowercase()] }, route.hops, route, receivers)
+            val chains = routeSubchains(route.keys, nodes)
+            ReplayRoute(chains + finalHops, route.keys.mapNotNull { lookup[it.lowercase()] }, route.hops, route, receivers, nodeChains = chains)
         }
     }
     fun startReplay(routes: List<RouteOption>, selected: Int, packetId: String? = null) {
-        replay = RouteReplay(System.nanoTime(), placedRoutes(routes), selected, packetId, routes)
+        // With Realistic Propagation on, a packet heard along several routes replays them all
+        // together, as the live map shows it (iOS); All Routes is in the route menu either way.
+        val initial = if (routes.size > 1 && org.nodescope.android.feature.map.LiveMapSettings.realisticPropagation(context))
+            org.nodescope.android.feature.map.ALL_ROUTES else selected
+        replay = RouteReplay(System.nanoTime(), placedRoutes(routes), initial, packetId, routes)
         panelPacket = null
         selectTab(Destination.MAP)
     }

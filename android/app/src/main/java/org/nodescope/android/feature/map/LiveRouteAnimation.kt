@@ -108,8 +108,10 @@ internal class LiveRoute(val key: String, val receivedAt: Long, val color: Strin
     /** When the packet was observed, for route details; [receivedAt] is when the animation starts. */
     val observedAt: Long = receivedAt,
     /** The map's zoom when the route was built, so hops too short to see pass straight through. */
-    zoom: Double? = null) {
-    val hops: List<RouteHop> = if (replay) replayHops(subchains, receivedAt) else liveHops(subchains, receivedAt, historical, zoom)
+    zoom: Double? = null,
+    /** A replay's hops, already planned (see [planReplayHops]). */
+    plannedHops: List<RouteHop>? = null) {
+    val hops: List<RouteHop> = plannedHops ?: if (replay) replayHops(subchains, receivedAt) else liveHops(subchains, receivedAt, historical, zoom)
     val pulses: List<Coordinate> = if (historical || replay) emptyList() else subchains.filter { it.size == 1 }.map { it.single() }
     private val startsAt: Long = hops.minOfOrNull { it.startsAt } ?: receivedAt
     val endsAt: Long = max(
@@ -124,7 +126,16 @@ data class ReplayRoute(val subchains: List<List<Coordinate>>, val nodes: List<Me
     /** The route and who heard it, for naming it in the replay controls. */
     val option: org.nodescope.android.feature.packets.RouteOption? = null,
     /** The observers it ends at (name and position), drawn as the route's labelled endpoints. */
-    val receivers: List<Pair<String, Coordinate>> = emptyList())
+    val receivers: List<Pair<String, Coordinate>> = emptyList(),
+    /** The route's own nodes, without the final hops to its observers. */
+    val nodeChains: List<List<Coordinate>> = subchains)
+
+/** [RouteReplay.selected] for replaying every route together (iOS `PacketReplayStore.allRoutes`). */
+const val ALL_ROUTES = -1
+
+/** The routes a replay shows: all of them, or the selected one. */
+fun RouteReplay.shownRoutes(index: Int): List<ReplayRoute> =
+    if (index == ALL_ROUTES) routes else listOfNotNull(routes.getOrNull(index))
 
 /**
  * "Replay on map" from packet details (iOS `PacketReplayStore`): every route, and the one chosen.
@@ -170,6 +181,47 @@ private fun liveHops(subchains: List<List<Coordinate>>, startsAt: Long, historic
         }
     }
     return hops
+}
+
+/**
+ * A replay's hops (iOS `replayPacketRoute`). Each hop takes its real length at a steady 90 km/s,
+ * held to 0.45–1.5 s (a hop too short to see at [zoom] passes straight through), after the hops
+ * before it on its route; the final hops, from the route's last node to each of its observers,
+ * travel together. With [allRoutes], hops the routes share are planned once, so the packet spreads
+ * out from a common trunk; each observer stays only on its shortest route; and each hop leaves a
+ * trail, holding a second after it arrives before fading, so the packet is seen spreading rather
+ * than as a growing tree. One route instead stays drawn until it finishes, then fades as one path.
+ * Returns the hops and the observers kept.
+ */
+internal fun planReplayHops(routes: List<ReplayRoute>, startsAt: Long, allRoutes: Boolean, zoom: Double?): Pair<List<RouteHop>, List<Pair<String, Coordinate>>> {
+    fun travel(a: Coordinate, b: Coordinate) = hopTravelMs(a, b, 450, 1_500, zoom, kilometresPerSecond = 90.0)
+    val reached = HashSet<String>()
+    val kept = routes.sortedBy { it.hops }.mapNotNull { route ->
+        val receivers = if (allRoutes) route.receivers.filter { reached.add(it.first.lowercase()) } else route.receivers
+        // A route whose observers are all on shorter routes adds nothing of its own.
+        if (allRoutes && route.receivers.isNotEmpty() && receivers.isEmpty()) null else route to receivers
+    }
+    data class Planned(val from: Coordinate, val to: Coordinate, val start: Long, val travel: Long)
+    val planned = mutableListOf<Planned>()
+    val seen = HashSet<Pair<Coordinate, Coordinate>>()
+    fun isNew(a: Coordinate, b: Coordinate) = a != b && seen.add(a to b)
+    for ((route, receivers) in kept) {
+        val chain = route.nodeChains.flatten().fold(mutableListOf<Coordinate>()) { list, point -> list.apply { if (lastOrNull() != point) add(point) } }
+        var elapsed = 0L
+        for ((a, b) in chain.zipWithNext()) {
+            val time = travel(a, b)
+            if (isNew(a, b)) planned += Planned(a, b, elapsed, time)
+            elapsed += time
+        }
+        val last = chain.lastOrNull() ?: continue
+        receivers.forEach { (_, at) -> if (isNew(last, at)) planned += Planned(last, at, elapsed, travel(last, at)) }
+    }
+    val fadeStart = startsAt + (planned.maxOfOrNull { it.start + it.travel } ?: 0) + 750
+    val hops = planned.map { hop ->
+        val begins = startsAt + hop.start
+        RouteHop(hop.from, hop.to, begins, if (allRoutes) begins + hop.travel + 1_000 else fadeStart, 650, hop.travel, HOP_CURVATURE)
+    }
+    return hops to kept.flatMap { it.second }.distinctBy { it.second }
 }
 
 /** Replay hops travel strictly one after another across every subchain, then fade as one route. */
@@ -345,3 +397,12 @@ internal fun thinCoveredNodes(nodes: List<MeshNode>, zoom: Double): Pair<List<Me
     val kept = best.values.sortedBy { it.publicKey }
     return kept to best.entries.mapNotNull { (key, node) -> covered[key]?.let { node.publicKey to it.toList() } }.toMap()
 }
+
+/**
+ * The role of a node at an observer's site (within 75 m), for the ring around its replay marker:
+ * a repeater over a room over a companion over a sensor (iOS `observersWithNodeRoles`).
+ */
+internal fun siteRole(site: Coordinate, nodes: List<MeshNode>): String? =
+    nodes.filter { node -> node.coordinate?.let { distanceKm(it, site) <= 0.075 } == true }
+        .map { it.role.lowercase() }
+        .minByOrNull { MAP_ROLES.indexOf(it).let { rank -> if (rank < 0) MAP_ROLES.size else rank } }

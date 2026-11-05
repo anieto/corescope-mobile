@@ -121,14 +121,22 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     // A replay waits until the map has framed it and finished drawing (set by the framing
     // effect below), so it never starts while the camera is still moving or tiles are loading.
     var replayReady by remember(routeReplay?.id) { mutableStateOf(false) }
-    val replayOption = routeReplay?.routes?.getOrNull(replayIndex)?.takeIf { replayActive }
+    // The replayed routes: the chosen one, or all of them together (iOS All Routes).
+    val shownReplayRoutes = remember(routeReplay, replayIndex, replayActive) {
+        if (replayActive) routeReplay?.shownRoutes(replayIndex).orEmpty() else emptyList()
+    }
+    val replayPoints = remember(shownReplayRoutes) { shownReplayRoutes.flatMap { it.subchains.flatten() } }
+    // The first replay of a request (arriving from another screen) waits a little longer before
+    // starting than one started on the map, so there's time to take in the view (iOS 0.75 / 0.5 s).
+    var replayLeadIn by remember(routeReplay?.id) { mutableLongStateOf(750L) }
+    fun nextReplayStart(): Long = (System.currentTimeMillis() + replayLeadIn).also { replayLeadIn = 500L }
     // The replay controls float over the bottom of the map rather than shrinking it: resizing
     // the MapView re-centres it mid-flight, which made starting a replay jitter. Bottom controls
     // and the framed route are kept clear of them instead.
     val showsReplayControls = replayActive && routeReplay != null
     var replayControlsHeight by remember { mutableIntStateOf(0) }
     val controlsInset by animateIntAsState(if (showsReplayControls) replayControlsHeight else 0, tween(250), label = "replay-inset")
-    val mapNodes = if (replayOption != null && routeOnly) replayOption.nodes else displayedNodes
+    val mapNodes = if (shownReplayRoutes.isNotEmpty() && routeOnly) shownReplayRoutes.flatMap { it.nodes }.distinctBy { it.publicKey } else displayedNodes
     var cameraValues by rememberSaveable { mutableStateOf(listOf(0.0, 0.0, 1.0, 0.0, 0.0)) }
     var initialized by rememberSaveable { mutableStateOf(false) }
     var lastRegion by rememberSaveable { mutableStateOf(selectedRegion) }
@@ -174,7 +182,9 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     val framingInsets = FramingInsets((24 * density).toInt(), (72 * density).toInt(), (24 * density).toInt(), (104 * density).toInt())
     fun refreshLabels(nodes: List<MeshNode>) {
         val current = engine.camera ?: return
-        engine.overlays?.setNodeLabelsVisible(nodeLabelsVisible(current.visibleBounds(), nodes))
+        val bounds = current.visibleBounds()
+        engine.overlays?.setNodeLabelsVisible(nodeLabelsVisible(bounds, nodes))
+        engine.overlays?.setObserverLabelsVisible(bounds.north - bounds.south <= 0.25)
     }
     // "Center on my location" (iOS): permission is asked on the first tap, one fix is taken,
     // and the position is only kept in memory to draw the dot.
@@ -209,7 +219,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     // Settings → Live Map → Group Nearby Nodes. Off, every node is drawn on its own, with ones that
     // would cover each other while zoomed out thinned to one dot (iOS).
     val groupsNodes = LiveMapSettings.groupsNodes(context)
-    val routeOnlyReplay = replayOption != null && routeOnly
+    val routeOnlyReplay = shownReplayRoutes.isNotEmpty() && routeOnly
     val thinned = remember(mapNodes, spreadZoom, groupsNodes, routeOnlyReplay) {
         if (groupsNodes || routeOnlyReplay) mapNodes to emptyMap() else thinCoveredNodes(mapNodes, spreadZoom)
     }
@@ -276,11 +286,14 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     val paths = remember { derivedStateOf { currentFeed().let {
         routeBuilder.build(it.visiblePackets, currentNodes, it.observers, currentFilters, settledZoom[0].takeUnless(Double::isNaN), currentHold)
     } } }
-    val replayRoute = remember(replayOption, replayStart, replayReady) {
-        replayOption?.takeIf { replayReady }?.let { option ->
-            // The observers that heard the route are its labelled endpoints.
-            val receivers = option.receivers.map { (name, at) -> MapMarker(at, "observer", name = name) }
-            LiveRoute("replay-${routeReplay?.id}-$replayIndex-$replayStart", replayStart, "#FFA833", nodeMarkers(option.nodes) + receivers, option.subchains, replay = true)
+    val replayRoute = remember(shownReplayRoutes, replayStart, replayReady) {
+        shownReplayRoutes.takeIf { replayReady && it.isNotEmpty() }?.let { shown ->
+            val (hops, receivers) = planReplayHops(shown, replayStart, replayIndex == ALL_ROUTES, settledZoom[0].takeUnless(Double::isNaN))
+            // The observers that heard the routes are their endpoints, ringed in the colour of a
+            // node at the same site, which their marker covers (iOS).
+            val observers = receivers.map { (name, at) -> MapMarker(at, "observer", name = name, ringRole = siteRole(at, currentAllNodes)) }
+            LiveRoute("replay-${routeReplay?.id}-$replayIndex-$replayStart", replayStart, "#FFA833",
+                nodeMarkers(shown.flatMap { it.nodes }.distinctBy { it.publicKey }) + observers, emptyList(), replay = true, plannedHops = hops)
         }
     }
     // While replaying, only the replayed route animates (live traffic resumes on "Live").
@@ -328,8 +341,8 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     LaunchedEffect(camera, routeReplay?.id, replayIndex) {
         val ready = camera ?: return@LaunchedEffect
         if (routeReplay == null) return@LaunchedEffect
-        fun play() { replayStart = System.currentTimeMillis() + 150; replayReady = true }
-        val points = replayOption?.subchains?.flatten().orEmpty()
+        fun play() { replayStart = nextReplayStart(); replayReady = true }
+        val points = replayPoints
         if (points.isEmpty()) return@LaunchedEffect play()
         // A map that was just created (e.g. arriving from Channels) needs its style first.
         withTimeoutOrNull(3_000) { snapshotFlow { engine.overlays }.first { it != null } }
@@ -360,7 +373,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         if (framedFraction == bottomObscuredFraction) return@LaunchedEffect
         framedFraction = bottomObscuredFraction
         val ready = camera ?: return@LaunchedEffect
-        val points = replayOption?.subchains?.flatten().orEmpty()
+        val points = replayPoints
         if (routeReplay == null || points.isEmpty()) return@LaunchedEffect
         val insets = replayFramingInsets(ready.width, ready.height, replayControlsHeight, density, bottomObscuredFraction)
         if (!replayNeedsFraming(points.map(ready::toScreen), ready.width, ready.height, insets, ready.zoom)) return@LaunchedEffect
@@ -372,6 +385,14 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         withTimeoutOrNull(1_500) { ready.animateAndWait(update, 300) }
     }
     val replayingNow by rememberUpdatedState(routeReplay != null)
+    // A replay pauses while the user pans or zooms and carries on once the map settles (iOS):
+    // [0] when the pause began (0 when running), [1] the time spent paused so far.
+    val replayPause = remember { LongArray(2) }
+    LaunchedEffect(replayStart) { replayPause[0] = 0; replayPause[1] = 0 }
+    fun pauseReplay() { if (replayingNow && replayPause[0] == 0L) replayPause[0] = System.currentTimeMillis() }
+    fun resumeReplay() {
+        if (replayPause[0] != 0L) { replayPause[1] += System.currentTimeMillis() - replayPause[0]; replayPause[0] = 0 }
+    }
     LaunchedEffect(overlays) {
         val drawing = overlays ?: return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -388,6 +409,8 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                 var anyActive = false
                 runMapFrames { vsyncNanos ->
                     now = clockOffset + vsyncNanos / 1_000_000
+                    // A replay's clock stands still while the user moves the map.
+                    if (replayingNow) now = (if (replayPause[0] != 0L) replayPause[0] else now) - replayPause[1]
                     val animate = ValueAnimator.areAnimatorsEnabled()
                     observedPaths = latestPaths
                     val active = observedPaths.filter { it.isActive(now) }
@@ -465,12 +488,12 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             }
         })
     Box(Modifier.weight(1f).fillMaxWidth()) {
-        val onCameraIdle: (SavedCamera) -> Unit = { cameraValues = it; settledZoom[0] = it[2]; refreshLabels(currentDisplayedNodes) }
+        val onCameraIdle: (SavedCamera) -> Unit = { cameraValues = it; settledZoom[0] = it[2]; resumeReplay(); refreshLabels(currentDisplayedNodes) }
         when (engine) {
             is MapLibreEngine -> MapLibreEngineHost(engine, styleMode = mode, retry = retry, bottomInset = controlsInset, savedCamera = cameraValues,
-                onCameraIdle = onCameraIdle, onTap = ::onTap, modifier = Modifier.fillMaxSize())
+                onCameraIdle = onCameraIdle, onTap = ::onTap, modifier = Modifier.fillMaxSize(), onGestureMove = ::pauseReplay)
             is GoogleMapEngine -> GoogleMapEngineHost(engine, mapType = providerChoice.googleType, dark = darkTheme, bottomInset = controlsInset,
-                savedCamera = cameraValues, onCameraIdle = onCameraIdle, onTap = ::onTap, modifier = Modifier.fillMaxSize())
+                savedCamera = cameraValues, onCameraIdle = onCameraIdle, onTap = ::onTap, modifier = Modifier.fillMaxSize(), onGestureMove = ::pauseReplay)
         }
         Column(Modifier.align(Alignment.TopStart).fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -583,10 +606,10 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             lastReplay?.let { shown ->
                 ReplayControls(
                     playing = replayPlaying || !replayReady, routes = shown.routes, selected = replayIndex, routeOnly = routeOnly,
-                    onPlay = { replayStart = System.currentTimeMillis() + 150 },
+                    onPlay = { replayStart = nextReplayStart() },
                     onLive = { replayActive = false; onExitReplay() },
                     // Another route waits for its own framing; the same one just restarts.
-                    onRoute = { if (it == replayIndex) replayStart = System.currentTimeMillis() + 150 else { replayReady = false; replayIndex = it } },
+                    onRoute = { if (it == replayIndex) replayStart = nextReplayStart() else { replayReady = false; replayIndex = it } },
                     onRouteOnly = { routeOnly = !routeOnly },
                     modifier = Modifier.fillMaxWidth().heightIn(max = replayPanelMaxHeight).onSizeChanged { replayControlsHeight = it.height })
             }
@@ -693,7 +716,7 @@ internal fun ReplayControls(playing: Boolean, routes: List<ReplayRoute>, selecte
                 }
                 // Routes are named by the observer that heard them, as in packet details.
                 val options = remember(routes) { routes.map { it.option ?: org.nodescope.android.feature.packets.RouteOption(emptyList(), hops = it.hops) } }
-                if (routes.size > 1) org.nodescope.android.feature.packets.RoutePicker(options, selected, onRoute, Modifier.widthIn(max = 320.dp))
+                if (routes.size > 1) org.nodescope.android.feature.packets.RoutePicker(options, selected, onRoute, Modifier.widthIn(max = 320.dp), allowsAll = true)
                 else options.getOrNull(selected)?.let { option ->
                     Text(listOfNotNull(option.heardBy.firstOrNull()?.observer, "${option.hops} hops").joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
