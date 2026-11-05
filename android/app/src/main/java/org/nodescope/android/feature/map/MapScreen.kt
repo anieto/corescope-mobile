@@ -206,15 +206,22 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     LaunchedEffect(locationMessage) { if (locationMessage != null) { delay(5_000); locationMessage = null } }
     // Co-located markers fan out by a fixed screen distance; recompute when zoom settles.
     val spreadZoom = kotlin.math.round(cameraValues[2] * 4) / 4
-    val nodes = remember(mapNodes, spreadZoom) { nodeMarkers(mapNodes, spreadCoincidentNodes(mapNodes, spreadZoom)) }
+    // Settings → Live Map → Group Nearby Nodes. Off, every node is drawn on its own, with ones that
+    // would cover each other while zoomed out thinned to one dot (iOS).
+    val groupsNodes = LiveMapSettings.groupsNodes(context)
+    val routeOnlyReplay = replayOption != null && routeOnly
+    val thinned = remember(mapNodes, spreadZoom, groupsNodes, routeOnlyReplay) {
+        if (groupsNodes || routeOnlyReplay) mapNodes to emptyMap() else thinCoveredNodes(mapNodes, spreadZoom)
+    }
+    val coveredNodes = thinned.second
+    val nodes = remember(thinned) { nodeMarkers(thinned.first, spreadCoincidentNodes(thinned.first, spreadZoom)) }
     val progress = remember { Animatable(0f) }
     var replay by remember { mutableIntStateOf(0) }
     val uriHandler = LocalUriHandler.current
 
-    val routeOnlyReplay = replayOption != null && routeOnly
-    LaunchedEffect(overlays, nodes, routeOnlyReplay) {
+    LaunchedEffect(overlays, nodes, routeOnlyReplay, groupsNodes) {
         // A route-only replay's nodes are never grouped, so no count badge outlives the replay.
-        overlays?.setNodes(nodes, grouped = !routeOnlyReplay)
+        overlays?.setNodes(nodes, grouped = groupsNodes && !routeOnlyReplay)
         refreshLabels(mapNodes)
     }
     // Region centers and names stay valid for the analyzer while a new region's nodes load,
@@ -273,12 +280,26 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     val replaying by rememberUpdatedState(replayActive && routeReplay != null)
     val latestPathsState = remember { derivedStateOf { if (replaying) listOfNotNull(currentReplayRoute) else paths.value } }
     val latestPaths by latestPathsState
+    val currentCoveredNodes by rememberUpdatedState(coveredNodes)
     fun onTap(tap: MapTap): Boolean {
         // A route under the finger opens its details (iOS), unless a node marker is right there.
         val route = if (tap.nodeUnderFinger) null else tap.routeKeys().firstNotNullOfOrNull { key ->
             latestPaths.firstOrNull { it.key == key && it.packet != null }
         }
+        // A thinned-out spot hides other nodes under its dot: zoom in until they come apart (iOS).
+        val stack = tap.nodeKey?.let { key -> currentCoveredNodes[key]?.let { covered ->
+            (covered + listOfNotNull(currentAllNodes.firstOrNull { it.publicKey == key })).mapNotNull { it.coordinate }
+        } }
         return when {
+            stack != null && stack.size > 1 -> {
+                val ready = engine.camera
+                if (ready != null) {
+                    val margin = (48 * density).toInt()
+                    val fit = fitCamera(boundsOf(stack), ready.width, ready.height, FramingInsets(margin, margin, margin, margin), density)
+                    ready.animate(CameraMove.Center(fit.coordinate, minOf(maxOf(fit.zoom, THIN_MARKERS_BELOW_ZOOM + 1), 13.0)), 500)
+                }
+                true
+            }
             tap.nodeUnderFinger -> { selectNode(tap.nodeKey!!); true }
             tap.expandGroup != null && tap.nodeKey == null -> { tap.expandGroup.invoke(); true }
             route != null -> { selectedNode = null; routeDetail = routeDetails(route.packet!!, currentAllNodes, route.observedAt); true }

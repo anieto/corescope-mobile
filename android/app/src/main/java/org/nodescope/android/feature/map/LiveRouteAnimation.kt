@@ -215,3 +215,34 @@ internal class LiveRouteBuilder {
 internal fun shouldDrawRouteFrame(now: Long, lastDrawnAt: Long?, routesChanged: Boolean, replaying: Boolean): Boolean =
     routesChanged || replaying || lastDrawnAt == null || now - lastDrawnAt >= RouteTiming.LIVE_FRAME_INTERVAL
 
+
+/** Below this zoom, ungrouped markers that would draw on top of one another are thinned out. */
+internal const val THIN_MARKERS_BELOW_ZOOM = 9.0
+
+/**
+ * With Group Nearby Nodes off and the map zoomed out (iOS `withoutCoveredMarkers`), nodes within
+ * about 2.5 dp of each other draw as one dot anyway. Keeps one per cell (a repeater over a room
+ * over a companion over a sensor, then by key so the pick is stable) and returns, by kept node's
+ * key, the nodes it covers, so a tap there can zoom in on the stack.
+ */
+internal fun thinCoveredNodes(nodes: List<MeshNode>, zoom: Double): Pair<List<MeshNode>, Map<String, List<MeshNode>>> {
+    if (zoom >= THIN_MARKERS_BELOW_ZOOM) return nodes to emptyMap()
+    val degreesPerDp = 360.0 / (512.0 * Math.pow(2.0, zoom))
+    val cell = 2.5 * degreesPerDp
+    fun rank(node: MeshNode) = MAP_ROLES.indexOf(node.role.lowercase()).let { if (it < 0) MAP_ROLES.size else it }
+    val best = HashMap<Pair<Long, Long>, MeshNode>()
+    val covered = HashMap<Pair<Long, Long>, MutableList<MeshNode>>()
+    for (node in nodes) {
+        val at = node.coordinate ?: continue
+        // Web Mercator: a dp spans fewer degrees of latitude than longitude away from the equator.
+        val key = kotlin.math.floor(at.longitude / cell).toLong() to
+            kotlin.math.floor(Mercator.y(at.latitude) * 512.0 * Math.pow(2.0, zoom) / 2.5).toLong()
+        val current = best[key]
+        if (current == null) { best[key] = node; continue }
+        val replaces = compareValuesBy(node, current, ::rank, MeshNode::publicKey) < 0
+        covered.getOrPut(key) { mutableListOf() } += if (replaces) current else node
+        if (replaces) best[key] = node
+    }
+    val kept = best.values.sortedBy { it.publicKey }
+    return kept to best.entries.mapNotNull { (key, node) -> covered[key]?.let { node.publicKey to it.toList() } }.toMap()
+}
