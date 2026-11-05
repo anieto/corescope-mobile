@@ -75,6 +75,11 @@ struct MapScreen: View {
     /// Realistic propagation: each packet's observations, held by hash until its buffer ends.
     @State private var heldPropagation: [String: HeldPropagation] = [:]
     @State private var heldPropagationRelease: Task<Void, Never>?
+    /// Observers each live packet has already been drawn reaching. An observer reports every copy
+    /// it hears, including neighbours' re-broadcasts, which drew the packet going out a kilometre or
+    /// two and straight back to the same observer, again and again. Only its first copy is drawn.
+    @State private var reachedObserversByHash: [String: Set<String>] = [:]
+    @State private var reachedObserverHashOrder: [String] = []
     @State private var isInitialLoadComplete = false
     @State private var isChangingRegion = false
     @State private var isLocatingUser = false
@@ -1958,12 +1963,28 @@ struct MapScreen: View {
     }
 
     /// The shown routes that can be drawn (at least one located node and somewhere to go).
+    /// With all routes shown, each observer keeps only its shortest route (normally the first copy
+    /// it heard): its other routes are neighbours re-broadcasting the packet back to it, which drew
+    /// the packet going out and straight back. A route left delivering only such echoes is dropped.
+    /// One route on its own, and packet details, still show every route.
     private func replayRouteGeometries() -> [ReplayRouteGeometry] {
-        packetReplayStore.shownRoutes.compactMap { index, route in
+        let shown = packetReplayStore.shownRoutes
+        var reached = Set<String>()
+        var keptReceivers: [Int: [ReplayReceiver]] = [:]
+        for (index, route) in shown.sorted(by: { $0.route.keys.count < $1.route.keys.count }) {
+            let all = receivers(for: route)
+            keptReceivers[index] = packetReplayStore.showsAllRoutes
+                ? all.filter { reached.insert($0.id).inserted }
+                : all
+            if packetReplayStore.showsAllRoutes, !all.isEmpty, keptReceivers[index]?.isEmpty == true {
+                keptReceivers[index] = nil
+            }
+        }
+        return shown.compactMap { index, route in
+            guard let receivers = keptReceivers[index] else { return nil }
             let coordinates = route.keys.compactMap { publicKey in
                 validCoordinate(viewModel.nodesByPubkey[publicKey.lowercased()]?.coordinate)
             }
-            let receivers = receivers(for: route)
             guard !coordinates.isEmpty, coordinates.count + receivers.count >= 2 else { return nil }
             return ReplayRouteGeometry(index: index, coordinates: coordinates, receivers: receivers)
         }
@@ -2593,7 +2614,8 @@ struct MapScreen: View {
         activePings.removeAll { $0.isExpired(at: now) }
         var drawnSegments = drawnLiveSegments()
         var newPings: [ActivePing] = []
-        for event in liveFeed.recentEvents {
+        // Oldest first (the feed keeps newest first), so an observer's first copy is the one kept.
+        for event in liveFeed.recentEvents.reversed() {
             guard event.type == "packet" else { continue }
             let eventKey = liveEventKey(for: event)
             if processedEventIds.contains(eventKey) { continue }
@@ -2605,6 +2627,7 @@ struct MapScreen: View {
             ), observationMatchesSelectedObserver(observerId: event.data?.observerId) else {
                 continue
             }
+            guard isFirstCopy(of: event) else { continue }
 
             // Realistic propagation (CoreScope): observers report a packet over several seconds,
             // so hold its observations for the buffer and then animate them as one transmission.
@@ -2765,6 +2788,23 @@ struct MapScreen: View {
         heldPropagationRelease?.cancel()
         heldPropagationRelease = nil
         heldPropagation = [:]
+        reachedObserversByHash = [:]
+        reachedObserverHashOrder = []
+    }
+
+    /// Whether this is the first copy of its packet from its observer (and records it if so).
+    /// Observations without a packet hash or an observer are always drawn.
+    private func isFirstCopy(of event: LiveEnvelope) -> Bool {
+        guard let hash = event.data?.hash,
+              let observer = event.data?.observerId ?? event.data?.observerName else { return true }
+        if reachedObserversByHash[hash] == nil {
+            reachedObserverHashOrder.append(hash)
+            if reachedObserverHashOrder.count > 400 {
+                for old in reachedObserverHashOrder.prefix(100) { reachedObserversByHash[old] = nil }
+                reachedObserverHashOrder.removeFirst(100)
+            }
+        }
+        return reachedObserversByHash[hash, default: []].insert(observer.lowercased()).inserted
     }
 
     nonisolated private static func groupedLiveRoutes(_ pings: [ActivePing]) -> [[ActivePing]] {
