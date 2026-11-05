@@ -34,6 +34,10 @@ struct MapScreen: View {
     @State private var displayedNodes: [MeshNode] = []
     @State private var displayCoordinatesByNodeID: [String: CLLocationCoordinate2D] = [:]
     @State private var fanOriginsByNodeID: [String: CLLocationCoordinate2D] = [:]
+    /// Live traffic to or from a node grouped into a bubble is drawn to the bubble. Drawn at the
+    /// hidden nodes' own positions, hops between nodes in one bubble were a few points long and
+    /// their markers popped on and off inside it, which looked like the packet ping-ponging.
+    @State private var bubbleByNodeLocation: [CoordinateKey: CLLocationCoordinate2D] = [:]
     @State private var nodeClusters: [NodeCluster] = []
     @State private var iataCoordinates: [String: CLLocationCoordinate2D] = [:]
     @State private var iataRadiusKm: [String: Double] = [:]
@@ -249,6 +253,8 @@ struct MapScreen: View {
         let filteredCount: Int
         /// For fanned-out nodes, the point they fan out from (their group's centre).
         var fanOriginsByNodeID: [String: CLLocationCoordinate2D] = [:]
+        /// For grouped nodes, keyed by their position: the bubble they're drawn as.
+        var bubbleByNodeLocation: [CoordinateKey: CLLocationCoordinate2D] = [:]
     }
 
     private struct WideMapHeader: View {
@@ -1229,6 +1235,7 @@ struct MapScreen: View {
             nodeClusters = result.clusters
             displayCoordinatesByNodeID = result.displayCoordinatesByNodeID
             fanOriginsByNodeID = result.fanOriginsByNodeID
+            bubbleByNodeLocation = result.bubbleByNodeLocation
             filteredNodeCount = result.filteredCount
         }
     }
@@ -1363,6 +1370,7 @@ struct MapScreen: View {
 
         var individualNodes: [MeshNode] = []
         var clusters: [NodeCluster] = []
+        var bubbleByNodeLocation: [CoordinateKey: CLLocationCoordinate2D] = [:]
         for (key, cellNodes) in nodesByCell {
             guard !Task.isCancelled else { return nil }
             guard cellNodes.count >= 2 else {
@@ -1376,13 +1384,17 @@ struct MapScreen: View {
                 latitudeTotal += node.lat ?? 0
                 longitudeTotal += node.lon ?? 0
             }
+            let bubble = CLLocationCoordinate2D(
+                latitude: latitudeTotal / Double(cellNodes.count),
+                longitude: longitudeTotal / Double(cellNodes.count)
+            )
+            for node in cellNodes {
+                if let coordinate = node.coordinate { bubbleByNodeLocation[CoordinateKey(coordinate)] = bubble }
+            }
             clusters.append(
                 NodeCluster(
                     id: "cluster-\(key)",
-                    coordinate: CLLocationCoordinate2D(
-                        latitude: latitudeTotal / Double(cellNodes.count),
-                        longitude: longitudeTotal / Double(cellNodes.count)
-                    ),
+                    coordinate: bubble,
                     count: cellNodes.count
                 )
             )
@@ -1396,7 +1408,8 @@ struct MapScreen: View {
                     node.coordinate.map { (node.id, $0) }
                 }
             ),
-            filteredCount: validNodes.count
+            filteredCount: validNodes.count,
+            bubbleByNodeLocation: bubbleByNodeLocation
         )
     }
 
@@ -2990,7 +3003,9 @@ struct MapScreen: View {
         var currentSubchain: [CLLocationCoordinate2D] = []
 
         for item in optionalChain {
-            if let coord = item {
+            // A grouped node is drawn as its bubble; consecutive stops in one bubble are one stop.
+            if let coord = item.map({ bubbleByNodeLocation[CoordinateKey($0)] ?? $0 }) {
+                if let last = currentSubchain.last, CoordinateKey(last) == CoordinateKey(coord) { continue }
                 currentSubchain.append(coord)
             } else {
                 if !currentSubchain.isEmpty {
