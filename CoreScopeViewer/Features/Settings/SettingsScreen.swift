@@ -75,7 +75,7 @@ struct SettingsScreen: View {
                         Divider()
 
                         Toggle("Realistic Propagation", isOn: $realisticPropagation)
-                        Text("Wait for every observer, then animate a packet's paths together. Runs about 5 seconds behind live.")
+                        Text("Wait for every observer, then animate a packet's paths together. Runs a few seconds behind live; the analyzer sets the delay.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
