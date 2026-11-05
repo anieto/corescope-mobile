@@ -2139,19 +2139,14 @@ struct MapScreen: View {
             : .orange
         let signalColor: Color = colorScheme == .dark ? .orange : .blue
 
-        // Each hop takes about as long as it looks on screen: on a zoomed-out map a hop between
-        // neighbours is a few points long, and giving it the same 0.85 s as a long hop left the
-        // signal dot sitting in place, which read as bouncing back and forth.
+        // Each hop's time comes from its real length (see `hopTravelTime`): 0.45 s for neighbours
+        // up to 1.5 s for long links, the same at any zoom.
         resetReplayClock()
         if isMapCameraMoving { replayPausedAt = .now }
         let replayStart = Date.now.addingTimeInterval(replayNeedsLeadIn ? 0.75 : 0.5)
         replayNeedsLeadIn = false
-        let pointsPerMapPoint = replayScreenPointsPerMapPoint()
         func travelTime(_ from: CLLocationCoordinate2D, _ to: CLLocationCoordinate2D) -> TimeInterval {
-            guard let pointsPerMapPoint else { return 0.85 }
-            let a = MKMapPoint(from), b = MKMapPoint(to)
-            let points = hypot(b.x - a.x, b.y - a.y) * pointsPerMapPoint
-            return min(max(points / 140, 0.45), 1.5)
+            Self.hopTravelTime(from: from, to: to, shortest: 0.45, longest: 1.5)
         }
 
         // Plan every hop first: when it starts (after the hops before it on its route) and how
@@ -2545,7 +2540,8 @@ struct MapScreen: View {
                                     observerName: packet.observerName,
                                     observedAt: packet.timestamp,
                                     snr: packet.snr,
-                                    rssi: packet.rssi
+                                    rssi: packet.rssi,
+                                    curvature: 0.07
                                 )
                             )
                         }
@@ -2629,6 +2625,23 @@ struct MapScreen: View {
         scheduleHeldPropagationRelease()
     }
 
+    /// How long a hop's signal dot travels, from the hop's real length rather than its length on
+    /// screen: a few hundred metres is quick, long links take longest. Short hops between nearby
+    /// nodes no longer leave the dot sitting in place when zoomed out (which looked like the packet
+    /// bouncing between them), and a hop's timing never depends on the zoom, so zooming mid-flight
+    /// or replaying at another zoom looks the same.
+    nonisolated private static func hopTravelTime(
+        from start: CLLocationCoordinate2D,
+        to end: CLLocationCoordinate2D,
+        shortest: TimeInterval,
+        longest: TimeInterval
+    ) -> TimeInterval {
+        let kilometres = MKMapPoint(start).distance(to: MKMapPoint(end)) / 1000
+        // Gentle (logarithmic) growth that reaches `longest` at about 40 km.
+        let growth = (longest - shortest) / log2(41)
+        return min(shortest + growth * log2(1 + kilometres), longest)
+    }
+
     /// Hops already on screen, by packet. On networks where dozens of observers hear each packet,
     /// drawing a hop per observation kept the map at its 100-segment cap and re-rendering
     /// continuously, so a hop already shown for the same packet is skipped.
@@ -2652,9 +2665,14 @@ struct MapScreen: View {
 
         for (subchainIndex, subchain) in subchains.enumerated() {
             if subchain.count >= 2 {
+                // Hops follow one another; each takes 0.3 to 1.0 s by its real length.
+                var elapsed: TimeInterval = 0
                 for index in 0..<(subchain.count - 1) {
                     let p1 = subchain[index]
                     let p2 = subchain[index + 1]
+                    let travelDuration = Self.hopTravelTime(from: p1, to: p2, shortest: 0.3, longest: 1.0)
+                    let hopStart = observedAt.addingTimeInterval(elapsed)
+                    elapsed += travelDuration
                     if isValidHopDistance(from: p1, to: p2) {
                         if let hash = event.data?.hash,
                            !drawnSegments.insert(PacketSegmentKey(
@@ -2662,8 +2680,6 @@ struct MapScreen: View {
                            )).inserted {
                             continue
                         }
-                        let travelDuration = 0.66
-                        let hopStart = observedAt.addingTimeInterval(Double(index) * travelDuration)
                         newPings.append(
                             ActivePing(
                                 from: p1,
@@ -2679,7 +2695,10 @@ struct MapScreen: View {
                                 observerName: event.data?.observerName,
                                 observedAt: observedAt,
                                 snr: event.data?.snr,
-                                rssi: event.data?.rssi
+                                rssi: event.data?.rssi,
+                                // Same gentle bow as replays, so a packet that doubles back between
+                                // nearby nodes shows two arcs rather than one line drawn twice.
+                                curvature: 0.07
                             )
                         )
                     }
