@@ -152,7 +152,8 @@ struct ChannelsListScreen: View {
             await viewModel.loadChannels(region: regionFilter.selectedRegion)
             updateVisibleChannels()
         }
-        .task(id: monitoredChannelIDs) {
+        // Again on a region or source change, so previews follow the chosen region.
+        .task(id: "\(monitoredChannelIDs)#\(settings.sourceSession.id)#\(regionFilter.selectedRegion ?? "")") {
             viewModel.configure(settings: settings)
             await viewModel.refreshMonitoredSummaries(
                 channels: monitorStore.channels,
