@@ -699,7 +699,8 @@ private fun RegionMenu(preferences: AppPreferences, state: SessionState, onRegio
     val picks = org.nodescope.android.core.model.availablePicks(state.snapshot?.quickPicks.orEmpty(), regions)
     Box {
         TextButton(onClick = { open = true }, enabled = regions.isNotEmpty() || preferences.region != null) {
-            Text(org.nodescope.android.core.model.regionTitle(picks, preferences.region) ?: stringResource(R.string.all_regions))
+            Text(org.nodescope.android.core.model.regionTitle(picks, preferences.region) ?: stringResource(R.string.all_regions),
+                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(text = { Text(stringResource(R.string.all_regions)) }, onClick = { onRegion(null); open = false })

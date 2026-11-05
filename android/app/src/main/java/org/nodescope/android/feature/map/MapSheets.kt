@@ -5,6 +5,9 @@ import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.MeshModalBottomSheet
 import android.content.Intent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -43,64 +46,225 @@ private val roleColors = mapOf("repeater" to Color(0xFFFFAA44), "room" to Color(
 /** A role's map marker color (shared by the filter sheet and node search chips). */
 fun roleColor(role: String): Color = roleColors[role.lowercase()] ?: Color(0xFF299EFF)
 
-/** iOS `MapNodeFilterSheet`: activity, roles and the route observer, with the observer picker inside. */
+/**
+ * iOS `MapNodeFilterSheet`, grouped by what each part changes: which nodes are drawn (last heard,
+ * roles), then which routes (heard by). What the map's symbols mean is on the Map Key, opened from
+ * here or from the map's ⓘ.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun MapFiltersSheet(filters: MapFilters, observers: List<MeshObserver>, onChange: (MapFilters) -> Unit, onDismiss: () -> Unit) {
-    var picking by remember { mutableStateOf(false) }
+    var page by remember { mutableStateOf(FilterPage.FILTERS) }
     MeshModalBottomSheet(onDismissRequest = onDismiss) {
-        if (picking) ObserverPicker(filters.observerId, observers, onBack = { picking = false }) {
-            onChange(filters.copy(observerId = it)); picking = false
-        } else Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Map filters", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
-                if (filters.isFiltering) TextButton(onClick = { onChange(MapFilters()) }) { Text("Reset all") }
+        when (page) {
+            FilterPage.OBSERVERS -> ObserverPicker(filters.observerId, observers, onBack = { page = FilterPage.FILTERS }) {
+                onChange(filters.copy(observerId = it)); page = FilterPage.FILTERS
             }
-            SectionLabel("Activity")
+            FilterPage.KEY -> MapKeyContent(onBack = { page = FilterPage.FILTERS })
+            FilterPage.FILTERS -> Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp)) {
+                Text("Map filters", style = MaterialTheme.typography.titleLarge)
+
+                SectionLabel("Nodes shown")
+                LastHeardRow(filters.activity) { onChange(filters.copy(activity = it)) }
+                FilterFootnote("Hides nodes that haven't been heard from in this time. Live traffic and replays aren't affected.")
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SectionLabel("Node roles", Modifier.weight(1f))
+                    if (filters.roles.isNotEmpty()) TextButton(onClick = { onChange(filters.copy(roles = emptySet())) }) { Text("Show all") }
+                }
+                MAP_ROLES.forEach { role ->
+                    val shown = filters.roles.isEmpty() || role in filters.roles
+                    RoleRow(role.replaceFirstChar { it.uppercase() }, roleColors.getValue(role), shown) {
+                        onChange(filters.copy(roles = toggledRoles(filters.roles, role)))
+                    }
+                }
+                FilterFootnote("Colors match the dots on the map.")
+
+                SectionLabel("Routes")
+                val selected = observers.firstOrNull { it.id.equals(filters.observerId, true) }
+                ListItem(modifier = Modifier.clickable { page = FilterPage.OBSERVERS },
+                    leadingContent = { Icon(Icons.Outlined.SettingsInputAntenna, null) },
+                    headlineContent = { Text("Heard by") },
+                    supportingContent = { Text(when {
+                        filters.observerId == null -> "All observers"
+                        selected != null -> selected.name?.takeIf(String::isNotBlank) ?: selected.id
+                        else -> "Selected observer"
+                    }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    trailingContent = { Icon(Icons.Outlined.ChevronRight, null) },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent))
+                FilterFootnote("Shows only packets received by the chosen observer. Node markers follow the filters above.")
+
+                if (filters.isFiltering) {
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedButton(onClick = { onChange(MapFilters()) }, Modifier.fillMaxWidth()) {
+                        Icon(Icons.Outlined.Restore, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Reset all filters")
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+                ListItem(modifier = Modifier.clickable { page = FilterPage.KEY },
+                    leadingContent = { Icon(Icons.Outlined.Info, null) },
+                    headlineContent = { Text("Map key") },
+                    supportingContent = { Text("What the markers, lines and colors on the map mean.") },
+                    trailingContent = { Icon(Icons.Outlined.ChevronRight, null) },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent))
+            }
+        }
+    }
+}
+
+private enum class FilterPage { FILTERS, OBSERVERS, KEY }
+
+/** Every role shown is stored as no selection; the last shown role can't be turned off (iOS). */
+private fun toggledRoles(selected: Set<String>, role: String): Set<String> {
+    val shown = selected.ifEmpty { MAP_ROLES.toSet() }.toMutableSet()
+    if (role in shown) { if (shown.size == 1) return selected; shown -= role } else shown += role
+    return if (shown == MAP_ROLES.toSet()) emptySet() else shown
+}
+
+@Composable
+private fun FilterFootnote(text: String) {
+    Text(text, Modifier.padding(top = 4.dp, bottom = 4.dp), style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+/** "Last heard" with the chosen window, opening a menu of windows. */
+@Composable
+private fun LastHeardRow(selected: ActivityFilter, onSelect: (ActivityFilter) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        ListItem(modifier = Modifier.clickable { open = true },
+            leadingContent = { Icon(Icons.Outlined.Schedule, null) },
+            headlineContent = { Text("Last heard") },
+            trailingContent = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(selected.lastHeardTitle, color = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Outlined.ArrowDropDown, null, tint = MaterialTheme.colorScheme.primary)
+                }
+            },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent))
+        DropdownMenu(open, { open = false }, Modifier.align(Alignment.TopEnd)) {
             ActivityFilter.entries.forEach { option ->
-                Row(Modifier.fillMaxWidth().selectable(filters.activity == option, role = Role.RadioButton) { onChange(filters.copy(activity = option)) }
-                    .padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(selected = filters.activity == option, onClick = null)
-                    Spacer(Modifier.width(12.dp))
-                    Text(option.title, style = MaterialTheme.typography.bodyLarge, fontFamily = MonaspaceNeon)
-                }
+                DropdownMenuItem(text = { Text(option.lastHeardTitle) }, onClick = { onSelect(option); open = false },
+                    trailingIcon = { if (option == selected) Icon(Icons.Outlined.Check, "Selected") })
             }
+        }
+    }
+}
+
+/** A role with its marker colour and whether it's shown (iOS checkmark rows). */
+@Composable
+private fun RoleRow(title: String, color: Color, shown: Boolean, onToggle: () -> Unit) {
+    Row(Modifier.fillMaxWidth().toggleable(shown, role = Role.Checkbox) { onToggle() }.padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(10.dp).background(color, CircleShape))
+        Spacer(Modifier.width(14.dp))
+        Text(title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        Icon(if (shown) Icons.Filled.CheckCircle else Icons.Outlined.Circle, null,
+            tint = if (shown) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
+    }
+}
+
+/** The Map Key on its own, opened from the map's ⓘ. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun MapKeySheet(onDismiss: () -> Unit) {
+    MeshModalBottomSheet(onDismissRequest = onDismiss) { MapKeyContent(onBack = null) }
+}
+
+/**
+ * iOS `MapKeyScreen`: what each marker, line and colour on the map means, with an ⓘ for the
+ * glossary terms. [onBack] returns to the filters when opened from there.
+ */
+@Composable
+internal fun MapKeyContent(onBack: (() -> Unit)?) {
+    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+        Row(Modifier.padding(horizontal = if (onBack != null) 8.dp else 20.dp), verticalAlignment = Alignment.CenterVertically) {
+            onBack?.let { IconButton(onClick = it) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back to filters") } }
+            Text("Map key", style = MaterialTheme.typography.titleLarge)
+        }
+        Column(Modifier.padding(horizontal = 20.dp)) {
             SectionLabel("Node roles")
-            RoleRow("All roles", null, filters.roles.isEmpty()) { onChange(filters.copy(roles = emptySet())) }
-            MAP_ROLES.forEach { role ->
-                RoleRow(role.replaceFirstChar { it.uppercase() }, roleColors[role], role in filters.roles) {
-                    onChange(filters.copy(roles = if (role in filters.roles) filters.roles - role else filters.roles + role))
+            listOf(
+                Triple("repeater", "Repeater", "Relays packets so they travel further.") to GlossaryTerm.REPEATER,
+                Triple("room", "Room", "Hosts a shared message board.") to GlossaryTerm.ROOM_SERVER,
+                Triple("companion", "Companion", "Someone's radio, paired with an app.") to GlossaryTerm.COMPANION,
+                Triple("sensor", "Sensor", "Reports readings over the mesh.") to GlossaryTerm.SENSOR,
+            ).forEach { (item, term) ->
+                val (role, title, summary) = item
+                MapKeyRow(title, summary, term) { MapKeyDot(roleColors.getValue(role)) }
+            }
+            SectionLabel("On the map")
+            val density = androidx.compose.ui.platform.LocalDensity.current.density
+            val observer = remember(density) {
+                observerMarkerBitmap(MARKER_ROLE_COLORS["repeater"], density).asImageBitmap()
+            }
+            MapKeyRow("Observer", "Heard the packet in a replay. A ring shows the node it's on.", GlossaryTerm.OBSERVER) {
+                androidx.compose.foundation.Image(observer, null)
+            }
+            MapKeyRow("Grouped nodes", "Nearby nodes when zoomed out. Tap to zoom in.") {
+                Box(Modifier.size(24.dp).background(Color(0xFF21465E), CircleShape)
+                    .border(1.dp, Color(0xFF6994AF), CircleShape), contentAlignment = Alignment.Center) {
+                    Text("12", color = Color.White, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
             }
-            SectionLabel("Route observer")
-            val selected = observers.firstOrNull { it.id.equals(filters.observerId, true) }
-            ListItem(modifier = Modifier.clickable { picking = true },
-                leadingContent = { Icon(Icons.Outlined.SettingsInputAntenna, null) },
-                headlineContent = { Text("Choose observer") },
-                supportingContent = { Text(when {
-                    filters.observerId == null -> "All observers"
-                    selected != null -> selected.name?.takeIf(String::isNotBlank) ?: selected.id
-                    else -> "Selected observer"
-                }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                trailingContent = { Icon(Icons.Outlined.ChevronRight, null) },
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent))
-            Text("Limits live and recent routes to packets received by this observer. Node markers still follow the region, activity and role filters.",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            MapKeyRow("Spread-out nodes", "Nodes at the same spot, shown apart so each can be tapped.") {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    MapKeyDot(roleColors.getValue("repeater")); MapKeyDot(roleColors.getValue("room"))
+                }
+            }
+            MapKeyRow("Live packets", "Each packet has its own color, on every path it took.") {
+                MapKeyLines(listOf(Color(0xFF66B9FF), Color(0xFFFFC27A)), curved = false)
+            }
+            MapKeyRow("Replayed route", "A packet's path, played hop by hop.", GlossaryTerm.ROUTE) {
+                MapKeyLines(listOf(Color(0xFFFFA833)), curved = true)
+            }
+            MapKeyRow("You", "Your location, when you share it.") {
+                Box(Modifier.size(26.dp).background(Color(0x2E1A73E8), CircleShape), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(14.dp).background(Color.White, CircleShape), contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(10.dp).background(Color(0xFF1A73E8), CircleShape))
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun RoleRow(title: String, color: Color?, checked: Boolean, onToggle: () -> Unit) {
-    Row(Modifier.fillMaxWidth().toggleable(checked, role = Role.Checkbox) { onToggle() }.padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically) {
-        Checkbox(checked = checked, onCheckedChange = null)
-        Spacer(Modifier.width(12.dp))
-        if (color != null) {
-            Box(Modifier.size(10.dp).background(color, CircleShape))
-            Spacer(Modifier.width(8.dp))
+private fun MapKeyRow(title: String, summary: String, term: GlossaryTerm? = null, symbol: @Composable () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(width = 34.dp, height = 30.dp), contentAlignment = Alignment.Center) { symbol() }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Text(title, style = MaterialTheme.typography.bodyLarge)
+        term?.let { LearnButton(it) }
+    }
+}
+
+@Composable
+private fun MapKeyDot(color: Color) {
+    Box(Modifier.size(12.dp).background(color, CircleShape).border(2.dp, Color.White.copy(alpha = 0.9f), CircleShape))
+}
+
+/** Short packet paths with their travelling head, as drawn on the map. */
+@Composable
+private fun MapKeyLines(colors: List<Color>, curved: Boolean) {
+    androidx.compose.foundation.Canvas(Modifier.size(width = 34.dp, height = 30.dp)) {
+        colors.forEachIndexed { index, color ->
+            val y = if (colors.size == 1) size.height * 0.6f else size.height * (0.35f + 0.35f * index)
+            val path = androidx.compose.ui.graphics.Path().apply {
+                moveTo(size.width * 0.08f, y)
+                if (curved) quadraticTo(size.width * 0.5f, y - size.height * 0.55f, size.width * 0.92f, y)
+                else lineTo(size.width * 0.92f, y - size.height * 0.12f)
+            }
+            drawPath(path, color.copy(alpha = 0.18f), style = androidx.compose.ui.graphics.drawscope.Stroke(6.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round))
+            drawPath(path, color.copy(alpha = 0.85f), style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round))
+            drawCircle(Color.White, 3.5.dp.toPx(), androidx.compose.ui.geometry.Offset(size.width * 0.92f, if (curved) y else y - size.height * 0.12f))
+            drawCircle(color, 3.5.dp.toPx(), androidx.compose.ui.geometry.Offset(size.width * 0.92f, if (curved) y else y - size.height * 0.12f),
+                style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx()))
+        }
     }
 }
 

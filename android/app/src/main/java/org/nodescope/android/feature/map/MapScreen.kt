@@ -74,6 +74,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     // A picked CARTO style sticks; until then it follows the app theme.
     val mode = providerChoice.cartoStyle(darkTheme)
     var filtersOpen by remember { mutableStateOf(false) }
+    var keyOpen by remember { mutableStateOf(false) }
     // Saved per analyzer, as on iOS.
     var filters by remember(host) { mutableStateOf(host?.let { loadMapFilters(context, it) } ?: MapFilters()) }
     LaunchedEffect(host, filters) { host?.let { saveMapFilters(context, it, filters) } }
@@ -109,7 +110,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     // Reselecting the Map tab closes the selected node, route details, search and filters (iOS);
     // the shell ends any replay.
     org.nodescope.android.core.design.OnTabReset(resetRequest) {
-        selectedNode = null; routeDetail = null; search = false; filtersOpen = false
+        selectedNode = null; routeDetail = null; search = false; filtersOpen = false; keyOpen = false
     }
     val currentAllNodes by rememberUpdatedState(snapshot?.nodes.orEmpty())
     // Replay mode (iOS): live traffic pauses; bottom controls replay the route, pick another
@@ -454,6 +455,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             onDismiss = { selectedNode = null })
     }
     if (filtersOpen) MapFiltersSheet(filters, observerOptions, onChange = { filters = it }, onDismiss = { filtersOpen = false })
+    if (keyOpen) MapKeySheet(onDismiss = { keyOpen = false })
     routeDetail?.let { details -> RouteDetailsSheet(details, onNode = { routeDetail = null; currentOnNode(it) }, onDismiss = { routeDetail = null }) }
     if (search) MeshModalBottomSheet(onDismissRequest = { search = false }) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.8f)) {
@@ -497,7 +499,8 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         }
         Column(Modifier.align(Alignment.TopStart).fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Surface(shape = MaterialTheme.shapes.medium, shadowElevation = 1.dp) { regionControl() }
+                // The region gives way first on a narrow screen, so Filters and the key stay in reach.
+                Surface(Modifier.weight(1f, fill = false), shape = MaterialTheme.shapes.medium, shadowElevation = 1.dp) { regionControl() }
                 Surface(shape = MaterialTheme.shapes.medium, shadowElevation = 1.dp) {
                     TextButton(onClick = { filtersOpen = true }, modifier = Modifier.semantics {
                         stateDescription = if (filters.isFiltering) "${filters.activeCount} active" else "None"
@@ -506,6 +509,10 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                         Spacer(Modifier.width(6.dp))
                         Text(if (filters.isFiltering) "${filters.activeCount} active" else "Filters")
                     }
+                }
+                // What the map's markers, lines and colours mean (iOS Map Key).
+                Surface(shape = MaterialTheme.shapes.medium, shadowElevation = 1.dp) {
+                    IconButton(onClick = { keyOpen = true }, Modifier.size(40.dp)) { Icon(Icons.Outlined.Info, "Map key") }
                 }
             }
             // A sparse Beacon server can genuinely have no nodes yet (iOS "No Nodes Reported Yet").
