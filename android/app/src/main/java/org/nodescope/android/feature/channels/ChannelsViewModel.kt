@@ -7,6 +7,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import org.nodescope.android.core.model.AnalyzerSelection
 import org.nodescope.android.core.model.ChannelMessage
@@ -78,4 +80,51 @@ class ChannelsViewModel(private val repository: BrowseRepository, val monitor: M
     }
 
     fun remember(channel: MeshChannel) { known[channel.id] = channel }
+
+    /**
+     * A channel's latest message as heard in the selected region, by the same rule as its
+     * conversation (the message's listed observer is in the region). The server's own preview
+     * counts a message if any observer in the region heard it, and since channel messages flood
+     * the network that was nearly always the network-wide latest. [message] is null when none of
+     * the channel's newest page was heard there.
+     */
+    data class RegionalPreview(val message: ConversationMessage?)
+
+    private val previewState = MutableStateFlow<Map<String, RegionalPreview>>(emptyMap())
+    /** By channel id, for [previewScope] (the source and region they were worked out for). */
+    val regionalPreviews: StateFlow<Map<String, RegionalPreview>> = previewState.asStateFlow()
+    private var previewScope: AnalyzerSelection? = null
+    /** The server's last activity each preview was worked out at; only channels with news are fetched again. */
+    private val previewActivity = HashMap<String, String?>()
+    private var previewJob: kotlinx.coroutines.Job? = null
+
+    /** Works out [regionalPreviews] for [channels] (CoreScope with a region chosen; Beacon lists aren't regional). */
+    fun loadRegionalPreviews(selection: AnalyzerSelection, channels: List<MeshChannel>, observers: List<org.nodescope.android.core.model.MeshObserver>) {
+        if (selection.region == null || observers.isEmpty() || channels.any { it.serverId != null }) {
+            previewJob?.cancel(); previewScope = null; previewActivity.clear(); previewState.value = emptyMap(); return
+        }
+        if (selection != previewScope) { previewJob?.cancel(); previewScope = selection; previewActivity.clear(); previewState.value = emptyMap() }
+        val stale = channels.filter { previewActivity[it.id] != it.lastActivity || it.id !in previewActivity }
+        if (stale.isEmpty()) return
+        previewJob?.cancel()
+        previewJob = viewModelScope.launch {
+            // A few at a time, so a long channel list doesn't open dozens of requests at once.
+            for (batch in stale.chunked(6)) {
+                val results = kotlinx.coroutines.coroutineScope {
+                    batch.map { channel ->
+                        async { channel to runCatching { repository.channelMessages(selection.host, channel.id).messages }.getOrNull() }
+                    }.awaitAll()
+                }
+                if (previewScope != selection) return@launch
+                val updated = previewState.value.toMutableMap()
+                for ((channel, messages) in results) {
+                    messages ?: continue
+                    val heard = regionFiltered(messages.map { it.toConversation() }, selection.region, observers).orEmpty()
+                    updated[channel.id] = RegionalPreview(heard.maxByOrNull { it.timestamp ?: java.time.Instant.EPOCH })
+                    previewActivity[channel.id] = channel.lastActivity
+                }
+                previewState.value = updated
+            }
+        }
+    }
 }
