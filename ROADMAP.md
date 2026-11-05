@@ -138,8 +138,8 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
   by redrawing markers only when they change and drawing one dot where several would overlap
   when zoomed out; tapping such a spot zooms in. iOS also fans out nearby nodes close in, with
   dashed lines back to where they are.
-- **Replays:** All Routes (the default with Realistic on) plays every route together, leaving a
-  short trail; each observer stays on its shortest route. Hops run at a steady 90 km/s
+- **Replays:** All Routes, now every replay's default (packet details' route picker offers it too,
+  chosen by default), plays every route together, leaving a short trail; each observer stays on its shortest route. Hops run at a steady 90 km/s
   (0.45–1.5 s), bow slightly, and observers are ringed markers named only once zoomed in. A
   replay waits for the map to frame it, then a short lead-in; it pauses while the map is panned.
 - **Live traffic:** each observer's first copy only (no echoes), no guessing of hops the analyzer
