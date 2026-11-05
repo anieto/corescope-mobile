@@ -21,6 +21,13 @@ final class PacketReplayStore {
 
     var showsAllRoutes: Bool { selectedRouteIndex == Self.allRoutes }
 
+    /// The one route a picker's [selection] shows, or nil for All Routes (only offered with more
+    /// than one route; with one, that route is shown whatever the selection).
+    nonisolated static func singleRoute(_ selection: Int, count: Int) -> Int? {
+        if count == 1 { return 0 }
+        return (0..<count).contains(selection) ? selection : nil
+    }
+
     /// The routes being replayed, with their index in `routes`: all of them, or the selected one.
     var shownRoutes: [(index: Int, route: RouteOption)] {
         if showsAllRoutes { return Array(routes.enumerated()).map { (index: $0.offset, route: $0.element) } }
@@ -35,7 +42,7 @@ final class PacketReplayStore {
 
     func replay(
         routes: [RouteOption],
-        selectedIndex: Int = 0,
+        selectedIndex: Int = PacketReplayStore.allRoutes,
         packetHash: String,
         observedAt: Date,
         snr: Double?,
@@ -44,8 +51,9 @@ final class PacketReplayStore {
         messageText: String?
     ) {
         self.routes = routes
-        // With Realistic propagation on, a replay shows the whole packet, like the live map does.
-        if routes.count > 1, UserDefaults.standard.bool(forKey: LiveMapPreferences.realisticPropagationKey) {
+        // Every route together unless one was chosen (packet details' route picker), so a replay
+        // shows how the packet spread rather than one observer's part of it.
+        if routes.count > 1, selectedIndex == Self.allRoutes {
             selectedRouteIndex = Self.allRoutes
         } else {
             selectedRouteIndex = routes.indices.contains(selectedIndex) ? selectedIndex : 0

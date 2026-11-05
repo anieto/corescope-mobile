@@ -9,7 +9,7 @@ struct PacketDetailScreen: View {
     @Environment(PacketReplayStore.self) private var replayStore
     @Environment(RecentItemsStore.self) private var recentItemsStore
     @State private var viewModel = PacketDetailViewModel()
-    @State private var selectedRouteIndex = 0
+    @State private var selectedRouteIndex = PacketReplayStore.allRoutes
 
     init(message: ChannelMessage) {
         self.message = message
@@ -131,14 +131,14 @@ struct PacketDetailScreen: View {
         .task {
             viewModel.configure(settings: settings)
             await viewModel.loadPacket(hash: message.packetHash)
-            selectedRouteIndex = 0
+            selectedRouteIndex = PacketReplayStore.allRoutes
         }
     }
 
     private func retryPacket() {
         Task {
             await viewModel.loadPacket(hash: message.packetHash)
-            selectedRouteIndex = 0
+            selectedRouteIndex = PacketReplayStore.allRoutes
         }
     }
 
@@ -279,7 +279,7 @@ private struct PacketRouteCard: View {
                     .foregroundStyle(.secondary)
             } else {
                 if routes.count > 1 {
-                    RoutePicker(options: routes, selection: $selection)
+                    RoutePicker(options: routes, selection: $selection, allowsAll: true)
                         .tint(NodeScopeStyle.signal)
                 } else {
                     HStack {
@@ -291,9 +291,11 @@ private struct PacketRouteCard: View {
                     .font(.subheadline.weight(.semibold))
                 }
 
-                if routes.indices.contains(selection) {
-                    RouteHopPreview(hopCount: routes[selection].hops)
-                    RouteHearersView(option: routes[selection])
+                if let shown = PacketReplayStore.singleRoute(selection, count: routes.count) {
+                    RouteHopPreview(hopCount: routes[shown].hops)
+                    RouteHearersView(option: routes[shown])
+                } else {
+                    AllRoutesNote(count: routes.count)
                 }
 
                 Button(action: replay) {

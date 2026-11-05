@@ -185,3 +185,14 @@ struct RouteTag: View {
         .accessibilityLabel(isShown ? "This observer's route is \(shownText.lowercased())" : "Show this observer's route")
     }
 }
+
+/// Shown in place of one route's details while All Routes is chosen.
+struct AllRoutesNote: View {
+    let count: Int
+
+    var body: some View {
+        Text("All \(count) routes replay together. Choose one to see its hops and who heard it.")
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+    }
+}

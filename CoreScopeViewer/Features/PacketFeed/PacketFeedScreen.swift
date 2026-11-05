@@ -434,7 +434,7 @@ private struct BeaconPacketSummary: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var viewModel = BeaconPacketDetailViewModel()
-    @State private var selectedRouteIndex = 0
+    @State private var selectedRouteIndex = PacketReplayStore.allRoutes
     @State private var retryID = UUID()
 
     private struct LoadKey: Hashable {
@@ -486,18 +486,20 @@ private struct BeaconPacketSummary: View {
                             .foregroundStyle(.secondary)
                     } else {
                         if viewModel.routes.count > 1 {
-                            RoutePicker(options: viewModel.routes, selection: $selectedRouteIndex)
+                            RoutePicker(options: viewModel.routes, selection: $selectedRouteIndex, allowsAll: true)
                                 .tint(NodeScopeStyle.signal)
                         }
-                        if viewModel.routes.indices.contains(selectedRouteIndex) {
-                            RouteHearersView(option: viewModel.routes[selectedRouteIndex])
-                            ForEach(viewModel.routes[selectedRouteIndex].keys.indices, id: \.self) { index in
+                        if let shown = PacketReplayStore.singleRoute(selectedRouteIndex, count: viewModel.routes.count) {
+                            RouteHearersView(option: viewModel.routes[shown])
+                            ForEach(viewModel.routes[shown].keys.indices, id: \.self) { index in
                                 PacketDetailField(
                                     title: "Hop \(index + 1)",
-                                    value: viewModel.routes[selectedRouteIndex].keys[index],
+                                    value: viewModel.routes[shown].keys[index],
                                     monospaced: true
                                 )
                             }
+                        } else {
+                            AllRoutesNote(count: viewModel.routes.count)
                         }
                         Button {
                             guard viewModel.belongsToSource(settings.sourceSession.id) else { return }
@@ -537,7 +539,7 @@ private struct BeaconPacketSummary: View {
             }
         }
         .task(id: LoadKey(sourceSessionID: settings.sourceSession.id, retryID: retryID)) {
-            selectedRouteIndex = 0
+            selectedRouteIndex = PacketReplayStore.allRoutes
             await viewModel.load(hash: row.hash, sourceSessionID: settings.sourceSession.id, service: liveFeed)
         }
     }
@@ -1408,7 +1410,7 @@ private struct LivePacketDetailScreen: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(PacketReplayStore.self) private var replayStore
-    @State private var selectedRouteIndex = 0
+    @State private var selectedRouteIndex = PacketReplayStore.allRoutes
 
     private var data: LivePacketData { group.latestData }
 
@@ -1474,11 +1476,13 @@ private struct LivePacketDetailScreen: View {
             if !routeHops.isEmpty {
                 Section {
                     if replayRoutes.count > 1 {
-                        RoutePicker(options: replayRoutes, selection: $selectedRouteIndex)
+                        RoutePicker(options: replayRoutes, selection: $selectedRouteIndex, allowsAll: true)
                             .tint(NodeScopeStyle.signal)
                     }
-                    if replayRoutes.indices.contains(selectedRouteIndex) {
-                        RouteHearersView(option: replayRoutes[selectedRouteIndex])
+                    if let shown = PacketReplayStore.singleRoute(selectedRouteIndex, count: replayRoutes.count) {
+                        RouteHearersView(option: replayRoutes[shown])
+                    } else {
+                        AllRoutesNote(count: replayRoutes.count)
                     }
 
                     ForEach(routeHops) { hop in
