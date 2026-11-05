@@ -2,7 +2,9 @@ package org.nodescope.android.feature.map
 
 import android.content.Context
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.content.edit
 
 /**
@@ -31,5 +33,36 @@ object LiveMapSettings {
     fun setRealisticPropagation(context: Context, value: Boolean) {
         realisticState(context).value = value
         prefs(context).edit { putBoolean(REALISTIC, value) }
+    }
+}
+
+/**
+ * Live traffic paused by hand from the live packets panel (iOS `LiveTrafficPause`). The panel's
+ * list stops changing and the map stops drawing new traffic (anything already moving finishes),
+ * so the two stay in step. Packets keep arriving meanwhile; resuming returns to live rather than
+ * replaying what was missed. Kept for the app's lifetime only.
+ */
+object LiveTrafficPause {
+    /** When the pause began, or null while live. */
+    var pausedAt by androidx.compose.runtime.mutableStateOf<Long?>(null)
+        private set
+    /** The last pause, start to end, whose packets are never drawn even after resuming. */
+    private var skipped: LongRange? = null
+
+    val isPaused: Boolean get() = pausedAt != null
+
+    fun pause() { if (pausedAt == null) pausedAt = System.currentTimeMillis() }
+
+    fun resume() {
+        val start = pausedAt ?: return
+        skipped = start until System.currentTimeMillis()
+        pausedAt = null
+    }
+
+    /** Whether a live packet arrived while paused (now, or during the last pause). */
+    fun skips(packet: org.nodescope.android.core.model.LivePacket): Boolean {
+        if (!packet.isLive) return false
+        pausedAt?.let { if (packet.receivedAt >= it) return true }
+        return skipped?.contains(packet.receivedAt) == true
     }
 }

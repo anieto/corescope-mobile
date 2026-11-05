@@ -15,6 +15,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import kotlinx.coroutines.isActive
@@ -41,6 +42,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -284,7 +286,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     // (5 s when it doesn't say), then animate all of its paths together.
     val realistic = LiveMapSettings.realisticPropagation(context)
     val currentHold by rememberUpdatedState(if (realistic) snapshot?.propagationBufferMs ?: 5_000L else null)
-    val paths = remember { derivedStateOf { currentFeed().let {
+    val paths = remember { derivedStateOf { LiveTrafficPause.pausedAt; currentFeed().let {
         routeBuilder.build(it.visiblePackets, currentNodes, it.observers, currentFilters, settledZoom[0].takeUnless(Double::isNaN), currentHold)
     } } }
     val replayRoute = remember(shownReplayRoutes, replayStart, replayReady) {
@@ -477,7 +479,14 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         TopAppBar(modifier = Modifier.meshPageBackground(), colors = meshTopAppBarColors(), windowInsets = WindowInsets(0, 0, 0, 0), title = {
             Column {
                 Text("Live Map", style = MaterialTheme.typography.titleLarge)
-                ConnectionBadge(connection)
+                // Paused by hand from the live packets panel: say so, and offer to resume (iOS).
+                if (LiveTrafficPause.isPaused) Row(Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button) { LiveTrafficPause.resume() }
+                    .semantics { contentDescription = "Live traffic paused. Resume" },
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Icon(Icons.Outlined.Pause, null, Modifier.size(14.dp), tint = org.nodescope.android.core.design.ActivityAmber)
+                    Text("Paused · Resume", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                }
+                else ConnectionBadge(connection)
             }
         }, actions = {
             // Wide screens with the live packets panel hidden get it back from here.

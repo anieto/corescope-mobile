@@ -328,7 +328,8 @@ internal class LiveRouteBuilder {
         if (observers !== this.observers) { this.observers = observers; routes.clear() }
         // Recent history appears as already-arrived routes while it is under 12 s old, as on iOS.
         val historyCutoff = System.currentTimeMillis() - RouteTiming.HISTORY_FADE
-        val candidates = packets.filter { (it.isLive || packetEpoch(it) > historyCutoff) && filters.showsRoute(it) }
+        // Packets that arrive while live traffic is paused by hand are never drawn.
+        val candidates = packets.filter { (it.isLive || packetEpoch(it) > historyCutoff) && filters.showsRoute(it) && !LiveTrafficPause.skips(it) }
         // Each observer's first copy of a packet only (iOS): in a flood an observer also hears
         // repeaters echoing the packet back, and drawing those echoes read as ping-pong.
         val reached = HashSet<String>()
