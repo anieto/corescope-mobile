@@ -2553,7 +2553,25 @@ struct MapScreen: View {
             let subchains = resolvedSubchains(for: packet)
             let pathColor = ActivePing.color(forHash: packet.hash, colorScheme: colorScheme)
 
+            var previousEnd: CLLocationCoordinate2D?
             for (subchainIndex, subchain) in subchains.enumerated() {
+                // Pieces split by unresolved hops are joined by a dashed bridge, as live.
+                if let from = previousEnd, let to = subchain.first, isValidHopDistance(from: from, to: to) {
+                    historicalPings.append(ActivePing(
+                        from: from, to: to,
+                        createdAt: packet.timestamp.addingTimeInterval(-0.66),
+                        duration: 12.0,
+                        travelDuration: 0.66,
+                        color: pathColor,
+                        routeID: "historical-\(packet.hash)-\(packet.observerId ?? "")-bridge-\(subchainIndex)",
+                        packetHash: packet.hash,
+                        observerName: packet.observerName,
+                        observedAt: packet.timestamp,
+                        curvature: 0.07,
+                        isUnknownRelay: true
+                    ))
+                }
+                previousEnd = subchain.last
                 if subchain.count >= 2 {
                     for index in 0..<(subchain.count - 1) {
                         let p1 = subchain[index]
@@ -2708,11 +2726,35 @@ struct MapScreen: View {
         let subchains = resolvedSubchains(for: event)
         let pathColor = ActivePing.color(forHash: event.data?.hash ?? event.data?.raw, colorScheme: colorScheme)
 
+        // Hops follow one another across the whole path; each takes 0.3 to 1.0 s by its real length.
+        // The pieces of a path split by unresolved hops are joined by a quick dashed bridge.
+        let pointsPerMapPoint = replayScreenPointsPerMapPoint()
+        var elapsed: TimeInterval = 0
+        var previousEnd: CLLocationCoordinate2D?
         for (subchainIndex, subchain) in subchains.enumerated() {
+            if let from = previousEnd, let to = subchain.first, isValidHopDistance(from: from, to: to),
+               !(event.data?.hash.map { hash in
+                   !drawnSegments.insert(PacketSegmentKey(packetHash: hash, from: CoordinateKey(from), to: CoordinateKey(to))).inserted
+               } ?? false) {
+                let bridgeStart = observedAt.addingTimeInterval(elapsed)
+                newPings.append(ActivePing(
+                    from: from, to: to,
+                    createdAt: bridgeStart,
+                    fadeStartsAt: bridgeStart.addingTimeInterval(0.2 + 0.45),
+                    duration: 0.55,
+                    travelDuration: 0.2,
+                    color: pathColor,
+                    routeID: "live-\(eventKey)-bridge-\(subchainIndex)",
+                    packetHash: event.data?.hash,
+                    observerName: event.data?.observerName,
+                    observedAt: observedAt,
+                    curvature: 0.07,
+                    isUnknownRelay: true
+                ))
+                elapsed += 0.2
+            }
+            previousEnd = subchain.last
             if subchain.count >= 2 {
-                // Hops follow one another; each takes 0.3 to 1.0 s by its real length.
-                let pointsPerMapPoint = replayScreenPointsPerMapPoint()
-                var elapsed: TimeInterval = 0
                 for index in 0..<(subchain.count - 1) {
                     let p1 = subchain[index]
                     let p2 = subchain[index + 1]
@@ -3232,7 +3274,7 @@ private struct MapTrafficCanvas: View {
                           let end = proxy.convert(ping.end, to: .local) {
                     drawCompletedHop(ping, from: start, to: end, in: &context)
                 }
-                if let pulseProgress = ping.arrivalPulseProgress(at: date),
+                if !ping.isUnknownRelay, let pulseProgress = ping.arrivalPulseProgress(at: date),
                    let end = proxy.convert(ping.end, to: .local) {
                     drawArrivalPulse(ping, progress: pulseProgress, at: end, in: &context)
                 }
@@ -3263,6 +3305,11 @@ private struct MapTrafficCanvas: View {
         } else {
             path.addLines(ping.pathCoordinates().compactMap { proxy.convert($0, to: .local) })
         }
+        if ping.isUnknownRelay {
+            context.stroke(path, with: .color(ping.pathColor.opacity(opacity * 0.55)),
+                           style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [4, 4]))
+            return
+        }
         context.stroke(
             path,
             with: .color(ping.pathColor.opacity(opacity * 0.18)),
@@ -3288,6 +3335,11 @@ private struct MapTrafficCanvas: View {
             path.addLine(to: current)
         } else {
             path.addLines(ping.pathCoordinates(through: progress).compactMap { proxy.convert($0, to: .local) })
+        }
+        if ping.isUnknownRelay {
+            context.stroke(path, with: .color(ping.pathColor.opacity(0.55)),
+                           style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [4, 4]))
+            return
         }
 
         context.stroke(

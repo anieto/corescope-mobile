@@ -38,6 +38,9 @@ struct ActivePing: Identifiable, Sendable {
     /// its hops so a route that doubles back between nearby nodes shows both directions side by
     /// side instead of one line drawn twice.
     let curvature: Double
+    /// Bridges hops the analyzer couldn't resolve: from the last known node to the next. Drawn
+    /// dashed and faint, with no arrival ring, since no specific relay is claimed.
+    let isUnknownRelay: Bool
 
     init(
         from start: CLLocationCoordinate2D,
@@ -57,11 +60,13 @@ struct ActivePing: Identifiable, Sendable {
         rssi: Double? = nil,
         sender: String? = nil,
         messageText: String? = nil,
-        curvature: Double = 0
+        curvature: Double = 0,
+        isUnknownRelay: Bool = false
     ) {
         self.start = start
         self.end = end
         self.curvature = curvature
+        self.isUnknownRelay = isUnknownRelay
         self.isPulse = false
         self.createdAt = createdAt
         self.fadeStartsAt = fadeStartsAt ?? createdAt
@@ -89,6 +94,7 @@ struct ActivePing: Identifiable, Sendable {
         self.start = point
         self.end = point
         self.curvature = 0
+        self.isUnknownRelay = false
         self.isPulse = true
         self.createdAt = createdAt
         self.fadeStartsAt = createdAt
