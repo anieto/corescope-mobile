@@ -72,7 +72,9 @@ fun packetIcon(typeName: String): ImageVector = when (typeName) {
 fun PacketScreen(feed: LiveFeedState, onReconnect: () -> Unit, regionControl: @Composable () -> Unit = {}, onClearRegion: () -> Unit = {},
     onGroup: (String) -> Unit = {},
     /** The map's packets panel marks one row selected and shows its actions under it. */
-    selectedId: String? = null, selectedActions: (@Composable (TransmissionGroup) -> Unit)? = null) {
+    selectedId: String? = null, selectedActions: (@Composable (TransmissionGroup) -> Unit)? = null,
+    /** Resuming live also ends a selection or replay (iOS "Resume Live"). */
+    onResumeLive: () -> Unit = {}) {
     var filter by rememberSaveable { mutableStateOf<String?>(null) }
     var showFilters by remember { mutableStateOf(false) }
     // Unchanged transmissions keep their previous instance, so their rows skip recomposition when
@@ -132,7 +134,7 @@ fun PacketScreen(feed: LiveFeedState, onReconnect: () -> Unit, regionControl: @C
                     // Holds the list and the map's traffic where they are, without picking a packet.
                     IconButton(onClick = {
                         val pause = org.nodescope.android.feature.map.LiveTrafficPause
-                        if (pause.isPaused) { pause.resume(); showNew++; scope.launch { scroll.animateScrollToItem(0) } } else pause.pause()
+                        if (pause.isPaused) { pause.resume(); onResumeLive(); showNew++; scope.launch { scroll.animateScrollToItem(0) } } else pause.pause()
                     }) {
                         if (pausedByHand) Icon(Icons.Outlined.PlayArrow, "Resume live traffic")
                         else Icon(Icons.Outlined.Pause, "Pause live traffic")

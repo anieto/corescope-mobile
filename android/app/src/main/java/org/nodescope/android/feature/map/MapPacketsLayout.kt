@@ -119,6 +119,7 @@ private fun LivePacketsList(
     if (beaconHost != null) org.nodescope.android.feature.packets.BeaconPacketScreen(feed, beaconHost,
         selectedHash = selectedId, onPacket = { hash -> onLeave { onDetails(hash) } })
     else PacketScreen(feed, onReconnect, selectedId = selectedId,
+        onResumeLive = { if (selectedId != null) onSelect(null, null, emptyList()) },
         onGroup = { id ->
             // Tapping the selected packet again deselects it (and ends its replay).
             if (selectedId == id) onSelect(null, null, emptyList()) else {
