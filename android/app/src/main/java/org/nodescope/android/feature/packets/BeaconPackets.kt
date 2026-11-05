@@ -147,12 +147,13 @@ fun BeaconPacketDetailScreen(feed: LiveFeedState, browse: BrowseRepository?, hos
     var loading by remember(hash) { mutableStateOf(false) }
     var error by remember(hash) { mutableStateOf<String?>(null) }
     var retry by remember { mutableIntStateOf(0) }
-    var selectedRoute by rememberSaveable(hash) { mutableIntStateOf(0) }
+    // Every route by default, as replays start (iOS); the picker narrows it to one.
+    var selectedRoute by rememberSaveable(hash) { mutableIntStateOf(org.nodescope.android.feature.map.ALL_ROUTES) }
     LaunchedEffect(hash, retry) {
         val repository = browse ?: return@LaunchedEffect
         loading = true
         error = null
-        selectedRoute = 0
+        selectedRoute = org.nodescope.android.feature.map.ALL_ROUTES
         try {
             detail = repository.packetDetail(host, hash)
         } catch (e: CancellationException) {
@@ -218,13 +219,16 @@ fun BeaconPacketDetailScreen(feed: LiveFeedState, browse: BrowseRepository?, hos
                         Text("No fully resolved route is available. Uncertain hops are not replayed.",
                             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
-                        val index = selectedRoute.coerceIn(routes.indices)
-                        if (routes.size > 1) RoutePicker(routes, index, { selectedRoute = it })
-                        RouteHearers(routes[index])
-                        routes[index].keys.forEachIndexed { hop, key ->
-                            DetailRow("Hop ${hop + 1}", nodesByKey[key.lowercase()]?.displayName?.let { "$it · $key" } ?: key, monospace = true)
+                        val index = singleRoute(selectedRoute, routes.size)
+                        if (routes.size > 1) RoutePicker(routes, selectedRoute, { selectedRoute = it }, allowsAll = true)
+                        if (index == null) AllRoutesNote(routes.size)
+                        else {
+                            RouteHearers(routes[index])
+                            routes[index].keys.forEachIndexed { hop, key ->
+                                DetailRow("Hop ${hop + 1}", nodesByKey[key.lowercase()]?.displayName?.let { "$it · $key" } ?: key, monospace = true)
+                            }
                         }
-                        Button(onClick = { onReplay(routes, index) }, Modifier.fillMaxWidth()) {
+                        Button(onClick = { onReplay(routes, index ?: org.nodescope.android.feature.map.ALL_ROUTES) }, Modifier.fillMaxWidth()) {
                             Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text("Replay on map")
                         }
                     }

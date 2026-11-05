@@ -107,3 +107,20 @@ fun RouteHearers(option: RouteOption) {
         }
     }
 }
+
+/**
+ * The one route a picker's [selection] shows, or null for All Routes (offered only with more than
+ * one route; with one, that route is shown whatever the selection).
+ */
+fun singleRoute(selection: Int, count: Int): Int? = when {
+    count == 1 -> 0
+    selection in 0 until count -> selection
+    else -> null
+}
+
+/** Shown in place of one route's details while All Routes is chosen (iOS `AllRoutesNote`). */
+@Composable
+fun AllRoutesNote(count: Int) {
+    Text("All $count routes replay together. Choose one to see its hops and who heard it.",
+        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}

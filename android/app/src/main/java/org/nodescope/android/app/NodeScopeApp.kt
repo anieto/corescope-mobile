@@ -302,10 +302,10 @@ internal fun AppShell(
         }
     }
     fun startReplay(routes: List<RouteOption>, selected: Int, packetId: String? = null) {
-        // With Realistic Propagation on, a packet heard along several routes replays them all
-        // together, as the live map shows it (iOS); All Routes is in the route menu either way.
-        val initial = if (routes.size > 1 && org.nodescope.android.feature.map.LiveMapSettings.realisticPropagation(context))
-            org.nodescope.android.feature.map.ALL_ROUTES else selected
+        // Every route together unless one was chosen (a packet details route picker), so a replay
+        // shows how the packet spread rather than one observer's part of it (iOS).
+        val all = org.nodescope.android.feature.map.ALL_ROUTES
+        val initial = if (routes.size > 1 && selected == all) all else selected.takeIf { it in routes.indices } ?: 0
         replay = RouteReplay(System.nanoTime(), placedRoutes(routes), initial, packetId, routes)
         panelPacket = null
         selectTab(Destination.MAP)
@@ -344,7 +344,7 @@ internal fun AppShell(
                     replay = current.copy(routes = placedRoutes(merged), options = merged)
                 }
                 // Selected with no route in its row, but the full list has one.
-                panelPacket == id -> startReplay(complete, 0, id)
+                panelPacket == id -> startReplay(complete, org.nodescope.android.feature.map.ALL_ROUTES, id)
             }
         }
     }
@@ -514,7 +514,7 @@ internal fun AppShell(
                                     routeLookup?.cancel(); lookingUp = null
                                     when {
                                         id == null -> { replay = null; panelPacket = null }
-                                        routes.isNotEmpty() -> startReplay(routes, 0, id)
+                                        routes.isNotEmpty() -> startReplay(routes, org.nodescope.android.feature.map.ALL_ROUTES, id)
                                         // Nothing to draw yet: end any replay so the map doesn't keep an unrelated route.
                                         else -> { replay = null; panelPacket = id }
                                     }
