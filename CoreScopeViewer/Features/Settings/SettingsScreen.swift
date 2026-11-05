@@ -54,28 +54,28 @@ struct SettingsScreen: View {
                         Divider()
 
                         Toggle("Background Texture", isOn: $backgroundTextureEnabled)
-                        Text("Show subtle network lines and nodes behind page content.")
+                        Text("Network lines and nodes behind page content.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
 
                         Divider()
 
                         Toggle("Term Explanations", isOn: $showsTermExplanations)
-                        Text("Show \(Image(systemName: "info.circle")) beside terms like SNR and hops. The Glossary below is always available.")
+                        Text("Show \(Image(systemName: "info.circle")) beside terms like SNR and hops.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    SettingsPanel(title: "Live Map", symbol: "map") {
+                        Toggle("Group Nearby Nodes", isOn: $groupsNodes)
+                        Text("Combine close nodes into numbered bubbles when zoomed out. With this off, busy areas may be slower.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
 
                         Divider()
 
                         Toggle("Realistic Propagation", isOn: $realisticPropagation)
-                        Text("On the live map, wait for every observer to report a packet, then animate all of its paths together. Uses the analyzer's propagation delay (usually 5 seconds), so the map runs that far behind live.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-
-                        Divider()
-
-                        Toggle("Group Nearby Nodes", isOn: $groupsNodes)
-                        Text("Combine nearby nodes on the live map into a numbered bubble when zoomed out. Turn off to show every node on its own; busy areas get crowded and the map can be slower.")
+                        Text("Wait for every observer, then animate a packet's paths together. Runs about 5 seconds behind live.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
