@@ -106,6 +106,13 @@ class HttpAnalyzerRepository(private val client: BodySource,
         val picks = async {
             optional { protocolJson.decodeFromString<RegionQuickPicksResponse>(client.read(endpoint(selection.host, "api", "config", "region-quick-picks"))).quickPicks }
         }
+        val propagation = async {
+            optional {
+                protocolJson.parseToJsonElement(client.read(endpoint(selection.host, "api", "config", "client")))
+                    .let { it as? kotlinx.serialization.json.JsonObject }?.get("propagationBufferMs")
+                    ?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content?.toDoubleOrNull() }
+            }
+        }
         val nodesUrl = endpoint(selection.host, "api", "nodes").newBuilder()
             .addQueryParameter("limit", "5000").apply {
                 selection.region?.let { addQueryParameter("region", it) }
@@ -118,7 +125,9 @@ class HttpAnalyzerRepository(private val client: BodySource,
             configurationIncomplete = regionResult == null || mapResult == null,
             regionCoordinates = regionCoordinatesFor(regionResult.orEmpty(), centers.await().orEmpty(),
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { airports() }),
-            quickPicks = picks.await().orEmpty())
+            quickPicks = picks.await().orEmpty(),
+            // Held to 0.5–30 s, as on iOS.
+            propagationBufferMs = propagation.await()?.toLong()?.coerceIn(500, 30_000))
     }
 }
 

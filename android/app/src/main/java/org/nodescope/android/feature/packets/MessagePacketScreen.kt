@@ -56,7 +56,8 @@ fun MessagePacketScreen(model: PacketDetailViewModel, host: String, hash: String
     val routes = remember(detail) { routeOptions(detail?.observations.orEmpty().map {
         HeardPath(it.resolvedPath.orEmpty(), RouteHearing(it.observerName?.takeIf(String::isNotBlank) ?: "Observer ${it.id}", it.observerIata, it.snr, it.rssi))
     }) }
-    var selectedRoute by rememberSaveable { mutableIntStateOf(0) }
+    // Every route by default, as replays start (iOS); the picker narrows it to one.
+    var selectedRoute by rememberSaveable { mutableIntStateOf(org.nodescope.android.feature.map.ALL_ROUTES) }
     val copy = rememberCopyAction()
     val context = LocalContext.current
 
@@ -115,20 +116,23 @@ fun MessagePacketScreen(model: PacketDetailViewModel, host: String, hash: String
                     if (routes.isEmpty()) Text("No mappable route was recorded for this packet.", style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     else {
-                        val index = selectedRoute.coerceIn(routes.indices)
-                        if (routes.size > 1) RoutePicker(routes, index, { selectedRoute = it })
+                        val index = singleRoute(selectedRoute, routes.size)
+                        if (routes.size > 1) RoutePicker(routes, selectedRoute, { selectedRoute = it }, allowsAll = true)
                         else Row {
                             Text("Resolved path", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                             Text("${routes[0].hops} hops", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         val lookup = remember(nodes) { nodes.associateBy { it.publicKey.lowercase() } }
-                        Text(routes[index].keys.joinToString(" → ") { lookup[it.lowercase()]?.displayName ?: it.take(8).uppercase() },
-                            style = MaterialTheme.typography.bodyMedium)
-                        RouteHearers(routes[index])
-                        val playable = routeSubchains(routes[index].keys, nodes).any { it.size > 1 }
+                        if (index == null) AllRoutesNote(routes.size)
+                        else {
+                            Text(routes[index].keys.joinToString(" → ") { lookup[it.lowercase()]?.displayName ?: it.take(8).uppercase() },
+                                style = MaterialTheme.typography.bodyMedium)
+                            RouteHearers(routes[index])
+                        }
+                        val playable = (index?.let { listOf(routes[it]) } ?: routes).any { route -> routeSubchains(route.keys, nodes).any { it.size > 1 } }
                         if (!playable) Text("This route's nodes aren't on the current map region, so it can't be replayed.",
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Button(onClick = { onReplay(routes, index) }, Modifier.fillMaxWidth(), enabled = playable,
+                        Button(onClick = { onReplay(routes, index ?: org.nodescope.android.feature.map.ALL_ROUTES) }, Modifier.fillMaxWidth(), enabled = playable,
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)) {
                             Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text("Replay on map")
                         }

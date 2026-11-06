@@ -72,7 +72,9 @@ fun packetIcon(typeName: String): ImageVector = when (typeName) {
 fun PacketScreen(feed: LiveFeedState, onReconnect: () -> Unit, regionControl: @Composable () -> Unit = {}, onClearRegion: () -> Unit = {},
     onGroup: (String) -> Unit = {},
     /** The map's packets panel marks one row selected and shows its actions under it. */
-    selectedId: String? = null, selectedActions: (@Composable (TransmissionGroup) -> Unit)? = null) {
+    selectedId: String? = null, selectedActions: (@Composable (TransmissionGroup) -> Unit)? = null,
+    /** Resuming live also ends a selection or replay (iOS "Resume Live"). */
+    onResumeLive: () -> Unit = {}) {
     var filter by rememberSaveable { mutableStateOf<String?>(null) }
     var showFilters by remember { mutableStateOf(false) }
     // Unchanged transmissions keep their previous instance, so their rows skip recomposition when
@@ -88,7 +90,9 @@ fun PacketScreen(feed: LiveFeedState, onReconnect: () -> Unit, regionControl: @C
     // While a packet is selected (its route replaying on the map, where live routes pause too),
     // the list holds its order: rows update in place, but new packets wait behind a
     // "Show new" button instead of pushing the selected row around.
-    val paused = selectedId != null
+    // Paused by hand as well (the map's live traffic holds too): new packets are only counted.
+    val pausedByHand = org.nodescope.android.feature.map.LiveTrafficPause.isPaused
+    val paused = selectedId != null || pausedByHand
     var showNew by remember { mutableIntStateOf(0) }
     val held = remember(paused, showNew, filter) { if (paused) liveGroups else null }
     val groups = remember(held, liveGroups) {
@@ -116,8 +120,9 @@ fun PacketScreen(feed: LiveFeedState, onReconnect: () -> Unit, regionControl: @C
                 Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                            Box(Modifier.size(8.dp).background(statusAccent(feed.connection == LiveConnection.LIVE), CircleShape))
-                            Text(connectionLabel(feed.connection, "Listening for live traffic"),
+                            Box(Modifier.size(8.dp).background(statusAccent(feed.connection == LiveConnection.LIVE && !pausedByHand), CircleShape))
+                            Text(if (pausedByHand) (if (waiting > 0) "Live feed paused · $waiting new" else "Live feed paused")
+                                else connectionLabel(feed.connection, "Listening for live traffic"),
                                 style = MaterialTheme.typography.titleSmall)
                         }
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -125,6 +130,14 @@ fun PacketScreen(feed: LiveFeedState, onReconnect: () -> Unit, regionControl: @C
                             SummaryLabel(Icons.Outlined.MonitorHeart, "${groups.size} transmissions")
                             SummaryLabel(Icons.Outlined.Visibility, "${groups.sumOf { it.observationCount }} observations")
                         }
+                    }
+                    // Holds the list and the map's traffic where they are, without picking a packet.
+                    IconButton(onClick = {
+                        val pause = org.nodescope.android.feature.map.LiveTrafficPause
+                        if (pause.isPaused) { pause.resume(); onResumeLive(); showNew++; scope.launch { scroll.animateScrollToItem(0) } } else pause.pause()
+                    }) {
+                        if (pausedByHand) Icon(Icons.Outlined.PlayArrow, "Resume live traffic")
+                        else Icon(Icons.Outlined.Pause, "Pause live traffic")
                     }
                     IconButton(onClick = { showFilters = true }) {
                         BadgedBox(badge = { if (filterCount > 0) Badge(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) { Text(filterCount.toString()) } }) {
@@ -145,7 +158,7 @@ fun PacketScreen(feed: LiveFeedState, onReconnect: () -> Unit, regionControl: @C
                 FilledTonalButton(onClick = { scope.launch { scroll.animateScrollToItem(0) } }) { Text("New packets · back to latest") }
             }
         }
-        if (waiting > 0) item {
+        if (waiting > 0 && !pausedByHand) item {
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 FilledTonalButton(onClick = { showNew++; scope.launch { scroll.animateScrollToItem(0) } }) {
                     Text("Show $waiting new ${if (waiting == 1) "packet" else "packets"}")

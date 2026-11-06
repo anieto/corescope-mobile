@@ -20,6 +20,7 @@ struct MapScreen: View {
     @Environment(LiveFeedService.self) private var liveFeed
     @Environment(ObserverRegionLookup.self) private var observerRegionLookup
     @Environment(PacketReplayStore.self) private var packetReplayStore
+    @Environment(LiveTrafficPause.self) private var livePause
     @Environment(AppNavigationStore.self) private var appNavigationStore
     @Environment(AnalyzerSourceRegistry.self) private var analyzerSourceRegistry
     @Environment(\.colorScheme) private var colorScheme
@@ -33,6 +34,11 @@ struct MapScreen: View {
     @State private var selectedNode: MeshNode?
     @State private var displayedNodes: [MeshNode] = []
     @State private var displayCoordinatesByNodeID: [String: CLLocationCoordinate2D] = [:]
+    @State private var fanOriginsByNodeID: [String: CLLocationCoordinate2D] = [:]
+    /// Live traffic to or from a node grouped into a bubble is drawn to the bubble. Drawn at the
+    /// hidden nodes' own positions, hops between nodes in one bubble were a few points long and
+    /// their markers popped on and off inside it, which looked like the packet ping-ponging.
+    @State private var bubbleByNodeLocation: [CoordinateKey: CLLocationCoordinate2D] = [:]
     @State private var nodeClusters: [NodeCluster] = []
     @State private var iataCoordinates: [String: CLLocationCoordinate2D] = [:]
     @State private var iataRadiusKm: [String: Double] = [:]
@@ -43,13 +49,46 @@ struct MapScreen: View {
     @State private var userLocation: CLLocationCoordinate2D?
     @Namespace private var mapScope
     @State private var hasCenteredCamera = false
-    @State private var activePings: [ActivePing] = []
+    /// Live traffic lives in its own store, read only by the traffic layer, so a packet arriving
+    /// redraws the traffic and not the map's markers (hundreds of them with grouping off).
+    @State private var liveTraffic = LiveTrafficStore()
+    /// Nodes left out because another marker covers them (grouping off, zoomed out), kept for taps.
+    @State private var overlappedNodes: [MeshNode] = []
     @State private var replayPings: [ActivePing] = []
     /// Observers that heard the replayed route, labelled where the replay ends.
     @State private var replayReceivers: [ReplayReceiver] = []
+    /// Nodes hidden behind a replay's observer markers (see `refreshReplayHiddenNodes`).
+    @State private var replayHiddenNodeIDs: Set<String> = []
+    /// The replay request and route now showing. One tap on Replay reaches the map several ways
+    /// (the request, the Map tab opening, the route selection that came with it); each started
+    /// the replay again, so it was seen to begin and then restart.
+    @State private var startedReplay: StartedReplay?
+    /// The replay was asked for from another screen: give the viewer a moment to take in the map
+    /// before it plays. Used once, by the next replay that's drawn.
+    @State private var replayNeedsLeadIn = false
+    /// The replay's own clock. Moving traffic isn't drawn while the camera moves (it would trail
+    /// the map), so the replay pauses while the user pans or zooms and resumes where it was,
+    /// instead of carrying on unseen and fading hops under their finger.
+    @State private var replayPausedAt: Date?
+    @State private var replayClockOffset: TimeInterval = 0
+
+    private struct StartedReplay: Equatable {
+        let request: UUID
+        let routeIndex: Int
+    }
     @State private var isReplayMode = false
     @State private var showsReplayRouteOnly = true
     @State private var processedEventIds: Set<String> = []
+    @AppStorage(LiveMapPreferences.realisticPropagationKey) private var realisticPropagation = false
+    @AppStorage(LiveMapPreferences.groupsNodesKey) private var groupsNodes = true
+    /// Realistic propagation: each packet's observations, held by hash until its buffer ends.
+    @State private var heldPropagation: [String: HeldPropagation] = [:]
+    @State private var heldPropagationRelease: Task<Void, Never>?
+    /// Observers each live packet has already been drawn reaching. An observer reports every copy
+    /// it hears, including neighbours' re-broadcasts, which drew the packet going out a kilometre or
+    /// two and straight back to the same observer, again and again. Only its first copy is drawn.
+    @State private var reachedObserversByHash: [String: Set<String>] = [:]
+    @State private var reachedObserverHashOrder: [String] = []
     @State private var isInitialLoadComplete = false
     @State private var isChangingRegion = false
     @State private var isLocatingUser = false
@@ -64,6 +103,7 @@ struct MapScreen: View {
     @State private var displayUpdateID = UUID()
     @State private var isSearchPresented = false
     @State private var isMapFiltersPresented = false
+    @State private var isMapKeyPresented = false
     @State private var selectedRouteDetails: MapRouteDetails?
     @State private var highlightedNodeID: String?
     @State private var lastHandledNavigationRequestID: UUID?
@@ -77,6 +117,127 @@ struct MapScreen: View {
     /// placed from this: on the first appearance the hidden navigation bar's height is still in
     /// the stack's own safe area, which dropped the header by a bar height until the next visit.
     @State private var chromeTopInset: CGFloat = 0
+
+    /// One node's marker. Equatable on its plain inputs, so a map redraw skips the markers that
+    /// didn't change; a plain dot (no leader line, no name) is just the dot.
+    private struct MapNodeMarker: View, Equatable {
+        let role: String
+        let isHighlighted: Bool
+        let isRouteHop: Bool
+        let leaderOffset: CGSize?
+        let label: String?
+        let labelSide: LabelSide
+        let colorScheme: ColorScheme
+
+        var body: some View {
+            let color = NodeRoleStyle.color(for: role)
+            let dot = MapNodeIndicator(color: color, isHighlighted: isHighlighted, isRouteHop: isRouteHop)
+                .frame(width: 32, height: 32)
+            if leaderOffset == nil && label == nil {
+                dot
+            } else {
+                dot
+                    .background {
+                        if let leaderOffset {
+                            LeaderLine(offset: leaderOffset)
+                                .stroke(color.opacity(0.85),
+                                        style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [3, 2.5]))
+                        }
+                    }
+                    .overlay(alignment: labelSide.alignment) {
+                        if let label {
+                            MapNodeNameLabel(name: label, side: labelSide, colorScheme: colorScheme)
+                        }
+                    }
+            }
+        }
+    }
+
+    private struct MapNodeNameLabel: View {
+        let name: String
+        let side: LabelSide
+        let colorScheme: ColorScheme
+
+        var body: some View {
+            Text(name)
+                .font(.monaspace(.caption2).weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+                .background(
+                    colorScheme == .dark ? Color.black.opacity(0.72) : Color.white.opacity(0.82),
+                    in: Capsule()
+                )
+                .offset(side.offset)
+                .allowsHitTesting(false)
+        }
+    }
+
+    /// Which side of its 32 pt marker frame a node's name sits on.
+    enum LabelSide {
+        case below, above, left, right
+
+        /// Facing away from `towardHub` (a screen offset from the marker to its fan's hub).
+        init(awayFrom towardHub: CGSize) {
+            if abs(towardHub.width) > abs(towardHub.height) * 1.2 {
+                self = towardHub.width > 0 ? .left : .right
+            } else {
+                self = towardHub.height > 0 ? .above : .below
+            }
+        }
+
+        /// The frame edge the label is aligned to, and how far it's moved out from there so it
+        /// clears the marker by 4 pt (the frame is 32 pt, the marker 10 pt, so 25 = 16 + 9).
+        var alignment: Alignment {
+            switch self {
+            case .below: .top
+            case .above: .bottom
+            case .left: .trailing
+            case .right: .leading
+            }
+        }
+
+        var offset: CGSize {
+            switch self {
+            case .below: CGSize(width: 0, height: 25)
+            case .above: CGSize(width: 0, height: -25)
+            case .left: CGSize(width: -25, height: 0)
+            case .right: CGSize(width: 25, height: 0)
+            }
+        }
+    }
+
+    /// From the centre of its frame toward a point `offset` away (a fanned marker's true position).
+    private struct LeaderLine: Shape {
+        let offset: CGSize
+
+        func path(in rect: CGRect) -> Path {
+            var path = Path()
+            path.move(to: CGPoint(x: rect.midX, y: rect.midY))
+            path.addLine(to: CGPoint(x: rect.midX + offset.width, y: rect.midY + offset.height))
+            return path
+        }
+    }
+
+    /// A node drawn away from its true position so overlapping markers can be told apart.
+    private struct FannedNode: Identifiable {
+        let id: String
+        let truePosition: CLLocationCoordinate2D
+        let shownPosition: CLLocationCoordinate2D
+        let color: Color
+    }
+
+    private struct HeldObservation {
+        let key: String
+        let event: LiveEnvelope
+    }
+
+    private struct HeldPropagation {
+        let releaseAt: Date
+        var observations: [HeldObservation] = []
+    }
 
     private struct NodeCluster: Identifiable, Sendable {
         let id: String
@@ -130,12 +291,20 @@ struct MapScreen: View {
         let clusters: [NodeCluster]
         let displayCoordinatesByNodeID: [String: CLLocationCoordinate2D]
         let filteredCount: Int
+        /// For fanned-out nodes, the point they fan out from (their group's centre).
+        var fanOriginsByNodeID: [String: CLLocationCoordinate2D] = [:]
+        /// For grouped nodes, keyed by their position: the bubble they're drawn as.
+        var bubbleByNodeLocation: [CoordinateKey: CLLocationCoordinate2D] = [:]
+        /// Nodes not drawn because another marker covers them, still tappable as part of a stack.
+        var overlappedNodes: [MeshNode] = []
     }
 
     private struct WideMapHeader: View {
         let isConnected: Bool
         let isRefreshing: Bool
         let togglePacketSidebar: (() -> Void)?
+        /// Set while live traffic is paused: the title becomes a "Paused" button that resumes it.
+        var resumeLiveTraffic: (() -> Void)? = nil
         let retry: () -> Void
         let search: () -> Void
         @Binding var mapDisplayStyle: MapDisplayStyle
@@ -153,18 +322,25 @@ struct MapScreen: View {
                         .accessibilityLabel("Toggle live packets")
                     }
 
-                    HStack(spacing: 7) {
-                        Circle()
-                            .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
-                            .frame(width: 7, height: 7)
-                        Text("Live Map")
-                            .font(.monaspace(.headline))
+                    if let resumeLiveTraffic {
+                        LiveMapPausedButton(resume: resumeLiveTraffic)
+                            .padding(.horizontal, 14)
+                            .frame(height: 44)
+                            .nodeScopeFloatingGlass(cornerRadius: 18)
+                    } else {
+                        HStack(spacing: 7) {
+                            Circle()
+                                .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
+                                .frame(width: 7, height: 7)
+                            Text("Live Map")
+                                .font(.monaspace(.headline))
+                        }
+                        .padding(.horizontal, 14)
+                        .frame(height: 44)
+                        .nodeScopeFloatingGlass(cornerRadius: 18)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(isConnected ? "Live Map, connected" : "Live Map, reconnecting")
                     }
-                    .padding(.horizontal, 14)
-                    .frame(height: 44)
-                    .nodeScopeFloatingGlass(cornerRadius: 18)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel(isConnected ? "Live Map, connected" : "Live Map, reconnecting")
 
                 }
 
@@ -229,10 +405,11 @@ struct MapScreen: View {
                 TimelineView(
                     .animation(
                         minimumInterval: mapUpdateInterval,
-                        paused: !isReplayMode || !isTabActive || !pingsForDisplay.contains { !$0.isExpired() }
+                        paused: !isReplayMode || !isTabActive
+                            || !pingsForDisplay.contains { !$0.isExpired(at: replayClock()) }
                     )
                 ) { context in
-                    mapContent(at: isReplayMode ? context.date : .now)
+                    mapContent(at: isReplayMode ? replayClock(context.date) : .now)
                 }
                 .onAppear { mapViewportSize = geometry.size }
                 .onChange(of: geometry.size) { _, size in
@@ -274,18 +451,7 @@ struct MapScreen: View {
                             .accessibilityLabel("Toggle live packets")
                         }
 
-                        HStack(spacing: 6) {
-                            Circle()
-                                .fill(liveFeed.isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
-                                .frame(width: 7, height: 7)
-                            Text("Live Map")
-                                .font(.monaspace(.headline))
-                                .fixedSize()
-                        }
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .accessibilityElement(children: .combine)
-                        .accessibilityLabel(liveFeed.isConnected ? "Live Map, connected" : "Live Map, reconnecting")
+                        CompactLiveMapTitle(isConnected: liveFeed.isConnected)
                     }
                     ToolbarItemGroup(placement: .topBarTrailing) {
                         Button(action: retryMapLoad) {
@@ -328,6 +494,7 @@ struct MapScreen: View {
                             isConnected: liveFeed.isConnected,
                             isRefreshing: isRefreshingMap,
                             togglePacketSidebar: togglePacketSidebar,
+                            resumeLiveTraffic: livePause.isPaused ? { livePause.resume() } : nil,
                             retry: retryMapLoad,
                             search: toggleMapSearch,
                             mapDisplayStyle: $mapDisplayStyle
@@ -346,6 +513,7 @@ struct MapScreen: View {
                                 activeFilterCount: nodeFilters.activeFilterCount,
                                 action: { isMapFiltersPresented = true }
                             )
+                            MapKeyButton { isMapKeyPresented = true }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         if isShowingMapLoadingIndicator {
@@ -506,6 +674,19 @@ struct MapScreen: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $isMapKeyPresented) {
+            NavigationStack {
+                MapKeyScreen()
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Done") { isMapKeyPresented = false }
+                        }
+                    }
+            }
+            .tint(colorScheme == .dark ? Color.white : Color.accentColor)
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
         .sheet(isPresented: $isMapFiltersPresented) {
             MapNodeFilterSheet(
                 filters: $nodeFilters,
@@ -524,6 +705,7 @@ struct MapScreen: View {
             incomingEventTask = nil
             selectedNode = nil
             pendingReplayRequestID = nil
+            startedReplay = nil
             isReplayAwaitingCamera = false
             replayCameraFallback?.cancel()
             replayPings = []
@@ -577,6 +759,7 @@ struct MapScreen: View {
             // animations created under the previous scope before rebuilding
             // from region-filtered packet observations.
             activePings = []
+            discardHeldPropagation()
             processedEventIds = []
 
             async let minimumLoaderDuration: Void = keepRegionLoaderVisible()
@@ -593,6 +776,7 @@ struct MapScreen: View {
                 iataCoordinates = [:]
                 iataRadiusKm = [:]
                 activePings = []
+                discardHeldPropagation()
                 isReplayAwaitingCamera = false
                 replayCameraFallback?.cancel()
                 replayPings = []
@@ -603,6 +787,8 @@ struct MapScreen: View {
 
             viewModel.configure(settings: settings)
             await viewModel.loadMapDefaults()
+            // Off the critical path: the map shouldn't wait on it to show nodes.
+            Task { await viewModel.loadLiveMapConfig() }
 
             guard !Task.isCancelled else { return }
 
@@ -664,13 +850,19 @@ struct MapScreen: View {
             moveCamera(to: viewport)
             lastFramedMapScopeID = mapLoadTaskID
         }
-        .onChange(of: liveFeed.beaconNodeSequence) {
-            applyBeaconNodeUpdates()
-        }
-        .onChange(of: liveFeed.eventSequence) {
-            if isInitialLoadComplete {
-                scheduleIncomingEventProcessing()
-            }
+        // Watched from a hidden child view: reading the feed's counters here would re-evaluate
+        // the whole map, markers and all, on every packet.
+        .background {
+            LiveFeedSequenceObserver(
+                beaconNodesChanged: { applyBeaconNodeUpdates() },
+                // Packets held for Realistic Propagation haven't started moving, so a pause drops them.
+                pauseStarted: { discardHeldPropagation() },
+                eventsChanged: {
+                    if isInitialLoadComplete {
+                        scheduleIncomingEventProcessing()
+                    }
+                }
+            )
         }
         .onChange(of: observerRegionLookup.isLoaded) { _, isLoaded in
             guard isLoaded else { return }
@@ -697,6 +889,7 @@ struct MapScreen: View {
             UserDefaults.standard.set(mapDisplayStyle.rawValue, forKey: MapDisplayStyle.defaultsKey)
         }
         .onChange(of: packetReplayStore.requestID) {
+            replayNeedsLeadIn = !isTabActive
             queuePacketReplay()
         }
         .onChange(of: packetReplayStore.stopRequestID) {
@@ -709,11 +902,20 @@ struct MapScreen: View {
         .onChange(of: appNavigationStore.requestID) {
             handleNavigationRequest()
         }
+        .onChange(of: groupsNodes) {
+            updateDisplayedNodes()
+        }
+        .onChange(of: realisticPropagation) { _, isOn in
+            // Turning it off shows anything still held straight away.
+            if !isOn { releaseHeldPropagation(all: true) }
+        }
         .onChange(of: packetReplayStore.selectedRouteIndex) {
-            guard isReplayMode else {
+            guard isReplayMode, startedReplay?.request == packetReplayStore.requestID else {
+                // A new request's own route selection: the request starts it.
                 queuePacketReplay()
                 return
             }
+            guard startedReplay != currentReplay else { return }
             // Only re-fit the camera when the newly selected route would
             // actually fall outside the current viewport — switching between
             // routes that share the same on-screen area shouldn't jump the map.
@@ -810,6 +1012,13 @@ struct MapScreen: View {
         let routeCoordinates = Set(currentPings.flatMap {
             [CoordinateKey($0.start), CoordinateKey($0.end)]
         })
+        // During a replay a node with an observer on it is drawn as that observer, ringed in the
+        // node's colour, rather than as a dot on top of the observer marker.
+        let observedNodeIDs: Set<String> = isReplayMode ? replayHiddenNodeIDs : []
+        // Replay labels step in with zoom: observer names once the map spans about a city
+        // (0.25° of latitude), then the route's node names closer still (0.08°).
+        let latitudeSpan = visibleRegion?.span.latitudeDelta ?? .infinity
+        let showsObserverNames = latitudeSpan <= 0.25
         let baseNodes = isReplayMode && showsReplayRouteOnly ? replayRouteNodes : displayedNodes
         let mapNodes = baseNodes
         let mapClusters = isReplayMode && showsReplayRouteOnly
@@ -818,19 +1027,75 @@ struct MapScreen: View {
         // MapKit's built-in annotation titles become expensive when hundreds
         // appear at once. Only render our lightweight labels when the map is
         // genuinely close and the visible marker count is bounded.
-        let showsNodeNames = (visibleRegion?.span.latitudeDelta ?? .infinity) <= 0.08
+        let showsNodeNames = latitudeSpan <= 0.08
             && mapNodes.count <= 60
+        // A replay's own nodes are few, so they're named at that zoom however many others show.
+        let namedRouteNodeIDs: Set<String> = isReplayMode && latitudeSpan <= 0.08
+            ? Set(replayRouteNodes.map(\.id))
+            : []
+
+        // Close in, overlapping nodes fan out from where they really are. A faint line back to a dot
+        // at the true position (as CoreScope's node map does) shows the marker has been moved.
+        // The lines meet at one hub per group, where the group really is: its nodes are within a
+        // marker's width of each other, so separate true-position dots only crossed and crowded.
+        let fannedNodes: [FannedNode] = mapNodes.compactMap { node in
+            guard !observedNodeIDs.contains(node.id),
+                  let shown = displayCoordinatesByNodeID[node.id],
+                  let hub = fanOriginsByNodeID[node.id] else { return nil }
+            return FannedNode(id: node.id, truePosition: hub, shownPosition: shown,
+                              color: NodeRoleStyle.color(for: node.role))
+        }
+        let truePositionDots = Dictionary(fannedNodes.map { (CoordinateKey($0.truePosition), $0) },
+                                          uniquingKeysWith: { first, _ in first }).values.sorted { $0.id < $1.id }
+        // Each fanned marker draws its own short line back to the true position, in screen points
+        // for the settled camera: a MapKit polyline this short didn't reliably render.
+        let pointsPerMapPoint = replayScreenPointsPerMapPoint()
+        let leaderOffsets: [String: CGSize] = pointsPerMapPoint.map { scale in
+            Dictionary(uniqueKeysWithValues: fannedNodes.map { node in
+                let shown = MKMapPoint(node.shownPosition), truth = MKMapPoint(node.truePosition)
+                return (node.id, CGSize(width: (truth.x - shown.x) * scale, height: (truth.y - shown.y) * scale))
+            })
+        } ?? [:]
+        // A fanned node's name goes on the side facing away from its hub, so a ring of names
+        // spreads out instead of stacking under the markers.
+        let labelSides: [String: LabelSide] = leaderOffsets.mapValues { towardHub in
+            LabelSide(awayFrom: towardHub)
+        }
+        // Of the names allowed at this zoom, only those that don't overlap a name already placed:
+        // observers first, then the replay's nodes, then the rest.
+        let labeledIDs = placedLabels(
+            observers: isReplayMode && showsObserverNames ? replayReceivers : [],
+            nodes: mapNodes.filter {
+                !observedNodeIDs.contains($0.id) && (showsNodeNames || namedRouteNodeIDs.contains($0.id))
+            },
+            routeNodeIDs: namedRouteNodeIDs,
+            markers: mapNodes.filter { !observedNodeIDs.contains($0.id) },
+            observerMarkers: isReplayMode ? replayReceivers : [],
+            labelSides: labelSides
+        )
 
         MapReader { proxy in
             Map(position: $cameraPosition, scope: mapScope) {
+                ForEach(truePositionDots) { node in
+                    Annotation("", coordinate: node.truePosition, anchor: .center) {
+                        // Neutral, since several nodes can share it.
+                        Circle()
+                            .fill(.white)
+                            .frame(width: 6, height: 6)
+                            .overlay { Circle().stroke(Color(white: 0.25).opacity(0.85), lineWidth: 1.25) }
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                    }
+                }
+
                 ForEach(anchoredPings) { ping in
                     let opacity = ping.completedPathOpacity(at: date)
-                    MapPolyline(coordinates: [ping.start, ping.end])
+                    MapPolyline(coordinates: ping.pathCoordinates())
                         .stroke(
                             ping.pathColor.opacity(opacity * 0.18),
                             style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round)
                         )
-                    MapPolyline(coordinates: [ping.start, ping.end])
+                    MapPolyline(coordinates: ping.pathCoordinates())
                         .stroke(
                             ping.pathColor.opacity(opacity * 0.85),
                             style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
@@ -838,37 +1103,22 @@ struct MapScreen: View {
                 }
 
                 ForEach(mapNodes) { node in
-                    if let coordinate = node.coordinate {
+                    if let coordinate = node.coordinate, !observedNodeIDs.contains(node.id) {
                         let displayCoordinate = displayCoordinatesByNodeID[node.id] ?? coordinate
                         Annotation("", coordinate: displayCoordinate, anchor: .center) {
                             let isHighlighted = node.id == highlightedNodeID
                             let isRouteHop = routeCoordinates.contains(CoordinateKey(coordinate))
-                            MapNodeIndicator(
-                                color: NodeRoleStyle.color(for: node.role),
+                            MapNodeMarker(
+                                role: node.role,
                                 isHighlighted: isHighlighted,
-                                isRouteHop: isRouteHop
+                                isRouteHop: isRouteHop,
+                                leaderOffset: leaderOffsets[node.id],
+                                label: labeledIDs.contains(Self.nodeLabelID(node.id))
+                                    ? node.name ?? shortKey(node.publicKey) : nil,
+                                labelSide: labelSides[node.id] ?? .below,
+                                colorScheme: colorScheme
                             )
-                                    .frame(width: 32, height: 32)
-                                    .contentShape(Circle())
-                                    .overlay(alignment: .top) {
-                                        if showsNodeNames {
-                                            Text(node.name ?? shortKey(node.publicKey))
-                                                .font(.monaspace(.caption2).weight(.semibold))
-                                                .foregroundStyle(.primary)
-                                                .lineLimit(1)
-                                                .fixedSize(horizontal: true, vertical: false)
-                                                .padding(.horizontal, 4)
-                                                .padding(.vertical, 2)
-                                                .background(
-                                                    colorScheme == .dark
-                                                        ? Color.black.opacity(0.72)
-                                                        : Color.white.opacity(0.82),
-                                                    in: Capsule()
-                                                )
-                                                .offset(y: 25)
-                                                .allowsHitTesting(false)
-                                        }
-                                    }
+                            .equatable()
                             .allowsHitTesting(false)
                             .accessibilityElement()
                             .accessibilityAddTraits(.isButton)
@@ -900,7 +1150,12 @@ struct MapScreen: View {
                 if isReplayMode {
                     ForEach(replayReceivers) { receiver in
                         Annotation("", coordinate: receiver.coordinate, anchor: .center) {
-                            ReplayReceiverMarker(name: receiver.name, colorScheme: colorScheme)
+                            ReplayReceiverMarker(
+                                name: receiver.name,
+                                nodeColor: receiver.nodeRole.map { NodeRoleStyle.color(for: $0) },
+                                showsName: labeledIDs.contains(Self.observerLabelID(receiver.id)),
+                                colorScheme: colorScheme
+                            )
                         }
                     }
                 }
@@ -946,12 +1201,16 @@ struct MapScreen: View {
             }
             .onMapCameraChange(frequency: .onEnd) { context in
                 isMapCameraMoving = false
+                resumeReplayClock()
                 visibleRegion = context.region
                 updateDisplayedNodes(in: context.region)
+                refreshReplayHiddenNodes()
                 startReplayAfterCamera()
             }
             .onTapGesture { screenPoint in
-                scheduleMapTap(at: screenPoint, using: proxy, date: .now, nodes: mapNodes)
+                // Covered nodes count too, so a tap on a thinned-out spot still finds the stack.
+                let tappable = isReplayMode && showsReplayRouteOnly ? mapNodes : mapNodes + overlappedNodes
+                scheduleMapTap(at: screenPoint, using: proxy, date: .now, nodes: tappable)
             }
             .simultaneousGesture(
                 SpatialTapGesture(count: 2)
@@ -969,10 +1228,9 @@ struct MapScreen: View {
                     .allowsHitTesting(false)
                 } else if !isMapCameraMoving {
                     LiveMapTrafficLayer(
-                        pings: pingsForDisplay,
+                        traffic: liveTraffic,
                         proxy: proxy,
-                        minimumInterval: mapUpdateInterval,
-                        isPaused: !isTabActive || !pingsForDisplay.contains { !$0.isExpired() }
+                        isTabActive: isTabActive
                     )
                     .allowsHitTesting(false)
                 }
@@ -984,6 +1242,7 @@ struct MapScreen: View {
         let nodes = viewModel.nodes
         let displayRegion = (region ?? visibleRegion).map(DisplayRegion.init)
         let selectedRoles = nodeFilters.selectedRoles
+        let groupsNodes = groupsNodes
         let activityCutoff = nodeFilters.activityFilter.maximumAge.map {
             Date.now.addingTimeInterval(-$0)
         }
@@ -996,7 +1255,8 @@ struct MapScreen: View {
                     nodes: nodes,
                     region: displayRegion,
                     selectedRoles: selectedRoles,
-                    activityCutoff: activityCutoff
+                    activityCutoff: activityCutoff,
+                    groupsNodes: groupsNodes
                 )
             }
             let result = await withTaskCancellationHandler {
@@ -1009,14 +1269,36 @@ struct MapScreen: View {
             displayedNodes = result.nodes
             nodeClusters = result.clusters
             displayCoordinatesByNodeID = result.displayCoordinatesByNodeID
+            fanOriginsByNodeID = result.fanOriginsByNodeID
+            bubbleByNodeLocation = result.bubbleByNodeLocation
             filteredNodeCount = result.filteredCount
+            overlappedNodes = result.overlappedNodes
         }
     }
 
     private func noteCameraMovement() {
         if !isMapCameraMoving {
             isMapCameraMoving = true
+            if isReplayMode, !replayPings.isEmpty, replayPausedAt == nil {
+                replayPausedAt = .now
+            }
         }
+    }
+
+    /// The replay's time for a wall-clock `date`: frozen while paused, minus earlier pauses.
+    private func replayClock(_ date: Date = .now) -> Date {
+        (replayPausedAt ?? date).addingTimeInterval(-replayClockOffset)
+    }
+
+    private func resumeReplayClock() {
+        guard let pausedAt = replayPausedAt else { return }
+        replayClockOffset += Date.now.timeIntervalSince(pausedAt)
+        replayPausedAt = nil
+    }
+
+    private func resetReplayClock() {
+        replayPausedAt = nil
+        replayClockOffset = 0
     }
 
     private func transientPings(from pings: [ActivePing], at date: Date) -> [ActivePing] {
@@ -1042,7 +1324,8 @@ struct MapScreen: View {
         nodes: [MeshNode],
         region: DisplayRegion?,
         selectedRoles: Set<String>,
-        activityCutoff: Date?
+        activityCutoff: Date?,
+        groupsNodes: Bool = true
     ) -> DisplayResult? {
         let validNodes = nodes.filter { node in
             guard !Task.isCancelled, let latitude = node.lat, let longitude = node.lon else { return false }
@@ -1080,17 +1363,35 @@ struct MapScreen: View {
         }
         guard !Task.isCancelled else { return nil }
 
+        // Settings → Display → Group Nearby Nodes off: every node on its own, as CoreScope's live
+        // map draws them. Zoomed out they stay at their real positions (fanning them out there
+        // would move them miles); close in, overlapping ones fan out as usual so each can be tapped.
+        if !groupsNodes, max(region.latitudeDelta, region.longitudeDelta) > 0.25 {
+            let (shown, covered) = withoutCoveredMarkers(visibleNodes, region: region)
+            guard !Task.isCancelled else { return nil }
+            return DisplayResult(
+                nodes: shown,
+                clusters: [],
+                displayCoordinatesByNodeID: Dictionary(
+                    shown.compactMap { node in node.coordinate.map { (node.id, $0) } },
+                    uniquingKeysWith: { first, _ in first }
+                ),
+                filteredCount: validNodes.count,
+                overlappedNodes: covered
+            )
+        }
+
         // Keep dense groups clustered until the map is close enough that
         // separating their markers doesn't misrepresent their locations.
         guard max(region.latitudeDelta, region.longitudeDelta) > 0.25 else {
+            var fanOrigins: [String: CLLocationCoordinate2D] = [:]
+            let coordinates = spreadNearbyCoordinates(for: visibleNodes, region: region, fanOrigins: &fanOrigins)
             return DisplayResult(
                 nodes: visibleNodes,
                 clusters: [],
-                displayCoordinatesByNodeID: spreadNearbyCoordinates(
-                    for: visibleNodes,
-                    region: region
-                ),
-                filteredCount: validNodes.count
+                displayCoordinatesByNodeID: coordinates,
+                filteredCount: validNodes.count,
+                fanOriginsByNodeID: fanOrigins
             )
         }
 
@@ -1108,6 +1409,7 @@ struct MapScreen: View {
 
         var individualNodes: [MeshNode] = []
         var clusters: [NodeCluster] = []
+        var bubbleByNodeLocation: [CoordinateKey: CLLocationCoordinate2D] = [:]
         for (key, cellNodes) in nodesByCell {
             guard !Task.isCancelled else { return nil }
             guard cellNodes.count >= 2 else {
@@ -1121,13 +1423,17 @@ struct MapScreen: View {
                 latitudeTotal += node.lat ?? 0
                 longitudeTotal += node.lon ?? 0
             }
+            let bubble = CLLocationCoordinate2D(
+                latitude: latitudeTotal / Double(cellNodes.count),
+                longitude: longitudeTotal / Double(cellNodes.count)
+            )
+            for node in cellNodes {
+                if let coordinate = node.coordinate { bubbleByNodeLocation[CoordinateKey(coordinate)] = bubble }
+            }
             clusters.append(
                 NodeCluster(
                     id: "cluster-\(key)",
-                    coordinate: CLLocationCoordinate2D(
-                        latitude: latitudeTotal / Double(cellNodes.count),
-                        longitude: longitudeTotal / Double(cellNodes.count)
-                    ),
+                    coordinate: bubble,
                     count: cellNodes.count
                 )
             )
@@ -1141,16 +1447,57 @@ struct MapScreen: View {
                     node.coordinate.map { (node.id, $0) }
                 }
             ),
-            filteredCount: validNodes.count
+            filteredCount: validNodes.count,
+            bubbleByNodeLocation: bubbleByNodeLocation
         )
+    }
+
+    /// Zoomed out with grouping off, many nodes land within a couple of points of each other and
+    /// draw as one dot anyway. Keeps one marker per ~2.5 pt cell (a repeater over a room over a
+    /// companion over a sensor, then by key so the pick is stable), which looks the same but cuts
+    /// a statewide map from ~1,400 markers to a few hundred. The rest are returned as covered.
+    nonisolated private static func withoutCoveredMarkers(
+        _ nodes: [MeshNode],
+        region: DisplayRegion
+    ) -> (shown: [MeshNode], covered: [MeshNode]) {
+        // About 2.5 pt on a map roughly 800 pt tall; longitude scaled so cells are square on screen.
+        let latitudeCell = region.latitudeDelta / 320
+        let longitudeCell = latitudeCell / max(cos(region.centerLatitude * .pi / 180), 0.2)
+        let rolePriority = ["repeater", "room", "companion", "sensor"]
+        func rank(_ node: MeshNode) -> Int {
+            rolePriority.firstIndex(of: node.role.lowercased()) ?? rolePriority.count
+        }
+        struct Cell: Hashable { let x: Int; let y: Int }
+        var bestByCell: [Cell: MeshNode] = [:]
+        var covered: [MeshNode] = []
+        for node in nodes {
+            guard let latitude = node.lat, let longitude = node.lon else { continue }
+            let cell = Cell(x: Int(floor(longitude / longitudeCell)), y: Int(floor(latitude / latitudeCell)))
+            guard let current = bestByCell[cell] else {
+                bestByCell[cell] = node
+                continue
+            }
+            let replaces = (rank(node), node.publicKey) < (rank(current), current.publicKey)
+            covered.append(replaces ? current : node)
+            if replaces { bestByCell[cell] = node }
+        }
+        // Sorted, so the markers keep their order from one update to the next.
+        return (bestByCell.values.sorted { $0.id < $1.id }, covered)
     }
 
     nonisolated private static func spreadNearbyCoordinates(
         for nodes: [MeshNode],
-        region: DisplayRegion
+        region: DisplayRegion,
+        fanOrigins: inout [String: CLLocationCoordinate2D]
     ) -> [String: CLLocationCoordinate2D] {
-        let latitudeThreshold = region.latitudeDelta * 0.008
-        let longitudeThreshold = region.longitudeDelta * 0.008
+        // Shares of the visible span, so they stay about the same on screen at every zoom: nodes
+        // within ~10 pt (one marker width) of each other are fanned out, to a ~19 pt radius, far
+        // enough apart to tell the markers apart and to see the line back to the true position.
+        // Longitude is scaled from latitude so the threshold and fan are circles on screen (a share
+        // of the longitude span would follow the much narrower screen width).
+        let longitudeScale = 1 / max(cos(region.centerLatitude * .pi / 180), 0.2)
+        let latitudeThreshold = region.latitudeDelta * 0.012
+        let longitudeThreshold = latitudeThreshold * longitudeScale
         var groupedNodes: [[MeshNode]] = []
         for node in nodes.sorted(by: { $0.publicKey < $1.publicKey }) {
             guard let coordinate = node.coordinate else { continue }
@@ -1182,14 +1529,15 @@ struct MapScreen: View {
             // Scale with the viewport so nearby markers fan out by roughly
             // the same number of screen points at every zoom level.
             let radiusMultiplier = max(1, Double(group.count) / 6)
-            let latitudeRadius = region.latitudeDelta * 0.008 * radiusMultiplier
-            let longitudeRadius = region.longitudeDelta * 0.008 * radiusMultiplier
+            let latitudeRadius = region.latitudeDelta * 0.022 * radiusMultiplier
+            let longitudeRadius = latitudeRadius * longitudeScale
             for (index, node) in group.enumerated() {
                 let angle = (Double(index) / Double(group.count)) * 2 * Double.pi - Double.pi / 2
                 coordinates[node.id] = CLLocationCoordinate2D(
                     latitude: origin.latitude + cos(angle) * latitudeRadius,
                     longitude: origin.longitude + sin(angle) * longitudeRadius
                 )
+                fanOrigins[node.id] = origin
             }
         }
 
@@ -1229,6 +1577,11 @@ struct MapScreen: View {
         return "Loading all regions…"
     }
 
+    private var activePings: [ActivePing] {
+        get { liveTraffic.pings }
+        nonmutating set { liveTraffic.pings = newValue }
+    }
+
     private var pingsForDisplay: [ActivePing] {
         isReplayMode ? replayPings : activePings
     }
@@ -1240,7 +1593,7 @@ struct MapScreen: View {
 
     private var isReplayPlaying: Bool {
         // The button reflects packet travel, not the slower line fade-out.
-        isReplayAwaitingCamera || replayPings.contains { $0.travelProgress() < 1.0 }
+        isReplayAwaitingCamera || replayPings.contains { $0.travelProgress(at: replayClock()) < 1.0 }
     }
 
     private var replayControl: some View {
@@ -1289,7 +1642,8 @@ struct MapScreen: View {
                         get: { packetReplayStore.selectedRouteIndex },
                         set: { packetReplayStore.selectRoute(at: $0) }
                     ),
-                    compact: true
+                    compact: true,
+                    allowsAll: true
                 )
                 .layoutPriority(-1)
                 .padding(.horizontal, 10)
@@ -1323,24 +1677,19 @@ struct MapScreen: View {
         colorScheme == .dark ? .white : .accentColor
     }
 
+    /// The map's own timeline only runs during a replay; live traffic has its own in its layer.
+    /// Returning early keeps the map from reading (and so redrawing on) the live pings.
     private var mapUpdateInterval: TimeInterval {
-        // Replays stay especially fluid, while dense live traffic uses a
-        // slightly lower cadence to leave MapKit enough time to render its map.
+        guard isReplayMode else { return 1.0 }
         let now = Date.now
-        let hasActiveMotion = pingsForDisplay.contains {
+        let hasActiveMotion = replayPings.contains {
             guard !$0.isExpired(at: now) else { return false }
             return $0.isPulse
                 || !$0.hasCompletedTravel(at: now)
                 || $0.arrivalPulseProgress(at: now) != nil
                 || $0.progress(at: now) > 0
         }
-        guard hasActiveMotion else {
-            return 1.0
-        }
-        if isReplayMode {
-            return 1.0 / 30.0
-        }
-        return pingsForDisplay.count > 40 ? 1.0 / 15.0 : 1.0 / 24.0
+        return hasActiveMotion ? 1.0 / 30.0 : 1.0
     }
 
     private var zoomControl: some View {
@@ -1365,6 +1714,121 @@ struct MapScreen: View {
 
     private func shortKey(_ key: String) -> String {
         String(key.prefix(8)).uppercased()
+    }
+
+    nonisolated private static func nodeLabelID(_ id: String) -> String { "node:\(id)" }
+    nonisolated private static func observerLabelID(_ id: String) -> String { "observer:\(id)" }
+
+    /// The labels that fit: placed in priority order, each skipped if its box would overlap one
+    /// already placed. Boxes are estimated from the text length and each label's offset below its
+    /// marker, projected with the settled camera (`visibleRegion`), so this runs cheaply per frame.
+    private func placedLabels(
+        observers: [ReplayReceiver],
+        nodes: [MeshNode],
+        routeNodeIDs: Set<String>,
+        markers: [MeshNode] = [],
+        observerMarkers: [ReplayReceiver] = [],
+        labelSides: [String: LabelSide] = [:]
+    ) -> Set<String> {
+        struct Candidate {
+            let id: String; let coordinate: CLLocationCoordinate2D; let width: CGFloat; let top: CGFloat
+            var side: LabelSide = .below
+        }
+        var candidates: [Candidate] = observers.map { observer in
+            // caption2 semibold in a capsule, its top 10.5 pt below the observer's centre.
+            Candidate(id: Self.observerLabelID(observer.id), coordinate: observer.coordinate,
+                      width: CGFloat(observer.name.count) * 6.2 + 10, top: observer.nodeRole == nil ? 10.5 : 11.5)
+        }
+        let orderedNodes = nodes.filter { routeNodeIDs.contains($0.id) } + nodes.filter { !routeNodeIDs.contains($0.id) }
+        for node in orderedNodes {
+            guard let coordinate = displayCoordinatesByNodeID[node.id] ?? node.coordinate else { continue }
+            // Monaspace caption2 (about 6.6 pt a character), its top 9 pt below the node.
+            let name = node.name ?? shortKey(node.publicKey)
+            candidates.append(Candidate(id: Self.nodeLabelID(node.id), coordinate: coordinate,
+                                        width: CGFloat(name.count) * 6.6 + 8, top: 9,
+                                        side: labelSides[node.id] ?? .below))
+        }
+        guard !candidates.isEmpty else { return [] }
+        guard let region = visibleRegion, mapViewportSize.width > 0 else { return Set(candidates.map(\.id)) }
+
+        let topLeft = MKMapPoint(CLLocationCoordinate2D(
+            latitude: min(region.center.latitude + region.span.latitudeDelta / 2, 85),
+            longitude: region.center.longitude - region.span.longitudeDelta / 2
+        ))
+        let bottomRight = MKMapPoint(CLLocationCoordinate2D(
+            latitude: max(region.center.latitude - region.span.latitudeDelta / 2, -85),
+            longitude: region.center.longitude + region.span.longitudeDelta / 2
+        ))
+        let width = bottomRight.x - topLeft.x
+        guard width > 0 else { return Set(candidates.map(\.id)) }
+        let scale = Double(mapViewportSize.width) / width
+
+        func screenPoint(_ coordinate: CLLocationCoordinate2D) -> CGPoint {
+            let point = MKMapPoint(coordinate)
+            return CGPoint(x: (point.x - topLeft.x) * scale, y: (point.y - topLeft.y) * scale)
+        }
+        // Markers are obstacles too, so a name never lies under another node.
+        var placed: [CGRect] = markers.compactMap { node in
+            guard let coordinate = displayCoordinatesByNodeID[node.id] ?? node.coordinate else { return nil }
+            let center = screenPoint(coordinate)
+            return CGRect(x: center.x - 6, y: center.y - 6, width: 12, height: 12)
+        } + observerMarkers.map { observer in
+            let center = screenPoint(observer.coordinate)
+            return CGRect(x: center.x - 9, y: center.y - 9, width: 18, height: 18)
+        }
+        var labeled = Set<String>()
+        for candidate in candidates {
+            let center = screenPoint(candidate.coordinate)
+            let x = center.x, y = center.y
+            let gap = candidate.top, w = candidate.width
+            let box: CGRect = switch candidate.side {
+            case .below: CGRect(x: x - w / 2, y: y + gap, width: w, height: 16)
+            case .above: CGRect(x: x - w / 2, y: y - gap - 16, width: w, height: 16)
+            case .left: CGRect(x: x - gap - w, y: y - 8, width: w, height: 16)
+            case .right: CGRect(x: x + gap, y: y - 8, width: w, height: 16)
+            }
+            let paddedBox = box.insetBy(dx: -2, dy: -1)
+            guard !placed.contains(where: { $0.intersects(paddedBox) }) else { continue }
+            placed.append(paddedBox)
+            labeled.insert(candidate.id)
+        }
+        return labeled
+    }
+
+    /// Nodes drawn on top of one another where the user tapped, while zoomed out (closer in they
+    /// fan out and can be tapped one by one). Empty when the tap isn't on a stack.
+    private func stackedNodes(at screenPoint: CGPoint, using proxy: MapProxy, nodes: [MeshNode]) -> [MeshNode] {
+        guard let region = visibleRegion, max(region.span.latitudeDelta, region.span.longitudeDelta) > 0.25,
+              let tapped = nearestNode(to: screenPoint, using: proxy, nodes: nodes),
+              let tappedCoordinate = displayCoordinatesByNodeID[tapped.id] ?? tapped.coordinate,
+              let tappedPoint = proxy.convert(tappedCoordinate, to: .local) else { return [] }
+        let stack = nodes.filter { node in
+            guard let coordinate = displayCoordinatesByNodeID[node.id] ?? node.coordinate,
+                  let point = proxy.convert(coordinate, to: .local) else { return false }
+            return hypot(point.x - tappedPoint.x, point.y - tappedPoint.y) <= 10
+        }
+        return stack.count > 1 ? stack : []
+    }
+
+    /// Zooms in on a stack of nodes far enough that they fan out to be told apart.
+    private func zoomToNodes(_ nodes: [MeshNode]) {
+        let coordinates = nodes.compactMap(\.coordinate)
+        guard !coordinates.isEmpty else { return }
+        let latitudes = coordinates.map(\.latitude), longitudes = coordinates.map(\.longitude)
+        let center = CLLocationCoordinate2D(
+            latitude: (latitudes.min()! + latitudes.max()!) / 2,
+            longitude: (longitudes.min()! + longitudes.max()!) / 2
+        )
+        // Close enough for fanning (0.25° or less) unless the stack itself is wider than that.
+        let span = MKCoordinateSpan(
+            latitudeDelta: max((latitudes.max()! - latitudes.min()!) * 2.5, 0.05),
+            longitudeDelta: max((longitudes.max()! - longitudes.min()!) * 2.5, 0.05)
+        )
+        let region = MKCoordinateRegion(center: center, span: span)
+        withAnimation {
+            cameraPosition = .region(region)
+        }
+        visibleRegion = region
     }
 
     private func nearestNode(
@@ -1405,6 +1869,8 @@ struct MapScreen: View {
                 zoomToCluster(cluster)
             } else if let route = nearestRoute(to: screenPoint, using: proxy, at: date) {
                 selectedRouteDetails = route
+            } else if case let stack = stackedNodes(at: screenPoint, using: proxy, nodes: nodes), !stack.isEmpty {
+                zoomToNodes(stack)
             } else if let node = nearestNode(to: screenPoint, using: proxy, nodes: nodes) {
                 selectedNode = node
             }
@@ -1538,13 +2004,22 @@ struct MapScreen: View {
             pendingReplayRequestID = nil
             return
         }
+        // Already showing this request on this route: a repeat trigger, not a new replay.
+        if isReplayMode, startedReplay == currentReplay { return }
         selectedNode = nil
         pendingReplayRequestID = packetReplayStore.requestID
         guard !isChangingRegion else { return }
         replayPendingPacketIfNeeded()
     }
 
+    private var currentReplay: StartedReplay {
+        StartedReplay(request: packetReplayStore.requestID, routeIndex: packetReplayStore.selectedRouteIndex)
+    }
+
     private func stopPacketReplay() {
+        startedReplay = nil
+        resetReplayClock()
+        replayNeedsLeadIn = false
         isReplayAwaitingCamera = false
         replayCameraFallback?.cancel()
         replayCameraFallback = nil
@@ -1565,24 +2040,136 @@ struct MapScreen: View {
         }
     }
 
-    private func currentRouteCoordinates() -> [CLLocationCoordinate2D] {
-        packetReplayStore.resolvedPath.compactMap { publicKey in
-            validCoordinate(viewModel.nodesByPubkey[publicKey.lowercased()]?.coordinate)
-        } + currentReceivers().map(\.coordinate)
+    /// A replayed route on the map: its located nodes and the observers it ends at.
+    private struct ReplayRouteGeometry {
+        let index: Int
+        let coordinates: [CLLocationCoordinate2D]
+        let receivers: [ReplayReceiver]
     }
 
-    /// Where the replayed route ends: the observers that heard exactly this path, at their
-    /// positions (skipping one that sits on the route's last node).
-    private func currentReceivers() -> [ReplayReceiver] {
-        guard let route = packetReplayStore.selectedRoute else { return [] }
-        let last = route.keys.last.flatMap { validCoordinate(viewModel.nodesByPubkey[$0.lowercased()]?.coordinate) }
-        return route.receivers(
+    /// The shown routes that can be drawn (at least one located node and somewhere to go).
+    /// With all routes shown, each observer keeps only its shortest route (normally the first copy
+    /// it heard): its other routes are neighbours re-broadcasting the packet back to it, which drew
+    /// the packet going out and straight back. A route left delivering only such echoes is dropped.
+    /// One route on its own, and packet details, still show every route.
+    private func replayRouteGeometries() -> [ReplayRouteGeometry] {
+        let shown = packetReplayStore.shownRoutes
+        var reached = Set<String>()
+        var keptReceivers: [Int: [ReplayReceiver]] = [:]
+        for (index, route) in shown.sorted(by: { $0.route.keys.count < $1.route.keys.count }) {
+            let all = receivers(for: route)
+            keptReceivers[index] = packetReplayStore.showsAllRoutes
+                ? all.filter { reached.insert($0.id).inserted }
+                : all
+            if packetReplayStore.showsAllRoutes, !all.isEmpty, keptReceivers[index]?.isEmpty == true {
+                keptReceivers[index] = nil
+            }
+        }
+        return shown.compactMap { index, route in
+            guard let receivers = keptReceivers[index] else { return nil }
+            let coordinates = route.keys.compactMap { publicKey in
+                validCoordinate(viewModel.nodesByPubkey[publicKey.lowercased()]?.coordinate)
+            }
+            guard !coordinates.isEmpty, coordinates.count + receivers.count >= 2 else { return nil }
+            return ReplayRouteGeometry(index: index, coordinates: coordinates, receivers: receivers)
+        }
+    }
+
+    private func currentRouteCoordinates() -> [CLLocationCoordinate2D] {
+        replayRouteGeometries().flatMap { $0.coordinates + $0.receivers.map(\.coordinate) }
+    }
+
+    /// Nodes to hide behind the replay's observer markers: the ones at each observer's site, and
+    /// any other node that would sit under a marker at the current zoom (when zoomed out a node a
+    /// few hundred metres away lands right on it). They reappear once zoomed in enough to separate.
+    private func refreshReplayHiddenNodes() {
+        guard isReplayMode, !replayReceivers.isEmpty else {
+            if !replayHiddenNodeIDs.isEmpty { replayHiddenNodeIDs = [] }
+            return
+        }
+        var hidden = Set(replayReceivers.flatMap(\.nodeIDs))
+        if let pointsPerMapPoint = replayScreenPointsPerMapPoint() {
+            let radius = 9 / pointsPerMapPoint
+            let sites = replayReceivers.map { MKMapPoint($0.coordinate) }
+            for node in viewModel.nodes {
+                guard let coordinate = validCoordinate(node.coordinate) else { continue }
+                let point = MKMapPoint(coordinate)
+                if sites.contains(where: { hypot(point.x - $0.x, point.y - $0.y) <= radius }) {
+                    hidden.insert(node.id)
+                }
+            }
+        }
+        if hidden != replayHiddenNodeIDs { replayHiddenNodeIDs = hidden }
+    }
+
+    /// Screen points per map point for the map as it's framed now (nil before the first layout).
+    private func replayScreenPointsPerMapPoint() -> Double? {
+        guard let region = visibleRegion, mapViewportSize.width > 0 else { return nil }
+        let halfWidth = region.span.longitudeDelta / 2
+        let west = MKMapPoint(CLLocationCoordinate2D(latitude: region.center.latitude, longitude: region.center.longitude - halfWidth))
+        let east = MKMapPoint(CLLocationCoordinate2D(latitude: region.center.latitude, longitude: region.center.longitude + halfWidth))
+        let width = abs(east.x - west.x)
+        return width > 0 ? Double(mapViewportSize.width) / width : nil
+    }
+
+    /// One marker per observer location. With all routes shown, an observer that heard several
+    /// of them (or observers sharing a site) gave MapKit identical, stacked annotations that it
+    /// kept re-placing every frame, so the names jittered.
+    private static func mergedReceivers(_ receivers: [ReplayReceiver]) -> [ReplayReceiver] {
+        var order: [CoordinateKey] = []
+        var namesByLocation: [CoordinateKey: [String]] = [:]
+        var coordinateByLocation: [CoordinateKey: CLLocationCoordinate2D] = [:]
+        for receiver in receivers {
+            let location = CoordinateKey(receiver.coordinate)
+            if namesByLocation[location] == nil {
+                order.append(location)
+                coordinateByLocation[location] = receiver.coordinate
+            }
+            if namesByLocation[location, default: []].contains(receiver.name) == false {
+                namesByLocation[location, default: []].append(receiver.name)
+            }
+        }
+        return order.compactMap { location in
+            guard let names = namesByLocation[location], let first = names.first,
+                  let coordinate = coordinateByLocation[location] else { return nil }
+            return ReplayReceiver(name: names.count > 1 ? "\(first) +\(names.count - 1)" : first, coordinate: coordinate)
+        }
+    }
+
+    /// Where a replayed route ends: the observers that heard exactly this path, at their
+    /// positions. One on the route's last node is kept (it's drawn as that node, ringed); the
+    /// replay just has no hop to draw to it.
+    private func receivers(for route: RouteOption) -> [ReplayReceiver] {
+        route.receivers(
             coordinateById: observerRegionLookup.coordinateById,
             coordinateByName: observerRegionLookup.coordinateByName
         ).compactMap { receiver in
-            guard let coordinate = validCoordinate(receiver.coordinate),
-                  last.map({ CoordinateKey($0) != CoordinateKey(coordinate) }) ?? true else { return nil }
+            guard let coordinate = validCoordinate(receiver.coordinate) else { return nil }
             return ReplayReceiver(name: receiver.name, coordinate: coordinate)
+        }
+    }
+
+    /// Gives each observer the nodes at its site: within 75 m, since an observer's own repeater
+    /// (or a room server and repeater on one device) often reports a slightly different position.
+    /// The ring takes the most network-relevant role among them.
+    private func observersWithNodeRoles(_ receivers: [ReplayReceiver]) -> [ReplayReceiver] {
+        let rolePriority = ["repeater", "room", "companion", "sensor"]
+        func rank(_ role: String) -> Int { rolePriority.firstIndex(of: role.lowercased()) ?? rolePriority.count }
+        let sites = receivers.map { MKMapPoint($0.coordinate) }
+        var nodesBySite = Array(repeating: [MeshNode](), count: receivers.count)
+        for node in viewModel.nodes {
+            guard let coordinate = validCoordinate(node.coordinate) else { continue }
+            let point = MKMapPoint(coordinate)
+            for (index, site) in sites.enumerated() where site.distance(to: point) <= 75 {
+                nodesBySite[index].append(node)
+            }
+        }
+        return receivers.enumerated().map { index, receiver in
+            var receiver = receiver
+            let nodes = nodesBySite[index]
+            receiver.nodeRole = nodes.map(\.role).min { rank($0) < rank($1) }
+            receiver.nodeIDs = nodes.map(\.id)
+            return receiver
         }
     }
 
@@ -1613,12 +2200,10 @@ struct MapScreen: View {
     @discardableResult
     private func replayPacketRoute(recenter: Bool = true) -> Bool {
         guard packetReplayStore.isReplayActive else { return false }
-        let receivers = currentReceivers()
-        let routeCoordinates = packetReplayStore.resolvedPath.compactMap { publicKey in
-            validCoordinate(viewModel.nodesByPubkey[publicKey.lowercased()]?.coordinate)
-        }
-        let coordinates = routeCoordinates + receivers.map(\.coordinate)
-        guard !routeCoordinates.isEmpty, coordinates.count >= 2 else {
+        let routes = replayRouteGeometries()
+        let receivers = observersWithNodeRoles(Self.mergedReceivers(routes.flatMap(\.receivers)))
+        let coordinates = routes.flatMap { $0.coordinates + $0.receivers.map(\.coordinate) }
+        guard !routes.isEmpty else {
             // Do not leave the previous packet's replay visible when the new
             // route is waiting for locations. Keep this request retryable.
             stopPacketReplay()
@@ -1632,6 +2217,8 @@ struct MapScreen: View {
         if recenter, let routeMapRect = replayRouteMapRect(for: coordinates) {
             replayPings = []
             replayReceivers = receivers
+            startedReplay = currentReplay
+            refreshReplayHiddenNodes()
             isReplayMode = true
             hasCenteredCamera = true
             isReplayAwaitingCamera = true
@@ -1658,65 +2245,95 @@ struct MapScreen: View {
             : .orange
         let signalColor: Color = colorScheme == .dark ? .orange : .blue
 
-        // Only one replay hop moves at a time. The slightly slower replay pace
-        // makes the route readable while retaining CoreScope's linear motion.
-        let travelDuration = 0.85
-        let replayStart = Date.now.addingTimeInterval(0.25)
-        let hopCount = routeCoordinates.count - 1
-        // The final hops, from the route's last node to each observer, travel together.
-        let finalHopCount = receivers.isEmpty ? 0 : 1
+        // Each hop's time comes from its real length (see `hopTravelTime`) at a steady 90 km/s,
+        // between 0.45 and 1.5 s: the pace tuned earlier at region zoom, now the same at any zoom.
+        resetReplayClock()
+        if isMapCameraMoving { replayPausedAt = .now }
+        let replayStart = Date.now.addingTimeInterval(replayNeedsLeadIn ? 0.75 : 0.5)
+        replayNeedsLeadIn = false
+        let pointsPerMapPoint = replayScreenPointsPerMapPoint()
+        func travelTime(_ from: CLLocationCoordinate2D, _ to: CLLocationCoordinate2D) -> TimeInterval {
+            Self.hopTravelTime(from: from, to: to, shortest: 0.45, longest: 1.5,
+                               pointsPerMapPoint: pointsPerMapPoint, kilometresPerSecond: 90)
+        }
 
-        // Keep the completed route visible briefly, then fade it as one path.
-        let lastTravelEnd = replayStart.addingTimeInterval(Double(hopCount + finalHopCount) * travelDuration)
+        // Plan every hop first: when it starts (after the hops before it on its route) and how
+        // long it travels. With all routes shown, hops they share are planned once, so the packet
+        // spreads out from a common trunk the way it propagated.
+        struct PlannedHop {
+            let from: CLLocationCoordinate2D, to: CLLocationCoordinate2D
+            let start: TimeInterval, travel: TimeInterval
+            let routeID: String, segmentIndex: Int, observerName: String?
+        }
+        let packetHash = packetReplayStore.packetHash
+        var plannedSegments = Set<PacketSegmentKey>()
+        func isNew(_ from: CLLocationCoordinate2D, _ to: CLLocationCoordinate2D) -> Bool {
+            CoordinateKey(from) != CoordinateKey(to) && plannedSegments.insert(
+                PacketSegmentKey(packetHash: packetHash, from: CoordinateKey(from), to: CoordinateKey(to))
+            ).inserted
+        }
+        var hops: [PlannedHop] = []
+        for route in routes {
+            let routeID = "replay-\(packetHash)-\(route.index)"
+            var elapsed: TimeInterval = 0
+            for (index, pair) in zip(route.coordinates, route.coordinates.dropFirst()).enumerated() {
+                let travel = travelTime(pair.0, pair.1)
+                if isNew(pair.0, pair.1) {
+                    hops.append(PlannedHop(from: pair.0, to: pair.1, start: elapsed, travel: travel,
+                                           routeID: routeID, segmentIndex: index, observerName: nil))
+                }
+                elapsed += travel
+            }
+            // The final hops, from the route's last node to each observer, travel together.
+            guard let last = route.coordinates.last else { continue }
+            for (index, receiver) in route.receivers.enumerated() where isNew(last, receiver.coordinate) {
+                hops.append(PlannedHop(from: last, to: receiver.coordinate, start: elapsed,
+                                       travel: travelTime(last, receiver.coordinate),
+                                       routeID: "\(routeID)-observer-\(index)", segmentIndex: 0,
+                                       observerName: receiver.name))
+            }
+        }
+
+        // One route stays drawn until it finishes, then fades as one path, so it can be studied.
+        // All routes leave a trail instead, like CoreScope: each hop holds briefly once it
+        // arrives and then fades, so the packet is seen spreading rather than as a growing tree.
+        let lastTravelEnd = replayStart.addingTimeInterval(hops.map { $0.start + $0.travel }.max() ?? 0)
         let fadeStart = lastTravelEnd.addingTimeInterval(0.75)
         let fadeDuration = 0.65
-
-        let segments = zip(routeCoordinates, routeCoordinates.dropFirst()).enumerated().map { index, pair in
-            ActivePing(
-                from: pair.0,
-                to: pair.1,
-                createdAt: replayStart.addingTimeInterval(Double(index) * travelDuration),
-                fadeStartsAt: fadeStart,
+        let trailHold = 1.0
+        let leavesTrail = packetReplayStore.showsAllRoutes
+        let pings = hops.map { hop in
+            let hopStart = replayStart.addingTimeInterval(hop.start)
+            return ActivePing(
+                from: hop.from,
+                to: hop.to,
+                createdAt: hopStart,
+                fadeStartsAt: leavesTrail ? hopStart.addingTimeInterval(hop.travel + trailHold) : fadeStart,
                 duration: fadeDuration,
-                travelDuration: travelDuration,
+                travelDuration: hop.travel,
                 color: routeColor,
                 signalColor: signalColor,
-                routeID: "replay-\(packetReplayStore.packetHash)-\(packetReplayStore.selectedRouteIndex)",
-                segmentIndex: index,
-                packetHash: packetReplayStore.packetHash,
+                routeID: hop.routeID,
+                segmentIndex: hop.segmentIndex,
+                packetHash: packetHash,
+                observerName: hop.observerName,
                 observedAt: packetReplayStore.observedAt,
                 snr: packetReplayStore.snr,
                 rssi: packetReplayStore.rssi,
                 sender: packetReplayStore.sender,
-                messageText: packetReplayStore.messageText
-            )
-        }
-        let finalHops = receivers.enumerated().map { index, receiver in
-            ActivePing(
-                from: routeCoordinates[routeCoordinates.count - 1],
-                to: receiver.coordinate,
-                createdAt: replayStart.addingTimeInterval(Double(hopCount) * travelDuration),
-                fadeStartsAt: fadeStart,
-                duration: fadeDuration,
-                travelDuration: travelDuration,
-                color: routeColor,
-                signalColor: signalColor,
-                routeID: "replay-\(packetReplayStore.packetHash)-\(packetReplayStore.selectedRouteIndex)-observer-\(index)",
-                packetHash: packetReplayStore.packetHash,
-                observerName: receiver.name,
-                observedAt: packetReplayStore.observedAt,
-                snr: packetReplayStore.snr,
-                rssi: packetReplayStore.rssi,
-                sender: packetReplayStore.sender,
-                messageText: packetReplayStore.messageText
+                messageText: packetReplayStore.messageText,
+                // Each hop bows to its own left, so A→B and B→A sit on opposite sides.
+                curvature: 0.07
             )
         }
         // Starting here (Play Again, or a route already on screen) ends any wait for the camera.
         isReplayAwaitingCamera = false
         replayCameraFallback?.cancel()
         replayCameraFallback = nil
-        replayPings = segments + finalHops
+        replayPings = pings
         replayReceivers = receivers
+        startedReplay = currentReplay
+        refreshReplayHiddenNodes()
         isReplayMode = true
         hasCenteredCamera = true
         return true
@@ -2009,7 +2626,25 @@ struct MapScreen: View {
             let subchains = resolvedSubchains(for: packet)
             let pathColor = ActivePing.color(forHash: packet.hash, colorScheme: colorScheme)
 
+            var previousEnd: CLLocationCoordinate2D?
             for (subchainIndex, subchain) in subchains.enumerated() {
+                // Pieces split by unresolved hops are joined by a dashed bridge, as live.
+                if let from = previousEnd, let to = subchain.first, isValidHopDistance(from: from, to: to) {
+                    historicalPings.append(ActivePing(
+                        from: from, to: to,
+                        createdAt: packet.timestamp.addingTimeInterval(-0.66),
+                        duration: 12.0,
+                        travelDuration: 0.66,
+                        color: pathColor,
+                        routeID: "historical-\(packet.hash)-\(packet.observerId ?? "")-bridge-\(subchainIndex)",
+                        packetHash: packet.hash,
+                        observerName: packet.observerName,
+                        observedAt: packet.timestamp,
+                        curvature: 0.07,
+                        isUnknownRelay: true
+                    ))
+                }
+                previousEnd = subchain.last
                 if subchain.count >= 2 {
                     for index in 0..<(subchain.count - 1) {
                         let p1 = subchain[index]
@@ -2031,7 +2666,8 @@ struct MapScreen: View {
                                     observerName: packet.observerName,
                                     observedAt: packet.timestamp,
                                     snr: packet.snr,
-                                    rssi: packet.rssi
+                                    rssi: packet.rssi,
+                                    curvature: 0.07
                                 )
                             )
                         }
@@ -2062,6 +2698,7 @@ struct MapScreen: View {
         // Packets can arrive while the observer roster is still loading. Rebuild
         // their route segments now that each observer can anchor the final hop.
         activePings = []
+        discardHeldPropagation()
         processedEventIds = []
         processHistoricalPackets()
         processIncomingEvents()
@@ -2078,17 +2715,12 @@ struct MapScreen: View {
     }
 
     private func processIncomingEvents() {
-        activePings.removeAll { $0.isExpired(at: .now) }
-
-        // On networks where dozens of observers hear each packet, drawing a hop
-        // per observation kept the map at its 100-segment cap and re-rendering
-        // continuously. A hop already shown for the same packet is skipped.
-        var drawnSegments = Set(activePings.compactMap { ping -> PacketSegmentKey? in
-            guard !ping.isPulse, let hash = ping.packetHash else { return nil }
-            return PacketSegmentKey(packetHash: hash, from: CoordinateKey(ping.start), to: CoordinateKey(ping.end))
-        })
+        let now = Date.now
+        activePings.removeAll { $0.isExpired(at: now) }
+        var drawnSegments = drawnLiveSegments()
         var newPings: [ActivePing] = []
-        for event in liveFeed.recentEvents {
+        // Oldest first (the feed keeps newest first), so an observer's first copy is the one kept.
+        for event in liveFeed.recentEvents.reversed() {
             guard event.type == "packet" else { continue }
             let eventKey = liveEventKey(for: event)
             if processedEventIds.contains(eventKey) { continue }
@@ -2100,57 +2732,159 @@ struct MapScreen: View {
             ), observationMatchesSelectedObserver(observerId: event.data?.observerId) else {
                 continue
             }
-
-            let subchains = resolvedSubchains(for: event)
-            let pathColor = ActivePing.color(forHash: event.data?.hash ?? event.data?.raw, colorScheme: colorScheme)
-            let observedAt = Date.now
-
-            for (subchainIndex, subchain) in subchains.enumerated() {
-                if subchain.count >= 2 {
-                    for index in 0..<(subchain.count - 1) {
-                        let p1 = subchain[index]
-                        let p2 = subchain[index + 1]
-                        if isValidHopDistance(from: p1, to: p2) {
-                            if let hash = event.data?.hash,
-                               !drawnSegments.insert(PacketSegmentKey(
-                                   packetHash: hash, from: CoordinateKey(p1), to: CoordinateKey(p2)
-                               )).inserted {
-                                continue
-                            }
-                            let travelDuration = 0.66
-                            let hopStart = observedAt.addingTimeInterval(Double(index) * travelDuration)
-                            newPings.append(
-                                ActivePing(
-                                    from: p1,
-                                    to: p2,
-                                    createdAt: hopStart,
-                                    fadeStartsAt: hopStart.addingTimeInterval(travelDuration + 0.45),
-                                    duration: 0.55,
-                                    travelDuration: travelDuration,
-                                    color: pathColor,
-                                    routeID: "live-\(eventKey)-\(subchainIndex)",
-                                    segmentIndex: index,
-                                    packetHash: event.data?.hash,
-                                    observerName: event.data?.observerName,
-                                    observedAt: observedAt,
-                                    snr: event.data?.snr,
-                                    rssi: event.data?.rssi
-                                )
-                            )
-                        }
-                    }
-                } else if let onlyPoint = subchain.first {
-                    newPings.append(
-                        ActivePing(pulseAt: onlyPoint, createdAt: .now, duration: 3.0, color: pathColor)
-                    )
-                }
+            // Paused by hand: counted, not drawn, and never caught up on when live resumes.
+            if livePause.isPaused {
+                if let hash = event.data?.hash { livePause.noteArrival(hash: hash) }
+                continue
             }
+            guard isFirstCopy(of: event) else { continue }
+
+            // Realistic propagation (CoreScope): observers report a packet over several seconds,
+            // so hold its observations for the buffer and then animate them as one transmission.
+            if realisticPropagation, let hash = event.data?.hash {
+                heldPropagation[hash, default: HeldPropagation(
+                    releaseAt: now.addingTimeInterval(viewModel.propagationBuffer)
+                )].observations.append(HeldObservation(key: eventKey, event: event))
+                continue
+            }
+            newPings += livePings(for: event, eventKey: eventKey, observedAt: now, drawnSegments: &drawnSegments)
         }
 
         if processedEventIds.count > 500 {
             processedEventIds.subtract(processedEventIds.prefix(250))
         }
 
+        admitLiveRoutes(newPings)
+        scheduleHeldPropagationRelease()
+    }
+
+    /// How long a hop's signal dot travels, from the hop's real length rather than its length on
+    /// screen: a few hundred metres is quick, long links take longest. Short hops between nearby
+    /// nodes no longer leave the dot sitting in place when zoomed out (which looked like the packet
+    /// bouncing between them), and a hop's timing never depends on the zoom, so zooming mid-flight
+    /// or replaying at another zoom looks the same.
+    nonisolated private static func hopTravelTime(
+        from start: CLLocationCoordinate2D,
+        to end: CLLocationCoordinate2D,
+        shortest: TimeInterval,
+        longest: TimeInterval,
+        pointsPerMapPoint: Double? = nil,
+        kilometresPerSecond: Double? = nil
+    ) -> TimeInterval {
+        // A hop too short to see at this zoom (a kilometre or two between neighbours on a
+        // zoomed-out map) is passed straight through: given its usual time, the dot sat wiggling
+        // in one spot, and a route that steps out to a neighbour and back read as ping-pong.
+        if let pointsPerMapPoint {
+            let a = MKMapPoint(start), b = MKMapPoint(end)
+            if hypot(b.x - a.x, b.y - a.y) * pointsPerMapPoint < 6 { return 0.05 }
+        }
+        let kilometres = MKMapPoint(start).distance(to: MKMapPoint(end)) / 1000
+        // A steady speed, held between `shortest` and `longest`.
+        if let kilometresPerSecond {
+            return min(max(kilometres / kilometresPerSecond, shortest), longest)
+        }
+        // Gentle (logarithmic) growth that reaches `longest` at about 40 km.
+        let growth = (longest - shortest) / log2(41)
+        return min(shortest + growth * log2(1 + kilometres), longest)
+    }
+
+    /// Hops already on screen, by packet. On networks where dozens of observers hear each packet,
+    /// drawing a hop per observation kept the map at its 100-segment cap and re-rendering
+    /// continuously, so a hop already shown for the same packet is skipped.
+    private func drawnLiveSegments() -> Set<PacketSegmentKey> {
+        Set(activePings.compactMap { ping -> PacketSegmentKey? in
+            guard !ping.isPulse, let hash = ping.packetHash else { return nil }
+            return PacketSegmentKey(packetHash: hash, from: CoordinateKey(ping.start), to: CoordinateKey(ping.end))
+        })
+    }
+
+    /// The animated hops for one observation, starting at `observedAt`.
+    private func livePings(
+        for event: LiveEnvelope,
+        eventKey: String,
+        observedAt: Date,
+        drawnSegments: inout Set<PacketSegmentKey>
+    ) -> [ActivePing] {
+        var newPings: [ActivePing] = []
+        let subchains = resolvedSubchains(for: event)
+        let pathColor = ActivePing.color(forHash: event.data?.hash ?? event.data?.raw, colorScheme: colorScheme)
+
+        // Hops follow one another across the whole path; each takes 0.3 to 1.0 s by its real length.
+        // The pieces of a path split by unresolved hops are joined by a quick dashed bridge.
+        let pointsPerMapPoint = replayScreenPointsPerMapPoint()
+        var elapsed: TimeInterval = 0
+        var previousEnd: CLLocationCoordinate2D?
+        for (subchainIndex, subchain) in subchains.enumerated() {
+            if let from = previousEnd, let to = subchain.first, isValidHopDistance(from: from, to: to),
+               !(event.data?.hash.map { hash in
+                   !drawnSegments.insert(PacketSegmentKey(packetHash: hash, from: CoordinateKey(from), to: CoordinateKey(to))).inserted
+               } ?? false) {
+                let bridgeStart = observedAt.addingTimeInterval(elapsed)
+                newPings.append(ActivePing(
+                    from: from, to: to,
+                    createdAt: bridgeStart,
+                    fadeStartsAt: bridgeStart.addingTimeInterval(0.2 + 0.45),
+                    duration: 0.55,
+                    travelDuration: 0.2,
+                    color: pathColor,
+                    routeID: "live-\(eventKey)-bridge-\(subchainIndex)",
+                    packetHash: event.data?.hash,
+                    observerName: event.data?.observerName,
+                    observedAt: observedAt,
+                    curvature: 0.07,
+                    isUnknownRelay: true
+                ))
+                elapsed += 0.2
+            }
+            previousEnd = subchain.last
+            if subchain.count >= 2 {
+                for index in 0..<(subchain.count - 1) {
+                    let p1 = subchain[index]
+                    let p2 = subchain[index + 1]
+                    let travelDuration = Self.hopTravelTime(from: p1, to: p2, shortest: 0.3, longest: 1.0,
+                                                            pointsPerMapPoint: pointsPerMapPoint)
+                    let hopStart = observedAt.addingTimeInterval(elapsed)
+                    elapsed += travelDuration
+                    if isValidHopDistance(from: p1, to: p2) {
+                        if let hash = event.data?.hash,
+                           !drawnSegments.insert(PacketSegmentKey(
+                               packetHash: hash, from: CoordinateKey(p1), to: CoordinateKey(p2)
+                           )).inserted {
+                            continue
+                        }
+                        newPings.append(
+                            ActivePing(
+                                from: p1,
+                                to: p2,
+                                createdAt: hopStart,
+                                fadeStartsAt: hopStart.addingTimeInterval(travelDuration + 0.45),
+                                duration: 0.55,
+                                travelDuration: travelDuration,
+                                color: pathColor,
+                                routeID: "live-\(eventKey)-\(subchainIndex)",
+                                segmentIndex: index,
+                                packetHash: event.data?.hash,
+                                observerName: event.data?.observerName,
+                                observedAt: observedAt,
+                                snr: event.data?.snr,
+                                rssi: event.data?.rssi,
+                                // Same gentle bow as replays, so a packet that doubles back between
+                                // nearby nodes shows two arcs rather than one line drawn twice.
+                                curvature: 0.07
+                            )
+                        )
+                    }
+                }
+            } else if let onlyPoint = subchain.first {
+                newPings.append(
+                    ActivePing(pulseAt: onlyPoint, createdAt: observedAt, duration: 3.0, color: pathColor)
+                )
+            }
+        }
+        return newPings
+    }
+
+    private func admitLiveRoutes(_ newPings: [ActivePing]) {
         guard !newPings.isEmpty else { return }
         // Admit complete routes atomically. Removing the oldest individual
         // segments at the limit amputates routes that are still traveling.
@@ -2160,6 +2894,66 @@ struct MapScreen: View {
             guard activePings.count + route.count <= 100 else { continue }
             activePings.append(contentsOf: route)
         }
+    }
+
+    /// Animates every held packet whose buffer has ended (or all of them), all paths together.
+    private func releaseHeldPropagation(all: Bool = false) {
+        let now = Date.now
+        let due = heldPropagation
+            .filter { all || $0.value.releaseAt <= now }
+            .sorted { $0.value.releaseAt < $1.value.releaseAt }
+        if !due.isEmpty {
+            activePings.removeAll { $0.isExpired(at: now) }
+            var drawnSegments = drawnLiveSegments()
+            var newPings: [ActivePing] = []
+            for (hash, held) in due {
+                heldPropagation[hash] = nil
+                for observation in held.observations {
+                    newPings += livePings(
+                        for: observation.event, eventKey: observation.key,
+                        observedAt: now, drawnSegments: &drawnSegments
+                    )
+                }
+            }
+            admitLiveRoutes(newPings)
+        }
+        scheduleHeldPropagationRelease()
+    }
+
+    private func scheduleHeldPropagationRelease() {
+        heldPropagationRelease?.cancel()
+        guard let next = heldPropagation.values.map(\.releaseAt).min() else {
+            heldPropagationRelease = nil
+            return
+        }
+        heldPropagationRelease = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(max(next.timeIntervalSinceNow, 0)))
+            guard !Task.isCancelled else { return }
+            releaseHeldPropagation()
+        }
+    }
+
+    private func discardHeldPropagation() {
+        heldPropagationRelease?.cancel()
+        heldPropagationRelease = nil
+        heldPropagation = [:]
+        reachedObserversByHash = [:]
+        reachedObserverHashOrder = []
+    }
+
+    /// Whether this is the first copy of its packet from its observer (and records it if so).
+    /// Observations without a packet hash or an observer are always drawn.
+    private func isFirstCopy(of event: LiveEnvelope) -> Bool {
+        guard let hash = event.data?.hash,
+              let observer = event.data?.observerId ?? event.data?.observerName else { return true }
+        if reachedObserversByHash[hash] == nil {
+            reachedObserverHashOrder.append(hash)
+            if reachedObserverHashOrder.count > 400 {
+                for old in reachedObserverHashOrder.prefix(100) { reachedObserversByHash[old] = nil }
+                reachedObserverHashOrder.removeFirst(100)
+            }
+        }
+        return reachedObserversByHash[hash, default: []].insert(observer.lowercased()).inserted
     }
 
     nonisolated private static func groupedLiveRoutes(_ pings: [ActivePing]) -> [[ActivePing]] {
@@ -2183,6 +2977,7 @@ struct MapScreen: View {
 
     private func rebuildPathsForCurrentFilters() {
         activePings = []
+        discardHeldPropagation()
         processedEventIds = []
         processHistoricalPackets()
         processIncomingEvents()
@@ -2237,12 +3032,14 @@ struct MapScreen: View {
     private func resolvedSubchains(for packet: Packet) -> [[CLLocationCoordinate2D]] {
         var hops: [String] = []
         var resolvedPubkeys: [String?] = []
+        var hasResolvedPath = false
 
         if let decodedJson = packet.decodedJson {
             if let jsonData = decodedJson.data(using: .utf8),
                let decoded = try? JSONDecoder().decode(DecodedJsonHelper.self, from: jsonData) {
                 hops = decoded.path?.hops ?? []
                 resolvedPubkeys = decoded.resolvedPath ?? []
+                hasResolvedPath = decoded.resolvedPath != nil
             }
         }
 
@@ -2253,10 +3050,15 @@ struct MapScreen: View {
         if hops.isEmpty, let rawHex = packet.rawHex {
             hops = parseHops(from: rawHex)
         }
+        if !hasResolvedPath, let field = packet.resolvedPath {
+            resolvedPubkeys = field.keys
+            hasResolvedPath = true
+        }
 
         return resolvedSubchains(
             hops: hops,
             resolvedPubkeys: resolvedPubkeys,
+            guessesUnresolvedHops: !hasResolvedPath && Self.hasMultibyteHops(hops),
             observerId: packet.observerId,
             observerName: packet.observerName
         )
@@ -2271,6 +3073,7 @@ struct MapScreen: View {
         return resolvedSubchains(
             hops: hops,
             resolvedPubkeys: resolvedPubkeys,
+            guessesUnresolvedHops: data.resolvedPath == nil && Self.hasMultibyteHops(hops),
             observerId: data.observerId,
             observerName: data.observerName
         )
@@ -2279,6 +3082,7 @@ struct MapScreen: View {
     private func resolvedSubchains(
         hops: [String],
         resolvedPubkeys: [String?],
+        guessesUnresolvedHops: Bool,
         observerId: String?,
         observerName: String?
     ) -> [[CLLocationCoordinate2D]] {
@@ -2299,7 +3103,12 @@ struct MapScreen: View {
                 coord = resolveCoordinate(keyOrPrefix: pubkey, nearCoordinate: referenceCoord)
             }
 
-            if coord == nil && index < hops.count {
+            // A hop the analyzer left unresolved stays unknown, as in replays: guessing the nearest
+            // node with the same short ID (five or six share each 1-byte ID here) drew paths that
+            // doubled back between neighbours, and a repeated ID the analyzer had rejected (a node
+            // relays a packet once) sent the packet back to where it had already been. Only a source
+            // that sends no resolved path at all falls back to guessing.
+            if coord == nil && guessesUnresolvedHops && index < hops.count {
                 let hop = hops[index]
                 coord = resolveCoordinate(keyOrPrefix: hop, nearCoordinate: referenceCoord)
             }
@@ -2319,7 +3128,9 @@ struct MapScreen: View {
         var currentSubchain: [CLLocationCoordinate2D] = []
 
         for item in optionalChain {
-            if let coord = item {
+            // A grouped node is drawn as its bubble; consecutive stops in one bubble are one stop.
+            if let coord = item.map({ bubbleByNodeLocation[CoordinateKey($0)] ?? $0 }) {
+                if let last = currentSubchain.last, CoordinateKey(last) == CoordinateKey(coord) { continue }
                 currentSubchain.append(coord)
             } else {
                 if !currentSubchain.isEmpty {
@@ -2333,6 +3144,13 @@ struct MapScreen: View {
         }
 
         return subchains
+    }
+
+    /// 2- or 3-byte hop IDs, specific enough to guess a node from when a source sends no resolved
+    /// path. 1-byte IDs are shared by five or six nodes each here, so a guess is close to random.
+    nonisolated private static func hasMultibyteHops(_ hops: [String]) -> Bool {
+        guard let first = hops.first else { return false }
+        return first.count > 2
     }
 
     private func extractHops(from data: LivePacketData) -> [String] {
@@ -2483,13 +3301,36 @@ struct MapScreen: View {
     }
 }
 
+/// The live map's moving traffic. It alone reads `LiveTrafficStore`, so new pings redraw this layer
+/// without re-evaluating the map and its markers.
+@Observable @MainActor
+final class LiveTrafficStore {
+    var pings: [ActivePing] = []
+}
+
 private struct LiveMapTrafficLayer: View {
-    let pings: [ActivePing]
+    let traffic: LiveTrafficStore
     let proxy: MapProxy
-    let minimumInterval: TimeInterval
-    let isPaused: Bool
+    let isTabActive: Bool
+
+    private var pings: [ActivePing] { traffic.pings }
+
+    /// Dense traffic uses a slightly lower cadence to leave MapKit time to render its map.
+    private var minimumInterval: TimeInterval {
+        let now = Date.now
+        let hasActiveMotion = pings.contains {
+            guard !$0.isExpired(at: now) else { return false }
+            return $0.isPulse
+                || !$0.hasCompletedTravel(at: now)
+                || $0.arrivalPulseProgress(at: now) != nil
+                || $0.progress(at: now) > 0
+        }
+        guard hasActiveMotion else { return 1.0 }
+        return pings.count > 40 ? 1.0 / 15.0 : 1.0 / 24.0
+    }
 
     var body: some View {
+        let isPaused = !isTabActive || !pings.contains { !$0.isExpired() }
         TimelineView(.animation(minimumInterval: minimumInterval, paused: isPaused)) { context in
             MapTrafficCanvas(
                 pings: pingsForFrame(at: context.date),
@@ -2507,6 +3348,25 @@ private struct LiveMapTrafficLayer: View {
         // of its route is still visible, which looks like a random mid-route
         // disappearance on dense analyzers.
         pings.filter { $0.hasStarted(at: date) && !$0.isExpired(at: date) }
+    }
+}
+
+/// Calls back when the live feed's packets or Beacon node states change, without its parent
+/// reading (and so redrawing on) those counters.
+private struct LiveFeedSequenceObserver: View {
+    let beaconNodesChanged: () -> Void
+    let pauseStarted: () -> Void
+    let eventsChanged: () -> Void
+    @Environment(LiveFeedService.self) private var liveFeed
+    @Environment(LiveTrafficPause.self) private var livePause
+
+    var body: some View {
+        Color.clear
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+            .onChange(of: liveFeed.beaconNodeSequence) { beaconNodesChanged() }
+            .onChange(of: liveFeed.eventSequence) { eventsChanged() }
+            .onChange(of: livePause.isPaused) { _, isPaused in if isPaused { pauseStarted() } }
     }
 }
 
@@ -2539,7 +3399,7 @@ private struct MapTrafficCanvas: View {
                           let end = proxy.convert(ping.end, to: .local) {
                     drawCompletedHop(ping, from: start, to: end, in: &context)
                 }
-                if let pulseProgress = ping.arrivalPulseProgress(at: date),
+                if !ping.isUnknownRelay, let pulseProgress = ping.arrivalPulseProgress(at: date),
                    let end = proxy.convert(ping.end, to: .local) {
                     drawArrivalPulse(ping, progress: pulseProgress, at: end, in: &context)
                 }
@@ -2564,8 +3424,17 @@ private struct MapTrafficCanvas: View {
         guard opacity > 0 else { return }
 
         var path = Path()
-        path.move(to: start)
-        path.addLine(to: end)
+        if ping.curvature == 0 {
+            path.move(to: start)
+            path.addLine(to: end)
+        } else {
+            path.addLines(ping.pathCoordinates().compactMap { proxy.convert($0, to: .local) })
+        }
+        if ping.isUnknownRelay {
+            context.stroke(path, with: .color(ping.pathColor.opacity(opacity * 0.55)),
+                           style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [4, 4]))
+            return
+        }
         context.stroke(
             path,
             with: .color(ping.pathColor.opacity(opacity * 0.18)),
@@ -2586,8 +3455,17 @@ private struct MapTrafficCanvas: View {
         let progress = ping.travelProgress(at: date)
         guard let current = proxy.convert(ping.coordinate(atFraction: progress), to: .local) else { return }
         var path = Path()
-        path.move(to: start)
-        path.addLine(to: current)
+        if ping.curvature == 0 {
+            path.move(to: start)
+            path.addLine(to: current)
+        } else {
+            path.addLines(ping.pathCoordinates(through: progress).compactMap { proxy.convert($0, to: .local) })
+        }
+        if ping.isUnknownRelay {
+            context.stroke(path, with: .color(ping.pathColor.opacity(0.55)),
+                           style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [4, 4]))
+            return
+        }
 
         context.stroke(
             path,
@@ -3059,13 +3937,14 @@ private enum MapNodeActivityFilter: String, CaseIterable, Codable, Identifiable 
 
     var id: String { rawValue }
 
-    var title: LocalizedStringKey {
+    /// Read after "Last Heard" in the Map Filters menu.
+    var lastHeardTitle: LocalizedStringKey {
         switch self {
-        case .all: "Any Activity"
-        case .fifteenMinutes: "Last 15 Minutes"
-        case .oneHour: "Last Hour"
-        case .oneDay: "Last 24 Hours"
-        case .oneWeek: "Last 7 Days"
+        case .all: "Any Time"
+        case .fifteenMinutes: "Within 15 Minutes"
+        case .oneHour: "Within 1 Hour"
+        case .oneDay: "Within 24 Hours"
+        case .oneWeek: "Within 7 Days"
         }
     }
 
@@ -3111,6 +3990,169 @@ private struct MapNodeFilterButton: View {
     }
 }
 
+private struct MapKeyButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "info.circle")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.primary)
+                .frame(minWidth: 34, minHeight: 34)
+                .nodeScopeFloatingGlass(cornerRadius: 20)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Map key")
+        .accessibilityHint("Explains the markers, lines and colors on the map")
+    }
+}
+
+/// What the map's markers, lines and colours mean. Opened from the map's ⓘ and from Map Filters,
+/// so there's one key however it's reached. The symbols are the map's own, at map size.
+private struct MapKeyScreen: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    private static let roles: [(role: String, title: String, summary: String, term: GlossaryTerm)] = [
+        ("repeater", "Repeater", "Relays packets so they travel further.", .repeater),
+        ("room", "Room", "Hosts a shared message board.", .roomServer),
+        ("companion", "Companion", "Someone's radio, paired with an app.", .companion),
+        ("sensor", "Sensor", "Reports readings over the mesh.", .sensor)
+    ]
+
+    var body: some View {
+        List {
+            Section("Node Roles") {
+                ForEach(Self.roles, id: \.role) { item in
+                    MapKeyRow(title: LocalizedStringKey(item.title), summary: LocalizedStringKey(item.summary), term: item.term) {
+                        MapNodeIndicator(color: NodeRoleStyle.color(for: item.role), isHighlighted: false, isRouteHop: true)
+                    }
+                }
+            }
+            .instrumentListRows()
+
+            Section("On the Map") {
+                MapKeyRow(title: "Observer", summary: "Heard the packet in a replay. A ring shows the node it's on.", term: .observer) {
+                    ReplayReceiverMarker(name: "", nodeColor: NodeRoleStyle.color(for: "repeater"),
+                                         showsName: false, colorScheme: colorScheme)
+                }
+                MapKeyRow(title: "Grouped Nodes", summary: "Nearby nodes when zoomed out. Tap to zoom in.") {
+                    Text("12")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 20, height: 20)
+                        .background(.blue, in: Circle())
+                        .overlay { Circle().stroke(.white.opacity(0.8), lineWidth: 1) }
+                }
+                MapKeyRow(title: "Spread-Out Nodes", summary: "Shown apart so each can be tapped. The lines lead to where they are.") {
+                    MapKeySpreadSymbol()
+                }
+                MapKeyRow(title: "Live Packets", summary: "Each packet has its own color, on every path it took.") {
+                    MapKeyLinesSymbol(colors: [
+                        ActivePing.color(forHash: "a1", colorScheme: colorScheme),
+                        ActivePing.color(forHash: "b7", colorScheme: colorScheme)
+                    ], curved: false)
+                }
+                MapKeyRow(title: "Replayed Route", summary: "A packet's path, played hop by hop.", term: .route) {
+                    MapKeyLinesSymbol(colors: [colorScheme == .dark ? Color(red: 0.35, green: 0.78, blue: 1.0) : .orange],
+                                      curved: true)
+                }
+                MapKeyRow(title: "You", summary: "Your location, when you share it.") {
+                    Circle()
+                        .fill(Color.accentColor)
+                        .frame(width: 12, height: 12)
+                        .overlay { Circle().stroke(.white, lineWidth: 2) }
+                        .background { Circle().fill(Color.accentColor.opacity(0.22)).frame(width: 26, height: 26) }
+                }
+            }
+            .instrumentListRows()
+        }
+        .meshPageBackground()
+        .navigationTitle("Map Key")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct MapKeyRow<Symbol: View>: View {
+    let title: LocalizedStringKey
+    let summary: LocalizedStringKey
+    var term: GlossaryTerm?
+    @ViewBuilder let symbol: () -> Symbol
+
+    var body: some View {
+        HStack(spacing: 14) {
+            symbol()
+                .frame(width: 34, height: 30)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                Text(summary)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            if let term {
+                LearnButton(term: term)
+            }
+        }
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Two fanned markers and their dashed lines to the group's hub, as drawn on the map.
+private struct MapKeySpreadSymbol: View {
+    var body: some View {
+        Canvas { context, size in
+            let hub = CGPoint(x: size.width / 2, y: size.height * 0.72)
+            let left = CGPoint(x: size.width * 0.2, y: size.height * 0.3)
+            let right = CGPoint(x: size.width * 0.8, y: size.height * 0.3)
+            for (point, color) in [(left, NodeRoleStyle.color(for: "repeater")), (right, NodeRoleStyle.color(for: "room"))] {
+                var line = Path()
+                line.move(to: point)
+                line.addLine(to: hub)
+                context.stroke(line, with: .color(color.opacity(0.85)),
+                               style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [3, 2.5]))
+            }
+            let hubDot = Path(ellipseIn: CGRect(x: hub.x - 3, y: hub.y - 3, width: 6, height: 6))
+            context.fill(hubDot, with: .color(.white))
+            context.stroke(hubDot, with: .color(Color(white: 0.25).opacity(0.85)), lineWidth: 1.25)
+            for (point, color) in [(left, NodeRoleStyle.color(for: "repeater")), (right, NodeRoleStyle.color(for: "room"))] {
+                let dot = Path(ellipseIn: CGRect(x: point.x - 5, y: point.y - 5, width: 10, height: 10))
+                context.fill(dot, with: .color(color))
+                context.stroke(dot, with: .color(.white.opacity(0.9)), lineWidth: 1)
+            }
+        }
+    }
+}
+
+/// Short packet paths with the travelling signal dot, as drawn on the map.
+private struct MapKeyLinesSymbol: View {
+    let colors: [Color]
+    let curved: Bool
+
+    var body: some View {
+        Canvas { context, size in
+            for (index, color) in colors.enumerated() {
+                let y = colors.count == 1 ? size.height / 2 : size.height * (index == 0 ? 0.32 : 0.72)
+                let start = CGPoint(x: 2, y: y + (curved ? 4 : 2))
+                let end = CGPoint(x: size.width - 4, y: y - (curved ? 4 : 2))
+                var path = Path()
+                path.move(to: start)
+                if curved {
+                    path.addQuadCurve(to: end, control: CGPoint(x: size.width / 2, y: y - 8))
+                } else {
+                    path.addLine(to: end)
+                }
+                context.stroke(path, with: .color(color.opacity(0.18)), style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                context.stroke(path, with: .color(color.opacity(0.85)), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                let dot = Path(ellipseIn: CGRect(x: end.x - 3.5, y: end.y - 3.5, width: 7, height: 7))
+                context.fill(dot, with: .color(.white))
+                context.stroke(dot, with: .color(color), lineWidth: 1.5)
+            }
+        }
+    }
+}
+
 private struct MapNodeFilterSheet: View {
     @Binding var filters: MapNodeFilterSelection
     let observers: [MapObserverOption]
@@ -3128,8 +4170,10 @@ private struct MapNodeFilterSheet: View {
 
     var body: some View {
         NavigationStack {
+            // Grouped by what each part changes: which nodes are drawn, then which routes. What the
+            // map's symbols mean is on its own Map Key screen, also opened from the map's ⓘ.
             List {
-                MapActivityFilterSection(selection: $filters.activityFilter)
+                MapNodesShownSection(selection: $filters.activityFilter)
                 MapRoleFilterSection(selectedRoles: $filters.selectedRoles)
                 MapObserverFilterSummarySection(
                     selectedObserverTitle: selectedObserverTitle,
@@ -3144,6 +4188,18 @@ private struct MapNodeFilterSheet: View {
                     }
                     .instrumentListRows()
                 }
+
+                Section {
+                    NavigationLink {
+                        MapKeyScreen()
+                    } label: {
+                        Label("Map Key", systemImage: "info.circle")
+                            .foregroundStyle(.primary)
+                    }
+                } footer: {
+                    Text("What the markers, lines and colors on the map mean.")
+                }
+                .instrumentListRows()
             }
             .meshPageBackground()
             .navigationTitle("Map Filters")
@@ -3166,73 +4222,78 @@ private struct MapNodeFilterSheet: View {
     }
 }
 
-private struct MapActivityFilterSection: View {
+/// Which nodes are drawn, by when they were last heard. It filters node markers only, which
+/// "Activity" didn't make clear: people took it for a packet filter.
+private struct MapNodesShownSection: View {
     @Binding var selection: MapNodeActivityFilter
 
     var body: some View {
-        Section("Activity") {
-            ForEach(MapNodeActivityFilter.allCases) { filter in
-                Button {
-                    selection = filter
-                } label: {
-                    HStack {
-                        Text(filter.title)
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        if selection == filter {
-                            Image(systemName: "checkmark")
-                                .foregroundStyle(.primary)
-                        }
-                    }
+        Section {
+            Picker(selection: $selection) {
+                ForEach(MapNodeActivityFilter.allCases) { filter in
+                    Text(filter.lastHeardTitle).tag(filter)
                 }
+            } label: {
+                Label("Last Heard", systemImage: "clock")
+                    .foregroundStyle(.primary)
             }
+            .pickerStyle(.menu)
+        } header: {
+            Text("Nodes Shown")
+        } footer: {
+            Text("Hides nodes that haven't been heard from in this time. Live traffic and replays aren't affected.")
         }
         .instrumentListRows()
     }
 }
 
+/// Node roles to draw, each its own checkmark (no selection stored means all). The colour dots
+/// match the map's markers.
 private struct MapRoleFilterSection: View {
     @Binding var selectedRoles: Set<String>
 
-    private let roles = ["repeater", "room", "companion", "sensor"]
+    static let roles = ["repeater", "room", "companion", "sensor"]
+
+    private func isShown(_ role: String) -> Bool {
+        selectedRoles.isEmpty || selectedRoles.contains(role)
+    }
 
     var body: some View {
         Section {
-            Button {
-                selectedRoles = []
-            } label: {
-                MapRoleFilterRow(
-                    title: "All Roles",
-                    roles: roles,
-                    isSelected: selectedRoles.isEmpty
-                )
-            }
-
-            ForEach(roles, id: \.self) { role in
+            ForEach(Self.roles, id: \.self) { role in
                 Button {
-                    toggleRole(role)
+                    toggle(role)
                 } label: {
-                    MapRoleFilterRow(
-                        title: role.capitalized,
-                        roles: [role],
-                        isSelected: selectedRoles.contains(role)
-                    )
+                    MapRoleFilterRow(title: role.capitalized, role: role, isShown: isShown(role))
                 }
+                .accessibilityAddTraits(isShown(role) ? .isSelected : [])
             }
         } header: {
-            Text("Node Roles")
+            HStack {
+                Text("Node Roles")
+                Spacer()
+                if !selectedRoles.isEmpty {
+                    Button("Show All") { selectedRoles = [] }
+                        .font(.footnote.weight(.semibold))
+                        .textCase(nil)
+                }
+            }
         } footer: {
-            Text("Marker colors identify node roles on the map.")
+            Text("Colors match the dots on the map.")
         }
         .instrumentListRows()
     }
 
-    private func toggleRole(_ role: String) {
-        if selectedRoles.contains(role) {
-            selectedRoles.remove(role)
+    /// Showing every role is stored as no selection; the last shown role can't be turned off.
+    private func toggle(_ role: String) {
+        var shown = selectedRoles.isEmpty ? Set(Self.roles) : selectedRoles
+        if shown.contains(role) {
+            guard shown.count > 1 else { return }
+            shown.remove(role)
         } else {
-            selectedRoles.insert(role)
+            shown.insert(role)
         }
+        selectedRoles = shown == Set(Self.roles) ? [] : shown
     }
 }
 
@@ -3255,28 +4316,38 @@ private struct MapNodeIndicator: View {
                         lineWidth: isHighlighted ? 3 : (isRouteHop ? 2 : 1)
                     )
             }
-            .shadow(
-                color: isHighlighted ? NodeScopeStyle.signal.opacity(0.65) : .clear,
-                radius: 8
-            )
+            // Only a highlighted node glows; a clear shadow still cost an offscreen pass per dot.
+            .modifier(HighlightGlow(isOn: isHighlighted))
+    }
+}
+
+private struct HighlightGlow: ViewModifier {
+    let isOn: Bool
+
+    func body(content: Content) -> some View {
+        if isOn {
+            content.shadow(color: NodeScopeStyle.signal.opacity(0.65), radius: 8)
+        } else {
+            content
+        }
     }
 }
 
 private struct MapRoleFilterRow: View {
     let title: String
-    let roles: [String]
-    let isSelected: Bool
+    let role: String
+    let isShown: Bool
 
     var body: some View {
         HStack(spacing: 12) {
-            MapRoleColorSwatch(roles: roles)
+            MapRoleColorSwatch(roles: [role])
             Text(title)
                 .foregroundStyle(.primary)
             Spacer()
-            if isSelected {
-                Image(systemName: "checkmark")
-                    .foregroundStyle(.primary)
-            }
+            Image(systemName: isShown ? "checkmark.circle.fill" : "circle")
+                .font(.title3)
+                .foregroundStyle(isShown ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
+                .accessibilityHidden(true)
         }
     }
 }
@@ -3309,7 +4380,7 @@ private struct MapObserverFilterSummarySection: View {
         Section {
             Button(action: action) {
                 HStack {
-                    Label("Choose Observer", systemImage: "antenna.radiowaves.left.and.right")
+                    Label("Heard By", systemImage: "antenna.radiowaves.left.and.right")
                         .foregroundStyle(.primary)
                     Spacer()
                     Text(selectedObserverTitle)
@@ -3321,9 +4392,9 @@ private struct MapObserverFilterSummarySection: View {
                 }
             }
         } header: {
-            Text("Route Observer")
+            Text("Routes")
         } footer: {
-            Text("Limits live and recent routes to packets received by the selected observer. Node markers are still controlled by the region, activity, and role filters.")
+            Text("Shows only packets received by the chosen observer. Node markers follow the filters above.")
         }
         .instrumentListRows()
     }
@@ -3601,37 +4672,105 @@ private struct MapNodeSearchRow: View {
 private struct ReplayReceiver: Identifiable {
     let name: String
     let coordinate: CLLocationCoordinate2D
+    /// The role of a node at the observer's location (usually its own repeater or companion),
+    /// drawn as a ring around the observer instead of a separate dot on top of it.
+    var nodeRole: String? = nil
+    /// The nodes the observer stands for, hidden while it's shown.
+    var nodeIDs: [String] = []
 
     var id: String { "\(name)|\(coordinate.latitude)|\(coordinate.longitude)" }
 }
 
 /// The labelled endpoint of a replay: an observer marker with its name always shown.
+/// The compact map's title: "Live Map" with its connection dot, or "Paused" while live traffic is
+/// paused by hand (tap to resume).
+private struct CompactLiveMapTitle: View {
+    let isConnected: Bool
+    @Environment(LiveTrafficPause.self) private var livePause
+
+    var body: some View {
+        Group {
+            if livePause.isPaused {
+                LiveMapPausedButton(resume: { livePause.resume() })
+            } else {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
+                        .frame(width: 7, height: 7)
+                    Text("Live Map")
+                        .font(.monaspace(.headline))
+                        .fixedSize()
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(isConnected ? "Live Map, connected" : "Live Map, reconnecting")
+            }
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+    }
+}
+
+/// The map's title while live traffic is paused: says so, and resumes it when tapped.
+private struct LiveMapPausedButton: View {
+    let resume: () -> Void
+
+    var body: some View {
+        Button(action: resume) {
+            HStack(spacing: 6) {
+                Image(systemName: "pause.fill")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(NodeScopeStyle.activity)
+                Text("Paused")
+                    .font(.monaspace(.headline))
+                    .foregroundStyle(.primary)
+                    .fixedSize()
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Live traffic paused")
+        .accessibilityHint("Resumes live traffic")
+    }
+}
+
 private struct ReplayReceiverMarker: View {
     let name: String
+    /// The role colour of a node at the observer's location, shown as a ring around it.
+    let nodeColor: Color?
+    /// Hidden when zoomed out, where names crowd the map.
+    let showsName: Bool
     let colorScheme: ColorScheme
 
     var body: some View {
         Image(systemName: "antenna.radiowaves.left.and.right")
-            .font(.system(size: 11, weight: .bold))
+            .font(.system(size: 7, weight: .bold))
             .foregroundStyle(.white)
-            .frame(width: 24, height: 24)
+            .frame(width: 15, height: 15)
             .background(NodeScopeStyle.healthy, in: Circle())
             .overlay {
-                Circle().stroke(.white.opacity(0.9), lineWidth: 1.5)
+                Circle().stroke(.white.opacity(0.9), lineWidth: 1.2)
+            }
+            .overlay {
+                if let nodeColor {
+                    Circle()
+                        .stroke(nodeColor, lineWidth: 2)
+                        .frame(width: 18.2, height: 18.2)
+                }
             }
             .overlay(alignment: .top) {
-                Text(name)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
-                    .background(
-                        colorScheme == .dark ? Color.black.opacity(0.72) : Color.white.opacity(0.85),
-                        in: Capsule()
-                    )
-                    .offset(y: 27)
+                if showsName {
+                    Text(name)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(
+                            colorScheme == .dark ? Color.black.opacity(0.72) : Color.white.opacity(0.85),
+                            in: Capsule()
+                        )
+                        .offset(y: nodeColor == nil ? 18 : 19)
+                }
             }
             .allowsHitTesting(false)
             .accessibilityElement()

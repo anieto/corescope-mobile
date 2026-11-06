@@ -73,6 +73,14 @@ private actor MapResponseCache {
     }
 }
 
+/// Live map display preferences, set under Settings → Display.
+enum LiveMapPreferences {
+    /// Realistic propagation (CoreScope "Realistic"): animate each packet's paths together.
+    static let realisticPropagationKey = "liveMapRealisticPropagation"
+    /// Group nearby nodes into numbered bubbles when zoomed out (on by default).
+    static let groupsNodesKey = "liveMapGroupsNodes"
+}
+
 @Observable
 @MainActor
 final class MapViewModel {
@@ -86,6 +94,11 @@ final class MapViewModel {
     }
     var recentPackets: [Packet] = []
     var mapDefaults: MapDefaults?
+    /// How long Realistic propagation collects a packet's observations (CoreScope
+    /// `liveMap.propagationBufferMs`; 5 s, CoreScope's default, when the source doesn't say).
+    var propagationBuffer: TimeInterval = MapViewModel.defaultPropagationBuffer
+    nonisolated static let defaultPropagationBuffer: TimeInterval = 5
+    private var hasLoadedLiveMapConfig = false
     var isLoading = false
     var errorMessage: String?
     var lastUpdatedAt: Date?
@@ -123,6 +136,8 @@ final class MapViewModel {
         nodes = []
         recentPackets = []
         mapDefaults = nil
+        propagationBuffer = Self.defaultPropagationBuffer
+        hasLoadedLiveMapConfig = false
         errorMessage = nil
         lastUpdatedAt = nil
         isLoading = false
@@ -148,6 +163,21 @@ final class MapViewModel {
             mapDefaults = defaults
             await MapResponseCache.shared.store(defaults, for: cacheKey)
         }
+    }
+
+    func loadLiveMapConfig() async {
+        guard !hasLoadedLiveMapConfig, let apiClient, apiClient.sourceSession.isCurrent, !Task.isCancelled else { return }
+        // Non-fatal: without it Realistic propagation uses the default buffer.
+        guard let config = try? await apiClient.liveMapConfig(),
+              apiClient.sourceSession.isCurrent, !Task.isCancelled else { return }
+        hasLoadedLiveMapConfig = true
+        propagationBuffer = Self.propagationBuffer(milliseconds: config.propagationBufferMs)
+    }
+
+    /// The server's buffer in seconds, kept to a range that still reads as live.
+    nonisolated static func propagationBuffer(milliseconds: Double?) -> TimeInterval {
+        guard let milliseconds, milliseconds.isFinite, milliseconds > 0 else { return defaultPropagationBuffer }
+        return min(max(milliseconds / 1000, 0.5), 30)
     }
 
     func loadNodes(region: String?, forceRefresh: Bool = false) async {

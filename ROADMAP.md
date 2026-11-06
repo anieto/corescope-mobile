@@ -127,7 +127,39 @@ which covers all of 0.10, is in the [0.10.2 release notes](docs/node-planner/v0.
   mode); on iPhone Duo, Live Packets fills the right screen on iOS 27.1, map controls keep clear of
   the crease when half folded, and the node count stays on the left screen.
 
-### 0.10.3 — Estimated Coverage and saved planning work (in progress)
+### 0.10.3 — Live map options (beta testing)
+
+Built on `feature/live-map-options` for both apps; merge to `main` once testers have tried it.
+
+- **Realistic Propagation** (Settings → Live Map): holds each packet's observations for the
+  analyzer's propagation buffer (`propagationBufferMs` from `/api/config/client`, 0.5–30 s, 5 s
+  when not published), then animates all of its paths together, like CoreScope's "Realistic".
+- **Group Nearby Nodes** (Settings → Live Map): off draws every node on its own. iOS keeps it fast
+  by redrawing markers only when they change and drawing one dot where several would overlap
+  when zoomed out; tapping such a spot zooms in. iOS also fans out nearby nodes close in, with
+  dashed lines back to where they are.
+- **Replays:** All Routes, now every replay's default (packet details' route picker offers it too,
+  chosen by default), plays every route together, leaving a short trail; each observer stays on its shortest route. Hops run at a steady 90 km/s
+  (0.45–1.5 s), bow slightly, and observers are ringed markers named only once zoomed in. A
+  replay waits for the map to frame it, then a short lead-in; it pauses while the map is panned.
+- **Live traffic:** each observer's first copy only (no echoes), no guessing of hops the analyzer
+  left unresolved (dashed bridges join the pieces instead), hop timing by real distance, slight
+  curves; on iOS traffic to grouped nodes is drawn to their bubble.
+- **Pause Live** in the live packets panel holds the list and the map's traffic; new packets are
+  counted, and the map's title shows Paused (tap to resume).
+- **Map Filters** regrouped into Nodes Shown, Node Roles and Routes, with a **Map Key** opened from
+  Filters or the map's ⓘ.
+- **Channels:** with a region chosen, previews show the latest message heard in that region (the
+  rule the conversation uses), not the network-wide latest. Android: region groups now filter
+  conversations.
+- iOS fixes: ⓘ explanations open above or below and are no longer clipped; the iPhone Live Packets
+  sheet closes from the trailing corner; Settings has a Live Map card.
+- Builds: iOS 0.10.3 (2), Android 0.10.3 (versionCode 22). The numbers skip past 0.10.3 (1) and
+  versionCode 21, which the Candidate Sites branch used.
+- Not ported to Android (it groups far less, and its maps hide colliding labels): drawing traffic
+  to group bubbles, and fanning nearby nodes with lines back to where they are.
+
+### 0.10.4 — Estimated Coverage and saved planning work (in progress)
 
 - **Direction revised 2026-11-02:** Estimated Coverage is a standalone peer of Link Profile:
   select a point, enter radio/antenna and receiver assumptions, and calculate a terrain-aware
@@ -202,11 +234,23 @@ which covers all of 0.10, is in the [0.10.2 release notes](docs/node-planner/v0.
   layout (as the Duo already does), then remove the 0.10.1 launch workaround
   (`RootTabView.settleIPadMapLayout()`). On first launch iPadOS doesn't merge the top tab bar into
   the split view's bar, which pushed both panes 64 pt down until the tab was revisited.
-- Builds: iOS 0.10.3 (1), Android 0.10.3 (versionCode 21). The Candidate Sites branch started from
-  0.10.1 and needs updating from `main` first.
+- Builds: iOS 0.10.4, Android versionCode 23 or later (the branch's 0.10.3 numbers were passed to the
+  live map release). The live map branch was merged in on 2026-11-06.
 
 Still deferred: comparing/exporting plans, multi-transmitter coverage and advanced receiver overrides.
 Saving Link Profile studies belongs in the shared Saved Plans collection, not a separate library.
+
+### Node preview card (planned)
+
+Tapping a node on the map opens a small preview instead of going straight to the full node page, so
+a quick look ("who is this, when was it last heard") doesn't take the user off the map or interrupt a
+replay. Its own small branch, separate from the live map options.
+
+- Shows name, role colour and short key; last heard with a fresh/stale badge; battery and SNR/RSSI
+  when known; region; and whether it's a favourite.
+- Actions: **Details** (the full node page, as today), **Favourite**, **Center on Map**.
+- iPhone: a short sheet that can be pulled up to the full page. iPad and iPhone Duo: a popover
+  anchored to the node. Android to match.
 
 ## 1.0.0 — Investigation depth and product maturity
 
@@ -266,5 +310,6 @@ and 3 are at parity. See [implementation progress](docs/android/progress.md).
 ## Current priority
 
 0.10.2 (Learn layer, Monaspace Neon, Settings refresh, foldable fixes) is uploaded to the App Store
-and Google Play. Next is 0.10.3: standalone Estimated Coverage, optional shared Saved Plans, and the separately tracked iPad two-pane map layout. Android touch &
+and Google Play. 0.10.3 (live map options) is in beta testing; next is 0.10.4: standalone Estimated
+Coverage, optional shared Saved Plans, and the separately tracked iPad two-pane map layout. Android touch &
 hold still needs a device test.

@@ -98,7 +98,9 @@ internal fun rememberMapLibreEngine(): MapLibreEngine {
 @Composable
 internal fun MapLibreEngineHost(engine: MapLibreEngine, styleMode: Int, retry: Int, bottomInset: Int, savedCamera: SavedCamera,
     onCameraIdle: (SavedCamera) -> Unit, onTap: (MapTap) -> Boolean, modifier: Modifier = Modifier,
-    onLongPress: ((MapTap) -> Unit)? = null) {
+    onLongPress: ((MapTap) -> Unit)? = null,
+    /** The user started panning or zooming (not a move the app made). */
+    onGestureMove: (() -> Unit)? = null) {
     val view = engine.view
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -106,6 +108,7 @@ internal fun MapLibreEngineHost(engine: MapLibreEngine, styleMode: Int, retry: I
     val currentOnCameraIdle by rememberUpdatedState(onCameraIdle)
     val currentOnTap by rememberUpdatedState(onTap)
     val currentOnLongPress by rememberUpdatedState(onLongPress)
+    val currentOnGestureMove by rememberUpdatedState(onGestureMove)
     // A style that fails to load (often a brief CARTO or network hiccup) is tried again after
     // MAP_RETRY_DELAYS_MS before the error is shown; a manual retry or another style starts over.
     val scope = rememberCoroutineScope()
@@ -160,6 +163,9 @@ internal fun MapLibreEngineHost(engine: MapLibreEngine, styleMode: Int, retry: I
                 ready.cameraPosition = CameraPosition.Builder()
                     .target(LatLng(saved[0], saved[1])).zoom(saved[2])
                     .bearing(saved[3]).tilt(saved[4]).build()
+                ready.addOnCameraMoveStartedListener { reason ->
+                    if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) currentOnGestureMove?.invoke()
+                }
                 ready.addOnCameraIdleListener {
                     ready.cameraPosition.let { c -> c.target?.let { currentOnCameraIdle(listOf(it.latitude, it.longitude, c.zoom, c.bearing, c.tilt)) } }
                 }
@@ -269,8 +275,14 @@ private data class MapLibreOverlays(val style: Style) : MapOverlays {
     }
     override fun setRouteAnchors(markers: List<MapMarker>) {
         source(ROUTE_NODES)?.setGeoJson(FeatureCollection.fromFeatures(markers.map { marker ->
-            marker.feature().apply { addStringProperty("anchorId", marker.anchorId) }
+            marker.feature().apply {
+                addStringProperty("anchorId", marker.anchorId)
+                addStringProperty("observerIcon", observerImage(marker.ringRole))
+            }
         }))
+    }
+    override fun setObserverLabelsVisible(visible: Boolean) {
+        style.getLayer(OBSERVER_LABELS)?.setProperties(visibility(if (visible) Property.VISIBLE else Property.NONE))
     }
     override fun setRouteFrame(frame: RouteFrame) {
         lineSource?.setGeoJson(FeatureCollection.fromFeatures(frame.lines.map { line ->
@@ -278,6 +290,7 @@ private data class MapLibreOverlays(val style: Style) : MapOverlays {
                 addStringProperty("color", line.color)
                 addNumberProperty("opacity", line.opacity)
                 addStringProperty("route", line.route)
+                addBooleanProperty("dashed", line.dashed)
             }
         }))
         dotSource?.setGeoJson(FeatureCollection.fromFeatures(frame.heads.map { (point, color) ->
@@ -367,6 +380,8 @@ private fun darkMatterLine(id: String): String? = when {
 }
 
 private fun pinImage(kind: MapPin.Kind) = "nodescope-pin-${kind.name.lowercase()}"
+private fun observerImage(ringRole: String?) = "nodescope-observer-${ringRole?.lowercase()?.takeIf { it in MARKER_ROLE_COLORS } ?: "none"}"
+private const val OBSERVER_LABELS = "nodescope-route-observer-labels"
 
 private val Coordinate.point get() = Point.fromLngLat(longitude, latitude)
 
@@ -424,22 +439,34 @@ private fun addOverlays(style: Style, dark: Boolean) {
     style.addLayer(labels(REPLAY_LABELS, REPLAY_NODES))
     // Live hops as on iOS: a soft halo under a thin core, a small white head, and arrival rings.
     style.addSource(GeoJsonSource("live-lines", emptyFeatures).apply { setOverrideSynchronousUpdate(true) })
-    style.addLayer(LineLayer("live-route-halo", "live-lines").withProperties(lineColor(get("color")), lineWidth(6f),
+    val solid = not(eq(get("dashed"), literal(true)))
+    style.addLayer(LineLayer("live-route-halo", "live-lines").withFilter(solid).withProperties(lineColor(get("color")), lineWidth(6f),
         lineOpacity(product(get("opacity"), literal(0.18f))), lineCap(Property.LINE_CAP_ROUND), lineJoin(Property.LINE_JOIN_ROUND)))
-    style.addLayer(LineLayer("live-route-lines", "live-lines").withProperties(lineColor(get("color")), lineWidth(2f),
+    style.addLayer(LineLayer("live-route-lines", "live-lines").withFilter(solid).withProperties(lineColor(get("color")), lineWidth(2f),
         lineOpacity(product(get("opacity"), literal(0.85f))), lineCap(Property.LINE_CAP_ROUND), lineJoin(Property.LINE_JOIN_ROUND)))
+    // Bridges over unresolved hops: dashed, no halo (dash lengths are in line widths).
+    style.addLayer(LineLayer("live-route-dashed", "live-lines").withFilter(eq(get("dashed"), literal(true))).withProperties(
+        lineColor(get("color")), lineWidth(2f), lineOpacity(product(get("opacity"), literal(0.85f))),
+        lineDasharray(arrayOf(2f, 2f)), lineJoin(Property.LINE_JOIN_ROUND)))
     style.addSource(GeoJsonSource("live-rings", emptyFeatures).apply { setOverrideSynchronousUpdate(true) })
     style.addLayer(CircleLayer("live-route-rings", "live-rings").withProperties(circleOpacity(0f), circleRadius(get("radius")),
         circleStrokeColor(get("color")), circleStrokeWidth(get("width")), circleStrokeOpacity(get("opacity"))))
     style.addSource(GeoJsonSource("live-dots", emptyFeatures).apply { setOverrideSynchronousUpdate(true) })
     style.addLayer(CircleLayer("live-route-dots", "live-dots").withProperties(circleColor("#FFFFFF"), circleRadius(3.5f), circleStrokeColor(get("color")), circleStrokeWidth(1.5f)))
     style.addSource(GeoJsonSource(ROUTE_NODES, emptyFeatures))
-    style.addLayer(CircleLayer(ROUTE_NODE_POINTS, ROUTE_NODES).withProperties(
+    style.addLayer(CircleLayer(ROUTE_NODE_POINTS, ROUTE_NODES).withFilter(not(eq(get("role"), literal("observer")))).withProperties(
         circleRadius(6f), circleColor(match(get("role"), literal("#65DDB4"), stop("repeater", "#FFAA44"), stop("room", "#299EFF"), stop("companion", "#45C99D"), stop("sensor", "#B18AFF"))),
         circleStrokeWidth(2f), circleStrokeColor("#FFFFFF")))
-    // A replayed route's observers (route markers with a name) are always labelled.
-    style.addLayer(labels("nodescope-route-observer-labels", ROUTE_NODES)
-        .withFilter(all(eq(get("role"), literal("observer")), has("name"))).withProperties(visibility(Property.VISIBLE)))
+    // A replay's observers: ringed antenna markers over the route's nodes, named once zoomed in
+    // to about a city (setObserverLabelsVisible), below the marker.
+    val markerDensity = android.content.res.Resources.getSystem().displayMetrics.density
+    (MARKER_ROLE_COLORS.keys + "none").forEach { role ->
+        style.addImage(observerImage(role.takeIf { it != "none" }), observerMarkerBitmap(MARKER_ROLE_COLORS[role], markerDensity))
+    }
+    style.addLayer(SymbolLayer("nodescope-route-observers", ROUTE_NODES).withFilter(eq(get("role"), literal("observer"))).withProperties(
+        iconImage(get("observerIcon")), iconAllowOverlap(true), iconIgnorePlacement(true)))
+    style.addLayer(labels(OBSERVER_LABELS, ROUTE_NODES)
+        .withFilter(all(eq(get("role"), literal("observer")), has("name"))).withProperties(textOffset(arrayOf(0f, 1.1f))))
     style.addSource(GeoJsonSource(ROUTE, emptyFeatures))
     style.addLayer(LineLayer("nodescope-route-line", ROUTE).withProperties(lineColor("#299EFF"), lineWidth(4f)))
     // A planned link: a casing so it reads on any basemap, then the coloured stretches. Every

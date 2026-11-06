@@ -62,7 +62,19 @@ fun ChannelsScreen(
     val summaries = remember(packets, monitored) {
         monitored.associate { it.channelName to summarize(monitoredConversation(packets, it)) }
     }
-    val server = channelState.value.takeIf { channelState.key == selection }.orEmpty()
+    val loaded = channelState.value.takeIf { channelState.key == selection }.orEmpty()
+    // With a region chosen, each preview is the latest message heard there, as its conversation
+    // shows (iOS), not the server's network-wide latest.
+    LaunchedEffect(selection, loaded, feed.observers) { if (!beacon) model.loadRegionalPreviews(selection, loaded, feed.observers) }
+    val previews by model.regionalPreviews.collectAsStateWithLifecycle()
+    val server = remember(loaded, previews, selection.region) {
+        if (selection.region == null || previews.isEmpty()) loaded else loaded.map { channel ->
+            val preview = previews[channel.id] ?: return@map channel
+            val message = preview.message
+            channel.copy(lastMessage = message?.text ?: "No recent messages from this region",
+                lastSender = message?.sender, lastActivity = message?.timestamp?.toString() ?: channel.lastActivity)
+        }
+    }
     val filters = ChannelFilters(source, activity, sort, query)
     val sections = remember(server, monitored, summaries, filters, now) { channelSections(server, monitored, summaries, filters, now) }
 

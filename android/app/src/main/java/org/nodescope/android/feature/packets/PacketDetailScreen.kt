@@ -48,7 +48,8 @@ fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNod
     LaunchedEffect(latest.hash) { if (latest.hash.isNotBlank()) fullRoutes = loadRoutes(latest.hash) }
     // The feed's routes come first, so a route already chosen stays put as more load.
     val routes = remember(shown, fullRoutes) { mergeRouteOptions(shown.routeOptions(), fullRoutes) }
-    var selectedRoute by rememberSaveable { mutableIntStateOf(0) }
+    // Every route by default, as replays start (iOS); the picker narrows it to one.
+    var selectedRoute by rememberSaveable { mutableIntStateOf(org.nodescope.android.feature.map.ALL_ROUTES) }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     // Packet, payload (when there is one), observations, then the route.
@@ -81,7 +82,7 @@ fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNod
                     if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                     // An observer whose path is one of the routes shows it below when tapped.
                     val routeIndex = routeIndexFor(observation.resolvedPath, routes)
-                    val onRoute = routeIndex != null && routeIndex == selectedRoute.coerceIn(routes.indices.takeIf { !it.isEmpty() } ?: 0..0)
+                    val onRoute = routeIndex != null && routeIndex == singleRoute(selectedRoute, routes.size)
                     Row(Modifier.fillMaxWidth().then(if (routeIndex == null) Modifier else Modifier.clickable(onClickLabel = "Show this observer's route") {
                         selectedRoute = routeIndex; scope.launch { listState.animateScrollToItem(routeItem) }
                     }).semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
@@ -98,10 +99,12 @@ fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNod
         }
         if (shown.longestPath.isNotEmpty() || routes.isNotEmpty()) item {
             DetailSection("Route", GlossaryTerm.ROUTE) {
-                if (routes.size > 1) RoutePicker(routes, selectedRoute, { selectedRoute = it })
+                if (routes.size > 1) RoutePicker(routes, selectedRoute, { selectedRoute = it }, allowsAll = true)
+                val shownRoute = singleRoute(selectedRoute, routes.size)
+                if (shownRoute == null && routes.size > 1) AllRoutesNote(routes.size)
                 // Resolved routes carry full keys; otherwise show the path's hash prefixes.
-                val hops: List<Pair<String, MeshNode?>> = routes.getOrNull(selectedRoute)?.keys?.map { it to nodesByKey[it.lowercase()] }
-                    ?: shown.longestPath.map { (it ?: "?") to null }
+                val hops: List<Pair<String, MeshNode?>> = shownRoute?.let { routes[it].keys.map { key -> key to nodesByKey[key.lowercase()] } }
+                    ?: if (routes.isEmpty()) shown.longestPath.map { (it ?: "?") to null } else emptyList()
                 hops.forEachIndexed { index, (value, node) ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Hop ${index + 1}", Modifier.width(56.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -110,12 +113,11 @@ fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNod
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                routes.getOrNull(selectedRoute.coerceIn(routes.indices.takeIf { !it.isEmpty() } ?: 0..0))?.let { RouteHearers(it) }
-                val playable = routes.getOrNull(selectedRoute.coerceIn(routes.indices.takeIf { !it.isEmpty() } ?: 0..0))
-                    ?.let { route -> routeSubchains(route.keys, nodes).any { it.size > 1 } } == true
+                shownRoute?.let { RouteHearers(routes[it]) }
+                val playable = (shownRoute?.let { listOf(routes[it]) } ?: routes).any { route -> routeSubchains(route.keys, nodes).any { it.size > 1 } }
                 if (routes.isNotEmpty() && !playable) Text("This route's nodes aren't on the current map region, so it can't be replayed.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (routes.isNotEmpty()) Button(onClick = { onReplay(routes, selectedRoute.coerceIn(routes.indices)) }, Modifier.fillMaxWidth(), enabled = playable,
+                if (routes.isNotEmpty()) Button(onClick = { onReplay(routes, shownRoute ?: org.nodescope.android.feature.map.ALL_ROUTES) }, Modifier.fillMaxWidth(), enabled = playable,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)) {
                     Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text("Replay on map")
                 }

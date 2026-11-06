@@ -22,7 +22,9 @@ import kotlin.math.tan
  */
 
 /** A marker to draw: a node (tappable, with a label) or an observer endpoint of a live route. */
-internal data class MapMarker(val coordinate: Coordinate, val role: String, val publicKey: String? = null, val name: String? = null) {
+internal data class MapMarker(val coordinate: Coordinate, val role: String, val publicKey: String? = null, val name: String? = null,
+    /** For a replay's observer: the role of a node at its site, drawn as a ring around it (iOS). */
+    val ringRole: String? = null) {
     /** Identifies a temporary route marker, so a node on several routes is drawn once. */
     val anchorId: String get() = publicKey?.let { "node:$it" } ?: "observer:${coordinate.latitude},${coordinate.longitude}"
 }
@@ -94,6 +96,8 @@ internal interface MapOverlays {
     /** The node markers; [grouped] ones may cluster, others (a route-only replay) never do. */
     fun setNodes(nodes: List<MapMarker>, grouped: Boolean)
     fun setNodeLabelsVisible(visible: Boolean)
+    /** A replay's observer names: only once zoomed in to about a city, where they don't crowd (iOS). */
+    fun setObserverLabelsVisible(visible: Boolean) {}
     /** Temporary markers for the nodes and observers of the routes on screen. */
     fun setRouteAnchors(markers: List<MapMarker>)
     /** One animation frame of live or replayed routes. */
@@ -295,3 +299,41 @@ internal fun mapLoadError(message: String?): MapLoadError {
 
 /** A base map that fails to load is tried again after these delays before the error is shown. */
 internal val MAP_RETRY_DELAYS_MS = listOf(1_500L, 4_000L)
+
+/** Node role colours shared by the map engines (ARGB). */
+internal val MARKER_ROLE_COLORS = mapOf("repeater" to 0xFFFFAA44.toInt(), "room" to 0xFF299EFF.toInt(),
+    "companion" to 0xFF45C99D.toInt(), "sensor" to 0xFFB18AFF.toInt())
+
+/** Size of a replay observer marker's bitmap, in dp (the disc is 15 dp, its ring 18 dp). */
+internal const val OBSERVER_MARKER_DP = 22f
+
+/**
+ * A replay's observer (iOS `ReplayReceiverMarker`): a green disc with a white antenna and white
+ * edge, ringed in [ringColor] when a node shares the site (the marker is drawn over that node).
+ */
+internal fun observerMarkerBitmap(ringColor: Int?, density: Float): android.graphics.Bitmap {
+    val size = OBSERVER_MARKER_DP * density
+    val bitmap = android.graphics.Bitmap.createBitmap(size.toInt(), size.toInt(), android.graphics.Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(bitmap)
+    val c = size / 2f
+    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+    paint.color = 0xFF3DC77A.toInt()
+    canvas.drawCircle(c, c, 7.5f * density, paint)
+    paint.style = android.graphics.Paint.Style.STROKE
+    paint.strokeWidth = 1.2f * density; paint.color = 0xE6FFFFFF.toInt()
+    canvas.drawCircle(c, c, 7.5f * density - 0.6f * density, paint)
+    if (ringColor != null) {
+        paint.strokeWidth = 2f * density; paint.color = ringColor
+        canvas.drawCircle(c, c, 9.1f * density, paint)
+    }
+    // The antenna: a mast with a dot, and a radio wave either side.
+    paint.color = android.graphics.Color.WHITE; paint.strokeWidth = 1.1f * density; paint.strokeCap = android.graphics.Paint.Cap.ROUND
+    canvas.drawLine(c, c - 0.5f * density, c, c + 3.5f * density, paint)
+    paint.style = android.graphics.Paint.Style.FILL
+    canvas.drawCircle(c, c - 1.2f * density, 1.1f * density, paint)
+    paint.style = android.graphics.Paint.Style.STROKE
+    val wave = android.graphics.RectF(c - 3.6f * density, c - 4.8f * density, c + 3.6f * density, c + 2.4f * density)
+    canvas.drawArc(wave, 140f, 80f, false, paint)
+    canvas.drawArc(wave, -40f, 80f, false, paint)
+    return bitmap
+}

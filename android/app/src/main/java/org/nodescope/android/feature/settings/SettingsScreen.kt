@@ -104,12 +104,38 @@ fun SettingsScreen(
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("Term explanations", style = MaterialTheme.typography.titleSmall)
-                            Text("Show ⓘ beside terms like SNR and hops. The Glossary is always available.", style = MaterialTheme.typography.bodySmall,
+                            Text("Show ⓘ beside terms like SNR and hops.", style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Switch(checked = org.nodescope.android.feature.learn.LearnSettings.showsExplanations(context),
                             onCheckedChange = { org.nodescope.android.feature.learn.LearnSettings.setShowsExplanations(context, it) },
                             modifier = Modifier.semantics { contentDescription = "Term explanations" })
+                    }
+                }
+            }
+            item {
+                // Options that only change the live map (iOS Settings → Live Map).
+                val context = LocalContext.current
+                Panel("Live Map", Icons.Outlined.Map) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Group Nearby Nodes", style = MaterialTheme.typography.titleSmall)
+                            Text("Combine close nodes into numbered bubbles when zoomed out. With this off, busy areas may be slower.",
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = org.nodescope.android.feature.map.LiveMapSettings.groupsNodes(context),
+                            onCheckedChange = { org.nodescope.android.feature.map.LiveMapSettings.setGroupsNodes(context, it) },
+                            modifier = Modifier.semantics { contentDescription = "Group Nearby Nodes" })
+                    }
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Realistic Propagation", style = MaterialTheme.typography.titleSmall)
+                            Text("Wait for every observer, then animate a packet's paths together. Runs a few seconds behind live; the analyzer sets the delay.",
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = org.nodescope.android.feature.map.LiveMapSettings.realisticPropagation(context),
+                            onCheckedChange = { org.nodescope.android.feature.map.LiveMapSettings.setRealisticPropagation(context, it) },
+                            modifier = Modifier.semantics { contentDescription = "Realistic Propagation" })
                     }
                 }
             }

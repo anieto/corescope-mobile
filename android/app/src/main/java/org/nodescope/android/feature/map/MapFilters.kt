@@ -12,12 +12,12 @@ import org.nodescope.android.core.model.parseInstant
 
 /** iOS `MapNodeActivityFilter`: how recently a node must have been heard. */
 @Serializable
-enum class ActivityFilter(val title: String, val maxAgeMillis: Long?) {
-    ALL("Any activity", null),
-    FIFTEEN_MINUTES("Last 15 minutes", 15 * 60_000L),
-    ONE_HOUR("Last hour", 60 * 60_000L),
-    ONE_DAY("Last 24 hours", 24 * 60 * 60_000L),
-    ONE_WEEK("Last 7 days", 7 * 24 * 60 * 60_000L),
+enum class ActivityFilter(val title: String, val maxAgeMillis: Long?, /** As the Filters' "Last heard" choice (iOS). */ val lastHeardTitle: String) {
+    ALL("Any activity", null, "Any time"),
+    FIFTEEN_MINUTES("Last 15 minutes", 15 * 60_000L, "Within 15 minutes"),
+    ONE_HOUR("Last hour", 60 * 60_000L, "Within 1 hour"),
+    ONE_DAY("Last 24 hours", 24 * 60 * 60_000L, "Within 24 hours"),
+    ONE_WEEK("Last 7 days", 7 * 24 * 60 * 60_000L, "Within 7 days"),
 }
 
 val MAP_ROLES = listOf("repeater", "room", "companion", "sensor")

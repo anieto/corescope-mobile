@@ -20,17 +20,36 @@ import androidx.compose.ui.unit.dp
  * message packets and the map's replay controls, so a route is named the same everywhere.
  */
 @Composable
-fun RoutePicker(options: List<RouteOption>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+fun RoutePicker(options: List<RouteOption>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier,
+    /** Offer "All routes" first (the map's replay), chosen as [org.nodescope.android.feature.map.ALL_ROUTES]. */
+    allowsAll: Boolean = false) {
     var open by remember { mutableStateOf(false) }
+    val all = org.nodescope.android.feature.map.ALL_ROUTES
+    val showsAll = allowsAll && selected == all
     val index = selected.coerceIn(options.indices)
     val current = options[index]
     Box(modifier) {
-        OutlinedButton(onClick = { open = true }, Modifier.semantics { contentDescription = "Route: ${current.spokenLabel(index)}. Change route" }) {
-            RouteName(current, index, Modifier.weight(1f, fill = false))
-            Text(" · ${current.hops} hops", maxLines = 1)
+        OutlinedButton(onClick = { open = true }, Modifier.semantics {
+            contentDescription = if (showsAll) "Route: all ${options.size} routes. Change route" else "Route: ${current.spokenLabel(index)}. Change route"
+        }) {
+            if (showsAll) Text("All ${options.size} routes", Modifier.weight(1f, fill = false), maxLines = 1)
+            else {
+                RouteName(current, index, Modifier.weight(1f, fill = false))
+                Text(" · ${current.hops} hops", maxLines = 1)
+            }
             Icon(Icons.Outlined.ArrowDropDown, null)
         }
         DropdownMenu(open, { open = false }) {
+            if (allowsAll) DropdownMenuItem(
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("All routes")
+                        Text("${options.size} routes together", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                },
+                onClick = { onSelect(all); open = false },
+                trailingIcon = { if (showsAll) Icon(Icons.Outlined.Check, "Selected", Modifier.size(18.dp)) },
+            )
             options.forEachIndexed { i, option ->
                 DropdownMenuItem(
                     text = {
@@ -40,7 +59,7 @@ fun RoutePicker(options: List<RouteOption>, selected: Int, onSelect: (Int) -> Un
                         }
                     },
                     onClick = { onSelect(i); open = false },
-                    trailingIcon = { if (i == index) Icon(Icons.Outlined.Check, "Selected", Modifier.size(18.dp)) },
+                    trailingIcon = { if (i == index && !showsAll) Icon(Icons.Outlined.Check, "Selected", Modifier.size(18.dp)) },
                     modifier = Modifier.semantics { contentDescription = option.spokenLabel(i) },
                 )
             }
@@ -87,4 +106,21 @@ fun RouteHearers(option: RouteOption) {
             LearnButton(GlossaryTerm.ALONG_THE_WAY)
         }
     }
+}
+
+/**
+ * The one route a picker's [selection] shows, or null for All Routes (offered only with more than
+ * one route; with one, that route is shown whatever the selection).
+ */
+fun singleRoute(selection: Int, count: Int): Int? = when {
+    count == 1 -> 0
+    selection in 0 until count -> selection
+    else -> null
+}
+
+/** Shown in place of one route's details while All Routes is chosen (iOS `AllRoutesNote`). */
+@Composable
+fun AllRoutesNote(count: Int) {
+    Text("All $count routes replay together. Choose one to see its hops and who heard it.",
+        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }

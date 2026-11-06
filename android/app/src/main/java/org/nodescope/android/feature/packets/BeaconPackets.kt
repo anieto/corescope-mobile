@@ -48,7 +48,12 @@ fun BeaconPacketScreen(feed: LiveFeedState, host: String, regionControl: @Compos
     val filter = LiveBrowseFilter(region, filterType?.let { payloadTypeCodes[it] })
     // Each filter is its own server subscription and recovered history, as on iOS.
     LiveFeedDemandEffect(host, LiveFeedDemand(LiveFeedSubscription(setOfNotNull(filter.region), setOfNotNull(filter.payloadType))))
-    val snapshot = feed.beacon?.browseSnapshots?.get(filter)
+    val liveSnapshot = feed.beacon?.browseSnapshots?.get(filter)
+    // Paused by hand, the rows stay as they were; resuming shows the latest again (iOS).
+    val paused = org.nodescope.android.feature.map.LiveTrafficPause.isPaused
+    var held by remember { mutableStateOf<org.nodescope.android.core.network.LiveBrowseSnapshot?>(null) }
+    LaunchedEffect(paused) { held = if (paused) held ?: liveSnapshot else null }
+    val snapshot = if (paused) held ?: liveSnapshot else liveSnapshot
     val rows = snapshot?.rows.orEmpty()
     val now = rememberNow()
     val live = feed.connection == LiveConnection.LIVE
@@ -64,11 +69,18 @@ fun BeaconPacketScreen(feed: LiveFeedState, host: String, regionControl: @Compos
                 Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                            Box(Modifier.size(8.dp).background(statusAccent(live), CircleShape))
-                            Text(connectionLabel(feed.connection, "Listening for live traffic"), style = MaterialTheme.typography.titleSmall)
+                            Box(Modifier.size(8.dp).background(statusAccent(live && !paused), CircleShape))
+                            Text(if (paused) "Live feed paused" else connectionLabel(feed.connection, "Listening for live traffic"),
+                                style = MaterialTheme.typography.titleSmall)
                         }
                         Text(listOf(region ?: "Entire network", "${rows.size} transmissions", "${rows.sumOf { it.observationCount }} observations")
                             .joinToString(" · "), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    IconButton(onClick = {
+                        val pause = org.nodescope.android.feature.map.LiveTrafficPause
+                        if (pause.isPaused) pause.resume() else pause.pause()
+                    }) {
+                        if (paused) Icon(Icons.Outlined.PlayArrow, "Resume live traffic") else Icon(Icons.Outlined.Pause, "Pause live traffic")
                     }
                     IconButton(onClick = { showFilters = true }) {
                         BadgedBox(badge = { if (filterCount > 0) Badge { Text(filterCount.toString()) } }) {
@@ -135,12 +147,13 @@ fun BeaconPacketDetailScreen(feed: LiveFeedState, browse: BrowseRepository?, hos
     var loading by remember(hash) { mutableStateOf(false) }
     var error by remember(hash) { mutableStateOf<String?>(null) }
     var retry by remember { mutableIntStateOf(0) }
-    var selectedRoute by rememberSaveable(hash) { mutableIntStateOf(0) }
+    // Every route by default, as replays start (iOS); the picker narrows it to one.
+    var selectedRoute by rememberSaveable(hash) { mutableIntStateOf(org.nodescope.android.feature.map.ALL_ROUTES) }
     LaunchedEffect(hash, retry) {
         val repository = browse ?: return@LaunchedEffect
         loading = true
         error = null
-        selectedRoute = 0
+        selectedRoute = org.nodescope.android.feature.map.ALL_ROUTES
         try {
             detail = repository.packetDetail(host, hash)
         } catch (e: CancellationException) {
@@ -206,13 +219,16 @@ fun BeaconPacketDetailScreen(feed: LiveFeedState, browse: BrowseRepository?, hos
                         Text("No fully resolved route is available. Uncertain hops are not replayed.",
                             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
-                        val index = selectedRoute.coerceIn(routes.indices)
-                        if (routes.size > 1) RoutePicker(routes, index, { selectedRoute = it })
-                        RouteHearers(routes[index])
-                        routes[index].keys.forEachIndexed { hop, key ->
-                            DetailRow("Hop ${hop + 1}", nodesByKey[key.lowercase()]?.displayName?.let { "$it · $key" } ?: key, monospace = true)
+                        val index = singleRoute(selectedRoute, routes.size)
+                        if (routes.size > 1) RoutePicker(routes, selectedRoute, { selectedRoute = it }, allowsAll = true)
+                        if (index == null) AllRoutesNote(routes.size)
+                        else {
+                            RouteHearers(routes[index])
+                            routes[index].keys.forEachIndexed { hop, key ->
+                                DetailRow("Hop ${hop + 1}", nodesByKey[key.lowercase()]?.displayName?.let { "$it · $key" } ?: key, monospace = true)
+                            }
                         }
-                        Button(onClick = { onReplay(routes, index) }, Modifier.fillMaxWidth()) {
+                        Button(onClick = { onReplay(routes, index ?: org.nodescope.android.feature.map.ALL_ROUTES) }, Modifier.fillMaxWidth()) {
                             Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text("Replay on map")
                         }
                     }

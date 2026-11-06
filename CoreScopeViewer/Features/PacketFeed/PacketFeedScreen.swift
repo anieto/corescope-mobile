@@ -265,10 +265,18 @@ private struct BeaconPacketSidebar: View {
     @Environment(LiveFeedService.self) private var liveFeed
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(AnalyzerSettings.self) private var settings
+    @Environment(LiveTrafficPause.self) private var livePause
     @State private var consumerID = UUID()
     @State private var filterType: Int?
     @State private var showsFilters = false
     @State private var detailRow: BeaconLiveRecovery.Row?
+    /// The rows shown when live traffic was paused, held until it resumes.
+    @State private var pausedSnapshot: LiveBrowseSnapshot?
+
+    private var shownSnapshot: LiveBrowseSnapshot? {
+        if livePause.isPaused, let pausedSnapshot { return pausedSnapshot }
+        return liveFeed.browseSnapshots[filter]
+    }
 
     private var packetDetailsPresented: Binding<Bool> {
         Binding(
@@ -290,17 +298,27 @@ private struct BeaconPacketSidebar: View {
     }
 
     var body: some View {
-        let snapshot = liveFeed.browseSnapshots[filter]
+        let snapshot: LiveBrowseSnapshot? = shownSnapshot
         List {
             LivePacketFeedHeader(
                 isConnected: liveFeed.isConnected,
-                isPaused: false,
+                isPaused: livePause.isPaused,
                 isCompact: true,
                 transmissionCount: snapshot?.rows.count ?? 0,
                 observationCount: snapshot?.rows.reduce(0) { $0 + $1.observationCount } ?? 0,
                 scope: regionFilter.selectedRegion.map(regionFilter.label(for:)) ?? String(localized: "Entire network")
             )
             .packetFeedListRow(top: 8, bottom: 8)
+            Button {
+                if livePause.isPaused { livePause.resume() } else { livePause.pause() }
+            } label: {
+                Label(livePause.isPaused ? "Resume Live" : "Pause Live",
+                      systemImage: livePause.isPaused ? "play.fill" : "pause.fill")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 8)
+            }
+            .buttonStyle(.borderless)
+            .packetFeedListRow()
             Section {
                 if let error = liveFeed.recoveryErrors[filter] {
                     Label("History refresh failed", systemImage: "exclamationmark.triangle")
@@ -349,13 +367,15 @@ private struct BeaconPacketSidebar: View {
             }
         }
         .toolbar {
+            // On iPhone the sheet closes from the trailing corner, like Maps, with the filter
+            // leading; iPad and Duo have no close button and keep the filter trailing.
             if let close {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(action: close) { Image(systemName: "xmark") }
                         .accessibilityLabel("Close live packets")
                 }
             }
-            if showsToolbarItems { ToolbarItem(placement: .topBarTrailing) {
+            if showsToolbarItems { ToolbarItem(placement: close == nil ? .topBarTrailing : .topBarLeading) {
                 Button { showsFilters = true } label: {
                     Image(systemName: filterType == nil
                           ? "line.3.horizontal.decrease.circle"
@@ -374,6 +394,10 @@ private struct BeaconPacketSidebar: View {
             LivePacketFiltersSheet(filterType: $filterType)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+        }
+        // Paused, the rows stay as they were; resuming shows the latest again.
+        .onChange(of: livePause.isPaused, initial: true) { _, isPaused in
+            pausedSnapshot = isPaused ? pausedSnapshot ?? liveFeed.browseSnapshots[filter] : nil
         }
         .task(id: DemandKey(sessionID: settings.sourceSession.id, filter: filter)) {
             let regions = filter.region.map { Set([$0]) } ?? []
@@ -410,7 +434,7 @@ private struct BeaconPacketSummary: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var viewModel = BeaconPacketDetailViewModel()
-    @State private var selectedRouteIndex = 0
+    @State private var selectedRouteIndex = PacketReplayStore.allRoutes
     @State private var retryID = UUID()
 
     private struct LoadKey: Hashable {
@@ -462,18 +486,20 @@ private struct BeaconPacketSummary: View {
                             .foregroundStyle(.secondary)
                     } else {
                         if viewModel.routes.count > 1 {
-                            RoutePicker(options: viewModel.routes, selection: $selectedRouteIndex)
+                            RoutePicker(options: viewModel.routes, selection: $selectedRouteIndex, allowsAll: true)
                                 .tint(NodeScopeStyle.signal)
                         }
-                        if viewModel.routes.indices.contains(selectedRouteIndex) {
-                            RouteHearersView(option: viewModel.routes[selectedRouteIndex])
-                            ForEach(viewModel.routes[selectedRouteIndex].keys.indices, id: \.self) { index in
+                        if let shown = PacketReplayStore.singleRoute(selectedRouteIndex, count: viewModel.routes.count) {
+                            RouteHearersView(option: viewModel.routes[shown])
+                            ForEach(viewModel.routes[shown].keys.indices, id: \.self) { index in
                                 PacketDetailField(
                                     title: "Hop \(index + 1)",
-                                    value: viewModel.routes[selectedRouteIndex].keys[index],
+                                    value: viewModel.routes[shown].keys[index],
                                     monospaced: true
                                 )
                             }
+                        } else {
+                            AllRoutesNote(count: viewModel.routes.count)
                         }
                         Button {
                             guard viewModel.belongsToSource(settings.sourceSession.id) else { return }
@@ -513,7 +539,7 @@ private struct BeaconPacketSummary: View {
             }
         }
         .task(id: LoadKey(sourceSessionID: settings.sourceSession.id, retryID: retryID)) {
-            selectedRouteIndex = 0
+            selectedRouteIndex = PacketReplayStore.allRoutes
             await viewModel.load(hash: row.hash, sourceSessionID: settings.sourceSession.id, service: liveFeed)
         }
     }
@@ -604,6 +630,7 @@ private struct CoreScopeMapLivePacketSidebar: View {
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(ObserverRegionLookup.self) private var observerRegionLookup
     @Environment(PacketReplayStore.self) private var replayStore
+    @Environment(LiveTrafficPause.self) private var livePause
     @State private var feedModel = LiveObservationFeedModel()
     @State private var filterType: Int?
     @State private var isFiltersPresented = false
@@ -615,6 +642,7 @@ private struct CoreScopeMapLivePacketSidebar: View {
             LivePacketFeedHeader(
                 isConnected: liveFeed.isConnected,
                 isPaused: isFeedPaused,
+                newCount: livePause.isPaused ? livePause.newPacketCount : 0,
                 isCompact: true,
                 transmissionCount: feedModel.groups.count,
                 observationCount: feedModel.groups.reduce(0) { $0 + $1.observationCount },
@@ -629,6 +657,15 @@ private struct CoreScopeMapLivePacketSidebar: View {
             if isFeedPaused {
                 Button(action: resumeLiveFeed) {
                     Label("Resume Live", systemImage: "play.fill")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.borderless)
+                .packetFeedListRow()
+            } else {
+                // Holds the list and the map's traffic where they are, without picking a packet.
+                Button(action: livePause.pause) {
+                    Label("Pause Live", systemImage: "pause.fill")
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, 8)
                 }
@@ -698,15 +735,17 @@ private struct CoreScopeMapLivePacketSidebar: View {
             }
         }
         .toolbar {
+            // On iPhone the sheet closes from the trailing corner, like Maps, with the filter
+            // leading; iPad and Duo have no close button and keep the filter trailing.
             if let close {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(action: close) {
                         Image(systemName: "xmark")
                     }
                     .accessibilityLabel("Close live packets")
                 }
             }
-            if showsToolbarItems { ToolbarItem(placement: .topBarTrailing) {
+            if showsToolbarItems { ToolbarItem(placement: close == nil ? .topBarTrailing : .topBarLeading) {
                 Button { isFiltersPresented = true } label: {
                     Image(systemName: filterType == nil
                         ? "line.3.horizontal.decrease.circle"
@@ -739,6 +778,8 @@ private struct CoreScopeMapLivePacketSidebar: View {
         }
         .task { rebuildGroups() }
         .onChange(of: liveFeed.eventSequence) { rebuildGroupsUnlessPaused() }
+        // Resumed from the map's "Paused" title: catch the list up at once.
+        .onChange(of: livePause.isPaused) { rebuildGroupsUnlessPaused() }
         .onChange(of: regionFilter.selectedRegion) { resumeLiveFeed() }
         .onChange(of: filterType) { resumeLiveFeed() }
         .onChange(of: observerRegionLookup.isLoaded) { rebuildGroupsUnlessPaused() }
@@ -798,7 +839,7 @@ private struct CoreScopeMapLivePacketSidebar: View {
     }
 
     private var isFeedPaused: Bool {
-        selectedGroupID != nil || replayStore.isReplayActive
+        selectedGroupID != nil || replayStore.isReplayActive || livePause.isPaused
     }
 
     private func rebuildGroupsUnlessPaused() {
@@ -817,6 +858,7 @@ private struct CoreScopeMapLivePacketSidebar: View {
     }
 
     private func resumeLiveFeed() {
+        livePause.resume()
         keepsSelectionWhenReplayStops = false
         replayStore.stopReplay()
         selectedGroupID = nil
@@ -1065,6 +1107,8 @@ private struct LivePacketFeedHeader: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let isConnected: Bool
     let isPaused: Bool
+    /// Packets that arrived while paused by hand.
+    var newCount: Int = 0
     let isCompact: Bool
     let transmissionCount: Int
     let observationCount: Int
@@ -1077,7 +1121,7 @@ private struct LivePacketFeedHeader: View {
                     .fill(isPaused ? NodeScopeStyle.activity : isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
                     .frame(width: 8, height: 8)
                 Text(isPaused
-                    ? "Live feed paused"
+                    ? newCount > 0 ? "Live feed paused · \(newCount) new" : "Live feed paused"
                     : isConnected ? "Listening for live traffic" : "Reconnecting to analyzer")
                     .font(.subheadline.weight(.semibold))
             }
@@ -1366,7 +1410,7 @@ private struct LivePacketDetailScreen: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(PacketReplayStore.self) private var replayStore
-    @State private var selectedRouteIndex = 0
+    @State private var selectedRouteIndex = PacketReplayStore.allRoutes
 
     private var data: LivePacketData { group.latestData }
 
@@ -1432,11 +1476,13 @@ private struct LivePacketDetailScreen: View {
             if !routeHops.isEmpty {
                 Section {
                     if replayRoutes.count > 1 {
-                        RoutePicker(options: replayRoutes, selection: $selectedRouteIndex)
+                        RoutePicker(options: replayRoutes, selection: $selectedRouteIndex, allowsAll: true)
                             .tint(NodeScopeStyle.signal)
                     }
-                    if replayRoutes.indices.contains(selectedRouteIndex) {
-                        RouteHearersView(option: replayRoutes[selectedRouteIndex])
+                    if let shown = PacketReplayStore.singleRoute(selectedRouteIndex, count: replayRoutes.count) {
+                        RouteHearersView(option: replayRoutes[shown])
+                    } else {
+                        AllRoutesNote(count: replayRoutes.count)
                     }
 
                     ForEach(routeHops) { hop in

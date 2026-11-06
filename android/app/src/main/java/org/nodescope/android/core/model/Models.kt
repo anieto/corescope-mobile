@@ -76,6 +76,11 @@ data class AnalyzerSnapshot(
     val regionCoordinates: Map<String, RegionCoordinate> = emptyMap(),
     /** Named groups of regions, CoreScope only; empty when the server has none. */
     val quickPicks: List<RegionQuickPick> = emptyList(),
+    /**
+     * How long the analyzer waits for every observer to report a packet (`/api/config/client`
+     * `propagationBufferMs`), for the live map's Realistic Propagation; null when not published.
+     */
+    val propagationBufferMs: Long? = null,
 )
 
 @Serializable

@@ -299,11 +299,16 @@ internal fun AppShell(
             val receivers = route.receivers(observers)
             val last = route.keys.lastOrNull()?.let { lookup[it.lowercase()]?.coordinate }
             val finalHops = if (last == null) emptyList() else receivers.map { it.second }.filter { it != last }.map { listOf(last, it) }
-            ReplayRoute(routeSubchains(route.keys, nodes) + finalHops, route.keys.mapNotNull { lookup[it.lowercase()] }, route.hops, route, receivers)
+            val chains = routeSubchains(route.keys, nodes)
+            ReplayRoute(chains + finalHops, route.keys.mapNotNull { lookup[it.lowercase()] }, route.hops, route, receivers, nodeChains = chains)
         }
     }
     fun startReplay(routes: List<RouteOption>, selected: Int, packetId: String? = null) {
-        replay = RouteReplay(System.nanoTime(), placedRoutes(routes), selected, packetId, routes)
+        // Every route together unless one was chosen (a packet details route picker), so a replay
+        // shows how the packet spread rather than one observer's part of it (iOS).
+        val all = org.nodescope.android.feature.map.ALL_ROUTES
+        val initial = if (routes.size > 1 && selected == all) all else selected.takeIf { it in routes.indices } ?: 0
+        replay = RouteReplay(System.nanoTime(), placedRoutes(routes), initial, packetId, routes)
         panelPacket = null
         selectTab(Destination.MAP)
     }
@@ -341,7 +346,7 @@ internal fun AppShell(
                     replay = current.copy(routes = placedRoutes(merged), options = merged)
                 }
                 // Selected with no route in its row, but the full list has one.
-                panelPacket == id -> startReplay(complete, 0, id)
+                panelPacket == id -> startReplay(complete, org.nodescope.android.feature.map.ALL_ROUTES, id)
             }
         }
     }
@@ -513,7 +518,7 @@ internal fun AppShell(
                                     routeLookup?.cancel(); lookingUp = null
                                     when {
                                         id == null -> { replay = null; panelPacket = null }
-                                        routes.isNotEmpty() -> startReplay(routes, 0, id)
+                                        routes.isNotEmpty() -> startReplay(routes, org.nodescope.android.feature.map.ALL_ROUTES, id)
                                         // Nothing to draw yet: end any replay so the map doesn't keep an unrelated route.
                                         else -> { replay = null; panelPacket = id }
                                     }
@@ -713,7 +718,8 @@ private fun RegionMenu(preferences: AppPreferences, state: SessionState, onRegio
     val picks = org.nodescope.android.core.model.availablePicks(state.snapshot?.quickPicks.orEmpty(), regions)
     Box {
         TextButton(onClick = { open = true }, enabled = regions.isNotEmpty() || preferences.region != null) {
-            Text(org.nodescope.android.core.model.regionTitle(picks, preferences.region) ?: stringResource(R.string.all_regions))
+            Text(org.nodescope.android.core.model.regionTitle(picks, preferences.region) ?: stringResource(R.string.all_regions),
+                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(text = { Text(stringResource(R.string.all_regions)) }, onClick = { onRegion(null); open = false })

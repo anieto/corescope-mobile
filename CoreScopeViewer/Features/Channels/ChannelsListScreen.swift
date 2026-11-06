@@ -7,6 +7,7 @@ struct ChannelsListScreen: View {
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(ChannelMonitorStore.self) private var monitorStore
     @Environment(LiveFeedService.self) private var liveFeed
+    @Environment(ObserverRegionLookup.self) private var observerRegionLookup
     @State private var viewModel = ChannelsViewModel()
     @State private var isShowingAddChannel = false
     @State private var selectedChannelID: MeshChannel.ID?
@@ -151,7 +152,8 @@ struct ChannelsListScreen: View {
             await viewModel.loadChannels(region: regionFilter.selectedRegion)
             updateVisibleChannels()
         }
-        .task(id: monitoredChannelIDs) {
+        // Again on a region or source change, so previews follow the chosen region.
+        .task(id: "\(monitoredChannelIDs)#\(settings.sourceSession.id)#\(regionFilter.selectedRegion ?? "")") {
             viewModel.configure(settings: settings)
             await viewModel.refreshMonitoredSummaries(
                 channels: monitorStore.channels,
@@ -165,6 +167,19 @@ struct ChannelsListScreen: View {
             updateVisibleChannels()
         }
         .onChange(of: viewModel.channels) { updateVisibleChannels() }
+        // Whenever the channels, region or observer regions change; only channels with new
+        // messages are fetched again.
+        .task(id: RegionalPreviewKey(
+            region: regionFilter.selectedRegion,
+            observersLoaded: observerRegionLookup.isLoaded,
+            channels: viewModel.channels
+        )) {
+            guard regionFilter.selectedRegion == nil || observerRegionLookup.isLoaded else { return }
+            await viewModel.loadRegionalPreviews(region: regionFilter.selectedRegion) { observer in
+                regionFilter.includes(observerRegionLookup.iataByName[observer])
+            }
+        }
+        .onChange(of: viewModel.regionalPreviews) { updateVisibleChannels() }
         .onChange(of: monitoredChannelIDs) { updateVisibleChannels() }
         .onChange(of: searchText) { updateVisibleChannels() }
         .onChange(of: sourceFilter) { updateVisibleChannels() }
@@ -277,12 +292,35 @@ struct ChannelsListScreen: View {
             : sortChannels(monitored.filter(matchesFilters))
 
         let monitoredNames = showsMonitored ? Set(monitorStore.channels.map(\.channelName)) : []
-        let server = viewModel.channels.filter { channel in
+        let server = viewModel.channels.map(withRegionalPreview).filter { channel in
             !monitoredNames.contains(channel.name) && matchesFilters(channel)
         }
         visibleServerChannels = sourceFilter == .monitored
             ? []
             : sortChannels(server)
+    }
+
+    private struct RegionalPreviewKey: Hashable {
+        let region: String?
+        let observersLoaded: Bool
+        let channels: [MeshChannel]
+    }
+
+    /// With a region chosen, a channel's preview, sender and activity are its latest message heard
+    /// in that region (as its channel screen shows), not the server's network-wide latest.
+    private func withRegionalPreview(_ channel: MeshChannel) -> MeshChannel {
+        guard regionFilter.selectedRegion != nil,
+              let preview = viewModel.regionalPreviews[channel.hash] else { return channel }
+        return MeshChannel(
+            hash: channel.hash,
+            name: channel.name,
+            lastMessage: preview.text ?? String(localized: "No recent messages from this region"),
+            lastSender: preview.text == nil ? nil : preview.sender,
+            messageCount: channel.messageCount,
+            lastActivity: preview.timestamp ?? channel.lastActivity,
+            serverID: channel.serverID,
+            isHashtag: channel.isHashtag
+        )
     }
 
     private func matchesFilters(_ channel: MeshChannel) -> Bool {

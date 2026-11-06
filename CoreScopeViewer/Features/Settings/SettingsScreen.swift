@@ -11,6 +11,8 @@ struct SettingsScreen: View {
     @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
     @AppStorage(AppearanceSettings.backgroundTextureDefaultsKey) private var backgroundTextureEnabled = true
     @AppStorage(Glossary.showsExplanationsDefaultsKey) private var showsTermExplanations = true
+    @AppStorage(LiveMapPreferences.realisticPropagationKey) private var realisticPropagation = false
+    @AppStorage(LiveMapPreferences.groupsNodesKey) private var groupsNodes = true
     @State private var hostInput = ""
     @State private var sourceSaveStatus: SourceSaveStatus?
     @State private var sourceSaveID = UUID()
@@ -52,14 +54,28 @@ struct SettingsScreen: View {
                         Divider()
 
                         Toggle("Background Texture", isOn: $backgroundTextureEnabled)
-                        Text("Show subtle network lines and nodes behind page content.")
+                        Text("Network lines and nodes behind page content.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
 
                         Divider()
 
                         Toggle("Term Explanations", isOn: $showsTermExplanations)
-                        Text("Show \(Image(systemName: "info.circle")) beside terms like SNR and hops. The Glossary below is always available.")
+                        Text("Show \(Image(systemName: "info.circle")) beside terms like SNR and hops.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    SettingsPanel(title: "Live Map", symbol: "map") {
+                        Toggle("Group Nearby Nodes", isOn: $groupsNodes)
+                        Text("Combine close nodes into numbered bubbles when zoomed out. With this off, busy areas may be slower.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+
+                        Divider()
+
+                        Toggle("Realistic Propagation", isOn: $realisticPropagation)
+                        Text("Wait for every observer, then animate a packet's paths together. Runs a few seconds behind live; the analyzer sets the delay.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }

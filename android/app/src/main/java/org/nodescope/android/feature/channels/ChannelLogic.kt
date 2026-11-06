@@ -126,6 +126,7 @@ fun chronological(messages: List<ConversationMessage>): List<Pair<ConversationMe
 fun regionFiltered(messages: List<ConversationMessage>, region: String?, observers: List<MeshObserver>): List<ConversationMessage>? {
     region ?: return messages
     if (observers.isEmpty()) return null
-    val names = observers.filter { it.iata.equals(region, ignoreCase = true) }.mapNotNull { it.name?.lowercase() }.toSet()
+    // A quick pick names several regions; any of them counts.
+    val names = observers.filter { org.nodescope.android.core.model.regionIncludes(region, it.iata) }.mapNotNull { it.name?.lowercase() }.toSet()
     return messages.filter { message -> message.observers.any { it.lowercase() in names } }
 }

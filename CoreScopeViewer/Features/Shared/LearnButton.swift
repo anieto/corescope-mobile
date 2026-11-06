@@ -10,10 +10,18 @@ struct LearnButton: View {
     /// Set from the popover; the Glossary opens once the popover has gone, since a sheet can't be
     /// presented while the popover is still leaving.
     @State private var opensGlossaryAfterSummary = false
+    /// Where the ⓘ sits on screen, to open its explanation above or below it.
+    @State private var globalMidY: CGFloat = 0
+    @State private var arrowEdge: Edge = .bottom
 
     var body: some View {
         if showsExplanations, let entry = Glossary.entry(term) {
             Button {
+                // Above or below, never beside: beside an ⓘ near the screen's edge there wasn't
+                // room for the explanation's width and its leading side was cut off.
+                let screenHeight = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?
+                    .screen.bounds.height ?? 800
+                arrowEdge = globalMidY > screenHeight / 2 ? .top : .bottom
                 isShowingSummary = true
             } label: {
                 Image(systemName: "info.circle")
@@ -26,7 +34,8 @@ struct LearnButton: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("About \(entry.term)")
-            .popover(isPresented: $isShowingSummary) {
+            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).midY } action: { globalMidY = $0 }
+            .popover(isPresented: $isShowingSummary, attachmentAnchor: .rect(.bounds), arrowEdge: arrowEdge) {
                 LearnSummary(entry: entry) {
                     opensGlossaryAfterSummary = true
                     isShowingSummary = false
@@ -91,6 +100,8 @@ private struct LearnSummary: View {
             .padding(.top, 2)
         }
         .padding()
-        .frame(width: 300, alignment: .leading)
+        // Up to 300 pt, narrower on a small screen, rather than a fixed width that could overrun
+        // the popover and be clipped.
+        .frame(idealWidth: 300, maxWidth: 300, alignment: .leading)
     }
 }
