@@ -22,6 +22,66 @@ class CoverageRasterTest {
         return CoverageRaster(grid, CoverageTerrainCoordinate(latitude, longitude), CoverageAreaResult(cells(grid), 0, 0, false))
     }
 
+    @Test fun mapLibreCacheEnforcesExclusiveOwnershipAndLeases() {
+        val root = java.nio.file.Files.createTempDirectory("coverage-cache").toFile()
+        try {
+            val cache = CoverageMapLibreTileCache(root)
+            assertThrows(java.io.IOException::class.java) { CoverageMapLibreTileCache(root) }
+            val first = cache.prepare(raster(), 0)
+            val second = cache.prepare(raster(), 0)
+            assertThrows(IllegalStateException::class.java) { cache.prepare(raster(), 0) }
+            assertThrows(IllegalStateException::class.java) { cache.close() }
+            first.close()
+            first.close()
+            cache.prepare(raster(), 0).close()
+            second.close()
+            cache.close()
+            cache.close()
+            assertThrows(IllegalStateException::class.java) { cache.prepare(raster(), 0) }
+            CoverageMapLibreTileCache(root).use { reopened ->
+                assertThrows(CoverageMapLibreTilesFailure::class.java) { reopened.prepare(raster(), 22) }
+                reopened.prepare(raster(), 0).close()
+            }
+        } finally { root.deleteRecursively() }
+    }
+
+    @Test fun mapLibreCacheRecoversAbandonedFilesWithoutFollowingLinks() {
+        val root = java.nio.file.Files.createTempDirectory("coverage-cache").toFile()
+        val outside = java.nio.file.Files.createTempDirectory("coverage-outside").toFile()
+        try {
+            CoverageMapLibreTileCache(root).close()
+            val keep = File(outside, "keep").apply { writeText("preserved") }
+            val abandoned = File(root, "coverage-abandoned").apply { mkdir() }
+            File(abandoned, "partial.png").writeText("partial")
+            java.nio.file.Files.createSymbolicLink(File(abandoned, "link").toPath(), outside.toPath())
+            CoverageMapLibreTileCache(root).close()
+            assertFalse(abandoned.exists())
+            assertEquals("preserved", keep.readText())
+            val unexpected = File(root, "saved-plan.json").apply { writeText("protected") }
+            val another = File(root, "coverage-another").apply { mkdir() }
+            assertThrows(IllegalArgumentException::class.java) { CoverageMapLibreTileCache(root) }
+            assertTrue(another.exists())
+            assertEquals("protected", unexpected.readText())
+            unexpected.delete()
+            CoverageMapLibreTileCache(root).close()
+            assertFalse(another.exists())
+        } finally { root.deleteRecursively(); outside.deleteRecursively() }
+    }
+
+    @Test fun mapLibreCacheProtectsUnownedAndUnknownVersions() {
+        val root = java.nio.file.Files.createTempDirectory("coverage-cache").toFile()
+        try {
+            val keep = File(root, "coverage-existing").apply { mkdir() }
+            assertThrows(IllegalArgumentException::class.java) { CoverageMapLibreTileCache(root) }
+            assertTrue(keep.exists())
+            keep.delete()
+            CoverageMapLibreTileCache(root).close()
+            File(root, ".owner").writeText("future-version")
+            assertThrows(IllegalArgumentException::class.java) { CoverageMapLibreTileCache(root) }
+            assertEquals("future-version", File(root, ".owner").readText())
+        } finally { root.deleteRecursively() }
+    }
+
     @Test fun mapLibrePyramidWrapsLongitudeAndEnforcesLimits() {
         for (longitude in listOf(179.999, -179.999, 180.0, -180.0)) {
             val plan = CoverageMapTilePlan.make(raster(longitude = longitude), 14)

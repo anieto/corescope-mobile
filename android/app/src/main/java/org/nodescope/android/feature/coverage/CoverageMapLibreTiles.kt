@@ -53,7 +53,7 @@ class CoverageMapLibreTiles private constructor(
 ) : AutoCloseable {
     val urlTemplate: String = java.net.URI("file", "", directory.absolutePath, null).toASCIIString().trimEnd('/') + "/{z}/{x}/{y}.png"
     override fun close() {
-        if (!directory.deleteRecursively()) throw IOException("Could not remove coverage tiles")
+        CoverageMapLibreTileCache.removeTree(directory.toPath())
     }
 
     companion object {
@@ -80,7 +80,8 @@ class CoverageMapLibreTiles private constructor(
                 check()
                 return CoverageMapLibreTiles(directory, maximumZoom, plan.size, bytes)
             } catch (failure: Throwable) {
-                if (!directory.deleteRecursively()) failure.addSuppressed(IOException("Could not remove partial coverage tiles"))
+                try { CoverageMapLibreTileCache.removeTree(directory.toPath()) }
+                catch (cleanup: Exception) { failure.addSuppressed(cleanup) }
                 throw failure
             }
         }

@@ -854,3 +854,28 @@ memory guarantee. Production Calculate, provenance/legend presentation and physi
 qualification remain unfinished. This step adds no HTTP listener or global network interceptor.
 
 Reference: [MapLibre RasterSource local-file support](https://maplibre.org/maplibre-native/android/api/-map-libre%20-native%20-android/org.maplibre.android.style.sources/-raster-source/-raster-source.html).
+
+
+## MapLibre temporary-cache ownership (2026-11-06)
+
+A dedicated cache owner now wraps pyramid preparation with a process file lock, a versioned ownership
+marker, restart recovery and a maximum of two live leases. Preparation is serialized; each slot
+reserves the pyramid's 16 MiB encoded-data allowance, giving at most 32 MiB of active encoded tiles
+under one owner (excluding filesystem overhead, raster workspace and provider/GPU memory). A free
+space check precedes preparation. It is not a reservation against other applications using disk.
+One old overlay may stay attached while its replacement is prepared. Closing the cache with live
+leases fails; close each native attachment before closing its lease. Failed preparation consumes no
+lease. The screen must use this owner rather than calling low-level preparation independently.
+
+Opening validates the marker and all root entries before deleting abandoned pyramid directories.
+Unowned data, unknown marker versions, unexpected entries and linked top-level directories remain
+protected. Tree deletion does not follow symbolic links. A failed recovery releases the file lock;
+reopening after fixing unexpected contents is tested. The lock remains held until the owner closes.
+No saved plans or terrain inputs are stored here, and recovery never sweeps sibling directories.
+
+Thirteen targeted Android raster/PNG tests passed, including exclusive ownership, replacement limits,
+failed preparation, close/reopen behavior, abandoned files, link-target preservation, unknown versions
+and protected unrelated files. Android debug assembly passed. No simulator/UI/device checks were run;
+process-death recovery is represented by abandoned-file fixtures, not a forced mobile process kill.
+Screen ownership/wiring and native rendering qualification remain unfinished. Live-map engines,
+iOS code and release build numbers were unchanged.
