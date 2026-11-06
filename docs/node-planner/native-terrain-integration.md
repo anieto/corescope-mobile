@@ -902,3 +902,28 @@ Xcode built successfully including test targets. No simulator/UI tests were run.
 Dynamic Type, VoiceOver, nested navigation, compact/wide layouts, gesture interaction, actual tile
 rendering and map-request retry behavior still require device validation. This change does not
 modify live-map code or version numbers.
+
+
+## Android screen attachment lifecycle (2026-11-06)
+
+Estimated Coverage now invokes a coverage-only attachment effect keyed by its native map/style and
+immutable display layer. With no completed layer it performs no preparation, cache access or overlay
+installation. Google attaches its tile provider directly. MapLibre opens the dedicated cache and
+prepares the requested pyramid on Dispatchers.IO, then adds its raster layer below the existing pins
+on Main. The setup still supplies no completed layer; production study execution and legends/status
+presentation remain unfinished and Calculate remains disabled.
+
+Provider/style replacement and screen disposal cancel the effect. A per-screen mutex orders new
+attachment after old cleanup. Acquired cache/lease references are assigned inside the worker block,
+so cancellation during dispatch back to Main cannot lose ownership. Native removal runs before
+non-cancellable worker-side file cleanup. Failures produce a visible overlay error and diagnostic
+logging. A separate concurrent screen can receive an explicit cache-ownership failure; multi-window
+sharing is not implemented. These helpers do not change the shared live-map engines.
+
+Lease deletion failure now releases its reservation while marking the cache unusable for further
+preparation. The cache can then close its process lock, leaving files for recovery on reopening.
+A host test makes the pyramid directory read-only, verifies deletion failure and preparation refusal,
+then restores permissions and verifies reopening/recovery. All 14 targeted Android raster/PNG tests
+passed; Android debug assembly passed. Compose disposal, provider switching, style reload and native
+rendering have not been exercised on a device. No simulator/UI tests were run. iOS and release
+version numbers were unchanged.

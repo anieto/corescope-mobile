@@ -22,6 +22,33 @@ class CoverageRasterTest {
         return CoverageRaster(grid, CoverageTerrainCoordinate(latitude, longitude), CoverageAreaResult(cells(grid), 0, 0, false))
     }
 
+    @Test fun mapLibreCleanupFailureDoesNotStrandOwnership() {
+        val root = java.nio.file.Files.createTempDirectory("coverage-cache").toFile()
+        var directory: java.nio.file.Path? = null
+        var original: Set<java.nio.file.attribute.PosixFilePermission>? = null
+        val cache = CoverageMapLibreTileCache(root)
+        try {
+            val lease = cache.prepare(raster(), 0)
+            directory = java.nio.file.Paths.get(java.net.URI(lease.tiles.urlTemplate.substringBefore("/{z}")))
+            original = java.nio.file.Files.getPosixFilePermissions(directory)
+            java.nio.file.Files.setPosixFilePermissions(directory, setOf(
+                java.nio.file.attribute.PosixFilePermission.OWNER_READ,
+                java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE))
+            assertThrows(java.io.IOException::class.java) { lease.close() }
+            lease.close()
+            assertThrows(IllegalStateException::class.java) { cache.prepare(raster(), 0) }
+            cache.close()
+            java.nio.file.Files.setPosixFilePermissions(directory, original)
+            CoverageMapLibreTileCache(root).use { it.prepare(raster(), 0).close() }
+        } finally {
+            if (directory != null && original != null && java.nio.file.Files.exists(directory)) {
+                java.nio.file.Files.setPosixFilePermissions(directory, original)
+            }
+            cache.close()
+            root.deleteRecursively()
+        }
+    }
+
     @Test fun mapLibreCacheEnforcesExclusiveOwnershipAndLeases() {
         val root = java.nio.file.Files.createTempDirectory("coverage-cache").toFile()
         try {

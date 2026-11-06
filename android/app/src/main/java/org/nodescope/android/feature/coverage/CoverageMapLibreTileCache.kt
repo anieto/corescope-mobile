@@ -20,6 +20,7 @@ class CoverageMapLibreTileCache(private val root: File) : AutoCloseable {
     private val lock: java.nio.channels.FileLock
     private var closed = false
     private var leases = 0
+    private var cleanupFailed = false
 
     init {
         if (!root.exists() && !root.mkdirs()) throw IOException("Could not create coverage tile cache")
@@ -58,14 +59,18 @@ class CoverageMapLibreTileCache(private val root: File) : AutoCloseable {
     @Synchronized
     fun prepare(raster: CoverageRaster, maximumZoom: Int, cancelled: () -> Boolean = { false }): Lease {
         check(!closed) { "Coverage tile cache is closed" }
+        check(!cleanupFailed) { "Reopen the coverage cache after a cleanup failure" }
         check(leases < 2) { "Remove an old coverage overlay before preparing another" }
         if (root.usableSpace < 16L * 1024 * 1024) throw IOException("Insufficient space for coverage tiles")
         val tiles = CoverageMapLibreTiles.prepare(raster, maximumZoom, root, cancelled)
         leases++
-        return Lease(tiles) { release() }
+        return Lease(tiles) { failed -> release(failed) }
     }
 
-    @Synchronized private fun release() { leases-- }
+    @Synchronized private fun release(failed: Boolean) {
+        leases--
+        cleanupFailed = cleanupFailed || failed
+    }
 
     @Synchronized override fun close() {
         if (closed) return
@@ -75,13 +80,20 @@ class CoverageMapLibreTileCache(private val root: File) : AutoCloseable {
         closed = true
     }
 
-    class Lease internal constructor(val tiles: CoverageMapLibreTiles, private val release: () -> Unit) : AutoCloseable {
+    class Lease internal constructor(val tiles: CoverageMapLibreTiles, private val release: (Boolean) -> Unit) : AutoCloseable {
         private var closed = false
         @Synchronized override fun close() {
             if (closed) return
-            tiles.close()
-            release()
-            closed = true
+            var failed = true
+            try {
+                tiles.close()
+                failed = false
+            } finally {
+                // Preserve leftovers for the next recovery, but do not strand the process lock.
+                // The owner refuses further preparation after failed deletion.
+                release(failed)
+                closed = true
+            }
         }
     }
 

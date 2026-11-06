@@ -221,7 +221,8 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
   MapLibre now has bounded local-file pyramid preparation and an isolated raster-layer adapter.
   Its dedicated cache now locks ownership, recovers abandoned pyramids and limits active leases.
   iOS setup now uses a dedicated MapKit host with overlay replacement/teardown support.
-  Completed-study presentation, Android screen attachment and device rendering checks remain pending.
+  Android setup now owns provider/style attachment effects, worker preparation and ordered cleanup.
+  Completed-study production/presentation and device rendering checks remain pending.
   Calculate remains disabled: provider discovery, production RF binding, worker wiring
   and result overlays are not connected. Setups are not yet saved.
 - **Release gate:** coverage integration and physical-device qualification remain incomplete.

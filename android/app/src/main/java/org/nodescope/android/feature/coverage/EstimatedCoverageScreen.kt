@@ -184,7 +184,8 @@ private object CoverageSetupFields {
     }
 }
 
-@Composable private fun CoverageSetupMap(selected: Coordinate?, nodes: List<MeshNode>, modifier: Modifier, choose: (Coordinate) -> Unit) {
+@Composable private fun CoverageSetupMap(selected: Coordinate?, nodes: List<MeshNode>, modifier: Modifier,
+                                        layer: CoverageMapLayer? = null, choose: (Coordinate) -> Unit) {
     val context = LocalContext.current
     val uri = LocalUriHandler.current
     var choice by remember { mutableStateOf(loadMapProvider(context)) }
@@ -195,6 +196,8 @@ private object CoverageSetupFields {
     var camera by rememberSaveable { mutableStateOf(listOf(initial?.latitude ?: 0.0, initial?.longitude ?: 0.0, if (initial == null) 1.0 else 10.0, 0.0, 0.0)) }
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.3f
     val engine: MapEngineState = if (choice.provider == MapProvider.GOOGLE) rememberGoogleMapEngine() else rememberMapLibreEngine()
+    var overlayFailure by remember { mutableStateOf<String?>(null) }
+    CoverageMapAttachment(engine, layer) { overlayFailure = it }
     LaunchedEffect(engine.overlays, nodes, selected, pending) {
         engine.overlays?.setPins(nodes.mapNotNull { node -> node.coordinate?.let { MapPin(it, MapPin.Kind.TENTATIVE, "${node.displayName} · Not evaluated") } } +
             listOfNotNull(selected?.let { MapPin(it, MapPin.Kind.TENTATIVE, "Transmitter") },
@@ -225,6 +228,7 @@ private object CoverageSetupFields {
                     TextButton(onClick = { pending = null }) { Text("Cancel") }
                     Button(onClick = { pending?.let { choose(Coordinate(it[0], it[1])) }; pending = null }, enabled = !engine.failed) { Text("Use location") }
                 } else Text("Touch and hold to choose a transmitter location.", style = MaterialTheme.typography.bodySmall)
+                overlayFailure?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
                 Text("Gray nodes: not evaluated", style = MaterialTheme.typography.bodySmall)
             }
         }
