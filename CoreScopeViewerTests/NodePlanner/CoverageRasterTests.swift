@@ -1,5 +1,7 @@
 import Foundation
 import Testing
+import CoreGraphics
+import ImageIO
 @testable import CoreScopeViewer
 
 struct CoverageRasterTests {
@@ -54,6 +56,27 @@ struct CoverageRasterTests {
         #expect(CoverageRaster.rgba(.unresolved, column: 256, row: 0) == CoverageRaster.rgba(.unresolved, column: 0, row: 0))
     }
 
+    @Test func pngTilePreservesGeographicRaster() throws {
+        let raster = try raster()
+        let rgba = try raster.tile(zoom: 14, x: 8192, y: 8192)
+        let png = try raster.pngTile(zoom: 14, x: 8192, y: 8192)
+        let source = try #require(CGImageSourceCreateWithData(png as CFData, nil))
+        let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        #expect(image.width == 256)
+        #expect(image.height == 256)
+        #expect(image.alphaInfo == .last)
+        let provider = try #require(image.dataProvider)
+        let decoded = try #require(provider.data) as Data
+        for row in 0..<256 {
+            let start = row * image.bytesPerRow
+            #expect(decoded[start..<start + 1024] == rgba[row * 1024..<(row + 1) * 1024])
+        }
+        #expect(throws: CoverageRasterFailure.invalidTile) { try raster.pngTile(zoom: 23, x: 0, y: 0) }
+        #expect(throws: CoverageRasterFailure.cancelled) {
+            try raster.pngTile(zoom: 14, x: 8192, y: 8192, cancelled: { true })
+        }
+    }
+
     @Test func rejectsInvalidAndCancelledRasters() throws {
         let grid = try grid(), raster = try raster()
         var invalid = try cells(grid)
@@ -72,5 +95,55 @@ struct CoverageRasterTests {
         for (z, x, y) in [(-1, 0, 0), (23, 0, 0), (0, 1, 0), (0, 0, -1)] {
             #expect(throws: CoverageRasterFailure.invalidTile) { try raster.tile(zoom: z, x: x, y: y) }
         }
+    }
+}
+
+struct CoverageTilePNGTests {
+    @Test func decoderPreservesPixelOrientationAndAlpha() throws {
+        var rgba = Data(count: 256 * 256 * 4)
+        for y in 0..<256 {
+            for x in 0..<256 {
+                let offset = (y * 256 + x) * 4
+                rgba[offset] = UInt8(x)
+                rgba[offset + 1] = UInt8(y)
+                rgba[offset + 2] = 90
+                rgba[offset + 3] = UInt8((x + y) % 256)
+            }
+        }
+        let encoded = try CoverageTilePNG.encode(rgba)
+        let source = try #require(CGImageSourceCreateWithData(encoded as CFData, nil))
+        let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        #expect(image.width == 256)
+        #expect(image.height == 256)
+        #expect(image.bitsPerComponent == 8)
+        #expect(image.bitsPerPixel == 32)
+        #expect(image.alphaInfo == .last)
+        let provider = try #require(image.dataProvider)
+        let decoded = try #require(provider.data) as Data
+        // Compare rows directly to avoid CGContext premultiplication and color conversion.
+        for row in 0..<256 {
+            let start = row * image.bytesPerRow
+            #expect(decoded[start..<start + 1024] == rgba[row * 1024..<(row + 1) * 1024])
+        }
+    }
+
+    @Test func rejectsWrongDimensionsAndCancellation() throws {
+        for size in [0, 256 * 256 * 4 - 1, 256 * 256 * 4 + 1] {
+            #expect(throws: CoverageTilePNGFailure.invalidPixels) {
+                try CoverageTilePNG.encode(Data(count: size))
+            }
+        }
+        let rgba = Data(count: 256 * 256 * 4)
+        #expect(throws: CoverageTilePNGFailure.cancelled) {
+            try CoverageTilePNG.encode(rgba, cancelled: { true })
+        }
+        var checks = 0
+        #expect(throws: CoverageTilePNGFailure.cancelled) {
+            try CoverageTilePNG.encode(rgba) {
+                checks += 1
+                return checks == 2
+            }
+        }
+        #expect(checks == 2)
     }
 }

@@ -747,3 +747,19 @@ This is the worker-side rasterizer, not a displayed overlay. Image encoding, map
 cache/invalidation ownership and visual/performance qualification remain pending. It accepts area
 results and does not enforce publication-token/stale state; the eventual screen adapter must do so.
 The production RF and terrain-service integration are still unfinished. Calculate remains disabled.
+
+
+## PNG encoding validation (2026-11-06)
+
+The existing native encoders produce 256×256 PNG tiles from the geographic raster. Swift's encoder
+is now included in the macOS host suite. ImageIO decoding verifies every pixel of an asymmetric
+RGBA pattern, including zero and partial alpha, without CGContext premultiplication. A separate
+geographic raster-to-PNG round trip checks every row. Invalid byte counts, cancellation before and
+after encoding, and raster validation/cancellation propagation are covered. Android already has an
+independent JVM ImageIO round-trip test; Android code was unchanged in this validation step.
+
+All 93 Swift host tests passed, and Xcode built successfully including test targets. No simulator,
+UI or physical-device rendering checks were performed. These checks establish encoding integrity,
+not map-provider placement or rendering performance. Map adapters, bounded tile-cache/invalidation
+ownership, production RF binding and terrain-service integration remain outstanding. Calculate
+remains disabled. Live map code and release build numbers were unchanged.
