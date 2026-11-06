@@ -22,6 +22,18 @@ class CoverageRasterTest {
         return CoverageRaster(grid, CoverageTerrainCoordinate(latitude, longitude), CoverageAreaResult(cells(grid), 0, 0, false))
     }
 
+    @Test fun googleProviderReturnsPNGAndRejectsInvalidatedRequests() {
+        val raster = raster()
+        val provider = CoverageGoogleTileProvider(raster, 1024 * 1024)
+        val tile = requireNotNull(provider.getTile(8192, 8192, 14))
+        assertEquals(256, tile.width)
+        assertEquals(256, tile.height)
+        assertArrayEquals(raster.pngTile(14, 8192, 8192), tile.data)
+        assertSame(com.google.android.gms.maps.model.TileProvider.NO_TILE, provider.getTile(0, 0, 23))
+        provider.invalidate()
+        assertSame(com.google.android.gms.maps.model.TileProvider.NO_TILE, provider.getTile(8192, 8192, 14))
+    }
+
     @Test fun tinyTilesCannotGrowCacheEntryCountWithoutBound() {
         val store = CoverageTileStore(raster(), 8 * 1024 * 1024)
         val size = store.tile(8, 0, 0).size

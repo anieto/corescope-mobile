@@ -788,3 +788,34 @@ that mutating a returned tile cannot change the cache. All 96 Swift host tests a
 Android raster/PNG tests passed; Xcode including test targets and Android debug assembly passed.
 No simulator, UI or physical-device rendering checks were run. Map-provider adapters, screen
 ownership and end-to-end calculation remain unconnected. No live-map code or build numbers changed.
+
+
+## Direct map-provider adapters (2026-11-06)
+
+An isolated MKTileOverlay subclass now serves coverage PNGs on a serial worker, limiting admitted
+requests (running plus queued) to 64. It uses top-origin XYZ tiles, zooms 0–22, a fixed 256-pixel
+image and supplementary transparency; it never replaces the base map. Screen scale does not change
+RF detail or output resolution. Overflow completes with an explicit busy error. The eventual map
+owner must handle retry/reload and verify behavior under rapid panning; automatic retries are not
+assumed. Attach through MKTileOverlayRenderer and remove/invalidate on replacement or teardown.
+
+Google Maps now has a coverage-only TileProvider and an overlay owner that removes its overlay
+when closed. Two concurrent callbacks may be admitted; excess callbacks return null for the SDK's
+retry behavior. Invalid coordinates and closed studies return NO_TILE. Encoding failure returns
+null. The provider uses the same bounded store; fresh study inputs require a fresh provider and
+overlay. Known-node markers remain above tile overlays. No shared live-map engines were modified.
+
+Host tests exercise real provider callbacks, PNG byte equality, invalid requests and invalidation.
+All 97 Swift host tests and eight targeted Android raster/PNG tests passed. Xcode including test
+targets and Android debug assembly passed. These checks do not attach a map view or qualify GPU
+placement, rendering, provider caches or backpressure under panning. No device/simulator/UI tests
+were run. The screen is not yet wired to either adapter, and Calculate remains disabled.
+
+MapLibre remains a separate integration task: its RasterSource accepts URL/TileJSON sources rather
+than Google's direct TileProvider contract. Choose and bound the transport/archive lifecycle before
+wiring it; do not introduce a global HTTP interceptor that changes live-map traffic. The iOS setup
+currently uses SwiftUI Map, so attaching the MKTileOverlay also needs a dedicated coverage map host.
+
+API references: [MapKit tile loading](https://developer.apple.com/documentation/mapkit/mktileoverlay/loadtile(at:result:)),
+[Google TileProvider](https://developers.google.com/android/reference/com/google/android/gms/maps/model/TileProvider),
+[MapLibre RasterSource](https://maplibre.org/maplibre-native/android/api/-map-libre%20-native%20-android/org.maplibre.android.style.sources/-raster-source/index.html).

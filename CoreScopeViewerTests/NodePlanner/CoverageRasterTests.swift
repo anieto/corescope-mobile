@@ -2,6 +2,7 @@ import Foundation
 import Testing
 import CoreGraphics
 import ImageIO
+import MapKit
 @testable import CoreScopeViewer
 
 struct CoverageRasterTests {
@@ -54,6 +55,36 @@ struct CoverageRasterTests {
         #expect(Array(southeast[(32 * 256 + 32) * 4..<(32 * 256 + 33) * 4]) == [0x26, 0xB8, 0x5A, 0xA0])
         #expect(CoverageRaster.rgba(.belowThreshold, column: 0, row: 0) == 0)
         #expect(CoverageRaster.rgba(.unresolved, column: 256, row: 0) == CoverageRaster.rgba(.unresolved, column: 0, row: 0))
+    }
+
+    @Test func mapKitAdapterReturnsPNGAndRejectsInvalidatedRequests() async throws {
+        let raster = try raster()
+        let overlay = try CoverageMapKitOverlay(raster: raster, cacheBytes: 1024 * 1024)
+        #expect(!overlay.canReplaceMapContent)
+        #expect(!overlay.isGeometryFlipped)
+        #expect(overlay.tileSize == CGSize(width: 256, height: 256))
+        func load(_ path: MKTileOverlayPath) async -> Result<Data, Error> {
+            await withCheckedContinuation { continuation in
+                overlay.loadTile(at: path) { data, error in
+                    if let error { continuation.resume(returning: .failure(error)) }
+                    else if let data { continuation.resume(returning: .success(data)) }
+                    else { continuation.resume(returning: .failure(CoverageTilePNGFailure.encoding)) }
+                }
+            }
+        }
+        let path = MKTileOverlayPath(x: 8192, y: 8192, z: 14, contentScaleFactor: 2)
+        let actual = try await load(path).get()
+        #expect(actual == (try raster.pngTile(zoom: 14, x: 8192, y: 8192)))
+        let invalid = await load(MKTileOverlayPath(x: 0, y: 0, z: 23, contentScaleFactor: 1))
+        switch invalid {
+        case .success: Issue.record("Invalid map tile returned data")
+        case .failure(let error): #expect(error as? CoverageRasterFailure == .invalidTile)
+        }
+        overlay.invalidate()
+        switch await load(path) {
+        case .success: Issue.record("Invalidated overlay returned data")
+        case .failure(let error): #expect(error as? CoverageTileStoreFailure == .inactive)
+        }
     }
 
     @Test func tinyTilesCannotGrowCacheEntryCountWithoutBound() throws {

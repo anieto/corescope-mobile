@@ -65,6 +65,7 @@
 		312714C2307AE67F00829346 /* AnalyzerLiveFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = 312714C1307AE67F00829346 /* AnalyzerLiveFeed.swift */; };
 		312714C4307AE6C000829346 /* CoreScopeBackendTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 312714C3307AE6C000829346 /* CoreScopeBackendTests.swift */; };
 		31399AB5309E1BBC000519FF /* CoverageTileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31399AB4309E1BBC000519FF /* CoverageTileStore.swift */; };
+		31399AB7309E1D16000519FF /* CoverageMapKitOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31399AB6309E1D16000519FF /* CoverageMapKitOverlay.swift */; };
 		3144E9F7305B2A4300B57F18 /* InstrumentSearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3144E9F6305B2A4300B57F18 /* InstrumentSearchField.swift */; };
 		315E3A01309A973200BAEC98 /* EstimatedCoverageScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 315E3A00309A973200BAEC98 /* EstimatedCoverageScreen.swift */; };
 		315E3A03309AA14800BAEC98 /* CoverageTerrainCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 315E3A02309AA14800BAEC98 /* CoverageTerrainCatalog.swift */; };
@@ -302,6 +303,7 @@
 		312714C1307AE67F00829346 /* AnalyzerLiveFeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerLiveFeed.swift; sourceTree = "<group>"; };
 		312714C3307AE6C000829346 /* CoreScopeBackendTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreScopeBackendTests.swift; sourceTree = "<group>"; };
 		31399AB4309E1BBC000519FF /* CoverageTileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageTileStore.swift; sourceTree = "<group>"; };
+		31399AB6309E1D16000519FF /* CoverageMapKitOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageMapKitOverlay.swift; sourceTree = "<group>"; };
 		3144E9F6305B2A4300B57F18 /* InstrumentSearchField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstrumentSearchField.swift; sourceTree = "<group>"; };
 		315E3A00309A973200BAEC98 /* EstimatedCoverageScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EstimatedCoverageScreen.swift; sourceTree = "<group>"; };
 		315E3A02309AA14800BAEC98 /* CoverageTerrainCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageTerrainCatalog.swift; sourceTree = "<group>"; };
@@ -599,6 +601,7 @@
 				315E3A0E309B7CD800BAEC98 /* CoverageRaster.swift */,
 				315E3A12309B861A00BAEC98 /* CoverageTilePNG.swift */,
 				31399AB4309E1BBC000519FF /* CoverageTileStore.swift */,
+				31399AB6309E1D16000519FF /* CoverageMapKitOverlay.swift */,
 			);
 			path = NodePlanner;
 			sourceTree = "<group>";
@@ -1066,6 +1069,7 @@
 				316FE00C305E1C9400FBA3B4 /* AnalyzerDiagnosticsService.swift in Sources */,
 				B5BD63C91E6B93FAA59ED007 /* ActivePing.swift in Sources */,
 				315E3A0F309B7CD800BAEC98 /* CoverageRaster.swift in Sources */,
+				31399AB7309E1D16000519FF /* CoverageMapKitOverlay.swift in Sources */,
 				31E00570309A308800178350 /* CoverageNodeStatus.swift in Sources */,
 				31E005643099832500178350 /* CoverageTerrainPath.swift in Sources */,
 				311D6C87307C45C400E2EB70 /* BeaconLiveTransport.swift in Sources */,
