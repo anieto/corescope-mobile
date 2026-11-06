@@ -22,6 +22,64 @@ class CoverageRasterTest {
         return CoverageRaster(grid, CoverageTerrainCoordinate(latitude, longitude), CoverageAreaResult(cells(grid), 0, 0, false))
     }
 
+    @Test fun mapLibrePyramidWrapsLongitudeAndEnforcesLimits() {
+        for (longitude in listOf(179.999, -179.999, 180.0, -180.0)) {
+            val plan = CoverageMapTilePlan.make(raster(longitude = longitude), 14)
+            assertEquals(plan.size, plan.distinct().size)
+            val edge = plan.filter { it.zoom == 14 }
+            assertEquals(setOf(0, 16383), edge.map { it.x }.toSet())
+            assertEquals(setOf(8191, 8192), edge.map { it.y }.toSet())
+        }
+        val center = CoverageMapTilePlan.make(raster(), 14).filter { it.zoom == 14 }
+        assertEquals(setOf(8191, 8192), center.map { it.x }.toSet())
+        assertEquals(setOf(8191, 8192), center.map { it.y }.toSet())
+        for (latitude in listOf(-85.0, 85.0)) {
+            val plan = CoverageMapTilePlan.make(raster(latitude = latitude), 10)
+            assertTrue(plan.all { it.y in 0 until (1 shl it.zoom) })
+        }
+        assertEquals(CoverageMapLibreTilesState.tileLimit, assertThrows(CoverageMapLibreTilesFailure::class.java) {
+            CoverageMapTilePlan.make(raster(), 22)
+        }.state)
+        assertEquals(CoverageMapLibreTilesState.invalidZoom, assertThrows(CoverageMapLibreTilesFailure::class.java) {
+            CoverageMapTilePlan.make(raster(), -1)
+        }.state)
+    }
+
+    @Test fun mapLibreLocalTilesPreservePNGAndCleanOnlyOwnedFiles() {
+        val parent = java.nio.file.Files.createTempDirectory("coverage tiles ").toFile()
+        try {
+            val sentinel = File(parent, "unrelated").apply { writeText("keep") }
+            val raster = raster()
+            val tiles = CoverageMapLibreTiles.prepare(raster, 2, parent)
+            assertTrue(tiles.urlTemplate.startsWith("file:///"))
+            assertTrue(tiles.urlTemplate.contains("%20"))
+            val plan = CoverageMapTilePlan.make(raster, 2)
+            assertEquals(plan.size, tiles.tileCount)
+            var bytes = 0L
+            for (tile in plan) {
+                val uri = tiles.urlTemplate.replace("{z}", tile.zoom.toString())
+                    .replace("{x}", tile.x.toString()).replace("{y}", tile.y.toString())
+                val data = File(java.net.URI(uri)).readBytes()
+                assertArrayEquals(raster.pngTile(tile.zoom, tile.x, tile.y), data)
+                bytes += data.size
+            }
+            assertEquals(bytes, tiles.encodedBytes)
+            tiles.close()
+            tiles.close()
+            assertEquals(listOf("unrelated"), parent.list()!!.toList())
+            var checks = 0
+            assertThrows(CoverageRasterFailure::class.java) {
+                CoverageMapLibreTiles.prepare(raster, 2, parent) { ++checks > 3 }
+            }
+            assertEquals(listOf("unrelated"), parent.list()!!.toList())
+            assertEquals("keep", sentinel.readText())
+            assertThrows(CoverageMapLibreTilesFailure::class.java) {
+                CoverageMapLibreTiles.prepare(raster, 22, parent)
+            }
+            assertEquals(listOf("unrelated"), parent.list()!!.toList())
+        } finally { parent.deleteRecursively() }
+    }
+
     @Test fun googleProviderReturnsPNGAndRejectsInvalidatedRequests() {
         val raster = raster()
         val provider = CoverageGoogleTileProvider(raster, 1024 * 1024)

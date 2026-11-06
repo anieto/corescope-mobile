@@ -819,3 +819,38 @@ currently uses SwiftUI Map, so attaching the MKTileOverlay also needs a dedicate
 API references: [MapKit tile loading](https://developer.apple.com/documentation/mapkit/mktileoverlay/loadtile(at:result:)),
 [Google TileProvider](https://developers.google.com/android/reference/com/google/android/gms/maps/model/TileProvider),
 [MapLibre RasterSource](https://maplibre.org/maplibre-native/android/api/-map-libre%20-native%20-android/org.maplibre.android.style.sources/-raster-source/index.html).
+
+
+## MapLibre local raster adapter (2026-11-06)
+
+MapLibre coverage now has an isolated local-file path: prepare a complete XYZ pyramid from zoom 0
+through an explicitly requested maximum, then attach it with RasterSource/RasterLayer. Preparation
+runs synchronously on a caller-owned worker, refuses more than 128 tiles or 16 MiB of encoded PNG,
+and never silently lowers the requested zoom. Geographic selection bounds the spherical study disk,
+wraps date-line columns and clips the raster's supported ±85° latitude range. Every included tile
+is rendered from the same immutable raster; no RF calculation or image interpolation is introduced.
+The maximum raster zoom is a display limit distinct from the study's sample spacing and must be
+reported by the future screen. Higher map zoom uses nearest-neighbor enlargement of that level.
+
+Each preparation owns a unique temporary directory beneath a supplied existing cache parent. It
+returns only after all files are written, cleans partial work on cancellation/error, and never
+sweeps sibling directories. File URLs encode path characters while retaining XYZ placeholders.
+The layer uses nearest resampling and no cross-fade, and requires an explicit layer above which
+coverage must not draw, allowing known-node markers to remain visible. Source/layer IDs are unique
+per attachment. Remove the attachment before closing its tile directory; style reload needs a new
+attachment. The prepared files can be reused across that style reload.
+
+Ten targeted Android raster/PNG tests passed, covering date-line edges, polar indices, tile caps,
+local-file PNG equality, encoded-path handling, cancellation cleanup and sibling-file preservation.
+Android debug assembly passed. The actual MapLibre native source/layer has only been compiled,
+not exercised on a device: file loading, zoom over/under-scaling, missing-file behavior outside the
+study extent, layer ordering and style reload remain qualification gates. No simulator/UI tests
+were run. No iOS, shared live-map engine or release-version code changed.
+
+The adapter is not attached to the screen. The future owner must bound concurrent preparations,
+remove replaced attachments, close old directories, and recover abandoned directories in a dedicated
+coverage cache after process death. The 16 MiB limit is per pyramid, not a global disk quota or GPU
+memory guarantee. Production Calculate, provenance/legend presentation and physical-device resource
+qualification remain unfinished. This step adds no HTTP listener or global network interceptor.
+
+Reference: [MapLibre RasterSource local-file support](https://maplibre.org/maplibre-native/android/api/-map-libre%20-native%20-android/org.maplibre.android.style.sources/-raster-source/-raster-source.html).
