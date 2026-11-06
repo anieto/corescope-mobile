@@ -100,54 +100,28 @@ private struct EstimatedCoverageMap: View {
     let coordinate: CLLocationCoordinate2D?
     let nodes: [MeshNode]
     let select: (CLLocationCoordinate2D) -> Void
-    @State private var position: MapCameraPosition = .automatic
     @State private var tentative: CLLocationCoordinate2D?
     @AppStorage(MapDisplayStyle.defaultsKey) private var style = MapDisplayStyle.standard
 
     var body: some View {
-        MapReader { proxy in
-            Map(position: $position) {
-                ForEach(nodes) { node in
-                    if let point = node.coordinate {
-                        Marker(node.name ?? String(localized: "Known node"), systemImage: "questionmark", coordinate: point).tint(.gray)
-                    }
-                }
-                if let coordinate {
-                    Marker("Transmitter", systemImage: "antenna.radiowaves.left.and.right", coordinate: coordinate).tint(.orange)
-                }
-                if let tentative { Marker("Proposed location", coordinate: tentative).tint(.blue) }
-            }
-            .mapStyle(style.style)
-            .mapControls { MapCompass(); MapScaleView() }
-            .onChange(of: coordinate?.latitude) { centerOnTransmitter() }
-            .onChange(of: coordinate?.longitude) { centerOnTransmitter() }
-            .gesture(LinkProfileMapLongPress(action: { point in
-                if let location = proxy.convert(point, from: .local), CLLocationCoordinate2DIsValid(location) {
-                    tentative = location
-                }
-            }, ended: {}))
-            .safeAreaInset(edge: .bottom) {
-                VStack(spacing: 6) {
-                    if let tentative {
-                        HStack {
-                            Button("Cancel") { self.tentative = nil }
-                            Spacer()
-                            Button("Use location") { select(tentative); self.tentative = nil }
-                                .buttonStyle(.borderedProminent)
-                        }
-                    } else {
-                        Text("Touch and hold to choose a transmitter location.").font(.subheadline)
-                    }
-                    Text("Gray nodes: not evaluated").font(.caption).foregroundStyle(.secondary)
-                }.padding(10).background(.regularMaterial)
-            }
+        CoverageMapHost(coordinate: coordinate, tentative: tentative, nodes: nodes, style: style) {
+            tentative = $0
         }
-    }
-
-    private func centerOnTransmitter() {
-        guard let coordinate else { return }
-        position = .region(MKCoordinateRegion(center: coordinate,
-            latitudinalMeters: 20_000, longitudinalMeters: 20_000))
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 6) {
+                if let tentative {
+                    HStack {
+                        Button("Cancel") { self.tentative = nil }
+                        Spacer()
+                        Button("Use location") { select(tentative); self.tentative = nil }
+                            .buttonStyle(.borderedProminent)
+                    }
+                } else {
+                    Text("Touch and hold to choose a transmitter location.").font(.subheadline)
+                }
+                Text("Gray nodes: not evaluated").font(.caption).foregroundStyle(.secondary)
+            }.padding(10).background(.regularMaterial)
+        }
     }
 }
 

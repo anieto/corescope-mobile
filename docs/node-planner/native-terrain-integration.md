@@ -879,3 +879,26 @@ and protected unrelated files. Android debug assembly passed. No simulator/UI/de
 process-death recovery is represented by abandoned-file fixtures, not a forced mobile process kill.
 Screen ownership/wiring and native rendering qualification remain unfinished. Live-map engines,
 iOS code and release build numbers were unchanged.
+
+
+## iOS coverage map host (2026-11-06)
+
+The Estimated Coverage setup screen now uses a dedicated MKMapView representable, preserving
+confirmed long-press placement, standard/satellite/hybrid preference, compass, scale and neutral
+known-node pins. Its coordinator updates pins by identity and recenters when the transmitter changes;
+ordinary editor updates do not reset the camera. Custom pin labels use Monaspace for node names,
+system text for placement controls, semantic surfaces and accessible name/status descriptions.
+The map remains free of decorative mesh; the existing editor/sheet backgrounds are unchanged.
+
+The host accepts an optional immutable raster plus execution identity. It installs a fresh tile
+overlay above roads, keeps annotations above it, invalidates/removes the previous overlay when the
+identity changes, and releases it on representable teardown. Recreating the host can recreate an
+overlay from the raster rather than reuse a permanently invalidated tile store. Rendering and PNG
+work remain on the adapter's worker. The setup currently supplies no layer because the completed
+study pipeline and its legend/status presentation are still unconnected; no synthetic prediction is
+shown and Calculate stays disabled. Android screen attachment remains outstanding.
+
+Xcode built successfully including test targets. No simulator/UI tests were run. Light/dark,
+Dynamic Type, VoiceOver, nested navigation, compact/wide layouts, gesture interaction, actual tile
+rendering and map-request retry behavior still require device validation. This change does not
+modify live-map code or version numbers.
