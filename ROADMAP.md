@@ -234,7 +234,7 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
   layout (as the Duo already does), then remove the 0.10.1 launch workaround
   (`RootTabView.settleIPadMapLayout()`). On first launch iPadOS doesn't merge the top tab bar into
   the split view's bar, which pushed both panes 64 pt down until the tab was revisited.
-- Builds: iOS 0.10.4, Android versionCode 23 or later (the branch's 0.10.3 numbers were passed to the
+- Builds: iOS 0.10.4 (1), Android 0.10.4 (versionCode 23) (the branch's 0.10.3 numbers were passed to the
   live map release). The live map branch was merged in on 2026-11-06.
 
 Still deferred: comparing/exporting plans, multi-transmitter coverage and advanced receiver overrides.
