@@ -763,3 +763,28 @@ UI or physical-device rendering checks were performed. These checks establish en
 not map-provider placement or rendering performance. Map adapters, bounded tile-cache/invalidation
 ownership, production RF binding and terrain-service integration remain outstanding. Calculate
 remains disabled. Live map code and release build numbers were unchanged.
+
+
+## Per-study tile ownership (2026-11-06)
+
+Swift and Kotlin now provide a synchronous, worker-only tile store for one immutable raster.
+Each store serializes rendering, retains at most 64 PNG tiles under a caller-supplied encoded-byte
+cap (0–8 MiB), and evicts least-recently-used tiles. Zero disables retention; oversized tiles are
+returned without caching. Android copies mutable arrays at the cache boundary. Swift uses Data's
+value semantics. The byte cap excludes raster/encoder workspace and provider-owned image memory;
+it is an internal bound, not a qualified device-memory budget.
+
+Invalidation permanently closes the store, clears retained tiles and is independent of the render
+lock. In-progress rasterization observes it through cancellation checkpoints; waiting callers
+reject the closed store when admitted. The store does not own an unbounded request queue, but its
+caller must bound map workers and pending requests. Cancellation while waiting for the render lock
+is checked on admission. Already-returned data cannot be revoked: adapters must still remove old
+overlays, clear provider caches and guard delayed publication with the study identity. Replacing a
+study requires a new store, not reactivating the old one.
+
+Tests cover byte and entry limits, cache hits/LRU eviction, disabled caching, invalid capacity,
+cancelled requests, invalidation during rendering and concurrent invalidation. Android also checks
+that mutating a returned tile cannot change the cache. All 96 Swift host tests and seven targeted
+Android raster/PNG tests passed; Xcode including test targets and Android debug assembly passed.
+No simulator, UI or physical-device rendering checks were run. Map-provider adapters, screen
+ownership and end-to-end calculation remain unconnected. No live-map code or build numbers changed.

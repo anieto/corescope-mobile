@@ -56,6 +56,99 @@ struct CoverageRasterTests {
         #expect(CoverageRaster.rgba(.unresolved, column: 256, row: 0) == CoverageRaster.rgba(.unresolved, column: 0, row: 0))
     }
 
+    @Test func tinyTilesCannotGrowCacheEntryCountWithoutBound() throws {
+        let store = try CoverageTileStore(raster: raster(), byteLimit: 8 * 1024 * 1024)
+        let size = try store.tile(zoom: 8, x: 0, y: 0).count
+        for x in 1..<64 { _ = try store.tile(zoom: 8, x: x, y: 0) }
+        var hitChecks = 0
+        _ = try store.tile(zoom: 8, x: 0, y: 0) {
+            hitChecks += 1
+            return hitChecks > 1
+        }
+        _ = try store.tile(zoom: 8, x: 64, y: 0)
+        // All of these distant tiles are transparent and have the same encoded size.
+        #expect(store.cachedBytes == 64 * size)
+        var checks = 0
+        #expect(throws: CoverageRasterFailure.cancelled) {
+            try store.tile(zoom: 8, x: 1, y: 0) {
+                checks += 1
+                return checks > 1
+            }
+        }
+        #expect(store.cachedBytes == 64 * size)
+    }
+
+    @Test func invalidationDoesNotWaitForRendering() async throws {
+        let store = try CoverageTileStore(raster: raster(), byteLimit: 1024 * 1024)
+        let entered = DispatchSemaphore(value: 0)
+        let resume = DispatchSemaphore(value: 0)
+        let worker = Task.detached {
+            var checkpoints = 0
+            return Result {
+                try store.tile(zoom: 14, x: 8192, y: 8192) {
+                    checkpoints += 1
+                    if checkpoints == 3 {
+                        entered.signal()
+                        _ = resume.wait(timeout: .now() + 5)
+                    }
+                    return false
+                }
+            }
+        }
+        defer { resume.signal() }
+        let didEnter = await withCheckedContinuation { continuation in
+            DispatchQueue.global().async {
+                continuation.resume(returning: entered.wait(timeout: .now() + 5) == .success)
+            }
+        }
+        #expect(didEnter)
+        store.invalidate()
+        #expect(store.cachedBytes == 0)
+        resume.signal()
+        switch await worker.value {
+        case .success: Issue.record("Invalidated rendering returned a tile")
+        case .failure(let error): #expect(error as? CoverageRasterFailure == .cancelled)
+        }
+    }
+
+    @Test func tileStoreBoundsRetentionAndRejectsObsoleteWork() throws {
+        let raster = try raster()
+        let reference = try raster.pngTile(zoom: 0, x: 0, y: 0)
+        let store = try CoverageTileStore(raster: raster, byteLimit: reference.count)
+        #expect(try store.tile(zoom: 0, x: 0, y: 0) == reference)
+        #expect(store.cachedBytes == reference.count)
+        #expect(try store.tile(zoom: 0, x: 0, y: 0) == reference)
+        for x in 0..<4 {
+            _ = try store.tile(zoom: 2, x: x, y: 0)
+            #expect(store.cachedBytes <= reference.count)
+        }
+        #expect(throws: CoverageRasterFailure.cancelled) {
+            try store.tile(zoom: 2, x: 3, y: 0, cancelled: { true })
+        }
+        store.invalidate()
+        #expect(store.cachedBytes == 0)
+        #expect(throws: CoverageTileStoreFailure.inactive) { try store.tile(zoom: 0, x: 0, y: 0) }
+        let uncached = try CoverageTileStore(raster: raster, byteLimit: 0)
+        #expect(try uncached.tile(zoom: 0, x: 0, y: 0) == reference)
+        #expect(uncached.cachedBytes == 0)
+        for capacity in [-1, 8 * 1024 * 1024 + 1] {
+            #expect(throws: CoverageTileStoreFailure.invalidCapacity) {
+                try CoverageTileStore(raster: raster, byteLimit: capacity)
+            }
+        }
+        let interrupted = try CoverageTileStore(raster: raster, byteLimit: 1024 * 1024)
+        var checkpoints = 0
+        #expect(throws: CoverageRasterFailure.cancelled) {
+            try interrupted.tile(zoom: 14, x: 8192, y: 8192) {
+                checkpoints += 1
+                if checkpoints == 3 { interrupted.invalidate() }
+                return false
+            }
+        }
+        #expect(interrupted.cachedBytes == 0)
+        #expect(throws: CoverageTileStoreFailure.inactive) { try interrupted.tile(zoom: 0, x: 0, y: 0) }
+    }
+
     @Test func pngTilePreservesGeographicRaster() throws {
         let raster = try raster()
         let rgba = try raster.tile(zoom: 14, x: 8192, y: 8192)

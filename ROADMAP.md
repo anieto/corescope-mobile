@@ -215,8 +215,9 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
   rasterization now maps completed samples to translucent reception tiles with unresolved hatching;
   PNG tile encoding is implemented on both platforms. Swift host tests now verify decoded pixel
   orientation, straight alpha, geographic raster round-tripping and cancellation alongside the
-  existing Android decoder check. Map-view adapters and on-device rendering qualification are
-  still pending.
+  existing Android decoder check. Per-study tile stores now serialize rendering, bound PNG caches
+  by bytes and tile count, and cancel obsolete rendering on invalidation on both platforms.
+  Map-view adapters and on-device rendering qualification are still pending.
   Calculate remains disabled: provider discovery, production RF binding, worker wiring
   and result overlays are not connected. Setups are not yet saved.
 - **Release gate:** coverage integration and physical-device qualification remain incomplete.

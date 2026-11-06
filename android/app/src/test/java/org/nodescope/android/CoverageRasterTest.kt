@@ -22,6 +22,95 @@ class CoverageRasterTest {
         return CoverageRaster(grid, CoverageTerrainCoordinate(latitude, longitude), CoverageAreaResult(cells(grid), 0, 0, false))
     }
 
+    @Test fun tinyTilesCannotGrowCacheEntryCountWithoutBound() {
+        val store = CoverageTileStore(raster(), 8 * 1024 * 1024)
+        val size = store.tile(8, 0, 0).size
+        for (x in 1 until 64) store.tile(8, x, 0)
+        var hitChecks = 0
+        store.tile(8, 0, 0) { ++hitChecks > 1 }
+        store.tile(8, 64, 0)
+        assertEquals(64 * size, store.cachedBytes)
+        var checks = 0
+        assertEquals(CoverageRasterState.cancelled, assertThrows(CoverageRasterFailure::class.java) {
+            store.tile(8, 1, 0) { ++checks > 1 }
+        }.state)
+        assertEquals(64 * size, store.cachedBytes)
+    }
+
+    @Test fun invalidationDoesNotWaitForRendering() {
+        val store = CoverageTileStore(raster(), 1024 * 1024)
+        val entered = java.util.concurrent.CountDownLatch(1)
+        val resume = java.util.concurrent.CountDownLatch(1)
+        val executor = java.util.concurrent.Executors.newSingleThreadExecutor()
+        try {
+            val worker = executor.submit<CoverageRasterState> {
+                var checkpoints = 0
+                assertThrows(CoverageRasterFailure::class.java) {
+                    store.tile(14, 8192, 8192) {
+                        checkpoints++
+                        if (checkpoints == 3) {
+                            entered.countDown()
+                            resume.await(5, java.util.concurrent.TimeUnit.SECONDS)
+                        }
+                        false
+                    }
+                }.state
+            }
+            assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS))
+            store.invalidate()
+            assertEquals(0, store.cachedBytes)
+            resume.countDown()
+            assertEquals(CoverageRasterState.cancelled, worker.get(5, java.util.concurrent.TimeUnit.SECONDS))
+        } finally {
+            resume.countDown()
+            executor.shutdownNow()
+        }
+    }
+
+    @Test fun tileStoreBoundsRetentionAndRejectsObsoleteWork() {
+        val raster = raster()
+        val reference = raster.pngTile(0, 0, 0)
+        val store = CoverageTileStore(raster, reference.size)
+        val first = store.tile(0, 0, 0)
+        assertArrayEquals(reference, first)
+        assertEquals(reference.size, store.cachedBytes)
+        first.fill(0)
+        assertArrayEquals(reference, store.tile(0, 0, 0))
+        for (x in 0 until 4) {
+            store.tile(2, x, 0)
+            assertTrue(store.cachedBytes <= reference.size)
+        }
+        assertEquals(CoverageRasterState.cancelled, assertThrows(CoverageRasterFailure::class.java) {
+            store.tile(2, 3, 0) { true }
+        }.state)
+        store.invalidate()
+        assertEquals(0, store.cachedBytes)
+        assertEquals(CoverageTileStoreState.inactive, assertThrows(CoverageTileStoreFailure::class.java) {
+            store.tile(0, 0, 0)
+        }.state)
+        val uncached = CoverageTileStore(raster, 0)
+        assertArrayEquals(reference, uncached.tile(0, 0, 0))
+        assertEquals(0, uncached.cachedBytes)
+        for (capacity in listOf(-1, 8 * 1024 * 1024 + 1)) {
+            assertEquals(CoverageTileStoreState.invalidCapacity, assertThrows(CoverageTileStoreFailure::class.java) {
+                CoverageTileStore(raster, capacity)
+            }.state)
+        }
+        val interrupted = CoverageTileStore(raster, 1024 * 1024)
+        var checkpoints = 0
+        assertEquals(CoverageRasterState.cancelled, assertThrows(CoverageRasterFailure::class.java) {
+            interrupted.tile(14, 8192, 8192) {
+                checkpoints++
+                if (checkpoints == 3) interrupted.invalidate()
+                false
+            }
+        }.state)
+        assertEquals(0, interrupted.cachedBytes)
+        assertEquals(CoverageTileStoreState.inactive, assertThrows(CoverageTileStoreFailure::class.java) {
+            interrupted.tile(0, 0, 0)
+        }.state)
+    }
+
     @Test fun sharedGeographicCheckpoints() {
         val fixtures = Json.parseToJsonElement(File("../../shared/fixtures/coverage/raster-geography.json").readText()).jsonArray
         assertEquals(4, fixtures.size)
