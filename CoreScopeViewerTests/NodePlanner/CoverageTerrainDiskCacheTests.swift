@@ -25,6 +25,56 @@ private final class DiskCacheFixture {
 }
 
 struct CoverageTerrainDiskCacheTests {
+    @Test func preparedStudyOwnsTerrainThroughCompletionFailureAndCancellation() async throws {
+        let fixture = try DiskCacheFixture()
+        let descriptor = try fixture.descriptor()
+        let cache = try CoverageTerrainDiskCache(root: fixture.root, quota: 100000)
+        try fixture.publish(cache, descriptor)
+        try cache.close()
+        let grid = try CoverageGrid(radiusMeters: 1000, spacingMeters: 1000,
+            minEastMeters: 1000, maxEastMeters: 1000, minNorthMeters: 0, maxNorthMeters: 0)
+        let budget = try CoverageLinkBudget(transmitPowerDbm: 22, transmitGainDbi: 3, receiveGainDbi: 2,
+            transmitLossDb: 1, receiveLossDb: 1, sensitivityDbm: -130, reserveDb: 5)
+        let inputs = try CoverageStudyInputs(transmitter: .init(latitude: 0.25, longitude: 0.25),
+            grid: grid, budget: budget, frequencyMHz: 915, transmitHeightMeters: 30, receiveHeightMeters: 1.5)
+        let limits = CoverageStudyLimits(areaSamples: 1_000_000, areaGeometry: 1_000_000,
+            nodeSamples: 0, nodeGeometry: 0, nodeModelCalls: 0)
+        for mode in 0..<3 {
+            let id = UUID()
+            let root = fixture.root
+            let task = Task {
+                var stages: [CoveragePreparationStage] = []
+                let output = try await CoveragePreparedStudy.evaluate(inputs: inputs, nodes: [],
+                    catalogComplete: true, nodeLimit: 1, limits: limits, catalog: [descriptor],
+                    samplingHaloMeters: 100, cacheRoot: root, cacheQuota: 100000, downloadLimit: 0,
+                    offline: true, executionID: id, progress: { stage in
+                        stages.append(stage)
+                        if mode == 2 && stage == .calculating { withUnsafeCurrentTask { $0?.cancel() } }
+                    }, predictLoss: { _, radio in
+                        #expect(radio.frequencyMHz == 915)
+                        if mode == 1 { throw CoverageLinkBudgetFailure.invalidInput }
+                        return 140
+                    })
+                #expect(stages == [.validating, .preparingTerrain, .calculating])
+                return output
+            }
+            switch await task.result {
+            case .success(let output):
+                #expect(mode == 0)
+                #expect(output.study.executionID == id)
+                #expect(output.study.area.cells.first?.state == .qualified)
+                #expect(output.terrain.map(\.cacheKey) == [descriptor.cacheKey])
+            case .failure(let error):
+                if mode == 1 { #expect(error as? CoverageLinkBudgetFailure == .invalidInput) }
+                else { #expect(mode == 2 && error is CancellationError) }
+            }
+            // Every path must release all pins and its process lock before returning.
+            let reopened = try CoverageTerrainDiskCache(root: fixture.root, quota: 100000)
+            #expect(reopened.inventory.allSatisfy { !$0.pinned })
+            try reopened.close()
+        }
+    }
+
     @Test func publishRestartAndOfflineRead() throws {
         let fixture = try DiskCacheFixture()
         let descriptor = try fixture.descriptor()

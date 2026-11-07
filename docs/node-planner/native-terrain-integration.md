@@ -979,3 +979,21 @@ This is the execution owner, not a production Calculate implementation. Screens 
 connect it to the qualified terrain/model operation, stage progress and completed-study presentation.
 RF packaging/distribution and the production catalog remain unresolved in project notes. Live-map
 code, release versions and saved data were unchanged.
+
+## Owned terrain preparation and study operation (2026-11-06)
+
+Both platforms now expose a worker operation that validates study limits and grid preflight,
+resolves the supplied terrain catalog and sampling halo, prepares a pinned mosaic, evaluates the
+study, and releases readers and cache ownership before returning. Validation, terrain preparation
+and calculation report distinct progress stages. Results include the selected terrain descriptors
+alongside the study; this is not yet a complete model reproducibility record.
+
+Offline integration tests use an actual cached terrain fixture and injected RF callback. Success,
+model failure and cancellation at calculation entry each permit immediate cache reopening without
+pinned readers. All 101 Swift host tests and 110 Android coverage tests passed, and both apps built
+(including Xcode test targets). No simulator, UI or physical-device checks were run.
+
+Catalog trust and the qualified RF implementation remain explicit caller responsibilities. This
+operation can be called from the study runner, but is not yet wired into the setup screens.
+Production RF packaging/distribution and the catalog endpoint remain unresolved; Calculate stays
+disabled. Live-map implementation and release versions were unchanged.

@@ -4,6 +4,8 @@ import java.io.File
 import java.nio.file.Files
 import java.security.MessageDigest
 import java.util.UUID
+import kotlinx.coroutines.*
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Test
 import org.nodescope.android.feature.coverage.*
@@ -29,6 +31,50 @@ class CoverageTerrainDiskCacheTest {
     }
     private fun corrupt(block: () -> Unit) {
         assertEquals(TerrainReadState.CORRUPT, assertThrows(TerrainReadFailure::class.java, block).state)
+    }
+
+    @Test fun preparedStudyOwnsTerrainThroughCompletionFailureAndCancellation() = runTest {
+        CacheFiles().use { fixture ->
+            val descriptor = fixture.descriptor()
+            CoverageTerrainDiskCache(fixture.root, 100000).use { fixture.publish(it, descriptor) }
+            val grid = CoverageGrid(1000, 1000, 1000, 1000, 0, 0)
+            val budget = CoverageLinkBudget(22.0, 3.0, 2.0, 1.0, 1.0, -130.0, 5.0)
+            val inputs = CoverageStudyInputs(CoverageTerrainCoordinate(0.25, 0.25), grid, budget, 915.0, 30.0, 1.5)
+            val limits = CoverageStudyLimits(1_000_000, 1_000_000, 0, 0, 0)
+            for (mode in 0..2) {
+                val id = UUID.randomUUID()
+                supervisorScope {
+                    val task = async {
+                        val stages = mutableListOf<CoveragePreparationStage>()
+                        val output = CoveragePreparedStudy.evaluate(inputs, emptyList(), true, 1, limits,
+                            listOf(descriptor), 100.0, fixture.root, 100000, 0, true, id,
+                            progress = { stage ->
+                                stages.add(stage)
+                                if (mode == 2 && stage == CoveragePreparationStage.calculating) currentCoroutineContext().cancel()
+                            }, predictLoss = { _, radio ->
+                                assertEquals(915.0, radio.frequencyMHz, 0.0)
+                                if (mode == 1) throw IllegalArgumentException("model failure")
+                                140.0
+                            })
+                        assertEquals(CoveragePreparationStage.values().toList(), stages)
+                        output
+                    }
+                    try {
+                        val output = task.await()
+                        assertEquals(0, mode)
+                        assertEquals(id, output.study.executionID)
+                        assertEquals(CoverageAreaState.qualified, output.study.area.cells.first().state)
+                        assertEquals(listOf(descriptor.cacheKey), output.terrain.map { it.cacheKey })
+                    } catch (failure: Exception) {
+                        if (mode == 1) assertTrue(failure is IllegalArgumentException)
+                        else { assertEquals(2, mode); assertTrue(failure is CancellationException) }
+                    }
+                }
+                CoverageTerrainDiskCache(fixture.root, 100000).use { reopened ->
+                    assertTrue(reopened.inventory.none { it.pinned })
+                }
+            }
+        }
     }
 
     @Test fun publishRestartAndOfflineRead() = CacheFiles().use { f ->

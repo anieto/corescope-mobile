@@ -225,7 +225,10 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
   Study execution now requires a validated immutable input snapshot, including frequency and both
   antenna heights, passes it to model callbacks and retains it in results. Observable run owners
   now enforce single-operation admission, cancellation and stale-result rejection through worker
-  cleanup. Completed-study production/presentation and device rendering checks remain pending.
+  cleanup. A shared preparation operation now validates work, resolves terrain, owns cache/readers
+  through calculation and cleanup, and returns selected terrain descriptors with stage progress.
+  Offline fixture tests cover success, model failure and cancellation on both platforms.
+  Completed-study production/presentation and device rendering checks remain pending.
   Calculate remains disabled: provider discovery, production RF binding, worker wiring
   and result overlays are not connected. Setups are not yet saved.
 - **Release gate:** coverage integration and physical-device qualification remain incomplete.
