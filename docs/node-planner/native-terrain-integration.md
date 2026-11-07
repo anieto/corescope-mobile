@@ -1077,3 +1077,22 @@ the poles, NaN and infinity. All 105 Swift host tests and 114 Android coverage t
 built, including Xcode test targets. Map interaction, light/dark mode, compact/wide layouts and
 navigation were not visually checked. No live-map implementation, versions or saved data changed.
 Calculate remains disabled pending production RF/catalog integration and screen wiring.
+
+## Explicit current-location selection (2026-11-07)
+
+Estimated Coverage now offers Use current location on both platforms using the existing location
+helpers. Opening the screen does not request permission or start location updates. A successful
+foreground request copies supported coordinates into the setup and reminds the user to inspect the
+pin, especially with approximate location. Unsupported latitudes leave existing coordinates intact.
+Permission/service failures explain how to continue using manual or map placement.
+
+Users can cancel an active request. Coordinate edits, leaving the view and backgrounding cancel
+pending delivery. Android also gates asynchronous completion by request generation so an old job's
+cleanup cannot clear a newer request's busy state. The shared live-map location helpers were reused
+without modification; no live-map implementation was changed.
+
+Both apps built, including Xcode test targets; 105 Swift host tests and 114 Android coverage tests
+passed. These tests do not verify OS permission dialogs or location delivery. Physical-device checks
+remain for first-use permission, denial, approximate location, services off, background/navigation
+cancellation, rapid retry and compact/wide light/dark layouts. Calculate remains disabled while the
+production RF distribution/packaging and trusted terrain catalog endpoint remain unresolved.

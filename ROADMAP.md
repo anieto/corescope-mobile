@@ -238,6 +238,8 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
   limits, and only reports initial success after the current study area's work check passes.
   Setup map placement now respects the coverage latitude limit (±85°); unsupported proposals
   explain the limit and cannot be confirmed, and invalid manual coordinates do not select a transmitter.
+  Explicit Use current location now reuses foreground location helpers on both platforms, with
+  cancellation, permission/service feedback and supported-coordinate checks; device validation remains.
   Completed-study production/presentation and device rendering checks remain pending.
   Calculate remains disabled: provider discovery, production RF binding, worker wiring
   and result overlays are not connected. Setups are not yet saved.

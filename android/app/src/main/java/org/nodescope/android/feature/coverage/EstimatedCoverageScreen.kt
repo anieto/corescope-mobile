@@ -1,5 +1,12 @@
 package org.nodescope.android.feature.coverage
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -58,6 +65,7 @@ fun EstimatedCoverageScreen(nodes: List<MeshNode>) {
     val editor: @Composable (Modifier) -> Unit = { modifier ->
         Column(modifier.meshPageBackground().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             CoverageSetupCard("Transmitter location") {
+                CoverageCurrentLocation(latitude, longitude) { lat, lon -> latitude = lat; longitude = lon }
                 LearnLabel("Coordinates", GlossaryTerm.PLANNING_COORDINATES)
                 CoverageInput("Latitude", latitude, "latitude", showsRequired) { latitude = it }
                 CoverageInput("Longitude", longitude, "longitude", showsRequired) { longitude = it }
@@ -251,4 +259,63 @@ private object CoverageSetupFields {
             }
         }
     }
+}
+
+@Composable private fun CoverageCurrentLocation(latitude: String, longitude: String, choose: (String, String) -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val currentChoose by rememberUpdatedState(choose)
+    var locating by remember { mutableStateOf(false) }
+    var job by remember { mutableStateOf<Job?>(null) }
+    var generation by remember { mutableIntStateOf(0) }
+    var message by remember { mutableStateOf<String?>(null) }
+    fun cancel() { generation++; job?.cancel(); job = null; locating = false }
+    fun locate() {
+        val request = generation
+        job = scope.launch {
+            try {
+                val result = currentLocation(context)
+                if (request != generation) return@launch
+                when (result) {
+                    is LocationResult.Found -> {
+                        if (CoverageSetupValidation.supportsCoordinate(result.coordinate.latitude, result.coordinate.longitude)) {
+                            currentChoose(result.coordinate.latitude.toString(), result.coordinate.longitude.toString())
+                            message = "Location added to this setup. Check the pin on the map, especially when using approximate location."
+                        } else message = "Your location is outside the supported latitude range of −85° to 85°. Choose a point on the map."
+                    }
+                    LocationResult.ServicesOff -> message = "Turn on location services, or choose a point on the map."
+                    LocationResult.Unavailable -> message = "Couldn't find your location. Try again, or choose a point on the map."
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                if (request == generation) message = "Couldn't get your location. Check location permission and services in Settings, or choose a point on the map."
+            } finally {
+                if (request == generation) locating = false
+            }
+        }
+    }
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+        if (locating) {
+            if (grants.values.any { it }) locate()
+            else {
+                locating = false
+                message = "Location permission is off. Allow it in the app's settings, or choose a point on the map."
+            }
+        }
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { cancel() }
+    DisposableEffect(latitude, longitude) { onDispose { cancel() } }
+    TextButton(onClick = {
+        generation++
+        locating = true
+        message = null
+        if (hasLocationPermission(context)) locate() else permission.launch(LOCATION_PERMISSIONS)
+    }, enabled = !locating) { Text("Use current location") }
+    if (locating) {
+        LinearProgressIndicator(Modifier.fillMaxWidth())
+        Text("Finding location…")
+        TextButton(onClick = { cancel() }) { Text("Cancel location request") }
+    }
+    message?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
 }

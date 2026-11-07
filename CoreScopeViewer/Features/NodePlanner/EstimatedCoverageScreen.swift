@@ -209,6 +209,7 @@ private struct EstimatedCoverageEditor: View {
     var body: some View {
         Form {
             Section {
+                CoverageCurrentLocation(latitude: $latitude, longitude: $longitude)
                 LearnLabel("Coordinates", term: .planningCoordinates)
                 TextField("Latitude", text: $latitude).keyboardType(.numbersAndPunctuation).font(.monaspace(.body))
                 CoverageFieldIssue(field: "latitude", text: latitude, showsRequired: showsRequired)
@@ -298,5 +299,50 @@ private struct CoverageFieldIssue: View {
         case .nonnegative: "Enter zero or a positive value."
         case .unknownField: "This field is not supported."
         }
+    }
+}
+
+/// Requests location only after a tap; edits or navigation cancel pending delivery.
+private struct CoverageCurrentLocation: View {
+    @Binding var latitude: String
+    @Binding var longitude: String
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var manager = MapLocationManager()
+    @State private var locating = false
+    @State private var message: LocalizedStringResource?
+
+    var body: some View {
+        Button("Use current location", systemImage: "location") {
+            locating = true
+            message = nil
+            manager.requestCurrentLocation { coordinate in
+                locating = false
+                guard CoverageSetupValidation.supportsCoordinate(latitude: coordinate.latitude, longitude: coordinate.longitude) else {
+                    message = "Your location is outside the supported latitude range of −85° to 85°. Choose a point on the map."
+                    return
+                }
+                latitude = String(coordinate.latitude)
+                longitude = String(coordinate.longitude)
+                message = "Location added to this setup. Check the pin on the map, especially when using approximate location."
+            } failure: {
+                locating = false
+                message = "Couldn't get your location. Check location permission and services in Settings, or choose a point on the map."
+            }
+        }
+        .disabled(locating)
+        .onChange(of: latitude) { cancel() }
+        .onChange(of: longitude) { cancel() }
+        .onChange(of: scenePhase) { _, phase in if phase == .background { cancel() } }
+        .onDisappear { cancel() }
+        if locating {
+            ProgressView("Finding location…")
+            Button("Cancel location request") { cancel() }
+        }
+        if let message { Text(message).font(.caption).foregroundStyle(.secondary) }
+    }
+
+    private func cancel() {
+        manager.cancelRequest()
+        locating = false
     }
 }
