@@ -997,3 +997,18 @@ Catalog trust and the qualified RF implementation remain explicit caller respons
 operation can be called from the study runner, but is not yet wired into the setup screens.
 Production RF packaging/distribution and the catalog endpoint remain unresolved; Calculate stays
 disabled. Live-map implementation and release versions were unchanged.
+
+## Run-owned preparation progress (2026-11-06)
+
+Swift and Kotlin run owners now offer a progress-reporting operation entry point. Its callback
+returns updates to the owning UI context and checks the execution identity and publication phase
+before changing observable preparation state. Existing operations without progress remain supported.
+Progress clears on completion, failure, explicit cancellation and invalidation; callbacks retained
+by an older operation cannot alter a newer run's progress. As before, parent cancellation waits
+for worker cleanup before the run owner finishes and reopens admission.
+
+Tests cover current-run updates, late callbacks after completion and during a newer run, and
+updates after cancellation or invalidation. All 102 Swift host tests and 111 Android coverage tests
+passed. Both apps built, including Xcode test targets. No UI, simulator or device checks were run.
+This adds execution state for eventual screen integration; Calculate remains disabled pending
+production model/catalog integration and wiring. Live-map code and release versions are unchanged.

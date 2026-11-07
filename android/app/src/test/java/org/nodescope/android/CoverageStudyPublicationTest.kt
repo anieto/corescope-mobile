@@ -16,6 +16,48 @@ class CoverageStudyPublicationTest {
             CoverageAreaResult(if (cells) listOf(CoverageAreaCell(CoverageAreaState.nearSite)) else emptyList(), 0, 0, false),
             CoverageNodeBatchResult(run, 0, 0, 0))
     }
+    @Test fun progressBelongsOnlyToTheActiveRun() = runTest {
+        val runner = CoverageStudyRunner(StandardTestDispatcher(testScheduler))
+        val inputs = result(UUID.randomUUID()).inputs
+        var old: (suspend (CoveragePreparationStage) -> Unit)? = null
+        runner.runWithProgress(inputs) { id, _, report ->
+            old = report
+            report(CoveragePreparationStage.validating)
+            assertEquals(CoveragePreparationStage.validating, runner.preparationStage)
+            report(CoveragePreparationStage.calculating)
+            assertEquals(CoveragePreparationStage.calculating, runner.preparationStage)
+            result(id)
+        }
+        assertNull(runner.preparationStage)
+        old?.invoke(CoveragePreparationStage.preparingTerrain)
+        assertNull(runner.preparationStage)
+        runner.runWithProgress(inputs) { id, _, report ->
+            report(CoveragePreparationStage.validating)
+            old?.invoke(CoveragePreparationStage.calculating)
+            assertEquals(CoveragePreparationStage.validating, runner.preparationStage)
+            runner.cancel()
+            withContext(NonCancellable) { report(CoveragePreparationStage.preparingTerrain) }
+            assertNull(runner.preparationStage)
+            result(id)
+        }
+        assertEquals(CoverageStudyPublicationPhase.cancelled, runner.snapshot.phase)
+        assertNull(runner.preparationStage)
+        runner.runWithProgress(inputs) { id, _, report ->
+            report(CoveragePreparationStage.preparingTerrain)
+            runner.invalidate()
+            withContext(NonCancellable) { report(CoveragePreparationStage.calculating) }
+            assertNull(runner.preparationStage)
+            result(id)
+        }
+        assertEquals(CoverageStudyPublicationPhase.idle, runner.snapshot.phase)
+        runner.runWithProgress(inputs) { _, _, report ->
+            report(CoveragePreparationStage.calculating)
+            throw IllegalArgumentException("model failure")
+        }
+        assertEquals(CoverageStudyPublicationPhase.failed, runner.snapshot.phase)
+        assertNull(runner.preparationStage)
+    }
+
     @Test fun runnerOwnsCancellationAdmissionAndLatePublication() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val runner = CoverageStudyRunner(dispatcher)

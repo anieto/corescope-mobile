@@ -14,9 +14,26 @@ class CoverageStudyRunner(private val workerDispatcher: CoroutineDispatcher = Di
     var snapshot by mutableStateOf(CoverageStudyPublicationSnapshot(CoverageStudyPublicationPhase.idle, null)); private set
     var failure by mutableStateOf<CoverageStudyRunFailure?>(null); private set
     var isBusy by mutableStateOf(false); private set
+    var preparationStage by mutableStateOf<CoveragePreparationStage?>(null); private set
     private val publication = CoverageStudyPublication()
     private var worker: Deferred<CoverageStudyResult>? = null
     private var executionID: UUID? = null
+
+    /** Marshal worker progress to the owner context and reject reports from obsolete operations. */
+    suspend fun runWithProgress(inputs: CoverageStudyInputs,
+                                operation: suspend (UUID, CoverageStudyInputs,
+                                    suspend (CoveragePreparationStage) -> Unit) -> CoverageStudyResult): Boolean {
+        val ownerContext = currentCoroutineContext().minusKey(Job)
+        return run(inputs) { id, captured ->
+            operation(id, captured) { stage ->
+                withContext(ownerContext) {
+                    if (executionID == id && publication.snapshot().phase == CoverageStudyPublicationPhase.running) {
+                        preparationStage = stage
+                    }
+                }
+            }
+        }
+    }
 
     /** False means a previous operation is still running or releasing its resources. */
     suspend fun run(inputs: CoverageStudyInputs,
@@ -24,6 +41,7 @@ class CoverageStudyRunner(private val workerDispatcher: CoroutineDispatcher = Di
         if (isBusy) return false
         isBusy = true
         failure = null
+        preparationStage = null
         val id = publication.begin()
         executionID = id
         refresh()
@@ -72,5 +90,8 @@ class CoverageStudyRunner(private val workerDispatcher: CoroutineDispatcher = Di
         failure = null
         refresh()
     }
-    private fun refresh() { snapshot = publication.snapshot() }
+    private fun refresh() {
+        snapshot = publication.snapshot()
+        if (snapshot.phase != CoverageStudyPublicationPhase.running) preparationStage = null
+    }
 }

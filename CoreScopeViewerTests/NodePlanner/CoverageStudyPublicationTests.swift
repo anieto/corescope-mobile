@@ -32,6 +32,52 @@ struct CoverageStudyPublicationTests {
         }
     }
 
+    private actor ProgressCapture {
+        var report: (@Sendable (CoveragePreparationStage) async -> Void)?
+        func save(_ report: @escaping @Sendable (CoveragePreparationStage) async -> Void) { self.report = report }
+        func send(_ stage: CoveragePreparationStage) async { await report?(stage) }
+    }
+
+    @Test func progressBelongsOnlyToTheActiveRun() async throws {
+        let runner = CoverageStudyRunner()
+        let inputs = try result(UUID()).inputs
+        let old = ProgressCapture()
+        await runner.runWithProgress(inputs: inputs) { id, _, report in
+            await old.save(report)
+            await report(.validating)
+            #expect(await runner.preparationStage == .validating)
+            await report(.calculating)
+            #expect(await runner.preparationStage == .calculating)
+            return try await result(id)
+        }
+        #expect(runner.preparationStage == nil)
+        await old.send(.preparingTerrain)
+        #expect(runner.preparationStage == nil)
+        await runner.runWithProgress(inputs: inputs) { id, _, report in
+            await report(.validating)
+            await old.send(.calculating)
+            #expect(await runner.preparationStage == .validating)
+            await runner.cancel()
+            await report(.preparingTerrain)
+            #expect(await runner.preparationStage == nil)
+            return try await result(id)
+        }
+        #expect(runner.phase == .cancelled && runner.preparationStage == nil)
+        await runner.runWithProgress(inputs: inputs) { id, _, report in
+            await report(.preparingTerrain)
+            await runner.invalidate()
+            await report(.calculating)
+            #expect(await runner.preparationStage == nil)
+            return try await result(id)
+        }
+        #expect(runner.phase == .idle && runner.preparationStage == nil)
+        await runner.runWithProgress(inputs: inputs) { _, _, report in
+            await report(.calculating)
+            throw CoverageLinkBudgetFailure.invalidInput
+        }
+        #expect(runner.phase == .failed && runner.preparationStage == nil)
+    }
+
     @Test func parentCancellationWaitsForWorkerCleanup() async throws {
         let runner = CoverageStudyRunner()
         let inputs = try result(UUID()).inputs

@@ -228,6 +228,8 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
   cleanup. A shared preparation operation now validates work, resolves terrain, owns cache/readers
   through calculation and cleanup, and returns selected terrain descriptors with stage progress.
   Offline fixture tests cover success, model failure and cancellation on both platforms.
+  Run owners now expose preparation progress on the UI context, reject obsolete callbacks and
+  clear progress when work completes, fails, is cancelled or becomes invalid.
   Completed-study production/presentation and device rendering checks remain pending.
   Calculate remains disabled: provider discovery, production RF binding, worker wiring
   and result overlays are not connected. Setups are not yet saved.
