@@ -12,6 +12,27 @@ class CoverageStudyInputs(val transmitter: CoverageTerrainCoordinate, val grid: 
             !transmitHeightMeters.isFinite() || transmitHeightMeters !in 1.0..3000.0 ||
             !receiveHeightMeters.isFinite() || receiveHeightMeters !in 1.0..3000.0) throw CoverageStudyInputFailure()
     }
+    /** Compare captured values, including assumptions with identical derived loss. */
+    fun matches(other: CoverageStudyInputs): Boolean =
+        transmitter.latitude == other.transmitter.latitude &&
+        transmitter.longitude == other.transmitter.longitude &&
+        frequencyMHz == other.frequencyMHz &&
+        transmitHeightMeters == other.transmitHeightMeters &&
+        receiveHeightMeters == other.receiveHeightMeters &&
+        grid.radiusMeters == other.grid.radiusMeters &&
+        grid.spacingMeters == other.grid.spacingMeters &&
+        grid.minEastMeters == other.grid.minEastMeters &&
+        grid.maxNorthMeters == other.grid.maxNorthMeters &&
+        grid.columns == other.grid.columns &&
+        grid.rows == other.grid.rows &&
+        budget.transmitPowerDbm == other.budget.transmitPowerDbm &&
+        budget.transmitGainDbi == other.budget.transmitGainDbi &&
+        budget.receiveGainDbi == other.budget.receiveGainDbi &&
+        budget.transmitLossDb == other.budget.transmitLossDb &&
+        budget.receiveLossDb == other.budget.receiveLossDb &&
+        budget.sensitivityDbm == other.budget.sensitivityDbm &&
+        budget.reserveDb == other.budget.reserveDb
+
     companion object {
         fun fromEditor(fields: Map<String, String>, radiusMeters: Int, spacingMeters: Int): CoverageStudyInputs {
             fun value(field: String): Double {

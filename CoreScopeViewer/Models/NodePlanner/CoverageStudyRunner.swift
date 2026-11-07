@@ -65,7 +65,7 @@ final class CoverageStudyRunner {
             }
             if Task.isCancelled {
                 publication.cancel(id)
-            } else if !publication.publish(output), publication.fail(id) {
+            } else if (!output.inputs.matches(inputs) || !publication.publish(output)), publication.fail(id) {
                 failure = .invalidResult
             }
         } catch {

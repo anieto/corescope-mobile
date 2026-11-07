@@ -1030,3 +1030,18 @@ coverage tests passed; both apps built, including Xcode test targets. No device/
 This records selected terrain sources, not a full reproducibility record: production RF version,
 configuration, trusted catalog discovery and screen wiring remain pending. Calculate remains disabled.
 Live-map code and release versions were unchanged.
+
+## Result input validation before publication (2026-11-06)
+
+Both run owners now compare returned study inputs against the captured request before publication.
+Execution identity alone did not prevent an injected operation from returning a study for different
+assumptions. Matching now covers transmitter coordinates, frequency, both antenna heights, all seven
+link-budget inputs and the complete grid layout. Comparison uses values rather than object identity
+or derived loss/cell count. A mismatch reports an invalid result without publishing it; ordinary
+cancellation and invalidation continue to take precedence when work is already obsolete.
+
+Tests vary all radio fields, coordinates and grid layout values, then verify a separately constructed
+equivalent snapshot can publish. All 104 Swift host tests and 113 Android coverage tests passed;
+both apps built, including Xcode test targets. No UI/device checks were run. Calculate remains
+disabled pending production RF/catalog integration and screen wiring. Live-map code and versions
+were unchanged.

@@ -32,6 +32,28 @@ struct CoverageStudyInputs: Sendable {
         self.receiveHeightMeters = receiveHeightMeters
     }
 
+    /// Compare every captured assumption, not just derived loss or grid cell count.
+    func matches(_ other: CoverageStudyInputs) -> Bool {
+        transmitter.latitude == other.transmitter.latitude &&
+        transmitter.longitude == other.transmitter.longitude &&
+        frequencyMHz == other.frequencyMHz &&
+        transmitHeightMeters == other.transmitHeightMeters &&
+        receiveHeightMeters == other.receiveHeightMeters &&
+        grid.radiusMeters == other.grid.radiusMeters &&
+        grid.spacingMeters == other.grid.spacingMeters &&
+        grid.minEastMeters == other.grid.minEastMeters &&
+        grid.maxNorthMeters == other.grid.maxNorthMeters &&
+        grid.columns == other.grid.columns &&
+        grid.rows == other.grid.rows &&
+        budget.transmitPowerDbm == other.budget.transmitPowerDbm &&
+        budget.transmitGainDbi == other.budget.transmitGainDbi &&
+        budget.receiveGainDbi == other.budget.receiveGainDbi &&
+        budget.transmitLossDb == other.budget.transmitLossDb &&
+        budget.receiveLossDb == other.budget.receiveLossDb &&
+        budget.sensitivityDbm == other.budget.sensitivityDbm &&
+        budget.reserveDb == other.budget.reserveDb
+    }
+
     static func fromEditor(fields: [String: String], radiusMeters: Int, spacingMeters: Int) throws -> Self {
         func value(_ field: String) throws -> Double {
             let text = fields[field, default: ""]

@@ -232,6 +232,8 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
   clear progress when work completes, fails, is cancelled or becomes invalid.
   Prepared studies now publish selected terrain source snapshots with the result itself, retaining
   attribution when results become stale and preventing source metadata from leaking into a new run.
+  Publication also verifies returned input values against the captured request, rejecting mismatched
+  radio assumptions, transmitter coordinates or grid layouts even with the correct execution ID.
   Completed-study production/presentation and device rendering checks remain pending.
   Calculate remains disabled: provider discovery, production RF binding, worker wiring
   and result overlays are not connected. Setups are not yet saved.

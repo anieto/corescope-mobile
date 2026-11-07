@@ -58,7 +58,9 @@ class CoverageStudyRunner(private val workerDispatcher: CoroutineDispatcher = Di
                 task.start()
                 try {
                     val output = task.await()
-                    if (!publication.publish(output) && publication.fail(id)) failure = CoverageStudyRunFailure.invalidResult
+                    if ((!output.inputs.matches(inputs) || !publication.publish(output)) && publication.fail(id)) {
+                        failure = CoverageStudyRunFailure.invalidResult
+                    }
                 } catch (cancelled: CancellationException) {
                     publication.cancel(id)
                     coroutineContext.ensureActive()

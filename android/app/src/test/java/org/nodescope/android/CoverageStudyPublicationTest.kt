@@ -40,6 +40,39 @@ class CoverageStudyPublicationTest {
         assertNull(runner.snapshot.result?.terrainSources)
     }
 
+    @Test fun runnerRejectsChangedInputsButAcceptsEquivalentValues() = runTest {
+        val runner = CoverageStudyRunner(StandardTestDispatcher(testScheduler))
+        val baseline = result(UUID.randomUUID())
+        val original = baseline.inputs
+        val fields = mapOf("latitude" to "0", "longitude" to "0", "frequency" to "915",
+            "txHeight" to "30", "rxHeight" to "1.5", "power" to "22", "txGain" to "3", "rxGain" to "2",
+            "txLoss" to "1", "rxLoss" to "1", "sensitivity" to "-130", "reserve" to "5")
+        val variants = mutableListOf<CoverageStudyInputs>()
+        for (key in fields.keys) {
+            val changed = fields.toMutableMap()
+            changed[key] = (fields.getValue(key).toDouble() + 1).toString()
+            val parsed = CoverageStudyInputs.fromEditor(changed, 1000, 1000)
+            variants.add(CoverageStudyInputs(parsed.transmitter, original.grid, parsed.budget,
+                parsed.frequencyMHz, parsed.transmitHeightMeters, parsed.receiveHeightMeters))
+        }
+        val grids = listOf(
+            CoverageGrid(2000, 1000, 0, 0, 0, 0), CoverageGrid(1000, 500, 0, 0, 0, 0),
+            CoverageGrid(1000, 1000, 1000, 1000, 0, 0), CoverageGrid(1000, 1000, 0, 0, 1000, 1000),
+            CoverageGrid(1000, 1000, 0, 1000, 0, 0), CoverageGrid(1000, 1000, 0, 0, -1000, 0))
+        for (grid in grids) variants.add(CoverageStudyInputs(original.transmitter, grid, original.budget,
+            original.frequencyMHz, original.transmitHeightMeters, original.receiveHeightMeters))
+        for (changed in variants) {
+            assertFalse(original.matches(changed))
+            runner.run(original) { id, _ -> baseline.copy(executionID = id, inputs = changed) }
+            assertEquals(CoverageStudyRunFailure.invalidResult, runner.failure)
+            assertNull(runner.snapshot.result)
+            assertFalse(runner.isBusy)
+        }
+        runner.run(original) { id, _ -> result(id) }
+        assertEquals(CoverageStudyPublicationPhase.completed, runner.snapshot.phase)
+        assertNull(runner.failure)
+    }
+
     @Test fun progressBelongsOnlyToTheActiveRun() = runTest {
         val runner = CoverageStudyRunner(StandardTestDispatcher(testScheduler))
         val inputs = result(UUID.randomUUID()).inputs
