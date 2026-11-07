@@ -34,11 +34,12 @@ class CoverageStudyInputs(val transmitter: CoverageTerrainCoordinate, val grid: 
         budget.reserveDb == other.budget.reserveDb
 
     companion object {
-        fun fromEditor(fields: Map<String, String>, radiusMeters: Int, spacingMeters: Int): CoverageStudyInputs {
+        fun fromEditor(fields: Map<String, String>, radiusMeters: Int, spacingMeters: Int, heightInFeet: Boolean = false): CoverageStudyInputs {
             fun value(field: String): Double {
                 val text = fields[field] ?: ""
-                CoverageSetupValidation.issue(field, text)?.let { throw CoverageStudyInputFailure(field, it) }
-                return CoverageSetupValidation.number(text) ?: throw CoverageStudyInputFailure(field, CoverageSetupIssue.number)
+                CoverageSetupValidation.issue(field, text, heightInFeet)?.let { throw CoverageStudyInputFailure(field, it) }
+                val number = CoverageSetupValidation.number(text) ?: throw CoverageStudyInputFailure(field, CoverageSetupIssue.number)
+                return if (heightInFeet && field in listOf("txHeight", "rxHeight")) number * 0.3048 else number
             }
             val coordinate = CoverageTerrainCoordinate(value("latitude"), value("longitude"))
             val frequency = value("frequency")

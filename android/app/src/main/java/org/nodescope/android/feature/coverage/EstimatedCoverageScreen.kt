@@ -25,6 +25,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import org.nodescope.android.core.design.LocalDistanceUnit
+import org.nodescope.android.core.storage.DistanceUnit
 import org.nodescope.android.core.design.MonaspaceNeon
 import org.nodescope.android.core.design.meshCardColors
 import org.nodescope.android.core.design.meshPageBackground
@@ -37,6 +39,8 @@ import org.nodescope.android.feature.map.*
 
 @Composable
 fun EstimatedCoverageScreen(nodes: List<MeshNode>) {
+    val preference = LocalDistanceUnit.current
+    val heightInFeet = rememberSaveable { preference == DistanceUnit.IMPERIAL }
     var latitude by rememberSaveable { mutableStateOf("") }
     var longitude by rememberSaveable { mutableStateOf("") }
     var values by rememberSaveable { mutableStateOf(List(10) { "" }) }
@@ -72,11 +76,11 @@ fun EstimatedCoverageScreen(nodes: List<MeshNode>) {
                 TextButton(onClick = { showNodes = true }) { Text("Known nodes (${known.size})") }
             }
             CoverageSetupCard("Transmitter") {
-                CoverageRadioInputs(CoverageSetupFields.transmitter, values, showsRequired) { index, value -> values = values.toMutableList().also { it[index] = value } }
+                CoverageRadioInputs(CoverageSetupFields.transmitter, values, showsRequired, heightInFeet) { index, value -> values = values.toMutableList().also { it[index] = value } }
             }
             CoverageSetupCard("Receiver assumptions") {
                 Text("Use the same assumed receiver for the coverage map and known nodes. These are not the nodes’ reported equipment settings.", style = MaterialTheme.typography.bodySmall)
-                CoverageRadioInputs(CoverageSetupFields.receiver, values, showsRequired) { index, value -> values = values.toMutableList().also { it[index] = value } }
+                CoverageRadioInputs(CoverageSetupFields.receiver, values, showsRequired, heightInFeet) { index, value -> values = values.toMutableList().also { it[index] = value } }
             }
             CoverageSetupCard("Study area") {
                 LearnLabel("Study radius", GlossaryTerm.STUDY_RADIUS)
@@ -99,7 +103,7 @@ fun EstimatedCoverageScreen(nodes: List<MeshNode>) {
                 if (showsRequired) {
                     val fields = (CoverageSetupFields.keys.zip(values) + listOf("latitude" to latitude, "longitude" to longitude)).toMap()
                     val reviewMessage = try {
-                        CoverageStudyInputs.fromEditor(fields, radius, spacing)
+                        CoverageStudyInputs.fromEditor(fields, radius, spacing, heightInFeet)
                         when (workFits) {
                             null -> "Checking calculation limits for this study area."
                             false -> "Review the study area above. Choose wider spacing or a smaller radius."
@@ -172,15 +176,15 @@ private object CoverageSetupFields {
         }
     }
 }
-@Composable private fun CoverageInput(label: String, value: String, field: String, showsRequired: Boolean, change: (String) -> Unit) {
-    val issue = CoverageSetupValidation.issue(field, value)?.takeIf { it != CoverageSetupIssue.required || showsRequired }
+@Composable private fun CoverageInput(label: String, value: String, field: String, showsRequired: Boolean, heightInFeet: Boolean = false, change: (String) -> Unit) {
+    val issue = CoverageSetupValidation.issue(field, value, heightInFeet)?.takeIf { it != CoverageSetupIssue.required || showsRequired }
     val error = issue?.let { when (it) {
         CoverageSetupIssue.required -> "Enter a value."
         CoverageSetupIssue.number -> "Enter a finite number using a decimal point."
         CoverageSetupIssue.latitude -> "Coverage calculations support latitude from −85° to 85°."
         CoverageSetupIssue.longitude -> "Longitude must be between −180° and 180°."
         CoverageSetupIssue.frequency -> "Frequency must be between 30 and 6000 MHz."
-        CoverageSetupIssue.height -> "Antenna height must be between 1 and 3000 m above ground."
+        CoverageSetupIssue.height -> if (heightInFeet) "Antenna height must be between 1 and 3000 meters above ground (about 3.28 to 9842.52 feet)." else "Antenna height must be between 1 and 3000 m above ground."
         CoverageSetupIssue.nonnegative -> "Enter zero or a positive value."
         CoverageSetupIssue.unknownField -> "This field is not supported."
     } }
@@ -189,10 +193,11 @@ private object CoverageSetupFields {
         textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = MonaspaceNeon),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text))
 }
-@Composable private fun CoverageRadioInputs(fields: List<CoverageSetupField>, values: List<String>, showsRequired: Boolean, change: (Int, String) -> Unit) {
+@Composable private fun CoverageRadioInputs(fields: List<CoverageSetupField>, values: List<String>, showsRequired: Boolean, heightInFeet: Boolean, change: (Int, String) -> Unit) {
     fields.forEach { field ->
-        Row(verticalAlignment = Alignment.CenterVertically) { Text(field.title, Modifier.weight(1f)); LearnButton(field.term) }
-        CoverageInput(field.title, values[field.index], CoverageSetupFields.keys[field.index], showsRequired) { change(field.index, it) }
+        val title = if (heightInFeet && CoverageSetupFields.keys[field.index] in listOf("txHeight", "rxHeight")) "Antenna height (ft)" else field.title
+        Row(verticalAlignment = Alignment.CenterVertically) { Text(title, Modifier.weight(1f)); LearnButton(field.term) }
+        CoverageInput(title, values[field.index], CoverageSetupFields.keys[field.index], showsRequired, heightInFeet) { change(field.index, it) }
     }
 }
 @Composable private fun CoverageChoice(value: Int, options: List<Pair<Int, String>>, change: (Int) -> Unit) {

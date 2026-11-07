@@ -13,6 +13,9 @@ struct EstimatedCoverageScreen: View {
     @State private var radius = 20_000
     @State private var spacing = 1000
     @State private var showsNodes = false
+    // Freeze the display unit for this draft so entered heights never change meaning.
+    @State private var heightInFeet = (UserDefaults.standard.string(forKey: DistanceUnit.defaultsKey)
+        .flatMap(DistanceUnit.init(rawValue:)) ?? .imperial) == .imperial
 
     private var coordinate: CLLocationCoordinate2D? {
         guard let lat = CoverageSetupValidation.number(latitude), let lon = CoverageSetupValidation.number(longitude),
@@ -33,7 +36,7 @@ struct EstimatedCoverageScreen: View {
                 .frame(height: wide ? nil : max(220, geometry.size.height * 0.38))
                 EstimatedCoverageEditor(latitude: $latitude, longitude: $longitude, values: $values,
                     radius: $radius, spacing: $spacing, showsNodes: $showsNodes,
-                    nodeCount: knownNodes.count, catalogLoading: catalog.isLoading, catalogError: catalog.errorMessage)
+                    heightInFeet: heightInFeet, nodeCount: knownNodes.count, catalogLoading: catalog.isLoading, catalogError: catalog.errorMessage)
                     .frame(width: wide ? 380 : nil)
             }
         }
@@ -156,14 +159,16 @@ private struct CoverageRadioFields: View {
     let fields: [CoverageInputField]
     @Binding var values: [String: String]
     let showsRequired: Bool
+    var heightInFeet = false
     var body: some View {
         ForEach(fields) { field in
+            let title: LocalizedStringKey = heightInFeet && ["txHeight", "rxHeight"].contains(field.id) ? "Antenna height (ft)" : field.title
             VStack(alignment: .leading, spacing: 6) {
-                LearnLabel(field.title, term: field.term)
+                LearnLabel(title, term: field.term)
                 TextField("Enter value", text: Binding(get: { values[field.id, default: ""] }, set: { values[field.id] = $0 }))
                     .font(.monaspace(.body)).keyboardType(.numbersAndPunctuation)
-                    .accessibilityLabel(field.title)
-                CoverageFieldIssue(field: field.id, text: values[field.id, default: ""], showsRequired: showsRequired)
+                    .accessibilityLabel(title)
+                CoverageFieldIssue(field: field.id, text: values[field.id, default: ""], showsRequired: showsRequired, heightInFeet: heightInFeet)
             }
         }
     }
@@ -176,6 +181,7 @@ private struct EstimatedCoverageEditor: View {
     @Binding var radius: Int
     @Binding var spacing: Int
     @Binding var showsNodes: Bool
+    let heightInFeet: Bool
     let nodeCount: Int
     let catalogLoading: Bool
     let catalogError: String?
@@ -188,7 +194,7 @@ private struct EstimatedCoverageEditor: View {
     private var reviewMessage: LocalizedStringKey {
         let fields = values.merging(["latitude": latitude, "longitude": longitude]) { _, new in new }
         do {
-            _ = try CoverageStudyInputs.fromEditor(fields: fields, radiusMeters: radius, spacingMeters: spacing)
+            _ = try CoverageStudyInputs.fromEditor(fields: fields, radiusMeters: radius, spacingMeters: spacing, heightInFeet: heightInFeet)
         } catch is CoverageStudyInputFailure {
             return "Review the highlighted fields above. All inputs are required."
         } catch is CoverageGridFailure {
@@ -221,12 +227,12 @@ private struct EstimatedCoverageEditor: View {
             } header: { Text("Transmitter location").font(.monaspace(.headline)) }
                 .instrumentListRows()
             Section {
-                CoverageRadioFields(fields: CoverageInputField.transmitter, values: $values, showsRequired: showsRequired)
+                CoverageRadioFields(fields: CoverageInputField.transmitter, values: $values, showsRequired: showsRequired, heightInFeet: heightInFeet)
             } header: { Text("Transmitter").font(.monaspace(.headline)) }.instrumentListRows()
             Section {
                 Text("Use the same assumed receiver for the coverage map and known nodes. These are not the nodes’ reported equipment settings.")
                     .font(.caption).foregroundStyle(.secondary)
-                CoverageRadioFields(fields: CoverageInputField.receiver, values: $values, showsRequired: showsRequired)
+                CoverageRadioFields(fields: CoverageInputField.receiver, values: $values, showsRequired: showsRequired, heightInFeet: heightInFeet)
             } header: { Text("Receiver assumptions").font(.monaspace(.headline)) }.instrumentListRows()
             Section {
                 Picker(selection: $radius) {
@@ -283,8 +289,9 @@ private struct CoverageFieldIssue: View {
     let field: String
     let text: String
     let showsRequired: Bool
+    var heightInFeet = false
     var body: some View {
-        if let issue = CoverageSetupValidation.issue(field: field, text: text), issue != .required || showsRequired {
+        if let issue = CoverageSetupValidation.issue(field: field, text: text, heightInFeet: heightInFeet), issue != .required || showsRequired {
             Text(message(issue)).font(.caption).foregroundStyle(.red)
         }
     }
@@ -295,7 +302,7 @@ private struct CoverageFieldIssue: View {
         case .latitude: "Coverage calculations support latitude from −85° to 85°."
         case .longitude: "Longitude must be between −180° and 180°."
         case .frequency: "Frequency must be between 30 and 6000 MHz."
-        case .height: "Antenna height must be between 1 and 3000 m above ground."
+        case .height: heightInFeet ? "Antenna height must be between 1 and 3000 meters above ground (about 3.28 to 9842.52 feet)." : "Antenna height must be between 1 and 3000 m above ground."
         case .nonnegative: "Enter zero or a positive value."
         case .unknownField: "This field is not supported."
         }

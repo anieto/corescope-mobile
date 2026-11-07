@@ -9,11 +9,12 @@ object CoverageSetupValidation {
 
     private val numeric = Regex("""[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?""")
     fun number(text: String): Double? = text.trim().takeIf { numeric.matches(it) }?.toDoubleOrNull()?.takeIf { it.isFinite() }
-    fun issue(field: String, text: String): CoverageSetupIssue? {
+    fun issue(field: String, text: String, heightInFeet: Boolean = false): CoverageSetupIssue? {
         if (field !in listOf("latitude", "longitude", "frequency", "power", "txHeight", "txGain", "txLoss",
                 "rxHeight", "rxGain", "rxLoss", "sensitivity", "reserve")) return CoverageSetupIssue.unknownField
         if (text.isBlank()) return CoverageSetupIssue.required
-        val value = number(text) ?: return CoverageSetupIssue.number
+        val parsed = number(text) ?: return CoverageSetupIssue.number
+        val value = if (heightInFeet && field in listOf("txHeight", "rxHeight")) parsed * 0.3048 else parsed
         return when (field) {
             "latitude" -> if (value in -85.0..85.0) null else CoverageSetupIssue.latitude
             "longitude" -> if (value in -180.0..180.0) null else CoverageSetupIssue.longitude

@@ -18,11 +18,12 @@ enum CoverageSetupValidation {
         return result
     }
 
-    static func issue(field: String, text: String) -> CoverageSetupIssue? {
+    static func issue(field: String, text: String, heightInFeet: Bool = false) -> CoverageSetupIssue? {
         guard ["latitude", "longitude", "frequency", "power", "txHeight", "txGain", "txLoss",
                "rxHeight", "rxGain", "rxLoss", "sensitivity", "reserve"].contains(field) else { return .unknownField }
         if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return .required }
-        guard let value = number(text) else { return .number }
+        guard let parsed = number(text) else { return .number }
+        let value = heightInFeet && ["txHeight", "rxHeight"].contains(field) ? parsed * 0.3048 : parsed
         switch field {
         case "latitude": return (-85...85).contains(value) ? nil : .latitude
         case "longitude": return (-180...180).contains(value) ? nil : .longitude

@@ -54,16 +54,16 @@ struct CoverageStudyInputs: Sendable {
         budget.reserveDb == other.budget.reserveDb
     }
 
-    static func fromEditor(fields: [String: String], radiusMeters: Int, spacingMeters: Int) throws -> Self {
+    static func fromEditor(fields: [String: String], radiusMeters: Int, spacingMeters: Int, heightInFeet: Bool = false) throws -> Self {
         func value(_ field: String) throws -> Double {
             let text = fields[field, default: ""]
-            if let issue = CoverageSetupValidation.issue(field: field, text: text) {
+            if let issue = CoverageSetupValidation.issue(field: field, text: text, heightInFeet: heightInFeet) {
                 throw CoverageStudyInputFailure.field(field, issue)
             }
             guard let number = CoverageSetupValidation.number(text) else {
                 throw CoverageStudyInputFailure.field(field, .number)
             }
-            return number
+            return heightInFeet && ["txHeight", "rxHeight"].contains(field) ? number * 0.3048 : number
         }
         let coordinate = try CoverageTerrainCoordinate(latitude: value("latitude"), longitude: value("longitude"))
         let frequency = try value("frequency"), txHeight = try value("txHeight"), rxHeight = try value("rxHeight")

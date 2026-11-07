@@ -1096,3 +1096,21 @@ passed. These tests do not verify OS permission dialogs or location delivery. Ph
 remain for first-use permission, denial, approximate location, services off, background/navigation
 cancellation, rapid retry and compact/wide light/dark layouts. Calculate remains disabled while the
 production RF distribution/packaging and trusted terrain catalog endpoint remain unresolved.
+
+## Preferred antenna-height units (2026-11-07)
+
+Both coverage editors now capture the preferred distance unit when opening the setup and retain it
+for that draft. Transmitter and receiver antenna-height labels, accessibility labels and validation
+use feet for imperial preference and meters otherwise. A preference change cannot reinterpret already
+typed heights. Radius and sampling-spacing choices retain their explicitly labeled metric units.
+
+The editor-to-study conversion accepts the captured height unit, validates heights after conversion,
+and stores meters in immutable study inputs. Other radio values and coordinates are not converted;
+missing inputs remain required. Existing callers default to meters. The physical height range remains
+1–3000 meters above ground, with approximate feet equivalents shown in imperial validation messages.
+
+All 106 Swift host tests and 115 Android coverage tests passed, including conversion of both heights,
+unchanged non-height assumptions, missing input and out-of-range rejection. Both apps built with
+Xcode test targets included. Visual light/dark, compact/wide, accessibility and preference-change
+checks remain pending. Live-map code, stored data and release versions were unchanged. Calculate
+remains disabled pending production RF/catalog integration and screen wiring.

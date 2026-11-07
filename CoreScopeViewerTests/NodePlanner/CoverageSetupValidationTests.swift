@@ -3,6 +3,30 @@ import Testing
 @testable import CoreScopeViewer
 
 struct CoverageSetupValidationTests {
+    @Test func imperialHeightsConvertOnlyHeightInputs() throws {
+        let fields = ["latitude": "50", "longitude": "-115", "frequency": "915", "power": "22",
+            "txHeight": "100", "txGain": "3", "txLoss": "1", "rxHeight": "10", "rxGain": "2",
+            "rxLoss": "1", "sensitivity": "-130", "reserve": "5"]
+        let feet = try CoverageStudyInputs.fromEditor(fields: fields, radiusMeters: 5000, spacingMeters: 1000, heightInFeet: true)
+        let meters = try CoverageStudyInputs.fromEditor(fields: fields, radiusMeters: 5000, spacingMeters: 1000)
+        #expect(abs(feet.transmitHeightMeters - 30.48) < 1e-12)
+        #expect(abs(feet.receiveHeightMeters - 3.048) < 1e-12)
+        #expect(meters.transmitHeightMeters == 100 && meters.receiveHeightMeters == 10)
+        #expect(feet.frequencyMHz == meters.frequencyMHz && feet.budget.maximumLossDb == meters.budget.maximumLossDb)
+        #expect(feet.transmitter.latitude == meters.transmitter.latitude && feet.grid.count == meters.grid.count)
+        for field in ["txHeight", "rxHeight"] {
+            #expect(CoverageSetupValidation.issue(field: field, text: "3", heightInFeet: true) == .height)
+            #expect(CoverageSetupValidation.issue(field: field, text: "4", heightInFeet: true) == nil)
+            #expect(CoverageSetupValidation.issue(field: field, text: "10000", heightInFeet: true) == .height)
+            #expect(CoverageSetupValidation.issue(field: field, text: "", heightInFeet: true) == .required)
+            var invalid = fields
+            invalid[field] = "3"
+            #expect(throws: CoverageStudyInputFailure.field(field, .height)) {
+                try CoverageStudyInputs.fromEditor(fields: invalid, radiusMeters: 5000, spacingMeters: 1000, heightInFeet: true)
+            }
+        }
+    }
+
     @Test func mapCoordinatesRespectCoverageBoundaries() {
         for latitude in [-85.0, 0, 85] {
             for longitude in [-180.0, 0, 180] {

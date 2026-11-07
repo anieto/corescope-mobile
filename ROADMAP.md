@@ -240,6 +240,8 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
   explain the limit and cannot be confirmed, and invalid manual coordinates do not select a transmitter.
   Explicit Use current location now reuses foreground location helpers on both platforms, with
   cancellation, permission/service feedback and supported-coordinate checks; device validation remains.
+  Both antenna-height fields now honor the preferred distance unit, frozen for each open setup,
+  with unit-aware validation and conversion to meters in calculation snapshots.
   Completed-study production/presentation and device rendering checks remain pending.
   Calculate remains disabled: provider discovery, production RF binding, worker wiring
   and result overlays are not connected. Setups are not yet saved.

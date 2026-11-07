@@ -7,6 +7,33 @@ import org.junit.Test
 import org.nodescope.android.feature.coverage.*
 
 class CoverageSetupValidationTest {
+    @Test fun imperialHeightsConvertOnlyHeightInputs() {
+        val fields = mapOf("latitude" to "50", "longitude" to "-115", "frequency" to "915", "power" to "22",
+            "txHeight" to "100", "txGain" to "3", "txLoss" to "1", "rxHeight" to "10", "rxGain" to "2",
+            "rxLoss" to "1", "sensitivity" to "-130", "reserve" to "5")
+        val feet = CoverageStudyInputs.fromEditor(fields, 5000, 1000, true)
+        val meters = CoverageStudyInputs.fromEditor(fields, 5000, 1000)
+        assertEquals(30.48, feet.transmitHeightMeters, 1e-12)
+        assertEquals(3.048, feet.receiveHeightMeters, 1e-12)
+        assertEquals(100.0, meters.transmitHeightMeters, 0.0)
+        assertEquals(10.0, meters.receiveHeightMeters, 0.0)
+        assertEquals(meters.frequencyMHz, feet.frequencyMHz, 0.0)
+        assertEquals(meters.budget.maximumLossDb, feet.budget.maximumLossDb, 0.0)
+        assertEquals(meters.transmitter, feet.transmitter)
+        assertEquals(meters.grid.count, feet.grid.count)
+        for (field in listOf("txHeight", "rxHeight")) {
+            assertEquals(CoverageSetupIssue.height, CoverageSetupValidation.issue(field, "3", true))
+            assertNull(CoverageSetupValidation.issue(field, "4", true))
+            assertEquals(CoverageSetupIssue.height, CoverageSetupValidation.issue(field, "10000", true))
+            assertEquals(CoverageSetupIssue.required, CoverageSetupValidation.issue(field, "", true))
+            val error = assertThrows(CoverageStudyInputFailure::class.java) {
+                CoverageStudyInputs.fromEditor(fields + (field to "3"), 5000, 1000, true)
+            }
+            assertEquals(field, error.field)
+            assertEquals(CoverageSetupIssue.height, error.issue)
+        }
+    }
+
     @Test fun mapCoordinatesRespectCoverageBoundaries() {
         for (latitude in listOf(-85.0, 0.0, 85.0)) {
             for (longitude in listOf(-180.0, 0.0, 180.0)) {
