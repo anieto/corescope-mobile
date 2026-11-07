@@ -13,6 +13,11 @@ struct CoverageStudyLimits: Sendable {
               (0...50_000).contains(nodeModelCalls) else { throw CoverageTerrainProfileFailure.invalidInput }
     }
 }
+/// Sources selected for a prepared study, not a complete RF reproducibility record.
+struct CoverageStudyTerrainSources: Sendable {
+    let descriptors: [CoverageTerrainDescriptor]
+}
+
 struct CoverageStudyResult: Sendable {
     let executionID: UUID
     let inputs: CoverageStudyInputs
@@ -22,6 +27,18 @@ struct CoverageStudyResult: Sendable {
     let limits: CoverageStudyLimits
     let area: CoverageAreaResult
     let nodes: CoverageNodeBatchResult
+    let terrainSources: CoverageStudyTerrainSources?
+
+    init(executionID: UUID, inputs: CoverageStudyInputs, limits: CoverageStudyLimits,
+         area: CoverageAreaResult, nodes: CoverageNodeBatchResult,
+         terrainSources: CoverageStudyTerrainSources? = nil) {
+        self.executionID = executionID
+        self.inputs = inputs
+        self.limits = limits
+        self.area = area
+        self.nodes = nodes
+        self.terrainSources = terrainSources
+    }
 }
 
 /// One serialized worker operation borrowing prepared terrain. No area-only result escapes node failure.

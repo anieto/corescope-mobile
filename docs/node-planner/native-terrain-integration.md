@@ -1012,3 +1012,21 @@ updates after cancellation or invalidation. All 102 Swift host tests and 111 And
 passed. Both apps built, including Xcode test targets. No UI, simulator or device checks were run.
 This adds execution state for eventual screen integration; Calculate remains disabled pending
 production model/catalog integration and wiring. Live-map code and release versions are unchanged.
+
+## Terrain sources retained through publication (2026-11-06)
+
+Prepared operations now return `CoverageStudyResult` directly, replacing the separate result wrapper.
+Selected terrain descriptors live in an optional source snapshot on that result, so returning a
+prepared operation through the progress-aware runner no longer drops attribution and source identity.
+Low-level studies without recorded sources retain an explicit absent snapshot. Android copies the
+descriptor list and exposes an unmodifiable view; Swift retains its value-semantic array.
+
+Publication tests verify source identity and attribution survive publication and stale-result
+invalidation, while a subsequent study without sources does not inherit old metadata. Tests also
+verify caller collection mutation cannot alter the snapshot. Existing offline preparation tests
+verify sources are attached to the actual prepared result. All 103 Swift host tests and 112 Android
+coverage tests passed; both apps built, including Xcode test targets. No device/UI checks were run.
+
+This records selected terrain sources, not a full reproducibility record: production RF version,
+configuration, trusted catalog discovery and screen wiring remain pending. Calculate remains disabled.
+Live-map code and release versions were unchanged.

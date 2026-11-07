@@ -2,11 +2,6 @@ import Foundation
 
 enum CoveragePreparationStage: Sendable { case validating, preparingTerrain, calculating }
 
-struct CoveragePreparedStudyResult: Sendable {
-    let study: CoverageStudyResult
-    let terrain: [CoverageTerrainDescriptor]
-}
-
 /// Run from the study runner's worker. Owns the cache and all terrain readers for one operation.
 /// Catalog trust and the qualified RF implementation are explicit caller responsibilities.
 enum CoveragePreparedStudy {
@@ -16,7 +11,7 @@ enum CoveragePreparedStudy {
                          cacheRoot: URL, cacheQuota: Int64, downloadLimit: Int64,
                          offline: Bool, executionID: UUID,
                          progress: (CoveragePreparationStage) async -> Void = { _ in },
-                         predictLoss: (CoverageTerrainProfile, CoverageStudyInputs) throws -> Double) async throws -> CoveragePreparedStudyResult {
+                         predictLoss: (CoverageTerrainProfile, CoverageStudyInputs) throws -> Double) async throws -> CoverageStudyResult {
         try Task.checkCancellation()
         await progress(.validating)
         try Task.checkCancellation()
@@ -52,7 +47,9 @@ enum CoveragePreparedStudy {
             mosaic.close()
             try cache.close()
             try Task.checkCancellation()
-            return CoveragePreparedStudyResult(study: study, terrain: descriptors)
+            return CoverageStudyResult(executionID: study.executionID, inputs: study.inputs,
+                limits: study.limits, area: study.area, nodes: study.nodes,
+                terrainSources: CoverageStudyTerrainSources(descriptors: descriptors))
         } catch {
             // Retain the calculation/transport failure; close is retried after readers were released.
             try? cache.close()

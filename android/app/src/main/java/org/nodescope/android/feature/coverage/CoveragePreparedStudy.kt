@@ -7,7 +7,6 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 
 enum class CoveragePreparationStage { validating, preparingTerrain, calculating }
-data class CoveragePreparedStudyResult(val study: CoverageStudyResult, val terrain: List<CoverageTerrainDescriptor>)
 
 /** Worker operation owning its cache/readers. Catalog trust and qualified RF binding stay explicit. */
 object CoveragePreparedStudy {
@@ -17,7 +16,7 @@ object CoveragePreparedStudy {
                          cacheRoot: File, cacheQuota: Long, downloadLimit: Long,
                          offline: Boolean, executionID: UUID,
                          progress: suspend (CoveragePreparationStage) -> Unit = {},
-                         predictLoss: (CoverageTerrainProfile, CoverageStudyInputs) -> Double): CoveragePreparedStudyResult {
+                         predictLoss: (CoverageTerrainProfile, CoverageStudyInputs) -> Double): CoverageStudyResult {
         val context = currentCoroutineContext()
         context.ensureActive()
         // Freeze caller-owned collections before the first suspension.
@@ -46,6 +45,6 @@ object CoveragePreparedStudy {
             }
         }
         context.ensureActive()
-        return CoveragePreparedStudyResult(study, descriptors.toList())
+        return study.copy(terrainSources = CoverageStudyTerrainSources(descriptors))
     }
 }

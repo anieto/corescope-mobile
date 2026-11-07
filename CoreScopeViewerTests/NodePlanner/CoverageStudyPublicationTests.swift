@@ -4,7 +4,7 @@ import Testing
 
 @MainActor
 struct CoverageStudyPublicationTests {
-    private func result(_ id: UUID, completed: Bool = true, cells: Bool = true) throws -> CoverageStudyResult {
+    private func result(_ id: UUID, completed: Bool = true, cells: Bool = true, terrain: CoverageStudyTerrainSources? = nil) throws -> CoverageStudyResult {
         let grid = try CoverageGrid(radiusMeters: 1000, spacingMeters: 1000,
             minEastMeters: 0, maxEastMeters: 0, minNorthMeters: 0, maxNorthMeters: 0)
         let budget = try CoverageLinkBudget(transmitPowerDbm: 22, transmitGainDbi: 3, receiveGainDbi: 2,
@@ -16,8 +16,30 @@ struct CoverageStudyPublicationTests {
             limits: CoverageStudyLimits(areaSamples: 0, areaGeometry: 0, nodeSamples: 0, nodeGeometry: 0, nodeModelCalls: 0),
             area: CoverageAreaResult(cells: cells ? [CoverageAreaCell(state: .nearSite, lossDb: nil, marginDb: nil)] : [],
                 chargedSamples: 0, chargedGeometry: 0, workLimited: false),
-            nodes: CoverageNodeBatchResult(run: run, chargedTerrainEvaluations: 0, chargedGeometryEvaluations: 0, modelCalls: 0))
+            nodes: CoverageNodeBatchResult(run: run, chargedTerrainEvaluations: 0, chargedGeometryEvaluations: 0, modelCalls: 0), terrainSources: terrain)
     }
+    @Test func publishedTerrainSourcesRemainWithStaleResultAndClearForNextRun() async throws {
+        let descriptor = try CoverageTerrainDescriptor(dataset: "test", revision: "r1", tile: "N00E000",
+            compressedSHA256: String(repeating: "0", count: 64), packedBytes: 20, side: 3,
+            url: "https://example.com/tile", verticalDatum: "EGM96", attribution: "Test source")
+        var catalog = [descriptor]
+        let terrain = CoverageStudyTerrainSources(descriptors: catalog)
+        catalog.removeAll()
+        let runner = CoverageStudyRunner()
+        let inputs = try result(UUID()).inputs
+        await runner.runWithProgress(inputs: inputs) { id, _, report in
+            await report(.calculating)
+            return try await result(id, terrain: terrain)
+        }
+        #expect(runner.result?.terrainSources?.descriptors.first?.cacheKey == descriptor.cacheKey)
+        #expect(runner.result?.terrainSources?.descriptors.first?.attribution == "Test source")
+        runner.invalidate()
+        #expect(runner.phase == .stale)
+        #expect(runner.result?.terrainSources?.descriptors.count == 1)
+        await runner.run(inputs: inputs) { id, _ in try await result(id) }
+        #expect(runner.result?.terrainSources == nil)
+    }
+
     private actor CleanupGate {
         private var continuation: CheckedContinuation<Void, Never>?
         private var released = false

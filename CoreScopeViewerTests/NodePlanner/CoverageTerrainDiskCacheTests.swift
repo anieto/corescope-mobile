@@ -61,9 +61,9 @@ struct CoverageTerrainDiskCacheTests {
             switch await task.result {
             case .success(let output):
                 #expect(mode == 0)
-                #expect(output.study.executionID == id)
-                #expect(output.study.area.cells.first?.state == .qualified)
-                #expect(output.terrain.map(\.cacheKey) == [descriptor.cacheKey])
+                #expect(output.executionID == id)
+                #expect(output.area.cells.first?.state == .qualified)
+                #expect(output.terrainSources?.descriptors.map(\.cacheKey) == [descriptor.cacheKey])
             case .failure(let error):
                 if mode == 1 { #expect(error as? CoverageLinkBudgetFailure == .invalidInput) }
                 else { #expect(mode == 2 && error is CancellationError) }

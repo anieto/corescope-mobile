@@ -230,6 +230,8 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
   Offline fixture tests cover success, model failure and cancellation on both platforms.
   Run owners now expose preparation progress on the UI context, reject obsolete callbacks and
   clear progress when work completes, fails, is cancelled or becomes invalid.
+  Prepared studies now publish selected terrain source snapshots with the result itself, retaining
+  attribution when results become stale and preventing source metadata from leaking into a new run.
   Completed-study production/presentation and device rendering checks remain pending.
   Calculate remains disabled: provider discovery, production RF binding, worker wiring
   and result overlays are not connected. Setups are not yet saved.

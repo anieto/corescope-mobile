@@ -62,9 +62,9 @@ class CoverageTerrainDiskCacheTest {
                     try {
                         val output = task.await()
                         assertEquals(0, mode)
-                        assertEquals(id, output.study.executionID)
-                        assertEquals(CoverageAreaState.qualified, output.study.area.cells.first().state)
-                        assertEquals(listOf(descriptor.cacheKey), output.terrain.map { it.cacheKey })
+                        assertEquals(id, output.executionID)
+                        assertEquals(CoverageAreaState.qualified, output.area.cells.first().state)
+                        assertEquals(listOf(descriptor.cacheKey), output.terrainSources?.descriptors?.map { it.cacheKey })
                     } catch (failure: Exception) {
                         if (mode == 1) assertTrue(failure is IllegalArgumentException)
                         else { assertEquals(2, mode); assertTrue(failure is CancellationException) }

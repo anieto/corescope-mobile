@@ -8,14 +8,38 @@ import org.junit.Test
 import org.nodescope.android.feature.coverage.*
 
 class CoverageStudyPublicationTest {
-    private fun result(id: UUID, completed: Boolean = true, cells: Boolean = true): CoverageStudyResult {
+    private fun result(id: UUID, completed: Boolean = true, cells: Boolean = true, terrain: CoverageStudyTerrainSources? = null): CoverageStudyResult {
         val run = CoverageNodeRun(emptyList(), true, 1, 1000.0)
         if (completed) run.complete()
         return CoverageStudyResult(id, CoverageStudyInputs(CoverageTerrainCoordinate(0.0, 0.0), CoverageGrid(1000, 1000, 0, 0, 0, 0),
             CoverageLinkBudget(22.0, 3.0, 2.0, 1.0, 1.0, -130.0, 5.0), 915.0, 30.0, 1.5), CoverageStudyLimits(0, 0, 0, 0, 0),
             CoverageAreaResult(if (cells) listOf(CoverageAreaCell(CoverageAreaState.nearSite)) else emptyList(), 0, 0, false),
-            CoverageNodeBatchResult(run, 0, 0, 0))
+            CoverageNodeBatchResult(run, 0, 0, 0), terrain)
     }
+    @Test fun publishedTerrainSourcesRemainWithStaleResultAndClearForNextRun() = runTest {
+        val descriptor = CoverageTerrainDescriptor("test", "r1", "N00E000", "0".repeat(64), 20, 3,
+            "https://example.com/tile", "EGM96", "Test source")
+        val catalog = mutableListOf(descriptor)
+        val terrain = CoverageStudyTerrainSources(catalog)
+        catalog.clear()
+        assertThrows(UnsupportedOperationException::class.java) {
+            (terrain.descriptors as MutableList).clear()
+        }
+        val runner = CoverageStudyRunner(StandardTestDispatcher(testScheduler))
+        val inputs = result(UUID.randomUUID()).inputs
+        runner.runWithProgress(inputs) { id, _, report ->
+            report(CoveragePreparationStage.calculating)
+            result(id, terrain = terrain)
+        }
+        assertEquals(descriptor.cacheKey, runner.snapshot.result?.terrainSources?.descriptors?.first()?.cacheKey)
+        assertEquals("Test source", runner.snapshot.result?.terrainSources?.descriptors?.first()?.attribution)
+        runner.invalidate()
+        assertEquals(CoverageStudyPublicationPhase.stale, runner.snapshot.phase)
+        assertEquals(1, runner.snapshot.result?.terrainSources?.descriptors?.size)
+        runner.run(inputs) { id, _ -> result(id) }
+        assertNull(runner.snapshot.result?.terrainSources)
+    }
+
     @Test fun progressBelongsOnlyToTheActiveRun() = runTest {
         val runner = CoverageStudyRunner(StandardTestDispatcher(testScheduler))
         val inputs = result(UUID.randomUUID()).inputs
