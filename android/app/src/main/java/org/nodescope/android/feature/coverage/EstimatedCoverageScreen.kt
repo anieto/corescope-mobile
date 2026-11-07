@@ -64,7 +64,7 @@ fun EstimatedCoverageScreen(nodes: List<MeshNode>) {
         ?.takeIf { CoverageSetupValidation.supportsCoordinate(it.latitude, it.longitude) }
     val known = remember(nodes, selected) { nearestCoverageNodes(nodes, selected) }
     val map: @Composable (Modifier) -> Unit = { modifier ->
-        CoverageSetupMap(selected, known, modifier) { latitude = it.latitude.toString(); longitude = it.longitude.toString() }
+        CoverageSetupMap(selected, listOf(latitude, longitude), known, modifier) { latitude = it.latitude.toString(); longitude = it.longitude.toString() }
     }
     val editor: @Composable (Modifier) -> Unit = { modifier ->
         Column(modifier.meshPageBackground().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -210,14 +210,15 @@ private object CoverageSetupFields {
     }
 }
 
-@Composable private fun CoverageSetupMap(selected: Coordinate?, nodes: List<MeshNode>, modifier: Modifier,
+@Composable private fun CoverageSetupMap(selected: Coordinate?, locationInput: List<String>, nodes: List<MeshNode>, modifier: Modifier,
                                         layer: CoverageMapLayer? = null, choose: (Coordinate) -> Unit) {
     val context = LocalContext.current
     val uri = LocalUriHandler.current
     var choice by remember { mutableStateOf(loadMapProvider(context)) }
     var layersOpen by remember { mutableStateOf(false) }
     var retry by remember { mutableIntStateOf(0) }
-    var pending by rememberSaveable { mutableStateOf<List<Double>?>(null) }
+    // Proposals belong to the coordinate fields at placement time, even if those fields are invalid.
+    var pending by remember(locationInput) { mutableStateOf<List<Double>?>(null) }
     val initial = selected ?: nodes.firstOrNull()?.coordinate
     var camera by rememberSaveable { mutableStateOf(listOf(initial?.latitude ?: 0.0, initial?.longitude ?: 0.0, if (initial == null) 1.0 else 10.0, 0.0, 0.0)) }
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.3f

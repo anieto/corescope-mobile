@@ -242,6 +242,8 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
   cancellation, permission/service feedback and supported-coordinate checks; device validation remains.
   Both antenna-height fields now honor the preferred distance unit, frozen for each open setup,
   with unit-aware validation and conversion to meters in calculation snapshots.
+  Pending map proposals now expire on coordinate edits or current-location updates, preventing
+  an old confirmation from overwriting a newer transmitter selection.
   Completed-study production/presentation and device rendering checks remain pending.
   Calculate remains disabled: provider discovery, production RF binding, worker wiring
   and result overlays are not connected. Setups are not yet saved.

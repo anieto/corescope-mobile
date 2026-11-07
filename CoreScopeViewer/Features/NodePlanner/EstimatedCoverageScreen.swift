@@ -28,7 +28,7 @@ struct EstimatedCoverageScreen: View {
             let wide = geometry.size.width >= 800
             let layout = wide ? AnyLayout(HStackLayout(spacing: 0)) : AnyLayout(VStackLayout(spacing: 0))
             layout {
-                EstimatedCoverageMap(coordinate: coordinate, nodes: knownNodes) { point in
+                EstimatedCoverageMap(coordinate: coordinate, locationInput: [latitude, longitude], nodes: knownNodes) { point in
                     latitude = String(point.latitude)
                     longitude = String(point.longitude)
                 }
@@ -101,15 +101,20 @@ struct EstimatedCoverageScreen: View {
 
 private struct EstimatedCoverageMap: View {
     let coordinate: CLLocationCoordinate2D?
+    let locationInput: [String]
     let nodes: [MeshNode]
     let select: (CLLocationCoordinate2D) -> Void
-    @State private var tentative: CLLocationCoordinate2D?
+    @State private var proposal: (coordinate: CLLocationCoordinate2D, input: [String])?
+    private var tentative: CLLocationCoordinate2D? {
+        proposal?.input == locationInput ? proposal?.coordinate : nil
+    }
     @AppStorage(MapDisplayStyle.defaultsKey) private var style = MapDisplayStyle.standard
 
     var body: some View {
         CoverageMapHost(coordinate: coordinate, tentative: tentative, nodes: nodes, style: style) {
-            tentative = $0
+            proposal = ($0, locationInput)
         }
+        .onChange(of: locationInput) { proposal = nil }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 6) {
                 if let tentative {
@@ -119,9 +124,9 @@ private struct EstimatedCoverageMap: View {
                             .font(.subheadline).foregroundStyle(.red)
                     }
                     HStack {
-                        Button("Cancel") { self.tentative = nil }
+                        Button("Cancel") { proposal = nil }
                         Spacer()
-                        Button("Use location") { select(tentative); self.tentative = nil }
+                        Button("Use location") { select(tentative); proposal = nil }
                             .buttonStyle(.borderedProminent)
                             .disabled(!supported)
                     }

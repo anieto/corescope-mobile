@@ -1114,3 +1114,17 @@ unchanged non-height assumptions, missing input and out-of-range rejection. Both
 Xcode test targets included. Visual light/dark, compact/wide, accessibility and preference-change
 checks remain pending. Live-map code, stored data and release versions were unchanged. Calculate
 remains disabled pending production RF/catalog integration and screen wiring.
+
+## Proposed-location lifetime (2026-11-07)
+
+Coverage map proposals now belong to the coordinate text present when they were placed. Editing
+either field or applying a current-location result discards the proposal, even if the resulting
+coordinates are temporarily invalid. This closes a path where confirming an old proposed pin
+could overwrite a newer transmitter selection. Swift checks the proposal's captured input before
+displaying it; Android keys temporary proposal state by both coordinate strings. Android proposals
+are no longer restored after recreation; confirmed coordinate fields retain their existing behavior.
+
+Both apps built, including Xcode test targets. No unit suites were rerun for this UI-only lifecycle
+change. Device checks remain for placing then editing, placing then using current location,
+invalid-to-invalid coordinate edits, confirmation/cancellation and rotation. Live-map code and
+versions were unchanged. Calculate remains disabled pending production integration.
