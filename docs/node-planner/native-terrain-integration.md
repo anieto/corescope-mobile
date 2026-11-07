@@ -1045,3 +1045,21 @@ equivalent snapshot can publish. All 104 Swift host tests and 113 Android covera
 both apps built, including Xcode test targets. No UI/device checks were run. Calculate remains
 disabled pending production RF/catalog integration and screen wiring. Live-map code and versions
 were unchanged.
+
+## Complete setup review (2026-11-07)
+
+Both setup screens now run Review inputs through the validated study snapshot instead of checking
+each text field in isolation. The review distinguishes missing/invalid fields, invalid study grids,
+combined radio arithmetic overflow, a pending work check and an exceeded work limit. Its success
+message explicitly leaves terrain availability and model suitability unchecked and states that no
+coverage has been calculated.
+
+Work-check presentation is keyed to radius and spacing, so a result for a previous area cannot
+temporarily appear as approval of a newly selected area. Swift retains the checked dimensions with
+the result; Android recreates its check state when those dimensions change. Existing background
+work cancellation remains in place.
+
+Both apps built, including Xcode test targets. Existing coverage suites passed: 104 Swift host tests
+and 113 Android tests, including complete snapshot validation and combined-value overflow cases.
+Light/dark mode, compact/wide layouts, navigation and device interaction were not visually checked.
+Calculate remains disabled. Live-map code, release versions and saved data were unchanged.

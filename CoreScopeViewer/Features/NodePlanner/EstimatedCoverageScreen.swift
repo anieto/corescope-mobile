@@ -174,7 +174,28 @@ private struct EstimatedCoverageEditor: View {
     let catalogLoading: Bool
     let catalogError: String?
     @State private var showsRequired = false
-    @State private var workFits: Bool?
+    @State private var workCheck: (radius: Int, spacing: Int, fits: Bool)?
+    private var workFits: Bool? {
+        guard let workCheck, workCheck.radius == radius, workCheck.spacing == spacing else { return nil }
+        return workCheck.fits
+    }
+    private var reviewMessage: LocalizedStringKey {
+        let fields = values.merging(["latitude": latitude, "longitude": longitude]) { _, new in new }
+        do {
+            _ = try CoverageStudyInputs.fromEditor(fields: fields, radiusMeters: radius, spacingMeters: spacing)
+        } catch is CoverageStudyInputFailure {
+            return "Review the highlighted fields above. All inputs are required."
+        } catch is CoverageGridFailure {
+            return "Review the study area above. Choose wider spacing or a smaller radius."
+        } catch {
+            return "The combined radio values exceed calculation limits. Review transmit power, antenna gains, losses, sensitivity and reserve."
+        }
+        switch workFits {
+        case nil: return "Checking calculation limits for this study area."
+        case false: return "Review the study area above. Choose wider spacing or a smaller radius."
+        case true: return "Setup passes input and initial work checks. Terrain availability and model suitability have not been checked. No coverage has been calculated."
+        }
+    }
     private var grid: CoverageGrid? {
         try? CoverageGrid(radiusMeters: radius, spacingMeters: spacing,
             minEastMeters: -radius, maxEastMeters: radius, minNorthMeters: -radius, maxNorthMeters: radius)
@@ -228,10 +249,7 @@ private struct EstimatedCoverageEditor: View {
                     .font(.subheadline).foregroundStyle(.secondary)
                 Button("Review inputs") { showsRequired = true }
                 if showsRequired {
-                    let fields = values.merging(["latitude": latitude, "longitude": longitude]) { _, new in new }
-                    let keys = ["latitude", "longitude"] + (CoverageInputField.transmitter + CoverageInputField.receiver).map(\.id)
-                    let valid = keys.allSatisfy { CoverageSetupValidation.issue(field: $0, text: fields[$0, default: ""]) == nil }
-                    Text(valid ? "Field values pass basic checks. No coverage has been calculated." : "Review the highlighted fields above. All inputs are required.")
+                    Text(reviewMessage)
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
                 Button("Calculate coverage") {}.disabled(true)
@@ -240,15 +258,16 @@ private struct EstimatedCoverageEditor: View {
         }
         .meshPageBackground()
         .task(id: "\(radius):\(spacing)") {
-            workFits = nil
-            guard let grid else { workFits = false; return }
+            workCheck = nil
+            let checkedRadius = radius, checkedSpacing = spacing
+            guard let grid else { return }
             let worker = Task.detached(priority: .userInitiated) {
                 (try? CoverageGridPreflight.estimate(grid: grid, sampleBudget: 150_000_000,
                     geometryBudget: 150_000_000, cancelled: { Task.isCancelled })) != nil
             }
             let result = await withTaskCancellationHandler { await worker.value } onCancel: { worker.cancel() }
             guard !Task.isCancelled else { return }
-            workFits = result
+            workCheck = (checkedRadius, checkedSpacing, result)
         }
     }
 }

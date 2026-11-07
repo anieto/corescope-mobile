@@ -234,6 +234,8 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
   attribution when results become stale and preventing source metadata from leaking into a new run.
   Publication also verifies returned input values against the captured request, rejecting mismatched
   radio assumptions, transmitter coordinates or grid layouts even with the correct execution ID.
+  Review inputs now validates the complete setup, including combined radio arithmetic and grid
+  limits, and only reports initial success after the current study area's work check passes.
   Completed-study production/presentation and device rendering checks remain pending.
   Calculate remains disabled: provider discovery, production RF binding, worker wiring
   and result overlays are not connected. Setups are not yet saved.

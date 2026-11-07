@@ -38,7 +38,7 @@ fun EstimatedCoverageScreen(nodes: List<MeshNode>) {
     var showNodes by rememberSaveable { mutableStateOf(false) }
     var showsRequired by rememberSaveable { mutableStateOf(false) }
     val grid = remember(radius, spacing) { try { CoverageGrid(radius, spacing, -radius, radius, -radius, radius) } catch (_: CoverageGridFailure) { null } }
-    val workFits by produceState<Boolean?>(null, radius, spacing) {
+    val workFits by key(radius, spacing) { produceState<Boolean?>(null) {
         value = null
         value = withContext(Dispatchers.Default) {
             val context = coroutineContext
@@ -48,7 +48,7 @@ fun EstimatedCoverageScreen(nodes: List<MeshNode>) {
                 true
             } catch (_: CoverageGridPreflightFailure) { false }
         }
-    }
+    } }
     val selected = Coordinate.valid(CoverageSetupValidation.number(latitude), CoverageSetupValidation.number(longitude))
     val known = remember(nodes, selected) { nearestCoverageNodes(nodes, selected) }
     val map: @Composable (Modifier) -> Unit = { modifier ->
@@ -88,10 +88,22 @@ fun EstimatedCoverageScreen(nodes: List<MeshNode>) {
                 Text("Coverage calculation is not available in this build. You can review the setup, but no coverage or node reception has been predicted.")
                 TextButton(onClick = { showsRequired = true }) { Text("Review inputs") }
                 if (showsRequired) {
-                    val entries = CoverageSetupFields.keys.zip(values) + listOf("latitude" to latitude, "longitude" to longitude)
-                    val valid = entries.all { (key, value) -> CoverageSetupValidation.issue(key, value) == null }
-                    Text(if (valid) "Field values pass basic checks. No coverage has been calculated."
-                        else "Review the highlighted fields above. All inputs are required.", style = MaterialTheme.typography.bodySmall)
+                    val fields = (CoverageSetupFields.keys.zip(values) + listOf("latitude" to latitude, "longitude" to longitude)).toMap()
+                    val reviewMessage = try {
+                        CoverageStudyInputs.fromEditor(fields, radius, spacing)
+                        when (workFits) {
+                            null -> "Checking calculation limits for this study area."
+                            false -> "Review the study area above. Choose wider spacing or a smaller radius."
+                            true -> "Setup passes input and initial work checks. Terrain availability and model suitability have not been checked. No coverage has been calculated."
+                        }
+                    } catch (_: CoverageStudyInputFailure) {
+                        "Review the highlighted fields above. All inputs are required."
+                    } catch (_: CoverageGridFailure) {
+                        "Review the study area above. Choose wider spacing or a smaller radius."
+                    } catch (_: IllegalArgumentException) {
+                        "The combined radio values exceed calculation limits. Review transmit power, antenna gains, losses, sensitivity and reserve."
+                    }
+                    Text(reviewMessage, style = MaterialTheme.typography.bodySmall)
                 }
                 Button(onClick = {}, enabled = false) { Text("Calculate coverage") }
                 Text("This setup is not saved when you leave the tool.", style = MaterialTheme.typography.bodySmall)
