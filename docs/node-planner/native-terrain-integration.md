@@ -953,3 +953,29 @@ The production model's environment/configuration/version and terrain provenance 
 unfinished work; this snapshot must not be described as a full reproducibility record yet. The
 recorded kp1812 distribution permission and production catalog endpoint remain unresolved in project
 notes. Neither a kernel nor a catalog endpoint was added, and Calculate remains disabled.
+
+
+## Cancellation-safe study runner (2026-11-06)
+
+Both platforms now have screen-owned observable execution state around the existing publication
+gate. A run captures immutable inputs and supplies a fresh execution identity to an injected async
+operation. Swift executes it in a detached worker with cancellation forwarding; Kotlin uses a
+supervised worker coroutine. Ordinary operation failures do not cancel the owning screen. A
+malformed or mismatched completion fails rather than leaving the runner indefinitely running.
+
+Explicit cancellation changes publication state immediately, and invalidation rejects obsolete
+completion or marks an already-published result stale. Admission remains closed until the operation
+has returned and released its resources, including on parent cancellation. A second calculation
+is rejected while cleanup is still underway. The operation must cooperate with cancellation and own
+its terrain leases in defer/finally; these runners cannot interrupt a synchronous RF kernel call.
+
+Tests exercise completion, stale results, cancellation, late publication, duplicate admission,
+invalid completion, operation errors and parent cancellation while cleanup is held open. All 100
+Swift host tests and 109 Android coverage tests passed; both apps built, including Xcode test
+targets. The temporary Swift test package now targets macOS 14 for Observation; app deployment
+settings were unchanged. No simulator/UI/device tests were run.
+
+This is the execution owner, not a production Calculate implementation. Screens still need to
+connect it to the qualified terrain/model operation, stage progress and completed-study presentation.
+RF packaging/distribution and the production catalog remain unresolved in project notes. Live-map
+code, release versions and saved data were unchanged.

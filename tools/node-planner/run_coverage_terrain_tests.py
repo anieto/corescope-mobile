@@ -10,12 +10,13 @@ with tempfile.TemporaryDirectory(prefix='nodescope-coverage-terrain-') as direct
     work = Path(directory)
     (work/'Package.swift').write_text('''// swift-tools-version: 6.0
 import PackageDescription
-let package = Package(name: "CoverageTerrain", platforms: [.macOS(.v13)], targets: [
+let package = Package(name: "CoverageTerrain", platforms: [.macOS(.v14)], targets: [
     .target(name: "CoreScopeViewer"),
     .testTarget(name: "CoverageTerrainTests", dependencies: ["CoreScopeViewer"])
 ])
 ''')
     sources = [
+        ('CoreScopeViewer/Models/NodePlanner/CoverageStudyRunner.swift', 'Sources/CoreScopeViewer/CoverageStudyRunner.swift'),
         ('CoreScopeViewer/Models/NodePlanner/CoverageStudyInputs.swift', 'Sources/CoreScopeViewer/CoverageStudyInputs.swift'),
         ('CoreScopeViewer/Models/NodePlanner/CoverageMapKitOverlay.swift', 'Sources/CoreScopeViewer/CoverageMapKitOverlay.swift'),
         ('CoreScopeViewer/Models/NodePlanner/CoverageTileStore.swift', 'Sources/CoreScopeViewer/CoverageTileStore.swift'),

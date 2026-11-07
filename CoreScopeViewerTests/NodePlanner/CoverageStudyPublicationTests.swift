@@ -18,6 +18,74 @@ struct CoverageStudyPublicationTests {
                 chargedSamples: 0, chargedGeometry: 0, workLimited: false),
             nodes: CoverageNodeBatchResult(run: run, chargedTerrainEvaluations: 0, chargedGeometryEvaluations: 0, modelCalls: 0))
     }
+    private actor CleanupGate {
+        private var continuation: CheckedContinuation<Void, Never>?
+        private var released = false
+        func wait() async {
+            if released { return }
+            await withCheckedContinuation { continuation = $0 }
+        }
+        func release() {
+            released = true
+            continuation?.resume()
+            continuation = nil
+        }
+    }
+
+    @Test func parentCancellationWaitsForWorkerCleanup() async throws {
+        let runner = CoverageStudyRunner()
+        let inputs = try result(UUID()).inputs
+        let entered = AsyncStream<Void>.makeStream()
+        let cleanup = CleanupGate()
+        let parent = Task {
+            await runner.run(inputs: inputs) { id, _ in
+                entered.continuation.yield(())
+                await cleanup.wait()
+                return try await result(id)
+            }
+        }
+        for await _ in entered.stream { break }
+        parent.cancel()
+        #expect(runner.isBusy)
+        let accepted = await runner.run(inputs: inputs) { id, _ in try await result(id) }
+        #expect(!accepted)
+        await cleanup.release()
+        _ = await parent.value
+        entered.continuation.finish()
+        #expect(runner.phase == .cancelled && runner.result == nil && !runner.isBusy)
+    }
+
+    @Test func runnerOwnsCancellationAdmissionAndLatePublication() async throws {
+        let runner = CoverageStudyRunner()
+        let inputs = try result(UUID()).inputs
+        let completed = await runner.run(inputs: inputs) { id, captured in
+            #expect(captured.frequencyMHz == inputs.frequencyMHz)
+            return try await result(id)
+        }
+        #expect(completed)
+        #expect(runner.phase == .completed && runner.result != nil && !runner.isBusy)
+        runner.invalidate()
+        #expect(runner.phase == .stale && runner.result != nil)
+        let cancelled = await runner.run(inputs: inputs) { id, _ in
+            await runner.cancel()
+            #expect(await runner.isBusy)
+            let accepted = await runner.run(inputs: inputs) { id, _ in try await result(id) }
+            #expect(!accepted)
+            return try await result(id)
+        }
+        #expect(cancelled)
+        #expect(runner.phase == .cancelled && runner.result == nil && !runner.isBusy)
+        #expect(await runner.run(inputs: inputs) { id, _ in
+            await runner.invalidate()
+            return try await result(id)
+        })
+        #expect(runner.phase == .idle && runner.result == nil && runner.failure == nil)
+        #expect(await runner.run(inputs: inputs) { _, _ in try await result(UUID()) })
+        #expect(runner.phase == .failed && runner.failure == .invalidResult)
+        #expect(await runner.run(inputs: inputs) { _, _ in throw CoverageLinkBudgetFailure.invalidInput })
+        #expect(runner.phase == .failed && runner.failure == .operation && !runner.isBusy)
+    }
+
     @Test func supersededCallbacksCannotReplaceActiveOrCompletedStudy() throws {
         let gate = CoverageStudyPublication()
         let old = gate.begin()
