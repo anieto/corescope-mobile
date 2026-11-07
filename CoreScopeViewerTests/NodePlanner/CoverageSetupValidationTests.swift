@@ -3,6 +3,20 @@ import Testing
 @testable import CoreScopeViewer
 
 struct CoverageSetupValidationTests {
+    @Test func mapCoordinatesRespectCoverageBoundaries() {
+        for latitude in [-85.0, 0, 85] {
+            for longitude in [-180.0, 0, 180] {
+                #expect(CoverageSetupValidation.supportsCoordinate(latitude: latitude, longitude: longitude))
+            }
+        }
+        for latitude in [-90.0, -85.0001, 85.0001, 90, .infinity, .nan] {
+            #expect(!CoverageSetupValidation.supportsCoordinate(latitude: latitude, longitude: 0))
+        }
+        for longitude in [-180.0001, 180.0001, .infinity, .nan] {
+            #expect(!CoverageSetupValidation.supportsCoordinate(latitude: 0, longitude: longitude))
+        }
+    }
+
     private struct Fixture: Decodable {
         let field, text: String
         let issue: String?

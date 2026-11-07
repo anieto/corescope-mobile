@@ -50,6 +50,7 @@ fun EstimatedCoverageScreen(nodes: List<MeshNode>) {
         }
     } }
     val selected = Coordinate.valid(CoverageSetupValidation.number(latitude), CoverageSetupValidation.number(longitude))
+        ?.takeIf { CoverageSetupValidation.supportsCoordinate(it.latitude, it.longitude) }
     val known = remember(nodes, selected) { nearestCoverageNodes(nodes, selected) }
     val map: @Composable (Modifier) -> Unit = { modifier ->
         CoverageSetupMap(selected, known, modifier) { latitude = it.latitude.toString(); longitude = it.longitude.toString() }
@@ -236,9 +237,14 @@ private object CoverageSetupFields {
         }
         Surface {
             Column(Modifier.fillMaxWidth().padding(8.dp)) {
+                val supported = pending?.let { CoverageSetupValidation.supportsCoordinate(it[0], it[1]) } == true
+                if (pending != null && !supported) {
+                    Text("Choose a location between −85° and 85° latitude.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                }
                 if (pending != null) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     TextButton(onClick = { pending = null }) { Text("Cancel") }
-                    Button(onClick = { pending?.let { choose(Coordinate(it[0], it[1])) }; pending = null }, enabled = !engine.failed) { Text("Use location") }
+                    Button(onClick = { pending?.let { choose(Coordinate(it[0], it[1])) }; pending = null }, enabled = !engine.failed && supported) { Text("Use location") }
                 } else Text("Touch and hold to choose a transmitter location.", style = MaterialTheme.typography.bodySmall)
                 overlayFailure?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
                 Text("Gray nodes: not evaluated", style = MaterialTheme.typography.bodySmall)

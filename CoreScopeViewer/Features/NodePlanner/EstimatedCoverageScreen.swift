@@ -15,8 +15,8 @@ struct EstimatedCoverageScreen: View {
     @State private var showsNodes = false
 
     private var coordinate: CLLocationCoordinate2D? {
-        guard let lat = CoverageSetupValidation.number(latitude), let lon = CoverageSetupValidation.number(longitude), lat.isFinite, lon.isFinite,
-              (-90...90).contains(lat), (-180...180).contains(lon) else { return nil }
+        guard let lat = CoverageSetupValidation.number(latitude), let lon = CoverageSetupValidation.number(longitude),
+              CoverageSetupValidation.supportsCoordinate(latitude: lat, longitude: lon) else { return nil }
         return CLLocationCoordinate2D(latitude: lat, longitude: lon)
     }
 
@@ -110,11 +110,17 @@ private struct EstimatedCoverageMap: View {
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 6) {
                 if let tentative {
+                    let supported = CoverageSetupValidation.supportsCoordinate(latitude: tentative.latitude, longitude: tentative.longitude)
+                    if !supported {
+                        Text("Choose a location between −85° and 85° latitude.")
+                            .font(.subheadline).foregroundStyle(.red)
+                    }
                     HStack {
                         Button("Cancel") { self.tentative = nil }
                         Spacer()
                         Button("Use location") { select(tentative); self.tentative = nil }
                             .buttonStyle(.borderedProminent)
+                            .disabled(!supported)
                     }
                 } else {
                     Text("Touch and hold to choose a transmitter location.").font(.subheadline)

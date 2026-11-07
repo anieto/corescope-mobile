@@ -7,6 +7,20 @@ import org.junit.Test
 import org.nodescope.android.feature.coverage.*
 
 class CoverageSetupValidationTest {
+    @Test fun mapCoordinatesRespectCoverageBoundaries() {
+        for (latitude in listOf(-85.0, 0.0, 85.0)) {
+            for (longitude in listOf(-180.0, 0.0, 180.0)) {
+                assertTrue(CoverageSetupValidation.supportsCoordinate(latitude, longitude))
+            }
+        }
+        for (latitude in listOf(-90.0, -85.0001, 85.0001, 90.0, Double.POSITIVE_INFINITY, Double.NaN)) {
+            assertFalse(CoverageSetupValidation.supportsCoordinate(latitude, 0.0))
+        }
+        for (longitude in listOf(-180.0001, 180.0001, Double.POSITIVE_INFINITY, Double.NaN)) {
+            assertFalse(CoverageSetupValidation.supportsCoordinate(0.0, longitude))
+        }
+    }
+
     @Test fun completeStudyInputsAreFrozenAndRequireEveryAssumption() {
         val fields = mapOf("latitude" to "50.96", "longitude" to "-115.16", "frequency" to "915", "power" to "22",
             "txHeight" to "30", "txGain" to "3", "txLoss" to "1", "rxHeight" to "1.5", "rxGain" to "2",

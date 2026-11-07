@@ -6,6 +6,10 @@ enum CoverageSetupIssue: String, Sendable {
 
 /// Basic editor validation. Passing does not establish terrain availability or RF model suitability.
 enum CoverageSetupValidation {
+    static func supportsCoordinate(latitude: Double, longitude: Double) -> Bool {
+        latitude.isFinite && longitude.isFinite && (-85...85).contains(latitude) && (-180...180).contains(longitude)
+    }
+
     static func number(_ text: String) -> Double? {
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let pattern = #"^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$"#

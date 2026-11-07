@@ -1063,3 +1063,17 @@ Both apps built, including Xcode test targets. Existing coverage suites passed: 
 and 113 Android tests, including complete snapshot validation and combined-value overflow cases.
 Light/dark mode, compact/wide layouts, navigation and device interaction were not visually checked.
 Calculate remains disabled. Live-map code, release versions and saved data were unchanged.
+
+## Coverage map coordinate boundaries (2026-11-07)
+
+Both setup screens now require supported coverage coordinates before showing a selected transmitter
+or ranking nearby nodes. Previously the map accepted latitudes through ±90° while the input validator
+and calculation required ±85°. Proposed map locations outside that limit remain visible for review,
+but confirmation is disabled with an explanation. Manual text remains editable and retains its field
+validation message.
+
+Boundary tests cover both latitude limits, both date-line longitudes, values just outside each range,
+the poles, NaN and infinity. All 105 Swift host tests and 114 Android coverage tests passed. Both apps
+built, including Xcode test targets. Map interaction, light/dark mode, compact/wide layouts and
+navigation were not visually checked. No live-map implementation, versions or saved data changed.
+Calculate remains disabled pending production RF/catalog integration and screen wiring.
