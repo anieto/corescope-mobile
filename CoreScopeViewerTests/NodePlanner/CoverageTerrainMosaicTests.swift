@@ -65,8 +65,13 @@ struct CoverageTerrainMosaicTests {
         for areaSamples in [337, 1_000_000] {
             let limits = CoverageStudyLimits(areaSamples: areaSamples, areaGeometry: 1_000_000,
                 nodeSamples: 1_000_000, nodeGeometry: 1_000_000, nodeModelCalls: 5)
-            let result = try CoverageStudy.evaluate(transmitter: origin, grid: grid, budget: budget,
-                nodes: [node], catalogComplete: true, nodeLimit: 1, limits: limits, mosaic: mosaic) { _ in 140 }
+            let result = try CoverageStudy.evaluate(inputs: CoverageStudyInputs(transmitter: origin, grid: grid, budget: budget,
+                frequencyMHz: 915, transmitHeightMeters: 30, receiveHeightMeters: 1.5),
+                nodes: [node], catalogComplete: true, nodeLimit: 1, limits: limits, mosaic: mosaic) { _, inputs in
+                    #expect(inputs.frequencyMHz == 915 && inputs.transmitHeightMeters == 30 && inputs.receiveHeightMeters == 1.5)
+                    return 140
+                }
+            #expect(result.inputs.frequencyMHz == 915)
             #expect(result.area.workLimited == (areaSamples == 337))
             #expect(result.nodes.run.status(for: node).state == .inCoverage)
             #expect(result.area.chargedSamples <= Int64(limits.areaSamples))
@@ -76,15 +81,20 @@ struct CoverageTerrainMosaicTests {
             nodeSamples: 1_000_000, nodeGeometry: 1_000_000, nodeModelCalls: 5)
         var cancelled = false
         #expect(throws: CoverageTerrainProfileFailure.cancelled) {
-            try CoverageStudy.evaluate(transmitter: origin, grid: grid, budget: budget,
+            try CoverageStudy.evaluate(inputs: CoverageStudyInputs(transmitter: origin, grid: grid, budget: budget,
+                frequencyMHz: 915, transmitHeightMeters: 30, receiveHeightMeters: 1.5),
                 nodes: [node], catalogComplete: true, nodeLimit: 1, limits: limits, mosaic: mosaic,
-                cancelled: { cancelled }) { profile in
+                cancelled: { cancelled }) { profile, _ in
                     if let distance = profile.distancesMeters.last, distance > 1500 { cancelled = true }
                     return 140
                 }
         }
-        let empty = try CoverageStudy.evaluate(transmitter: origin, grid: grid, budget: budget,
-            nodes: [], catalogComplete: false, nodeLimit: 1, limits: limits, mosaic: mosaic) { _ in 140 }
+        let empty = try CoverageStudy.evaluate(inputs: CoverageStudyInputs(transmitter: origin, grid: grid, budget: budget,
+                frequencyMHz: 915, transmitHeightMeters: 30, receiveHeightMeters: 1.5),
+            nodes: [], catalogComplete: false, nodeLimit: 1, limits: limits, mosaic: mosaic) { _, inputs in
+                    #expect(inputs.frequencyMHz == 915 && inputs.transmitHeightMeters == 30 && inputs.receiveHeightMeters == 1.5)
+                    return 140
+                }
         #expect(empty.area.cells[0].state == .qualified)
         #expect(empty.nodes.run.receivedCount == 0)
         #expect(files.released == 0)

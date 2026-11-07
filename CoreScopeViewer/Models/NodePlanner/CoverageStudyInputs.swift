@@ -1,0 +1,59 @@
+import Foundation
+
+enum CoverageStudyInputFailure: Error, Equatable {
+    case field(String, CoverageSetupIssue)
+    case invalidRadio
+}
+
+/// Immutable editor assumptions captured before terrain/model work. Model/environment and terrain
+/// provenance still belong to the future production engine binding, not inferred defaults here.
+struct CoverageStudyInputs: Sendable {
+    let transmitter: CoverageTerrainCoordinate
+    let grid: CoverageGrid
+    let budget: CoverageLinkBudget
+    let frequencyMHz: Double
+    let transmitHeightMeters: Double
+    let receiveHeightMeters: Double
+
+    init(transmitter: CoverageTerrainCoordinate, grid: CoverageGrid, budget: CoverageLinkBudget,
+         frequencyMHz: Double, transmitHeightMeters: Double, receiveHeightMeters: Double) throws {
+        guard transmitter.latitude.isFinite, (-85...85).contains(transmitter.latitude),
+              transmitter.longitude.isFinite, (-180...180).contains(transmitter.longitude),
+              frequencyMHz.isFinite, (30...6000).contains(frequencyMHz),
+              transmitHeightMeters.isFinite, (1...3000).contains(transmitHeightMeters),
+              receiveHeightMeters.isFinite, (1...3000).contains(receiveHeightMeters) else {
+            throw CoverageStudyInputFailure.invalidRadio
+        }
+        self.transmitter = transmitter
+        self.grid = grid
+        self.budget = budget
+        self.frequencyMHz = frequencyMHz
+        self.transmitHeightMeters = transmitHeightMeters
+        self.receiveHeightMeters = receiveHeightMeters
+    }
+
+    static func fromEditor(fields: [String: String], radiusMeters: Int, spacingMeters: Int) throws -> Self {
+        func value(_ field: String) throws -> Double {
+            let text = fields[field, default: ""]
+            if let issue = CoverageSetupValidation.issue(field: field, text: text) {
+                throw CoverageStudyInputFailure.field(field, issue)
+            }
+            guard let number = CoverageSetupValidation.number(text) else {
+                throw CoverageStudyInputFailure.field(field, .number)
+            }
+            return number
+        }
+        let coordinate = try CoverageTerrainCoordinate(latitude: value("latitude"), longitude: value("longitude"))
+        let frequency = try value("frequency"), txHeight = try value("txHeight"), rxHeight = try value("rxHeight")
+        let budget = try CoverageLinkBudget(transmitPowerDbm: value("power"), transmitGainDbi: value("txGain"),
+            receiveGainDbi: value("rxGain"), transmitLossDb: value("txLoss"), receiveLossDb: value("rxLoss"),
+            sensitivityDbm: value("sensitivity"), reserveDb: value("reserve"))
+        // Validate radius before negating it, including hostile Int.min values.
+        guard (1000...100_000).contains(radiusMeters) else { throw CoverageGridFailure.invalidParameters }
+        let grid = try CoverageGrid(radiusMeters: radiusMeters, spacingMeters: spacingMeters,
+            minEastMeters: -radiusMeters, maxEastMeters: radiusMeters,
+            minNorthMeters: -radiusMeters, maxNorthMeters: radiusMeters)
+        return try Self(transmitter: coordinate, grid: grid, budget: budget, frequencyMHz: frequency,
+                        transmitHeightMeters: txHeight, receiveHeightMeters: rxHeight)
+    }
+}

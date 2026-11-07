@@ -34,7 +34,12 @@ class CoverageTerrainMosaicTest {
                 val node = CoverageNodeSnapshot("source", "node", 0.5, 0.52)
                 for (areaSamples in listOf(337, 1_000_000)) {
                     val limits = CoverageStudyLimits(areaSamples, 1_000_000, 1_000_000, 1_000_000, 5)
-                    val result = CoverageStudy.evaluate(origin, grid, budget, listOf(node), true, 1, limits, mosaic) { 140.0 }
+                    val result = CoverageStudy.evaluate(CoverageStudyInputs(origin, grid, budget, 915.0, 30.0, 1.5), listOf(node), true, 1, limits, mosaic) { _, inputs ->
+                        assertEquals(915.0, inputs.frequencyMHz, 0.0)
+                        assertEquals(30.0, inputs.transmitHeightMeters, 0.0)
+                        assertEquals(1.5, inputs.receiveHeightMeters, 0.0)
+                        140.0
+                    }
                     assertEquals(areaSamples == 337, result.area.workLimited)
                     assertEquals(CoverageNodeState.inCoverage, result.nodes.run.status(node).state)
                     assertTrue(result.area.chargedSamples <= limits.areaSamples)
@@ -43,14 +48,19 @@ class CoverageTerrainMosaicTest {
                 val limits = CoverageStudyLimits(1_000_000, 1_000_000, 1_000_000, 1_000_000, 5)
                 var cancelled = false
                 val failure = assertThrows(CoverageTerrainProfileFailure::class.java) {
-                    CoverageStudy.evaluate(origin, grid, budget, listOf(node), true, 1, limits, mosaic,
-                        cancelled = { cancelled }) { profile ->
+                    CoverageStudy.evaluate(CoverageStudyInputs(origin, grid, budget, 915.0, 30.0, 1.5), listOf(node), true, 1, limits, mosaic,
+                        cancelled = { cancelled }) { profile, _ ->
                         if (profile.distancesMeters.last() > 1500) cancelled = true
                         140.0
                     }
                 }
                 assertEquals(CoverageTerrainProfileState.CANCELLED, failure.state)
-                val empty = CoverageStudy.evaluate(origin, grid, budget, emptyList(), false, 1, limits, mosaic) { 140.0 }
+                val empty = CoverageStudy.evaluate(CoverageStudyInputs(origin, grid, budget, 915.0, 30.0, 1.5), emptyList(), false, 1, limits, mosaic) { _, inputs ->
+                        assertEquals(915.0, inputs.frequencyMHz, 0.0)
+                        assertEquals(30.0, inputs.transmitHeightMeters, 0.0)
+                        assertEquals(1.5, inputs.receiveHeightMeters, 0.0)
+                        140.0
+                    }
                 assertEquals(CoverageAreaState.qualified, empty.area.cells[0].state)
                 assertEquals(0, empty.nodes.run.receivedCount)
                 assertEquals(0, files.released)

@@ -9,8 +9,8 @@ class CoverageStudyPublicationTest {
     private fun result(id: UUID, completed: Boolean = true, cells: Boolean = true): CoverageStudyResult {
         val run = CoverageNodeRun(emptyList(), true, 1, 1000.0)
         if (completed) run.complete()
-        return CoverageStudyResult(id, CoverageTerrainCoordinate(0.0, 0.0), CoverageGrid(1000, 1000, 0, 0, 0, 0),
-            CoverageLinkBudget(22.0, 3.0, 2.0, 1.0, 1.0, -130.0, 5.0), CoverageStudyLimits(0, 0, 0, 0, 0),
+        return CoverageStudyResult(id, CoverageStudyInputs(CoverageTerrainCoordinate(0.0, 0.0), CoverageGrid(1000, 1000, 0, 0, 0, 0),
+            CoverageLinkBudget(22.0, 3.0, 2.0, 1.0, 1.0, -130.0, 5.0), 915.0, 30.0, 1.5), CoverageStudyLimits(0, 0, 0, 0, 0),
             CoverageAreaResult(if (cells) listOf(CoverageAreaCell(CoverageAreaState.nearSite)) else emptyList(), 0, 0, false),
             CoverageNodeBatchResult(run, 0, 0, 0))
     }

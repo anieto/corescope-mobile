@@ -927,3 +927,29 @@ then restores permissions and verifies reopening/recovery. All 14 targeted Andro
 passed; Android debug assembly passed. Compose disposal, provider switching, style reload and native
 rendering have not been exercised on a device. No simulator/UI tests were run. iOS and release
 version numbers were unchanged.
+
+
+## Complete editor input snapshot (2026-11-06)
+
+Swift and Kotlin study execution now require an immutable CoverageStudyInputs value instead of
+separate coordinate/grid/budget parameters. It retains frequency, transmitter/receiver antenna
+heights, transmitter coordinates, grid and every link-budget value. Model callbacks receive the
+same snapshot used for the area and exact-node runs; results retain that snapshot for later legends,
+inspection and persistence. Frequency/heights previously had no representation in the combined
+study result. The low-level RF callback remains injected, so this is not production model binding.
+
+The editor conversion requires every field explicitly, reuses the shared numeric validation,
+checks combined budget arithmetic and validates the grid. Missing receiver equipment is not filled
+with zero or presets. Invalid/nonfinite radio values, overflowing budget sums and invalid radii
+(including the minimum integer before negation) fail before execution. Parsing snapshots values;
+subsequent editor dictionary changes cannot alter a running study.
+
+All 98 Swift host tests and 107 Android coverage tests passed, and both apps built (Xcode including
+test targets). Tests verify missing fields, frozen inputs, overflow rejection and transmission of
+frequency/heights to model callbacks during combined file-backed area/node evaluation. No simulator,
+UI or physical-device tests were run. No live-map or release-version code changed.
+
+The production model's environment/configuration/version and terrain provenance are still separate
+unfinished work; this snapshot must not be described as a full reproducibility record yet. The
+recorded kp1812 distribution permission and production catalog endpoint remain unresolved in project
+notes. Neither a kernel nor a catalog endpoint was added, and Calculate remains disabled.

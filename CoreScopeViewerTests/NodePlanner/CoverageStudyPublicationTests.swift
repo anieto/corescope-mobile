@@ -11,8 +11,8 @@ struct CoverageStudyPublicationTests {
             transmitLossDb: 1, receiveLossDb: 1, sensitivityDbm: -130, reserveDb: 5)
         var run = try CoverageNodeRun(nodes: [], catalogComplete: true, evaluationLimit: 1, radiusMeters: 1000)
         if completed { run.complete() }
-        return CoverageStudyResult(executionID: id, transmitter: CoverageTerrainCoordinate(latitude: 0, longitude: 0),
-            grid: grid, budget: budget,
+        return try CoverageStudyResult(executionID: id, inputs: CoverageStudyInputs(transmitter: CoverageTerrainCoordinate(latitude: 0, longitude: 0),
+            grid: grid, budget: budget, frequencyMHz: 915, transmitHeightMeters: 30, receiveHeightMeters: 1.5),
             limits: CoverageStudyLimits(areaSamples: 0, areaGeometry: 0, nodeSamples: 0, nodeGeometry: 0, nodeModelCalls: 0),
             area: CoverageAreaResult(cells: cells ? [CoverageAreaCell(state: .nearSite, lossDb: nil, marginDb: nil)] : [],
                 chargedSamples: 0, chargedGeometry: 0, workLimited: false),
