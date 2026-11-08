@@ -197,14 +197,16 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
   wrapping. Native area execution now preserves sample masks and unresolved states under shared
   budgets. A combined prepared-terrain operation now reserves node work independently and returns
   area/node results together. Execution-token publication guards now reject superseded and
-  cancelled completions; production RF binding, screen wiring and rendering remain pending. See the
+  cancelled completions; RF study wiring, screen execution and rendering remain pending. See the
   [native integration report](docs/node-planner/native-terrain-integration.md). Regional JSON catalog
   decoding now validates pinned records and resolves required study tiles on both platforms;
   bounded cancellable HTTPS catalog transport is also implemented. Direct AWS Skadi discovery now
   removes the requirement for a hosted NodeScope catalog; real-tile download, decoding and offline
   cache reuse pass on both native host suites. See the [provider contract](docs/node-planner/direct-skadi-provider.md).
-  Upstream engine permission is assumed granted per project-owner instruction; production binding
-  and device qualification remain. A reproducible eight-tile
+  Upstream engine permission is assumed granted per project-owner instruction. The pinned kp1812
+  sources, validated shared wrapper and native adapters now compile into both apps; reference and
+  Swift bridge checks pass. See [RF build instructions](shared/rf-engine/README.md). Study callback
+  wiring, scenario/provenance disclosure and device qualification remain. A reproducible eight-tile
   Canadian Rockies study catalog now exercises real metadata selection and download/disk preflight
   in both native test suites; it is not a deployed service or global coverage.
 - **Coverage setup UI:** Estimated Coverage now opens beside Link Profile on iOS and Android.
@@ -248,7 +250,7 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
   Pending map proposals now expire on coordinate edits or current-location updates, preventing
   an old confirmation from overwriting a newer transmitter selection.
   Completed-study production/presentation and device rendering checks remain pending.
-  Calculate remains disabled: production RF binding, worker wiring
+  Calculate remains disabled: RF study integration, worker wiring
   and result overlays are not connected. Setups are not yet saved.
 - **Release gate:** coverage integration and physical-device qualification remain incomplete.
   Do not ship the site library as a substitute for coverage or silently relax model fidelity.

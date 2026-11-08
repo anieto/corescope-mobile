@@ -36,6 +36,12 @@ configured analyzer and performs monitored-channel decryption locally.
 
 ## Building the iOS app
 
+On a clean checkout, first generate the shared RF framework on an Apple Silicon Mac with Java
+available: run `./gradlew macosArm64Test assembleNodeScopeRFReleaseXCFramework --console=plain`
+from `shared/rf-engine/`. Repeat after shared RF source changes. See the
+[RF build instructions](shared/rf-engine/README.md) for toolchain and verification details.
+
+
 1. Clone this repository.
 2. Open `CoreScopeViewer.xcodeproj` in Xcode.
 3. Select the `CoreScopeViewer` scheme.

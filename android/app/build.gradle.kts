@@ -58,6 +58,9 @@ android {
     }
     // The bundled registry holds only the default source (as on iOS), so any other source can be
     // delisted from the live registry without an app update; its icon ships in assets/icons.
+    sourceSets["main"].assets.srcDir("../../shared/rf-engine/licenses")
+    sourceSets["main"].java.srcDirs("../../shared/rf-engine/vendor/kp1812/commonMain/kotlin", "../../shared/rf-engine/src/commonMain/kotlin")
+    sourceSets["test"].java.srcDirs("../../shared/rf-engine/vendor/kp1812/commonTest/kotlin", "../../shared/rf-engine/src/commonTest/kotlin")
     sourceSets["test"].resources.srcDir("../../shared/fixtures")
 }
 kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
@@ -88,6 +91,7 @@ dependencies {
     // QR encoding for MeshCore contact codes (iOS uses Core Image's built-in generator).
     implementation("com.google.zxing:core:3.5.3")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.2.20")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     androidTestImplementation(platform("androidx.compose:compose-bom:2025.09.01"))

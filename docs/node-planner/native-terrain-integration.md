@@ -2,13 +2,32 @@
 
 Updated 2026-11-07. Part of the [standalone Estimated Coverage implementation](estimated-coverage.md).
 
+## Current status: packaged RF kernel (2026-11-07)
+
+Pinned, unchanged kp1812 sources and reference fixtures now live in `shared/rf-engine`, with a
+hash manifest and bundled license/source credit. Android compiles the model with Kotlin 2.2.20;
+iOS links a locally generated static Kotlin/Native 2.4.20 XCFramework. Both apps compile adapters
+around one validated shared wrapper. See [clean-checkout build instructions](../../shared/rf-engine/README.md).
+The framework must be generated before Xcode builds and regenerated after shared source changes.
+
+All 14 upstream reference methods (including 63 end-to-end fixtures) and three shared wrapper
+methods passed on JVM and macOS Native. The Android reference/coverage run reported 138 tests,
+zero failures and one skipped opt-in AWS test. Android debug assembly and Xcode build-for-testing
+passed. A Swift host bridge probe reproduced 137.09304306564067 dB for the prior flat-profile
+fixture and returned typed failures for NaN frequency/terrain. No simulator/device execution ran.
+
+The adapter requires an explicit geodesic midpoint latitude. The current study callback does not
+carry it, so this must be connected before using the production adapter. Scenario and source-revision
+capture/disclosure, screen execution and rendering also remain pending. Calculate stays disabled.
+The fixed inland/median-atmosphere/zero-clutter scenario is not inferred environmental truth.
+
 ## Current status: direct AWS terrain (2026-11-07)
 
 The [direct Skadi provider](direct-skadi-provider.md) now discovers terrain on both platforms,
 with a real AWS tile passing download, decode, cache publication and offline reuse. A hosted
 NodeScope catalog is no longer required. Earlier entries describing that catalog as a blocker
 are historical. Per the project owner's instruction, upstream kp1812 permission is assumed
-granted; this is not an independent legal verification. Production kernel packaging/binding,
+granted; this is not an independent legal verification. The packaged-kernel update above supersedes the earlier packaging blocker; study integration,
 screen execution, result rendering and device qualification remain unfinished. Calculate stays
 disabled until those execution pieces are connected.
 

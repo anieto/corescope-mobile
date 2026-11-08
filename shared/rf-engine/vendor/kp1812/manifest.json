@@ -1,0 +1,16 @@
+{
+  "repository": "https://github.com/meshtastic/kp1812",
+  "revision": "a911b6ecd58f8c16ac8ae4becf6bdbba1784e5a9",
+  "files": {
+    "LICENSE": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+    "commonMain/kotlin/org/meshtastic/kp1812/Diffraction.kt": "9ffa92f43436420bd5cc43f31a2cd30c9814857dc1a874d1a3cd74b42fb41780",
+    "commonMain/kotlin/org/meshtastic/kp1812/Mechanisms.kt": "dea1aa27b6224cdc212e4f04d9af644f9aa1da0318c164787a9e6bb45df540a2",
+    "commonMain/kotlin/org/meshtastic/kp1812/P1812.kt": "045481f51a9e2d46072e11b16c88dea313a24a8fb351399df1ced90ac430fe8e",
+    "commonTest/kotlin/org/meshtastic/kp1812/E2ECase.kt": "397951eb3112bc123fb57d6991ec0ae95a28d9f939c74dab9422d7c82f4daed9",
+    "commonTest/kotlin/org/meshtastic/kp1812/E2EFixtures.kt": "eeee3e529244e130abb2362c70072efeae428d2656c390751d3cd5bb992c60c9",
+    "commonTest/kotlin/org/meshtastic/kp1812/EndToEndTest.kt": "e66a2082f9191df772c20d208ef2897464c9d86d0af5be47bfc9fa88c3c30e88",
+    "commonTest/kotlin/org/meshtastic/kp1812/RefCall.kt": "3d5d707a7fbb2c49f857f6b8d28b4104ee716924dc4384fec29e1ef6c446ab00",
+    "commonTest/kotlin/org/meshtastic/kp1812/ReferenceConformanceTest.kt": "657eb35bb57f36e38d88f6edebbd6398448760565de8368c9c31d964addaac88",
+    "commonTest/kotlin/org/meshtastic/kp1812/ReferenceFixtures.kt": "a614fd5fcb62854ee7e64c92e54fca92875a3072987985c391e8f04fae7467c4"
+  }
+}
