@@ -7,6 +7,7 @@ class CoverageTerrainProfileFailure(val state: CoverageTerrainProfileState) : Ex
 data class CoverageTerrainProfile(
     val distancesMeters: List<Double>, val elevationsMeters: List<Double>,
     val terrainEvaluations: Int, val featureCount: Int,
+    val pathCenterLatitude: Double? = null,
 )
 
 /**

@@ -112,6 +112,7 @@ class CoverageTerrainMosaicTest {
                 val result = mosaic.profile(path, 30.0)
                 assertTrue(result.profile.elevationsMeters.all { kotlin.math.abs(it - 200) < 1e-9 })
                 assertEquals(2000.0, result.profile.distancesMeters.last(), 0.0)
+                assertEquals(path.point(1000.0).latitude, requireNotNull(result.profile.pathCenterLatitude), 0.0)
                 assertTrue(result.geometryEvaluations > 0)
                 // Controlled model response validates integration, not physical RF accuracy.
                 val converged = CoverageRFConvergence.evaluate(path.distanceMeters, 152.0,

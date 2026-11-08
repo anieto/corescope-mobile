@@ -9,6 +9,17 @@ struct CoverageTerrainProfile: Sendable {
     let elevationsMeters: [Double]
     let terrainEvaluations: Int
     let featureCount: Int
+    /// Geodesic midpoint from the actual sampled path; absent for synthetic profiles.
+    let pathCenterLatitude: Double?
+
+    init(distancesMeters: [Double], elevationsMeters: [Double], terrainEvaluations: Int,
+         featureCount: Int, pathCenterLatitude: Double? = nil) {
+        self.distancesMeters = distancesMeters
+        self.elevationsMeters = elevationsMeters
+        self.terrainEvaluations = terrainEvaluations
+        self.featureCount = featureCount
+        self.pathCenterLatitude = pathCenterLatitude
+    }
 }
 
 /// Native profile-building portion of the feature-profile study.

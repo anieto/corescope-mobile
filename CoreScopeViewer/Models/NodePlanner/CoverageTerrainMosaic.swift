@@ -100,7 +100,10 @@ final class CoverageTerrainMosaic {
                 case .missingTile, .noData: return nil
                 }
             }
-        return CoverageTerrainSampledPath(profile: profile, geometryEvaluations: crossings.geometryEvaluations)
+        let located = CoverageTerrainProfile(distancesMeters: profile.distancesMeters,
+            elevationsMeters: profile.elevationsMeters, terrainEvaluations: profile.terrainEvaluations,
+            featureCount: profile.featureCount, pathCenterLatitude: try path.point(at: path.distanceMeters / 2).latitude)
+        return CoverageTerrainSampledPath(profile: located, geometryEvaluations: crossings.geometryEvaluations)
     }
 
     func close() {

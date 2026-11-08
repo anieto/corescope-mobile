@@ -18,6 +18,11 @@ struct CoverageStudyTerrainSources: Sendable {
     let descriptors: [CoverageTerrainDescriptor]
 }
 
+struct CoverageStudyModel: Sendable, Equatable {
+    let sourceRevision: String
+    let scenario: String
+}
+
 struct CoverageStudyResult: Sendable {
     let executionID: UUID
     let inputs: CoverageStudyInputs
@@ -27,17 +32,19 @@ struct CoverageStudyResult: Sendable {
     let limits: CoverageStudyLimits
     let area: CoverageAreaResult
     let nodes: CoverageNodeBatchResult
+    let model: CoverageStudyModel?
     let terrainSources: CoverageStudyTerrainSources?
 
     init(executionID: UUID, inputs: CoverageStudyInputs, limits: CoverageStudyLimits,
          area: CoverageAreaResult, nodes: CoverageNodeBatchResult,
-         terrainSources: CoverageStudyTerrainSources? = nil) {
+         terrainSources: CoverageStudyTerrainSources? = nil, model: CoverageStudyModel? = nil) {
         self.executionID = executionID
         self.inputs = inputs
         self.limits = limits
         self.area = area
         self.nodes = nodes
         self.terrainSources = terrainSources
+        self.model = model
     }
 }
 

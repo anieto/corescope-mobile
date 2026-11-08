@@ -4,7 +4,7 @@ enum CoveragePreparationStage: Sendable { case validating, preparingTerrain, cal
 
 /// Run from the study runner's worker. Owns the cache and all terrain readers for one operation.
 /// An omitted catalog uses direct AWS Skadi discovery. Offline runs require retained descriptors.
-/// The qualified RF implementation remains an explicit caller responsibility.
+/// Defaults to the pinned inland terrain-only kernel; injected predictors remain unqualified.
 enum CoveragePreparedStudy {
     static func evaluate(inputs: CoverageStudyInputs, nodes: [CoverageNodeSnapshot],
                          catalogComplete: Bool, nodeLimit: Int, limits: CoverageStudyLimits,
@@ -12,7 +12,13 @@ enum CoveragePreparedStudy {
                          cacheRoot: URL, cacheQuota: Int64, downloadLimit: Int64,
                          offline: Bool, executionID: UUID,
                          progress: (CoveragePreparationStage) async -> Void = { _ in },
-                         predictLoss: (CoverageTerrainProfile, CoverageStudyInputs) throws -> Double) async throws -> CoverageStudyResult {
+                         predictLoss: ((CoverageTerrainProfile, CoverageStudyInputs) throws -> Double)? = nil) async throws -> CoverageStudyResult {
+        let model = predictLoss == nil ? CoverageStudyModel(sourceRevision: CoverageRFKernel.sourceRevision,
+            scenario: CoverageRFKernel.scenario) : nil
+        let predictor = predictLoss ?? { profile, inputs in
+            guard let latitude = profile.pathCenterLatitude else { throw CoverageRFConvergenceFailure.invalidInput }
+            return try CoverageRFKernel.predict(profile: profile, inputs: inputs, pathCenterLatitude: latitude)
+        }
         try Task.checkCancellation()
         await progress(.validating)
         try Task.checkCancellation()
@@ -46,7 +52,7 @@ enum CoveragePreparedStudy {
                 try Task.checkCancellation()
                 study = try CoverageStudy.evaluate(inputs: inputs, nodes: nodes, catalogComplete: catalogComplete,
                     nodeLimit: nodeLimit, limits: limits, mosaic: mosaic, executionID: executionID,
-                    cancelled: { Task.isCancelled }, predictLoss: predictLoss)
+                    cancelled: { Task.isCancelled }, predictLoss: predictor)
             } catch {
                 mosaic.close()
                 throw error
@@ -56,7 +62,7 @@ enum CoveragePreparedStudy {
             try Task.checkCancellation()
             return CoverageStudyResult(executionID: study.executionID, inputs: study.inputs,
                 limits: study.limits, area: study.area, nodes: study.nodes,
-                terrainSources: CoverageStudyTerrainSources(descriptors: descriptors))
+                terrainSources: CoverageStudyTerrainSources(descriptors: descriptors), model: model)
         } catch {
             // Retain the calculation/transport failure; close is retried after readers were released.
             try? cache.close()

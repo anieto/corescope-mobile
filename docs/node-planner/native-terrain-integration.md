@@ -2,6 +2,26 @@
 
 Updated 2026-11-07. Part of the [standalone Estimated Coverage implementation](estimated-coverage.md).
 
+## Current status: production study binding (2026-11-07)
+
+Prepared studies now default to the packaged kp1812 adapter on both platforms. Mosaic profile
+construction carries the actual geodesic midpoint latitude into every convergence pass, for both
+area cells and exact known-node paths. Synthetic profiles can omit it; the production path rejects
+missing latitude rather than substituting the transmitter latitude. No live-map code changed.
+
+Results retain the pinned model revision and explicit inland/zero-clutter/median-atmosphere scenario
+alongside the selected terrain descriptors. Injected predictors remain available for controlled tests
+and do not acquire production-model provenance. Cancellation and terrain ownership continue through
+the existing worker/convergence boundaries. Screen disclosure, execution and rendering remain
+unfinished, so Calculate is still disabled.
+
+The native offline-cache integration tests now execute the actual kernel for an area cell and nearby
+node, check completion/model calls and retained provenance, and reopen the cache after cleanup.
+Midpoint transport and absence of production provenance for injected predictors are also checked.
+The Swift host harness now links the generated macOS framework; build `shared/rf-engine` first.
+Validation: Swift reported 111 tests with the live-AWS check skipped; Android reported 125 tests,
+124 passing and the live-AWS check skipped. Both app builds passed. No UI/device checks ran.
+
 ## Current status: packaged RF kernel (2026-11-07)
 
 Pinned, unchanged kp1812 sources and reference fixtures now live in `shared/rf-engine`, with a

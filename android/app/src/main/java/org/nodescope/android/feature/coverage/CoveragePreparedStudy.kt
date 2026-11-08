@@ -16,7 +16,13 @@ object CoveragePreparedStudy {
                          cacheRoot: File, cacheQuota: Long, downloadLimit: Long,
                          offline: Boolean, executionID: UUID,
                          progress: suspend (CoveragePreparationStage) -> Unit = {},
-                         predictLoss: (CoverageTerrainProfile, CoverageStudyInputs) -> Double): CoverageStudyResult {
+                         predictLoss: ((CoverageTerrainProfile, CoverageStudyInputs) -> Double)? = null): CoverageStudyResult {
+        val model = if (predictLoss == null) CoverageStudyModel(CoverageRFKernel.sourceRevision, CoverageRFKernel.scenario) else null
+        val predictor: (CoverageTerrainProfile, CoverageStudyInputs) -> Double = predictLoss ?: { profile, captured ->
+            val latitude = profile.pathCenterLatitude
+                ?: throw CoverageRFConvergenceFailure(CoverageRFConvergenceFailureState.INVALID_INPUT)
+            CoverageRFKernel.predict(profile, captured, latitude)
+        }
         val context = currentCoroutineContext()
         context.ensureActive()
         // Freeze caller-owned collections before the first suspension.
@@ -45,10 +51,10 @@ object CoveragePreparedStudy {
                 progress(CoveragePreparationStage.calculating)
                 context.ensureActive()
                 CoverageStudy.evaluate(inputs, snapshot, catalogComplete, nodeLimit, limits, mosaic, executionID,
-                    cancelled = { !context.isActive }, predictLoss = predictLoss)
+                    cancelled = { !context.isActive }, predictLoss = predictor)
             }
         }
         context.ensureActive()
-        return study.copy(terrainSources = CoverageStudyTerrainSources(descriptors))
+        return study.copy(terrainSources = CoverageStudyTerrainSources(descriptors), model = model)
     }
 }

@@ -87,7 +87,7 @@ class CoverageTerrainMosaic(readers: Map<CoverageTerrainTile, LeasedTerrainReade
                 else -> null
             }
         }
-        return CoverageTerrainSampledPath(profile, crossings.geometryEvaluations)
+        return CoverageTerrainSampledPath(profile.copy(pathCenterLatitude = path.point(path.distanceMeters / 2).latitude), crossings.geometryEvaluations)
     }
 
     override fun close() {

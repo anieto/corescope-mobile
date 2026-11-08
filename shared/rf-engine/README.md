@@ -47,8 +47,10 @@ Android checks, from `android/`:
 Both reference suites contain 14 methods, including 63 end-to-end fixtures. Three additional
 wrapper methods check unsafe input, unit conversion/scenario parity and below-sea-level terrain.
 Host execution and app builds do not establish physical-device performance or outdoor accuracy.
-The adapters require explicit midpoint latitude; study callback wiring, result provenance,
-scenario disclosure and Calculate remain pending.
+Prepared studies now default to the production adapter. Native terrain profiles carry the
+geodesic midpoint latitude, and published results retain the model revision and scenario alongside
+terrain sources. Injected test predictors receive no production-model record. Scenario disclosure,
+screen execution and Calculate remain pending.
 
 Swift bridge smoke check (from the repository root after generating the framework):
 

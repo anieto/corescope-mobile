@@ -61,6 +61,7 @@ struct CoverageTerrainDiskCacheTests {
             switch await task.result {
             case .success(let output):
                 #expect(mode == 0)
+                #expect(output.model == nil)
                 #expect(output.executionID == id)
                 #expect(output.area.cells.first?.state == .qualified)
                 #expect(output.terrainSources?.descriptors.map(\.cacheKey) == [descriptor.cacheKey])
@@ -73,6 +74,37 @@ struct CoverageTerrainDiskCacheTests {
             #expect(reopened.inventory.allSatisfy { !$0.pinned })
             try reopened.close()
         }
+    }
+
+    @Test func preparedStudyUsesPinnedKernelAndRetainsAssumptions() async throws {
+        let fixture = try DiskCacheFixture()
+        let descriptor = try fixture.descriptor()
+        let cache = try CoverageTerrainDiskCache(root: fixture.root, quota: 100000)
+        try fixture.publish(cache, descriptor)
+        try cache.close()
+        let grid = try CoverageGrid(radiusMeters: 1000, spacingMeters: 1000,
+            minEastMeters: 1000, maxEastMeters: 1000, minNorthMeters: 0, maxNorthMeters: 0)
+        let budget = try CoverageLinkBudget(transmitPowerDbm: 22, transmitGainDbi: 3, receiveGainDbi: 2,
+            transmitLossDb: 1, receiveLossDb: 1, sensitivityDbm: -130, reserveDb: 5)
+        let inputs = try CoverageStudyInputs(transmitter: .init(latitude: 0.25, longitude: 0.25),
+            grid: grid, budget: budget, frequencyMHz: 915, transmitHeightMeters: 30, receiveHeightMeters: 1.5)
+        let result = try await CoveragePreparedStudy.evaluate(inputs: inputs, nodes: [CoverageNodeSnapshot(sourceID: "test", nodeID: "nearby", latitude: 0.25, longitude: 0.255)],
+            catalogComplete: true, nodeLimit: 1,
+            limits: CoverageStudyLimits(areaSamples: 1_000_000, areaGeometry: 1_000_000,
+                nodeSamples: 1_000_000, nodeGeometry: 1_000_000, nodeModelCalls: 5),
+            catalog: [descriptor], samplingHaloMeters: 100, cacheRoot: fixture.root,
+            cacheQuota: 100000, downloadLimit: 0, offline: true, executionID: UUID())
+        #expect(result.nodes.modelCalls >= 3)
+        #expect(result.nodes.run.phase == .completed)
+        #expect(result.model?.sourceRevision == CoverageRFKernel.sourceRevision)
+        #expect(result.model?.scenario == CoverageRFKernel.scenario)
+        #expect(result.terrainSources?.descriptors.first?.cacheKey == descriptor.cacheKey)
+        #expect(result.area.cells.first?.state == .qualified)
+        let loss = try #require(result.area.cells.first?.lossDb)
+        #expect(loss.isFinite && loss > 0 && loss != 140)
+        let reopened = try CoverageTerrainDiskCache(root: fixture.root, quota: 100000)
+        #expect(reopened.inventory.allSatisfy { !$0.pinned })
+        try reopened.close()
     }
 
     @Test func publishRestartAndOfflineRead() throws {

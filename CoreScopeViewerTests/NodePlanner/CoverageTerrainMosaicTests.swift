@@ -153,6 +153,7 @@ struct CoverageTerrainMosaicTests {
         let result = try mosaic.profile(path: path, spacingMeters: 30)
         #expect(result.profile.elevationsMeters.allSatisfy { abs($0 - 200) < 1e-9 })
         #expect(result.profile.distancesMeters.last == 2000)
+        #expect(result.profile.pathCenterLatitude == (try path.point(at: 1000).latitude))
         #expect(result.geometryEvaluations > 0)
         // A controlled model response tests the integration, not physical RF accuracy.
         let converged = try CoverageRFConvergence.evaluate(distanceMeters: path.distanceMeters, maximumLossDb: 152,

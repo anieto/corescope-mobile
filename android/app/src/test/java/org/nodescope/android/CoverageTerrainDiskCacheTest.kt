@@ -62,6 +62,7 @@ class CoverageTerrainDiskCacheTest {
                     try {
                         val output = task.await()
                         assertEquals(0, mode)
+                        assertNull(output.model)
                         assertEquals(id, output.executionID)
                         assertEquals(CoverageAreaState.qualified, output.area.cells.first().state)
                         assertEquals(listOf(descriptor.cacheKey), output.terrainSources?.descriptors?.map { it.cacheKey })
@@ -74,6 +75,28 @@ class CoverageTerrainDiskCacheTest {
                     assertTrue(reopened.inventory.none { it.pinned })
                 }
             }
+        }
+    }
+
+    @Test fun preparedStudyUsesPinnedKernelAndRetainsAssumptions() = runTest {
+        CacheFiles().use { fixture ->
+            val descriptor = fixture.descriptor()
+            CoverageTerrainDiskCache(fixture.root, 100000).use { fixture.publish(it, descriptor) }
+            val grid = CoverageGrid(1000, 1000, 1000, 1000, 0, 0)
+            val inputs = CoverageStudyInputs(CoverageTerrainCoordinate(0.25, 0.25), grid,
+                CoverageLinkBudget(22.0, 3.0, 2.0, 1.0, 1.0, -130.0, 5.0), 915.0, 30.0, 1.5)
+            val result = CoveragePreparedStudy.evaluate(inputs, listOf(CoverageNodeSnapshot("test", "nearby", 0.25, 0.255)), true, 1,
+                CoverageStudyLimits(1_000_000, 1_000_000, 1_000_000, 1_000_000, 5), listOf(descriptor),
+                100.0, fixture.root, 100000, 0, true, UUID.randomUUID())
+            assertTrue(result.nodes.modelCalls >= 3)
+            assertEquals(CoverageNodeRunPhase.completed, result.nodes.run.phase)
+            assertEquals(CoverageRFKernel.sourceRevision, result.model?.sourceRevision)
+            assertEquals(CoverageRFKernel.scenario, result.model?.scenario)
+            assertEquals(descriptor.cacheKey, result.terrainSources?.descriptors?.first()?.cacheKey)
+            assertEquals(CoverageAreaState.qualified, result.area.cells.first().state)
+            val loss = requireNotNull(result.area.cells.first().lossDb)
+            assertTrue(loss.isFinite() && loss > 0 && loss != 140.0)
+            CoverageTerrainDiskCache(fixture.root, 100000).use { assertTrue(it.inventory.none { entry -> entry.pinned }) }
         }
     }
 

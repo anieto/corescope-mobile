@@ -16,9 +16,11 @@ class CoverageStudyTerrainSources(descriptors: List<CoverageTerrainDescriptor>) 
     val descriptors: List<CoverageTerrainDescriptor> = java.util.Collections.unmodifiableList(descriptors.toList())
 }
 
+data class CoverageStudyModel(val sourceRevision: String, val scenario: String)
+
 data class CoverageStudyResult(val executionID: UUID, val inputs: CoverageStudyInputs,
     val limits: CoverageStudyLimits, val area: CoverageAreaResult, val nodes: CoverageNodeBatchResult,
-    val terrainSources: CoverageStudyTerrainSources? = null) {
+    val terrainSources: CoverageStudyTerrainSources? = null, val model: CoverageStudyModel? = null) {
     val transmitter get() = inputs.transmitter
     val grid get() = inputs.grid
     val budget get() = inputs.budget

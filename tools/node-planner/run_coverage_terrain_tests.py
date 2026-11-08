@@ -6,16 +6,20 @@ import subprocess
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
+framework = root/'shared/rf-engine/build/bin/macosArm64/releaseFramework'
+if not (framework/'NodeScopeRF.framework').is_dir():
+    raise SystemExit('Build shared/rf-engine first; see its README.md')
 with tempfile.TemporaryDirectory(prefix='nodescope-coverage-terrain-') as directory:
     work = Path(directory)
     (work/'Package.swift').write_text('''// swift-tools-version: 6.0
 import PackageDescription
 let package = Package(name: "CoverageTerrain", platforms: [.macOS(.v14)], targets: [
-    .target(name: "CoreScopeViewer"),
-    .testTarget(name: "CoverageTerrainTests", dependencies: ["CoreScopeViewer"])
+    .target(name: "CoreScopeViewer", swiftSettings: [.unsafeFlags(["-F", "FRAMEWORK_PATH"])], linkerSettings: [.unsafeFlags(["-F", "FRAMEWORK_PATH", "-framework", "NodeScopeRF"])]),
+    .testTarget(name: "CoverageTerrainTests", dependencies: ["CoreScopeViewer"], swiftSettings: [.unsafeFlags(["-F", "FRAMEWORK_PATH"])])
 ])
-''')
+'''.replace('FRAMEWORK_PATH', str(framework)))
     sources = [
+        ('CoreScopeViewer/Models/NodePlanner/CoverageRFKernel.swift', 'Sources/CoreScopeViewer/CoverageRFKernel.swift'),
         ('CoreScopeViewerTests/NodePlanner/CoverageSkadiProviderTests.swift', 'Tests/CoverageTerrainTests/CoverageSkadiProviderTests.swift'),
         ('CoreScopeViewer/Networking/CoverageSkadiProvider.swift', 'Sources/CoreScopeViewer/CoverageSkadiProvider.swift'),
         ('CoreScopeViewer/Models/NodePlanner/CoveragePreparedStudy.swift', 'Sources/CoreScopeViewer/CoveragePreparedStudy.swift'),
