@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test the app's native terrain reader/mosaic on macOS without a simulator or network."""
+"""Test the app's native terrain reader/mosaic on macOS without a simulator; network checks require NODESCOPE_SKADI_LIVE=1."""
 import os
 from pathlib import Path
 import subprocess
@@ -16,6 +16,8 @@ let package = Package(name: "CoverageTerrain", platforms: [.macOS(.v14)], target
 ])
 ''')
     sources = [
+        ('CoreScopeViewerTests/NodePlanner/CoverageSkadiProviderTests.swift', 'Tests/CoverageTerrainTests/CoverageSkadiProviderTests.swift'),
+        ('CoreScopeViewer/Networking/CoverageSkadiProvider.swift', 'Sources/CoreScopeViewer/CoverageSkadiProvider.swift'),
         ('CoreScopeViewer/Models/NodePlanner/CoveragePreparedStudy.swift', 'Sources/CoreScopeViewer/CoveragePreparedStudy.swift'),
         ('CoreScopeViewer/Models/NodePlanner/CoverageStudyRunner.swift', 'Sources/CoreScopeViewer/CoverageStudyRunner.swift'),
         ('CoreScopeViewer/Models/NodePlanner/CoverageStudyInputs.swift', 'Sources/CoreScopeViewer/CoverageStudyInputs.swift'),

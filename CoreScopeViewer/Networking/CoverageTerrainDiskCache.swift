@@ -14,6 +14,7 @@ final class CoverageTerrainDiskCache {
         let identity: String
         let side: Int
         let decodedSHA256: String
+        let downloadedSHA256: String?
         let sourceURL: String
         let originURL: String
         let fetchedAtMilliseconds: Int64
@@ -148,10 +149,10 @@ final class CoverageTerrainDiskCache {
                 defer { try? packed.close() }
                 try Task.checkCancellation()
                 let decoded = try CoverageTerrainDecoder.decode(descriptor, packedFile: packed.fileURL,
-                    workspace: workspace, cancelled: { Task.isCancelled })
+                    workspace: workspace, cancelled: { Task.isCancelled }, downloadedSHA256: packed.sha256)
                 defer { try? decoded.close() }
                 try publish(descriptor, decodedFile: decoded.fileURL, decodedSHA256: decoded.sha256,
-                    fetchedAtMilliseconds: Int64(Date().timeIntervalSince1970 * 1000),
+                    fetchedAtMilliseconds: Int64(Date().timeIntervalSince1970 * 1000), downloadedSHA256: packed.sha256,
                     cancelled: { Task.isCancelled })
                 readers[descriptor.cacheKey] = try acquire(descriptor, cancelled: { Task.isCancelled })
             }
@@ -189,16 +190,17 @@ final class CoverageTerrainDiskCache {
     /// Accepts a private, already-decoded file from the future validated download/decode adapter.
     /// Hash/length are independently verified here; this does NOT validate gzip or compressed digest.
     func publish(_ descriptor: CoverageTerrainDescriptor, decodedFile: URL, decodedSHA256: String,
-                 fetchedAtMilliseconds: Int64, cancelled: () -> Bool = { false }) throws {
+                 fetchedAtMilliseconds: Int64, downloadedSHA256: String? = nil, cancelled: () -> Bool = { false }) throws {
         try requireOpen()
         try check(cancelled)
         guard fetchedAtMilliseconds >= 0, Self.digest(decodedSHA256),
+              downloadedSHA256.map(Self.digest) ?? (descriptor.sourceETag == nil),
               let identity = String(data: descriptor.canonicalIdentity, encoding: .utf8) else {
             throw CoverageTerrainCacheFailure.invalidCache
         }
         let key = descriptor.cacheKey
         guard pins[key, default: 0] == 0 else { throw CoverageTerrainCacheFailure.busy }
-        let metadata = Metadata(schema: 1, identity: identity, side: descriptor.side, decodedSHA256: decodedSHA256,
+        let metadata = Metadata(schema: 1, identity: identity, side: descriptor.side, decodedSHA256: decodedSHA256, downloadedSHA256: downloadedSHA256,
             sourceURL: descriptor.url, originURL: descriptor.originURL, fetchedAtMilliseconds: fetchedAtMilliseconds,
             accessSequence: try nextSequence())
         let metadataData = try encode(metadata)
@@ -312,7 +314,7 @@ final class CoverageTerrainDiskCache {
                   try Self.regular(child.appendingPathComponent("terrain.hgt")) else { throw CoverageTerrainCacheFailure.invalidCache }
             let metadata = try JSONDecoder().decode(Metadata.self, from: Self.smallData(child.appendingPathComponent("metadata.json")))
             guard metadata.schema == 1, (2...3601).contains(metadata.side), 3600 % (metadata.side - 1) == 0,
-                  Self.digest(metadata.decodedSHA256), metadata.fetchedAtMilliseconds >= 0,
+                  Self.digest(metadata.decodedSHA256), metadata.downloadedSHA256.map(Self.digest) ?? true, metadata.fetchedAtMilliseconds >= 0,
                   metadata.accessSequence >= 0, metadata.accessSequence < Int64.max,
                   SHA256.hash(data: Data(metadata.identity.utf8)).map({ String(format: "%02x", $0) }).joined() == name
             else { throw CoverageTerrainCacheFailure.invalidCache }

@@ -30,8 +30,10 @@ final class CoverageTerrainDownloadBudget: @unchecked Sendable {
 
 final class DownloadedCoverageTerrain: Sendable {
     let fileURL: URL
+    let sha256: String
     private let directory: URL
-    fileprivate init(directory: URL) {
+    fileprivate init(directory: URL, sha256: String) {
+        self.sha256 = sha256
         self.directory = directory
         fileURL = directory.appendingPathComponent("terrain.hgt.gz")
     }
@@ -87,11 +89,15 @@ enum CoverageTerrainDownloader {
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)
         request.setValue("identity", forHTTPHeaderField: "Accept-Encoding")
         request.setValue("NodeScope-Terrain/1", forHTTPHeaderField: "User-Agent")
+        if let etag = descriptor.sourceETag { request.setValue(etag, forHTTPHeaderField: "If-Match") }
         return try await withTaskCancellationHandler {
             let (bytes, response) = try await session.bytes(for: request, delegate: CoverageTerrainHTTPPolicy())
             defer { bytes.task.cancel() }
             guard let http = response as? HTTPURLResponse else { throw CoverageTerrainDownloadFailure.corrupt }
             guard http.statusCode == 200 else { throw CoverageTerrainDownloadFailure.httpStatus(http.statusCode) }
+            if let etag = descriptor.sourceETag, http.value(forHTTPHeaderField: "ETag") != etag {
+                throw CoverageTerrainDownloadFailure.corrupt
+            }
             let encoding = http.value(forHTTPHeaderField: "Content-Encoding") ?? "identity"
             guard encoding.lowercased() == "identity" else { throw CoverageTerrainDownloadFailure.corrupt }
             if let length = http.value(forHTTPHeaderField: "Content-Length") {
@@ -116,13 +122,14 @@ enum CoverageTerrainDownloader {
             guard received == descriptor.packedBytes else { throw CoverageTerrainDownloadFailure.corrupt }
             try output.write(contentsOf: chunk)
             hash.update(data: chunk)
-            guard hash.finalize().map({ String(format: "%02x", $0) }).joined() == descriptor.compressedSHA256 else {
+            let digest = hash.finalize().map({ String(format: "%02x", $0) }).joined()
+            if let expected = descriptor.compressedSHA256, digest != expected {
                 throw CoverageTerrainDownloadFailure.corrupt
             }
             try output.synchronize()
             try Task.checkCancellation()
             transferred = true
-            return DownloadedCoverageTerrain(directory: directory)
+            return DownloadedCoverageTerrain(directory: directory, sha256: digest)
         } onCancel: {
             session.invalidateAndCancel()
         }

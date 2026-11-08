@@ -5,13 +5,14 @@ enum CoverageTerrainRepositoryFailure: Error, Equatable {
     case invalidDescriptor, invalidInventory, invalidLimits, tooManyTiles
 }
 
-/// Validated immutable source identity. URL is transport provenance, not cache identity:
-/// a mirror of the same pinned payload must reuse the same cache entry.
+/// Validated source identity: pinned SHA-256 catalogs or direct AWS HTTPS/ETag discovery.
+/// Pinned mirrors share identity; direct sources include their URL and opaque ETag in the key.
 struct CoverageTerrainDescriptor: Sendable {
     let dataset: String
     let revision: String
     let tile: String
-    let compressedSHA256: String
+    let compressedSHA256: String?
+    let sourceETag: String?
     let packedBytes: Int64
     let side: Int
     let url: String
@@ -24,16 +25,18 @@ struct CoverageTerrainDescriptor: Sendable {
     let cacheKey: String
     var decodedBytes: Int64 { Int64(side) * Int64(side) * 2 }
 
-    init(dataset: String, revision: String, tile: String, compressedSHA256: String,
+    init(dataset: String, revision: String, tile: String, compressedSHA256: String?,
          packedBytes: Int64, side: Int, url: String, verticalDatum: String,
-         attribution: String, sourceType: String = "not independently resolved", originURL: String = "") throws {
+         attribution: String, sourceType: String = "not independently resolved", originURL: String = "", sourceETag: String? = nil) throws {
         func matches(_ value: String, _ pattern: String) -> Bool {
             value.range(of: pattern, options: .regularExpression) == value.startIndex..<value.endIndex
         }
         guard matches(dataset, #"^[A-Za-z0-9_.-]{1,48}$"#),
               matches(revision, #"^[A-Za-z0-9_.-]{1,48}$"#),
               matches(tile, #"^[NS][0-9]{2}[EW][0-9]{3}$"#),
-              matches(compressedSHA256, #"^[a-f0-9]{64}$"#),
+              ((compressedSHA256.map { matches($0, #"^[a-f0-9]{64}$"#) } == true && sourceETag == nil) ||
+               (compressedSHA256 == nil && sourceETag.map { matches($0, #"^"[A-Za-z0-9-]{1,128}"$"#) } == true &&
+                url.hasPrefix("https://elevation-tiles-prod.s3.amazonaws.com/") && originURL == url)),
               (1...40_000_000).contains(packedBytes), (2...3601).contains(side),
               3600 % (side - 1) == 0,
               [url, verticalDatum, attribution, sourceType].allSatisfy({
@@ -48,19 +51,26 @@ struct CoverageTerrainDescriptor: Sendable {
               let coordinate = try? CoverageTerrainTile(south: characters[0] == "S" ? -latitude : latitude,
                                                         west: characters[3] == "W" ? -longitude : longitude)
         else { throw CoverageTerrainRepositoryFailure.invalidDescriptor }
-        let identity: [String: Any] = [
+        var identity: [String: Any] = [
             "dataset": dataset, "revision": revision, "tile": tile,
-            "compressed_sha256": compressedSHA256, "packed_bytes": packedBytes, "side": side,
+            "packed_bytes": packedBytes, "side": side,
             "vertical_datum": verticalDatum, "attribution": attribution, "source_type": sourceType,
             "decoder": "signed-be-hgt-v1", "resolution_arcseconds": 3600 / (side - 1), "nodata": -32768,
             "footprint": ["south": coordinate.south, "north": coordinate.south + 1,
                           "west": coordinate.west, "east": coordinate.west + 1]
         ]
+        if let compressedSHA256 { identity["compressed_sha256"] = compressedSHA256 }
+        if let sourceETag {
+            identity["source_etag"] = sourceETag
+            identity["source_url"] = url
+            identity["verification"] = "https-etag-local-sha256-v1"
+        }
         let canonical = try JSONSerialization.data(withJSONObject: identity, options: [.sortedKeys, .withoutEscapingSlashes])
         self.dataset = dataset
         self.revision = revision
         self.tile = tile
         self.compressedSHA256 = compressedSHA256
+        self.sourceETag = sourceETag
         self.packedBytes = packedBytes
         self.side = side
         self.url = url

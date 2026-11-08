@@ -70,6 +70,8 @@
 		31399ABB309ED89A000519FF /* CoverageStudyInputs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31399ABA309ED89A000519FF /* CoverageStudyInputs.swift */; };
 		31399ABD309ED98D000519FF /* CoverageStudyRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31399ABC309ED98D000519FF /* CoverageStudyRunner.swift */; };
 		31399ABF309EDA93000519FF /* CoveragePreparedStudy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31399ABE309EDA93000519FF /* CoveragePreparedStudy.swift */; };
+		31399AC1309FAFCF000519FF /* CoverageSkadiProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31399AC0309FAFCF000519FF /* CoverageSkadiProvider.swift */; };
+		31399AC3309FB06B000519FF /* CoverageSkadiProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31399AC2309FB06B000519FF /* CoverageSkadiProviderTests.swift */; };
 		3144E9F7305B2A4300B57F18 /* InstrumentSearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3144E9F6305B2A4300B57F18 /* InstrumentSearchField.swift */; };
 		315E3A01309A973200BAEC98 /* EstimatedCoverageScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 315E3A00309A973200BAEC98 /* EstimatedCoverageScreen.swift */; };
 		315E3A03309AA14800BAEC98 /* CoverageTerrainCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 315E3A02309AA14800BAEC98 /* CoverageTerrainCatalog.swift */; };
@@ -312,6 +314,8 @@
 		31399ABA309ED89A000519FF /* CoverageStudyInputs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageStudyInputs.swift; sourceTree = "<group>"; };
 		31399ABC309ED98D000519FF /* CoverageStudyRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageStudyRunner.swift; sourceTree = "<group>"; };
 		31399ABE309EDA93000519FF /* CoveragePreparedStudy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveragePreparedStudy.swift; sourceTree = "<group>"; };
+		31399AC0309FAFCF000519FF /* CoverageSkadiProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageSkadiProvider.swift; sourceTree = "<group>"; };
+		31399AC2309FB06B000519FF /* CoverageSkadiProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageSkadiProviderTests.swift; sourceTree = "<group>"; };
 		3144E9F6305B2A4300B57F18 /* InstrumentSearchField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstrumentSearchField.swift; sourceTree = "<group>"; };
 		315E3A00309A973200BAEC98 /* EstimatedCoverageScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EstimatedCoverageScreen.swift; sourceTree = "<group>"; };
 		315E3A02309AA14800BAEC98 /* CoverageTerrainCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageTerrainCatalog.swift; sourceTree = "<group>"; };
@@ -577,6 +581,7 @@
 				315E3A08309AA2F300BAEC98 /* CoverageTerrainCatalogLoaderTests.swift */,
 				315E3A0C309B796F00BAEC98 /* CoverageSetupValidationTests.swift */,
 				315E3A10309B7D3900BAEC98 /* CoverageRasterTests.swift */,
+				31399AC2309FB06B000519FF /* CoverageSkadiProviderTests.swift */,
 			);
 			path = NodePlanner;
 			sourceTree = "<group>";
@@ -872,6 +877,7 @@
 				31E005533099228D00178350 /* CoverageTerrainDecoder.swift */,
 				31E0055730994EEA00178350 /* CoverageTerrainDownloader.swift */,
 				315E3A06309AA2BF00BAEC98 /* CoverageTerrainCatalogLoader.swift */,
+				31399AC0309FAFCF000519FF /* CoverageSkadiProvider.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -1010,6 +1016,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				31399AC3309FB06B000519FF /* CoverageSkadiProviderTests.swift in Sources */,
 				31DFA7E5308BB15800B8C681 /* FieldToolsPresentationTests.swift in Sources */,
 				3BE961FDCF2336382895F4C3 /* ModelDecodingTests.swift in Sources */,
 				31E005663099838500178350 /* CoverageTerrainPathTests.swift in Sources */,
@@ -1198,6 +1205,7 @@
 				31DC215B3064091D00F0E9C5 /* SupportDevelopmentScreen.swift in Sources */,
 				49B403B3A96E9DF41C17C923 /* ObserversViewModel.swift in Sources */,
 				31DFA7D4308B044900B8C681 /* FieldContracts.swift in Sources */,
+				31399AC1309FAFCF000519FF /* CoverageSkadiProvider.swift in Sources */,
 				31C733CCC554E34636022A89 /* OnboardingScreen.swift in Sources */,
 				316FDFFD305C4DDE00FBA3B4 /* RecentItemsStore.swift in Sources */,
 				316FDFFB305C490A00FBA3B4 /* ExploreScreen.swift in Sources */,

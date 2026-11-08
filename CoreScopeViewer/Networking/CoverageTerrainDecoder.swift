@@ -26,7 +26,7 @@ final class DecodedCoverageTerrain {
 /// Accepts one gzip member only, with a <=64 KiB header and no concatenation/trailing bytes.
 enum CoverageTerrainDecoder {
     static func decode(_ descriptor: CoverageTerrainDescriptor, packedFile: URL, workspace: URL,
-                       cancelled: () -> Bool = { false }) throws -> DecodedCoverageTerrain {
+                       cancelled: () -> Bool = { false }, downloadedSHA256: String? = nil) throws -> DecodedCoverageTerrain {
         func check() throws { if cancelled() { throw CoverageTerrainDecodeFailure.cancelled } }
         try check()
         let input = try FileHandle(forReadingFrom: packedFile)
@@ -99,7 +99,7 @@ enum CoverageTerrainDecoder {
         try check()
         guard (try input.read(upToCount: 1) ?? Data()).isEmpty, received == descriptor.packedBytes,
               written == descriptor.decodedBytes,
-              hex(packedHash.finalize()) == descriptor.compressedSHA256 else { throw CoverageTerrainDecodeFailure.corrupt }
+              hex(packedHash.finalize()) == (descriptor.compressedSHA256 ?? downloadedSHA256) else { throw CoverageTerrainDecodeFailure.corrupt }
         try output.synchronize()
         try output.close()
         try check()

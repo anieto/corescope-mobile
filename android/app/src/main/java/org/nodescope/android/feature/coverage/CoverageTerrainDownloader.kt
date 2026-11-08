@@ -42,6 +42,7 @@ class CoverageTerrainDownloadBudget(limit: Long) {
 
 class DownloadedCoverageTerrain internal constructor(private val directory: File) : AutoCloseable {
     val file = File(directory, "terrain.hgt.gz")
+    internal var sha256: String? = null
     override fun close() {
         Files.deleteIfExists(file.toPath())
         Files.deleteIfExists(directory.toPath())
@@ -52,17 +53,18 @@ class DownloadedCoverageTerrain internal constructor(private val directory: File
 object CoverageTerrainDownloader {
     suspend fun download(descriptor: CoverageTerrainDescriptor, workspace: File,
                          budget: CoverageTerrainDownloadBudget, idleTimeoutMillis: Long = 15_000,
-                         attemptTimeoutMillis: Long = 60_000): DownloadedCoverageTerrain {
+                         attemptTimeoutMillis: Long = 60_000, transportClient: OkHttpClient? = null): DownloadedCoverageTerrain {
         if (idleTimeoutMillis !in 50..30_000 || attemptTimeoutMillis !in 50..120_000) {
             throw CoverageTerrainDownloadFailure(CoverageTerrainDownloadState.INVALID_LIMITS)
         }
-        val client = OkHttpClient.Builder().proxy(Proxy.NO_PROXY)
+        val client = (transportClient?.newBuilder() ?: OkHttpClient.Builder()).proxy(Proxy.NO_PROXY)
             .followRedirects(false).followSslRedirects(false).retryOnConnectionFailure(false)
             .connectTimeout(idleTimeoutMillis, TimeUnit.MILLISECONDS)
             .readTimeout(idleTimeoutMillis, TimeUnit.MILLISECONDS)
             .callTimeout(attemptTimeoutMillis, TimeUnit.MILLISECONDS).build()
         val call = client.newCall(Request.Builder().url(descriptor.url)
-            .header("Accept-Encoding", "identity").header("User-Agent", "NodeScope-Terrain/1").build())
+            .header("Accept-Encoding", "identity").header("User-Agent", "NodeScope-Terrain/1")
+            .apply { descriptor.sourceETag?.let { header("If-Match", it) } }.build())
         // File I/O occurs in OkHttp's worker callback. Cancellation closes the active socket.
         val finished = CompletableDeferred<Unit>()
         try {
@@ -77,8 +79,7 @@ object CoverageTerrainDownloader {
                 call.enqueue(object : Callback {
                     override fun onFailure(call: Call, e: IOException) {
                         budget.finish(reserved, 0)
-                        client.connectionPool.evictAll()
-                        client.dispatcher.executorService.shutdown()
+                        if (transportClient == null) { client.connectionPool.evictAll(); client.dispatcher.executorService.shutdown() }
                         finished.complete(Unit)
                         continuation.resumeWithException(e)
                     }
@@ -90,6 +91,7 @@ object CoverageTerrainDownloader {
                             val completed = response.use {
                                 if (!continuation.isActive) throw IOException("Cancelled")
                                 if (response.code != 200) throw CoverageTerrainDownloadFailure(CoverageTerrainDownloadState.HTTP_STATUS, response.code)
+                                if (descriptor.sourceETag != null && response.header("ETag") != descriptor.sourceETag) corrupt()
                                 if ((response.header("Content-Encoding") ?: "identity").lowercase() != "identity") corrupt()
                                 response.header("Content-Length")?.let { length ->
                                     if (length.isEmpty() || length.any { it !in '0'..'9' } || length.toLongOrNull() != descriptor.packedBytes) corrupt()
@@ -112,7 +114,9 @@ object CoverageTerrainDownloader {
                                             output.write(buffer, 0, count)
                                             hash.update(buffer, 0, count)
                                         }
-                                        if (received != descriptor.packedBytes || hash.digest().joinToString("") { "%02x".format(it.toInt() and 255) } != descriptor.compressedSHA256) corrupt()
+                                        val digest = hash.digest().joinToString("") { "%02x".format(it.toInt() and 255) }
+                                        if (received != descriptor.packedBytes || (descriptor.compressedSHA256 != null && digest != descriptor.compressedSHA256)) corrupt()
+                                        owned.sha256 = digest
                                         output.fd.sync()
                                     }
                                 }
@@ -130,8 +134,7 @@ object CoverageTerrainDownloader {
                         } finally {
                             try { artifact?.close() } finally {
                                 if (hasReservation) budget.finish(reserved, received)
-                                client.connectionPool.evictAll()
-                                client.dispatcher.executorService.shutdown()
+                                if (transportClient == null) { client.connectionPool.evictAll(); client.dispatcher.executorService.shutdown() }
                                 finished.complete(Unit)
                             }
                         }

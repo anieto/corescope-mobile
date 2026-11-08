@@ -3,11 +3,12 @@ import Foundation
 enum CoveragePreparationStage: Sendable { case validating, preparingTerrain, calculating }
 
 /// Run from the study runner's worker. Owns the cache and all terrain readers for one operation.
-/// Catalog trust and the qualified RF implementation are explicit caller responsibilities.
+/// An omitted catalog uses direct AWS Skadi discovery. Offline runs require retained descriptors.
+/// The qualified RF implementation remains an explicit caller responsibility.
 enum CoveragePreparedStudy {
     static func evaluate(inputs: CoverageStudyInputs, nodes: [CoverageNodeSnapshot],
                          catalogComplete: Bool, nodeLimit: Int, limits: CoverageStudyLimits,
-                         catalog: [CoverageTerrainDescriptor], samplingHaloMeters: Double,
+                         catalog: [CoverageTerrainDescriptor]? = nil, samplingHaloMeters: Double,
                          cacheRoot: URL, cacheQuota: Int64, downloadLimit: Int64,
                          offline: Bool, executionID: UUID,
                          progress: (CoveragePreparationStage) async -> Void = { _ in },
@@ -23,10 +24,16 @@ enum CoveragePreparedStudy {
         let footprint = try CoverageTerrainFootprint.make(latitude: inputs.transmitter.latitude,
             longitude: inputs.transmitter.longitude, radiusMeters: Double(inputs.grid.radiusMeters),
             haloMeters: samplingHaloMeters)
-        let descriptors = try footprint.resolve(catalog: catalog)
         let budget = try CoverageTerrainDownloadBudget(limit: downloadLimit)
         try Task.checkCancellation()
         await progress(.preparingTerrain)
+        try Task.checkCancellation()
+        let descriptors: [CoverageTerrainDescriptor]
+        if let catalog { descriptors = try footprint.resolve(catalog: catalog) }
+        else {
+            guard !offline else { throw CoverageTerrainCacheFailure.missing }
+            descriptors = try await CoverageSkadiProvider.discover(footprint: footprint)
+        }
         try Task.checkCancellation()
         let cache = try CoverageTerrainDiskCache(root: cacheRoot, quota: cacheQuota)
         do {

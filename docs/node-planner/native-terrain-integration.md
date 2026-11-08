@@ -1,6 +1,19 @@
 # Native coverage terrain integration
 
-Updated 2026-11-02. Part of the [standalone Estimated Coverage implementation](estimated-coverage.md).
+Updated 2026-11-07. Part of the [standalone Estimated Coverage implementation](estimated-coverage.md).
+
+## Current status: direct AWS terrain (2026-11-07)
+
+The [direct Skadi provider](direct-skadi-provider.md) now discovers terrain on both platforms,
+with a real AWS tile passing download, decode, cache publication and offline reuse. A hosted
+NodeScope catalog is no longer required. Earlier entries describing that catalog as a blocker
+are historical. Per the project owner's instruction, upstream kp1812 permission is assumed
+granted; this is not an independent legal verification. Production kernel packaging/binding,
+screen execution, result rendering and device qualification remain unfinished. Calculate stays
+disabled until those execution pieces are connected.
+
+Validation: 110 Swift host tests and 119 Android coverage tests passed, including opt-in live AWS
+checks. Xcode build-for-testing and Android debug build passed. No device or visual checks ran.
 
 ## Implemented first slice
 

@@ -30,7 +30,7 @@ class CoverageTerrainCacheFailure(val state: CoverageTerrainCacheState) : Except
 class CoverageTerrainDiskCache(private val root: File, private val quota: Long) : AutoCloseable {
     @Serializable
     private data class Metadata(val schema: Int, val identity: String, val side: Int, val decodedSHA256: String,
-        val sourceURL: String, val originURL: String, val fetchedAtMilliseconds: Long, val accessSequence: Long) {
+        val sourceURL: String, val originURL: String, val fetchedAtMilliseconds: Long, val accessSequence: Long, val downloadedSHA256: String? = null) {
         val bytes: Long get() = side.toLong() * side * 2
     }
     private var lockFile: RandomAccessFile? = null
@@ -145,8 +145,8 @@ class CoverageTerrainDiskCache(private val root: File, private val quota: Long) 
                 context.ensureActive()
                 downloadWithRetries(descriptor, workspace, budget, attempts, download).use { packed ->
                     context.ensureActive()
-                    CoverageTerrainDecoder.decode(descriptor, packed.file, workspace, cancelled).use { decoded ->
-                        publish(descriptor, decoded.file, decoded.sha256, System.currentTimeMillis(), cancelled)
+                    CoverageTerrainDecoder.decode(descriptor, packed.file, workspace, packed.sha256, cancelled).use { decoded ->
+                        publish(descriptor, decoded.file, decoded.sha256, System.currentTimeMillis(), cancelled, packed.sha256)
                         readers[descriptor.cacheKey] = acquire(descriptor, cancelled)
                     }
                 }
@@ -183,13 +183,13 @@ class CoverageTerrainDiskCache(private val root: File, private val quota: Long) 
 
     /** Private decoded adapter output only; this verifies decoded hash/length, not gzip/source digest. */
     fun publish(descriptor: CoverageTerrainDescriptor, decodedFile: File, decodedSHA256: String,
-                fetchedAtMilliseconds: Long, cancelled: () -> Boolean = { false }) {
+                fetchedAtMilliseconds: Long, cancelled: () -> Boolean = { false }, downloadedSHA256: String? = null) {
         requireOpen(); check(cancelled)
-        if (fetchedAtMilliseconds < 0 || !digest(decodedSHA256)) fail(CoverageTerrainCacheState.INVALID_CACHE)
+        if (fetchedAtMilliseconds < 0 || !digest(decodedSHA256) || !(downloadedSHA256?.let { digest(it) } ?: (descriptor.sourceETag == null))) fail(CoverageTerrainCacheState.INVALID_CACHE)
         val key = descriptor.cacheKey
         if ((pins[key] ?: 0) > 0) fail(CoverageTerrainCacheState.BUSY)
         val metadata = Metadata(1, descriptor.canonicalIdentity, descriptor.side, decodedSHA256,
-            descriptor.url, descriptor.originURL, fetchedAtMilliseconds, nextSequence())
+            descriptor.url, descriptor.originURL, fetchedAtMilliseconds, nextSequence(), downloadedSHA256)
         val metadataBytes = encode(metadata)
         makeRoom(descriptor.decodedBytes + 8192, key)
         val stage = File(root, ".stage-${UUID.randomUUID()}")
@@ -288,7 +288,7 @@ class CoverageTerrainDiskCache(private val root: File, private val quota: Long) 
             val metadata = json.decodeFromString<Metadata>(smallData(File(child, "metadata.json")).decodeToString(throwOnInvalidSequence = true))
             val key = MessageDigest.getInstance("SHA-256").digest(metadata.identity.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it.toInt() and 255) }
             if (metadata.schema != 1 || metadata.side !in 2..3601 || 3600 % (metadata.side - 1) != 0 ||
-                !digest(metadata.decodedSHA256) || metadata.fetchedAtMilliseconds < 0 ||
+                !digest(metadata.decodedSHA256) || metadata.downloadedSHA256?.let { !digest(it) } == true || metadata.fetchedAtMilliseconds < 0 ||
                 metadata.accessSequence < 0 || metadata.accessSequence == Long.MAX_VALUE || key != name) fail(CoverageTerrainCacheState.INVALID_CACHE)
             entries[name] = metadata
             sequence = maxOf(sequence, metadata.accessSequence)

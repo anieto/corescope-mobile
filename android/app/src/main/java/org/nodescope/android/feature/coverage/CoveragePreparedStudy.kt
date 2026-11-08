@@ -8,11 +8,11 @@ import kotlinx.coroutines.isActive
 
 enum class CoveragePreparationStage { validating, preparingTerrain, calculating }
 
-/** Worker operation owning its cache/readers. Catalog trust and qualified RF binding stay explicit. */
+/** Owns cache/readers. Null catalog discovers AWS Skadi online; offline requires retained descriptors. */
 object CoveragePreparedStudy {
     suspend fun evaluate(inputs: CoverageStudyInputs, nodes: List<CoverageNodeSnapshot>,
                          catalogComplete: Boolean, nodeLimit: Int, limits: CoverageStudyLimits,
-                         catalog: List<CoverageTerrainDescriptor>, samplingHaloMeters: Double,
+                         catalog: List<CoverageTerrainDescriptor>? = null, samplingHaloMeters: Double,
                          cacheRoot: File, cacheQuota: Long, downloadLimit: Long,
                          offline: Boolean, executionID: UUID,
                          progress: suspend (CoveragePreparationStage) -> Unit = {},
@@ -20,9 +20,9 @@ object CoveragePreparedStudy {
         val context = currentCoroutineContext()
         context.ensureActive()
         // Freeze caller-owned collections before the first suspension.
-        require(nodes.size <= 10_000 && catalog.size <= 4096)
+        require(nodes.size <= 10_000 && (catalog?.size ?: 0) <= 4096)
         val snapshot = nodes.toList()
-        val terrainCatalog = catalog.toList()
+        val terrainCatalog = catalog?.toList()
         progress(CoveragePreparationStage.validating)
         context.ensureActive()
         limits.validate()
@@ -30,10 +30,14 @@ object CoveragePreparedStudy {
         CoverageGridPreflight.estimate(inputs.grid, limits.areaSamples.toLong(), limits.areaGeometry.toLong())
         val footprint = CoverageTerrainFootprint.make(inputs.transmitter.latitude, inputs.transmitter.longitude,
             inputs.grid.radiusMeters.toDouble(), samplingHaloMeters)
-        val descriptors = footprint.resolve(terrainCatalog)
         val budget = CoverageTerrainDownloadBudget(downloadLimit)
         context.ensureActive()
         progress(CoveragePreparationStage.preparingTerrain)
+        context.ensureActive()
+        val descriptors = if (terrainCatalog != null) footprint.resolve(terrainCatalog) else {
+            if (offline) throw CoverageTerrainCacheFailure(CoverageTerrainCacheState.MISSING)
+            CoverageSkadiProvider.discover(footprint)
+        }
         context.ensureActive()
         val study = CoverageTerrainDiskCache(cacheRoot, cacheQuota).use { cache ->
             cache.prepareMosaic(footprint, descriptors, budget, offline).use { mosaic ->

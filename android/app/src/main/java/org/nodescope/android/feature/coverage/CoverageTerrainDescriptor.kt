@@ -7,11 +7,11 @@ import kotlinx.serialization.json.*
 enum class CoverageTerrainRepositoryState { INVALID_DESCRIPTOR, INVALID_INVENTORY, INVALID_LIMITS, TOO_MANY_TILES }
 class CoverageTerrainRepositoryFailure(val state: CoverageTerrainRepositoryState) : Exception(state.name)
 
-/** Immutable pinned source identity. A transport mirror does not change the cache key. */
+/** Pinned SHA-256 identity, or direct AWS HTTPS/ETag identity including its source URL. */
 class CoverageTerrainDescriptor(
-    val dataset: String, val revision: String, val tile: String, val compressedSHA256: String,
+    val dataset: String, val revision: String, val tile: String, val compressedSHA256: String?,
     val packedBytes: Long, val side: Int, val url: String, val verticalDatum: String,
-    val attribution: String, val sourceType: String = "not independently resolved", val originURL: String = "",
+    val attribution: String, val sourceType: String = "not independently resolved", val originURL: String = "", val sourceETag: String? = null,
 ) {
     val coordinate: CoverageTerrainTile
     val canonicalIdentity: String
@@ -20,7 +20,9 @@ class CoverageTerrainDescriptor(
 
     init {
         if (!Regex("[A-Za-z0-9_.-]{1,48}").matches(dataset) || !Regex("[A-Za-z0-9_.-]{1,48}").matches(revision) ||
-            !Regex("[NS][0-9]{2}[EW][0-9]{3}").matches(tile) || !Regex("[a-f0-9]{64}").matches(compressedSHA256) ||
+            !Regex("[NS][0-9]{2}[EW][0-9]{3}").matches(tile) || !((compressedSHA256?.matches(Regex("[a-f0-9]{64}")) == true && sourceETag == null) ||
+                (compressedSHA256 == null && sourceETag?.matches(Regex("\"[A-Za-z0-9-]{1,128}\"")) == true &&
+                    url.startsWith("https://elevation-tiles-prod.s3.amazonaws.com/") && originURL == url)) ||
             packedBytes !in 1..40_000_000L || side !in 2..3601 || 3600 % (side - 1) != 0 ||
             listOf(url, verticalDatum, attribution, sourceType).any { it.isEmpty() || it.codePointCount(0, it.length) > 1024 || '\n' in it } ||
             !validURL(url, true) || (originURL.isNotEmpty() && (originURL.codePointCount(0, originURL.length) > 1024 || !validURL(originURL, false)))) {
@@ -32,7 +34,11 @@ class CoverageTerrainDescriptor(
         coordinate = CoverageTerrainTile(south, west)
         val identity = buildJsonObject {
             put("dataset", dataset); put("revision", revision); put("tile", tile)
-            put("compressed_sha256", compressedSHA256); put("packed_bytes", packedBytes); put("side", side)
+            if (compressedSHA256 != null) put("compressed_sha256", compressedSHA256)
+            if (sourceETag != null) {
+                put("source_etag", sourceETag); put("source_url", url); put("verification", "https-etag-local-sha256-v1")
+            }
+             put("packed_bytes", packedBytes); put("side", side)
             put("vertical_datum", verticalDatum); put("attribution", attribution); put("source_type", sourceType)
             put("decoder", "signed-be-hgt-v1"); put("resolution_arcseconds", 3600 / (side - 1)); put("nodata", -32768)
             put("footprint", buildJsonObject { put("east", west + 1); put("north", south + 1); put("south", south); put("west", west) })

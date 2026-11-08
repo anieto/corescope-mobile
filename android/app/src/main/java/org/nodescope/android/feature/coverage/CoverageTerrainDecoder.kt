@@ -27,7 +27,7 @@ class DecodedCoverageTerrain internal constructor(private val directory: File, v
 /** One gzip member, bounded optional header, exact source and output sizes, no trailing bytes. */
 object CoverageTerrainDecoder {
     fun decode(descriptor: CoverageTerrainDescriptor, packedFile: File, workspace: File,
-               cancelled: () -> Boolean = { false }): DecodedCoverageTerrain {
+               downloadedSHA256: String? = null, cancelled: () -> Boolean = { false }): DecodedCoverageTerrain {
         fun check() { if (cancelled()) throw CoverageTerrainDecodeFailure(CoverageTerrainDecodeState.CANCELLED) }
         check()
         val prefix = packedFile.inputStream().use { input ->
@@ -78,7 +78,7 @@ object CoverageTerrainDecoder {
                         written += count
                     }
                     check()
-                    if (received != descriptor.packedBytes || written != descriptor.decodedBytes || hashing.hash.hex() != descriptor.compressedSHA256) corrupt()
+                    if (received != descriptor.packedBytes || written != descriptor.decodedBytes || hashing.hash.hex() != (descriptor.compressedSHA256 ?: downloadedSHA256)) corrupt()
                     output.fd.sync()
                 }
             }
