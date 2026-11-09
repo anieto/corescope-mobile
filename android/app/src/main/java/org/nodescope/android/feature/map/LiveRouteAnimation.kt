@@ -39,7 +39,9 @@ internal object RouteTiming {
  * couldn't resolve: drawn faint and dashed, with no arrival ring, since no relay is claimed.
  */
 internal class RouteHop(val start: Coordinate, val end: Coordinate, val startsAt: Long, val fadeStartsAt: Long, val fadeDuration: Long,
-    val travel: Long = RouteTiming.HOP_TRAVEL, val curvature: Double = 0.0, val dashed: Boolean = false) {
+    val travel: Long = RouteTiming.HOP_TRAVEL, val curvature: Double = 0.0, val dashed: Boolean = false,
+    /** A replay hop reaching a node or observer outside the selected region: drawn faded (iOS). */
+    val outside: Boolean = false) {
     private val track = if (curvature == 0.0) RouteTrack(listOf(start, end)) else null
     fun position(fraction: Float): Coordinate = track?.position(fraction) ?: curvePoint(start, end, curvature, fraction.toDouble())
     /** The hop from its start to [fraction] of the way: two points straight, enough to look smooth curved. */
@@ -121,6 +123,9 @@ internal class LiveRoute(val key: String, val receivedAt: Long, val color: Strin
     fun isActive(now: Long) = now >= startsAt && now < endsAt
 }
 
+/** How strongly a replay hop outside the selected region is drawn (iOS `regionEmphasis`). */
+private const val OUTSIDE_REGION_STRENGTH = 0.45f
+
 /** One resolved route of a packet, placed on the map: coordinate chains and the nodes along it. */
 data class ReplayRoute(val subchains: List<List<Coordinate>>, val nodes: List<MeshNode>, val hops: Int,
     /** The route and who heard it, for naming it in the replay controls. */
@@ -128,7 +133,12 @@ data class ReplayRoute(val subchains: List<List<Coordinate>>, val nodes: List<Me
     /** The observers it ends at (name and position), drawn as the route's labelled endpoints. */
     val receivers: List<Pair<String, Coordinate>> = emptyList(),
     /** The route's own nodes, without the final hops to its observers. */
-    val nodeChains: List<List<Coordinate>> = subchains)
+    val nodeChains: List<List<Coordinate>> = subchains,
+    /** Positions of its nodes outside the selected region, and of observers outside it: drawn faded. */
+    val outsidePoints: Set<Coordinate> = emptySet(),
+    val outsideReceivers: Set<Coordinate> = emptySet(),
+    /** Its last hops had no location, so the hops on to its observers are dashed bridges. */
+    val endsInGap: Boolean = false)
 
 /** [RouteReplay.selected] for replaying every route together (iOS `PacketReplayStore.allRoutes`). */
 const val ALL_ROUTES = -1
@@ -201,25 +211,40 @@ internal fun planReplayHops(routes: List<ReplayRoute>, startsAt: Long, allRoutes
         // A route whose observers are all on shorter routes adds nothing of its own.
         if (allRoutes && route.receivers.isNotEmpty() && receivers.isEmpty()) null else route to receivers
     }
-    data class Planned(val from: Coordinate, val to: Coordinate, val start: Long, val travel: Long)
+    data class Planned(val from: Coordinate, val to: Coordinate, val start: Long, val travel: Long,
+        val dashed: Boolean = false, val outside: Boolean = false)
     val planned = mutableListOf<Planned>()
     val seen = HashSet<Pair<Coordinate, Coordinate>>()
     fun isNew(a: Coordinate, b: Coordinate) = a != b && seen.add(a to b)
     for ((route, receivers) in kept) {
-        val chain = route.nodeChains.flatten().fold(mutableListOf<Coordinate>()) { list, point -> list.apply { if (lastOrNull() != point) add(point) } }
         var elapsed = 0L
-        for ((a, b) in chain.zipWithNext()) {
-            val time = travel(a, b)
-            if (isNew(a, b)) planned += Planned(a, b, elapsed, time)
-            elapsed += time
+        var previous: Coordinate? = null
+        for (chain in route.nodeChains) {
+            // Pieces split by hops with no location are joined by a dashed bridge (iOS), not drawn
+            // as if the two nodes were directly linked.
+            val first = chain.firstOrNull() ?: continue
+            previous?.takeIf { it != first }?.let { from ->
+                val time = travel(from, first)
+                if (isNew(from, first)) planned += Planned(from, first, elapsed, time, dashed = true, outside = first in route.outsidePoints)
+                elapsed += time
+            }
+            for ((a, b) in chain.zipWithNext()) {
+                val time = travel(a, b)
+                if (isNew(a, b)) planned += Planned(a, b, elapsed, time, outside = b in route.outsidePoints)
+                elapsed += time
+            }
+            previous = chain.last()
         }
-        val last = chain.lastOrNull() ?: continue
-        receivers.forEach { (_, at) -> if (isNew(last, at)) planned += Planned(last, at, elapsed, travel(last, at)) }
+        val last = previous ?: continue
+        receivers.forEach { (_, at) ->
+            if (isNew(last, at)) planned += Planned(last, at, elapsed, travel(last, at), dashed = route.endsInGap, outside = at in route.outsideReceivers)
+        }
     }
     val fadeStart = startsAt + (planned.maxOfOrNull { it.start + it.travel } ?: 0) + 750
     val hops = planned.map { hop ->
         val begins = startsAt + hop.start
-        RouteHop(hop.from, hop.to, begins, if (allRoutes) begins + hop.travel + 1_000 else fadeStart, 650, hop.travel, HOP_CURVATURE)
+        RouteHop(hop.from, hop.to, begins, if (allRoutes) begins + hop.travel + 1_000 else fadeStart, 650, hop.travel, HOP_CURVATURE,
+            dashed = hop.dashed, outside = hop.outside)
     }
     return hops to kept.flatMap { it.second }.distinctBy { it.second }
 }
@@ -246,7 +271,7 @@ internal fun routeFrame(routes: List<LiveRoute>, now: Long, animate: Boolean): R
         for ((index, hop) in route.hops.withIndex()) {
             val elapsed = now - hop.startsAt
             if (elapsed < 0) continue
-            val strength = if (hop.dashed) 0.6f else 1f
+            val strength = (if (hop.dashed) 0.6f else 1f) * (if (hop.outside) OUTSIDE_REGION_STRENGTH else 1f)
             if (animate && elapsed < hop.travel) {
                 if (route !in transient) continue
                 val fraction = elapsed.toFloat() / hop.travel
@@ -259,7 +284,8 @@ internal fun routeFrame(routes: List<LiveRoute>, now: Long, animate: Boolean): R
             val arrival = elapsed - hop.travel
             if (animate && route in transient && !hop.dashed && arrival < RouteTiming.ARRIVAL_PULSE) {
                 val p = arrival.toFloat() / RouteTiming.ARRIVAL_PULSE
-                rings += RouteRing(hop.end, route.color, (8 + p * 42) / 2, max(0.5f, 2.5f - p * 1.5f), (1 - p) * 0.9f)
+                rings += RouteRing(hop.end, route.color, (8 + p * 42) / 2, max(0.5f, 2.5f - p * 1.5f),
+                    (1 - p) * 0.9f * (if (hop.outside) OUTSIDE_REGION_STRENGTH else 1f))
             }
         }
         val pulseElapsed = now - route.receivedAt
@@ -348,7 +374,8 @@ internal class LiveRouteBuilder {
                     // Held: from the packet's first sighting, or now if that has already passed.
                     holdMs?.let { hold -> maxOf(firstSeen.getOrPut(packet.hash) { arrival } + hold, arrival) } ?: arrival
                 } else observed
-                LiveRoute(packet.key, start, color, routeAnchors(packet, nodes, observers, lookup),
+                LiveRoute(packet.key, start, color,
+                    routeAnchors(packet, nodes, observers, lookup).map { if (it.role == "observer") it else it.copy(routeColor = color) },
                     packetRoute(packet, nodes, observers, lookup), historical = !packet.isLive, packet = packet, observedAt = observed, zoom = zoom)
             }
         }
@@ -373,14 +400,28 @@ internal const val THIN_MARKERS_BELOW_ZOOM = 9.0
 
 /**
  * With Group Nearby Nodes off and the map zoomed out (iOS `withoutCoveredMarkers`), nodes within
- * about 2.5 dp of each other draw as one dot anyway. Keeps one per cell (a repeater over a room
+ * a few dp of each other mostly hide under one another. Keeps one per cell (a repeater over a room
  * over a companion over a sensor, then by key so the pick is stable) and returns, by kept node's
  * key, the nodes it covers, so a tap there can zoom in on the stack.
  */
 internal fun thinCoveredNodes(nodes: List<MeshNode>, zoom: Double): Pair<List<MeshNode>, Map<String, List<MeshNode>>> {
     if (zoom >= THIN_MARKERS_BELOW_ZOOM) return nodes to emptyMap()
+    // Every marker costs while panning, so the cell grows with how crowded the map is: 4 dp
+    // normally, up to 6 dp until about 300 markers remain (iOS `withoutCoveredMarkers`). Even at
+    // 6 dp a hidden node always sits under the 10 dp marker kept.
+    var result = thinMarkers(nodes, zoom, 4.0)
+    for (cellDp in listOf(5.0, 6.0)) {
+        if (result.first.size <= THIN_MARKER_BUDGET) break
+        result = thinMarkers(nodes, zoom, cellDp)
+    }
+    return result
+}
+
+private const val THIN_MARKER_BUDGET = 300
+
+private fun thinMarkers(nodes: List<MeshNode>, zoom: Double, cellDp: Double): Pair<List<MeshNode>, Map<String, List<MeshNode>>> {
     val degreesPerDp = 360.0 / (512.0 * Math.pow(2.0, zoom))
-    val cell = 2.5 * degreesPerDp
+    val cell = cellDp * degreesPerDp
     fun rank(node: MeshNode) = MAP_ROLES.indexOf(node.role.lowercase()).let { if (it < 0) MAP_ROLES.size else it }
     val best = HashMap<Pair<Long, Long>, MeshNode>()
     val covered = HashMap<Pair<Long, Long>, MutableList<MeshNode>>()
@@ -388,7 +429,7 @@ internal fun thinCoveredNodes(nodes: List<MeshNode>, zoom: Double): Pair<List<Me
         val at = node.coordinate ?: continue
         // Web Mercator: a dp spans fewer degrees of latitude than longitude away from the equator.
         val key = kotlin.math.floor(at.longitude / cell).toLong() to
-            kotlin.math.floor(Mercator.y(at.latitude) * 512.0 * Math.pow(2.0, zoom) / 2.5).toLong()
+            kotlin.math.floor(Mercator.y(at.latitude) * 512.0 * Math.pow(2.0, zoom) / cellDp).toLong()
         val current = best[key]
         if (current == null) { best[key] = node; continue }
         val replaces = compareValuesBy(node, current, ::rank, MeshNode::publicKey) < 0
@@ -407,3 +448,11 @@ internal fun siteRole(site: Coordinate, nodes: List<MeshNode>): String? =
     nodes.filter { node -> node.coordinate?.let { distanceKm(it, site) <= 0.075 } == true }
         .map { it.role.lowercase() }
         .minByOrNull { MAP_ROLES.indexOf(it).let { rank -> if (rank < 0) MAP_ROLES.size else rank } }
+
+/** Fades a replay's node markers that lie outside the selected region (iOS 0.5 opacity). */
+internal fun dimOutside(markers: List<MapMarker>, routes: List<ReplayRoute>): List<MapMarker> {
+    val outside = routes.flatMapTo(HashSet()) { it.outsidePoints }
+    if (outside.isEmpty()) return markers
+    val outsideKeys = routes.flatMap { it.nodes }.filter { it.coordinate in outside }.mapTo(HashSet()) { it.publicKey }
+    return markers.map { if (it.publicKey in outsideKeys) it.copy(dimmed = true) else it }
+}

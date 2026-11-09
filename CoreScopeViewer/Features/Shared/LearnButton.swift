@@ -21,7 +21,9 @@ struct LearnButton: View {
                 // room for the explanation's width and its leading side was cut off.
                 let screenHeight = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?
                     .screen.bounds.height ?? 800
-                arrowEdge = globalMidY > screenHeight / 2 ? .top : .bottom
+                // arrowEdge is the bubble's edge that carries the arrow: .bottom opens it above
+                // the ⓘ (lower half of the screen), .top below it (upper half).
+                arrowEdge = globalMidY > screenHeight / 2 ? .bottom : .top
                 isShowingSummary = true
             } label: {
                 Image(systemName: "info.circle")

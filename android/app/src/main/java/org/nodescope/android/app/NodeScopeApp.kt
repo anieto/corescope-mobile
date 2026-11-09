@@ -290,17 +290,33 @@ internal fun AppShell(
     // A packet picked in the map's live packets panel that has no route to replay; a packet
     // with a route is highlighted through `replay` instead, so the panel always matches the map.
     var panelPacket by remember { mutableStateOf<String?>(null) }
+    // Every node, whatever region is selected, so a replay can follow a packet out of the region
+    // instead of jumping from its last hop there straight to each observer beyond it (iOS).
+    val fieldCatalog = (LocalContext.current.applicationContext as NodeScopeApplication).container.fieldCatalog
+    var replayNodes by remember(preferences.host) { mutableStateOf<Map<String, org.nodescope.android.core.model.MeshNode>>(emptyMap()) }
+    var replayStartJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    val replayScope = rememberCoroutineScope()
     fun placedRoutes(routes: List<RouteOption>): List<ReplayRoute> {
         val nodes = state.snapshot?.nodes.orEmpty()
-        val lookup = nodes.associateBy { it.publicKey.lowercase() }
+        val regional = nodes.associateBy { it.publicKey.lowercase() }
+        val scoped = org.nodescope.android.core.model.regionCodes(preferences.region) != null
         val observers = liveFeed.value.observers
         return routes.map { route ->
-            // The replay ends with the hop from the last node to each observer that heard this path.
+            val routeNodes = route.keys.mapNotNull { key ->
+                regional[key.lowercase()] ?: replayNodes[key.lowercase()].takeIf { scoped }
+            }
+            val outsidePoints = routeNodes.filter { it.publicKey.lowercase() !in regional }.mapNotNull { it.coordinate }.toSet()
+            // The replay ends with the hop from the last located node to each observer that heard this path.
             val receivers = route.receivers(observers)
-            val last = route.keys.lastOrNull()?.let { lookup[it.lowercase()]?.coordinate }
+            val outsideNames = route.heardBy.filter { scoped && it.region != null &&
+                !org.nodescope.android.core.model.regionIncludes(preferences.region, it.region) }.map { it.observer.lowercase() }.toSet()
+            val outsideReceivers = receivers.filter { it.first.lowercase() in outsideNames }.map { it.second }.toSet()
+            val chains = routeSubchains(route.keys, routeNodes)
+            val last = chains.lastOrNull()?.lastOrNull()
             val finalHops = if (last == null) emptyList() else receivers.map { it.second }.filter { it != last }.map { listOf(last, it) }
-            val chains = routeSubchains(route.keys, nodes)
-            ReplayRoute(chains + finalHops, route.keys.mapNotNull { lookup[it.lowercase()] }, route.hops, route, receivers, nodeChains = chains)
+            val endsInGap = route.keys.lastOrNull()?.let { key -> routeNodes.none { it.publicKey.equals(key, true) && it.coordinate != null } } == true
+            ReplayRoute(chains + finalHops, routeNodes, route.hops, route, receivers, nodeChains = chains,
+                outsidePoints = outsidePoints, outsideReceivers = outsideReceivers, endsInGap = endsInGap)
         }
     }
     fun startReplay(routes: List<RouteOption>, selected: Int, packetId: String? = null) {
@@ -308,9 +324,26 @@ internal fun AppShell(
         // shows how the packet spread rather than one observer's part of it (iOS).
         val all = org.nodescope.android.feature.map.ALL_ROUTES
         val initial = if (routes.size > 1 && selected == all) all else selected.takeIf { it in routes.indices } ?: 0
-        replay = RouteReplay(System.nanoTime(), placedRoutes(routes), initial, packetId, routes)
         panelPacket = null
         selectTab(Destination.MAP)
+        replayStartJob?.cancel()
+        val host = preferences.host
+        val regional = state.snapshot?.nodes.orEmpty().mapTo(HashSet()) { it.publicKey.lowercase() }
+        val leavesLoaded = org.nodescope.android.core.model.regionCodes(preferences.region) != null &&
+            routes.any { route -> route.keys.any { it.lowercase() !in regional && it.lowercase() !in replayNodes } }
+        if (!leavesLoaded) {
+            replay = RouteReplay(System.nanoTime(), placedRoutes(routes), initial, packetId, routes)
+            return
+        }
+        // Load the nodes beyond the region first (from cache when it has them); on failure the
+        // replay plays with what it has.
+        replayStartJob = replayScope.launch {
+            runCatching { fieldCatalog.nodes(host) }.getOrNull()?.takeIf { host == preferences.host }?.let { catalog ->
+                replayNodes = catalog.value.associateBy { it.publicKey.lowercase() }
+            }
+            if (host != preferences.host) return@launch
+            replay = RouteReplay(System.nanoTime(), placedRoutes(routes), initial, packetId, routes)
+        }
     }
     // Live-list rows carry only the routes the app has seen: one per observer report on the
     // socket, and just one for "Recent" rows loaded from history (the REST feed is one row per

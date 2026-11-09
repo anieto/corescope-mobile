@@ -24,7 +24,11 @@ import kotlin.math.tan
 /** A marker to draw: a node (tappable, with a label) or an observer endpoint of a live route. */
 internal data class MapMarker(val coordinate: Coordinate, val role: String, val publicKey: String? = null, val name: String? = null,
     /** For a replay's observer: the role of a node at its site, drawn as a ring around it (iOS). */
-    val ringRole: String? = null) {
+    val ringRole: String? = null,
+    /** A replay's node or observer outside the selected region, drawn faded (iOS). */
+    val dimmed: Boolean = false,
+    /** A live route's node: white, ringed in the route's colour while a packet crosses it (iOS). */
+    val routeColor: String? = null) {
     /** Identifies a temporary route marker, so a node on several routes is drawn once. */
     val anchorId: String get() = publicKey?.let { "node:$it" } ?: "observer:${coordinate.latitude},${coordinate.longitude}"
 }

@@ -107,6 +107,12 @@ final class MapViewModel {
     /// every live packet, instead of scanning up to ~1,000 nodes per hop.
     private(set) var nodesByPubkey: [String: MeshNode] = [:]
 
+    /// Every node, whatever region is selected, by lowercased key: lets a replay follow a packet
+    /// out of the selected region instead of jumping from its last hop there straight to each
+    /// observer beyond it. Loaded on demand by `loadReplayNodes()`.
+    private(set) var replayNodesByPubkey: [String: MeshNode] = [:]
+    private var replayNodesRefresh: Task<Void, Never>?
+
     private var apiClient: (any AnalyzerBackend)?
     private var cacheNamespace = ""
     private var nodeLoadID = UUID()
@@ -134,6 +140,9 @@ final class MapViewModel {
         hasLoadedNodeRegion = false
         appliedCatalogID = nil
         nodes = []
+        replayNodesRefresh?.cancel()
+        replayNodesRefresh = nil
+        replayNodesByPubkey = [:]
         recentPackets = []
         mapDefaults = nil
         propagationBuffer = Self.defaultPropagationBuffer
@@ -233,6 +242,43 @@ final class MapViewModel {
             }
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// Fills `replayNodesByPubkey` with every node (the unfiltered node list, from cache when it
+    /// has one, refreshing it behind the scenes when due). True once the lookup can be used.
+    @discardableResult
+    func loadReplayNodes() async -> Bool {
+        guard let apiClient, apiClient.sourceSession.isCurrent else { return false }
+        let repository = FieldCatalogRepository.shared
+        if let cached = await repository.cachedNodes(for: apiClient, region: nil) {
+            guard apiClient.sourceSession.isCurrent, self.apiClient?.sourceSession.id == apiClient.sourceSession.id
+            else { return false }
+            setReplayNodes(cached.value.nodes)
+            if replayNodesRefresh == nil,
+               await repository.nodesNeedRefresh(for: apiClient, region: nil, force: false) {
+                replayNodesRefresh = Task { [weak self] in
+                    defer { self?.replayNodesRefresh = nil }
+                    guard let catalog = try? await repository.refreshNodes(for: apiClient, region: nil),
+                          apiClient.sourceSession.isCurrent, !Task.isCancelled else { return }
+                    self?.setReplayNodes(catalog.value.nodes)
+                }
+            }
+            return true
+        }
+        do {
+            let catalog = try await repository.refreshNodes(for: apiClient, region: nil)
+            try apiClient.sourceSession.check()
+            guard self.apiClient?.sourceSession.id == apiClient.sourceSession.id else { return false }
+            setReplayNodes(catalog.value.nodes)
+            return true
+        } catch {
+            return !replayNodesByPubkey.isEmpty
+        }
+    }
+
+    private func setReplayNodes(_ nodes: [MeshNode]) {
+        replayNodesByPubkey = Dictionary(nodes.map { ($0.publicKey.lowercased(), $0) },
+                                         uniquingKeysWith: { first, _ in first })
     }
 
     func applyBeaconNodes(

@@ -389,7 +389,12 @@ private fun MapMarker.feature() = Feature.fromGeometry(coordinate.point).apply {
     publicKey?.let { addStringProperty("publicKey", it) }
     name?.let { addStringProperty("name", it) }
     addStringProperty("role", role)
+    if (dimmed) addBooleanProperty("dimmed", true)
+    routeColor?.let { addStringProperty("routeColor", it) }
 }
+
+/** Full strength, or [faded] for a marker outside the selected region. */
+private fun dimmedOpacity(faded: Float) = switchCase(eq(get("dimmed"), literal(true)), literal(faded), literal(1f))
 
 private fun markerFeatures(markers: List<MapMarker>): FeatureCollection = FeatureCollection.fromFeatures(markers.map { it.feature() })
 
@@ -435,7 +440,8 @@ private fun addOverlays(style: Style, dark: Boolean) {
     style.addLayer(labels(NODE_LABELS, NODES))
     style.addSource(GeoJsonSource(REPLAY_NODES, emptyFeatures))
     style.addLayer(CircleLayer(REPLAY_POINTS, REPLAY_NODES).withProperties(
-        circleRadius(5f), circleColor(match(get("role"), literal("#299EFF"), stop("repeater", "#FFAA44"), stop("room", "#299EFF"), stop("companion", "#45C99D"), stop("sensor", "#B18AFF"))), circleStrokeWidth(1f), circleStrokeColor("#C5E4FA")))
+        circleRadius(5f), circleColor(match(get("role"), literal("#299EFF"), stop("repeater", "#FFAA44"), stop("room", "#299EFF"), stop("companion", "#45C99D"), stop("sensor", "#B18AFF"))), circleStrokeWidth(1f), circleStrokeColor("#C5E4FA"),
+        circleOpacity(dimmedOpacity(0.5f)), circleStrokeOpacity(dimmedOpacity(0.5f))))
     style.addLayer(labels(REPLAY_LABELS, REPLAY_NODES))
     // Live hops as on iOS: a soft halo under a thin core, a small white head, and arrival rings.
     style.addSource(GeoJsonSource("live-lines", emptyFeatures).apply { setOverrideSynchronousUpdate(true) })
@@ -454,9 +460,15 @@ private fun addOverlays(style: Style, dark: Boolean) {
     style.addSource(GeoJsonSource("live-dots", emptyFeatures).apply { setOverrideSynchronousUpdate(true) })
     style.addLayer(CircleLayer("live-route-dots", "live-dots").withProperties(circleColor("#FFFFFF"), circleRadius(3.5f), circleStrokeColor(get("color")), circleStrokeWidth(1.5f)))
     style.addSource(GeoJsonSource(ROUTE_NODES, emptyFeatures))
+    // A live route's nodes light up white, ringed in the route's colour (iOS); a replay's keep
+    // their role colour, faded outside the selected region.
+    val live = has("routeColor")
     style.addLayer(CircleLayer(ROUTE_NODE_POINTS, ROUTE_NODES).withFilter(not(eq(get("role"), literal("observer")))).withProperties(
-        circleRadius(6f), circleColor(match(get("role"), literal("#65DDB4"), stop("repeater", "#FFAA44"), stop("room", "#299EFF"), stop("companion", "#45C99D"), stop("sensor", "#B18AFF"))),
-        circleStrokeWidth(2f), circleStrokeColor("#FFFFFF")))
+        circleRadius(switchCase(live, literal(4.5f), literal(6f))),
+        circleColor(switchCase(live, literal("#FFFFFF"),
+            match(get("role"), literal("#65DDB4"), stop("repeater", "#FFAA44"), stop("room", "#299EFF"), stop("companion", "#45C99D"), stop("sensor", "#B18AFF")))),
+        circleStrokeWidth(2f), circleStrokeColor(switchCase(live, get("routeColor"), literal("#FFFFFF"))),
+        circleOpacity(dimmedOpacity(0.5f)), circleStrokeOpacity(dimmedOpacity(0.5f))))
     // A replay's observers: ringed antenna markers over the route's nodes, named once zoomed in
     // to about a city (setObserverLabelsVisible), below the marker.
     val markerDensity = android.content.res.Resources.getSystem().displayMetrics.density
@@ -464,7 +476,7 @@ private fun addOverlays(style: Style, dark: Boolean) {
         style.addImage(observerImage(role.takeIf { it != "none" }), observerMarkerBitmap(MARKER_ROLE_COLORS[role], markerDensity))
     }
     style.addLayer(SymbolLayer("nodescope-route-observers", ROUTE_NODES).withFilter(eq(get("role"), literal("observer"))).withProperties(
-        iconImage(get("observerIcon")), iconAllowOverlap(true), iconIgnorePlacement(true)))
+        iconImage(get("observerIcon")), iconAllowOverlap(true), iconIgnorePlacement(true), iconOpacity(dimmedOpacity(0.55f))))
     style.addLayer(labels(OBSERVER_LABELS, ROUTE_NODES)
         .withFilter(all(eq(get("role"), literal("observer")), has("name"))).withProperties(textOffset(arrayOf(0f, 1.1f))))
     style.addSource(GeoJsonSource(ROUTE, emptyFeatures))

@@ -227,7 +227,10 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         if (groupsNodes || routeOnlyReplay) mapNodes to emptyMap() else thinCoveredNodes(mapNodes, spreadZoom)
     }
     val coveredNodes = thinned.second
-    val nodes = remember(thinned) { nodeMarkers(thinned.first, spreadCoincidentNodes(thinned.first, spreadZoom)) }
+    val nodes = remember(thinned, routeOnlyReplay, shownReplayRoutes) {
+        nodeMarkers(thinned.first, spreadCoincidentNodes(thinned.first, spreadZoom))
+            .let { if (routeOnlyReplay) dimOutside(it, shownReplayRoutes) else it }
+    }
     val progress = remember { Animatable(0f) }
     var replay by remember { mutableIntStateOf(0) }
     val uriHandler = LocalUriHandler.current
@@ -294,9 +297,10 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             val (hops, receivers) = planReplayHops(shown, replayStart, replayIndex == ALL_ROUTES, settledZoom[0].takeUnless(Double::isNaN))
             // The observers that heard the routes are their endpoints, ringed in the colour of a
             // node at the same site, which their marker covers (iOS).
-            val observers = receivers.map { (name, at) -> MapMarker(at, "observer", name = name, ringRole = siteRole(at, currentAllNodes)) }
+            val observers = receivers.map { (name, at) -> MapMarker(at, "observer", name = name, ringRole = siteRole(at, currentAllNodes),
+                dimmed = shown.any { at in it.outsideReceivers }) }
             LiveRoute("replay-${routeReplay?.id}-$replayIndex-$replayStart", replayStart, "#FFA833",
-                nodeMarkers(shown.flatMap { it.nodes }.distinctBy { it.publicKey }) + observers, emptyList(), replay = true, plannedHops = hops)
+                dimOutside(nodeMarkers(shown.flatMap { it.nodes }.distinctBy { it.publicKey }), shown) + observers, emptyList(), replay = true, plannedHops = hops)
         }
     }
     // While replaying, only the replayed route animates (live traffic resumes on "Live").
@@ -403,6 +407,8 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             // cannot jump particles.
             val clockOffset = System.currentTimeMillis() - System.nanoTime() / 1_000_000
             var previousRoutes: List<LiveRoute>? = null
+            // A replay's observers stay until it ends, as on iOS, not only while a hop is moving.
+            var anchoredPaths: List<LiveRoute>? = null
             var previousKeys: List<String>? = null
             var lastDrawnAt: Long? = null
             var lastFrame: RouteFrame? = null
@@ -421,13 +427,16 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                     // gained observations (dozens per packet on networks with many observers) waits
                     // for the next capped redraw, which also refreshes its markers.
                     val keys = active.map { it.key }
-                    val routesEnteredOrLeft = keys != previousKeys
+                    val keptPaths = if (replayingNow) observedPaths else emptyList()
+                    val routesEnteredOrLeft = keys != previousKeys || keptPaths !== anchoredPaths
                     previousKeys = keys
                     if (shouldDrawRouteFrame(now, lastDrawnAt, routesEnteredOrLeft, replayingNow)) {
                         // Temporary route markers only change when the routes do.
-                        if (active != previousRoutes) {
-                            traced("NodeScope:anchors") { drawing.setRouteAnchors(active.flatMap { it.anchors }.distinctBy { it.anchorId }) }
+                        if (active != previousRoutes || keptPaths !== anchoredPaths) {
+                            val kept = keptPaths.flatMap { route -> route.anchors.filter { it.role == "observer" } }
+                            traced("NodeScope:anchors") { drawing.setRouteAnchors((active.flatMap { it.anchors } + kept).distinctBy { it.anchorId }) }
                             previousRoutes = active
+                            anchoredPaths = keptPaths
                         }
                         // Named sections show the route work in system traces (no cost when not tracing).
                         val frame = traced("NodeScope:frame") { routeFrame(active, now, animate) }
@@ -713,7 +722,8 @@ private fun SlideUpVisibility(visible: Boolean, modifier: Modifier = Modifier, c
 @Composable
 internal fun ReplayControls(playing: Boolean, routes: List<ReplayRoute>, selected: Int, routeOnly: Boolean,
     onPlay: () -> Unit, onLive: () -> Unit, onRoute: (Int) -> Unit, onRouteOnly: () -> Unit, modifier: Modifier = Modifier) {
-    Surface(modifier, color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
+    // The app's mesh, lined up with the navigation bar below it, as on the other bars.
+    Surface(modifier.meshPageBackground(), color = androidx.compose.ui.graphics.Color.Transparent) {
         Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

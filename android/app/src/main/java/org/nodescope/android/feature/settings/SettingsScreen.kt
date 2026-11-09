@@ -120,7 +120,7 @@ fun SettingsScreen(
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("Group Nearby Nodes", style = MaterialTheme.typography.titleSmall)
-                            Text("Combine close nodes into numbered bubbles when zoomed out. With this off, busy areas may be slower.",
+                            Text("Combine close nodes into numbered bubbles when zoomed out. On a large mesh, turning this off can make the map lag when you pan or tap a node.",
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Switch(checked = org.nodescope.android.feature.map.LiveMapSettings.groupsNodes(context),
@@ -130,7 +130,7 @@ fun SettingsScreen(
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("Realistic Propagation", style = MaterialTheme.typography.titleSmall)
-                            Text("Wait for every observer, then animate a packet's paths together. Runs a few seconds behind live; the analyzer sets the delay.",
+                            Text("Collect a packet's reports from different observers for a few seconds, then animate its paths together. Runs slightly behind live; the analyzer sets the delay.",
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Switch(checked = org.nodescope.android.feature.map.LiveMapSettings.realisticPropagation(context),
