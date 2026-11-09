@@ -46,7 +46,9 @@ struct CoverageRaster: Sendable {
         guard (0..<grid.columns).contains(column), (0..<grid.rows).contains(row) else { return .outsideAnalysis }
         let cell = cells[row * grid.columns + column]
         switch cell.state {
-        case .outsideRadius: return .outsideAnalysis
+        // The pixel is inside the radius, but its nearest sample may be outside it.
+        // No prediction exists there; transparency would imply a below-threshold result.
+        case .outsideRadius: return .unresolved
         case .nearSite: return .unsupportedNearSite
         case .qualified: return (cell.marginDb ?? -.infinity) >= 0 ? .aboveThreshold : .belowThreshold
         default: return .unresolved

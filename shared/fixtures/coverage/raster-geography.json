@@ -32,6 +32,16 @@
         "latitude": 1.1013497867541619e-18,
         "longitude": 0.017986407274491967,
         "state": "outsideAnalysis"
+      },
+      {
+        "latitude": -0.002697961082200297,
+        "longitude": 0.008093883279514102,
+        "state": "unresolved"
+      },
+      {
+        "latitude": -0.0028467445856949136,
+        "longitude": 0.00854023379574187,
+        "state": "outsideAnalysis"
       }
     ]
   },
@@ -67,6 +77,16 @@
       {
         "latitude": 29.42999840728035,
         "longitude": -98.59934867713446,
+        "state": "outsideAnalysis"
+      },
+      {
+        "latitude": 29.427301716400635,
+        "longitude": -98.6107071514943,
+        "state": "unresolved"
+      },
+      {
+        "latitude": 29.427152896345365,
+        "longitude": -98.61019469643378,
         "state": "outsideAnalysis"
       }
     ]
@@ -104,6 +124,16 @@
         "latitude": 9.999999502199893,
         "longitude": -179.9818361234199,
         "state": "outsideAnalysis"
+      },
+      {
+        "latitude": 9.997301938114113,
+        "longitude": -179.99188132376537,
+        "state": "unresolved"
+      },
+      {
+        "latitude": 9.997153143186141,
+        "longitude": -179.99142809530701,
+        "state": "outsideAnalysis"
       }
     ]
   },
@@ -139,6 +169,16 @@
       {
         "latitude": 84.89996836715774,
         "longitude": -179.7975660626007,
+        "state": "outsideAnalysis"
+      },
+      {
+        "latitude": 84.89729563662935,
+        "longitude": -179.90889744279502,
+        "state": "unresolved"
+      },
+      {
+        "latitude": 84.89714612773389,
+        "longitude": -179.9038817583461,
         "state": "outsideAnalysis"
       }
     ]

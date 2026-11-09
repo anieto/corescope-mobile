@@ -38,7 +38,9 @@ class CoverageRaster(val grid: CoverageGrid, val transmitter: CoverageTerrainCoo
         if (column !in 0 until grid.columns || row !in 0 until grid.rows) return CoverageRasterClass.outsideAnalysis
         val cell = cells[row * grid.columns + column]
         return when (cell.state) {
-            CoverageAreaState.outsideRadius -> CoverageRasterClass.outsideAnalysis
+            // The pixel is inside the radius, but its nearest sample may be outside it.
+            // No prediction exists there; transparency would imply a below-threshold result.
+            CoverageAreaState.outsideRadius -> CoverageRasterClass.unresolved
             CoverageAreaState.nearSite -> CoverageRasterClass.unsupportedNearSite
             CoverageAreaState.qualified -> if ((cell.marginDb ?: Double.NEGATIVE_INFINITY) >= 0) CoverageRasterClass.aboveThreshold else CoverageRasterClass.belowThreshold
             else -> CoverageRasterClass.unresolved

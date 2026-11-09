@@ -28,7 +28,9 @@ Expected checks:
 1. Calculate shows terrain preparation followed by path calculation. The UI remains responsive.
 2. A completed result shows green above-threshold areas, a legend and sample counts. Gray hatching
    indicates unknown or unsupported near-site terrain. Clear areas inside the radius are below
-   threshold; areas outside the radius are not analyzed. Zooming adds no prediction samples.
+   threshold; areas outside the radius are not analyzed. With coarse spacing, gray hatching can
+   also appear just inside the study boundary where the nearest sample lies outside the radius.
+   These unsampled areas do not increase the unresolved sample count. Zooming adds no prediction samples.
 3. Known nodes show predicted status/margin or an explicit reason for being unknown/not evaluated.
    The list contains at most 200 nearest available nodes and is not a complete radio inventory.
 4. Changing any input removes the overlay and requests a new calculation. Changing source/region
