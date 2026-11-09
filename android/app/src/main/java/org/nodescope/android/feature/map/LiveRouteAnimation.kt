@@ -39,7 +39,9 @@ internal object RouteTiming {
  * couldn't resolve: drawn faint and dashed, with no arrival ring, since no relay is claimed.
  */
 internal class RouteHop(val start: Coordinate, val end: Coordinate, val startsAt: Long, val fadeStartsAt: Long, val fadeDuration: Long,
-    val travel: Long = RouteTiming.HOP_TRAVEL, val curvature: Double = 0.0, val dashed: Boolean = false) {
+    val travel: Long = RouteTiming.HOP_TRAVEL, val curvature: Double = 0.0, val dashed: Boolean = false,
+    /** A replay hop reaching a node or observer outside the selected region: drawn faded (iOS). */
+    val outside: Boolean = false) {
     private val track = if (curvature == 0.0) RouteTrack(listOf(start, end)) else null
     fun position(fraction: Float): Coordinate = track?.position(fraction) ?: curvePoint(start, end, curvature, fraction.toDouble())
     /** The hop from its start to [fraction] of the way: two points straight, enough to look smooth curved. */
@@ -121,6 +123,9 @@ internal class LiveRoute(val key: String, val receivedAt: Long, val color: Strin
     fun isActive(now: Long) = now >= startsAt && now < endsAt
 }
 
+/** How strongly a replay hop outside the selected region is drawn (iOS `regionEmphasis`). */
+private const val OUTSIDE_REGION_STRENGTH = 0.45f
+
 /** One resolved route of a packet, placed on the map: coordinate chains and the nodes along it. */
 data class ReplayRoute(val subchains: List<List<Coordinate>>, val nodes: List<MeshNode>, val hops: Int,
     /** The route and who heard it, for naming it in the replay controls. */
@@ -128,7 +133,12 @@ data class ReplayRoute(val subchains: List<List<Coordinate>>, val nodes: List<Me
     /** The observers it ends at (name and position), drawn as the route's labelled endpoints. */
     val receivers: List<Pair<String, Coordinate>> = emptyList(),
     /** The route's own nodes, without the final hops to its observers. */
-    val nodeChains: List<List<Coordinate>> = subchains)
+    val nodeChains: List<List<Coordinate>> = subchains,
+    /** Positions of its nodes outside the selected region, and of observers outside it: drawn faded. */
+    val outsidePoints: Set<Coordinate> = emptySet(),
+    val outsideReceivers: Set<Coordinate> = emptySet(),
+    /** Its last hops had no location, so the hops on to its observers are dashed bridges. */
+    val endsInGap: Boolean = false)
 
 /** [RouteReplay.selected] for replaying every route together (iOS `PacketReplayStore.allRoutes`). */
 const val ALL_ROUTES = -1
@@ -201,25 +211,40 @@ internal fun planReplayHops(routes: List<ReplayRoute>, startsAt: Long, allRoutes
         // A route whose observers are all on shorter routes adds nothing of its own.
         if (allRoutes && route.receivers.isNotEmpty() && receivers.isEmpty()) null else route to receivers
     }
-    data class Planned(val from: Coordinate, val to: Coordinate, val start: Long, val travel: Long)
+    data class Planned(val from: Coordinate, val to: Coordinate, val start: Long, val travel: Long,
+        val dashed: Boolean = false, val outside: Boolean = false)
     val planned = mutableListOf<Planned>()
     val seen = HashSet<Pair<Coordinate, Coordinate>>()
     fun isNew(a: Coordinate, b: Coordinate) = a != b && seen.add(a to b)
     for ((route, receivers) in kept) {
-        val chain = route.nodeChains.flatten().fold(mutableListOf<Coordinate>()) { list, point -> list.apply { if (lastOrNull() != point) add(point) } }
         var elapsed = 0L
-        for ((a, b) in chain.zipWithNext()) {
-            val time = travel(a, b)
-            if (isNew(a, b)) planned += Planned(a, b, elapsed, time)
-            elapsed += time
+        var previous: Coordinate? = null
+        for (chain in route.nodeChains) {
+            // Pieces split by hops with no location are joined by a dashed bridge (iOS), not drawn
+            // as if the two nodes were directly linked.
+            val first = chain.firstOrNull() ?: continue
+            previous?.takeIf { it != first }?.let { from ->
+                val time = travel(from, first)
+                if (isNew(from, first)) planned += Planned(from, first, elapsed, time, dashed = true, outside = first in route.outsidePoints)
+                elapsed += time
+            }
+            for ((a, b) in chain.zipWithNext()) {
+                val time = travel(a, b)
+                if (isNew(a, b)) planned += Planned(a, b, elapsed, time, outside = b in route.outsidePoints)
+                elapsed += time
+            }
+            previous = chain.last()
         }
-        val last = chain.lastOrNull() ?: continue
-        receivers.forEach { (_, at) -> if (isNew(last, at)) planned += Planned(last, at, elapsed, travel(last, at)) }
+        val last = previous ?: continue
+        receivers.forEach { (_, at) ->
+            if (isNew(last, at)) planned += Planned(last, at, elapsed, travel(last, at), dashed = route.endsInGap, outside = at in route.outsideReceivers)
+        }
     }
     val fadeStart = startsAt + (planned.maxOfOrNull { it.start + it.travel } ?: 0) + 750
     val hops = planned.map { hop ->
         val begins = startsAt + hop.start
-        RouteHop(hop.from, hop.to, begins, if (allRoutes) begins + hop.travel + 1_000 else fadeStart, 650, hop.travel, HOP_CURVATURE)
+        RouteHop(hop.from, hop.to, begins, if (allRoutes) begins + hop.travel + 1_000 else fadeStart, 650, hop.travel, HOP_CURVATURE,
+            dashed = hop.dashed, outside = hop.outside)
     }
     return hops to kept.flatMap { it.second }.distinctBy { it.second }
 }
@@ -246,7 +271,7 @@ internal fun routeFrame(routes: List<LiveRoute>, now: Long, animate: Boolean): R
         for ((index, hop) in route.hops.withIndex()) {
             val elapsed = now - hop.startsAt
             if (elapsed < 0) continue
-            val strength = if (hop.dashed) 0.6f else 1f
+            val strength = (if (hop.dashed) 0.6f else 1f) * (if (hop.outside) OUTSIDE_REGION_STRENGTH else 1f)
             if (animate && elapsed < hop.travel) {
                 if (route !in transient) continue
                 val fraction = elapsed.toFloat() / hop.travel
@@ -259,7 +284,8 @@ internal fun routeFrame(routes: List<LiveRoute>, now: Long, animate: Boolean): R
             val arrival = elapsed - hop.travel
             if (animate && route in transient && !hop.dashed && arrival < RouteTiming.ARRIVAL_PULSE) {
                 val p = arrival.toFloat() / RouteTiming.ARRIVAL_PULSE
-                rings += RouteRing(hop.end, route.color, (8 + p * 42) / 2, max(0.5f, 2.5f - p * 1.5f), (1 - p) * 0.9f)
+                rings += RouteRing(hop.end, route.color, (8 + p * 42) / 2, max(0.5f, 2.5f - p * 1.5f),
+                    (1 - p) * 0.9f * (if (hop.outside) OUTSIDE_REGION_STRENGTH else 1f))
             }
         }
         val pulseElapsed = now - route.receivedAt

@@ -41,6 +41,9 @@ struct ActivePing: Identifiable, Sendable {
     /// Bridges hops the analyzer couldn't resolve: from the last known node to the next. Drawn
     /// dashed and faint, with no arrival ring, since no specific relay is claimed.
     let isUnknownRelay: Bool
+    /// A replay hop reaching a node or observer outside the selected region: drawn faded, so the
+    /// packet can be followed out of the region while the region's own part stands out.
+    let isOutsideRegion: Bool
 
     init(
         from start: CLLocationCoordinate2D,
@@ -61,12 +64,14 @@ struct ActivePing: Identifiable, Sendable {
         sender: String? = nil,
         messageText: String? = nil,
         curvature: Double = 0,
-        isUnknownRelay: Bool = false
+        isUnknownRelay: Bool = false,
+        isOutsideRegion: Bool = false
     ) {
         self.start = start
         self.end = end
         self.curvature = curvature
         self.isUnknownRelay = isUnknownRelay
+        self.isOutsideRegion = isOutsideRegion
         self.isPulse = false
         self.createdAt = createdAt
         self.fadeStartsAt = fadeStartsAt ?? createdAt
@@ -95,6 +100,7 @@ struct ActivePing: Identifiable, Sendable {
         self.end = point
         self.curvature = 0
         self.isUnknownRelay = false
+        self.isOutsideRegion = false
         self.isPulse = true
         self.createdAt = createdAt
         self.fadeStartsAt = createdAt
@@ -117,6 +123,9 @@ struct ActivePing: Identifiable, Sendable {
     /// before `fadeStartsAt`, so a segment whose turn hasn't come up yet in
     /// a staggered sequence just sits at full opacity rather than fading
     /// early or going negative.
+    /// How strongly the hop is drawn: faded outside the selected region.
+    var regionEmphasis: Double { isOutsideRegion ? 0.45 : 1 }
+
     func progress(at date: Date = .now) -> Double {
         min(max(date.timeIntervalSince(fadeStartsAt) / duration, 0), 1)
     }

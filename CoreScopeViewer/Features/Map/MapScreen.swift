@@ -94,6 +94,8 @@ struct MapScreen: View {
     @State private var isLocatingUser = false
     @State private var isRefreshingMap = false
     @State private var pendingReplayRequestID: UUID?
+    /// The replay request every-node lookup was last loaded for (see `replayLeavesLoadedNodes`).
+    @State private var replayNodesRequestID: UUID?
     @State private var loadedAnalyzerSessionID: UUID?
     @State private var lastFramedMapScopeID: String?
     @State private var displayUpdateTask: Task<Void, Never>?
@@ -1019,7 +1021,9 @@ struct MapScreen: View {
         // (0.25° of latitude), then the route's node names closer still (0.08°).
         let latitudeSpan = visibleRegion?.span.latitudeDelta ?? .infinity
         let showsObserverNames = latitudeSpan <= 0.25
-        let baseNodes = isReplayMode && showsReplayRouteOnly ? replayRouteNodes : displayedNodes
+        let outsideNodes = outsideReplayNodes
+        let outsideNodeIDs = Set(outsideNodes.map(\.id))
+        let baseNodes = isReplayMode && showsReplayRouteOnly ? replayRouteNodes : displayedNodes + outsideNodes
         let mapNodes = baseNodes
         let mapClusters = isReplayMode && showsReplayRouteOnly
             ? []
@@ -1089,17 +1093,26 @@ struct MapScreen: View {
                 }
 
                 ForEach(anchoredPings) { ping in
-                    let opacity = ping.completedPathOpacity(at: date)
-                    MapPolyline(coordinates: ping.pathCoordinates())
-                        .stroke(
-                            ping.pathColor.opacity(opacity * 0.18),
-                            style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round)
-                        )
-                    MapPolyline(coordinates: ping.pathCoordinates())
-                        .stroke(
-                            ping.pathColor.opacity(opacity * 0.85),
-                            style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
-                        )
+                    let opacity = ping.completedPathOpacity(at: date) * ping.regionEmphasis
+                    if ping.isUnknownRelay {
+                        // Hops with no located relay: a faint dashed bridge, as in live traffic.
+                        MapPolyline(coordinates: ping.pathCoordinates())
+                            .stroke(
+                                ping.pathColor.opacity(opacity * 0.55),
+                                style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [4, 4])
+                            )
+                    } else {
+                        MapPolyline(coordinates: ping.pathCoordinates())
+                            .stroke(
+                                ping.pathColor.opacity(opacity * 0.18),
+                                style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round)
+                            )
+                        MapPolyline(coordinates: ping.pathCoordinates())
+                            .stroke(
+                                ping.pathColor.opacity(opacity * 0.85),
+                                style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
+                            )
+                    }
                 }
 
                 ForEach(mapNodes) { node in
@@ -1119,6 +1132,8 @@ struct MapScreen: View {
                                 colorScheme: colorScheme
                             )
                             .equatable()
+                            // Outside the selected region: shown for the replay, faded like its hops.
+                            .opacity(outsideNodeIDs.contains(node.id) ? 0.5 : 1)
                             .allowsHitTesting(false)
                             .accessibilityElement()
                             .accessibilityAddTraits(.isButton)
@@ -1156,6 +1171,7 @@ struct MapScreen: View {
                                 showsName: labeledIDs.contains(Self.observerLabelID(receiver.id)),
                                 colorScheme: colorScheme
                             )
+                            .opacity(receiver.isOutsideRegion ? 0.55 : 1)
                         }
                     }
                 }
@@ -1604,7 +1620,22 @@ struct MapScreen: View {
 
     private var replayRouteNodes: [MeshNode] {
         let routeKeys = Set(packetReplayStore.resolvedPath.map { $0.lowercased() })
-        return viewModel.nodes.filter { routeKeys.contains($0.publicKey.lowercased()) }
+        return viewModel.nodes.filter { routeKeys.contains($0.publicKey.lowercased()) } + outsideReplayNodes
+    }
+
+    /// The replayed routes' nodes outside the selected region, drawn faded while the replay shows.
+    private var outsideReplayNodes: [MeshNode] {
+        isReplayMode ? replayOutsideNodes() : []
+    }
+
+    private func replayOutsideNodes() -> [MeshNode] {
+        guard regionFilter.selectedCodes != nil, packetReplayStore.isReplayActive else { return [] }
+        var seen = Set<String>()
+        return packetReplayStore.shownRoutes.flatMap(\.route.keys).compactMap { key in
+            guard let (node, isOutside) = replayNode(forKey: key), isOutside,
+                  validCoordinate(node.coordinate) != nil, seen.insert(node.id).inserted else { return nil }
+            return node
+        }
     }
 
     private var isReplayPlaying: Bool {
@@ -2075,9 +2106,50 @@ struct MapScreen: View {
             return
         }
         guard pendingReplayRequestID == packetReplayStore.requestID else { return }
+        // A replay leaving the selected region needs the nodes beyond it first, or its route stops
+        // at the region's last hop. Loaded once per request; on failure it plays with what it has.
+        if replayLeavesLoadedNodes, replayNodesRequestID != packetReplayStore.requestID {
+            let request = packetReplayStore.requestID
+            replayNodesRequestID = request
+            Task { @MainActor in
+                await viewModel.loadReplayNodes()
+                guard packetReplayStore.requestID == request else { return }
+                replayPendingPacketIfNeeded()
+            }
+            return
+        }
         if replayPacketRoute() {
             pendingReplayRequestID = nil
         }
+    }
+
+    /// Whether any of the packet's routes passes a node that isn't loaded: with a region chosen,
+    /// only that region's nodes are, so a packet that travelled on needs the rest.
+    private var replayLeavesLoadedNodes: Bool {
+        guard regionFilter.selectedCodes != nil else { return false }
+        return packetReplayStore.routes.contains { route in
+            route.keys.contains { key in
+                let key = key.lowercased()
+                return viewModel.nodesByPubkey[key] == nil && viewModel.replayNodesByPubkey[key] == nil
+            }
+        }
+    }
+
+    /// A replayed route's node by key: from the loaded nodes, else from every node. `isOutsideRegion`
+    /// when it's only in the latter, i.e. outside the selected region.
+    private func replayNode(forKey key: String) -> (node: MeshNode, isOutsideRegion: Bool)? {
+        let key = key.lowercased()
+        if let node = viewModel.nodesByPubkey[key] { return (node, false) }
+        guard regionFilter.selectedCodes != nil, let node = viewModel.replayNodesByPubkey[key] else { return nil }
+        return (node, true)
+    }
+
+    /// Whether an observer is known to be outside the selected region (unknown ones aren't faded).
+    private func isObserverOutsideRegion(name: String) -> Bool {
+        guard regionFilter.selectedCodes != nil,
+              let region = observerRegionLookup.iataByName[name] ?? observerRegionLookup.iataByName[name.lowercased()]
+        else { return false }
+        return !regionFilter.includes(region)
     }
 
     /// A replayed route on the map: its located nodes and the observers it ends at.
@@ -2085,6 +2157,12 @@ struct MapScreen: View {
         let index: Int
         let coordinates: [CLLocationCoordinate2D]
         let receivers: [ReplayReceiver]
+        /// Per coordinate: its node is outside the selected region (drawn faded).
+        var outsideRegion: [Bool] = []
+        /// Per coordinate: hops before it had no location, so the way there is a dashed bridge.
+        var bridgedBefore: [Bool] = []
+        /// The route's last hops had no location: the hops on to its observers are bridges too.
+        var bridgesToReceivers = false
     }
 
     /// The shown routes that can be drawn (at least one located node and somewhere to go).
@@ -2107,11 +2185,28 @@ struct MapScreen: View {
         }
         return shown.compactMap { index, route in
             guard let receivers = keptReceivers[index] else { return nil }
-            let coordinates = route.keys.compactMap { publicKey in
-                validCoordinate(viewModel.nodesByPubkey[publicKey.lowercased()]?.coordinate)
+            // Nodes outside the selected region come from every-node lookup, so the route follows
+            // the packet beyond the region. A node with no location leaves a gap, joined by a
+            // dashed bridge rather than drawn as a direct link.
+            var coordinates: [CLLocationCoordinate2D] = []
+            var outsideRegion: [Bool] = []
+            var bridgedBefore: [Bool] = []
+            var skipped = false
+            for key in route.keys {
+                guard let (node, isOutside) = replayNode(forKey: key),
+                      let coordinate = validCoordinate(node.coordinate) else {
+                    skipped = true
+                    continue
+                }
+                bridgedBefore.append(skipped && !coordinates.isEmpty)
+                coordinates.append(coordinate)
+                outsideRegion.append(isOutside)
+                skipped = false
             }
             guard !coordinates.isEmpty, coordinates.count + receivers.count >= 2 else { return nil }
-            return ReplayRouteGeometry(index: index, coordinates: coordinates, receivers: receivers)
+            return ReplayRouteGeometry(index: index, coordinates: coordinates, receivers: receivers,
+                                       outsideRegion: outsideRegion, bridgedBefore: bridgedBefore,
+                                       bridgesToReceivers: skipped)
         }
     }
 
@@ -2131,7 +2226,7 @@ struct MapScreen: View {
         if let pointsPerMapPoint = replayScreenPointsPerMapPoint() {
             let radius = 9 / pointsPerMapPoint
             let sites = replayReceivers.map { MKMapPoint($0.coordinate) }
-            for node in viewModel.nodes {
+            for node in viewModel.nodes + replayOutsideNodes() {
                 guard let coordinate = validCoordinate(node.coordinate) else { continue }
                 let point = MKMapPoint(coordinate)
                 if sites.contains(where: { hypot(point.x - $0.x, point.y - $0.y) <= radius }) {
@@ -2159,12 +2254,14 @@ struct MapScreen: View {
         var order: [CoordinateKey] = []
         var namesByLocation: [CoordinateKey: [String]] = [:]
         var coordinateByLocation: [CoordinateKey: CLLocationCoordinate2D] = [:]
+        var insideLocations = Set<CoordinateKey>()
         for receiver in receivers {
             let location = CoordinateKey(receiver.coordinate)
             if namesByLocation[location] == nil {
                 order.append(location)
                 coordinateByLocation[location] = receiver.coordinate
             }
+            if !receiver.isOutsideRegion { insideLocations.insert(location) }
             if namesByLocation[location, default: []].contains(receiver.name) == false {
                 namesByLocation[location, default: []].append(receiver.name)
             }
@@ -2172,7 +2269,8 @@ struct MapScreen: View {
         return order.compactMap { location in
             guard let names = namesByLocation[location], let first = names.first,
                   let coordinate = coordinateByLocation[location] else { return nil }
-            return ReplayReceiver(name: names.count > 1 ? "\(first) +\(names.count - 1)" : first, coordinate: coordinate)
+            return ReplayReceiver(name: names.count > 1 ? "\(first) +\(names.count - 1)" : first, coordinate: coordinate,
+                                  isOutsideRegion: !insideLocations.contains(location))
         }
     }
 
@@ -2185,7 +2283,8 @@ struct MapScreen: View {
             coordinateByName: observerRegionLookup.coordinateByName
         ).compactMap { receiver in
             guard let coordinate = validCoordinate(receiver.coordinate) else { return nil }
-            return ReplayReceiver(name: receiver.name, coordinate: coordinate)
+            return ReplayReceiver(name: receiver.name, coordinate: coordinate,
+                                  isOutsideRegion: isObserverOutsideRegion(name: receiver.name))
         }
     }
 
@@ -2197,7 +2296,7 @@ struct MapScreen: View {
         func rank(_ role: String) -> Int { rolePriority.firstIndex(of: role.lowercased()) ?? rolePriority.count }
         let sites = receivers.map { MKMapPoint($0.coordinate) }
         var nodesBySite = Array(repeating: [MeshNode](), count: receivers.count)
-        for node in viewModel.nodes {
+        for node in viewModel.nodes + replayOutsideNodes() {
             guard let coordinate = validCoordinate(node.coordinate) else { continue }
             let point = MKMapPoint(coordinate)
             for (index, site) in sites.enumerated() where site.distance(to: point) <= 75 {
@@ -2304,6 +2403,7 @@ struct MapScreen: View {
             let from: CLLocationCoordinate2D, to: CLLocationCoordinate2D
             let start: TimeInterval, travel: TimeInterval
             let routeID: String, segmentIndex: Int, observerName: String?
+            var isBridge = false, isOutsideRegion = false
         }
         let packetHash = packetReplayStore.packetHash
         var plannedSegments = Set<PacketSegmentKey>()
@@ -2320,7 +2420,9 @@ struct MapScreen: View {
                 let travel = travelTime(pair.0, pair.1)
                 if isNew(pair.0, pair.1) {
                     hops.append(PlannedHop(from: pair.0, to: pair.1, start: elapsed, travel: travel,
-                                           routeID: routeID, segmentIndex: index, observerName: nil))
+                                           routeID: routeID, segmentIndex: index, observerName: nil,
+                                           isBridge: route.bridgedBefore[index + 1],
+                                           isOutsideRegion: route.outsideRegion[index + 1]))
                 }
                 elapsed += travel
             }
@@ -2330,7 +2432,9 @@ struct MapScreen: View {
                 hops.append(PlannedHop(from: last, to: receiver.coordinate, start: elapsed,
                                        travel: travelTime(last, receiver.coordinate),
                                        routeID: "\(routeID)-observer-\(index)", segmentIndex: 0,
-                                       observerName: receiver.name))
+                                       observerName: receiver.name,
+                                       isBridge: route.bridgesToReceivers,
+                                       isOutsideRegion: receiver.isOutsideRegion))
             }
         }
 
@@ -2363,7 +2467,9 @@ struct MapScreen: View {
                 sender: packetReplayStore.sender,
                 messageText: packetReplayStore.messageText,
                 // Each hop bows to its own left, so A→B and B→A sit on opposite sides.
-                curvature: 0.07
+                curvature: 0.07,
+                isUnknownRelay: hop.isBridge,
+                isOutsideRegion: hop.isOutsideRegion
             )
         }
         // Starting here (Play Again, or a route already on screen) ends any wait for the camera.
@@ -3460,7 +3566,7 @@ private struct MapTrafficCanvas: View {
         to end: CGPoint,
         in context: inout GraphicsContext
     ) {
-        let opacity = ping.completedPathOpacity(at: date)
+        let opacity = ping.completedPathOpacity(at: date) * ping.regionEmphasis
         guard opacity > 0 else { return }
 
         var path = Path()
@@ -3501,22 +3607,24 @@ private struct MapTrafficCanvas: View {
         } else {
             path.addLines(ping.pathCoordinates(through: progress).compactMap { proxy.convert($0, to: .local) })
         }
+        let emphasis = ping.regionEmphasis
         if ping.isUnknownRelay {
-            context.stroke(path, with: .color(ping.pathColor.opacity(0.55)),
+            context.stroke(path, with: .color(ping.pathColor.opacity(0.55 * emphasis)),
                            style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [4, 4]))
             return
         }
 
         context.stroke(
             path,
-            with: .color(ping.pathColor.opacity(0.18)),
+            with: .color(ping.pathColor.opacity(0.18 * emphasis)),
             style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round)
         )
         context.stroke(
             path,
-            with: .color(ping.pathColor.opacity(0.85)),
+            with: .color(ping.pathColor.opacity(0.85 * emphasis)),
             style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
         )
+        // The travelling dot stays solid, so the packet can still be followed outside the region.
         context.fill(
             Path(ellipseIn: circleRect(center: current, diameter: 7)),
             with: .color(.white)
@@ -3536,7 +3644,7 @@ private struct MapTrafficCanvas: View {
     ) {
         context.stroke(
             Path(ellipseIn: circleRect(center: point, diameter: 8 + progress * 42)),
-            with: .color(ping.pathColor.opacity((1 - progress) * 0.9)),
+            with: .color(ping.pathColor.opacity((1 - progress) * 0.9 * ping.regionEmphasis)),
             lineWidth: max(0.5, 2.5 - progress * 1.5)
         )
     }
@@ -4712,6 +4820,8 @@ private struct MapNodeSearchRow: View {
 private struct ReplayReceiver: Identifiable {
     let name: String
     let coordinate: CLLocationCoordinate2D
+    /// Outside the selected region: drawn faded, like the hops reaching it.
+    var isOutsideRegion = false
     /// The role of a node at the observer's location (usually its own repeater or companion),
     /// drawn as a ring around the observer instead of a separate dot on top of it.
     var nodeRole: String? = nil

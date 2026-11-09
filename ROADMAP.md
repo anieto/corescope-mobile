@@ -157,6 +157,9 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
 - **Ungrouped nodes on big meshes:** markers hidden under another are thinned in 4 pt cells, growing
   to 6 pt while more than about 300 would show (they stay tappable); iOS taps only measure nodes
   near the tap. Realistic Propagation's description no longer says it waits for every observer.
+- **Replays with a region chosen** follow the packet out of the region: hops and observers beyond it
+  are drawn faded (iOS also fades their markers) instead of the route jumping from the region's last
+  hop straight to every observer outside it. Hops with no located node are dashed bridges, as live.
 - Builds: iOS 0.10.3 (3), Android 0.10.3 (versionCode 23); (2)/22 was the first beta. The numbers
   skip past 0.10.3 (1) and versionCode 21, which the Candidate Sites branch used.
 - Not ported to Android (it groups far less, and its maps hide colliding labels): drawing traffic
