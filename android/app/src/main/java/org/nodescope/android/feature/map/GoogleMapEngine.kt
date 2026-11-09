@@ -483,9 +483,10 @@ internal class RouteLayer(context: Context) : View(context) {
     private val dashes = android.graphics.DashPathEffect(floatArrayOf(4 * density, 4 * density), 0f)
     // CARTO's label layers: 11 dp medium text, top-anchored 0.8 em under the point, wrapped at
     // 10 em, with a 1.6 dp halo; colliding labels are left out.
+    // Not `density` inside apply: that is TextPaint's own field (1.0), which made names 11 px.
     private val labelPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-        textSize = 11 * density; typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-        strokeJoin = Paint.Join.ROUND; strokeWidth = 3.2f * density
+        textSize = 11 * this@RouteLayer.density; typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        strokeJoin = Paint.Join.ROUND; strokeWidth = 3.2f * this@RouteLayer.density
     }
     private val labelLayouts = HashMap<String, StaticLayout>()
     private val placedLabels = ArrayList<RectF>()
