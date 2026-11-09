@@ -374,7 +374,8 @@ internal class LiveRouteBuilder {
                     // Held: from the packet's first sighting, or now if that has already passed.
                     holdMs?.let { hold -> maxOf(firstSeen.getOrPut(packet.hash) { arrival } + hold, arrival) } ?: arrival
                 } else observed
-                LiveRoute(packet.key, start, color, routeAnchors(packet, nodes, observers, lookup),
+                LiveRoute(packet.key, start, color,
+                    routeAnchors(packet, nodes, observers, lookup).map { if (it.role == "observer") it else it.copy(routeColor = color) },
                     packetRoute(packet, nodes, observers, lookup), historical = !packet.isLive, packet = packet, observedAt = observed, zoom = zoom)
             }
         }
@@ -447,3 +448,11 @@ internal fun siteRole(site: Coordinate, nodes: List<MeshNode>): String? =
     nodes.filter { node -> node.coordinate?.let { distanceKm(it, site) <= 0.075 } == true }
         .map { it.role.lowercase() }
         .minByOrNull { MAP_ROLES.indexOf(it).let { rank -> if (rank < 0) MAP_ROLES.size else rank } }
+
+/** Fades a replay's node markers that lie outside the selected region (iOS 0.5 opacity). */
+internal fun dimOutside(markers: List<MapMarker>, routes: List<ReplayRoute>): List<MapMarker> {
+    val outside = routes.flatMapTo(HashSet()) { it.outsidePoints }
+    if (outside.isEmpty()) return markers
+    val outsideKeys = routes.flatMap { it.nodes }.filter { it.coordinate in outside }.mapTo(HashSet()) { it.publicKey }
+    return markers.map { if (it.publicKey in outsideKeys) it.copy(dimmed = true) else it }
+}

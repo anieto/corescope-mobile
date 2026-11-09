@@ -327,7 +327,7 @@ internal class GoogleOverlays(private val context: Context, private val map: Goo
         routeLayer.labelNodes = nodes
         replayNodes.clear()
         if (!grouped) nodes.forEach { node ->
-            replayNodes.addMarker(markerOptions(node.coordinate, nodeIcon(node.role))).apply { tag = node.publicKey }
+            replayNodes.addMarker(markerOptions(node.coordinate, nodeIcon(node.role)).alpha(if (node.dimmed) 0.5f else 1f)).apply { tag = node.publicKey }
         }
     }
 
@@ -479,6 +479,7 @@ internal class RouteLayer(context: Context) : View(context) {
     private val path = Path()
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND }
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val dimmedPaint = Paint().apply { alpha = (0.55f * 255).toInt() }
     private val dashes = android.graphics.DashPathEffect(floatArrayOf(4 * density, 4 * density), 0f)
     // CARTO's label layers: 11 dp medium text, top-anchored 0.8 em under the point, wrapped at
     // 10 em, with a 1.6 dp halo; colliding labels are left out.
@@ -526,14 +527,20 @@ internal class RouteLayer(context: Context) : View(context) {
             canvas.drawCircle(p.x.toFloat(), p.y.toFloat(), ring.radius * density, stroke)
         }
         for ((point, color) in frame.heads) dot(canvas, screen(point), 3.5f, 0xFFFFFFFF.toInt(), 1.5f, parseColor(color))
-        for (anchor in anchors) if (anchor.role != "observer")
-            dot(canvas, screen(anchor.coordinate), 6f, roleColors[anchor.role.lowercase()] ?: 0xFF65DDB4.toInt(), 2f, 0xFFFFFFFF.toInt())
+        // A live route's nodes light up white, ringed in the route's colour (iOS); a replay's keep
+        // their role colour, faded outside the selected region.
+        for (anchor in anchors) if (anchor.role != "observer") {
+            val alpha = if (anchor.dimmed) 0.5f else 1f
+            val route = anchor.routeColor
+            if (route != null) dot(canvas, screen(anchor.coordinate), 4.5f, 0xFFFFFFFF.toInt(), 2f, parseColor(route))
+            else dot(canvas, screen(anchor.coordinate), 6f, withAlpha(roleColors[anchor.role.lowercase()] ?: 0xFF65DDB4.toInt(), alpha), 2f, withAlpha(0xFFFFFFFF.toInt(), alpha))
+        }
         // A replay's observers: ringed antenna markers on top, named once zoomed in to about a city.
         val receivers = anchors.filter { it.role == "observer" }
         for (receiver in receivers) {
             val icon = observerIcons.getOrPut(receiver.ringRole) { observerMarkerBitmap(receiver.ringRole?.let { roleColors[it.lowercase()] }, density) }
             val at = screen(receiver.coordinate)
-            canvas.drawBitmap(icon, at.x - icon.width / 2f, at.y - icon.height / 2f, null)
+            canvas.drawBitmap(icon, at.x - icon.width / 2f, at.y - icon.height / 2f, if (receiver.dimmed) dimmedPaint else null)
         }
         val named = receivers.filter { it.name != null }
         if (observerLabelsVisible && named.isNotEmpty()) drawLabels(canvas, named, ::screen, fresh = !labels, offsetEm = 1.1f)
