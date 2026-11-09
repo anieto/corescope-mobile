@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		F18120000000000000000001 /* NodeScopeRF in Frameworks */ = {isa = PBXBuildFile; fileRef = F18120000000000000000002; };
-		F18120000000000000000004 /* kp1812.txt in Resources */ = {isa = PBXBuildFile; fileRef = F18120000000000000000005; };
 		01D4A148FE7AC5A25B15E907 /* PacketDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5A6EF6652A955D16C20CA75 /* PacketDetail.swift */; };
 		036ACF59063991FAB8B4D9A0 /* URLPathEncodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B302D4D26193BFC6975CDF82 /* URLPathEncodingTests.swift */; };
 		0C8DD2E83491E4744AEA1380 /* ChannelsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B90D68BBC5B7652894943018 /* ChannelsViewModel.swift */; };
@@ -75,6 +73,7 @@
 		31399AC1309FAFCF000519FF /* CoverageSkadiProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31399AC0309FAFCF000519FF /* CoverageSkadiProvider.swift */; };
 		31399AC3309FB06B000519FF /* CoverageSkadiProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31399AC2309FB06B000519FF /* CoverageSkadiProviderTests.swift */; };
 		31399AC530A0005D000519FF /* CoverageRFKernel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31399AC430A0005D000519FF /* CoverageRFKernel.swift */; };
+		31399AC730A0046F000519FF /* CoverageResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31399AC630A0046F000519FF /* CoverageResultsView.swift */; };
 		3144E9F7305B2A4300B57F18 /* InstrumentSearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3144E9F6305B2A4300B57F18 /* InstrumentSearchField.swift */; };
 		315E3A01309A973200BAEC98 /* EstimatedCoverageScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 315E3A00309A973200BAEC98 /* EstimatedCoverageScreen.swift */; };
 		315E3A03309AA14800BAEC98 /* CoverageTerrainCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 315E3A02309AA14800BAEC98 /* CoverageTerrainCatalog.swift */; };
@@ -237,6 +236,8 @@
 		DE7EBA2547154396308F7F57 /* ChannelsListScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C7F345F00561DDBC5C46D1 /* ChannelsListScreen.swift */; };
 		EACC350C9F65CBA27A0B4D24 /* Channel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33B9A5F539B49B860F434D81 /* Channel.swift */; };
 		EF6E45CEC2D585AC27B07648 /* MonitoredChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DDB2DCCCDD470E5A169EBA3 /* MonitoredChannel.swift */; };
+		F18120000000000000000001 /* shared/rf-engine/build/XCFrameworks/release/NodeScopeRF.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = F18120000000000000000002 /* shared/rf-engine/build/XCFrameworks/release/NodeScopeRF.xcframework */; };
+		F18120000000000000000004 /* shared/rf-engine/licenses/kp1812.txt in Resources */ = {isa = PBXBuildFile; fileRef = F18120000000000000000005 /* shared/rf-engine/licenses/kp1812.txt */; };
 		F2137327FBC92FE87A764EE0 /* RegionFilterStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FB247C32E6BA4792D18D413 /* RegionFilterStore.swift */; };
 		F7AAC2A15896BF2122A20C22 /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B46AA4A5FB82FC08E16B31 /* SettingsScreen.swift */; };
 		F82F20C851C52EAC49BC3931 /* ChannelMonitorStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F93FC8366CD37CCF8C3B02C /* ChannelMonitorStore.swift */; };
@@ -254,8 +255,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		F18120000000000000000002 /* NodeScopeRF.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = "shared/rf-engine/build/XCFrameworks/release/NodeScopeRF.xcframework"; sourceTree = SOURCE_ROOT; };
-		F18120000000000000000005 /* kp1812.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "shared/rf-engine/licenses/kp1812.txt"; sourceTree = SOURCE_ROOT; };
 		018110344B462D94B123F8F3 /* MonaspaceNeon-Bold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "MonaspaceNeon-Bold.otf"; sourceTree = "<group>"; };
 		13D380B1339F9747DE599399 /* MonaspaceNeon-SemiBold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "MonaspaceNeon-SemiBold.otf"; sourceTree = "<group>"; };
 		156F101DF4008880E14D2E48 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
@@ -322,6 +321,7 @@
 		31399AC0309FAFCF000519FF /* CoverageSkadiProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageSkadiProvider.swift; sourceTree = "<group>"; };
 		31399AC2309FB06B000519FF /* CoverageSkadiProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageSkadiProviderTests.swift; sourceTree = "<group>"; };
 		31399AC430A0005D000519FF /* CoverageRFKernel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageRFKernel.swift; sourceTree = "<group>"; };
+		31399AC630A0046F000519FF /* CoverageResultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageResultsView.swift; sourceTree = "<group>"; };
 		3144E9F6305B2A4300B57F18 /* InstrumentSearchField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstrumentSearchField.swift; sourceTree = "<group>"; };
 		315E3A00309A973200BAEC98 /* EstimatedCoverageScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EstimatedCoverageScreen.swift; sourceTree = "<group>"; };
 		315E3A02309AA14800BAEC98 /* CoverageTerrainCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageTerrainCatalog.swift; sourceTree = "<group>"; };
@@ -490,13 +490,22 @@
 		E583994A85C1799754185206 /* AppFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppFont.swift; sourceTree = "<group>"; };
 		E60D53B8493F9BAD7C5BAD05 /* PacketFeedScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketFeedScreen.swift; sourceTree = "<group>"; };
 		EA006DDF6B3AF7AC55C16467 /* Packet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Packet.swift; sourceTree = "<group>"; };
+		F18120000000000000000002 /* shared/rf-engine/build/XCFrameworks/release/NodeScopeRF.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = "shared/rf-engine/build/XCFrameworks/release/NodeScopeRF.xcframework"; sourceTree = SOURCE_ROOT; };
+		F18120000000000000000005 /* shared/rf-engine/licenses/kp1812.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "shared/rf-engine/licenses/kp1812.txt"; sourceTree = SOURCE_ROOT; };
 		F4803E09AA9A3CD1D7EF773B /* SignalQualityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalQualityTests.swift; sourceTree = "<group>"; };
 		FEE734231B3A2D9FDE62ADB6 /* MapViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapViewModel.swift; sourceTree = "<group>"; };
 		FF13FD215F4B08F58FE9D5B0 /* LearnButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnButton.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		F18120000000000000000003 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (F18120000000000000000001,); runOnlyForDeploymentPostprocessing = 0; };
+		F18120000000000000000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F18120000000000000000001 /* shared/rf-engine/build/XCFrameworks/release/NodeScopeRF.xcframework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -643,6 +652,7 @@
 				31C6EC0130977267002AC226 /* CandidateSiteMapPicker.swift */,
 				315E3A00309A973200BAEC98 /* EstimatedCoverageScreen.swift */,
 				31399AB8309E214A000519FF /* CoverageMapHost.swift */,
+				31399AC630A0046F000519FF /* CoverageResultsView.swift */,
 			);
 			path = NodePlanner;
 			sourceTree = "<group>";
@@ -813,8 +823,8 @@
 		D9F8E2DFF0AF3A4F68FAC182 = {
 			isa = PBXGroup;
 			children = (
-				F18120000000000000000002 /* NodeScopeRF.xcframework */,
-				F18120000000000000000005 /* kp1812.txt */,
+				F18120000000000000000002 /* shared/rf-engine/build/XCFrameworks/release/NodeScopeRF.xcframework */,
+				F18120000000000000000005 /* shared/rf-engine/licenses/kp1812.txt */,
 				31DC215C30640E6A00F0E9C5 /* NodeScope.storekit */,
 				2498CA4BA277AAB21F0D0508 /* CoreScopeViewer */,
 				EB5C43253531FEC14730F117 /* CoreScopeViewerTests */,
@@ -1009,7 +1019,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F18120000000000000000004 /* kp1812.txt in Resources */,
+				F18120000000000000000004 /* shared/rf-engine/licenses/kp1812.txt in Resources */,
 				31E24AAD307DB13E00C096A7 /* sources-v2.json in Resources */,
 				2C1CCC5A4340804F13F8D110 /* Assets.xcassets in Resources */,
 				5141EA96414E3418A01575B2 /* PrivacyInfo.xcprivacy in Resources */,
@@ -1113,6 +1123,7 @@
 				311510AA3083DDFB00199D51 /* MyNodesSnapshotStore.swift in Sources */,
 				6A8C5BB6EED7A1F412DCCA73 /* AnalyzerConfig.swift in Sources */,
 				22E6EDC06317772F4D948AC2 /* AnalyzerSettings.swift in Sources */,
+				31399AC730A0046F000519FF /* CoverageResultsView.swift in Sources */,
 				31E00584309A524400178350 /* CoverageGridPreflight.swift in Sources */,
 				317433AA30827FE00060A385 /* CoreScopeAccountSettings.swift in Sources */,
 				318BF7D9307EBE6000C8BFAD /* NeighborInsight.swift in Sources */,

@@ -25,21 +25,24 @@ internal class CoverageMapLayer(val executionID: UUID, val raster: CoverageRaste
 
 /** Per-screen lifecycle; no cache is opened and no work starts without a completed layer. */
 @Composable
-internal fun CoverageMapAttachment(engine: MapEngineState, layer: CoverageMapLayer?, onFailure: (String?) -> Unit) {
+internal fun CoverageMapAttachment(engine: MapEngineState, layer: CoverageMapLayer?, onPreparing: (Boolean) -> Unit = {}, onFailure: (String?) -> Unit) {
     val cacheRoot = File(LocalContext.current.applicationContext.cacheDir, "coverage-map-tiles-v1")
     // A new style/provider effect waits for cancelled preparation and cleanup from its predecessor.
     val ownership = remember { Mutex() }
     val report by rememberUpdatedState(onFailure)
+    val preparing by rememberUpdatedState(onPreparing)
     val google = (engine as? GoogleMapEngine)?.map
     val style = (engine as? MapLibreEngine)?.style
     LaunchedEffect(google, style, layer) {
         report(null)
+        preparing(false)
         if (layer == null || (google == null && style == null)) return@LaunchedEffect
         ownership.withLock {
             var cache: CoverageMapLibreTileCache? = null
             var lease: CoverageMapLibreTileCache.Lease? = null
             var attachment: AutoCloseable? = null
             try {
+                preparing(true)
                 if (google != null) {
                     attachment = CoverageGoogleOverlay(google, layer.raster, 8 * 1024 * 1024)
                 } else if (style != null) {
@@ -58,6 +61,7 @@ internal fun CoverageMapAttachment(engine: MapEngineState, layer: CoverageMapLay
                     val prepared = checkNotNull(lease)
                     attachment = CoverageMapLibreOverlay(style, prepared.tiles, "nodescope-pins")
                 }
+                preparing(false)
                 awaitCancellation()
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -65,6 +69,7 @@ internal fun CoverageMapAttachment(engine: MapEngineState, layer: CoverageMapLay
                 report("Coverage overlay could not be displayed. Retry the calculation or reopen the study.")
                 Log.w("NodeScope", "Coverage overlay attachment failed", failure)
             } finally {
+                preparing(false)
                 // Native map mutations stay on Main, before deleting files they might reference.
                 try { attachment?.close() }
                 catch (failure: Exception) { Log.w("NodeScope", "Coverage overlay removal failed", failure) }

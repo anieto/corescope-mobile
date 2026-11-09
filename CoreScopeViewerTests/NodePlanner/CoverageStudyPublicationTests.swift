@@ -4,6 +4,15 @@ import Testing
 
 @MainActor
 struct CoverageStudyPublicationTests {
+    @Test func actionableFailuresKeepTheirCause() {
+        #expect(CoverageStudyRunFailure.classify(URLError(.notConnectedToInternet)) == .network)
+        #expect(CoverageStudyRunFailure.classify(CoverageTerrainDownloadFailure.httpStatus(404)) == .terrain)
+        #expect(CoverageStudyRunFailure.classify(CoverageTerrainDownloadFailure.httpStatus(503)) == .network)
+        #expect(CoverageStudyRunFailure.classify(CoverageTerrainDownloadFailure.downloadLimit) == .limits)
+        #expect(CoverageStudyRunFailure.classify(CoverageTerrainCacheFailure.quota) == .storage)
+        #expect(CoverageStudyRunFailure.classify(CoverageTerrainCacheFailure.missing) == .terrain)
+    }
+
     private func result(_ id: UUID, completed: Bool = true, cells: Bool = true, terrain: CoverageStudyTerrainSources? = nil) throws -> CoverageStudyResult {
         let grid = try CoverageGrid(radiusMeters: 1000, spacingMeters: 1000,
             minEastMeters: 0, maxEastMeters: 0, minNorthMeters: 0, maxNorthMeters: 0)

@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.coverage
 
+import java.io.File
+import java.util.UUID
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.Lifecycle
@@ -39,6 +41,14 @@ import org.nodescope.android.feature.map.*
 
 @Composable
 fun EstimatedCoverageScreen(nodes: List<MeshNode>) {
+    val context = LocalContext.current.applicationContext
+    val scope = rememberCoroutineScope()
+    val runner = remember { CoverageStudyRunner() }
+    // The app recreates this composition for each source session.
+    val sourceID = remember { UUID.randomUUID().toString() }
+    var calculation by remember { mutableStateOf<Job?>(null) }
+    var inputError by remember { mutableStateOf<String?>(null) }
+    var acceptsScenario by rememberSaveable { mutableStateOf(false) }
     val preference = LocalDistanceUnit.current
     val heightInFeet = rememberSaveable { preference == DistanceUnit.IMPERIAL }
     var latitude by rememberSaveable { mutableStateOf("") }
@@ -54,7 +64,7 @@ fun EstimatedCoverageScreen(nodes: List<MeshNode>) {
         value = withContext(Dispatchers.Default) {
             val context = coroutineContext
             if (grid == null) false else try {
-                CoverageGridPreflight.estimate(grid, 150_000_000, 150_000_000,
+                CoverageGridPreflight.estimate(grid, 120_000_000, 120_000_000,
                     cancelled = { context.ensureActive(); false })
                 true
             } catch (_: CoverageGridPreflightFailure) { false }
@@ -63,8 +73,72 @@ fun EstimatedCoverageScreen(nodes: List<MeshNode>) {
     val selected = Coordinate.valid(CoverageSetupValidation.number(latitude), CoverageSetupValidation.number(longitude))
         ?.takeIf { CoverageSetupValidation.supportsCoordinate(it.latitude, it.longitude) }
     val known = remember(nodes, selected) { nearestCoverageNodes(nodes, selected) }
+    val fields = remember(values, latitude, longitude) {
+        (CoverageSetupFields.keys.zip(values) + listOf("latitude" to latitude, "longitude" to longitude)).toMap()
+    }
+    val inputs = remember(fields, radius, spacing) {
+        try { CoverageStudyInputs.fromEditor(fields, radius, spacing, heightInFeet) } catch (_: Exception) { null }
+    }
+    val snapshots = remember(known, sourceID) { known.mapNotNull { node -> node.coordinate?.let {
+        CoverageNodeSnapshot(sourceID, node.publicKey, it.latitude, it.longitude)
+    } } }
+    LaunchedEffect(fields, radius, spacing, snapshots) {
+        runner.invalidate(); calculation?.cancel(); inputError = null
+    }
+    DisposableEffect(runner) { onDispose { runner.cancel(); calculation?.cancel() } }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { runner.cancel(); calculation?.cancel() }
+    val result = runner.snapshot.result?.takeIf {
+        runner.snapshot.phase == CoverageStudyPublicationPhase.completed && inputs != null && it.inputs.matches(inputs) &&
+            it.nodes.run.nodesToEvaluate == snapshots
+    }
+    val statuses = remember(result, snapshots) { result?.let { completed -> snapshots.associate {
+        it.nodeID to completed.nodes.run.status(it)
+    } }.orEmpty() }
+    var rasterError by remember { mutableStateOf<String?>(null) }
+    val layer by produceState<CoverageMapLayer?>(null, result?.executionID) {
+        value = null
+        rasterError = null
+        if (result != null) try {
+            value = withContext(Dispatchers.Default) {
+                val raster = CoverageRaster(result.grid, result.transmitter, result.area)
+                var zoom = when { result.grid.radiusMeters <= 5000 -> 12; result.grid.radiusMeters <= 20000 -> 11;
+                    result.grid.radiusMeters <= 50000 -> 10; else -> 9 }
+                while (true) {
+                    try { CoverageMapTilePlan.make(raster, zoom); break }
+                    catch (error: CoverageMapLibreTilesFailure) {
+                        if (error.state != CoverageMapLibreTilesState.tileLimit || zoom == 0) throw error
+                        zoom--
+                    }
+                }
+                CoverageMapLayer(result.executionID, raster, zoom)
+            }
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { rasterError = "The result could not be drawn. Retry the calculation." }
+    }
+
+    val calculate: () -> Unit = calculate@{
+        if (calculation != null || runner.isBusy) return@calculate
+        showsRequired = true
+        val captured = inputs
+        if (captured == null) { inputError = "Review the highlighted inputs and choose a smaller area or wider spacing."; return@calculate }
+        inputError = null
+        calculation = scope.launch {
+            try {
+                runner.runWithProgress(captured) { id, fixed, progress ->
+                    CoveragePreparedStudy.evaluate(fixed, snapshots, false, 200,
+                        CoverageStudyLimits(120_000_000, 120_000_000, 30_000_000, 30_000_000, 1000),
+                        samplingHaloMeters = 100.0, cacheRoot = File(context.cacheDir, "estimated-coverage-terrain-v1"),
+                        cacheQuota = 1_000_000_000, downloadLimit = 500_000_000, offline = false,
+                        executionID = id, progress = progress)
+                }
+            } finally { calculation = null }
+        }
+    }
     val map: @Composable (Modifier) -> Unit = { modifier ->
-        CoverageSetupMap(selected, listOf(latitude, longitude), known, modifier) { latitude = it.latitude.toString(); longitude = it.longitude.toString() }
+        CoverageSetupMap(selected, listOf(latitude, longitude), known, modifier,
+            layer = layer?.takeIf { it.executionID == result?.executionID }, statuses = statuses,
+            calculating = calculation != null || runner.isBusy,
+            cancelCalculation = { runner.cancel(); calculation?.cancel() }) { latitude = it.latitude.toString(); longitude = it.longitude.toString() }
     }
     val editor: @Composable (Modifier) -> Unit = { modifier ->
         Column(modifier.meshPageBackground().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -98,27 +172,31 @@ fun EstimatedCoverageScreen(nodes: List<MeshNode>) {
                 else Text("This radius and detail exceed the current grid limit. Choose wider spacing or a smaller radius.", color = MaterialTheme.colorScheme.error)
             }
             CoverageSetupCard("Calculation") {
-                Text("Coverage calculation is not available in this build. You can review the setup, but no coverage or node reception has been predicted.")
-                TextButton(onClick = { showsRequired = true }) { Text("Review inputs") }
-                if (showsRequired) {
-                    val fields = (CoverageSetupFields.keys.zip(values) + listOf("latitude" to latitude, "longitude" to longitude)).toMap()
-                    val reviewMessage = try {
-                        CoverageStudyInputs.fromEditor(fields, radius, spacing, heightInFeet)
-                        when (workFits) {
-                            null -> "Checking calculation limits for this study area."
-                            false -> "Review the study area above. Choose wider spacing or a smaller radius."
-                            true -> "Setup passes input and initial work checks. Terrain availability and model suitability have not been checked. No coverage has been calculated."
-                        }
-                    } catch (_: CoverageStudyInputFailure) {
-                        "Review the highlighted fields above. All inputs are required."
-                    } catch (_: CoverageGridFailure) {
-                        "Review the study area above. Choose wider spacing or a smaller radius."
-                    } catch (_: IllegalArgumentException) {
-                        "The combined radio values exceed calculation limits. Review transmit power, antenna gains, losses, sensitivity and reserve."
-                    }
-                    Text(reviewMessage, style = MaterialTheme.typography.bodySmall)
+                Text("Beta estimate: terrain-only, inland paths, vertical polarization and median atmosphere. No building or tree clutter model; terrain surfaces may still contain vegetation. Not suitable for coastal or sea paths without a different model configuration.")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(acceptsScenario, { acceptsScenario = it })
+                    Text("Use these model assumptions")
                 }
-                Button(onClick = {}, enabled = false) { Text("Calculate coverage") }
+                Text("Downloads terrain on demand (up to 500 MB per run; 1 GB cache). Start with a small area. Keep this screen open; leaving or backgrounding cancels active work.", style = MaterialTheme.typography.bodySmall)
+                if (calculation != null || runner.isBusy) {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    Text(when (runner.preparationStage) {
+                        CoveragePreparationStage.preparingTerrain -> "Downloading and preparing terrain…"
+                        CoveragePreparationStage.calculating -> "Calculating paths…"
+                        else -> "Validating and cleaning up…"
+                    })
+                    TextButton(onClick = { runner.cancel(); calculation?.cancel() }) { Text("Cancel calculation") }
+                } else Button(onClick = calculate, enabled = acceptsScenario && workFits == true) { Text("Calculate coverage") }
+                inputError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                runner.failure?.let { Text(it.coverageMessage(), color = MaterialTheme.colorScheme.error) }
+                if (runner.snapshot.phase == CoverageStudyPublicationPhase.cancelled) Text("Calculation cancelled. No partial result was published.")
+                if (runner.snapshot.phase == CoverageStudyPublicationPhase.stale) Text("Inputs or catalog changed. Calculate again to update the result.")
+                if (result != null) {
+                    CoverageResults(result)
+                    if (layer?.executionID == result.executionID) Text("Overlay zoom limit: ${layer?.maximumRasterZoom}. Zooming enlarges the same prediction samples.", style = MaterialTheme.typography.bodySmall)
+                    else if (rasterError == null) Text("Preparing coverage overlay…")
+                    rasterError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                }
                 Text("This setup is not saved when you leave the tool.", style = MaterialTheme.typography.bodySmall)
             }
         }
@@ -130,12 +208,13 @@ fun EstimatedCoverageScreen(nodes: List<MeshNode>) {
     if (showNodes) AlertDialog(onDismissRequest = { showNodes = false }, title = { Text("Known nodes") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Known nodes are not evaluated yet. After you select a transmitter, this list shows the nearest 200 located nodes available in the current catalog. It is not a complete inventory of nearby radios.")
+                Text("This list shows the nearest 200 located nodes available in the current catalog. Predictions use your receiver assumptions, not reported node equipment. It is not a complete inventory of nearby radios.")
                 if (known.isEmpty()) Text(if (selected == null) "Select a transmitter location to find nearby known nodes."
                     else "No located nodes are available in the current catalog.")
                 known.forEach { node ->
                     Text(node.displayName, fontFamily = MonaspaceNeon)
-                    Text("Not evaluated", style = MaterialTheme.typography.bodySmall)
+                    Text(statuses[node.publicKey]?.coverageLabel() ?: "Not evaluated", style = MaterialTheme.typography.bodySmall)
+                    statuses[node.publicKey]?.adjustedMarginDb?.let { Text("Margin after reserve: %.1f dB".format(it), fontFamily = MonaspaceNeon) }
                 }
             }
         }, confirmButton = { TextButton(onClick = { showNodes = false }) { Text("Done") } })
@@ -211,7 +290,8 @@ private object CoverageSetupFields {
 }
 
 @Composable private fun CoverageSetupMap(selected: Coordinate?, locationInput: List<String>, nodes: List<MeshNode>, modifier: Modifier,
-                                        layer: CoverageMapLayer? = null, choose: (Coordinate) -> Unit) {
+                                        layer: CoverageMapLayer? = null, statuses: Map<String, CoverageNodeStatus> = emptyMap(),
+                                        calculating: Boolean = false, cancelCalculation: () -> Unit = {}, choose: (Coordinate) -> Unit) {
     val context = LocalContext.current
     val uri = LocalUriHandler.current
     var choice by remember { mutableStateOf(loadMapProvider(context)) }
@@ -224,13 +304,19 @@ private object CoverageSetupFields {
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.3f
     val engine: MapEngineState = if (choice.provider == MapProvider.GOOGLE) rememberGoogleMapEngine() else rememberMapLibreEngine()
     var overlayFailure by remember { mutableStateOf<String?>(null) }
-    CoverageMapAttachment(engine, layer) { overlayFailure = it }
-    LaunchedEffect(engine.overlays, nodes, selected, pending) {
-        engine.overlays?.setPins(nodes.mapNotNull { node -> node.coordinate?.let { MapPin(it, MapPin.Kind.TENTATIVE, "${node.displayName} · Not evaluated") } } +
+    var preparingOverlay by remember { mutableStateOf(false) }
+    CoverageMapAttachment(engine, layer, onPreparing = { preparingOverlay = it }) { overlayFailure = it }
+    LaunchedEffect(engine.overlays, nodes, selected, pending, statuses) {
+        engine.overlays?.setPins(nodes.mapNotNull { node -> node.coordinate?.let { MapPin(it, MapPin.Kind.TENTATIVE, "${node.displayName} · ${statuses[node.publicKey]?.coverageLabel() ?: "Not evaluated"}") } } +
             listOfNotNull(selected?.let { MapPin(it, MapPin.Kind.TENTATIVE, "Transmitter") },
                 pending?.let { MapPin(Coordinate(it[0], it[1]), MapPin.Kind.TENTATIVE, "Proposed location") }))
     }
-    LaunchedEffect(engine.camera, selected) { selected?.let { engine.camera?.animate(CameraMove.Center(it, 11.0)) } }
+    LaunchedEffect(engine.camera, selected, layer?.executionID) { selected?.let {
+        val zoom = layer?.raster?.grid?.radiusMeters?.let { radius -> when {
+            radius <= 5000 -> 11.0; radius <= 20000 -> 9.0; radius <= 50000 -> 8.0; else -> 7.0
+        } } ?: 11.0
+        engine.camera?.animate(CameraMove.Center(it, zoom))
+    } }
     Column(modifier) {
         Box(Modifier.fillMaxWidth().weight(1f)) {
             val place: (MapTap) -> Unit = { tap -> tap.coordinate?.let { pending = listOf(it.latitude, it.longitude) } }
@@ -251,6 +337,11 @@ private object CoverageSetupFields {
         }
         Surface {
             Column(Modifier.fillMaxWidth().padding(8.dp)) {
+                if (calculating) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(Modifier.size(18.dp))
+                    Text("Calculating coverage…", Modifier.weight(1f).padding(start = 8.dp), style = MaterialTheme.typography.bodySmall)
+                    TextButton(onClick = cancelCalculation) { Text("Cancel calculation") }
+                }
                 val supported = pending?.let { CoverageSetupValidation.supportsCoordinate(it[0], it[1]) } == true
                 if (pending != null && !supported) {
                     Text("Choose a location between −85° and 85° latitude.",
@@ -260,8 +351,9 @@ private object CoverageSetupFields {
                     TextButton(onClick = { pending = null }) { Text("Cancel") }
                     Button(onClick = { pending?.let { choose(Coordinate(it[0], it[1])) }; pending = null }, enabled = !engine.failed && supported) { Text("Use location") }
                 } else Text("Touch and hold to choose a transmitter location.", style = MaterialTheme.typography.bodySmall)
+                if (preparingOverlay) { LinearProgressIndicator(Modifier.fillMaxWidth()); Text("Preparing coverage overlay…", style = MaterialTheme.typography.bodySmall) }
                 overlayFailure?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
-                Text("Gray nodes: not evaluated", style = MaterialTheme.typography.bodySmall)
+                Text(if (layer == null) "Nodes: not evaluated" else "Node labels show predictions; green shading is estimated coverage", style = MaterialTheme.typography.bodySmall)
             }
         }
     }

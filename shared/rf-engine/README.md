@@ -49,8 +49,8 @@ wrapper methods check unsafe input, unit conversion/scenario parity and below-se
 Host execution and app builds do not establish physical-device performance or outdoor accuracy.
 Prepared studies now default to the production adapter. Native terrain profiles carry the
 geodesic midpoint latitude, and published results retain the model revision and scenario alongside
-terrain sources. Injected test predictors receive no production-model record. Scenario disclosure,
-screen execution and Calculate remain pending.
+terrain sources. Injected test predictors receive no production-model record. Scenario disclosure, screen execution and Calculate are connected for beta testing. Physical-device
+performance and broad terrain qualification remain pending.
 
 Swift bridge smoke check (from the repository root after generating the framework):
 

@@ -6,7 +6,23 @@ import kotlinx.coroutines.*
 import java.util.UUID
 import kotlin.coroutines.coroutineContext
 
-enum class CoverageStudyRunFailure { operation, invalidResult }
+enum class CoverageStudyRunFailure {
+    operation, invalidResult, network, terrain, storage, limits;
+    companion object {
+        fun classify(error: Exception): CoverageStudyRunFailure = when (error) {
+            is CoverageTerrainDownloadFailure -> when (error.state) {
+                CoverageTerrainDownloadState.DOWNLOAD_LIMIT, CoverageTerrainDownloadState.INVALID_LIMITS -> limits
+                CoverageTerrainDownloadState.CORRUPT -> terrain
+                CoverageTerrainDownloadState.HTTP_STATUS -> if (error.status == 404) terrain else network
+            }
+            is CoverageTerrainCacheFailure -> if (error.state == CoverageTerrainCacheState.MISSING) terrain else storage
+            is CoverageGridPreflightFailure -> limits
+            is CoverageTerrainFootprintFailure, is CoverageTerrainRepositoryFailure -> terrain
+            is java.io.IOException -> network
+            else -> operation
+        }
+    }
+}
 
 /** Screen-owned admission and publication; invoke methods on Main. Operations own terrain cleanup. */
 @MainThread
@@ -64,8 +80,8 @@ class CoverageStudyRunner(private val workerDispatcher: CoroutineDispatcher = Di
                 } catch (cancelled: CancellationException) {
                     publication.cancel(id)
                     coroutineContext.ensureActive()
-                } catch (_: Exception) {
-                    if (publication.fail(id)) failure = CoverageStudyRunFailure.operation
+                } catch (error: Exception) {
+                    if (publication.fail(id)) failure = CoverageStudyRunFailure.classify(error)
                 }
             }
         } catch (cancelled: CancellationException) {

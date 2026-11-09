@@ -127,6 +127,20 @@ struct CoverageSkadiProviderTests {
             budget: CoverageTerrainDownloadBudget(limit: 0), offline: true)
         offline.close()
         try reopened.close()
+        let grid = try CoverageGrid(radiusMeters: 1000, spacingMeters: 1000,
+            minEastMeters: -1000, maxEastMeters: 1000, minNorthMeters: -1000, maxNorthMeters: 1000)
+        let inputs = try CoverageStudyInputs(transmitter: .init(latitude: 50.5, longitude: -115.5), grid: grid,
+            budget: CoverageLinkBudget(transmitPowerDbm: 22, transmitGainDbi: 2, receiveGainDbi: 2,
+                transmitLossDb: 1, receiveLossDb: 1, sensitivityDbm: -130, reserveDb: 5),
+            frequencyMHz: 915, transmitHeightMeters: 10, receiveHeightMeters: 1.5)
+        let study = try await CoveragePreparedStudy.evaluate(inputs: inputs, nodes: [], catalogComplete: false,
+            nodeLimit: 200, limits: CoverageStudyLimits(areaSamples: 2_000_000, areaGeometry: 2_000_000,
+                nodeSamples: 0, nodeGeometry: 0, nodeModelCalls: 0), catalog: sources, samplingHaloMeters: 100,
+            cacheRoot: root, cacheQuota: 100_000_000, downloadLimit: 0, offline: true, executionID: UUID())
+        #expect(study.model?.sourceRevision == CoverageRFKernel.sourceRevision)
+        #expect(study.area.cells.contains { $0.state == .qualified })
+        _ = try CoverageRaster(grid: study.grid, transmitter: study.transmitter, area: study.area)
+        print("SKADI RF Swift: " + study.area.cells.map { $0.lossDb.map(String.init(describing:)) ?? $0.state.rawValue }.joined(separator: ","))
         print("SKADI LIVE Swift: \(sources[0].tile), \(sources[0].packedBytes) bytes, ETag \(sources[0].sourceETag ?? ""), verified decode and offline reuse")
     }
 }

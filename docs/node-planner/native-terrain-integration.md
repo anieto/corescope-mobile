@@ -1,6 +1,38 @@
 # Native coverage terrain integration
 
-Updated 2026-11-07. Part of the [standalone Estimated Coverage implementation](estimated-coverage.md).
+Updated 2026-11-08. Part of the [standalone Estimated Coverage implementation](estimated-coverage.md).
+
+## Current status: in-app coverage beta (2026-11-08)
+
+Estimated Coverage now connects Calculate to the prepared-study worker on both apps after explicit
+acceptance of the inland, terrain-only scenario. Work stays off the UI thread. Progress distinguishes
+validation, terrain preparation, RF calculation and overlay preparation. Cancel, navigation and
+backgrounding cancel active calculation; coordinate/radio/grid/catalog changes invalidate results
+and remove overlays. Cleanup keeps admission closed until the previous worker has released terrain.
+Network, missing/invalid terrain, storage and work-budget failures have distinct retry guidance.
+
+Completed results install coverage-only overlays, display area sample counts and explain transparent
+and hatched areas. Known-node lists show exact-node prediction status, reasons and margins after
+reserve; iOS callouts also show those results, while Android pins include prediction labels. Both
+apps display model revision/scenario and terrain tile URL/ETag or checksum with source credits.
+The catalog is disclosed as incomplete. iOS frames the completed study; Android frames by radius.
+Android selects a bounded raster zoom for high latitudes and discloses its display limit; it does
+not change the RF sample spacing. Existing live-map code and release versions are untouched.
+
+Limits: 120 million area and 30 million node sample/geometry evaluations, 1,000 node model calls,
+200 nearest available nodes, 500 MB response-body download budget and 1 GB terrain cache. Runs
+currently require online source discovery; cached tile bodies are reused. Saved studies/offline
+reopening are not exposed in this beta UI. See the [test guide](coverage-beta-testing.md).
+
+Validation: 112 Swift host tests and 126 Android tests passed, including opt-in live AWS checks.
+A real N50W116 tile passed discovery, native decode/cache, offline prepared RF study and raster
+construction on both platforms. Four 1 km predictions agreed within 2e-10 dB (not outdoor RF
+accuracy). Xcode build-for-testing and Android debug assembly passed. The iPhone 18 Pro Max simulator completed Calculate and displayed an overlay; editing inputs
+removed it, and cancellation withheld partial publication. Portrait layout appeared readable.
+Android UI, landscape and physical-device performance remain unverified. Details are in the beta
+test guide; host tests do not establish device performance.
+
+Earlier entries below record historical implementation stages and blockers.
 
 ## Current status: production study binding (2026-11-07)
 

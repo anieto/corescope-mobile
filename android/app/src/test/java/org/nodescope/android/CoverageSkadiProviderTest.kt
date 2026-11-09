@@ -117,6 +117,16 @@ class CoverageSkadiProviderTest {
             CoverageTerrainDiskCache(java.io.File(root, "cache"), 100_000_000).use { cache ->
                 cache.prepareMosaic(footprint, sources, CoverageTerrainDownloadBudget(0), true).use { }
             }
+            val grid = CoverageGrid(1000, 1000, -1000, 1000, -1000, 1000)
+            val inputs = CoverageStudyInputs(CoverageTerrainCoordinate(50.5, -115.5), grid,
+                CoverageLinkBudget(22.0, 2.0, 2.0, 1.0, 1.0, -130.0, 5.0), 915.0, 10.0, 1.5)
+            val study = CoveragePreparedStudy.evaluate(inputs, emptyList(), false, 200,
+                CoverageStudyLimits(2_000_000, 2_000_000, 0, 0, 0), sources, 100.0,
+                java.io.File(root, "cache"), 100_000_000, 0, true, java.util.UUID.randomUUID())
+            assertEquals(CoverageRFKernel.sourceRevision, study.model?.sourceRevision)
+            assertTrue(study.area.cells.any { it.state == CoverageAreaState.qualified })
+            CoverageRaster(study.grid, study.transmitter, study.area)
+            println("SKADI RF Android: " + study.area.cells.joinToString(",") { it.lossDb?.toString() ?: it.state.name })
             println("SKADI LIVE Android/JVM: ${sources[0].tile}, ${sources[0].packedBytes} bytes, ETag ${sources[0].sourceETag}, verified decode and offline reuse")
         } finally { root.deleteRecursively() }
     }

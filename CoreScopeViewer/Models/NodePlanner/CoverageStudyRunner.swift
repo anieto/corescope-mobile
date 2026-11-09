@@ -1,7 +1,26 @@
 import Foundation
 import Observation
 
-enum CoverageStudyRunFailure: Sendable { case operation, invalidResult }
+enum CoverageStudyRunFailure: Sendable {
+    case operation, invalidResult, network, terrain, storage, limits
+
+    static func classify(_ error: Error) -> Self {
+        if error is URLError { return .network }
+        if let download = error as? CoverageTerrainDownloadFailure {
+            switch download {
+            case .downloadLimit, .invalidLimits: return .limits
+            case .httpStatus(let status): return status == 404 ? .terrain : .network
+            case .corrupt: return .terrain
+            }
+        }
+        if let cache = error as? CoverageTerrainCacheFailure {
+            return cache == .missing ? .terrain : .storage
+        }
+        if error is CoverageGridPreflightFailure { return .limits }
+        if error is CoverageTerrainFootprintFailure || error is CoverageTerrainRepositoryFailure { return .terrain }
+        return .operation
+    }
+}
 
 /// Screen-owned execution. The operation owns and releases terrain leases before returning.
 /// Cancellation changes presentation immediately, but admission stays closed until cleanup ends.
@@ -72,7 +91,7 @@ final class CoverageStudyRunner {
             if task.isCancelled || Task.isCancelled || error is CancellationError {
                 publication.cancel(id)
             } else if publication.fail(id) {
-                failure = .operation
+                failure = CoverageStudyRunFailure.classify(error)
             }
         }
         return true

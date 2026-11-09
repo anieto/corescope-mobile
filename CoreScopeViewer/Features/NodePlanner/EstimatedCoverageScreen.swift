@@ -13,6 +13,62 @@ struct EstimatedCoverageScreen: View {
     @State private var radius = 20_000
     @State private var spacing = 1000
     @State private var showsNodes = false
+    @State private var runner = CoverageStudyRunner()
+    @State private var calculation: Task<Void, Never>?
+    @State private var layer: CoverageMapLayer?
+    @State private var inputError: String?
+    @State private var overlayError = false
+    @Environment(\.scenePhase) private var scenePhase
+
+    private var fields: [String: String] { values.merging(["latitude": latitude, "longitude": longitude]) { _, new in new } }
+    private var nodeSnapshots: [CoverageNodeSnapshot] {
+        knownNodes.compactMap { node in
+            guard let point = node.coordinate else { return nil }
+            return CoverageNodeSnapshot(sourceID: settings.sourceSession.id.description, nodeID: node.id,
+                latitude: point.latitude, longitude: point.longitude)
+        }
+    }
+    private var activeResult: CoverageStudyResult? {
+        guard runner.phase == .completed, let result = runner.result,
+              let current = try? CoverageStudyInputs.fromEditor(fields: fields, radiusMeters: radius, spacingMeters: spacing, heightInFeet: heightInFeet),
+              result.inputs.matches(current), result.nodes.run.nodesToEvaluate == nodeSnapshots else { return nil }
+        return result
+    }
+    private var nodeStatuses: [String: CoverageNodeStatus] {
+        guard let result = activeResult else { return [:] }
+        return Dictionary(uniqueKeysWithValues: knownNodes.compactMap { node in
+            guard let point = node.coordinate else { return nil }
+            return (node.id, result.nodes.run.status(for: CoverageNodeSnapshot(sourceID: settings.sourceSession.id.description,
+                nodeID: node.id, latitude: point.latitude, longitude: point.longitude)))
+        })
+    }
+    private func invalidate() {
+        runner.invalidate()
+        layer = nil
+        inputError = nil
+        calculation?.cancel()
+    }
+    private func calculate() {
+        guard calculation == nil, !runner.isBusy else { return }
+        let inputs: CoverageStudyInputs
+        do { inputs = try CoverageStudyInputs.fromEditor(fields: fields, radiusMeters: radius, spacingMeters: spacing, heightInFeet: heightInFeet) }
+        catch { inputError = String(localized: "Review the highlighted inputs and choose a smaller area or wider spacing."); return }
+        let snapshots = nodeSnapshots
+        let root = URL.cachesDirectory.appendingPathComponent("estimated-coverage-terrain-v1", isDirectory: true)
+        inputError = nil
+        layer = nil
+        calculation = Task {
+            defer { calculation = nil }
+            await runner.runWithProgress(inputs: inputs) { id, captured, progress in
+                try await CoveragePreparedStudy.evaluate(inputs: captured, nodes: snapshots,
+                    catalogComplete: false, nodeLimit: 200,
+                    limits: CoverageStudyLimits(areaSamples: 120_000_000, areaGeometry: 120_000_000,
+                        nodeSamples: 30_000_000, nodeGeometry: 30_000_000, nodeModelCalls: 1000),
+                    samplingHaloMeters: 100, cacheRoot: root, cacheQuota: 1_000_000_000,
+                    downloadLimit: 500_000_000, offline: false, executionID: id, progress: progress)
+            }
+        }
+    }
     // Freeze the display unit for this draft so entered heights never change meaning.
     @State private var heightInFeet = (UserDefaults.standard.string(forKey: DistanceUnit.defaultsKey)
         .flatMap(DistanceUnit.init(rawValue:)) ?? .imperial) == .imperial
@@ -28,7 +84,7 @@ struct EstimatedCoverageScreen: View {
             let wide = geometry.size.width >= 800
             let layout = wide ? AnyLayout(HStackLayout(spacing: 0)) : AnyLayout(VStackLayout(spacing: 0))
             layout {
-                EstimatedCoverageMap(coordinate: coordinate, locationInput: [latitude, longitude], nodes: knownNodes) { point in
+                EstimatedCoverageMap(coordinate: coordinate, locationInput: [latitude, longitude], nodes: knownNodes, layer: activeResult == nil ? nil : layer, statuses: nodeStatuses) { point in
                     latitude = String(point.latitude)
                     longitude = String(point.longitude)
                 }
@@ -36,19 +92,47 @@ struct EstimatedCoverageScreen: View {
                 .frame(height: wide ? nil : max(220, geometry.size.height * 0.38))
                 EstimatedCoverageEditor(latitude: $latitude, longitude: $longitude, values: $values,
                     radius: $radius, spacing: $spacing, showsNodes: $showsNodes,
+                    runner: runner, result: activeResult, busy: calculation != nil || runner.isBusy,
+                    inputError: inputError, overlayError: overlayError, rendering: activeResult != nil && layer == nil,
+                    calculate: calculate, cancel: { runner.cancel(); calculation?.cancel(); layer = nil },
                     heightInFeet: heightInFeet, nodeCount: knownNodes.count, catalogLoading: catalog.isLoading, catalogError: catalog.errorMessage)
                     .frame(width: wide ? 380 : nil)
             }
         }
         .onChange(of: latitude) { refreshKnownNodes() }
+        .onChange(of: fields) { invalidate() }
+        .onChange(of: radius) { invalidate() }
+        .onChange(of: spacing) { invalidate() }
+        .onChange(of: scenePhase) { _, phase in if phase == .background { runner.cancel(); calculation?.cancel() } }
+        .onDisappear { runner.cancel(); calculation?.cancel() }
+        .task(id: activeResult?.executionID) {
+            layer = nil
+            overlayError = false
+            guard let result = activeResult else { return }
+            let worker = Task.detached {
+                try CoverageRaster(grid: result.grid, transmitter: result.transmitter, area: result.area)
+            }
+            do {
+                let raster = try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
+                guard !Task.isCancelled, activeResult?.executionID == result.executionID else { return }
+                layer = CoverageMapLayer(executionID: result.executionID, raster: raster)
+            } catch { if !Task.isCancelled { overlayError = true } }
+        }
         .onChange(of: longitude) { refreshKnownNodes() }
         .navigationTitle("Estimated Coverage")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if calculation != nil || runner.isBusy {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cancel calculation") { runner.cancel(); calculation?.cancel(); layer = nil }
+                }
+            }
+        }
         .sheet(isPresented: $showsNodes) {
             NavigationStack {
                 List {
                     Section {
-                        Text("Known nodes are not evaluated yet. After you select a transmitter, this list shows the nearest 200 located nodes available in the current catalog. It is not a complete inventory of nearby radios.")
+                        Text("This list shows the nearest 200 located nodes available in the current catalog. Predictions use your receiver assumptions, not reported node equipment. It is not a complete inventory of nearby radios.")
                             .font(.subheadline).foregroundStyle(.secondary)
                     }.instrumentListRows()
                     Section {
@@ -59,7 +143,10 @@ struct EstimatedCoverageScreen: View {
                         ForEach(knownNodes) { node in
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(node.name ?? String(node.id.prefix(12))).font(.monaspace(.headline))
-                                Label("Not evaluated", systemImage: "questionmark.circle").font(.subheadline).foregroundStyle(.secondary)
+                                Text(nodeStatuses[node.id]?.coverageLabel ?? String(localized: "Not evaluated")).font(.subheadline)
+                                if let margin = nodeStatuses[node.id]?.adjustedMarginDb {
+                                    Text("Margin after reserve: \(margin, specifier: "%.1f") dB").font(.monaspace(.caption))
+                                }
                             }
                         }
                     }.instrumentListRows()
@@ -70,6 +157,7 @@ struct EstimatedCoverageScreen: View {
             }
         }
         .task(id: "\(settings.sourceSession.id)|\(regionFilter.selectedRegion ?? "")") {
+            invalidate()
             knownNodes = []
             locatedNodes = []
             catalog.configure(settings: settings)
@@ -103,6 +191,8 @@ private struct EstimatedCoverageMap: View {
     let coordinate: CLLocationCoordinate2D?
     let locationInput: [String]
     let nodes: [MeshNode]
+    let layer: CoverageMapLayer?
+    let statuses: [String: CoverageNodeStatus]
     let select: (CLLocationCoordinate2D) -> Void
     @State private var proposal: (coordinate: CLLocationCoordinate2D, input: [String])?
     private var tentative: CLLocationCoordinate2D? {
@@ -111,7 +201,7 @@ private struct EstimatedCoverageMap: View {
     @AppStorage(MapDisplayStyle.defaultsKey) private var style = MapDisplayStyle.standard
 
     var body: some View {
-        CoverageMapHost(coordinate: coordinate, tentative: tentative, nodes: nodes, style: style) {
+        CoverageMapHost(coordinate: coordinate, tentative: tentative, nodes: nodes, style: style, layer: layer, nodeStatuses: statuses) {
             proposal = ($0, locationInput)
         }
         .onChange(of: locationInput) { proposal = nil }
@@ -133,7 +223,7 @@ private struct EstimatedCoverageMap: View {
                 } else {
                     Text("Touch and hold to choose a transmitter location.").font(.subheadline)
                 }
-                Text("Gray nodes: not evaluated").font(.caption).foregroundStyle(.secondary)
+                Text(layer == nil ? "Nodes: not evaluated" : "Tap nodes for predictions; green shading is estimated coverage").font(.caption).foregroundStyle(.secondary)
             }.padding(10).background(.regularMaterial)
         }
     }
@@ -186,6 +276,15 @@ private struct EstimatedCoverageEditor: View {
     @Binding var radius: Int
     @Binding var spacing: Int
     @Binding var showsNodes: Bool
+    let runner: CoverageStudyRunner
+    let result: CoverageStudyResult?
+    let busy: Bool
+    let inputError: String?
+    let overlayError: Bool
+    let rendering: Bool
+    let calculate: () -> Void
+    let cancel: () -> Void
+    @State private var acceptsScenario = false
     let heightInFeet: Bool
     let nodeCount: Int
     let catalogLoading: Bool
@@ -263,25 +362,40 @@ private struct EstimatedCoverageEditor: View {
                 }
             } header: { Text("Study area").font(.monaspace(.headline)) }.instrumentListRows()
             Section {
-                Text("Coverage calculation is not available in this build. You can review the setup, but no coverage or node reception has been predicted.")
-                    .font(.subheadline).foregroundStyle(.secondary)
-                Button("Review inputs") { showsRequired = true }
-                if showsRequired {
-                    Text(reviewMessage)
-                        .font(.subheadline).foregroundStyle(.secondary)
+                Text("Beta estimate: terrain-only, inland paths, vertical polarization and median atmosphere. No building or tree clutter model; terrain surfaces may still contain vegetation. Not suitable for coastal or sea paths without a different model configuration.")
+                    .font(.subheadline)
+                Toggle("Use these model assumptions", isOn: $acceptsScenario)
+                Text("Downloads terrain on demand (up to 500 MB per run; 1 GB cache). Start with a small area. Keep this screen open; leaving or backgrounding cancels active work.")
+                    .font(.caption).foregroundStyle(.secondary)
+                if busy {
+                    ProgressView(runner.preparationStage == .preparingTerrain ? "Downloading and preparing terrain…" : runner.preparationStage == .calculating ? "Calculating paths…" : "Validating and cleaning up…")
+                    Button("Cancel calculation", action: cancel)
+                } else {
+                    Button("Calculate coverage") { showsRequired = true; calculate() }
+                        .disabled(!acceptsScenario || workFits != true || catalogLoading)
                 }
-                Button("Calculate coverage") {}.disabled(true)
+                if showsRequired && result == nil { Text(reviewMessage).font(.caption) }
+                if let inputError { Text(inputError).foregroundStyle(.red) }
+                if let failure = runner.failure {
+                    Text(failure.coverageMessage).foregroundStyle(.red)
+                }
+                if runner.phase == .cancelled { Text("Calculation cancelled. No partial result was published.").font(.caption) }
+                if runner.phase == .stale { Text("Inputs or catalog changed. Calculate again to update the result.").font(.caption) }
+                if rendering && !overlayError { ProgressView("Preparing coverage overlay…") }
+                if overlayError { Text("The result could not be drawn. Retry the calculation.").foregroundStyle(.red) }
+                if let result { CoverageResultsView(result: result) }
                 Text("This setup is not saved when you leave the tool.").font(.caption).foregroundStyle(.secondary)
             }.instrumentListRows()
         }
         .meshPageBackground()
+        .scrollDismissesKeyboard(.interactively)
         .task(id: "\(radius):\(spacing)") {
             workCheck = nil
             let checkedRadius = radius, checkedSpacing = spacing
             guard let grid else { return }
             let worker = Task.detached(priority: .userInitiated) {
-                (try? CoverageGridPreflight.estimate(grid: grid, sampleBudget: 150_000_000,
-                    geometryBudget: 150_000_000, cancelled: { Task.isCancelled })) != nil
+                (try? CoverageGridPreflight.estimate(grid: grid, sampleBudget: 120_000_000,
+                    geometryBudget: 120_000_000, cancelled: { Task.isCancelled })) != nil
             }
             let result = await withTaskCancellationHandler { await worker.value } onCancel: { worker.cancel() }
             guard !Task.isCancelled else { return }

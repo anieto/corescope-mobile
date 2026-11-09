@@ -8,6 +8,15 @@ import org.junit.Test
 import org.nodescope.android.feature.coverage.*
 
 class CoverageStudyPublicationTest {
+    @Test fun actionableFailuresKeepTheirCause() {
+        assertEquals(CoverageStudyRunFailure.network, CoverageStudyRunFailure.classify(java.net.UnknownHostException()))
+        assertEquals(CoverageStudyRunFailure.terrain, CoverageStudyRunFailure.classify(CoverageTerrainDownloadFailure(CoverageTerrainDownloadState.HTTP_STATUS, 404)))
+        assertEquals(CoverageStudyRunFailure.network, CoverageStudyRunFailure.classify(CoverageTerrainDownloadFailure(CoverageTerrainDownloadState.HTTP_STATUS, 503)))
+        assertEquals(CoverageStudyRunFailure.limits, CoverageStudyRunFailure.classify(CoverageTerrainDownloadFailure(CoverageTerrainDownloadState.DOWNLOAD_LIMIT)))
+        assertEquals(CoverageStudyRunFailure.storage, CoverageStudyRunFailure.classify(CoverageTerrainCacheFailure(CoverageTerrainCacheState.QUOTA)))
+        assertEquals(CoverageStudyRunFailure.terrain, CoverageStudyRunFailure.classify(CoverageTerrainCacheFailure(CoverageTerrainCacheState.MISSING)))
+    }
+
     private fun result(id: UUID, completed: Boolean = true, cells: Boolean = true, terrain: CoverageStudyTerrainSources? = null): CoverageStudyResult {
         val run = CoverageNodeRun(emptyList(), true, 1, 1000.0)
         if (completed) run.complete()

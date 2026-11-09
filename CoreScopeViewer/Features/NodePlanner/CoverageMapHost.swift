@@ -15,6 +15,7 @@ struct CoverageMapHost: UIViewRepresentable {
     let nodes: [MeshNode]
     let style: MapDisplayStyle
     var layer: CoverageMapLayer? = nil
+    var nodeStatuses: [String: CoverageNodeStatus] = [:]
     let selectTentative: (CLLocationCoordinate2D) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(selectTentative: selectTentative) }
@@ -38,7 +39,7 @@ struct CoverageMapHost: UIViewRepresentable {
         case .hybrid: .hybrid
         }
         if map.mapType != mapType { map.mapType = mapType }
-        coordinator.updatePins(map, coordinate: coordinate, tentative: tentative, nodes: nodes)
+        coordinator.updatePins(map, coordinate: coordinate, tentative: tentative, nodes: nodes, statuses: nodeStatuses)
         coordinator.updateLayer(map, layer: layer)
     }
 
@@ -52,6 +53,7 @@ struct CoverageMapHost: UIViewRepresentable {
     final class Pin: MKPointAnnotation {
         let id: String
         let kind: Kind
+        var nodeState: CoverageNodeState = .notEvaluated
         enum Kind { case node, transmitter, tentative }
         init(id: String, title: String, coordinate: CLLocationCoordinate2D, kind: Kind) {
             self.id = id
@@ -83,11 +85,17 @@ struct CoverageMapHost: UIViewRepresentable {
         }
 
         func updatePins(_ map: MKMapView, coordinate: CLLocationCoordinate2D?,
-                        tentative: CLLocationCoordinate2D?, nodes: [MeshNode]) {
+                        tentative: CLLocationCoordinate2D?, nodes: [MeshNode], statuses: [String: CoverageNodeStatus]) {
             var desired = nodes.compactMap { node -> Pin? in
                 guard let point = node.coordinate else { return nil }
-                return Pin(id: "node:" + node.id, title: node.name ?? String(localized: "Known node"),
+                let pin = Pin(id: "node:" + node.id, title: node.name ?? String(localized: "Known node"),
                            coordinate: point, kind: .node)
+                if let status = statuses[node.id] {
+                    pin.nodeState = status.state
+                    pin.subtitle = status.coverageLabel
+                    if let margin = status.adjustedMarginDb { pin.subtitle = status.coverageLabel + String(format: " · %.1f dB", margin) }
+                }
+                return pin
             }
             if let coordinate {
                 desired.append(Pin(id: "transmitter", title: String(localized: "Transmitter"),
@@ -104,7 +112,9 @@ struct CoverageMapHost: UIViewRepresentable {
             for pin in desired {
                 if let existing = pins[pin.id] {
                     if !same(existing.coordinate, pin.coordinate) { existing.coordinate = pin.coordinate }
-                    if existing.title != pin.title {
+                    if existing.title != pin.title || existing.subtitle != pin.subtitle || existing.nodeState != pin.nodeState {
+                        existing.subtitle = pin.subtitle
+                        existing.nodeState = pin.nodeState
                         existing.title = pin.title
                         (map.view(for: existing) as? PinView)?.configure(existing)
                     }
@@ -137,6 +147,9 @@ struct CoverageMapHost: UIViewRepresentable {
                 executionID = layer.executionID
                 overlay = newOverlay
                 map.addOverlay(newOverlay, level: .aboveRoads)
+                map.setRegion(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: layer.raster.transmitter.latitude,
+                    longitude: layer.raster.transmitter.longitude), latitudinalMeters: Double(layer.raster.grid.radiusMeters) * 2.4,
+                    longitudinalMeters: Double(layer.raster.grid.radiusMeters) * 2.4), animated: true)
             } catch {
                 // The adapter's only initialization failure is an invalid constant cache capacity.
                 assertionFailure("Invalid coverage overlay cache capacity: \(error)")
@@ -183,6 +196,7 @@ struct CoverageMapHost: UIViewRepresentable {
             name.layer.cornerRadius = 4
             name.clipsToBounds = true
             isAccessibilityElement = true
+            canShowCallout = true
             collisionMode = .rectangle
         }
 
@@ -195,7 +209,7 @@ struct CoverageMapHost: UIViewRepresentable {
             glyph.image = UIImage(systemName: pin.kind == .node ? "questionmark.circle.fill" :
                 pin.kind == .transmitter ? "antenna.radiowaves.left.and.right.circle.fill" : "mappin.circle.fill")
             glyph.tintColor = switch pin.kind {
-            case .node: .systemGray
+            case .node: pin.nodeState == .inCoverage ? .systemGreen : pin.nodeState == .belowThreshold ? .systemRed : .systemGray
             case .transmitter: .systemOrange
             case .tentative: .systemBlue
             }

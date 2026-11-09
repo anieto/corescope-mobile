@@ -197,7 +197,7 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
   wrapping. Native area execution now preserves sample masks and unresolved states under shared
   budgets. A combined prepared-terrain operation now reserves node work independently and returns
   area/node results together. Execution-token publication guards now reject superseded and
-  cancelled completions; screen execution and rendering remain pending. See the
+  cancelled completions; screen execution and result overlays are now connected for beta testing. See the
   [native integration report](docs/node-planner/native-terrain-integration.md). Regional JSON catalog
   decoding now validates pinned records and resolves required study tiles on both platforms;
   bounded cancellable HTTPS catalog transport is also implemented. Direct AWS Skadi discovery now
@@ -206,7 +206,7 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
   Upstream engine permission is assumed granted per project-owner instruction. The pinned kp1812
   sources, validated shared wrapper and native adapters now compile into both apps; reference and
   Swift bridge checks pass. See [RF build instructions](shared/rf-engine/README.md). Prepared studies now use this kernel for area and node paths, with geodesic midpoint latitude
-  and retained model/terrain provenance. Scenario disclosure, screen wiring and device qualification remain. A reproducible eight-tile
+  and retained model/terrain provenance. Scenario disclosure and screen wiring are connected; physical-device qualification remains. A reproducible eight-tile
   Canadian Rockies study catalog now exercises real metadata selection and download/disk preflight
   in both native test suites; it is not a deployed service or global coverage.
 - **Coverage setup UI:** Estimated Coverage now opens beside Link Profile on iOS and Android.
@@ -249,9 +249,11 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
   with unit-aware validation and conversion to meters in calculation snapshots.
   Pending map proposals now expire on coordinate edits or current-location updates, preventing
   an old confirmation from overwriting a newer transmitter selection.
-  Completed-study production/presentation and device rendering checks remain pending.
-  Calculate remains disabled: screen worker wiring
-  and result overlays are not connected. Setups are not yet saved.
+  Calculate now runs the production worker after explicit model-assumption acceptance, with phase
+  progress, cancellation, actionable failures and stale-result removal. Coverage overlays, sample
+  counts, legends, known-node predictions and model/terrain provenance are connected on both apps.
+  See the [beta test guide](docs/node-planner/coverage-beta-testing.md). Setups are not yet saved;
+  physical-device performance and broader rendering/layout checks remain.
 - **Release gate:** coverage integration and physical-device qualification remain incomplete.
   Do not ship the site library as a substitute for coverage or silently relax model fidelity.
 - **Candidate Sites progress:** merged the 0.10.2 baseline from `main`; development release
