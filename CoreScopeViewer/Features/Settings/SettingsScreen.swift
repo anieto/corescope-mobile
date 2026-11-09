@@ -68,7 +68,7 @@ struct SettingsScreen: View {
 
                     SettingsPanel(title: "Live Map", symbol: "map") {
                         Toggle("Group Nearby Nodes", isOn: $groupsNodes)
-                        Text("Combine close nodes into numbered bubbles when zoomed out. With this off, busy areas may be slower.")
+                        Text("Combine close nodes into numbered bubbles when zoomed out. On a large mesh, turning this off can make the map lag when you pan or tap a node.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
 
