@@ -130,7 +130,7 @@ fun SettingsScreen(
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("Realistic Propagation", style = MaterialTheme.typography.titleSmall)
-                            Text("Wait for every observer, then animate a packet's paths together. Runs a few seconds behind live; the analyzer sets the delay.",
+                            Text("Collect a packet's reports from different observers for a few seconds, then animate its paths together. Runs slightly behind live; the analyzer sets the delay.",
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Switch(checked = org.nodescope.android.feature.map.LiveMapSettings.realisticPropagation(context),

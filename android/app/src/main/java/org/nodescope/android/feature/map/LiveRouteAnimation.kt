@@ -373,14 +373,28 @@ internal const val THIN_MARKERS_BELOW_ZOOM = 9.0
 
 /**
  * With Group Nearby Nodes off and the map zoomed out (iOS `withoutCoveredMarkers`), nodes within
- * about 2.5 dp of each other draw as one dot anyway. Keeps one per cell (a repeater over a room
+ * a few dp of each other mostly hide under one another. Keeps one per cell (a repeater over a room
  * over a companion over a sensor, then by key so the pick is stable) and returns, by kept node's
  * key, the nodes it covers, so a tap there can zoom in on the stack.
  */
 internal fun thinCoveredNodes(nodes: List<MeshNode>, zoom: Double): Pair<List<MeshNode>, Map<String, List<MeshNode>>> {
     if (zoom >= THIN_MARKERS_BELOW_ZOOM) return nodes to emptyMap()
+    // Every marker costs while panning, so the cell grows with how crowded the map is: 4 dp
+    // normally, up to 6 dp until about 300 markers remain (iOS `withoutCoveredMarkers`). Even at
+    // 6 dp a hidden node always sits under the 10 dp marker kept.
+    var result = thinMarkers(nodes, zoom, 4.0)
+    for (cellDp in listOf(5.0, 6.0)) {
+        if (result.first.size <= THIN_MARKER_BUDGET) break
+        result = thinMarkers(nodes, zoom, cellDp)
+    }
+    return result
+}
+
+private const val THIN_MARKER_BUDGET = 300
+
+private fun thinMarkers(nodes: List<MeshNode>, zoom: Double, cellDp: Double): Pair<List<MeshNode>, Map<String, List<MeshNode>>> {
     val degreesPerDp = 360.0 / (512.0 * Math.pow(2.0, zoom))
-    val cell = 2.5 * degreesPerDp
+    val cell = cellDp * degreesPerDp
     fun rank(node: MeshNode) = MAP_ROLES.indexOf(node.role.lowercase()).let { if (it < 0) MAP_ROLES.size else it }
     val best = HashMap<Pair<Long, Long>, MeshNode>()
     val covered = HashMap<Pair<Long, Long>, MutableList<MeshNode>>()
@@ -388,7 +402,7 @@ internal fun thinCoveredNodes(nodes: List<MeshNode>, zoom: Double): Pair<List<Me
         val at = node.coordinate ?: continue
         // Web Mercator: a dp spans fewer degrees of latitude than longitude away from the equator.
         val key = kotlin.math.floor(at.longitude / cell).toLong() to
-            kotlin.math.floor(Mercator.y(at.latitude) * 512.0 * Math.pow(2.0, zoom) / 2.5).toLong()
+            kotlin.math.floor(Mercator.y(at.latitude) * 512.0 * Math.pow(2.0, zoom) / cellDp).toLong()
         val current = best[key]
         if (current == null) { best[key] = node; continue }
         val replaces = compareValuesBy(node, current, ::rank, MeshNode::publicKey) < 0

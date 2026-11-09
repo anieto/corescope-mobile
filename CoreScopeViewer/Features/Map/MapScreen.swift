@@ -1452,16 +1452,32 @@ struct MapScreen: View {
         )
     }
 
-    /// Zoomed out with grouping off, many nodes land within a couple of points of each other and
-    /// draw as one dot anyway. Keeps one marker per ~2.5 pt cell (a repeater over a room over a
-    /// companion over a sensor, then by key so the pick is stable), which looks the same but cuts
-    /// a statewide map from ~1,400 markers to a few hundred. The rest are returned as covered.
+    /// Zoomed out with grouping off, many nodes land within a few points of each other, mostly
+    /// hidden under one another's 10 pt markers. Keeps one marker per small cell (a repeater over a
+    /// room over a companion over a sensor, then by key so the pick is stable) and returns the rest
+    /// as covered; they stay tappable. Every marker MapKit hosts costs while panning, so the cell
+    /// grows with how crowded the view is: 4 pt normally, up to 6 pt until about 300 markers remain.
+    /// Even at 6 pt (8.5 pt across a cell) a hidden node always sits under the marker kept.
     nonisolated private static func withoutCoveredMarkers(
         _ nodes: [MeshNode],
         region: DisplayRegion
     ) -> (shown: [MeshNode], covered: [MeshNode]) {
-        // About 2.5 pt on a map roughly 800 pt tall; longitude scaled so cells are square on screen.
-        let latitudeCell = region.latitudeDelta / 320
+        let markerBudget = 300
+        var result = thinMarkers(nodes, region: region, cellPoints: 4)
+        for cellPoints in [5.0, 6.0] where result.shown.count > markerBudget {
+            guard !Task.isCancelled else { break }
+            result = thinMarkers(nodes, region: region, cellPoints: cellPoints)
+        }
+        return result
+    }
+
+    nonisolated private static func thinMarkers(
+        _ nodes: [MeshNode],
+        region: DisplayRegion,
+        cellPoints: Double
+    ) -> (shown: [MeshNode], covered: [MeshNode]) {
+        // On a map roughly 800 pt tall; longitude scaled so cells are square on screen.
+        let latitudeCell = region.latitudeDelta / 800 * cellPoints
         let longitudeCell = latitudeCell / max(cos(region.centerLatitude * .pi / 180), 0.2)
         let rolePriority = ["repeater", "room", "companion", "sensor"]
         func rank(_ node: MeshNode) -> Int {
@@ -1851,6 +1867,28 @@ struct MapScreen: View {
         return closestNode
     }
 
+    /// The nodes that could be the one tapped, or in the stack under it: those within 80 pt of the
+    /// tap (a tap reaches 44 pt, a stack 10 pt beyond that, with room to spare). Measured in map
+    /// points, which scale evenly on screen, so only these few go through MapKit's slower point
+    /// conversion. All nodes when the camera isn't known yet.
+    private func nodesNear(_ screenPoint: CGPoint, using proxy: MapProxy, in nodes: [MeshNode]) -> [MeshNode] {
+        guard let region = visibleRegion, mapViewportSize.width > 0,
+              let tappedCoordinate = proxy.convert(screenPoint, from: .local) else { return nodes }
+        let west = MKMapPoint(CLLocationCoordinate2D(latitude: region.center.latitude,
+                                                     longitude: region.center.longitude - region.span.longitudeDelta / 2))
+        let east = MKMapPoint(CLLocationCoordinate2D(latitude: region.center.latitude,
+                                                     longitude: region.center.longitude + region.span.longitudeDelta / 2))
+        let mapPointsWide = east.x - west.x
+        guard mapPointsWide > 0 else { return nodes }
+        let reach = mapPointsWide / Double(mapViewportSize.width) * 80
+        let tapped = MKMapPoint(tappedCoordinate)
+        return nodes.filter { node in
+            guard let coordinate = displayCoordinatesByNodeID[node.id] ?? node.coordinate else { return false }
+            let point = MKMapPoint(coordinate)
+            return abs(point.x - tapped.x) <= reach && abs(point.y - tapped.y) <= reach
+        }
+    }
+
     private func scheduleMapTap(
         at screenPoint: CGPoint,
         using proxy: MapProxy,
@@ -1865,6 +1903,8 @@ struct MapScreen: View {
                 return
             }
             guard !Task.isCancelled else { return }
+            // Only nodes near the tap are projected; projecting every node made taps lag on big meshes.
+            let nodes = nodesNear(screenPoint, using: proxy, in: nodes)
             if let cluster = nearestCluster(to: screenPoint, using: proxy) {
                 zoomToCluster(cluster)
             } else if let route = nearestRoute(to: screenPoint, using: proxy, at: date) {

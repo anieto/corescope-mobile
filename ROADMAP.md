@@ -154,8 +154,11 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
   conversations.
 - iOS fixes: ⓘ explanations open above or below and are no longer clipped; the iPhone Live Packets
   sheet closes from the trailing corner; Settings has a Live Map card.
-- Builds: iOS 0.10.3 (2), Android 0.10.3 (versionCode 22). The numbers skip past 0.10.3 (1) and
-  versionCode 21, which the Candidate Sites branch used.
+- **Ungrouped nodes on big meshes:** markers hidden under another are thinned in 4 pt cells, growing
+  to 6 pt while more than about 300 would show (they stay tappable); iOS taps only measure nodes
+  near the tap. Realistic Propagation's description no longer says it waits for every observer.
+- Builds: iOS 0.10.3 (3), Android 0.10.3 (versionCode 23); (2)/22 was the first beta. The numbers
+  skip past 0.10.3 (1) and versionCode 21, which the Candidate Sites branch used.
 - Not ported to Android (it groups far less, and its maps hide colliding labels): drawing traffic
   to group bubbles, and fanning nearby nodes with lines back to where they are.
 
@@ -168,7 +171,7 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
   layout (as the Duo already does), then remove the 0.10.1 launch workaround
   (`RootTabView.settleIPadMapLayout()`). On first launch iPadOS doesn't merge the top tab bar into
   the split view's bar, which pushed both panes 64 pt down until the tab was revisited.
-- Builds: iOS 0.10.4, Android versionCode 23 or later (the branch's 0.10.3 numbers were passed to the
+- Builds: iOS 0.10.4, Android versionCode 24 or later (the branch's 0.10.3 numbers were passed to the
   live map release). The Candidate Sites branch needs updating from `main` first.
 
 Still to come after 0.10.4: Potential Links, Estimated Coverage, comparing and exporting plans, and
