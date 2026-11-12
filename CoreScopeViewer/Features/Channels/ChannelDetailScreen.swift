@@ -16,6 +16,7 @@ struct ChannelDetailScreen: View {
     @State private var liveRefreshTask: Task<Void, Never>?
     @State private var liveLoadTask: Task<Void, Never>?
     @State private var browserLink: BrowserLink?
+    @State private var hasShownLatest = false
 
     private let scrollBottomID = "channel-conversation-bottom"
 
@@ -55,10 +56,17 @@ struct ChannelDetailScreen: View {
             // Folding or resizing the pane keeps the newest messages in view.
             .defaultScrollAnchor(.bottom, for: .sizeChanges)
             .onChange(of: orderedMessages.last?.id) {
-                scrollToBottom(proxy: proxy)
+                if hasShownLatest {
+                    scrollToBottom(proxy: proxy)
+                } else {
+                    showLatest(proxy: proxy)
+                }
+            }
+            .onChange(of: regionFilter.selectedRegion) {
+                hasShownLatest = false
             }
             .onAppear {
-                scrollToBottom(proxy: proxy, animated: false)
+                showLatest(proxy: proxy)
             }
         }
         .meshPageBackground()
@@ -274,6 +282,23 @@ struct ChannelDetailScreen: View {
             monitorStore.updateSummary(for: monitoredChannel.channelName, messages: viewModel.messages)
         } else {
             await viewModel.loadMessages(channel: effectiveChannel, forceRefresh: forceRefresh)
+        }
+    }
+
+    /// Opens the conversation at its newest message. Messages arrive after the
+    /// screen appears, so the bottom scroll anchor applies to an empty list; and
+    /// the lazy stack only estimates rows it hasn't drawn, so a single (or
+    /// animated) scroll can stop short. Jump without animation, then repeat once
+    /// the rows near the bottom have been measured.
+    private func showLatest(proxy: ScrollViewProxy) {
+        guard !orderedMessages.isEmpty else { return }
+        hasShownLatest = true
+        proxy.scrollTo(scrollBottomID, anchor: .bottom)
+        Task { @MainActor in
+            for _ in 0..<2 {
+                try? await Task.sleep(for: .milliseconds(60))
+                proxy.scrollTo(scrollBottomID, anchor: .bottom)
+            }
         }
     }
 
