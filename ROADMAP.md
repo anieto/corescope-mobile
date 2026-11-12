@@ -127,7 +127,7 @@ which covers all of 0.10, is in the [0.10.2 release notes](docs/node-planner/v0.
   mode); on iPhone Duo, Live Packets fills the right screen on iOS 27.1, map controls keep clear of
   the crease when half folded, and the node count stays on the left screen.
 
-### 0.10.3 — Live map options (beta testing)
+### 0.10.3 — Live map options (beta; shipped in 0.10.4)
 
 Built on `feature/live-map-options` for both apps; merge to `main` once testers have tried it.
 
@@ -165,7 +165,24 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
 - Not ported to Android (it groups far less, and its maps hide colliding labels): drawing traffic
   to group bubbles, and fanning nearby nodes with lines back to where they are.
 
-### 0.10.4 — Candidate Sites (in progress)
+### 0.10.4 — Beacon 2.2 (release)
+
+Released from `feature/beacon-2.2`, on top of the 0.10.3 live map beta. Notes:
+[v0.10.4 release](docs/node-planner/v0.10.4-release.md).
+
+- **Node analytics** on Beacon read `GET /nodes/{id}/activity` (Beacon 2.2.0+): activity, signal, weekly
+  pattern and totals are hourly counts for up to 30 days. Packet types and hops still come from the
+  7-day observation walk. Older servers fall back to the walk.
+- **Node page:** Health card (24 h and 7 day observations, averages, last heard) and Heard In regions.
+- **Region picker:** Beacon's configured regions appear as region groups. Nodes load 2,000 per page.
+- **Live Packets on Beacon:** selecting a packet holds the list and offers Replay and Show Details;
+  the selected row and Packet Details show the server-decrypted message when the server has the key.
+- **Channels on Beacon** refresh from the WebSocket's `channelMessage` events instead of every packet,
+  and after a reconnect or lag. Any channel now opens at its newest message (iOS).
+- **Android route details for replays:** tapping a replayed route opens its stops, observer and message.
+- Builds: iOS 0.10.4 (1), Android 0.10.4 (versionCode 24).
+
+### 0.10.5 — Candidate Sites (in progress)
 
 - **Candidate Sites:** locally saved deployment plans with one or more proposed sites and their
   radio, antenna, cable and installation assumptions; the first slice of the planning workflow
@@ -174,10 +191,11 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
   layout (as the Duo already does), then remove the 0.10.1 launch workaround
   (`RootTabView.settleIPadMapLayout()`). On first launch iPadOS doesn't merge the top tab bar into
   the split view's bar, which pushed both panes 64 pt down until the tab was revisited.
-- Builds: iOS 0.10.4, Android versionCode 24 or later (the branch's 0.10.3 numbers were passed to the
-  live map release). The Candidate Sites branch needs updating from `main` first.
+- Builds: iOS 0.10.5, Android versionCode 25 or later (0.10.4 went to the Beacon 2.2 release, and the
+  branch's earlier 0.10.3 numbers to the live map release). The Candidate Sites branch needs updating
+  from `main` first.
 
-Still to come after 0.10.4: Potential Links, Estimated Coverage, comparing and exporting plans, and
+Still to come after 0.10.5: Potential Links, Estimated Coverage, comparing and exporting plans, and
 saved Link Profiles ([saved Link Profiles plan](docs/node-planner/saved-link-profiles.md)).
 
 ### Node preview card (planned)
@@ -250,6 +268,6 @@ and 3 are at parity. See [implementation progress](docs/android/progress.md).
 ## Current priority
 
 0.10.2 (Learn layer, Monaspace Neon, Settings refresh, foldable fixes) is uploaded to the App Store
-and Google Play. 0.10.3 (live map options) is in beta testing; next is 0.10.4: Candidate Sites and
-the iPad two-pane map layout. Android touch &
+and Google Play. 0.10.4 (the 0.10.3 live map options plus Beacon 2.2 support) is the next release; then
+0.10.5: Candidate Sites and the iPad two-pane map layout. Android touch &
 hold still needs a device test.
