@@ -81,18 +81,20 @@ fun NodeDetailScreen(
     val reach = model?.reach?.state?.collectAsStateWithLifecycle()?.value ?: Loaded()
     val paths = model?.paths?.state?.collectAsStateWithLifecycle()?.value ?: Loaded()
     val neighbors = model?.neighbors?.state?.collectAsStateWithLifecycle()?.value ?: Loaded()
+    val beaconHealth = model?.beaconHealth?.state?.collectAsStateWithLifecycle()?.value ?: Loaded()
     val key = host to publicKey
     // Beacon has no health, reach or path statistics; it reports neighbors instead.
     val beacon = LocalBeaconSource.current
     LaunchedEffect(model, key, beacon) { model?.load(host, publicKey, beacon = beacon) }
     val now = rememberNow()
     // Never show another node's (or analyzer's) sections while this one loads.
-    val sections = (if (beacon) listOf(neighbors) else listOf(health, reach, paths))
+    val sections = (if (beacon) listOf(neighbors, beaconHealth) else listOf(health, reach, paths))
         .map { if (it.key == key) it else Loaded(loading = model != null) }
     val healthValue = health.value?.takeIf { health.key == key && !beacon }
     val reachValue = reach.value?.takeIf { reach.key == key && !beacon }
     val pathsValue = paths.value?.takeIf { paths.key == key && !beacon }
     val neighborsValue = neighbors.value?.takeIf { neighbors.key == key && beacon }
+    val beaconHealthValue = beaconHealth.value?.takeIf { beaconHealth.key == key && beacon }
     val node = healthValue?.node ?: initial
     // Nodes opened from links may only be known once health loads; record them for Recently Viewed.
     LaunchedEffect(node?.publicKey) { node?.let(onViewed) }
@@ -100,7 +102,8 @@ fun NodeDetailScreen(
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (model != null) item {
             LoadStatus(combinedStatus(sections),
-                hasContent = healthValue != null || reachValue != null || pathsValue != null || neighborsValue != null, now) {
+                hasContent = healthValue != null || reachValue != null || pathsValue != null || neighborsValue != null ||
+                    beaconHealthValue != null, now) {
                 model.load(host, publicKey, force = true, beacon = beacon)
             }
         }
@@ -112,10 +115,12 @@ fun NodeDetailScreen(
         reachValue?.let { value -> item { ReachCard(value) } }
             ?: neighborsValue?.let { value -> item { BeaconReachCard(value.neighbors.size) } }
         healthValue?.stats?.let { stats -> item { HealthCard(stats) } }
+        beaconHealthValue?.takeIf { it.hasActivity }?.let { value -> item { BeaconHealthCard(value, now) } }
         onAnalytics?.let { open -> item { AnalyticsLinkCard(open) } }
         healthValue?.observers?.takeIf { it.isNotEmpty() }?.let { observers ->
             item { ObserversCard(observers.sortedByDescending { it.packetCount }, onObserver) }
         }
+        beaconHealthValue?.heardIn?.takeIf { it.isNotEmpty() }?.let { regions -> item { HeardInCard(regions, now) } }
         reachValue?.links?.takeIf { it.isNotEmpty() }?.let { links -> item { LinksCard(links, onNode) } }
         neighborsValue?.neighbors?.let { list -> item { if (list.isEmpty()) NeighborsEmptyCard() else NeighborsCard(list, onNode) } }
         pathsValue?.takeIf { it.paths.isNotEmpty() }?.let { value -> item { PathsCard(value) } }
@@ -256,6 +261,52 @@ private fun HealthCard(stats: NodeHealthStats) {
             stats.totalObservations?.let { MetricChip("${compactCount(it)} observations", Icons.Outlined.Hearing) }
             stats.avgHops?.let { MetricChip("%.1f avg hops".format(it), Icons.Outlined.Route) }
         }
+    }
+}
+
+/** Beacon's counterpart to the health card: observations from Beacon's hourly totals; averages cover the seven days. */
+@Composable
+private fun BeaconHealthCard(health: BeaconNodeHealth, now: Long) {
+    DetailCard("Health", Icons.Outlined.MonitorHeart, GlossaryTerm.OBSERVATION) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MetricTile(health.observationsDay?.let { compactCount(it.toLong()) } ?: "—", "24 h", Modifier.weight(1f))
+            MetricTile(health.observationsWeek?.let { compactCount(it.toLong()) } ?: "—", "7 days", Modifier.weight(1f))
+            MetricTile(health.avgSnr?.let { "%.1f".format(it) } ?: "—", "Avg SNR", Modifier.weight(1f), GlossaryTerm.SNR)
+        }
+        if (health.avgRssi != null || health.avgHops != null) Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            health.avgRssi?.let { MetricChip("%.0f dBm avg RSSI".format(it), Icons.Outlined.Sensors) }
+            health.avgHops?.let { MetricChip("%.1f avg hops".format(it), Icons.Outlined.Route) }
+        }
+        health.lastHeard?.let {
+            Text("Last heard ${relativeTime(java.time.Instant.ofEpochMilli(it), now)}", style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** Where a Beacon node was heard. Beacon reports regions, not observers. */
+@Composable
+private fun HeardInCard(regions: List<BeaconNodeHealth.HeardIn>, now: Long) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    DetailCard("Heard in", Icons.Outlined.Map) {
+        Column {
+            regions.take(if (expanded) regions.size else 3).forEachIndexed { index, region ->
+                if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                Row(Modifier.fillMaxWidth().padding(vertical = 9.dp).semantics(mergeDescendants = true) {},
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(region.iata, Modifier.widthIn(min = 40.dp), style = MaterialTheme.typography.titleSmall, fontFamily = MonaspaceNeon)
+                    // The name fills the middle, so the time stays right-aligned with or without it.
+                    Text(region.name?.takeIf { !it.equals(region.iata, ignoreCase = true) }.orEmpty(), Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    region.lastHeard?.let {
+                        Text(relativeTime(java.time.Instant.ofEpochMilli(it), now), style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
+        if (regions.size > 3) ExpandButton(expanded, regions.size, "regions") { expanded = !expanded }
     }
 }
 

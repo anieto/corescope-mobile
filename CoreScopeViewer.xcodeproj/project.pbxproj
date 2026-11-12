@@ -1344,7 +1344,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.10.4;
+				MARKETING_VERSION = 0.10.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.btdev.nodescope;
 				PRODUCT_MODULE_NAME = CoreScopeViewer;
 				PRODUCT_NAME = NodeScope;
@@ -1378,6 +1378,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -1453,6 +1454,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -1536,7 +1538,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.10.4;
+				MARKETING_VERSION = 0.10.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.btdev.nodescope;
 				PRODUCT_MODULE_NAME = CoreScopeViewer;
 				PRODUCT_NAME = NodeScope;

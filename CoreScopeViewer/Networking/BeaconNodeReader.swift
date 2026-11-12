@@ -2,14 +2,21 @@ import Foundation
 
 struct BeaconNodeReader: Sendable {
     let client: BeaconAPIClient
+    /// Beacon 2.2.0+ answers `GET /nodes/{id}/activity` from its hourly rollup.
+    let supportsActivity: Bool
+
+    /// Beacon 2.1 pages nodes up to 2000 rows; older servers clamp to 200 and keep paging.
+    static let nodePageSize = 2000
 
     init(client: BeaconAPIClient, verifiedServerInfo: BeaconServerInfo) throws {
         try verifiedServerInfo.requireSupported()
         self.client = client
+        supportsActivity = verifiedServerInfo.supportsNodeActivity
     }
 
     private init(budgeting reader: BeaconNodeReader, budget: MyNodesRequestBudget, node: String) {
         client = reader.client.budgetingRequests(budget, node: node)
+        supportsActivity = reader.supportsActivity
     }
 
     /// Dashboard history gets one exact-key lookup and at most three observation pages.
@@ -22,11 +29,11 @@ struct BeaconNodeReader: Sendable {
     }
 
     func nodePage(
-        region: String?, pageSize: Int = 200, cursor: AnalyzerCursor? = nil
+        region: String?, pageSize: Int = BeaconNodeReader.nodePageSize, cursor: AnalyzerCursor? = nil
     ) async throws -> AnalyzerPage<Node> {
         try client.sourceSession.check()
         guard pageSize > 0 else { throw AnalyzerPagingError.invalidPageSize }
-        var query = [URLQueryItem(name: "limit", value: String(min(pageSize, 200)))]
+        var query = [URLQueryItem(name: "limit", value: String(min(pageSize, Self.nodePageSize)))]
         if let region { query.append(URLQueryItem(name: "iatas", value: region)) }
         if let cursor {
             guard let data = Data(base64Encoded: cursor.value),
@@ -239,6 +246,17 @@ struct BeaconNodeReader: Sendable {
     ) async throws -> ObservationHistory? {
         guard maximumPages > 0 else { throw AnalyzerPagingError.invalidPageSize }
         guard let node = try await nodeSummary(publicKey: publicKey) else { return nil }
+        return try await observationHistory(node: node, since: since, maximumPages: maximumPages)
+    }
+
+    /// The walk for a node already resolved by `nodeSummary`, so callers that also
+    /// read its activity look the key up once.
+    func observationHistory(
+        node: Node,
+        since: Date,
+        maximumPages: Int = 19
+    ) async throws -> ObservationHistory {
+        guard maximumPages > 0 else { throw AnalyzerPagingError.invalidPageSize }
         var observations: [Observation] = []
         var cursor: CursorValue?
         var seenCursors: Set<String> = []
@@ -290,6 +308,72 @@ struct BeaconNodeReader: Sendable {
             isComplete: isComplete,
             requestCount: pages + 1
         )
+    }
+
+    /// Hourly totals of the node's observations over the last `hours` (at most 720),
+    /// counted in full from Beacon's rollup. Nil when the server predates the endpoint.
+    func activity(node: Node, hours: Int) async throws -> Activity? {
+        guard supportsActivity else { return nil }
+        let range = min(max(hours, 1), Activity.maximumHours)
+        let activity: Activity
+        do {
+            activity = try await client.get(
+                ["nodes", node.id, "activity"], query: [URLQueryItem(name: "range", value: "\(range)h")]
+            )
+        } catch BeaconAPIError.server(status: 404, _) {
+            // A version that should have the route but doesn't: fall back, don't fail the screen.
+            return nil
+        }
+        try activity.validate()
+        try client.sourceSession.check()
+        return activity
+    }
+
+    struct Activity: Codable, Sendable {
+        static let maximumHours = 720
+
+        struct Summary: Codable, Sendable {
+            let observations: Int
+            let snrAvg: Double?
+            let rssiAvg: Double?
+            let hopAvg: Double?
+        }
+
+        struct Point: Codable, Sendable {
+            let t: Date
+            let observations: Int
+            let snrAvg: Double?
+            let rssiAvg: Double?
+            let hopAvg: Double?
+        }
+
+        struct Latest: Codable, Sendable {
+            let packetHash: String
+            let heardAt: Date
+        }
+
+        let windowStart: Date
+        let windowEnd: Date
+        let summary: Summary
+        let points: [Point]
+        let latest: Latest?
+
+        /// Observations in the hours that started within the last `interval` before the window's end.
+        func observations(inLast interval: TimeInterval) -> Int {
+            let from = windowEnd.addingTimeInterval(-interval)
+            return points.filter { $0.t >= from }.reduce(0) { $0 + $1.observations }
+        }
+
+        func validate() throws {
+            func finite(_ value: Double?) -> Bool { value.map(\.isFinite) != false }
+            guard windowStart <= windowEnd, summary.observations >= 0,
+                  finite(summary.snrAvg), finite(summary.rssiAvg), finite(summary.hopAvg),
+                  points.allSatisfy({
+                      $0.observations >= 0 && finite($0.snrAvg) && finite($0.rssiAvg) && finite($0.hopAvg)
+                  }) else {
+                throw APIError.invalidResponse
+            }
+        }
     }
 
     private struct Page: Decodable, Sendable {

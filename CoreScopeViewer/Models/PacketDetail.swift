@@ -5,10 +5,25 @@ struct PacketDetailResponse: Codable, Sendable {
     let path: [String]
     let observationCount: Int
     let observations: [PacketObservation]
+    /// A channel message the server decrypted (Beacon), not part of CoreScope's response.
+    var decryptedMessage: DecryptedPacketMessage? = nil
 
     enum CodingKeys: String, CodingKey {
         case packet, path, observations
         case observationCount = "observation_count"
+    }
+}
+
+/// Text Beacon decrypted for a packet on a channel whose key the server holds.
+struct DecryptedPacketMessage: Equatable, Sendable {
+    let sender: String?
+    let content: String
+    let sentAt: Date?
+
+    /// "Sender: message", as CoreScope's channel text reads.
+    var line: String {
+        guard let sender, !sender.isEmpty else { return content }
+        return "\(sender): \(content)"
     }
 }
 

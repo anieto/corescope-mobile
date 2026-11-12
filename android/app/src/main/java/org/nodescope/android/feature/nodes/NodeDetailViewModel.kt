@@ -9,18 +9,21 @@ import org.nodescope.android.core.network.Loaded
 
 /**
  * Health, reach and paths load independently, so one failing endpoint leaves the others usable.
- * A Beacon source has none of them; it loads neighbors instead (iOS loads them only for Beacon).
+ * A Beacon source has none of them; it loads neighbors and Beacon's cut-down health instead
+ * (iOS loads them only for Beacon).
  */
 class NodeDetailViewModel(repository: BrowseRepository) : ViewModel() {
     val health = KeyedLoader(viewModelScope, 60_000, restore = { key: Pair<String, String> -> repository.saved(ResponseCache.DETAIL_LIFETIME) { nodeHealth(key.first, key.second) } }) { key -> repository.nodeHealth(key.first, key.second) }
     val reach = KeyedLoader(viewModelScope, 5 * 60_000, restore = { key: Pair<String, String> -> repository.saved(ResponseCache.DETAIL_LIFETIME) { nodeReach(key.first, key.second) } }) { key -> repository.nodeReach(key.first, key.second) }
     val paths = KeyedLoader(viewModelScope, 5 * 60_000, restore = { key: Pair<String, String> -> repository.saved(ResponseCache.DETAIL_LIFETIME) { nodePaths(key.first, key.second) } }) { key -> repository.nodePaths(key.first, key.second) }
     val neighbors = KeyedLoader(viewModelScope, 5 * 60_000) { key: Pair<String, String> -> repository.neighbors(key.first, key.second) }
+    val beaconHealth = KeyedLoader(viewModelScope, 60_000) { key: Pair<String, String> -> repository.beaconNodeHealth(key.first, key.second) }
 
     fun load(host: String, publicKey: String, force: Boolean = false, beacon: Boolean = false) {
         val key = host to publicKey
         if (beacon) {
             neighbors.load(key, force)
+            beaconHealth.load(key, force)
             return
         }
         health.load(key, force)

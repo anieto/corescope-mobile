@@ -273,18 +273,18 @@ class BeaconApiTest {
     @Test fun nodePagesWalkCursorsWithoutTruncation() = runBlocking {
         val items = body("nodes-page.json").jsonObject.getValue("items").jsonArray
         val fake = FakeBeacon(mutableMapOf(
-            "nodes?limit=200" to Triple(200, page(JsonArray(items.take(3)), true, JsonPrimitive(1791663775459)), null),
-            "nodes?limit=200&cursor=1791663775459" to Triple(200, page(JsonArray(items.drop(3))), null),
+            "nodes?limit=2000" to Triple(200, page(JsonArray(items.take(3)), true, JsonPrimitive(1791663775459)), null),
+            "nodes?limit=2000&cursor=1791663775459" to Triple(200, page(JsonArray(items.drop(3))), null),
         ))
         val reader = BeaconNodeReader(api(fake), info)
         val nodes = reader.nodes(null)
         assertEquals(items.size, nodes.size)
-        assertEquals(listOf("nodes?limit=200", "nodes?limit=200&cursor=1791663775459"), fake.requests)
+        assertEquals(listOf("nodes?limit=2000", "nodes?limit=2000&cursor=1791663775459"), fake.requests)
     }
 
     @Test fun nodeCursorsAreBoundToEndpointSourceSessionAndRegion() = runBlocking {
         val items = body("nodes-page.json").jsonObject.getValue("items").jsonArray
-        val fake = FakeBeacon(mutableMapOf("nodes?limit=200&iatas=SAT" to Triple(200, page(items, true, JsonPrimitive("opaque")), null)))
+        val fake = FakeBeacon(mutableMapOf("nodes?limit=2000&iatas=SAT" to Triple(200, page(items, true, JsonPrimitive("opaque")), null)))
         val client = api(fake)
         val reader = BeaconNodeReader(client, info)
         val cursor = checkNotNull(reader.nodePage("SAT").nextCursor)
@@ -299,11 +299,11 @@ class BeaconApiTest {
 
     @Test fun missingOrRepeatedContinuationFailsInsteadOfTruncating() = runBlocking {
         val items = body("nodes-page.json").jsonObject.getValue("items").jsonArray
-        val missing = FakeBeacon(mutableMapOf("nodes?limit=200" to Triple(200, page(items, true), null)))
+        val missing = FakeBeacon(mutableMapOf("nodes?limit=2000" to Triple(200, page(items, true), null)))
         try { BeaconNodeReader(api(missing), info).nodes(null); fail() } catch (_: BeaconApiException.MalformedPage) {}
         val repeated = FakeBeacon(mutableMapOf(
-            "nodes?limit=200" to Triple(200, page(JsonArray(items.take(2)), true, JsonPrimitive(7)), null),
-            "nodes?limit=200&cursor=7" to Triple(200, page(JsonArray(items.drop(2)), true, JsonPrimitive(7)), null),
+            "nodes?limit=2000" to Triple(200, page(JsonArray(items.take(2)), true, JsonPrimitive(7)), null),
+            "nodes?limit=2000&cursor=7" to Triple(200, page(JsonArray(items.drop(2)), true, JsonPrimitive(7)), null),
         ))
         try { BeaconNodeReader(api(repeated), info).nodes(null); fail() } catch (e: IllegalStateException) {
             assertTrue(e.message!!.contains("repeated"))

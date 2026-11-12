@@ -33,6 +33,9 @@ enum AnalyzerLiveEvent: Sendable {
     case browseSnapshot(LiveBrowseSnapshot)
     case nodeUpdated(BeaconLiveProtocol.NodeUpdate)
     case observerStatus(BeaconLiveProtocol.ObserverStatus)
+    case channelMessage(BeaconLiveProtocol.ChannelMessage)
+    /// The server dropped events (lagged); channel messages may have been missed.
+    case channelsInvalidated
     case metadataInvalidated
     case nodeCatalog([BeaconNodeReader.Node])
     case metadataRecoveryFailed(String)

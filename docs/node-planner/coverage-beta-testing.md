@@ -1,6 +1,6 @@
 # Estimated Coverage beta testing
 
-The 0.10.4 development build now supports an in-app calculation from setup through coverage overlay
+The 0.10.5 development build now supports an in-app calculation from setup through coverage overlay
 and known-node predictions. Open **Explore → Node Planner → Estimated Coverage**. This is a
 terrain-only inland estimate, not measured reception; coast/sea paths, buildings and tree clutter
 are not modeled. Accept the displayed assumptions before Calculate becomes available.
@@ -182,3 +182,17 @@ migration and atomic-write/conflict protections remain. Link Profile continues t
 Validation: 130 host coverage/restoration tests, 16 persistence tests, and the Xcode app build pass.
 Tests exercise disk round-trip, offline overlay rendering, pending cells, node margins, terrain
 identity, invalid data and stale-input handling. Interactive device restoration has not been tested.
+
+### Saved overlay rendering follow-up
+
+The initial one-time renderer reload did not resolve intermittent missing tiles. The tile adapter
+now delivers data on the main queue and notifies the coordinator on the next main-queue turn to
+invalidate that tile rectangle. Notifications from replaced studies are ignored. Burst tile requests
+are queued instead of rejected at a 64-request admission cap. These changes await Adam's interactive
+reopening/pan/zoom checks; do not consider the intermittent rendering issue visually verified.
+
+The branch is now 0.10.5, merged with main's 0.10.4 Beacon 2.2 release. Merge validation compiles both
+apps and their test sources only; Adam runs the apps and tests.
+
+Generic iOS simulator builds target arm64, matching the RF XCFramework; Intel simulator x86_64
+is excluded in both project configurations. Physical iOS architectures are unchanged.

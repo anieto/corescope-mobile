@@ -161,6 +161,7 @@ final class BeaconLiveFeed: AnalyzerLiveFeed, LivePacketDetailProvider, LiveObse
             connected = true
             continuation.yield(.connected)
         case .recoveryRequired:
+            continuation.yield(.channelsInvalidated)
             invalidateMetadata()
             recoverNodesIfNeeded()
             recoverObserversIfNeeded()
@@ -188,6 +189,8 @@ final class BeaconLiveFeed: AnalyzerLiveFeed, LivePacketDetailProvider, LiveObse
             continuation.yield(.nodeUpdated(update))
         case .observer(let status):
             continuation.yield(.observerStatus(status))
+        case .channelMessage(let message):
+            continuation.yield(.channelMessage(message))
         case .subscribed, .acknowledged, .ignored:
             break
         }

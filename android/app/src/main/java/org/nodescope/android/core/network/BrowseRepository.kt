@@ -33,6 +33,9 @@ interface BrowseRepository {
     /** Neutral neighbors: CoreScope derives them from reach; Beacon reads its neighbors endpoint. */
     suspend fun neighbors(host: String, publicKey: String): NeighborCollection = nodeReach(host, publicKey).neighborCollection()
     suspend fun nodeAnalytics(host: String, publicKey: String, days: Int): NodeAnalytics
+    /** Beacon's cut-down node health; CoreScope sources use [nodeHealth]. */
+    suspend fun beaconNodeHealth(host: String, publicKey: String): BeaconNodeHealth =
+        throw BeaconUnsupportedException(BackendCapability.NODE_HEALTH)
     suspend fun packetDetail(host: String, hash: String): PacketDetail
     /** Every node on the analyzer (no region), for Explore's search and dashboard. */
     /** Beacon only: one observer's server record (CoreScope screens use the observer list). */

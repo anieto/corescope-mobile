@@ -24,6 +24,11 @@ struct BeaconServerInfo: Codable, Equatable, Sendable {
         return numbers.count == 3 ? numbers : nil
     }
 
+    /// `GET /nodes/{id}/activity`: hourly node totals from the rollup, added in Beacon 2.2.0.
+    var supportsNodeActivity: Bool {
+        versionComponents.map { !$0.lexicographicallyPrecedes([2, 2, 0]) } ?? false
+    }
+
     func requireSupported() throws {
         guard let version = versionComponents else { throw BeaconAPIError.unrecognizedVersion }
         guard !version.lexicographicallyPrecedes([2, 0, 3]) else {

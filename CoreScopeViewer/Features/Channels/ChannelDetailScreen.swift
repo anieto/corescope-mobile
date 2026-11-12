@@ -16,6 +16,7 @@ struct ChannelDetailScreen: View {
     @State private var liveRefreshTask: Task<Void, Never>?
     @State private var liveLoadTask: Task<Void, Never>?
     @State private var browserLink: BrowserLink?
+    @State private var hasShownLatest = false
 
     private let scrollBottomID = "channel-conversation-bottom"
 
@@ -55,10 +56,17 @@ struct ChannelDetailScreen: View {
             // Folding or resizing the pane keeps the newest messages in view.
             .defaultScrollAnchor(.bottom, for: .sizeChanges)
             .onChange(of: orderedMessages.last?.id) {
-                scrollToBottom(proxy: proxy)
+                if hasShownLatest {
+                    scrollToBottom(proxy: proxy)
+                } else {
+                    showLatest(proxy: proxy)
+                }
+            }
+            .onChange(of: regionFilter.selectedRegion) {
+                hasShownLatest = false
             }
             .onAppear {
-                scrollToBottom(proxy: proxy, animated: false)
+                showLatest(proxy: proxy)
             }
         }
         .meshPageBackground()
@@ -143,6 +151,12 @@ struct ChannelDetailScreen: View {
         .onChange(of: liveFeed.recentEvents.first?.id) {
             scheduleLiveRefreshIfNeeded()
         }
+        // Beacon announces each decrypted message on its channel, so only that channel reloads.
+        .onChange(of: liveFeed.beaconChannelActivity) { _, activity in
+            guard usesBeaconChannelEvents, let activity,
+                  activity.concerns(channelID: effectiveChannel.id) else { return }
+            scheduleLiveRefresh()
+        }
         .onChange(of: viewModel.recoveredChannel) { _, recoveredChannel in
             guard let recoveredChannel else { return }
             favoritesStore.replaceChannel(from: channel.id, with: recoveredChannel, source: favoriteSource)
@@ -193,11 +207,21 @@ struct ChannelDetailScreen: View {
     /// go check" — rather than silently dropping them — trades a few extra
     /// refreshes for actually catching new messages.
     private func scheduleLiveRefreshIfNeeded() {
+        // Beacon channels follow its channel-message events instead of every packet.
+        guard !usesBeaconChannelEvents else { return }
         guard let latestEvent = liveFeed.recentEvents.first,
               latestEvent.id != lastProcessedLiveEventID else { return }
         lastProcessedLiveEventID = latestEvent.id
         guard isPossiblyChannelRelevant(latestEvent) else { return }
+        scheduleLiveRefresh()
+    }
 
+    /// Server-decrypted Beacon channels; channels decrypted on the phone aren't available there.
+    private var usesBeaconChannelEvents: Bool {
+        settings.beaconBackend != nil && !channel.isLocallyMonitored
+    }
+
+    private func scheduleLiveRefresh() {
         // A newer event restarts only the quiet-period wait. The refresh itself
         // runs in its own task: cancelling it mid-request discards the response,
         // and on Beacon, where events arrive almost continuously, no refresh
@@ -274,6 +298,23 @@ struct ChannelDetailScreen: View {
             monitorStore.updateSummary(for: monitoredChannel.channelName, messages: viewModel.messages)
         } else {
             await viewModel.loadMessages(channel: effectiveChannel, forceRefresh: forceRefresh)
+        }
+    }
+
+    /// Opens the conversation at its newest message. Messages arrive after the
+    /// screen appears, so the bottom scroll anchor applies to an empty list; and
+    /// the lazy stack only estimates rows it hasn't drawn, so a single (or
+    /// animated) scroll can stop short. Jump without animation, then repeat once
+    /// the rows near the bottom have been measured.
+    private func showLatest(proxy: ScrollViewProxy) {
+        guard !orderedMessages.isEmpty else { return }
+        hasShownLatest = true
+        proxy.scrollTo(scrollBottomID, anchor: .bottom)
+        Task { @MainActor in
+            for _ in 0..<2 {
+                try? await Task.sleep(for: .milliseconds(60))
+                proxy.scrollTo(scrollBottomID, anchor: .bottom)
+            }
         }
     }
 

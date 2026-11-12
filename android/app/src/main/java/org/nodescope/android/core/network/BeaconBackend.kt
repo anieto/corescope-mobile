@@ -1,6 +1,8 @@
 package org.nodescope.android.core.network
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import org.nodescope.android.core.model.*
 
 // Port of iOS BeaconBackend (AnalyzerBackend.swift): browse plus neighbors and derived node analytics.
@@ -18,7 +20,7 @@ val BackendCapability.beaconExplanation: String get() = when (this) {
     BackendCapability.CHANNEL_DECRYPT_ON_PHONE ->
         "On-device channel decryption isn’t currently supported for Beacon sources. Future support depends on changes to Beacon’s API."
     BackendCapability.NODE_HEALTH, BackendCapability.NODE_REACH, BackendCapability.NODE_PATHS ->
-        "Detailed health, route, and network-importance statistics are currently available only with CoreScope servers."
+        "Route and network-importance statistics, and per-observer health, are currently available only with CoreScope servers."
     BackendCapability.MAP_DEFAULTS ->
         "Beacon servers don’t provide map defaults. NodeScope uses region coordinates to frame the map instead."
 }
@@ -68,7 +70,41 @@ class BeaconBackend(
         val catalog = regionReader.catalog()
         sourceSession.check()
         return AnalyzerSnapshot(nodes, nodes.size, catalog.names, mapDefaults = null,
-            configurationIncomplete = false, regionCoordinates = catalog.coordinates)
+            configurationIncomplete = false, regionCoordinates = catalog.coordinates,
+            quickPicks = quickPicks(catalog))
+    }
+
+    /** The operator's regions (e.g. "All Texas") offered as region groups, as CoreScope's quick picks are. */
+    private fun quickPicks(catalog: BeaconRegionReader.Catalog): List<RegionQuickPick> =
+        catalog.regions.filter { it.iatas.isNotEmpty() }.map { region ->
+            RegionQuickPick(region.name, region.description?.trim()?.takeIf { it.isNotEmpty() }, region.iatas.map { it.uppercase() })
+        }
+
+    /** The node page's Beacon health: seven days of hourly totals plus where it was last heard. */
+    override suspend fun beaconNodeHealth(host: String, publicKey: String): BeaconNodeHealth = coroutineScope {
+        requireHost(host)
+        val node = nodeReader.nodeSummary(publicKey) ?: throw BeaconNodeUnavailableException()
+        val names = async { runCatching { regionReader.catalog().names }.getOrDefault(emptyMap()) }
+        // A busy server may answer 503; the regions below are still worth showing.
+        val activity = try {
+            nodeReader.activity(node, hours = 7 * 24)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+        val regionNames = names.await()
+        sourceSession.check()
+        BeaconNodeHealth(
+            observationsDay = activity?.observationsInLast(DAY_MILLIS),
+            observationsWeek = activity?.summary?.observations,
+            avgSnr = activity?.summary?.snrAvg,
+            avgRssi = activity?.summary?.rssiAvg,
+            avgHops = activity?.summary?.hopAvg,
+            lastHeard = listOfNotNull(activity?.latest?.heardAt, node.lastHeard).maxOrNull(),
+            heardIn = node.iatas.orEmpty().map { BeaconNodeHealth.HeardIn(it.iata.uppercase(), regionNames[it.iata.uppercase()], it.lastHeard) }
+                .sortedByDescending { it.lastHeard ?: Long.MIN_VALUE },
+        )
     }
 
     suspend fun nodeDetail(host: String, publicKey: String): MeshNode {
@@ -144,17 +180,33 @@ class BeaconBackend(
         return neighbors
     }
 
-    /** Derived from at most 19 pages of the node's observations (20 requests with the key lookup). */
-    override suspend fun nodeAnalytics(host: String, publicKey: String, days: Int): NodeAnalytics {
+    /**
+     * Hourly totals for up to 30 days (Beacon 2.2.0+) plus at most 19 pages of the node's observations for
+     * packet types and hops (21 requests with the key lookup).
+     */
+    override suspend fun nodeAnalytics(host: String, publicKey: String, days: Int): NodeAnalytics = coroutineScope {
         requireHost(host)
         sourceSession.check()
         val safeDays = maxOf(1, days)
         val requestedTo = now()
         val requestedFrom = requestedTo - safeDays * DAY_MILLIS
         val retainedFrom = maxOf(requestedFrom, requestedTo - 7 * DAY_MILLIS)
-        val history = nodeReader.observationHistory(publicKey, retainedFrom) ?: throw BeaconNodeUnavailableException()
+        val node = nodeReader.nodeSummary(publicKey) ?: throw BeaconNodeUnavailableException()
+        // Without hourly totals (e.g. a 503 from a busy server) the screen falls back to the observations.
+        // Caught inside async: a failed child would otherwise cancel the whole load.
+        val activity = async {
+            try {
+                nodeReader.activity(node, minOf(safeDays, BeaconNodeAnalyticsBuilder.ACTIVITY_DAYS) * 24)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
+        }
+        val history = nodeReader.observationHistory(node, retainedFrom)
+        val hourly = activity.await()
         sourceSession.check()
-        return BeaconNodeAnalyticsBuilder.build(history, safeDays, requestedFrom, requestedTo)
+        BeaconNodeAnalyticsBuilder.build(history, hourly, safeDays, requestedFrom, requestedTo)
     }
 
     private companion object {

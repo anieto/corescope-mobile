@@ -319,7 +319,29 @@ internal fun AppShell(
                 outsidePoints = outsidePoints, outsideReceivers = outsideReceivers, endsInGap = endsInGap)
         }
     }
-    fun startReplay(routes: List<RouteOption>, selected: Int, packetId: String? = null) {
+    /** What a replayed packet carried: the live feed's copy (CoreScope), its fetched detail (Beacon), or a message screen's. */
+    fun replayPacket(hash: String?, detail: org.nodescope.android.core.model.PacketDetail? = null,
+        sender: String? = null, text: String? = null): org.nodescope.android.feature.map.ReplayPacket? {
+        val live = hash?.takeIf(String::isNotBlank)?.let { wanted ->
+            liveFeed.value.packets.filter { it.hash == wanted }.maxByOrNull { org.nodescope.android.feature.packets.observedAt(it) }
+        }
+        val message = detail?.decryptedMessage
+        if (hash.isNullOrBlank() && live == null && detail == null) return null
+        return org.nodescope.android.feature.map.ReplayPacket(
+            hash = hash ?: live?.hash ?: detail?.packet?.hash,
+            observedAt = live?.let { org.nodescope.android.feature.packets.observedAt(it) }
+                ?: org.nodescope.android.core.model.parseInstant(detail?.packet?.timestamp)?.toEpochMilli(),
+            snr = live?.snr, rssi = live?.rssi,
+            sender = sender ?: message?.sender,
+            text = text ?: message?.content ?: live?.payloadText,
+            channel = live?.payloadChannel,
+        )
+    }
+    /** A CoreScope transmission group's packet hash (Beacon list ids are already hashes). */
+    fun groupHash(id: String): String = org.nodescope.android.feature.packets.groupTransmissions(liveFeed.value.visiblePackets, null, liveFeed.value.observers)
+        .firstOrNull { it.id == id }?.latest?.hash?.takeIf(String::isNotBlank) ?: id
+    fun startReplay(routes: List<RouteOption>, selected: Int, packetId: String? = null,
+        packet: org.nodescope.android.feature.map.ReplayPacket? = null) {
         // Every route together unless one was chosen (a packet details route picker), so a replay
         // shows how the packet spread rather than one observer's part of it (iOS).
         val all = org.nodescope.android.feature.map.ALL_ROUTES
@@ -332,7 +354,7 @@ internal fun AppShell(
         val leavesLoaded = org.nodescope.android.core.model.regionCodes(preferences.region) != null &&
             routes.any { route -> route.keys.any { it.lowercase() !in regional && it.lowercase() !in replayNodes } }
         if (!leavesLoaded) {
-            replay = RouteReplay(System.nanoTime(), placedRoutes(routes), initial, packetId, routes)
+            replay = RouteReplay(System.nanoTime(), placedRoutes(routes), initial, packetId, routes, packet)
             return
         }
         // Load the nodes beyond the region first (from cache when it has them); on failure the
@@ -342,7 +364,7 @@ internal fun AppShell(
                 replayNodes = catalog.value.associateBy { it.publicKey.lowercase() }
             }
             if (host != preferences.host) return@launch
-            replay = RouteReplay(System.nanoTime(), placedRoutes(routes), initial, packetId, routes)
+            replay = RouteReplay(System.nanoTime(), placedRoutes(routes), initial, packetId, routes, packet)
         }
     }
     // Live-list rows carry only the routes the app has seen: one per observer report on the
@@ -351,35 +373,48 @@ internal fun AppShell(
     val routeScope = rememberCoroutineScope()
     var routeLookup by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     var lookingUp by remember { mutableStateOf<String?>(null) }
+    /** Server-decrypted text for the packet whose routes were looked up (Beacon), keyed by its list id. */
+    var lookedUpMessage by remember { mutableStateOf<Pair<String, org.nodescope.android.core.model.DecryptedPacketMessage>?>(null) }
     // Reselecting the Map tab returns it to live (iOS): no replay, highlighted node or route lookup.
     org.nodescope.android.core.design.OnTabReset(tabResets[Destination.MAP.ordinal]) {
         routeLookup?.cancel(); routeLookup = null; lookingUp = null
         replay = null; panelPacket = null; focusedNode = null; focusedPosition = null
     }
     /** A packet's distinct routes from its full observation list, limited to the selected region. */
-    suspend fun fullRoutes(host: String, region: String?, hash: String): List<RouteOption> {
-        val detail = browse?.let { repository -> runCatching { repository.packetDetail(host, hash) }.getOrNull() } ?: return emptyList()
-        val observations = detail.observations.filter { org.nodescope.android.core.model.regionIncludes(region, it.observerIata) }
+    suspend fun packetDetailOrNull(host: String, hash: String) =
+        browse?.let { repository -> runCatching { repository.packetDetail(host, hash) }.getOrNull() }
+    fun routesOf(detail: org.nodescope.android.core.model.PacketDetail?, region: String?): List<RouteOption> {
+        val observations = detail?.observations.orEmpty().filter { org.nodescope.android.core.model.regionIncludes(region, it.observerIata) }
         return routeOptions(observations.map { HeardPath(it.resolvedPath.orEmpty(), RouteHearing(it.observerName?.takeIf(String::isNotBlank) ?: "Observer ${it.id}", it.observerIata, it.snr, it.rssi)) })
     }
+    suspend fun fullRoutes(host: String, region: String?, hash: String): List<RouteOption> =
+        routesOf(packetDetailOrNull(host, hash), region)
     fun completeRoutes(id: String, hash: String) {
         if (browse == null) return
         val host = preferences.host
         val region = preferences.region
         routeLookup?.cancel()
         lookingUp = id
+        lookedUpMessage = null
         routeLookup = routeScope.launch {
-            val complete = fullRoutes(host, region, hash)
+            val detail = packetDetailOrNull(host, hash)
+            val complete = routesOf(detail, region)
             if (lookingUp == id) lookingUp = null
+            if (host == preferences.host) detail?.decryptedMessage?.let { lookedUpMessage = id to it }
             if (complete.isEmpty() || host != preferences.host) return@launch
             val current = replay
             when {
                 // Same replay, same id: routes (and who heard them) are added after the one playing, which keeps going.
-                current?.packetId == id -> mergeRouteOptions(current.options, complete).takeIf { it != current.options }?.let { merged ->
-                    replay = current.copy(routes = placedRoutes(merged), options = merged)
+                current?.packetId == id -> {
+                    val merged = mergeRouteOptions(current.options, complete)
+                    val packet = replayPacket(hash, detail) ?: current.packet
+                    if (merged != current.options || packet != current.packet) {
+                        replay = current.copy(routes = if (merged != current.options) placedRoutes(merged) else current.routes,
+                            options = merged, packet = packet)
+                    }
                 }
                 // Selected with no route in its row, but the full list has one.
-                panelPacket == id -> startReplay(complete, org.nodescope.android.feature.map.ALL_ROUTES, id)
+                panelPacket == id -> startReplay(complete, org.nodescope.android.feature.map.ALL_ROUTES, id, replayPacket(hash, detail))
             }
         }
     }
@@ -547,11 +582,12 @@ internal fun AppShell(
                             // its routes, or opens its details when none can be drawn.
                             MapPacketsLayout(currentFeed, onReconnect, selectedId = replay?.packetId ?: panelPacket,
                                 replayingId = replay?.packetId, lookingUpId = lookingUp,
+                                selectedMessage = lookedUpMessage?.takeIf { it.first == (replay?.packetId ?: panelPacket) }?.second,
                                 onSelect = { id, hash, routes ->
                                     routeLookup?.cancel(); lookingUp = null
                                     when {
                                         id == null -> { replay = null; panelPacket = null }
-                                        routes.isNotEmpty() -> startReplay(routes, org.nodescope.android.feature.map.ALL_ROUTES, id)
+                                        routes.isNotEmpty() -> startReplay(routes, org.nodescope.android.feature.map.ALL_ROUTES, id, replayPacket(hash))
                                         // Nothing to draw yet: end any replay so the map doesn't keep an unrelated route.
                                         else -> { replay = null; panelPacket = id }
                                     }
@@ -620,17 +656,17 @@ internal fun AppShell(
                             val groupId = backStack.toRoute<PacketDetailRoute>().groupId
                             // A Beacon packet is opened by its hash, a CoreScope one by its transmission group.
                             if (org.nodescope.android.core.design.LocalBeaconSource.current)
-                                org.nodescope.android.feature.packets.BeaconPacketDetailScreen(currentFeed, browse, preferences.host, groupId, nodes) { routes, selected ->
-                                    startReplay(routes, selected, groupId)
+                                org.nodescope.android.feature.packets.BeaconPacketDetailScreen(currentFeed, browse, preferences.host, groupId, nodes) { routes, selected, detail ->
+                                    startReplay(routes, selected, groupId, replayPacket(groupId, detail))
                                 }
-                            else PacketDetailScreen(currentFeed, groupId, nodes, loadRoutes = { fullRoutes(preferences.host, preferences.region, it) }) { routes, selected -> startReplay(routes, selected, groupId) }
+                            else PacketDetailScreen(currentFeed, groupId, nodes, loadRoutes = { fullRoutes(preferences.host, preferences.region, it) }) { routes, selected -> startReplay(routes, selected, groupId, replayPacket(groupHash(groupId))) }
                         }
                         screen<MessagePacketRoute> { backStack ->
                             val route = backStack.toRoute<MessagePacketRoute>()
                             browse?.let { repository ->
                                 LaunchedEffect(route.hash) { library.viewedMessage(route.hash, route.sender, route.text) }
                                 MessagePacketScreen(viewModel(backStack) { PacketDetailViewModel(repository) }, preferences.host, route.hash,
-                                    route.sender, route.text, state.snapshot?.nodes.orEmpty()) { routes, selected -> startReplay(routes, selected, route.hash) }
+                                    route.sender, route.text, state.snapshot?.nodes.orEmpty()) { routes, selected -> startReplay(routes, selected, route.hash, replayPacket(route.hash, sender = route.sender, text = route.text)) }
                             }
                         }
                         screen<ChannelsRoute> { backStack ->
@@ -641,7 +677,7 @@ internal fun AppShell(
                                         browse?.let { repository ->
                                             LaunchedEffect(hash) { library.viewedMessage(hash, sender, text) }
                                             MessagePacketScreen(viewModel(backStack) { PacketDetailViewModel(repository) },
-                                                preferences.host, hash, sender, text, state.snapshot?.nodes.orEmpty()) { routes, selected -> startReplay(routes, selected, hash) }
+                                                preferences.host, hash, sender, text, state.snapshot?.nodes.orEmpty()) { routes, selected -> startReplay(routes, selected, hash, replayPacket(hash, sender = sender, text = text)) }
                                         }
                                     }, resetRequest = tabResets[Destination.CHANNELS.ordinal])
                             } ?: UnavailableScreen(R.string.channels, R.string.channels_unavailable)
@@ -655,7 +691,7 @@ internal fun AppShell(
                                         browse?.let { repository ->
                                             LaunchedEffect(hash) { library.viewedMessage(hash, sender, text) }
                                             MessagePacketScreen(viewModel(backStack) { PacketDetailViewModel(repository) },
-                                                preferences.host, hash, sender, text, state.snapshot?.nodes.orEmpty()) { routes, selected -> startReplay(routes, selected, hash) }
+                                                preferences.host, hash, sender, text, state.snapshot?.nodes.orEmpty()) { routes, selected -> startReplay(routes, selected, hash, replayPacket(hash, sender = sender, text = text)) }
                                         }
                                     },
                                     initialId = route.id, initialName = route.name, onExit = { nav.popBackStack() })

@@ -50,6 +50,9 @@ data class BeaconServerInfo(val serverVersion: String) {
         return numbers.takeIf { it.size == 3 }
     }
 
+    /** `GET /nodes/{id}/activity`, hourly node totals from the rollup, arrived in Beacon 2.2.0. */
+    val supportsNodeActivity: Boolean get() = versionComponents?.let { compareVersions(it, listOf(2, 2, 0)) >= 0 } ?: false
+
     fun requireSupported() {
         val version = versionComponents ?: throw BeaconApiException.UnrecognizedVersion()
         if (compareVersions(version, MINIMUM_VERSION) < 0) throw BeaconApiException.UnsupportedVersion(serverVersion)

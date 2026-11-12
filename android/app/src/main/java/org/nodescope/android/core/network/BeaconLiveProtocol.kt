@@ -23,7 +23,10 @@ object BeaconLiveProtocol {
         val includeRepeats: Boolean? = null,
     ) {
         data class Scope(val iatas: List<String>, val payloadTypes: List<Int>) {
-            val events = listOf("packetObservation", "observerStatus", "nodeUpdate")
+            // Channel messages ride on the unfiltered feed only (there is always one), so a
+            // message isn't delivered once per filtered view.
+            val events = listOf("packetObservation", "observerStatus", "nodeUpdate") +
+                if (iatas.isEmpty() && payloadTypes.isEmpty()) listOf("channelMessage") else emptyList()
         }
 
         /** Sorted keys, like the iOS encoder, so frames are byte-identical across platforms. */
@@ -61,6 +64,8 @@ object BeaconLiveProtocol {
         data class Packet(val value: Observation) : Incoming
         data class Observer(val value: ObserverStatus) : Incoming
         data class Node(val value: NodeUpdate) : Incoming
+        /** A message the server decrypted on a channel whose key it holds. */
+        data class ChannelMessage(val id: Long, val channelId: Long) : Incoming
         data object RecoveryRequired : Incoming
         data object Ignored : Incoming
     }
@@ -236,6 +241,13 @@ object BeaconLiveProtocol {
                         Incoming.Observer(value)
                     }
                     "nodeUpdate" -> Incoming.Node(NodeUpdate.decode(data()))
+                    "channelMessage" -> {
+                        val value = data()
+                        val id = value["id"]?.jsonPrimitive?.longOrNull
+                        val channel = value["channelId"]?.jsonPrimitive?.longOrNull
+                        if (id == null || id <= 0 || channel == null || channel <= 0) throw BeaconApiException.InvalidResponse()
+                        Incoming.ChannelMessage(id, channel)
+                    }
                     else -> Incoming.Ignored
                 }
             }

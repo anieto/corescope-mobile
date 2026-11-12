@@ -168,3 +168,26 @@ struct ReachLink: Codable, Sendable, Identifiable {
         case distanceKm = "distance_km"
     }
 }
+
+/// Beacon's node health: hourly totals over the last seven days and the regions that heard it.
+/// Beacon does not say which observer heard a packet, so there is no per-observer list.
+struct BeaconNodeHealth: Codable, Sendable {
+    struct HeardIn: Codable, Sendable, Identifiable {
+        let iata: String
+        let name: String?
+        let lastHeard: Date?
+
+        var id: String { iata }
+    }
+
+    /// Nil on Beacon servers older than 2.2.0, which have no activity totals.
+    let observationsDay: Int?
+    let observationsWeek: Int?
+    let avgSnr: Double?
+    let avgRssi: Double?
+    let avgHops: Double?
+    let lastHeard: Date?
+    let heardIn: [HeardIn]
+
+    var hasActivity: Bool { observationsWeek != nil }
+}

@@ -25,6 +25,9 @@ sealed interface BeaconLiveEvent {
     data class BrowseSnapshot(val snapshot: LiveBrowseSnapshot) : BeaconLiveEvent
     data class NodeUpdated(val update: BeaconLiveProtocol.NodeUpdate) : BeaconLiveEvent
     data class ObserverStatus(val status: BeaconLiveProtocol.ObserverStatus) : BeaconLiveEvent
+    data class ChannelMessage(val channelId: Long) : BeaconLiveEvent
+    /** The server dropped events (lagged); channel messages may have been missed. */
+    data object ChannelsInvalidated : BeaconLiveEvent
     data object MetadataInvalidated : BeaconLiveEvent
     data class NodeCatalog(val nodes: List<BeaconNode>) : BeaconLiveEvent
     data class MetadataRecoveryFailed(val message: String) : BeaconLiveEvent
@@ -508,6 +511,7 @@ class BeaconLiveFeed(
                 events.trySend(BeaconLiveEvent.Connected)
             }
             BeaconLiveProtocol.Incoming.RecoveryRequired -> {
+                events.trySend(BeaconLiveEvent.ChannelsInvalidated)
                 invalidateMetadata()
                 recoverNodesIfNeeded()
                 recoverObserversIfNeeded()
@@ -531,6 +535,7 @@ class BeaconLiveFeed(
             }
             is BeaconLiveProtocol.Incoming.Node -> events.trySend(BeaconLiveEvent.NodeUpdated(frame.value))
             is BeaconLiveProtocol.Incoming.Observer -> events.trySend(BeaconLiveEvent.ObserverStatus(frame.value))
+            is BeaconLiveProtocol.Incoming.ChannelMessage -> events.trySend(BeaconLiveEvent.ChannelMessage(frame.channelId))
             is BeaconLiveProtocol.Incoming.Subscribed, is BeaconLiveProtocol.Incoming.Acknowledged,
             BeaconLiveProtocol.Incoming.Ignored -> Unit
         }
@@ -646,8 +651,15 @@ data class BeaconLiveState(
     val observerRecoveryError: String? = null,
     val observerCatalog: List<BeaconObserver>? = null,
     val lastError: String? = null,
+    /** The latest channel activity: a new message on one channel, or (null channel) a gap after which all reload. */
+    val channelActivity: BeaconChannelActivity? = null,
 ) {
+    private fun channelActivity(channelId: Long?) =
+        copy(channelActivity = BeaconChannelActivity((channelActivity?.sequence ?: 0) + 1, channelId))
+
     fun reduce(event: BeaconLiveEvent): BeaconLiveState = when (event) {
+        is BeaconLiveEvent.ChannelMessage -> channelActivity(event.channelId)
+        BeaconLiveEvent.ChannelsInvalidated -> channelActivity(null)
         BeaconLiveEvent.ObserverCatalogInvalidated ->
             copy(observers = emptyMap(), observerNeedsRecovery = true, observerSequence = observerSequence + 1)
         BeaconLiveEvent.MetadataInvalidated -> copy(
@@ -680,7 +692,8 @@ data class BeaconLiveState(
         is BeaconLiveEvent.RecoveryFailed -> copy(recoveryErrors = recoveryErrors + (event.filter to event.message))
         is BeaconLiveEvent.RecoveryCompleted -> copy(recoveryErrors = recoveryErrors - event.filter)
         is BeaconLiveEvent.Packet -> this
-        BeaconLiveEvent.Connected -> copy(lastError = null)
+        // Messages sent while disconnected are only in the server's history.
+        BeaconLiveEvent.Connected -> channelActivity(null).copy(lastError = null)
         is BeaconLiveEvent.Disconnected -> copy(lastError = event.message)
         is BeaconLiveEvent.DecodingFailed -> copy(lastError = event.message)
     }
@@ -706,6 +719,11 @@ data class BeaconLiveState(
             return result
         }
     }
+}
+
+data class BeaconChannelActivity(val sequence: Int, val channelId: Long?) {
+    /** [channel] is a Beacon `MeshChannel.id` (`beacon:<id>`). */
+    fun concerns(channel: String): Boolean = channelId?.let { channel == "beacon:$it" } ?: true
 }
 
 /**

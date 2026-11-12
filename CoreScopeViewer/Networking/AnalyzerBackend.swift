@@ -24,7 +24,7 @@ enum BackendCapability: String, CaseIterable, Sendable {
         case .channelDecryptOnPhone:
             String(localized: "On-device channel decryption isn’t currently supported for Beacon sources. Future support depends on changes to Beacon’s API.")
         case .nodeHealth, .nodeReach, .nodePaths:
-            String(localized: "Detailed health, route, and network-importance statistics are currently available only with CoreScope servers.")
+            String(localized: "Route and network-importance statistics, and per-observer health, are currently available only with CoreScope servers.")
         case .mapDefaults:
             String(localized: "Beacon servers don’t provide map defaults. NodeScope uses region coordinates to frame the map instead.")
         }
@@ -222,6 +222,46 @@ struct BeaconBackend: AnalyzerBackend {
     func regions() async throws -> RegionsMap { try await regionReader.catalog().names }
     func iataCoordinates() async throws -> IataCoordsResponse { try await regionReader.catalog().coordinates }
 
+    /// The operator's regions (e.g. "All Texas") offered as region groups, as CoreScope's quick picks are.
+    func regionQuickPicks() async throws -> [RegionQuickPick] {
+        try await regionReader.catalog().regions.compactMap { region in
+            guard !region.iatas.isEmpty else { return nil }
+            let description = region.description?.trimmingCharacters(in: .whitespacesAndNewlines)
+            return RegionQuickPick(
+                name: region.name,
+                description: description?.isEmpty == false ? description : nil,
+                regions: region.iatas.map { $0.uppercased() }
+            )
+        }
+    }
+
+    /// The node page's Beacon health: seven days of hourly totals plus where it was last heard.
+    func nodeHealthSummary(publicKey: String) async throws -> BeaconNodeHealth {
+        guard let node = try await nodeReader.nodeSummary(publicKey: publicKey) else {
+            throw BeaconBackendError.nodeUnavailable
+        }
+        async let names = try? regionReader.catalog().names
+        // A busy server may answer 503; the regions below are still worth showing.
+        let activity = (try? await nodeReader.activity(node: node, hours: 7 * 24)) ?? nil
+        let regionNames = await names ?? [:]
+        try sourceSession.check()
+        let regions = (node.iatas ?? []).map {
+            BeaconNodeHealth.HeardIn(
+                iata: $0.iata.uppercased(), name: regionNames[$0.iata.uppercased()], lastHeard: $0.lastHeard
+            )
+        }.sorted { ($0.lastHeard ?? .distantPast) > ($1.lastHeard ?? .distantPast) }
+        let lastHeard = [activity?.latest?.heardAt, node.lastHeard].compactMap { $0 }.max()
+        return BeaconNodeHealth(
+            observationsDay: activity?.observations(inLast: 24 * 60 * 60),
+            observationsWeek: activity?.summary.observations,
+            avgSnr: activity?.summary.snrAvg,
+            avgRssi: activity?.summary.rssiAvg,
+            avgHops: activity?.summary.hopAvg,
+            lastHeard: lastHeard,
+            heardIn: regions
+        )
+    }
+
     private func unavailable(_ feature: String) throws -> Never {
         try sourceSession.check()
         throw BeaconBackendError.unsupported(feature)
@@ -236,15 +276,19 @@ struct BeaconBackend: AnalyzerBackend {
         let requestedTo = now()
         let requestedFrom = requestedTo.addingTimeInterval(-Double(safeDays) * 24 * 60 * 60)
         let retainedFrom = max(requestedFrom, requestedTo.addingTimeInterval(-7 * 24 * 60 * 60))
-        guard let history = try await nodeReader.observationHistory(
-            publicKey: publicKey,
-            since: retainedFrom
-        ) else {
+        guard let node = try await nodeReader.nodeSummary(publicKey: publicKey) else {
             throw BeaconBackendError.nodeUnavailable
         }
+        async let activity = nodeReader.activity(
+            node: node, hours: min(safeDays, BeaconNodeAnalyticsBuilder.activityDays) * 24
+        )
+        let history = try await nodeReader.observationHistory(node: node, since: retainedFrom)
+        // Without hourly totals (e.g. a 503 from a busy server) the screen falls back to the observations.
+        let hourly = (try? await activity) ?? nil
         try sourceSession.check()
         return BeaconNodeAnalyticsBuilder.build(
             history: history,
+            activity: hourly,
             requestedDays: safeDays,
             from: requestedFrom,
             to: requestedTo
