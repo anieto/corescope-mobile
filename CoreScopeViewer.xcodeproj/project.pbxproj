@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		73F2666B94B7B9A58B9EEEE3 /* NodeCheckModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 828E3A4B913920F2B0C2147F /* NodeCheckModels.swift */; };
+		0D1C2988D4EC13369F018B7E /* NodeCheckRules.swift in Sources */ = {isa = PBXBuildFile; fileRef = 337A26298DCC58F810DC2DD4 /* NodeCheckRules.swift */; };
+		DB80D27514CDA4369FBCEA12 /* NodeCheckLiveTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97E7E9BED57E2FAB3A1D0FBE /* NodeCheckLiveTest.swift */; };
+		CDD33EDE829972045967CA5C /* NodeCheckScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4870DE8A0F792B95F998D889 /* NodeCheckScreen.swift */; };
 		01D4A148FE7AC5A25B15E907 /* PacketDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5A6EF6652A955D16C20CA75 /* PacketDetail.swift */; };
 		036ACF59063991FAB8B4D9A0 /* URLPathEncodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B302D4D26193BFC6975CDF82 /* URLPathEncodingTests.swift */; };
 		0C8DD2E83491E4744AEA1380 /* ChannelsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B90D68BBC5B7652894943018 /* ChannelsViewModel.swift */; };
@@ -188,6 +192,10 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		828E3A4B913920F2B0C2147F /* NodeCheckModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeCheckModels.swift; sourceTree = "<group>"; };
+		337A26298DCC58F810DC2DD4 /* NodeCheckRules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeCheckRules.swift; sourceTree = "<group>"; };
+		97E7E9BED57E2FAB3A1D0FBE /* NodeCheckLiveTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeCheckLiveTest.swift; sourceTree = "<group>"; };
+		4870DE8A0F792B95F998D889 /* NodeCheckScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeCheckScreen.swift; sourceTree = "<group>"; };
 		018110344B462D94B123F8F3 /* MonaspaceNeon-Bold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "MonaspaceNeon-Bold.otf"; sourceTree = "<group>"; };
 		13D380B1339F9747DE599399 /* MonaspaceNeon-SemiBold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "MonaspaceNeon-SemiBold.otf"; sourceTree = "<group>"; };
 		156F101DF4008880E14D2E48 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
@@ -496,6 +504,7 @@
 			children = (
 				CF243897B7E4C72C8FB8B79C /* Channels */,
 				6125734C3C0F47B22B9C93F0 /* Map */,
+				334DE30E47AF6C85946C9FD3 /* NodeCheck */,
 				E3EEA2BB0CC0AE8FECBBF32E /* NodeDetail */,
 				532D2538F3BE80E40E244348 /* Observers */,
 				34F851437983B18C6D3E010B /* Onboarding */,
@@ -625,6 +634,17 @@
 				002B449ACE62846A6E279DD7 /* Products */,
 				316FE002305D92B200FBA3B4 /* Utilities */,
 			);
+			sourceTree = "<group>";
+		};
+		334DE30E47AF6C85946C9FD3 /* NodeCheck */ = {
+			isa = PBXGroup;
+			children = (
+				828E3A4B913920F2B0C2147F /* NodeCheckModels.swift */,
+				337A26298DCC58F810DC2DD4 /* NodeCheckRules.swift */,
+				97E7E9BED57E2FAB3A1D0FBE /* NodeCheckLiveTest.swift */,
+				4870DE8A0F792B95F998D889 /* NodeCheckScreen.swift */,
+			);
+			path = NodeCheck;
 			sourceTree = "<group>";
 		};
 		E3EEA2BB0CC0AE8FECBBF32E /* NodeDetail */ = {
@@ -962,6 +982,10 @@
 				316FDFFD305C4DDE00FBA3B4 /* RecentItemsStore.swift in Sources */,
 				316FDFFB305C490A00FBA3B4 /* ExploreScreen.swift in Sources */,
 				316FE01A3060988F00FBA3B4 /* NodeAnalyticsScreen.swift in Sources */,
+				73F2666B94B7B9A58B9EEEE3 /* NodeCheckModels.swift in Sources */,
+				0D1C2988D4EC13369F018B7E /* NodeCheckRules.swift in Sources */,
+				DB80D27514CDA4369FBCEA12 /* NodeCheckLiveTest.swift in Sources */,
+				CDD33EDE829972045967CA5C /* NodeCheckScreen.swift in Sources */,
 				F880AFD88BBD5C97812E65C7 /* Packet.swift in Sources */,
 				311D6C83307C43EC00E2EB70 /* BeaconRegionReader.swift in Sources */,
 				316FE00E305E1CAF00FBA3B4 /* AnalyzerDiagnosticsScreen.swift in Sources */,

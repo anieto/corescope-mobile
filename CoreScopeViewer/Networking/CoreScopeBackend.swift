@@ -13,7 +13,7 @@ struct CoreScopeBackend: AnalyzerBackend {
 
     let capabilities: Set<BackendCapability> = [
         .neighbors, .nodeHealth, .nodeReach, .nodePaths, .nodeAnalytics,
-        .observerAnalytics, .channelDecryptOnPhone, .serverChannels, .mapDefaults
+        .observerAnalytics, .channelDecryptOnPhone, .serverChannels, .mapDefaults, .nodeCheck
     ]
 
     func nodes(region: String?) async throws -> NodesResponse {
@@ -196,5 +196,86 @@ struct CoreScopeBackend: AnalyzerBackend {
             try sourceSession.check()
             throw error
         }
+    }
+}
+
+// MARK: - Node Check
+
+extension CoreScopeBackend {
+    func nodeCheckInput(publicKey: String) async throws -> NodeCheckInput? {
+        let key = publicKey.urlPathComponentEncoded
+        let detail: CoreScopeNodeCheckDetail
+        do {
+            detail = try await get("/api/nodes/\(key)")
+        } catch APIError.http(404) {
+            return nil
+        } catch APIError.http(409) {
+            throw NodeCheckError.ambiguousKey
+        }
+        // A key prefix resolves to the full key; health and clock need the full one.
+        let fullKey = detail.node.publicKey.lowercased().urlPathComponentEncoded
+        async let health: CoreScopeNodeCheckHealth? = optional { try await self.get("/api/nodes/\(fullKey)/health") }
+        async let clock: CoreScopeNodeCheckClock? = optional { try await self.get("/api/nodes/\(fullKey)/clock-skew") }
+        async let observers: ObserversResponse? = optional { try await self.observers() }
+        let (healthValue, clockValue, observerValue) = await (health, clock, observers)
+        try sourceSession.check()
+
+        var regions: [String: String] = [:]
+        for observer in observerValue?.observers ?? [] {
+            if let iata = observer.iata, !iata.isEmpty { regions[observer.id] = iata }
+        }
+        let node = detail.node
+        let adverts = (detail.recentAdverts ?? []).compactMap { transmission -> NodeCheckInput.Advert? in
+            guard transmission.payloadType == PayloadType.advert.rawValue else { return nil }
+            return NodeCheckInput.Advert(
+                id: transmission.id ?? 0,
+                sentAt: NodeCheckDates.parse(transmission.timestamp) ?? NodeCheckDates.parse(transmission.firstSeen),
+                kind: transmission.advertKind,
+                observations: (transmission.observations ?? []).compactMap { observation in
+                    guard let id = observation.observerID else { return nil }
+                    return NodeCheckInput.Observation(
+                        observerID: id,
+                        observerName: observation.observerName,
+                        region: observation.observerIATA ?? regions[id],
+                        hops: observation.hops,
+                        snr: observation.snr,
+                        rssi: observation.rssi
+                    )
+                }
+            )
+        }
+        return NodeCheckInput(
+            node: NodeCheckInput.Node(
+                publicKey: node.publicKey.lowercased(),
+                name: node.name,
+                role: node.role ?? "unknown",
+                lat: node.lat,
+                lon: node.lon,
+                lastHeard: NodeCheckDates.parse(node.lastHeard),
+                lastSeen: NodeCheckDates.parse(node.lastSeen),
+                lastRelayed: NodeCheckDates.parse(node.lastRelayed),
+                firstSeen: NodeCheckDates.parse(node.firstSeen)
+            ),
+            adverts: adverts,
+            directObservers: (healthValue?.observers ?? []).map {
+                NodeCheckInput.DirectObserver(observerID: $0.observerID, name: $0.observerName,
+                                              averageSNR: $0.avgSnr, averageRSSI: $0.avgRssi, packets: $0.packetCount)
+            },
+            healthLastHeard: NodeCheckDates.parse(healthValue?.stats?.lastHeard),
+            clock: clockValue?.severity.map {
+                NodeCheckInput.Clock(severity: $0, offsetSeconds: clockValue?.recentMedianSkewSec ?? clockValue?.medianSkewSec)
+            },
+            observerRegions: regions
+        )
+    }
+
+    func searchNodes(query: String) async throws -> [MeshNode] {
+        let response: CoreScopeNodeSearch = try await get("/api/nodes/search", query: [URLQueryItem(name: "q", value: query)])
+        return response.nodes
+    }
+
+    /// Supporting data is optional: a missing clock or health record leaves those findings out.
+    private func optional<Value: Sendable>(_ load: @Sendable () async throws -> Value) async -> Value? {
+        try? await load()
     }
 }
