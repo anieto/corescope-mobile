@@ -25,6 +25,9 @@ final class LiveFeedService {
     private(set) var observerRecoveryError: String?
     private var observerCatalog: [BeaconObserverReader.Observer]?
     private(set) var eventSequence = 0
+    /// The latest Beacon channel activity: a new message on one channel, or (channel nil) a gap
+    /// in the live feed after which every open channel should reload.
+    private(set) var beaconChannelActivity: BeaconChannelActivity?
     private(set) var isConnected = false
     private(set) var lastError: String?
 
@@ -92,6 +95,10 @@ final class LiveFeedService {
                     self.observerOrder = []
                     self.observerNeedsRecovery = true
                     self.beaconObserverSequence &+= 1
+                case .channelMessage(let message):
+                    self.noteChannelActivity(channelID: message.channelId)
+                case .channelsInvalidated:
+                    self.noteChannelActivity(channelID: nil)
                 case .metadataInvalidated:
                     self.beaconNodes = [:]
                     self.beaconObservers = [:]
@@ -153,6 +160,7 @@ final class LiveFeedService {
                         self.recentEvents.removeLast(self.recentEvents.count - self.maxEvents)
                     }
                 case .connected:
+                    if self.usesBrowseSnapshots { self.noteChannelActivity(channelID: nil) }
                     self.applyDemands()
                     self.isConnected = true
                     self.lastError = nil
@@ -169,6 +177,12 @@ final class LiveFeedService {
 
     func resumeAfterForeground() {
         feed?.resumeAfterForeground()
+    }
+
+    private func noteChannelActivity(channelID: Int?) {
+        beaconChannelActivity = BeaconChannelActivity(
+            sequence: (beaconChannelActivity?.sequence ?? 0) &+ 1, channelID: channelID
+        )
     }
 
     func disconnect() {
@@ -259,5 +273,15 @@ final class LiveFeedService {
         try session.check()
         guard self.generation == generation else { throw CancellationError() }
         return response
+    }
+}
+
+struct BeaconChannelActivity: Equatable, Sendable {
+    let sequence: Int
+    /// The Beacon channel with a new message; nil when every channel may have missed some.
+    let channelID: Int?
+
+    func concerns(channelID identifier: String) -> Bool {
+        channelID.map { String($0) == identifier } ?? true
     }
 }

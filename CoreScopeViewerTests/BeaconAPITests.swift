@@ -962,7 +962,22 @@ struct BeaconAPITests {
         let command = try #require(subscriptions.hello().first { $0.type == "subscribe" })
         let object = try #require(JSONSerialization.jsonObject(with: command.encoded()) as? [String: Any])
         let scope = try #require(object["scope"] as? [String: Any])
-        #expect(Set(scope["events"] as? [String] ?? []) == ["packetObservation", "observerStatus", "nodeUpdate"])
+        #expect(Set(scope["events"] as? [String] ?? []) == ["packetObservation", "observerStatus", "nodeUpdate", "channelMessage"])
+    }
+
+    @Test func onlyTheUnfilteredLiveSubscriptionCarriesChannelMessages() throws {
+        var subscriptions = BeaconLiveProtocol.Subscriptions()
+        _ = subscriptions.update(
+            subscriptions: [LiveFeedSubscription(), LiveFeedSubscription(regions: ["SAT"])], configuration: .init()
+        )
+        let scopes = try subscriptions.hello().filter { $0.type == "subscribe" }.map { command in
+            let object = try #require(JSONSerialization.jsonObject(with: command.encoded()) as? [String: Any])
+            return try #require(object["scope"] as? [String: Any])
+        }
+        let carrying = scopes.filter { ($0["events"] as? [String] ?? []).contains("channelMessage") }
+        #expect(scopes.count == 2)
+        #expect(carrying.count == 1)
+        #expect((carrying.first?["iatas"] as? [String])?.isEmpty == true)
     }
 
     @Test @MainActor func liveMapNodesPreserveDatesClearPositionsAndRespectRegions() throws {

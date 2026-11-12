@@ -12,7 +12,16 @@ enum BeaconLiveProtocol {
         struct Scope: Encodable, Sendable {
             let iatas: [String]
             let payloadTypes: [Int]
-            let events = ["packetObservation", "observerStatus", "nodeUpdate"]
+            let events: [String]
+
+            init(iatas: [String], payloadTypes: [Int]) {
+                self.iatas = iatas
+                self.payloadTypes = payloadTypes
+                // Channel messages ride on the unfiltered feed only (there is always one), so a
+                // message isn't delivered once per filtered view.
+                events = ["packetObservation", "observerStatus", "nodeUpdate"]
+                    + (iatas.isEmpty && payloadTypes.isEmpty ? ["channelMessage"] : [])
+            }
         }
 
         let v = 1
@@ -47,6 +56,7 @@ enum BeaconLiveProtocol {
         case packet(Observation)
         case observer(ObserverStatus)
         case node(NodeUpdate)
+        case channelMessage(ChannelMessage)
         case recoveryRequired
         case ignored
     }
@@ -75,6 +85,13 @@ enum BeaconLiveProtocol {
 
         var observationIdentity: String { packetHash + "|" + observation.observerId.lowercased() }
         var resolvedPath: [String?]? { observation.resolvedPath?.map(\.confirmedKey) }
+    }
+
+    /// A message the server decrypted on a channel whose key it holds.
+    struct ChannelMessage: Decodable, Sendable {
+        let id: Int
+        let channelId: Int
+        let packetHash: String
     }
 
     struct NodeUpdate: Decodable, Sendable {
@@ -267,6 +284,10 @@ enum BeaconLiveProtocol {
                 return .observer(value)
             case "nodeUpdate":
                 return .node(try decoder.decode(Event<NodeUpdate>.self, from: data).data)
+            case "channelMessage":
+                let value = try decoder.decode(Event<ChannelMessage>.self, from: data).data
+                guard value.id > 0, value.channelId > 0 else { throw APIError.invalidResponse }
+                return .channelMessage(value)
             default: return .ignored
             }
         default: return .ignored

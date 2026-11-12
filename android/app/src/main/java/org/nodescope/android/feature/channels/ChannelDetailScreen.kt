@@ -49,7 +49,10 @@ fun ChannelDetailScreen(
         if (monitored != null) { if (!beacon) model.packets.load(selection, force) } else model.messages.load(messageKey, force)
     }
     LaunchedEffect(selection, channelId, monitored != null, beacon) { refresh(false) }
-    LiveChannelRefresh(feed) { refresh(true) }
+    // Beacon announces each decrypted message on its channel, so only that channel reloads;
+    // other sources reload after channel-type packets.
+    if (beacon && monitored == null) BeaconChannelRefresh(feed, channelId) { refresh(true) }
+    else LiveChannelRefresh(feed) { refresh(true) }
 
     val loadState = if (monitored != null) packetState else messageState
     val raw = remember(monitored, packetState, messageState, olderState) {

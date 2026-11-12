@@ -145,6 +145,26 @@ internal fun LiveChannelRefresh(feed: LiveFeedState, refresh: () -> Unit) {
     }
 }
 
+/** Reloads a Beacon channel shortly after the server announces a message on it, or after a gap. */
+@Composable
+internal fun BeaconChannelRefresh(feed: LiveFeedState, channelId: String, refresh: () -> Unit) {
+    val latest = feed.beacon?.channelActivity
+    // Activity from before this screen opened is already in its first load.
+    val opened = remember(channelId) { latest?.sequence ?: 0 }
+    var relevant by remember(channelId) { mutableStateOf(opened) }
+    val latestRefresh by rememberUpdatedState(refresh)
+    // Other channels' messages are skipped without cancelling a refresh already waiting.
+    LaunchedEffect(latest) {
+        if (latest != null && latest.sequence != relevant && latest.concerns(channelId)) relevant = latest.sequence
+    }
+    LaunchedEffect(relevant) {
+        if (relevant == opened) return@LaunchedEffect
+        // A burst (one message heard by several observers, or a busy channel) reloads once.
+        delay(1_000)
+        latestRefresh()
+    }
+}
+
 @Composable
 private fun ChannelCard(row: ChannelRow, now: Long, isSelected: Boolean, onClick: () -> Unit) {
     Card(onClick = onClick, modifier = Modifier.semantics { selected = isSelected },

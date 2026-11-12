@@ -151,6 +151,12 @@ struct ChannelDetailScreen: View {
         .onChange(of: liveFeed.recentEvents.first?.id) {
             scheduleLiveRefreshIfNeeded()
         }
+        // Beacon announces each decrypted message on its channel, so only that channel reloads.
+        .onChange(of: liveFeed.beaconChannelActivity) { _, activity in
+            guard usesBeaconChannelEvents, let activity,
+                  activity.concerns(channelID: effectiveChannel.id) else { return }
+            scheduleLiveRefresh()
+        }
         .onChange(of: viewModel.recoveredChannel) { _, recoveredChannel in
             guard let recoveredChannel else { return }
             favoritesStore.replaceChannel(from: channel.id, with: recoveredChannel, source: favoriteSource)
@@ -201,11 +207,21 @@ struct ChannelDetailScreen: View {
     /// go check" — rather than silently dropping them — trades a few extra
     /// refreshes for actually catching new messages.
     private func scheduleLiveRefreshIfNeeded() {
+        // Beacon channels follow its channel-message events instead of every packet.
+        guard !usesBeaconChannelEvents else { return }
         guard let latestEvent = liveFeed.recentEvents.first,
               latestEvent.id != lastProcessedLiveEventID else { return }
         lastProcessedLiveEventID = latestEvent.id
         guard isPossiblyChannelRelevant(latestEvent) else { return }
+        scheduleLiveRefresh()
+    }
 
+    /// Server-decrypted Beacon channels; channels decrypted on the phone aren't available there.
+    private var usesBeaconChannelEvents: Bool {
+        settings.beaconBackend != nil && !channel.isLocallyMonitored
+    }
+
+    private func scheduleLiveRefresh() {
         // A newer event restarts only the quiet-period wait. The refresh itself
         // runs in its own task: cancelling it mid-request discards the response,
         // and on Beacon, where events arrive almost continuously, no refresh

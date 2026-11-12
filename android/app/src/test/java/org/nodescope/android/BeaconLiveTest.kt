@@ -58,6 +58,11 @@ class BeaconLiveTest {
         val scope = protocolJson.parseToJsonElement(subscribe.encoded()).jsonObject.getValue("scope").jsonObject
         assertEquals(listOf("packetObservation", "observerStatus", "nodeUpdate"),
             scope.getValue("events").jsonArray.map { it.jsonPrimitive.content })
+        // Only the unfiltered feed carries channel messages, so each arrives once.
+        val general = BeaconLiveProtocol.Command("subscribe", "g", BeaconLiveProtocol.Command.Scope(emptyList(), emptyList()))
+        val generalScope = protocolJson.parseToJsonElement(general.encoded()).jsonObject.getValue("scope").jsonObject
+        assertEquals(listOf("packetObservation", "observerStatus", "nodeUpdate", "channelMessage"),
+            generalScope.getValue("events").jsonArray.map { it.jsonPrimitive.content })
     }
 
     /** Keys must already be sorted: re-sorting must not change the text. */
