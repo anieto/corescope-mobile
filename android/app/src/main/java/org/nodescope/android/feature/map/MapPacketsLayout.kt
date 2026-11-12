@@ -23,6 +23,7 @@ import org.nodescope.android.core.design.PaneGap
 import org.nodescope.android.core.design.firstPaneWidth
 import org.nodescope.android.core.design.paneCard
 import org.nodescope.android.core.design.rememberFoldSplit
+import org.nodescope.android.core.model.DecryptedPacketMessage
 import org.nodescope.android.core.network.LiveFeedState
 import org.nodescope.android.feature.packets.PacketScreen
 import org.nodescope.android.feature.packets.groupTransmissions
@@ -53,6 +54,8 @@ fun MapPacketsLayout(
     selectedId: String?, onSelect: (id: String?, hash: String?, routes: List<RouteOption>) -> Unit, onDetails: (String) -> Unit,
     /** The packet whose route is on the map, and one whose full routes are still being fetched. */
     replayingId: String? = null, lookingUpId: String? = null,
+    /** Server-decrypted text for the selected packet (Beacon), shown under its row. */
+    selectedMessage: DecryptedPacketMessage? = null,
     /** [onShowPackets] restores the wide panel; [onShowPacketsSheet] opens the phone sheet (iOS compact). */
     map: @Composable (onShowPackets: (() -> Unit)?, onShowPacketsSheet: (() -> Unit)?, bottomObscuredFraction: Float) -> Unit,
 ) {
@@ -70,7 +73,7 @@ fun MapPacketsLayout(
         // other), whatever its width; other screens use the width cutoff.
         val atFold = fold.firstPaneWidth(maxWidth, MIN_PANE_AT_FOLD)
         if (atFold == null && maxWidth < PACKETS_PANEL_MIN_WIDTH) {
-            PacketsSheetLayout(feed, onReconnect, selectedId, onSelect, onDetails, replayingId, lookingUpId, maxHeight) { show, obscured ->
+            PacketsSheetLayout(feed, onReconnect, selectedId, onSelect, onDetails, replayingId, lookingUpId, selectedMessage, maxHeight) { show, obscured ->
                 MapCard(wide, Modifier.fillMaxSize()) { map(null, show, obscured) }
             }
             return@BoxWithConstraints
@@ -92,7 +95,7 @@ fun MapPacketsLayout(
                     IconButton(onClick = { setOpen(false) }) { Icon(Icons.Outlined.Close, "Hide live packets") }
                 }
                 Box(Modifier.weight(1f).fillMaxWidth()) {
-                    LivePacketsList(feed, onReconnect, selectedId, onSelect, onDetails, replayingId, lookingUpId)
+                    LivePacketsList(feed, onReconnect, selectedId, onSelect, onDetails, replayingId, lookingUpId, selectedMessage)
                 }
             }
             Spacer(Modifier.width(PaneGap))
@@ -106,7 +109,7 @@ fun MapPacketsLayout(
 private fun LivePacketsList(
     feed: LiveFeedState, onReconnect: () -> Unit,
     selectedId: String?, onSelect: (id: String?, hash: String?, routes: List<RouteOption>) -> Unit, onDetails: (String) -> Unit,
-    replayingId: String?, lookingUpId: String?,
+    replayingId: String?, lookingUpId: String?, selectedMessage: DecryptedPacketMessage?,
     /**
      * Called when a tap starts a route replay or opens details, so the phone sheet can get out of
      * the way; [then] runs once it has (details replace the map, so the sheet must close first).
@@ -120,7 +123,10 @@ private fun LivePacketsList(
         selectedHash = selectedId,
         onResumeLive = { if (selectedId != null) onSelect(null, null, emptyList()) },
         onPacket = { hash -> if (selectedId == hash) onSelect(null, null, emptyList()) else onSelect(hash, hash, emptyList()) },
-        selectedActions = { hash -> SelectedPacketActions(hash, replaying = hash == replayingId, lookingUp = hash == lookingUpId) { id -> onLeave { onDetails(id) } } })
+        selectedActions = { hash ->
+            selectedMessage?.let { BeaconMessagePreview(it) }
+            SelectedPacketActions(hash, replaying = hash == replayingId, lookingUp = hash == lookingUpId) { id -> onLeave { onDetails(id) } }
+        })
     else PacketScreen(feed, onReconnect, selectedId = selectedId,
         onResumeLive = { if (selectedId != null) onSelect(null, null, emptyList()) },
         onGroup = { id ->
@@ -145,7 +151,7 @@ private fun LivePacketsList(
 private fun PacketsSheetLayout(
     feed: LiveFeedState, onReconnect: () -> Unit,
     selectedId: String?, onSelect: (id: String?, hash: String?, routes: List<RouteOption>) -> Unit, onDetails: (String) -> Unit,
-    replayingId: String?, lookingUpId: String?, height: androidx.compose.ui.unit.Dp,
+    replayingId: String?, lookingUpId: String?, selectedMessage: DecryptedPacketMessage?, height: androidx.compose.ui.unit.Dp,
     map: @Composable (onShowPacketsSheet: () -> Unit, bottomObscuredFraction: Float) -> Unit,
 ) {
     val sheetState = rememberStandardBottomSheetState(initialValue = SheetValue.Hidden, skipHiddenState = false)
@@ -173,7 +179,7 @@ private fun PacketsSheetLayout(
                 }
                 Box(Modifier.weight(1f).fillMaxWidth()) {
                     // Composed only while open, so a hidden sheet doesn't hold a Beacon packet subscription.
-                    if (open) LivePacketsList(feed, onReconnect, selectedId, onSelect, onDetails, replayingId, lookingUpId, onLeave = ::leave)
+                    if (open) LivePacketsList(feed, onReconnect, selectedId, onSelect, onDetails, replayingId, lookingUpId, selectedMessage, onLeave = ::leave)
                 }
             }
         },
@@ -199,6 +205,18 @@ private fun SelectedPacketActions(id: String, replaying: Boolean, lookingUp: Boo
         Text(when { replaying -> "Route on the map"; lookingUp -> "Looking for routes…"; else -> "No route to show" }, Modifier.weight(1f),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         TextButton(onClick = { onDetails(id) }) { Text("Details") }
+    }
+}
+
+/** The decrypted text under a selected Beacon packet, as a CoreScope row shows its message. */
+@Composable
+private fun BeaconMessagePreview(message: DecryptedPacketMessage) {
+    Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 2.dp).semantics(mergeDescendants = true) {},
+        verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        message.sender?.takeIf(String::isNotBlank)?.let {
+            Text(it, style = MaterialTheme.typography.titleSmall, fontFamily = org.nodescope.android.core.design.MonaspaceNeon)
+        }
+        Text(message.content, style = MaterialTheme.typography.bodyMedium)
     }
 }
 

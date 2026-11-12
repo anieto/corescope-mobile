@@ -363,7 +363,7 @@ private struct BeaconPacketSidebar: View {
                             .buttonStyle(.plain)
 
                             if selectedHash == row.hash {
-                                selectedActions(for: row)
+                                VStack(spacing: 6) { selectedActions(for: row) }
                                     .transition(.opacity.combined(with: .move(edge: .top)))
                             }
                         }
@@ -461,6 +461,9 @@ private struct BeaconPacketSidebar: View {
     @ViewBuilder
     private func selectedActions(for row: BeaconLiveRecovery.Row) -> some View {
         let routes = selectedRoutes
+        if let message = routes?.detail?.decryptedMessage {
+            BeaconMessagePreview(message: message)
+        }
         HStack(spacing: 8) {
             if let routes, !routes.routes.isEmpty {
                 Button {
@@ -518,7 +521,8 @@ private struct BeaconPacketSidebar: View {
         replayStore.replay(
             routes: routes.routes,
             packetHash: detail.packet.hash, observedAt: detail.packet.timestamp,
-            snr: detail.packet.snr, rssi: detail.packet.rssi, sender: nil, messageText: nil
+            snr: detail.packet.snr, rssi: detail.packet.rssi,
+            sender: detail.decryptedMessage?.sender, messageText: detail.decryptedMessage?.content
         )
         routeReplayStarted?(row.hash)
     }
@@ -528,6 +532,27 @@ private struct BeaconPacketSidebar: View {
         keepsSelectionWhenReplayStops = false
         replayStore.stopReplay()
         selectedHash = nil
+    }
+}
+
+/// The decrypted text under a selected Beacon packet, as a CoreScope row shows its message.
+private struct BeaconMessagePreview: View {
+    let message: DecryptedPacketMessage
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let sender = message.sender, !sender.isEmpty {
+                Text(sender)
+                    .font(.monaspace(.subheadline).weight(.semibold))
+            }
+            Text(message.content)
+                .font(.subheadline)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .instrumentCard(isSelected: true)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -586,6 +611,26 @@ private struct BeaconPacketSummary: View {
                                   learn: .observation)
             }
             .instrumentListRows()
+            if let message = viewModel.detail?.decryptedMessage {
+                Section("Message") {
+                    if let sender = message.sender, !sender.isEmpty {
+                        PacketDetailField(title: "Sender", value: sender)
+                    }
+                    Text(message.content)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let sentAt = message.sentAt {
+                        LabeledContent("Sent") { Text(sentAt, format: .dateTime) }
+                    }
+                }
+                .instrumentListRows()
+            } else if viewModel.detail != nil, row.payloadType == PayloadType.grpTxt.rawValue {
+                Section("Message") {
+                    Text("This server doesn’t have this channel’s key, so the message can’t be shown.")
+                        .foregroundStyle(.secondary)
+                }
+                .instrumentListRows()
+            }
             Section("Heard") {
                 LabeledContent("First seen") {
                     if let date = viewModel.detail?.packet.firstSeen ?? row.firstSeen {
@@ -629,7 +674,8 @@ private struct BeaconPacketSummary: View {
                             replayStore.replay(
                                 routes: viewModel.routes, selectedIndex: selectedRouteIndex,
                                 packetHash: detail.packet.hash, observedAt: detail.packet.timestamp,
-                                snr: detail.packet.snr, rssi: detail.packet.rssi, sender: nil, messageText: nil
+                                snr: detail.packet.snr, rssi: detail.packet.rssi,
+                                sender: detail.decryptedMessage?.sender, messageText: detail.decryptedMessage?.content
                             )
                             dismiss()
                             replayStarted?()

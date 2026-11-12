@@ -502,8 +502,21 @@ class BeaconPacketReader(val client: BeaconApiClient, verifiedServerInfo: Beacon
         val lastHeardAt: Long,
         val observationCount: Int,
         val observations: List<Observation>,
+        val parsedPayload: JsonElement? = null,
     ) {
         @Serializable data class Header(val routeType: Int, val payloadType: Int, val payloadVersion: Int? = null)
+
+        /**
+         * Only the server-decrypted text is read; the rest of the payload varies by packet type,
+         * so a shape this app doesn't expect leaves the message out instead of failing the packet.
+         */
+        val message: DecryptedPacketMessage? get() {
+            val decrypted = (parsedPayload as? JsonObject)?.get("decrypted") as? JsonObject ?: return null
+            fun text(key: String) = (decrypted[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
+            val content = text("content")?.takeIf { it.isNotBlank() } ?: return null
+            val sentAt = (decrypted["sentAt"] as? JsonPrimitive)?.takeIf { !it.isString }?.longOrNull
+            return DecryptedPacketMessage(text("sender")?.trim(), content, sentAt)
+        }
         @Serializable data class Observation(
             val id: Long,
             val observerName: String? = null,
@@ -552,6 +565,7 @@ class BeaconPacketReader(val client: BeaconApiClient, verifiedServerInfo: Beacon
                     resolvedPath = observation.resolvedPath?.map { it.confirmedKey },
                 )
             },
+            decryptedMessage = response.message,
         )
     }
 

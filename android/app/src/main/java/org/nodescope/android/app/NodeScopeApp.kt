@@ -349,26 +349,34 @@ internal fun AppShell(
     val routeScope = rememberCoroutineScope()
     var routeLookup by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     var lookingUp by remember { mutableStateOf<String?>(null) }
+    /** Server-decrypted text for the packet whose routes were looked up (Beacon), keyed by its list id. */
+    var lookedUpMessage by remember { mutableStateOf<Pair<String, org.nodescope.android.core.model.DecryptedPacketMessage>?>(null) }
     // Reselecting the Map tab returns it to live (iOS): no replay, highlighted node or route lookup.
     org.nodescope.android.core.design.OnTabReset(tabResets[Destination.MAP.ordinal]) {
         routeLookup?.cancel(); routeLookup = null; lookingUp = null
         replay = null; panelPacket = null; focusedNode = null; focusedPosition = null
     }
     /** A packet's distinct routes from its full observation list, limited to the selected region. */
-    suspend fun fullRoutes(host: String, region: String?, hash: String): List<RouteOption> {
-        val detail = browse?.let { repository -> runCatching { repository.packetDetail(host, hash) }.getOrNull() } ?: return emptyList()
-        val observations = detail.observations.filter { org.nodescope.android.core.model.regionIncludes(region, it.observerIata) }
+    suspend fun packetDetailOrNull(host: String, hash: String) =
+        browse?.let { repository -> runCatching { repository.packetDetail(host, hash) }.getOrNull() }
+    fun routesOf(detail: org.nodescope.android.core.model.PacketDetail?, region: String?): List<RouteOption> {
+        val observations = detail?.observations.orEmpty().filter { org.nodescope.android.core.model.regionIncludes(region, it.observerIata) }
         return routeOptions(observations.map { HeardPath(it.resolvedPath.orEmpty(), RouteHearing(it.observerName?.takeIf(String::isNotBlank) ?: "Observer ${it.id}", it.observerIata, it.snr, it.rssi)) })
     }
+    suspend fun fullRoutes(host: String, region: String?, hash: String): List<RouteOption> =
+        routesOf(packetDetailOrNull(host, hash), region)
     fun completeRoutes(id: String, hash: String) {
         if (browse == null) return
         val host = preferences.host
         val region = preferences.region
         routeLookup?.cancel()
         lookingUp = id
+        lookedUpMessage = null
         routeLookup = routeScope.launch {
-            val complete = fullRoutes(host, region, hash)
+            val detail = packetDetailOrNull(host, hash)
+            val complete = routesOf(detail, region)
             if (lookingUp == id) lookingUp = null
+            if (host == preferences.host) detail?.decryptedMessage?.let { lookedUpMessage = id to it }
             if (complete.isEmpty() || host != preferences.host) return@launch
             val current = replay
             when {
@@ -543,6 +551,7 @@ internal fun AppShell(
                             // its routes, or opens its details when none can be drawn.
                             MapPacketsLayout(currentFeed, onReconnect, selectedId = replay?.packetId ?: panelPacket,
                                 replayingId = replay?.packetId, lookingUpId = lookingUp,
+                                selectedMessage = lookedUpMessage?.takeIf { it.first == (replay?.packetId ?: panelPacket) }?.second,
                                 onSelect = { id, hash, routes ->
                                     routeLookup?.cancel(); lookingUp = null
                                     when {

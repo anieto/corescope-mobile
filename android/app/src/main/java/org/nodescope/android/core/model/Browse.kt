@@ -124,7 +124,13 @@ data class PacketDetail(
     val path: List<String> = emptyList(),
     @SerialName("observation_count") val observationCount: Int? = null,
     val observations: List<PacketObservation> = emptyList(),
+    /** A channel message the server decrypted (Beacon); not part of CoreScope's response. */
+    @kotlinx.serialization.Transient val decryptedMessage: DecryptedPacketMessage? = null,
 )
+
+/** Text Beacon decrypted for a packet on a channel whose key the server holds. */
+data class DecryptedPacketMessage(val sender: String?, val content: String, val sentAt: Long?)
+
 @Serializable
 data class PacketRecord(
     val id: Long? = null,

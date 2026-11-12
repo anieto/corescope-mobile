@@ -209,6 +209,24 @@ fun BeaconPacketDetailScreen(feed: LiveFeedState, browse: BrowseRepository?, hos
                 DetailRow("Observations", maxOf(current?.observationCount ?: 0, row?.observationCount ?: 0).toString(), learn = GlossaryTerm.OBSERVATION)
             }
         }
+        current?.decryptedMessage?.let { message ->
+            item {
+                DetailSection("Message") {
+                    message.sender?.takeIf(String::isNotBlank)?.let { DetailRow("Sender", it) }
+                    androidx.compose.foundation.text.selection.SelectionContainer {
+                        Text(message.content, style = MaterialTheme.typography.bodyLarge)
+                    }
+                    message.sentAt?.let { DetailRow("Sent", dates.format(Instant.ofEpochMilli(it))) }
+                }
+            }
+        } ?: run {
+            if (current != null && (row?.payloadType ?: current.packet.payloadType) == 5) item {
+                DetailSection("Message") {
+                    Text("This server doesn’t have this channel’s key, so the message can’t be shown.",
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
         item {
             DetailSection("Heard") {
                 DetailRow("First seen", row?.firstSeen?.let { dates.format(Instant.ofEpochMilli(it)) } ?: "Unknown")

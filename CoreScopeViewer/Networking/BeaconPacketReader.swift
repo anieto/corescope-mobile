@@ -62,7 +62,8 @@ struct BeaconPacketReader: Sendable {
                     timestamp: observation.heardAt,
                     resolvedPath: observation.resolvedPath?.map(\.confirmedKey)
                 )
-            }
+            },
+            decryptedMessage: response.parsedPayload?.message
         )
     }
 
@@ -157,6 +158,7 @@ struct BeaconPacketReader: Sendable {
         let lastHeardAt: Date
         let observationCount: Int
         let observations: [Observation]
+        let parsedPayload: ParsedPayload?
 
         var packet: Packet {
             // rawPayload is not a complete packet; never expose it as CoreScope raw_hex.
@@ -166,6 +168,33 @@ struct BeaconPacketReader: Sendable {
                 payloadVersion: header.payloadVersion, decodedJson: nil, observationCount: observationCount,
                 observerId: nil, observerName: nil, snr: nil, rssi: nil, pathJson: nil,
                 direction: nil, score: nil
+            )
+        }
+    }
+
+    /// Only the server-decrypted text is read; the rest of the payload varies by packet type,
+    /// so a shape this app doesn't expect leaves the message out instead of failing the packet.
+    struct ParsedPayload: Decodable, Sendable {
+        private struct Decrypted: Decodable {
+            let sender: String?
+            let content: String?
+            let sentAt: Date?
+        }
+        private enum Keys: String, CodingKey { case decrypted }
+
+        let message: DecryptedPacketMessage?
+
+        init(from decoder: Decoder) throws {
+            let decrypted = (try? decoder.container(keyedBy: Keys.self))
+                .flatMap { try? $0.decodeIfPresent(Decrypted.self, forKey: .decrypted) }
+            guard let decrypted, let content = decrypted.content,
+                  !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                message = nil
+                return
+            }
+            message = DecryptedPacketMessage(
+                sender: decrypted.sender?.trimmingCharacters(in: .whitespacesAndNewlines),
+                content: content, sentAt: decrypted.sentAt
             )
         }
     }
