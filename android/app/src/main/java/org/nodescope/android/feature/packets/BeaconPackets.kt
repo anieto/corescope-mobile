@@ -2,6 +2,8 @@ package org.nodescope.android.feature.packets
 
 import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.meshCardColors
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.*
@@ -41,7 +43,12 @@ fun LiveFeedState.beaconRow(hash: String): BeaconLiveRecovery.Row? =
 
 @Composable
 fun BeaconPacketScreen(feed: LiveFeedState, host: String, regionControl: @Composable () -> Unit = {}, onClearRegion: () -> Unit = {},
-    selectedHash: String? = null, onPacket: (String) -> Unit) {
+    selectedHash: String? = null,
+    /** The map's packets panel shows these under the selected row (Replay status, Details), as for CoreScope. */
+    selectedActions: (@Composable (hash: String) -> Unit)? = null,
+    /** Resuming live also ends a selection or replay (iOS "Resume Live"). */
+    onResumeLive: () -> Unit = {},
+    onPacket: (String) -> Unit) {
     var filterType by rememberSaveable { mutableStateOf<String?>(null) }
     var showFilters by remember { mutableStateOf(false) }
     val region = feed.selection?.region?.uppercase()
@@ -49,11 +56,13 @@ fun BeaconPacketScreen(feed: LiveFeedState, host: String, regionControl: @Compos
     // Each filter is its own server subscription and recovered history, as on iOS.
     LiveFeedDemandEffect(host, LiveFeedDemand(LiveFeedSubscription(setOfNotNull(filter.region), setOfNotNull(filter.payloadType))))
     val liveSnapshot = feed.beacon?.browseSnapshots?.get(filter)
-    // Paused by hand, the rows stay as they were; resuming shows the latest again (iOS).
+    // Paused by hand or with a packet selected (its route replaying), the rows stay as they were;
+    // resuming shows the latest again (iOS).
     val paused = org.nodescope.android.feature.map.LiveTrafficPause.isPaused
+    val holding = paused || selectedHash != null
     var held by remember { mutableStateOf<org.nodescope.android.core.network.LiveBrowseSnapshot?>(null) }
-    LaunchedEffect(paused) { held = if (paused) held ?: liveSnapshot else null }
-    val snapshot = if (paused) held ?: liveSnapshot else liveSnapshot
+    LaunchedEffect(holding) { held = if (holding) held ?: liveSnapshot else null }
+    val snapshot = if (holding) held ?: liveSnapshot else liveSnapshot
     val rows = snapshot?.rows.orEmpty()
     val now = rememberNow()
     val live = feed.connection == LiveConnection.LIVE
@@ -78,7 +87,7 @@ fun BeaconPacketScreen(feed: LiveFeedState, host: String, regionControl: @Compos
                     }
                     IconButton(onClick = {
                         val pause = org.nodescope.android.feature.map.LiveTrafficPause
-                        if (pause.isPaused) pause.resume() else pause.pause()
+                        if (pause.isPaused) { pause.resume(); onResumeLive() } else pause.pause()
                     }) {
                         if (paused) Icon(Icons.Outlined.PlayArrow, "Resume live traffic") else Icon(Icons.Outlined.Pause, "Pause live traffic")
                     }
@@ -105,7 +114,9 @@ fun BeaconPacketScreen(feed: LiveFeedState, host: String, regionControl: @Compos
             Text("Recent history may be incomplete.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (rows.isNotEmpty()) item { SectionLabel("Recent packets") }
-        items(rows, key = { it.hash }) { row -> BeaconPacketRow(row, now, row.hash == selectedHash) { onPacket(row.hash) } }
+        items(rows, key = { it.hash }) { row ->
+            BeaconPacketRow(row, now, row.hash == selectedHash, selectedActions.takeIf { row.hash == selectedHash }) { onPacket(row.hash) }
+        }
         if (rows.isEmpty()) item {
             EmptyState(Icons.Outlined.SettingsInputAntenna, if (live) "Waiting for packets" else "Not connected",
                 if (live) "New mesh traffic will appear here as the analyzer receives it. Beacon retains up to seven days of packet history, and quiet regions may have no recent traffic."
@@ -115,11 +126,15 @@ fun BeaconPacketScreen(feed: LiveFeedState, host: String, regionControl: @Compos
 }
 
 @Composable
-private fun BeaconPacketRow(row: BeaconLiveRecovery.Row, now: Long, selected: Boolean, onClick: () -> Unit) {
+private fun BeaconPacketRow(row: BeaconLiveRecovery.Row, now: Long, selected: Boolean,
+    actions: (@Composable (String) -> Unit)? = null, onClick: () -> Unit) {
     val typeName = payloadTypeName(row.payloadType)
     val tone = packetTone(typeName)
     Card(onClick = onClick, modifier = Modifier.semantics { this.selected = selected },
-        colors = meshCardColors()) {
+        colors = meshCardColors(),
+        border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null) {
+      // The actions under a selected row slide open instead of jolting the list.
+      Column(Modifier.animateContentSize()) {
         Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Icon(packetIcon(typeName), null, Modifier.size(24.dp), tint = tone)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -135,6 +150,8 @@ private fun BeaconPacketRow(row: BeaconLiveRecovery.Row, now: Long, selected: Bo
                 }
             }
         }
+        actions?.invoke(row.hash)
+      }
     }
 }
 

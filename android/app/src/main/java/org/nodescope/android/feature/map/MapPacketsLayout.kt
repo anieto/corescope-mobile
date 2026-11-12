@@ -25,7 +25,6 @@ import org.nodescope.android.core.design.paneCard
 import org.nodescope.android.core.design.rememberFoldSplit
 import org.nodescope.android.core.network.LiveFeedState
 import org.nodescope.android.feature.packets.PacketScreen
-import org.nodescope.android.feature.packets.TransmissionGroup
 import org.nodescope.android.feature.packets.groupTransmissions
 import org.nodescope.android.feature.packets.RouteOption
 import org.nodescope.android.feature.packets.routeOptions
@@ -115,9 +114,13 @@ private fun LivePacketsList(
     onLeave: (then: () -> Unit) -> Unit = { it() },
 ) {
     val beaconHost = feed.selection?.host?.takeIf { org.nodescope.android.core.design.LocalBeaconSource.current }
-    // Beacon rows are server snapshots without routes: a tap opens the packet's details (iOS sidebar).
+    // Beacon rows are server snapshots without routes: a tap selects the packet and its full
+    // observation list supplies the routes (completeRoutes), which then replay as for CoreScope.
     if (beaconHost != null) org.nodescope.android.feature.packets.BeaconPacketScreen(feed, beaconHost,
-        selectedHash = selectedId, onPacket = { hash -> onLeave { onDetails(hash) } })
+        selectedHash = selectedId,
+        onResumeLive = { if (selectedId != null) onSelect(null, null, emptyList()) },
+        onPacket = { hash -> if (selectedId == hash) onSelect(null, null, emptyList()) else onSelect(hash, hash, emptyList()) },
+        selectedActions = { hash -> SelectedPacketActions(hash, replaying = hash == replayingId, lookingUp = hash == lookingUpId) { id -> onLeave { onDetails(id) } } })
     else PacketScreen(feed, onReconnect, selectedId = selectedId,
         onResumeLive = { if (selectedId != null) onSelect(null, null, emptyList()) },
         onGroup = { id ->
@@ -130,7 +133,7 @@ private fun LivePacketsList(
                 if (routes.isNotEmpty()) onLeave {}
             }
         },
-        selectedActions = { group -> SelectedPacketActions(group, replaying = group.id == replayingId, lookingUp = group.id == lookingUpId) { id -> onLeave { onDetails(id) } } })
+        selectedActions = { group -> SelectedPacketActions(group.id, replaying = group.id == replayingId, lookingUp = group.id == lookingUpId) { id -> onLeave { onDetails(id) } } })
 }
 
 /**
@@ -191,11 +194,11 @@ private fun PacketsSheetLayout(
  * left to the map's replay controls, which also restart it and choose between routes.
  */
 @Composable
-private fun SelectedPacketActions(group: TransmissionGroup, replaying: Boolean, lookingUp: Boolean, onDetails: (String) -> Unit) {
+private fun SelectedPacketActions(id: String, replaying: Boolean, lookingUp: Boolean, onDetails: (String) -> Unit) {
     Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(when { replaying -> "Route on the map"; lookingUp -> "Looking for routes…"; else -> "No route to show" }, Modifier.weight(1f),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        TextButton(onClick = { onDetails(group.id) }) { Text("Details") }
+        TextButton(onClick = { onDetails(id) }) { Text("Details") }
     }
 }
 

@@ -242,6 +242,7 @@ private struct MapLivePacketSidebar: View {
     var body: some View {
         if liveFeed.usesBrowseSnapshots {
             BeaconPacketSidebar(
+                selectedHash: $selectedGroupID,
                 close: close, toggleSidebar: toggleSidebar,
                 routeReplayStarted: routeReplayStarted,
                 detailPresentationChanged: detailPresentationChanged
@@ -256,6 +257,9 @@ private struct MapLivePacketSidebar: View {
 }
 
 private struct BeaconPacketSidebar: View {
+    /// The packet picked in the list, by hash. Like the CoreScope list, picking one holds the
+    /// list still and reveals Replay and Show Details beneath it.
+    @Binding var selectedHash: String?
     var close: (() -> Void)?
     var toggleSidebar: (() -> Void)?
     var routeReplayStarted: ((LiveObservationGroup.ID) -> Void)?
@@ -266,16 +270,25 @@ private struct BeaconPacketSidebar: View {
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(LiveTrafficPause.self) private var livePause
+    @Environment(PacketReplayStore.self) private var replayStore
     @State private var consumerID = UUID()
     @State private var filterType: Int?
     @State private var showsFilters = false
     @State private var detailRow: BeaconLiveRecovery.Row?
-    /// The rows shown when live traffic was paused, held until it resumes.
+    /// The rows shown while the list is held (paused, a packet picked or a replay running).
     @State private var pausedSnapshot: LiveBrowseSnapshot?
+    /// Routes for the picked packet. Beacon's packet list carries no paths, so they come
+    /// from that packet's detail, fetched when it is picked.
+    @State private var selectedRoutes: BeaconPacketDetailViewModel?
+    @State private var keepsSelectionWhenReplayStops = false
 
     private var shownSnapshot: LiveBrowseSnapshot? {
-        if livePause.isPaused, let pausedSnapshot { return pausedSnapshot }
+        if isFeedHeld, let pausedSnapshot { return pausedSnapshot }
         return liveFeed.browseSnapshots[filter]
+    }
+
+    private var isFeedHeld: Bool {
+        livePause.isPaused || selectedHash != nil || replayStore.isReplayActive
     }
 
     private var packetDetailsPresented: Binding<Bool> {
@@ -302,18 +315,22 @@ private struct BeaconPacketSidebar: View {
         List {
             LivePacketFeedHeader(
                 isConnected: liveFeed.isConnected,
-                isPaused: livePause.isPaused,
+                isPaused: isFeedHeld,
                 isCompact: true,
                 transmissionCount: snapshot?.rows.count ?? 0,
                 observationCount: snapshot?.rows.reduce(0) { $0 + $1.observationCount } ?? 0,
-                scope: regionFilter.selectedRegion.map(regionFilter.label(for:)) ?? String(localized: "Entire network")
+                scope: replayStore.isReplayActive
+                    ? String(localized: "Route replay")
+                    : selectedHash != nil
+                        ? String(localized: "Packet selected")
+                        : regionFilter.selectedRegion.map(regionFilter.label(for:)) ?? String(localized: "Entire network")
             )
             .packetFeedListRow(top: 8, bottom: 8)
             Button {
-                if livePause.isPaused { livePause.resume() } else { livePause.pause() }
+                if isFeedHeld { resumeLiveFeed() } else { livePause.pause() }
             } label: {
-                Label(livePause.isPaused ? "Resume Live" : "Pause Live",
-                      systemImage: livePause.isPaused ? "play.fill" : "pause.fill")
+                Label(isFeedHeld ? "Resume Live" : "Pause Live",
+                      systemImage: isFeedHeld ? "play.fill" : "pause.fill")
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 8)
             }
@@ -337,15 +354,23 @@ private struct BeaconPacketSidebar: View {
             Section("Recent Packets") {
                 if let snapshot, !snapshot.rows.isEmpty {
                     ForEach(snapshot.rows, id: \.hash) { row in
-                        Button {
-                            detailPresentationChanged?(true)
-                            detailRow = row
-                        } label: {
-                            BeaconPacketSummaryRow(row: row)
+                        VStack(spacing: 6) {
+                            Button {
+                                select(row)
+                            } label: {
+                                BeaconPacketSummaryRow(row: row, isSelected: selectedHash == row.hash)
+                            }
+                            .buttonStyle(.plain)
+
+                            if selectedHash == row.hash {
+                                selectedActions(for: row)
+                                    .transition(.opacity.combined(with: .move(edge: .top)))
+                            }
                         }
-                        .buttonStyle(.plain)
                         .packetFeedListRow()
-                        .accessibilityHint("Show packet details")
+                        .accessibilityHint(selectedHash == row.hash
+                            ? "Returns to live traffic"
+                            : "Pauses the feed and reveals replay and packet detail actions")
                     }
                 } else {
                     ContentUnavailableView(
@@ -395,9 +420,28 @@ private struct BeaconPacketSidebar: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
-        // Paused, the rows stay as they were; resuming shows the latest again.
-        .onChange(of: livePause.isPaused, initial: true) { _, isPaused in
-            pausedSnapshot = isPaused ? pausedSnapshot ?? liveFeed.browseSnapshots[filter] : nil
+        // Held, the rows stay as they were; resuming shows the latest again.
+        .onChange(of: isFeedHeld, initial: true) { _, isHeld in
+            pausedSnapshot = isHeld ? pausedSnapshot ?? liveFeed.browseSnapshots[filter] : nil
+        }
+        .task(id: RouteKey(sessionID: settings.sourceSession.id, hash: selectedHash)) {
+            guard let hash = selectedHash else {
+                selectedRoutes = nil
+                return
+            }
+            let routes = BeaconPacketDetailViewModel()
+            selectedRoutes = routes
+            await routes.load(hash: hash, sourceSessionID: settings.sourceSession.id, service: liveFeed)
+        }
+        .onChange(of: regionFilter.selectedRegion) { resumeLiveFeed() }
+        .onChange(of: filterType) { resumeLiveFeed() }
+        .onChange(of: replayStore.isReplayActive) { _, isActive in
+            guard !isActive else { return }
+            if keepsSelectionWhenReplayStops {
+                keepsSelectionWhenReplayStops = false
+                return
+            }
+            selectedHash = nil
         }
         .task(id: DemandKey(sessionID: settings.sourceSession.id, filter: filter)) {
             let regions = filter.region.map { Set([$0]) } ?? []
@@ -408,10 +452,88 @@ private struct BeaconPacketSidebar: View {
             liveFeed.setDemand(nil, for: consumerID)
         }
     }
+
+    private struct RouteKey: Hashable {
+        let sessionID: UUID
+        let hash: String?
+    }
+
+    @ViewBuilder
+    private func selectedActions(for row: BeaconLiveRecovery.Row) -> some View {
+        let routes = selectedRoutes
+        HStack(spacing: 8) {
+            if let routes, !routes.routes.isEmpty {
+                Button {
+                    replay(row, routes: routes)
+                } label: {
+                    Label("Replay", systemImage: "play.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .instrumentCard(isSelected: true)
+                }
+                .buttonStyle(.plain)
+            } else if routes == nil || routes?.isLoading == true {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .instrumentCard(isSelected: true)
+                    .accessibilityLabel("Finding route")
+            }
+
+            Button {
+                detailRow = row
+                detailPresentationChanged?(true)
+            } label: {
+                Label("Show Details", systemImage: "info.circle")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .instrumentCard(isSelected: true)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Show selected packet details")
+        }
+    }
+
+    private func select(_ row: BeaconLiveRecovery.Row) {
+        if selectedHash == row.hash {
+            replayStore.stopReplay()
+            selectedHash = nil
+            return
+        }
+        selectedHash = row.hash
+        if replayStore.isReplayActive {
+            keepsSelectionWhenReplayStops = true
+            replayStore.stopReplay()
+        }
+    }
+
+    private func replay(_ row: BeaconLiveRecovery.Row, routes: BeaconPacketDetailViewModel) {
+        guard let detail = routes.detail, !routes.routes.isEmpty,
+              routes.belongsToSource(settings.sourceSession.id) else { return }
+        detailRow = nil
+        replayStore.replay(
+            routes: routes.routes,
+            packetHash: detail.packet.hash, observedAt: detail.packet.timestamp,
+            snr: detail.packet.snr, rssi: detail.packet.rssi, sender: nil, messageText: nil
+        )
+        routeReplayStarted?(row.hash)
+    }
+
+    private func resumeLiveFeed() {
+        livePause.resume()
+        keepsSelectionWhenReplayStops = false
+        replayStore.stopReplay()
+        selectedHash = nil
+    }
 }
 
 private struct BeaconPacketSummaryRow: View {
     let row: BeaconLiveRecovery.Row
+    var isSelected = false
 
     var body: some View {
         LivePacketCard(
@@ -420,7 +542,8 @@ private struct BeaconPacketSummaryRow: View {
             observationCount: row.observationCount,
             region: nil,
             preview: row.hash,
-            receivedAt: row.lastHeard
+            receivedAt: row.lastHeard,
+            isSelected: isSelected
         )
     }
 }
