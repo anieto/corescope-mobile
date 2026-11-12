@@ -158,7 +158,7 @@ private fun BeaconPacketRow(row: BeaconLiveRecovery.Row, now: Long, selected: Bo
 /** iOS `BeaconPacketSummary`: what the snapshot knows, then the server's observations and confirmed routes. */
 @Composable
 fun BeaconPacketDetailScreen(feed: LiveFeedState, browse: BrowseRepository?, host: String, hash: String, nodes: List<MeshNode>,
-    onReplay: (routes: List<RouteOption>, selected: Int) -> Unit) {
+    onReplay: (routes: List<RouteOption>, selected: Int, detail: PacketDetail?) -> Unit) {
     val row = feed.beaconRow(hash)
     var detail by remember(hash) { mutableStateOf<PacketDetail?>(null) }
     var loading by remember(hash) { mutableStateOf(false) }
@@ -263,7 +263,7 @@ fun BeaconPacketDetailScreen(feed: LiveFeedState, browse: BrowseRepository?, hos
                                 DetailRow("Hop ${hop + 1}", nodesByKey[key.lowercase()]?.displayName?.let { "$it · $key" } ?: key, monospace = true)
                             }
                         }
-                        Button(onClick = { onReplay(routes, index ?: org.nodescope.android.feature.map.ALL_ROUTES) }, Modifier.fillMaxWidth()) {
+                        Button(onClick = { onReplay(routes, index ?: org.nodescope.android.feature.map.ALL_ROUTES, current) }, Modifier.fillMaxWidth()) {
                             Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text("Replay on map")
                         }
                     }

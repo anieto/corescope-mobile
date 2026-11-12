@@ -154,7 +154,13 @@ fun RouteReplay.shownRoutes(index: Int): List<ReplayRoute> =
  */
 data class RouteReplay(val id: Long, val routes: List<ReplayRoute>, val selected: Int, val packetId: String? = null,
     /** The routes and their observers, so more can be merged in while the replay runs. */
-    val options: List<org.nodescope.android.feature.packets.RouteOption> = emptyList())
+    val options: List<org.nodescope.android.feature.packets.RouteOption> = emptyList(),
+    /** What the replayed packet carried, for route details when a replayed route is tapped (iOS). */
+    val packet: ReplayPacket? = null)
+
+/** The replayed packet as route details show it (iOS `PacketReplayStore` fields). */
+data class ReplayPacket(val hash: String?, val observedAt: Long? = null, val snr: Double? = null, val rssi: Double? = null,
+    val sender: String? = null, val text: String? = null, val channel: String? = null)
 
 /** One hop's line; [route] and [hop] identify it from frame to frame. */
 internal data class RouteLine(val points: List<Coordinate>, val color: String, val opacity: Float, val route: String = "", val hop: Int = 0,

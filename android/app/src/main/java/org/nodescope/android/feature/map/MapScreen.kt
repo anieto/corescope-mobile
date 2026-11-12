@@ -312,7 +312,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     fun onTap(tap: MapTap): Boolean {
         // A route under the finger opens its details (iOS), unless a node marker is right there.
         val route = if (tap.nodeUnderFinger) null else tap.routeKeys().firstNotNullOfOrNull { key ->
-            latestPaths.firstOrNull { it.key == key && it.packet != null }
+            latestPaths.firstOrNull { it.key == key && (it.packet != null || it.replay) }
         }
         // A thinned-out spot hides other nodes under its dot: zoom in until they come apart (iOS).
         val stack = tap.nodeKey?.let { key -> currentCoveredNodes[key]?.let { covered ->
@@ -330,6 +330,12 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             }
             tap.nodeUnderFinger -> { selectNode(tap.nodeKey!!); true }
             tap.expandGroup != null && tap.nodeKey == null -> { tap.expandGroup.invoke(); true }
+            route != null && route.replay -> {
+                val replay = routeReplay
+                val tapped = nearestReplayRoute(shownReplayRoutes, tap.coordinate)
+                if (replay == null || tapped == null) false
+                else { selectedNode = null; routeDetail = replayRouteDetails(replay, tapped, currentAllNodes); true }
+            }
             route != null -> { selectedNode = null; routeDetail = routeDetails(route.packet!!, currentAllNodes, route.observedAt); true }
             tap.nodeKey != null -> { selectNode(tap.nodeKey); true }
             else -> false

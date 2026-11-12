@@ -310,7 +310,7 @@ internal fun RouteDetailsSheet(details: RouteDetails, onNode: (String) -> Unit, 
     val context = LocalContext.current
     val now = rememberNow()
     val packet = details.packet
-    val age = relativeTime(Instant.ofEpochMilli(details.observedAt), now)
+    val age = details.observedAt?.let { relativeTime(Instant.ofEpochMilli(it), now) }
     MeshModalBottomSheet(onDismissRequest = onDismiss) {
         LazyColumn(Modifier.fillMaxWidth(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp)) {
             item {
@@ -323,7 +323,7 @@ internal fun RouteDetailsSheet(details: RouteDetails, onNode: (String) -> Unit, 
                 }
                 SectionLabel("Summary")
                 SummaryRow("Hops", details.hopCount.toString(), GlossaryTerm.HOP)
-                SummaryRow("Age", age)
+                age?.let { SummaryRow("Age", it) }
                 packet.observerName?.takeIf(String::isNotBlank)?.let { SummaryRow("Observer", it, GlossaryTerm.OBSERVER) }
                 packet.snr?.let { SummaryRow("SNR", String.format(Locale.US, "%.1f dB", it), GlossaryTerm.SNR) }
                 packet.rssi?.let { SummaryRow("RSSI", String.format(Locale.US, "%.0f dBm", it), GlossaryTerm.RSSI) }
@@ -333,6 +333,9 @@ internal fun RouteDetailsSheet(details: RouteDetails, onNode: (String) -> Unit, 
                     var expanded by remember { mutableStateOf(false) }
                     packet.payloadChannel?.takeIf(String::isNotBlank)?.let {
                         Text(it, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                    }
+                    details.sender?.takeIf(String::isNotBlank)?.let {
+                        Text(it, style = MaterialTheme.typography.titleSmall, fontFamily = MonaspaceNeon)
                     }
                     Text(message, maxLines = if (expanded) Int.MAX_VALUE else 4, overflow = TextOverflow.Ellipsis)
                     if (message.length > 180) TextButton(onClick = { expanded = !expanded }, contentPadding = PaddingValues(0.dp)) {
