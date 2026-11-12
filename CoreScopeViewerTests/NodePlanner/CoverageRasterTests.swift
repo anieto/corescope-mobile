@@ -25,6 +25,34 @@ struct CoverageRasterTests {
             area: .init(cells: cells(grid), chargedSamples: 0, chargedGeometry: 0, workLimited: false))
     }
 
+    @Test func marginBandsUseUnroundedBoundariesAndDistinctPixels() {
+        for (margin, expected) in [(-0.001, CoverageRasterClass.belowThreshold),
+                                   (0, .limitedHeadroom), (9.999, .limitedHeadroom),
+                                   (10, .limitedHeadroom), (10.001, .aboveThreshold)] {
+            #expect(CoverageRasterClass.margin(margin) == expected)
+        }
+        #expect(CoverageRasterClass.margin(.nan) == .unresolved)
+        #expect(CoverageRasterClass.margin(.infinity) == .unresolved)
+        #expect(CoverageRaster.rgba(.outsideAnalysis, column: 0, row: 0) == 0)
+        let colors = [CoverageRasterClass.belowThreshold, .limitedHeadroom, .aboveThreshold, .unresolved]
+            .map { CoverageRaster.rgba($0, column: 0, row: 0) }
+        #expect(Set(colors).count == 4)
+        #expect(colors.allSatisfy { $0 & 255 > 0 })
+    }
+
+    @Test func inspectionOnlyExposesQualifiedSampleValues() throws {
+        let image = try raster()
+        let known = image.sample(latitude: -0.0045, longitude: 0.0045)
+        #expect(known.state == .limitedHeadroom)
+        #expect(known.lossDb == 120)
+        #expect(known.marginDb == 1)
+        for (latitude, longitude) in [(0.0045, 0.0045), (0.0, 0.0), (1.0, 1.0)] {
+            let unknown = image.sample(latitude: latitude, longitude: longitude)
+            #expect(unknown.lossDb == nil)
+            #expect(unknown.marginDb == nil)
+        }
+    }
+
     @Test func sharedGeographicCheckpoints() throws {
         struct Point: Decodable { let latitude, longitude: Double; let state: String }
         struct Fixture: Decodable { let latitude, longitude: Double; let points: [Point] }
@@ -36,7 +64,7 @@ struct CoverageRasterTests {
         for fixture in fixtures {
             let image = try raster(latitude: fixture.latitude, longitude: fixture.longitude)
             for point in fixture.points {
-                #expect(image.classification(latitude: point.latitude, longitude: point.longitude).rawValue == point.state)
+                #expect(image.classification(latitude: point.latitude, longitude: point.longitude).rawValue == (point.state == "aboveThreshold" ? "limitedHeadroom" : point.state))
             }
         }
     }
@@ -52,8 +80,8 @@ struct CoverageRasterTests {
         #expect(pixel(34, 224) == [0, 0, 0, 0])
         #expect(pixel(255, 0) == [0, 0, 0, 0])
         let southeast = try raster.tile(zoom: 14, x: 8192, y: 8192)
-        #expect(Array(southeast[(32 * 256 + 32) * 4..<(32 * 256 + 33) * 4]) == [0x26, 0xB8, 0x5A, 0xA0])
-        #expect(CoverageRaster.rgba(.belowThreshold, column: 0, row: 0) == 0)
+        #expect(Array(southeast[(32 * 256 + 32) * 4..<(32 * 256 + 33) * 4]) == [0xE8, 0xA3, 0x17, 0xA0])
+        #expect(CoverageRaster.rgba(.belowThreshold, column: 0, row: 0) == 0xD84A4A90)
         #expect(CoverageRaster.rgba(.unresolved, column: 256, row: 0) == CoverageRaster.rgba(.unresolved, column: 0, row: 0))
     }
 
@@ -85,6 +113,51 @@ struct CoverageRasterTests {
         case .success: Issue.record("Invalidated overlay returned data")
         case .failure(let error): #expect(error as? CoverageTileStoreFailure == .inactive)
         }
+    }
+
+    @Test func tileRedrawNotificationFollowsDataDeliveryOnMainThread() async throws {
+        let (events, continuation) = AsyncStream<String>.makeStream()
+        let overlay = try CoverageMapKitOverlay(raster: raster(), cacheBytes: 1024 * 1024,
+            tileReady: { zoom, x, y in
+                #expect(Thread.isMainThread)
+                #expect(zoom == 14 && x == 8192 && y == 8192)
+                continuation.yield("redraw")
+                continuation.finish()
+            })
+        overlay.loadTile(at: MKTileOverlayPath(x: 8192, y: 8192, z: 14, contentScaleFactor: 2)) { data, error in
+            #expect(Thread.isMainThread)
+            #expect(data != nil && error == nil)
+            continuation.yield("data")
+        }
+        var received: [String] = []
+        for await event in events { received.append(event) }
+        #expect(received == ["data", "redraw"])
+        overlay.invalidate()
+    }
+
+    @Test func initialTileBurstCompletesWithoutInteractionOrRetry() async throws {
+        let worker = DispatchQueue(label: "coverage-tile-burst-test")
+        let overlay = try CoverageMapKitOverlay(raster: raster(), cacheBytes: 1024 * 1024, worker: worker)
+        worker.suspend()
+        // Hold rendering until every request arrives to deterministically exceed the former 64-slot cap.
+        let results = AsyncStream<Result<Data, Error>> { continuation in
+            for _ in 0..<128 {
+                overlay.loadTile(at: MKTileOverlayPath(x: 8192, y: 8192, z: 14, contentScaleFactor: 2)) { data, error in
+                    if let error { continuation.yield(.failure(error)) }
+                    else if let data { continuation.yield(.success(data)) }
+                    else { continuation.yield(.failure(CoverageTilePNGFailure.encoding)) }
+                }
+            }
+            worker.resume()
+        }
+        var count = 0
+        for await result in results {
+            #expect(try result.get().count > 0)
+            count += 1
+            if count == 128 { break }
+        }
+        #expect(count == 128)
+        overlay.invalidate()
     }
 
     @Test func tinyTilesCannotGrowCacheEntryCountWithoutBound() throws {

@@ -33,7 +33,11 @@ enum CoverageRFConvergence {
         for spacing in [30.0, 10, 5, 2, 1] {
             try check()
             guard samples < sampleLimit, geometry < geometryLimit else { throw CoverageTerrainProfileFailure.workLimit }
-            let sampled = try profile(spacing, sampleLimit - samples, geometryLimit - geometry)
+            // FileHandle terrain reads can create autoreleased Foundation objects. Drain each
+            // refinement pass instead of retaining temporary reads for the entire study.
+            let sampled = try autoreleasepool {
+                try profile(spacing, sampleLimit - samples, geometryLimit - geometry)
+            }
             try check()
             let input = sampled.profile
             guard input.distancesMeters.count >= 2, input.distancesMeters.count == input.elevationsMeters.count,
@@ -54,7 +58,9 @@ enum CoverageRFConvergence {
             samples += input.terrainEvaluations
             geometry += sampled.geometryEvaluations
             try check()
-            let loss = try predictLoss(input)
+            // Kotlin/Native's Objective-C bridge also creates temporary objects. Only the
+            // scalar loss escapes this pool; do not retain bridged arrays across model calls.
+            let loss = try autoreleasepool { try predictLoss(input) }
             // A synchronous RF kernel cannot be interrupted here; discard its output if cancelled.
             try check()
             let margin = maximumLossDb - loss

@@ -258,8 +258,15 @@ Built on `feature/live-map-options` for both apps; merge to `main` once testers 
   Calculate now runs the production worker after explicit model-assumption acceptance, with phase
   progress, cancellation, actionable failures and stale-result removal. Coverage overlays, sample
   counts, legends, known-node predictions and model/terrain provenance are connected on both apps.
-  See the [beta test guide](docs/node-planner/coverage-beta-testing.md). Setups are not yet saved;
+  See the [beta test guide](docs/node-planner/coverage-beta-testing.md). iOS saves input setups to Saved Plans;
+  Android saving and result persistence remain pending;
   physical-device performance and broader rendering/layout checks remain.
+  iOS Estimated Coverage now uses Link Profile's layout: a full-screen map with a collapsing bottom
+  panel (side column on iPad/Duo), touch & hold placement with Undo and known-node snapping, and
+  presets after meshpeaks.com for region/modem (frequency, power, SF/BW-derived sensitivity), antenna
+  type and antenna height. Android keeps the previous form layout for now.
+  iOS Saved Plans now reopens both tools without automatic terrain/calculation, preserving legacy
+  sites through a backed-up version-2 migration and keeping saved coverage node snapshots offline.
 - **Release gate:** coverage integration and physical-device qualification remain incomplete.
   Do not ship the site library as a substitute for coverage or silently relax model fidelity.
 - **Candidate Sites progress:** merged the 0.10.2 baseline from `main`; development release

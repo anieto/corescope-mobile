@@ -21,6 +21,11 @@ struct CoverageNodeRun: Sendable {
     private let selected: Set<Key>
     private var evaluations: [Key: CoverageNodeEvaluation] = [:]
 
+    func evaluation(for node: CoverageNodeSnapshot) -> CoverageNodeEvaluation? {
+        guard catalog[Key(node)] == node else { return nil }
+        return evaluations[Key(node)]
+    }
+
     init(nodes: [CoverageNodeSnapshot], catalogComplete: Bool, evaluationLimit: Int, radiusMeters: Double) throws {
         // Defensive storage ceiling, not a qualified RF throughput target. Never silently drop catalog entries.
         guard (1...10_000).contains(evaluationLimit), radiusMeters.isFinite, radiusMeters > 0 else {

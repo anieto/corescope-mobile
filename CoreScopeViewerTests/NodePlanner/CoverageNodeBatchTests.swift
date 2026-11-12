@@ -5,7 +5,7 @@ import Testing
 struct CoverageNodeBatchTests {
     private let nodes = (1...2).map { CoverageNodeSnapshot(sourceID: "source", nodeID: String($0), latitude: 0, longitude: Double($0) * 0.01) }
     private func evaluate(terrain: Int = 100, geometry: Int = 100, models: Int = 100,
-                          cancelled: () -> Bool = { false },
+                          cancelled: () -> Bool = { false }, previous: CoverageNodeBatchResult? = nil,
                           profile: ((CoverageTerrainPath, Double, Int, Int) throws -> CoverageTerrainSampledPath)? = nil,
                           predict: (CoverageTerrainProfile) throws -> Double = { _ in 140 }) throws -> CoverageNodeBatchResult {
         let budget = try CoverageLinkBudget(transmitPowerDbm: 22, transmitGainDbi: 3, receiveGainDbi: 2,
@@ -13,7 +13,7 @@ struct CoverageNodeBatchTests {
         return try CoverageNodeBatch.evaluate(nodes: nodes, catalogComplete: true, evaluationLimit: 2,
             transmitter: CoverageTerrainCoordinate(latitude: 0, longitude: 0), radiusMeters: 5000,
             budget: budget, terrainLimit: terrain, geometryLimit: geometry, modelCallLimit: models,
-            cancelled: cancelled, profile: profile ?? { path, _, samples, geometry in
+            cancelled: cancelled, resuming: previous, profile: profile ?? { path, _, samples, geometry in
                 guard samples >= 2, geometry >= 1 else { throw CoverageTerrainProfileFailure.workLimit }
                 return CoverageTerrainSampledPath(profile: CoverageTerrainProfile(distancesMeters: [0, path.distanceMeters],
                     elevationsMeters: [0, 0], terrainEvaluations: 2, featureCount: 2), geometryEvaluations: 1)
@@ -34,6 +34,21 @@ struct CoverageNodeBatchTests {
         #expect(complete.chargedTerrainEvaluations == 12)
         #expect(complete.chargedGeometryEvaluations == 6)
         #expect(complete.run.status(for: nodes[1]).state == .inCoverage)
+    }
+
+    @Test func continuationOnlyEvaluatesUnfinishedNodes() throws {
+        let first = try evaluate(models: 3)
+        var calls = 0
+        let next = try evaluate(previous: first, predict: { _ in calls += 1; return 140 })
+        #expect(calls == 3)
+        #expect(next.run.status(for: nodes[0]).adjustedMarginDb == first.run.status(for: nodes[0]).adjustedMarginDb)
+        #expect(next.run.status(for: nodes[1]).state == .inCoverage)
+        #expect(next.run.id != first.run.id)
+        #expect(next.chargedTerrainEvaluations == 6)
+        #expect(first.run.status(for: nodes[1]).reason == .processingLimit)
+        #expect(throws: CoverageTerrainProfileFailure.cancelled) {
+            try evaluate(cancelled: { true }, previous: first)
+        }
     }
 
     @Test func failedProfilesConsumeReservationsAndCannotLoop() throws {

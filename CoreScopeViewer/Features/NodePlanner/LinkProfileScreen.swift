@@ -17,6 +17,12 @@ struct LinkProfileScreen: View {
     /// Shared with the live map: picking a style here changes both.
     @State private var mapDisplayStyle = MapDisplayStyle.persisted
 
+    init(savedStudy: SavedStudy? = nil) {
+        let model = LinkProfileModel()
+        if let savedStudy { model.restore(savedStudy) }
+        _model = State(initialValue: model)
+    }
+
     var body: some View {
         GeometryReader { geometry in
             Group {
@@ -40,7 +46,8 @@ struct LinkProfileScreen: View {
                         LinkProfileEditor(
                             model: model,
                             activeEndpoint: $endpointPicker,
-                            trailingPadding: 112,
+                            // The split extends beneath the side toolbar; restore its live inset for the editor.
+                            trailingPadding: 20 + geometry.safeAreaInsets.trailing,
                             usesCompactHeader: true,
                             topInset: 24
                         )
@@ -135,7 +142,8 @@ struct LinkProfileScreen: View {
 }
 
 /// Standard, Satellite or Hybrid, as on the live map.
-private struct LinkProfileMapStyleMenu: View {
+/// Shared with Estimated Coverage, which lays its map out the same way.
+struct LinkProfileMapStyleMenu: View {
     @Binding var style: MapDisplayStyle
     /// In the navigation bar the system draws the button's background.
     var inToolbar = false
@@ -167,7 +175,7 @@ private struct LinkProfileMapStyleMenu: View {
     }
 }
 
-private struct LinkProfileBackButton: View {
+struct LinkProfileBackButton: View {
     let action: () -> Void
 
     var body: some View {
@@ -714,7 +722,7 @@ struct LinkProfileMapLongPress: UIGestureRecognizerRepresentable {
 }
 
 /// Both endpoints as they were before a placement, move, removal or reset, for Undo.
-private struct LinkProfilePlacement {
+struct LinkProfilePlacement {
     struct Point {
         let coordinate: CLLocationCoordinate2D
         let name: String?
@@ -729,13 +737,13 @@ private struct LinkProfilePlacement {
 }
 
 /// The last change to the endpoints, offered back for a few seconds.
-private struct LinkProfileUndo: Identifiable {
+struct LinkProfileUndo: Identifiable {
     let id = UUID()
     let message: LocalizedStringResource
     let before: LinkProfilePlacement
 }
 
-private enum LinkProfileEndpoint: String, Identifiable {
+enum LinkProfileEndpoint: String, Identifiable {
     case pointA
     case pointB
 
@@ -755,7 +763,7 @@ private enum LinkProfileEndpoint: String, Identifiable {
 
 }
 
-private enum LinkProfileRadioPreset: String, CaseIterable, Identifiable {
+enum LinkProfileRadioPreset: String, CaseIterable, Identifiable {
     case unitedStatesNarrow
     case europeNarrow
     case custom
@@ -797,7 +805,62 @@ private enum LinkProfileRadioPreset: String, CaseIterable, Identifiable {
 
 @MainActor
 @Observable
-private final class LinkProfileModel {
+final class LinkProfileModel {
+    var savedStudy: SavedStudy?
+    var awaitsExplicitCalculation = false
+    var refractionK = 4.0 / 3.0
+    var sampleCount: Int?
+
+    func savedSnapshot() -> SavedStudy? {
+        guard let latitudeA, let longitudeA, let latitudeB, let longitudeB else { return nil }
+        let inputs = SavedLinkProfile(
+            pointA: SavedEndpoint(name: nameA, latitude: latitudeA, longitude: longitudeA,
+                antenna: SavedAntenna(heightMeters: heightA, gainDbi: gainADB, lossDb: lossADB)),
+            pointB: SavedEndpoint(name: nameB, latitude: latitudeB, longitude: longitudeB,
+                antenna: SavedAntenna(heightMeters: heightB, gainDbi: gainBDB, lossDb: lossBDB)),
+            frequencyMHz: frequencyMHz, transmitPowerDbm: transmitPowerDBm,
+            sensitivityDbm: receiverSensitivityDBm, refractionK: refractionK, sampleCount: sampleCount)
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        let study = SavedStudy(id: savedStudy?.id ?? UUID().uuidString.lowercased(),
+            name: savedStudy?.name ?? "Link Profile", createdAtMilliseconds: savedStudy?.createdAtMilliseconds ?? now,
+            updatedAtMilliseconds: now, kind: .linkProfile, linkProfile: inputs)
+        return (try? study.validate()) != nil ? study : nil
+    }
+
+    /// Assign values directly: placement helpers intentionally fetch elevation and analyze.
+    func restore(_ study: SavedStudy) {
+        guard (try? study.validate()) != nil, let inputs = study.linkProfile else { return }
+        analysisTask?.cancel()
+        elevationTaskA?.cancel()
+        elevationTaskB?.cancel()
+        savedStudy = study
+        awaitsExplicitCalculation = true
+        latitudeA = inputs.pointA.latitude
+        longitudeA = inputs.pointA.longitude
+        latitudeB = inputs.pointB.latitude
+        longitudeB = inputs.pointB.longitude
+        nameA = inputs.pointA.name
+        nameB = inputs.pointB.name
+        heightA = inputs.pointA.antenna.heightMeters
+        heightB = inputs.pointB.antenna.heightMeters
+        gainADB = inputs.pointA.antenna.gainDbi
+        gainBDB = inputs.pointB.antenna.gainDbi
+        lossADB = inputs.pointA.antenna.lossDb
+        lossBDB = inputs.pointB.antenna.lossDb
+        frequencyMHz = inputs.frequencyMHz
+        transmitPowerDBm = inputs.transmitPowerDbm
+        receiverSensitivityDBm = inputs.sensitivityDbm
+        refractionK = inputs.refractionK
+        sampleCount = inputs.sampleCount
+        radioPreset = .custom
+        result = nil
+        groundElevationA = nil
+        groundElevationB = nil
+        isAnalyzing = false
+        isLoadingElevationA = false
+        isLoadingElevationB = false
+    }
+
     var latitudeA: Double?
     var longitudeA: Double?
     var latitudeB: Double?
@@ -880,7 +943,7 @@ private final class LinkProfileModel {
         analysisTask?.cancel()
         result = nil
         errorMessage = nil
-        guard coordinateA != nil, coordinateB != nil else {
+        guard !awaitsExplicitCalculation, coordinateA != nil, coordinateB != nil else {
             isAnalyzing = false
             return
         }
@@ -894,6 +957,7 @@ private final class LinkProfileModel {
 
     /// Try Again after a failure: analyzes at once.
     func analyze() {
+        awaitsExplicitCalculation = false
         scheduleAnalysis(after: .zero)
     }
 
@@ -915,7 +979,7 @@ private final class LinkProfileModel {
                     heightAMeters: heightA,
                     heightBMeters: heightB,
                     frequencyMHz: frequencyMHz,
-                    refractionK: 4.0 / 3.0,
+                    refractionK: refractionK,
                     linkBudget: NodePlannerLinkBudget(
                         transmitPowerDBm: transmitPowerDBm,
                         gainADB: gainADB,
@@ -924,7 +988,7 @@ private final class LinkProfileModel {
                         lossBDB: lossBDB,
                         receiverSensitivityDBm: receiverSensitivityDBm
                     ),
-                    sampleCount: nil
+                    sampleCount: sampleCount
                 )
             )
             guard !Task.isCancelled else { return }
@@ -1049,6 +1113,7 @@ private final class LinkProfileModel {
     }
 
     private func scheduleElevationLookup(for endpoint: LinkProfileEndpoint) {
+        guard !awaitsExplicitCalculation else { return }
         let coordinate = endpoint == .pointA ? coordinateA : coordinateB
         guard let coordinate,
               let plannerCoordinate = try? NodePlannerCoordinate(
@@ -1164,6 +1229,9 @@ private struct LinkProfileHeader: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+            } else if model.awaitsExplicitCalculation {
+                Text("Saved inputs · No calculated result").font(.headline)
+                Button("Calculate") { model.analyze() }.buttonStyle(.borderedProminent)
             } else if let errorMessage = model.errorMessage {
                 Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.red)
@@ -1237,6 +1305,7 @@ private struct LinkProfileDetails: View {
         VStack(alignment: .leading, spacing: 12) {
             LinkProfilePointCard(model: model, endpoint: .pointA) { activeEndpoint = .pointA }
             LinkProfilePointCard(model: model, endpoint: .pointB) { activeEndpoint = .pointB }
+            SavedStudyActions(kind: .linkProfile, snapshot: model.savedSnapshot) { model.savedStudy = $0 }
             LinkProfileRadioSettings(model: model)
             if let result = model.result {
                 LinkProfileResultCard(result: result)
@@ -1331,7 +1400,7 @@ private struct LinkProfilePointCard: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .instrumentCard()
+        .instrumentCard(showsShadow: false)
     }
 
     @ViewBuilder
@@ -1450,7 +1519,7 @@ private struct LinkProfileRadioSettings: View {
             }
         }
         .padding()
-        .instrumentCard()
+        .instrumentCard(showsShadow: false)
     }
 
     @ViewBuilder
@@ -1561,7 +1630,7 @@ private struct LinkProfileResultCard: View {
                 .foregroundStyle(.secondary)
         }
         .padding()
-        .instrumentCard(fillOpacity: 1)
+        .instrumentCard(fillOpacity: 1, showsShadow: false)
         .background(Color(uiColor: .systemBackground), in: RoundedRectangle(cornerRadius: NodeScopeStyle.cornerRadius))
     }
 

@@ -1,12 +1,41 @@
 import Foundation
 
-/// Version 1 stores proposed sites and explicit assumptions only, never predicted results.
+/// Version 1 holds candidate sites; version 2 adds typed studies with optional coverage result snapshots.
 struct DeploymentPlanDocument: Codable, Equatable, Sendable {
     var schemaVersion: Int = 1
     var plans: [DeploymentPlan]
+    var studies: [SavedStudy] = []
+
+    init(schemaVersion: Int = 1, plans: [DeploymentPlan], studies: [SavedStudy] = []) {
+        self.schemaVersion = schemaVersion
+        self.plans = plans
+        self.studies = studies
+    }
+
+    private enum CodingKeys: String, CodingKey { case schemaVersion, plans, studies }
+
+    init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try values.decode(Int.self, forKey: .schemaVersion)
+        guard schemaVersion == 1 || schemaVersion == 2 else { throw DeploymentPlanError.unsupportedVersion }
+        plans = try values.decode([DeploymentPlan].self, forKey: .plans)
+        studies = schemaVersion == 2
+            ? try values.decode([SavedStudy].self, forKey: .studies)
+            : try values.decodeIfPresent([SavedStudy].self, forKey: .studies) ?? []
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(schemaVersion, forKey: .schemaVersion)
+        try values.encode(plans, forKey: .plans)
+        if schemaVersion == 2 { try values.encode(studies, forKey: .studies) }
+    }
 
     func validate() throws {
-        guard schemaVersion == 1 else { throw DeploymentPlanError.unsupportedVersion }
+        guard schemaVersion == 1 || schemaVersion == 2 else { throw DeploymentPlanError.unsupportedVersion }
+        guard (schemaVersion == 2 || studies.isEmpty), studies.count <= 100,
+              Set(studies.map(\.id)).count == studies.count else { throw DeploymentPlanError.invalidData }
+        try studies.forEach { try $0.validate() }
         guard plans.count <= 100, Set(plans.map(\.id)).count == plans.count else {
             throw DeploymentPlanError.invalidData
         }
@@ -79,7 +108,7 @@ enum DeploymentPlanError: Error, Equatable {
     case tooLarge
 }
 
-private enum PlanValidation {
+enum PlanValidation {
     static func id(_ value: String) -> Bool {
         guard let uuid = UUID(uuidString: value) else { return false }
         return uuid.uuidString.lowercased() == value
@@ -116,7 +145,7 @@ enum CandidateSiteInput {
 
 /// All disk boundaries must use this codec; synthesized Codable alone does not validate input.
 enum DeploymentPlanCodec {
-    static let maximumBytes = 4 * 1024 * 1024
+    static let maximumBytes = 32 * 1024 * 1024
 
     static func decode(_ data: Data) throws -> DeploymentPlanDocument {
         guard data.count <= maximumBytes else { throw DeploymentPlanError.tooLarge }

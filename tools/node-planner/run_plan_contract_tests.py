@@ -16,6 +16,8 @@ let package = Package(name: "PlanContract", platforms: [.macOS(.v13)], targets: 
 ])
 ''')
     for source, destination in [
+        ('CoreScopeViewer/Models/NodePlanner/SavedStudy.swift', 'Sources/CoreScopeViewer/SavedStudy.swift'),
+        ('CoreScopeViewerTests/NodePlanner/SavedStudyTests.swift', 'Tests/PlanContractTests/SavedStudyTests.swift'),
         ('CoreScopeViewer/Models/NodePlanner/DeploymentPlan.swift', 'Sources/CoreScopeViewer/DeploymentPlan.swift'),
         ('CoreScopeViewer/Networking/DeploymentPlanStore.swift', 'Sources/CoreScopeViewer/DeploymentPlanStore.swift'),
         ('CoreScopeViewerTests/NodePlanner/DeploymentPlanTests.swift', 'Tests/PlanContractTests/DeploymentPlanTests.swift'),

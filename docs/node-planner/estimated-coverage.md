@@ -1,6 +1,6 @@
 # Estimated Coverage — standalone tool and saved planning work
 
-Decision: 2026-11-02. Platforms: iOS and Android. Approved product direction; not yet implemented.
+Decision: 2026-11-02. Platforms: iOS and Android. Approved product direction; implementation progress is recorded below.
 This document supersedes the saved-sites-first release direction and conflicting navigation,
 persistence, and delivery-order language in earlier Node Planner plans. Existing RF/terrain
 validation requirements still apply. Parent: [Node Planner](plan.md).
@@ -52,7 +52,8 @@ available. Bound/paginate catalog work and disclose truncation; never claim all 
 
 | State | Marker | Meaning |
 |---|---|---|
-| Predicted in coverage | Green + check/status label | Valid exact-coordinate prediction with adjusted margin >= 0 dB under the displayed receiver assumptions |
+| Greater predicted headroom | Green + status label | Valid exact-coordinate prediction with adjusted margin > 10 dB under the displayed receiver assumptions |
+| Limited predicted headroom | Amber + status label | Valid exact-coordinate prediction with adjusted margin from 0 through 10 dB |
 | Predicted below threshold | Red + cross/status label | Valid exact-coordinate prediction with adjusted margin < 0 dB |
 | Unknown | Neutral + question mark | Missing terrain, unsupported model path, unresolved computation, or required assumptions absent |
 | Not evaluated | Neutral + distinct label | Before calculation, beyond the study radius, new/changed node since the snapshot, or excluded by a disclosed processing cap |
@@ -63,8 +64,10 @@ light/dark readable markers distinct from selection, node type and observed-netw
 Use clustering that preserves status counts; do not color a mixed cluster as a single green node.
 
 RX = TX power + TX gain + RX gain − TX loss − RX loss − modeled path loss.
-Adjusted margin = RX − receiver sensitivity − optional planning reserve. Zero is included in
-green; classify unrounded values. These are threshold predictions, not reliability probabilities.
+Adjusted margin = RX − receiver sensitivity − optional planning reserve. Zero through 10 dB is
+amber, above 10 dB is green; classify unrounded values. These are planning bands, not calibrated
+reliability probabilities or proof of a working return link. Implemented on iOS; Android parity
+still requires validation.
 Red means below threshold within the evaluated area, not proof that a node is unreachable.
 A node outside the analysis radius is not evaluated and must not become red simply because the
 map overlay ends there. Similarly, transparent missing data is not below-threshold coverage.
@@ -307,3 +310,12 @@ Execution tokens now guard publication on both platforms. Superseded, cancelled 
 results are rejected; input changes retain published work only as explicitly stale. This controller
 still needs screen/view-model wiring, separate worker cancellation and input-change observation.
 It does not yet create a visible coverage map.
+
+### Saved Plans integration — 2026-11-11
+
+iOS now saves and reopens typed input snapshots from both tools using the existing library.
+Version-1 data is migrated only on an explicit study save, with a byte-for-byte backup before atomic
+replacement. Opening Link Profile suspends its automatic analysis until Calculate; coverage keeps
+saved node coordinates until explicitly refreshed. No results are cached or implied. Shared version-2
+fixtures and migration/restoration tests are in place; Android adoption and device qualification remain.
+See [the validation and recovery notes](coverage-beta-testing.md#saved-plans-follow-up--2026-11-11).

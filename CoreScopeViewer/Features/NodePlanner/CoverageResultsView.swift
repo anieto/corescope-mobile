@@ -24,7 +24,10 @@ extension CoverageNodeStatus {
         default: break
         }
         switch state {
-        case .inCoverage: return String(localized: "Predicted above threshold")
+        case .inCoverage:
+            return (adjustedMarginDb ?? 0) <= 10
+                ? String(localized: "Predicted above threshold — limited headroom")
+                : String(localized: "Predicted above threshold — greater headroom")
         case .belowThreshold: return String(localized: "Predicted below threshold")
         case .unknown: return String(localized: "Unknown")
         case .stale: return String(localized: "Changed — calculate again")
@@ -33,17 +36,30 @@ extension CoverageNodeStatus {
     }
 }
 
+extension CoverageStudyResult {
+    /// Map samples predicted above and below the threshold, and those left unresolved.
+    var sampleCounts: (above: Int, below: Int, unresolved: Int) {
+        let qualified = area.cells.filter { $0.state == .qualified }
+        let above = qualified.filter { ($0.marginDb ?? -.infinity) >= 0 }.count
+        let unresolved = area.cells.filter { ![.qualified, .nearSite, .outsideRadius].contains($0.state) }.count
+        return (above, qualified.count - above, unresolved)
+    }
+}
+
 struct CoverageResultsView: View {
     let result: CoverageStudyResult
     var body: some View {
-        let qualified = result.area.cells.filter { $0.state == .qualified }
-        let above = qualified.filter { ($0.marginDb ?? -.infinity) >= 0 }.count
-        let unresolved = result.area.cells.filter { ![.qualified, .nearSite, .outsideRadius].contains($0.state) }.count
+        let counts = result.sampleCounts
         VStack(alignment: .leading, spacing: 8) {
             Text("Estimated result").font(.monaspace(.headline))
-            Text("\(above) above threshold · \(qualified.count - above) below · \(unresolved) unresolved samples")
+            Text("\(counts.above) above threshold · \(counts.below) below · \(counts.unresolved) unresolved samples")
                 .font(.monaspace(.caption))
-            Text("Green: predicted above threshold. Clear within the study radius: below threshold. Gray hatching: unresolved or within the unsupported 250 m near-site area. Outside the radius is not analyzed.")
+            if result.area.workLimited {
+                Text("Calculation limits left some paths unresolved. Continue can calculate pending samples in another batch. Paths that reach their individual limit may need a smaller radius or wider sample spacing. Unresolved cells are not predictions of poor reception.")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+            Text("Predicted margin after reserve: red below 0 dB; amber 0–10 dB; green above 10 dB. Gray hatching means no prediction, including the unsupported 250 m near-site area. Outside the study is unshaded. Green does not establish reachability or a working return link.")
                 .font(.caption)
             Text("This is a sampled estimate, not measured reception or a guarantee. Gaps and work-limited areas remain unknown. The nearest 200 available nodes use the same assumed receiver; the catalog is incomplete.")
                 .font(.caption).foregroundStyle(.secondary)

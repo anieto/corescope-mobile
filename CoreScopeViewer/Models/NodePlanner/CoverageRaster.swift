@@ -2,7 +2,20 @@ import Foundation
 
 enum CoverageRasterFailure: Error, Equatable { case invalidResult, invalidTile, cancelled }
 enum CoverageRasterClass: String, Sendable {
-    case outsideAnalysis, unsupportedNearSite, unresolved, belowThreshold, aboveThreshold
+    case outsideAnalysis, unsupportedNearSite, unresolved, belowThreshold, limitedHeadroom, aboveThreshold
+
+    /// These are display bands, not probabilities of packet delivery. Classify before rounding.
+    static func margin(_ value: Double) -> Self {
+        guard value.isFinite else { return .unresolved }
+        if value < 0 { return .belowThreshold }
+        return value <= 10 ? .limitedHeadroom : .aboveThreshold
+    }
+}
+
+struct CoverageRasterSample: Sendable {
+    let state: CoverageRasterClass
+    var lossDb: Double? = nil
+    var marginDb: Double? = nil
 }
 
 /// Immutable nearest-sample rasterization in Web Mercator. It does not interpolate RF evidence.
@@ -29,39 +42,46 @@ struct CoverageRaster: Sendable {
     }
 
     func classification(latitude: Double, longitude: Double) -> CoverageRasterClass {
+        sample(latitude: latitude, longitude: longitude).state
+    }
+
+    /// Inspection reports the nearby grid sample, never an exact-coordinate prediction.
+    func sample(latitude: Double, longitude: Double) -> CoverageRasterSample {
         guard latitude.isFinite, longitude.isFinite, (-85...85).contains(latitude),
-              (-180...180).contains(longitude) else { return .outsideAnalysis }
+              (-180...180).contains(longitude) else { return .init(state: .outsideAnalysis) }
         let radians = Double.pi / 180
         let phi = transmitter.latitude * radians, target = latitude * radians
         let delta = (longitude - transmitter.longitude) * radians
         let h = pow(sin((target - phi) / 2), 2) + cos(phi) * cos(target) * pow(sin(delta / 2), 2)
         let distance = 2 * asin(sqrt(min(1, max(0, h)))) * CoverageTerrainFootprint.earthRadiusMeters
-        guard distance <= Double(grid.radiusMeters) else { return .outsideAnalysis }
-        if distance < 250 { return .unsupportedNearSite }
+        guard distance <= Double(grid.radiusMeters) else { return .init(state: .outsideAnalysis) }
+        if distance < 250 { return .init(state: .unsupportedNearSite) }
         let bearing = atan2(sin(delta) * cos(target),
                             cos(phi) * sin(target) - sin(phi) * cos(target) * cos(delta))
         let east = distance * sin(bearing), north = distance * cos(bearing)
         let column = Int(floor((east - Double(grid.minEastMeters)) / Double(grid.spacingMeters) + 0.5))
         let row = Int(floor((Double(grid.maxNorthMeters) - north) / Double(grid.spacingMeters) + 0.5))
-        guard (0..<grid.columns).contains(column), (0..<grid.rows).contains(row) else { return .outsideAnalysis }
+        guard (0..<grid.columns).contains(column), (0..<grid.rows).contains(row) else { return .init(state: .unresolved) }
         let cell = cells[row * grid.columns + column]
         switch cell.state {
         // The pixel is inside the radius, but its nearest sample may be outside it.
         // No prediction exists there; transparency would imply a below-threshold result.
-        case .outsideRadius: return .unresolved
-        case .nearSite: return .unsupportedNearSite
-        case .qualified: return (cell.marginDb ?? -.infinity) >= 0 ? .aboveThreshold : .belowThreshold
-        default: return .unresolved
+        case .outsideRadius: return .init(state: .unresolved)
+        case .nearSite: return .init(state: .unsupportedNearSite)
+        case .qualified: return .init(state: .margin(cell.marginDb ?? .nan), lossDb: cell.lossDb, marginDb: cell.marginDb)
+        default: return .init(state: .unresolved)
         }
     }
 
-    /// Transparent pixels are either outside analysis or qualified below threshold; unknowns hatch gray.
-    /// A legend must explain those distinctions. This palette does not imply signal-strength precision.
+    /// Only outside-analysis pixels are entirely clear. Unknowns hatch gray; qualified samples
+    /// show adjusted-margin bands without implying measurement precision or a working return link.
     static func rgba(_ state: CoverageRasterClass, column: Int, row: Int) -> UInt32 {
         switch state {
         case .aboveThreshold: return 0x26B85AA0
+        case .limitedHeadroom: return 0xE8A317A0
+        case .belowThreshold: return 0xD84A4A90
         case .unresolved, .unsupportedNearSite: return (column + row) % 8 < 2 ? 0x66666690 : 0x00000000
-        case .outsideAnalysis, .belowThreshold: return 0x00000000
+        case .outsideAnalysis: return 0x00000000
         }
     }
 

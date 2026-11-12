@@ -19,6 +19,7 @@ let package = Package(name: "CoverageTerrain", platforms: [.macOS(.v14)], target
 ])
 '''.replace('FRAMEWORK_PATH', str(framework)))
     sources = [
+        ('CoreScopeViewer/Models/NodePlanner/CoverageRunDiagnostics.swift', 'Sources/CoreScopeViewer/CoverageRunDiagnostics.swift'),
         ('CoreScopeViewer/Models/NodePlanner/CoverageRFKernel.swift', 'Sources/CoreScopeViewer/CoverageRFKernel.swift'),
         ('CoreScopeViewerTests/NodePlanner/CoverageSkadiProviderTests.swift', 'Tests/CoverageTerrainTests/CoverageSkadiProviderTests.swift'),
         ('CoreScopeViewer/Networking/CoverageSkadiProvider.swift', 'Sources/CoreScopeViewer/CoverageSkadiProvider.swift'),
@@ -75,6 +76,35 @@ let package = Package(name: "CoverageTerrain", platforms: [.macOS(.v14)], target
         ('CoreScopeViewer/Models/NodePlanner/CoverageTerrainMosaic.swift', 'Sources/CoreScopeViewer/CoverageTerrainMosaic.swift'),
         ('CoreScopeViewerTests/NodePlanner/CoverageTerrainMosaicTests.swift', 'Tests/CoverageTerrainTests/CoverageTerrainMosaicTests.swift'),
     ]
+    # Compile the production editor models on the host without iOS-only view bodies.
+    # Slice at explicit declarations; a missing boundary fails instead of testing a stub.
+    model_sources = [
+        ('CoverageMapHost.swift', 'struct CoverageMapLayer {', 'struct CoverageMapHost:'),
+        ('EstimatedCoverageScreen.swift', 'struct CoverageUndo:', 'private struct EstimatedCoverageCompactWorkspace:'),
+        ('LinkProfileScreen.swift', 'struct LinkProfilePlacement {', 'private struct LinkProfileHeader:'),
+    ]
+    model_directory = work/'Sources/CoreScopeViewer'
+    model_directory.mkdir(parents=True, exist_ok=True)
+    for filename, start, end in model_sources:
+        content = (root/'CoreScopeViewer/Features/NodePlanner'/filename).read_text()
+        body = content[content.index(start):content.index(end)]
+        (model_directory/filename).write_text('import SwiftUI\nimport MapKit\nimport Observation\n' + body)
+    node = (root/'CoreScopeViewer/Models/Node.swift').read_text().split('struct NodesResponse:')[0]
+    (model_directory/'Node.swift').write_text(node)
+    for source in [
+        'CoreScopeViewer/Features/Shared/DistanceFormat.swift',
+        'CoreScopeViewer/Models/FieldGeometry.swift',
+        'CoreScopeViewer/Models/NodePlanner/CoverageRadioPresets.swift',
+        'CoreScopeViewer/Models/NodePlanner/DeploymentPlan.swift',
+        'CoreScopeViewer/Models/NodePlanner/SavedStudy.swift',
+        'CoreScopeViewer/Models/NodePlanner/NodePlannerRFEngine.swift',
+        'CoreScopeViewer/Models/NodePlanner/NodePlannerLinkAnalyzer.swift',
+        'CoreScopeViewer/Networking/NodePlannerElevationProvider.swift',
+        'CoreScopeViewer/Networking/NodePlannerElevationCache.swift',
+    ]:
+        sources.append((source, 'Sources/CoreScopeViewer/' + Path(source).name))
+    for filename in ['CoverageRadioPresetsTests.swift', 'SavedStudyRestorationTests.swift']:
+        sources.append(('CoreScopeViewerTests/NodePlanner/' + filename, 'Tests/CoverageTerrainTests/' + filename))
     for source, destination in sources:
         target = work/destination
         target.parent.mkdir(parents=True, exist_ok=True)

@@ -1,0 +1,1512 @@
+[
+  {
+    "name": "both_studies_and_legacy_sites",
+    "valid": true,
+    "document": {
+      "schemaVersion": 2,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge \u2013 Caf\u00e9",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {}
+            }
+          ]
+        }
+      ],
+      "studies": [
+        {
+          "id": "00000001-1111-4111-8111-111111111111",
+          "name": "linkProfile",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "linkProfile",
+          "linkProfile": {
+            "pointA": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "pointB": {
+              "latitude": 50.51,
+              "longitude": -115.51,
+              "antenna": {
+                "heightMeters": 1.5,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -128,
+            "refractionK": 1.3333333333333333
+          }
+        },
+        {
+          "id": "00000002-1111-4111-8111-111111111111",
+          "name": "coverage",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "coverage",
+          "coverage": {
+            "transmitter": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "receiver": {
+              "heightMeters": 1.5,
+              "gainDbi": 2.15,
+              "lossDb": 1
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -127.5,
+            "reserveDb": 10,
+            "radiusMeters": 16093,
+            "spacingMeters": 1000,
+            "catalogComplete": false,
+            "nodes": [
+              {
+                "sourceID": "source-a",
+                "nodeID": "node-1",
+                "name": "Old node name",
+                "role": "repeater",
+                "latitude": 50.52,
+                "longitude": -115.53,
+                "lastSeenMilliseconds": 1700000000000
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "empty_library",
+    "valid": true,
+    "document": {
+      "schemaVersion": 2,
+      "plans": [],
+      "studies": []
+    }
+  },
+  {
+    "name": "unknown_version",
+    "valid": false,
+    "document": {
+      "schemaVersion": 3,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge \u2013 Caf\u00e9",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {}
+            }
+          ]
+        }
+      ],
+      "studies": [
+        {
+          "id": "00000001-1111-4111-8111-111111111111",
+          "name": "linkProfile",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "linkProfile",
+          "linkProfile": {
+            "pointA": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "pointB": {
+              "latitude": 50.51,
+              "longitude": -115.51,
+              "antenna": {
+                "heightMeters": 1.5,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -128,
+            "refractionK": 1.3333333333333333
+          }
+        },
+        {
+          "id": "00000002-1111-4111-8111-111111111111",
+          "name": "coverage",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "coverage",
+          "coverage": {
+            "transmitter": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "receiver": {
+              "heightMeters": 1.5,
+              "gainDbi": 2.15,
+              "lossDb": 1
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -127.5,
+            "reserveDb": 10,
+            "radiusMeters": 16093,
+            "spacingMeters": 1000,
+            "catalogComplete": false,
+            "nodes": [
+              {
+                "sourceID": "source-a",
+                "nodeID": "node-1",
+                "name": "Old node name",
+                "role": "repeater",
+                "latitude": 50.52,
+                "longitude": -115.53,
+                "lastSeenMilliseconds": 1700000000000
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "missing_studies",
+    "valid": false,
+    "document": {
+      "schemaVersion": 2,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge \u2013 Caf\u00e9",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {}
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "wrong_kind",
+    "valid": false,
+    "document": {
+      "schemaVersion": 2,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge \u2013 Caf\u00e9",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {}
+            }
+          ]
+        }
+      ],
+      "studies": [
+        {
+          "id": "00000001-1111-4111-8111-111111111111",
+          "name": "linkProfile",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "coverage",
+          "linkProfile": {
+            "pointA": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "pointB": {
+              "latitude": 50.51,
+              "longitude": -115.51,
+              "antenna": {
+                "heightMeters": 1.5,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -128,
+            "refractionK": 1.3333333333333333
+          }
+        },
+        {
+          "id": "00000002-1111-4111-8111-111111111111",
+          "name": "coverage",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "coverage",
+          "coverage": {
+            "transmitter": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "receiver": {
+              "heightMeters": 1.5,
+              "gainDbi": 2.15,
+              "lossDb": 1
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -127.5,
+            "reserveDb": 10,
+            "radiusMeters": 16093,
+            "spacingMeters": 1000,
+            "catalogComplete": false,
+            "nodes": [
+              {
+                "sourceID": "source-a",
+                "nodeID": "node-1",
+                "name": "Old node name",
+                "role": "repeater",
+                "latitude": 50.52,
+                "longitude": -115.53,
+                "lastSeenMilliseconds": 1700000000000
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "both_payloads",
+    "valid": false,
+    "document": {
+      "schemaVersion": 2,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge \u2013 Caf\u00e9",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {}
+            }
+          ]
+        }
+      ],
+      "studies": [
+        {
+          "id": "00000001-1111-4111-8111-111111111111",
+          "name": "linkProfile",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "linkProfile",
+          "linkProfile": {
+            "pointA": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "pointB": {
+              "latitude": 50.51,
+              "longitude": -115.51,
+              "antenna": {
+                "heightMeters": 1.5,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -128,
+            "refractionK": 1.3333333333333333
+          },
+          "coverage": {
+            "transmitter": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "receiver": {
+              "heightMeters": 1.5,
+              "gainDbi": 2.15,
+              "lossDb": 1
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -127.5,
+            "reserveDb": 10,
+            "radiusMeters": 16093,
+            "spacingMeters": 1000,
+            "catalogComplete": false,
+            "nodes": [
+              {
+                "sourceID": "source-a",
+                "nodeID": "node-1",
+                "name": "Old node name",
+                "role": "repeater",
+                "latitude": 50.52,
+                "longitude": -115.53,
+                "lastSeenMilliseconds": 1700000000000
+              }
+            ]
+          }
+        },
+        {
+          "id": "00000002-1111-4111-8111-111111111111",
+          "name": "coverage",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "coverage",
+          "coverage": {
+            "transmitter": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "receiver": {
+              "heightMeters": 1.5,
+              "gainDbi": 2.15,
+              "lossDb": 1
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -127.5,
+            "reserveDb": 10,
+            "radiusMeters": 16093,
+            "spacingMeters": 1000,
+            "catalogComplete": false,
+            "nodes": [
+              {
+                "sourceID": "source-a",
+                "nodeID": "node-1",
+                "name": "Old node name",
+                "role": "repeater",
+                "latitude": 50.52,
+                "longitude": -115.53,
+                "lastSeenMilliseconds": 1700000000000
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "duplicate_study",
+    "valid": false,
+    "document": {
+      "schemaVersion": 2,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge \u2013 Caf\u00e9",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {}
+            }
+          ]
+        }
+      ],
+      "studies": [
+        {
+          "id": "00000001-1111-4111-8111-111111111111",
+          "name": "linkProfile",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "linkProfile",
+          "linkProfile": {
+            "pointA": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "pointB": {
+              "latitude": 50.51,
+              "longitude": -115.51,
+              "antenna": {
+                "heightMeters": 1.5,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -128,
+            "refractionK": 1.3333333333333333
+          }
+        },
+        {
+          "id": "00000002-1111-4111-8111-111111111111",
+          "name": "coverage",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "coverage",
+          "coverage": {
+            "transmitter": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "receiver": {
+              "heightMeters": 1.5,
+              "gainDbi": 2.15,
+              "lossDb": 1
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -127.5,
+            "reserveDb": 10,
+            "radiusMeters": 16093,
+            "spacingMeters": 1000,
+            "catalogComplete": false,
+            "nodes": [
+              {
+                "sourceID": "source-a",
+                "nodeID": "node-1",
+                "name": "Old node name",
+                "role": "repeater",
+                "latitude": 50.52,
+                "longitude": -115.53,
+                "lastSeenMilliseconds": 1700000000000
+              }
+            ]
+          }
+        },
+        {
+          "id": "00000001-1111-4111-8111-111111111111",
+          "name": "linkProfile",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "linkProfile",
+          "linkProfile": {
+            "pointA": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "pointB": {
+              "latitude": 50.51,
+              "longitude": -115.51,
+              "antenna": {
+                "heightMeters": 1.5,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -128,
+            "refractionK": 1.3333333333333333
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "duplicate_node",
+    "valid": false,
+    "document": {
+      "schemaVersion": 2,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge \u2013 Caf\u00e9",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {}
+            }
+          ]
+        }
+      ],
+      "studies": [
+        {
+          "id": "00000001-1111-4111-8111-111111111111",
+          "name": "linkProfile",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "linkProfile",
+          "linkProfile": {
+            "pointA": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "pointB": {
+              "latitude": 50.51,
+              "longitude": -115.51,
+              "antenna": {
+                "heightMeters": 1.5,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -128,
+            "refractionK": 1.3333333333333333
+          }
+        },
+        {
+          "id": "00000002-1111-4111-8111-111111111111",
+          "name": "coverage",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "coverage",
+          "coverage": {
+            "transmitter": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "receiver": {
+              "heightMeters": 1.5,
+              "gainDbi": 2.15,
+              "lossDb": 1
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -127.5,
+            "reserveDb": 10,
+            "radiusMeters": 16093,
+            "spacingMeters": 1000,
+            "catalogComplete": false,
+            "nodes": [
+              {
+                "sourceID": "source-a",
+                "nodeID": "node-1",
+                "name": "Old node name",
+                "role": "repeater",
+                "latitude": 50.52,
+                "longitude": -115.53,
+                "lastSeenMilliseconds": 1700000000000
+              },
+              {
+                "sourceID": "source-a",
+                "nodeID": "node-1",
+                "name": "Old node name",
+                "role": "repeater",
+                "latitude": 50.52,
+                "longitude": -115.53,
+                "lastSeenMilliseconds": 1700000000000
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "invalid_radius",
+    "valid": false,
+    "document": {
+      "schemaVersion": 2,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge \u2013 Caf\u00e9",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {}
+            }
+          ]
+        }
+      ],
+      "studies": [
+        {
+          "id": "00000001-1111-4111-8111-111111111111",
+          "name": "linkProfile",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "linkProfile",
+          "linkProfile": {
+            "pointA": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "pointB": {
+              "latitude": 50.51,
+              "longitude": -115.51,
+              "antenna": {
+                "heightMeters": 1.5,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -128,
+            "refractionK": 1.3333333333333333
+          }
+        },
+        {
+          "id": "00000002-1111-4111-8111-111111111111",
+          "name": "coverage",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "coverage",
+          "coverage": {
+            "transmitter": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "receiver": {
+              "heightMeters": 1.5,
+              "gainDbi": 2.15,
+              "lossDb": 1
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -127.5,
+            "reserveDb": 10,
+            "radiusMeters": -1,
+            "spacingMeters": 1000,
+            "catalogComplete": false,
+            "nodes": [
+              {
+                "sourceID": "source-a",
+                "nodeID": "node-1",
+                "name": "Old node name",
+                "role": "repeater",
+                "latitude": 50.52,
+                "longitude": -115.53,
+                "lastSeenMilliseconds": 1700000000000
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "invalid_spacing",
+    "valid": false,
+    "document": {
+      "schemaVersion": 2,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge \u2013 Caf\u00e9",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {}
+            }
+          ]
+        }
+      ],
+      "studies": [
+        {
+          "id": "00000001-1111-4111-8111-111111111111",
+          "name": "linkProfile",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "linkProfile",
+          "linkProfile": {
+            "pointA": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "pointB": {
+              "latitude": 50.51,
+              "longitude": -115.51,
+              "antenna": {
+                "heightMeters": 1.5,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -128,
+            "refractionK": 1.3333333333333333
+          }
+        },
+        {
+          "id": "00000002-1111-4111-8111-111111111111",
+          "name": "coverage",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "coverage",
+          "coverage": {
+            "transmitter": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "receiver": {
+              "heightMeters": 1.5,
+              "gainDbi": 2.15,
+              "lossDb": 1
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -127.5,
+            "reserveDb": 10,
+            "radiusMeters": 16093,
+            "spacingMeters": 0,
+            "catalogComplete": false,
+            "nodes": [
+              {
+                "sourceID": "source-a",
+                "nodeID": "node-1",
+                "name": "Old node name",
+                "role": "repeater",
+                "latitude": 50.52,
+                "longitude": -115.53,
+                "lastSeenMilliseconds": 1700000000000
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "missing_receiver",
+    "valid": false,
+    "document": {
+      "schemaVersion": 2,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge \u2013 Caf\u00e9",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {}
+            }
+          ]
+        }
+      ],
+      "studies": [
+        {
+          "id": "00000001-1111-4111-8111-111111111111",
+          "name": "linkProfile",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "linkProfile",
+          "linkProfile": {
+            "pointA": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "pointB": {
+              "latitude": 50.51,
+              "longitude": -115.51,
+              "antenna": {
+                "heightMeters": 1.5,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -128,
+            "refractionK": 1.3333333333333333
+          }
+        },
+        {
+          "id": "00000002-1111-4111-8111-111111111111",
+          "name": "coverage",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "coverage",
+          "coverage": {
+            "transmitter": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -127.5,
+            "reserveDb": 10,
+            "radiusMeters": 16093,
+            "spacingMeters": 1000,
+            "catalogComplete": false,
+            "nodes": [
+              {
+                "sourceID": "source-a",
+                "nodeID": "node-1",
+                "name": "Old node name",
+                "role": "repeater",
+                "latitude": 50.52,
+                "longitude": -115.53,
+                "lastSeenMilliseconds": 1700000000000
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "missing_endpoint",
+    "valid": false,
+    "document": {
+      "schemaVersion": 2,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge \u2013 Caf\u00e9",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {}
+            }
+          ]
+        }
+      ],
+      "studies": [
+        {
+          "id": "00000001-1111-4111-8111-111111111111",
+          "name": "linkProfile",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "linkProfile",
+          "linkProfile": {
+            "pointA": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -128,
+            "refractionK": 1.3333333333333333
+          }
+        },
+        {
+          "id": "00000002-1111-4111-8111-111111111111",
+          "name": "coverage",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "coverage",
+          "coverage": {
+            "transmitter": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "receiver": {
+              "heightMeters": 1.5,
+              "gainDbi": 2.15,
+              "lossDb": 1
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -127.5,
+            "reserveDb": 10,
+            "radiusMeters": 16093,
+            "spacingMeters": 1000,
+            "catalogComplete": false,
+            "nodes": [
+              {
+                "sourceID": "source-a",
+                "nodeID": "node-1",
+                "name": "Old node name",
+                "role": "repeater",
+                "latitude": 50.52,
+                "longitude": -115.53,
+                "lastSeenMilliseconds": 1700000000000
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "negative_loss",
+    "valid": false,
+    "document": {
+      "schemaVersion": 2,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge \u2013 Caf\u00e9",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {}
+            }
+          ]
+        }
+      ],
+      "studies": [
+        {
+          "id": "00000001-1111-4111-8111-111111111111",
+          "name": "linkProfile",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "linkProfile",
+          "linkProfile": {
+            "pointA": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "pointB": {
+              "latitude": 50.51,
+              "longitude": -115.51,
+              "antenna": {
+                "heightMeters": 1.5,
+                "gainDbi": 2.15,
+                "lossDb": -1
+              }
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -128,
+            "refractionK": 1.3333333333333333
+          }
+        },
+        {
+          "id": "00000002-1111-4111-8111-111111111111",
+          "name": "coverage",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "coverage",
+          "coverage": {
+            "transmitter": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "receiver": {
+              "heightMeters": 1.5,
+              "gainDbi": 2.15,
+              "lossDb": 1
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -127.5,
+            "reserveDb": 10,
+            "radiusMeters": 16093,
+            "spacingMeters": 1000,
+            "catalogComplete": false,
+            "nodes": [
+              {
+                "sourceID": "source-a",
+                "nodeID": "node-1",
+                "name": "Old node name",
+                "role": "repeater",
+                "latitude": 50.52,
+                "longitude": -115.53,
+                "lastSeenMilliseconds": 1700000000000
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "bad_coordinate",
+    "valid": false,
+    "document": {
+      "schemaVersion": 2,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge \u2013 Caf\u00e9",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {}
+            }
+          ]
+        }
+      ],
+      "studies": [
+        {
+          "id": "00000001-1111-4111-8111-111111111111",
+          "name": "linkProfile",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "linkProfile",
+          "linkProfile": {
+            "pointA": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "pointB": {
+              "latitude": 91,
+              "longitude": -115.51,
+              "antenna": {
+                "heightMeters": 1.5,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -128,
+            "refractionK": 1.3333333333333333
+          }
+        },
+        {
+          "id": "00000002-1111-4111-8111-111111111111",
+          "name": "coverage",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "coverage",
+          "coverage": {
+            "transmitter": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "receiver": {
+              "heightMeters": 1.5,
+              "gainDbi": 2.15,
+              "lossDb": 1
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -127.5,
+            "reserveDb": 10,
+            "radiusMeters": 16093,
+            "spacingMeters": 1000,
+            "catalogComplete": false,
+            "nodes": [
+              {
+                "sourceID": "source-a",
+                "nodeID": "node-1",
+                "name": "Old node name",
+                "role": "repeater",
+                "latitude": 50.52,
+                "longitude": -115.53,
+                "lastSeenMilliseconds": 1700000000000
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "invalid_date",
+    "valid": false,
+    "document": {
+      "schemaVersion": 2,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge \u2013 Caf\u00e9",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {}
+            }
+          ]
+        }
+      ],
+      "studies": [
+        {
+          "id": "00000001-1111-4111-8111-111111111111",
+          "name": "linkProfile",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "linkProfile",
+          "linkProfile": {
+            "pointA": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "pointB": {
+              "latitude": 50.51,
+              "longitude": -115.51,
+              "antenna": {
+                "heightMeters": 1.5,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -128,
+            "refractionK": 1.3333333333333333
+          }
+        },
+        {
+          "id": "00000002-1111-4111-8111-111111111111",
+          "name": "coverage",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "coverage",
+          "coverage": {
+            "transmitter": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "receiver": {
+              "heightMeters": 1.5,
+              "gainDbi": 2.15,
+              "lossDb": 1
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -127.5,
+            "reserveDb": 10,
+            "radiusMeters": 16093,
+            "spacingMeters": 1000,
+            "catalogComplete": false,
+            "nodes": [
+              {
+                "sourceID": "source-a",
+                "nodeID": "node-1",
+                "name": "Old node name",
+                "role": "repeater",
+                "latitude": 50.52,
+                "longitude": -115.53,
+                "lastSeenMilliseconds": -1
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "v1_cannot_hide_studies",
+    "valid": false,
+    "document": {
+      "schemaVersion": 1,
+      "plans": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "West-side options",
+          "createdAtMilliseconds": 1793448000000,
+          "updatedAtMilliseconds": 1793448000000,
+          "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+          "sites": [
+            {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Ridge \u2013 Caf\u00e9",
+              "latitude": 29.43212,
+              "longitude": -98.61774,
+              "assumptions": {}
+            }
+          ]
+        }
+      ],
+      "studies": [
+        {
+          "id": "00000001-1111-4111-8111-111111111111",
+          "name": "linkProfile",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "linkProfile",
+          "linkProfile": {
+            "pointA": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "pointB": {
+              "latitude": 50.51,
+              "longitude": -115.51,
+              "antenna": {
+                "heightMeters": 1.5,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -128,
+            "refractionK": 1.3333333333333333
+          }
+        },
+        {
+          "id": "00000002-1111-4111-8111-111111111111",
+          "name": "coverage",
+          "createdAtMilliseconds": 1700000000000,
+          "updatedAtMilliseconds": 1700000001000,
+          "kind": "coverage",
+          "coverage": {
+            "transmitter": {
+              "name": "Ridge",
+              "latitude": 50.5,
+              "longitude": -115.5,
+              "antenna": {
+                "heightMeters": 6.096,
+                "gainDbi": 2.15,
+                "lossDb": 1
+              }
+            },
+            "receiver": {
+              "heightMeters": 1.5,
+              "gainDbi": 2.15,
+              "lossDb": 1
+            },
+            "frequencyMHz": 910.525,
+            "transmitPowerDbm": 22,
+            "sensitivityDbm": -127.5,
+            "reserveDb": 10,
+            "radiusMeters": 16093,
+            "spacingMeters": 1000,
+            "catalogComplete": false,
+            "nodes": [
+              {
+                "sourceID": "source-a",
+                "nodeID": "node-1",
+                "name": "Old node name",
+                "role": "repeater",
+                "latitude": 50.52,
+                "longitude": -115.53,
+                "lastSeenMilliseconds": 1700000000000
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+]

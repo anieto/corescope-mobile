@@ -1,7 +1,7 @@
 import Foundation
 
 /// Identity includes the catalog source so equal IDs from different sources cannot share results.
-struct CoverageNodeSnapshot: Equatable, Sendable {
+struct CoverageNodeSnapshot: Codable, Equatable, Sendable {
     let sourceID: String
     let nodeID: String
     let latitude: Double
@@ -17,13 +17,13 @@ enum CoverageNodeState: String, Sendable {
     case inCoverage, belowThreshold, unknown, notEvaluated, stale
 }
 
-enum CoverageNodeReason: String, Sendable {
+enum CoverageNodeReason: String, Codable, Sendable {
     case predicted, noResult, changedNode, changedInputs, outsideRadius, invalidInput
     case missingTerrain, unsupportedPath, missingAssumptions, accuracyUnresolved, thresholdUnresolved
     case cancelled, processingLimit
 }
 
-enum CoverageNodePrediction: Sendable {
+enum CoverageNodePrediction: Codable, Sendable {
     /// Only an exact-coordinate, qualified prediction may use this case.
     case qualifiedMargin(Double)
     case unavailable(CoverageNodeReason)

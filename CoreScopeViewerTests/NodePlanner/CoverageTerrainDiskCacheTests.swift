@@ -25,6 +25,38 @@ private final class DiskCacheFixture {
 }
 
 struct CoverageTerrainDiskCacheTests {
+    @Test func memoryGuardDistinguishesUnavailableFromExhaustedHeadroom() throws {
+        let grid = try CoverageGrid(radiusMeters: 1000, spacingMeters: 1000,
+            minEastMeters: 1000, maxEastMeters: 1000, minNorthMeters: 0, maxNorthMeters: 0)
+        let budget = try CoverageLinkBudget(transmitPowerDbm: 22, transmitGainDbi: 3, receiveGainDbi: 2,
+            transmitLossDb: 1, receiveLossDb: 1, sensitivityDbm: -130, reserveDb: 5)
+        let inputs = try CoverageStudyInputs(transmitter: .init(latitude: 0.25, longitude: 0.25),
+            grid: grid, budget: budget, frequencyMHz: 915, transmitHeightMeters: 30, receiveHeightMeters: 1.5)
+        let unavailable = CoverageRunDiagnostics(inputs: inputs, availableMemory: { nil })
+        for _ in 0..<10 { #expect(!unavailable.shouldPause()) }
+        #expect(unavailable.pauseReason == nil)
+
+        let threshold: UInt64 = 128 * 1024 * 1024
+        for bytes in [UInt64(0), threshold - 1] {
+            let constrained = CoverageRunDiagnostics(inputs: inputs, availableMemory: { bytes })
+            #expect(constrained.shouldPause())
+            #expect(constrained.pauseReason == "low available memory")
+        }
+        var remaining = threshold
+        let changing = CoverageRunDiagnostics(inputs: inputs, availableMemory: { remaining })
+        #expect(!changing.shouldPause())
+        remaining = 0
+        #expect(changing.shouldPause())
+        // Once paused, the remainder of this batch must also stop.
+        remaining = threshold * 2
+        #expect(changing.shouldPause())
+
+        #if targetEnvironment(simulator) || !os(iOS)
+        #expect(CoverageRunDiagnostics.deviceAvailableMemory() == nil)
+        #expect(!CoverageRunDiagnostics(inputs: inputs).shouldPause())
+        #endif
+    }
+
     @Test func preparedStudyOwnsTerrainThroughCompletionFailureAndCancellation() async throws {
         let fixture = try DiskCacheFixture()
         let descriptor = try fixture.descriptor()
@@ -102,6 +134,33 @@ struct CoverageTerrainDiskCacheTests {
         #expect(result.area.cells.first?.state == .qualified)
         let loss = try #require(result.area.cells.first?.lossDb)
         #expect(loss.isFinite && loss > 0 && loss != 140)
+        let reportURL = fixture.folder.appendingPathComponent("diagnostics.json")
+        func resume(_ radio: CoverageStudyInputs) async throws -> CoverageStudyResult {
+            try await CoveragePreparedStudy.evaluate(inputs: radio, nodes: result.nodes.run.nodesToEvaluate,
+                catalogComplete: true, nodeLimit: 1, limits: result.limits, samplingHaloMeters: 100,
+                cacheRoot: fixture.root, cacheQuota: 100000, downloadLimit: 0, offline: true,
+                executionID: UUID(), resuming: result, diagnosticURL: reportURL)
+        }
+        let persisted = try SavedCoverageCalculation.decode(SavedCoverageCalculation(result).encoded())
+        let restored = try persisted.restore(inputs: inputs, nodes: result.nodes.run.nodesToEvaluate,
+            catalogComplete: true)
+        #expect(restored.terrainSources?.descriptors.map(\.cacheKey) == result.terrainSources?.descriptors.map(\.cacheKey))
+        #expect(restored.nodes.run.status(for: result.nodes.run.nodesToEvaluate[0]).adjustedMarginDb ==
+            result.nodes.run.status(for: result.nodes.run.nodesToEvaluate[0]).adjustedMarginDb)
+        let continued = try await resume(inputs)
+        #expect(continued.area.cells.map(\.marginDb) == result.area.cells.map(\.marginDb))
+        #expect(continued.area.chargedSamples == 0 && continued.nodes.modelCalls == 0)
+        #expect(continued.model == result.model)
+        #expect(continued.terrainSources?.descriptors.map(\.cacheKey) == result.terrainSources?.descriptors.map(\.cacheKey))
+        let report = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: reportURL)) as? [String: Any])
+        #expect(report["phase"] as? String == "completed")
+        #expect(report["frequencyMHz"] as? Double == 915)
+        #expect((report["nodeComparisons"] as? [[String: Any]])?.count == 1)
+        let changed = try CoverageStudyInputs(transmitter: inputs.transmitter, grid: inputs.grid,
+            budget: inputs.budget, frequencyMHz: 916, transmitHeightMeters: 30, receiveHeightMeters: 1.5)
+        await #expect(throws: CoverageTerrainProfileFailure.invalidInput) { try await resume(changed) }
+        let failedReport = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: reportURL)) as? [String: Any])
+        #expect(failedReport["phase"] as? String == "failed before completion")
         let reopened = try CoverageTerrainDiskCache(root: fixture.root, quota: 100000)
         #expect(reopened.inventory.allSatisfy { !$0.pinned })
         try reopened.close()

@@ -3,6 +3,25 @@ import Testing
 @testable import CoreScopeViewer
 
 struct CoverageGridTests {
+    @Test func wholeMileRadiiKeepRequestedBoundaryAndSampleSpacing() throws {
+        for radius in [8047, 16_093, 40_234, 80_467] {
+            for spacing in [1000, 2000] {
+                let grid = try CoverageGrid.studyArea(radiusMeters: radius, spacingMeters: spacing)
+                #expect(grid.radiusMeters == radius)
+                #expect(grid.spacingMeters == spacing)
+                #expect(grid.minEastMeters >= -radius && grid.maxNorthMeters <= radius)
+                #expect(radius - grid.maxNorthMeters < spacing)
+                #expect(grid.point(at: grid.count / 2)?.state == .nearSite)
+            }
+        }
+        let metric = try CoverageGrid.studyArea(radiusMeters: 5000, spacingMeters: 2000)
+        #expect(metric.minEastMeters == -5000 && metric.maxNorthMeters == 5000)
+        #expect(metric.columns == 6)
+        #expect(throws: CoverageGridFailure.invalidParameters) {
+            try CoverageGrid.studyArea(radiusMeters: Int.min, spacingMeters: 0)
+        }
+    }
+
     @Test func studyLayoutsPreserveRadiusSpacingAndRowOrder() throws {
         for (radius, spacing, extent, expected) in [(20_000, 1000, 20_000, 1681), (100_000, 20_000, 100_000, 121), (20_000, 100, 2000, 1681)] {
             let grid = try CoverageGrid(radiusMeters: radius, spacingMeters: spacing,

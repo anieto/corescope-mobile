@@ -42,6 +42,20 @@ struct CoverageGrid: Sendable {
         self.rows = rows
     }
 
+    /// Keep the requested radius independent of the sample lattice (for example, whole miles).
+    /// Unsampled boundary areas remain unresolved rather than extending the requested study.
+    static func studyArea(radiusMeters: Int, spacingMeters: Int) throws -> Self {
+        guard (1000...100_000).contains(radiusMeters),
+              [50, 100, 200, 500, 1000, 2000, 5000, 10_000, 20_000].contains(spacingMeters) else {
+            throw CoverageGridFailure.invalidParameters
+        }
+        let extent = (2 * radiusMeters) % spacingMeters == 0
+            ? radiusMeters : (radiusMeters / spacingMeters) * spacingMeters
+        return try Self(radiusMeters: radiusMeters, spacingMeters: spacingMeters,
+            minEastMeters: -extent, maxEastMeters: extent,
+            minNorthMeters: -extent, maxNorthMeters: extent)
+    }
+
     /// North-to-south row order. Invalid indices cannot create a point outside the selected extent.
     func point(at index: Int) -> CoverageGridPoint? {
         guard (0..<count).contains(index) else { return nil }

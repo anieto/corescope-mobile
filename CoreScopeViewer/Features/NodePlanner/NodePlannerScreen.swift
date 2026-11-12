@@ -64,12 +64,12 @@ private struct LinkProfileToolCard: View {
 private struct CandidateSitesToolCard: View {
     var body: some View {
         NavigationLink {
-            CandidateSitesScreen()
+            SavedPlansScreen()
         } label: {
             NodePlannerToolCard(
                 icon: "mappin.and.ellipse",
-                title: "Candidate Sites",
-                detail: "Save proposed locations and equipment assumptions in deployment plans.",
+                title: "Saved Plans",
+                detail: "Reopen saved link profiles, coverage studies and candidate sites.",
                 isEnabled: true
             )
         }

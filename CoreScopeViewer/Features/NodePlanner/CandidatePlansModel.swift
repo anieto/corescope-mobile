@@ -5,6 +5,8 @@ import Observation
 final class CandidatePlansModel {
     static let shared = CandidatePlansModel()
     private(set) var plans: [DeploymentPlan] = []
+    private(set) var studies: [SavedStudy] = []
+    private var schemaVersion = 1
     private(set) var isLoaded = false
     private(set) var isBusy = false
     var error: LocalizedStringResource?
@@ -17,7 +19,10 @@ final class CandidatePlansModel {
         do {
             if store == nil { store = try DeploymentPlanStore.applicationStore() }
             guard let store else { return }
-            plans = try await store.load().plans
+            let document = try await store.load()
+            plans = document.plans
+            studies = document.studies
+            schemaVersion = document.schemaVersion
             isLoaded = true
             error = nil
         } catch {
@@ -36,13 +41,28 @@ final class CandidatePlansModel {
         _ = await commit(plans.filter { $0.id != plan.id })
     }
 
-    private func commit(_ next: [DeploymentPlan]) async -> Bool {
+    func saveStudy(_ study: SavedStudy) async -> Bool {
+        var next = studies
+        if let index = next.firstIndex(where: { $0.id == study.id }) { next[index] = study }
+        else { next.append(study) }
+        return await commit(plans, studies: next)
+    }
+
+    func deleteStudy(_ study: SavedStudy) async {
+        _ = await commit(plans, studies: studies.filter { $0.id != study.id })
+    }
+
+    private func commit(_ next: [DeploymentPlan], studies nextStudies: [SavedStudy]? = nil) async -> Bool {
         guard isLoaded, !isBusy, let store else { return false }
         isBusy = true
         defer { isBusy = false }
         do {
-            try await store.save(DeploymentPlanDocument(plans: next))
-            plans = next
+            let version = nextStudies == nil ? schemaVersion : 2
+            let document = DeploymentPlanDocument(schemaVersion: version, plans: next, studies: nextStudies ?? studies)
+            try await store.save(document)
+            plans = document.plans
+            studies = document.studies
+            schemaVersion = version
             error = nil
             return true
         } catch DeploymentPlanStoreError.changedOnDisk {

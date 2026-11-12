@@ -92,6 +92,7 @@ struct MeshRouteActivityIndicator: View {
 struct InstrumentCardModifier: ViewModifier {
     let isSelected: Bool
     var fillOpacity: Double = 0.80
+    var showsShadow = true
     @Environment(\.colorScheme) private var colorScheme
 
     func body(content: Content) -> some View {
@@ -119,7 +120,7 @@ struct InstrumentCardModifier: ViewModifier {
                         lineWidth: isSelected ? 2 : 1
                     )
             }
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0.30 : 0.10), radius: 14, y: 6)
+            .shadow(color: .black.opacity(showsShadow ? (colorScheme == .dark ? 0.30 : 0.10) : 0), radius: 14, y: 6)
     }
 }
 
@@ -153,6 +154,7 @@ private struct AdaptiveSidebarListModifier: ViewModifier {
     var meshBackground = false
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.isHingedDevice) private var isHingedDevice
 
     @ViewBuilder
     func body(content: Content) -> some View {
@@ -163,7 +165,8 @@ private struct AdaptiveSidebarListModifier: ViewModifier {
                 .contentMargins(.top, 0, for: .scrollContent)
                 .background {
                     if meshBackground {
-                        MeshBackground(subdued: true).ignoresSafeArea()
+                        MeshBackground(subdued: true)
+                            .ignoresSafeArea(.container, edges: isHingedDevice ? .all : .top)
                     } else {
                         Rectangle()
                             .fill(.thinMaterial)
@@ -186,8 +189,8 @@ private struct AdaptiveSidebarListModifier: ViewModifier {
 }
 
 extension View {
-    func instrumentCard(isSelected: Bool = false, fillOpacity: Double = 0.80) -> some View {
-        modifier(InstrumentCardModifier(isSelected: isSelected, fillOpacity: fillOpacity))
+    func instrumentCard(isSelected: Bool = false, fillOpacity: Double = 0.80, showsShadow: Bool = true) -> some View {
+        modifier(InstrumentCardModifier(isSelected: isSelected, fillOpacity: fillOpacity, showsShadow: showsShadow))
     }
 
     /// Gives grouped List or Form rows the card surface. Apply to each Section.

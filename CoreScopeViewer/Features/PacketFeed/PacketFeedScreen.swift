@@ -189,6 +189,8 @@ struct MapPacketWorkspaceScreen: View {
             )
         }
         .navigationSplitViewStyle(.balanced)
+        // Match the other iPad split workspaces; the native sidebar supplies its own inset.
+        .ignoresSafeArea(.container, edges: .top)
         .workspaceBackgroundExtensionEffect()
         .onAppear { updateRegularColumns() }
         .onChange(of: columnVisibility) { _, visibility in

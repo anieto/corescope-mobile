@@ -13,7 +13,8 @@ enum CoverageNodeBatch {
     static func evaluate(nodes: [CoverageNodeSnapshot], catalogComplete: Bool, evaluationLimit: Int,
                          transmitter: CoverageTerrainCoordinate, radiusMeters: Double, budget: CoverageLinkBudget,
                          terrainLimit: Int, geometryLimit: Int, modelCallLimit: Int,
-                         cancelled: () -> Bool = { false },
+                         cancelled: () -> Bool = { false }, shouldPause: () -> Bool = { false },
+                         resuming previous: CoverageNodeBatchResult? = nil,
                          profile: (CoverageTerrainPath, Double, Int, Int) throws -> CoverageTerrainSampledPath,
                          predictLoss: (CoverageTerrainProfile) throws -> Double) throws -> CoverageNodeBatchResult {
         guard (0...2_000_000_000).contains(terrainLimit), (0...2_000_000_000).contains(geometryLimit),
@@ -22,12 +23,25 @@ enum CoverageNodeBatch {
               (-180...180).contains(transmitter.longitude) else { throw CoverageTerrainProfileFailure.invalidInput }
         var run = try CoverageNodeRun(nodes: nodes, catalogComplete: catalogComplete,
                                       evaluationLimit: evaluationLimit, radiusMeters: radiusMeters)
+        if let previous {
+            guard previous.run.phase == .completed, previous.run.nodesToEvaluate == run.nodesToEvaluate,
+                  previous.run.radiusMeters == run.radiusMeters else { throw CoverageTerrainProfileFailure.invalidInput }
+        }
         var terrainRemaining = terrainLimit, geometryRemaining = geometryLimit, modelCalls = 0
         for node in run.nodesToEvaluate {
             if cancelled() { throw CoverageTerrainProfileFailure.cancelled }
+            if let old = previous?.run.evaluation(for: node),
+               previous?.run.status(for: node).reason != .processingLimit {
+                guard run.accept(CoverageNodeEvaluation(runID: run.id, node: node,
+                    distanceMeters: old.distanceMeters, prediction: old.prediction)) else {
+                    throw CoverageTerrainProfileFailure.invalidInput
+                }
+                continue
+            }
             let evaluation = try CoverageNodeEvaluator.evaluate(runID: run.id, transmitter: transmitter,
                 node: node, radiusMeters: radiusMeters, budget: budget, cancelled: cancelled,
                 profile: { path, spacing, samples, geometry in
+                    guard !shouldPause() else { throw CoverageTerrainProfileFailure.workLimit }
                     let terrainAllowance = min(samples, terrainRemaining)
                     let geometryAllowance = min(geometry, geometryRemaining)
                     guard terrainAllowance > 0, geometryAllowance > 0, modelCalls < modelCallLimit else {

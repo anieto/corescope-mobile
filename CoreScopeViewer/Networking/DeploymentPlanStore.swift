@@ -45,6 +45,23 @@ actor DeploymentPlanStore {
         try FileManager.default.createDirectory(
             at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true
         )
+        if let baseline, try DeploymentPlanCodec.decode(baseline).schemaVersion == 1,
+           document.schemaVersion == 2 {
+            // Backup first, replace second. Interrupted migration leaves the original readable;
+            // retrying verifies the existing backup instead of replacing it.
+            let backupURL = fileURL.appendingPathExtension("v1-backup")
+            if FileManager.default.fileExists(atPath: backupURL.path) {
+                guard try Data(contentsOf: backupURL) == baseline else {
+                    throw DeploymentPlanStoreError.changedOnDisk
+                }
+            } else {
+                try baseline.write(to: backupURL, options: .atomic)
+            }
+        }
+        if let baseline, try DeploymentPlanCodec.decode(baseline).schemaVersion == 2,
+           document.schemaVersion != 2 {
+            throw DeploymentPlanError.unsupportedVersion
+        }
         try write(bytes, fileURL)
         baseline = bytes
     }

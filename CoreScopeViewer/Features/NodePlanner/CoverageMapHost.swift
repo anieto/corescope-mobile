@@ -6,41 +6,53 @@ import MapKit
 struct CoverageMapLayer {
     let executionID: UUID
     let raster: CoverageRaster
+    var budget: CoverageLinkBudget? = nil
 }
 
 /// A map owned only by Estimated Coverage; it never installs or alters live-traffic overlays.
 struct CoverageMapHost: UIViewRepresentable {
     let coordinate: CLLocationCoordinate2D?
-    let tentative: CLLocationCoordinate2D?
     let nodes: [MeshNode]
     let style: MapDisplayStyle
     var layer: CoverageMapLayer? = nil
     var nodeStatuses: [String: CoverageNodeStatus] = [:]
-    let selectTentative: (CLLocationCoordinate2D) -> Void
+    /// Where the map opens before anything is placed: the live map's region, when known.
+    var openingRegion: MKCoordinateRegion? = nil
+    /// How far the panel over the map's bottom edge reaches up; the camera keeps clear of it.
+    var bottomInset: CGFloat = 0
+    /// A touch & hold on the map, with the known node whose marker was held, if any.
+    let place: (CLLocationCoordinate2D, MeshNode?) -> Void
 
-    func makeCoordinator() -> Coordinator { Coordinator(selectTentative: selectTentative) }
+    func makeCoordinator() -> Coordinator { Coordinator(place: place) }
 
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView()
         map.delegate = context.coordinator
-        map.showsCompass = true
+        // The style menu takes the compass's corner; two-finger rotation still works.
+        map.showsCompass = false
         map.showsScale = true
-        map.addGestureRecognizer(UILongPressGestureRecognizer(
-            target: context.coordinator, action: #selector(Coordinator.chooseLocation(_:))))
+        let hold = UILongPressGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.chooseLocation(_:)))
+        hold.minimumPressDuration = 0.5
+        map.addGestureRecognizer(hold)
+        let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.inspectSample(_:)))
+        tap.cancelsTouchesInView = false
+        tap.require(toFail: hold)
+        map.addGestureRecognizer(tap)
         return map
     }
 
     func updateUIView(_ map: MKMapView, context: Context) {
         let coordinator = context.coordinator
-        coordinator.selectTentative = selectTentative
+        coordinator.place = place
+        coordinator.bottomInset = bottomInset
         let mapType: MKMapType = switch style {
         case .standard: .standard
         case .imagery: .satellite
         case .hybrid: .hybrid
         }
         if map.mapType != mapType { map.mapType = mapType }
-        coordinator.updatePins(map, coordinate: coordinate, tentative: tentative, nodes: nodes, statuses: nodeStatuses)
         coordinator.updateLayer(map, layer: layer)
+        coordinator.updatePins(map, coordinate: coordinate, nodes: nodes, statuses: nodeStatuses, openingRegion: openingRegion)
     }
 
     static func dismantleUIView(_ map: MKMapView, coordinator: Coordinator) {
@@ -54,7 +66,9 @@ struct CoverageMapHost: UIViewRepresentable {
         let id: String
         let kind: Kind
         var nodeState: CoverageNodeState = .notEvaluated
-        enum Kind { case node, transmitter, tentative }
+        var marginDb: Double?
+        var role = ""
+        enum Kind { case node, transmitter, sample }
         init(id: String, title: String, coordinate: CLLocationCoordinate2D, kind: Kind) {
             self.id = id
             self.kind = kind
@@ -67,43 +81,88 @@ struct CoverageMapHost: UIViewRepresentable {
 
     @MainActor
     final class Coordinator: NSObject, MKMapViewDelegate {
-        var selectTentative: (CLLocationCoordinate2D) -> Void
+        var place: (CLLocationCoordinate2D, MeshNode?) -> Void
+        var bottomInset: CGFloat = 0
         private var pins: [String: Pin] = [:]
+        private var nodesByPin: [String: MeshNode] = [:]
         private var lastTransmitter: CLLocationCoordinate2D?
         private var centered = false
         private var executionID: UUID?
         private var overlay: CoverageMapKitOverlay?
+        private var layer: CoverageMapLayer?
+        private var inspectionPin: Pin?
 
-        init(selectTentative: @escaping (CLLocationCoordinate2D) -> Void) {
-            self.selectTentative = selectTentative
+        init(place: @escaping (CLLocationCoordinate2D, MeshNode?) -> Void) {
+            self.place = place
         }
 
+        @objc func inspectSample(_ gesture: UITapGestureRecognizer) {
+            guard gesture.state == .ended, let map = gesture.view as? MKMapView, let layer else { return }
+            let location = gesture.location(in: map)
+            // Let MapKit open known-node callouts without placing a second annotation.
+            guard !pins.values.contains(where: { map.view(for: $0)?.frame.contains(location) ?? false }) else { return }
+            if let inspectionPin { map.removeAnnotation(inspectionPin) }
+            inspectionPin = nil
+            let coordinate = map.convert(location, toCoordinateFrom: map)
+            let sample = layer.raster.sample(latitude: coordinate.latitude, longitude: coordinate.longitude)
+            guard sample.state != .outsideAnalysis else { return }
+            let pin = Pin(id: "sample", title: String(localized: "Nearby grid sample"),
+                          coordinate: coordinate, kind: .sample)
+            pin.marginDb = sample.marginDb
+            pin.nodeState = sample.marginDb.map { $0 >= 0 ? .inCoverage : .belowThreshold } ?? .unknown
+            if let loss = sample.lossDb, let budget = layer.budget,
+               let reception = try? budget.reception(pathLossDb: loss) {
+                pin.subtitle = String(localized: "Predicted RX") + String(format: " %.1f dBm · ", reception.receiveLevelDbm)
+                    + String(localized: "Margin after reserve") + String(format: " %.1f dB", reception.adjustedMarginDb)
+            } else {
+                pin.subtitle = String(localized: "No usable prediction")
+            }
+            pin.subtitle = (pin.subtitle ?? "") + " · " + String(localized: "Grid spacing")
+                + " " + layer.raster.grid.spacingMeters.formatted() + " m"
+            inspectionPin = pin
+            map.addAnnotation(pin)
+            map.selectAnnotation(pin, animated: true)
+        }
+
+        /// Places the transmitter where the finger is; on a known node's marker, on that node.
         @objc func chooseLocation(_ gesture: UILongPressGestureRecognizer) {
             guard gesture.state == .began, let map = gesture.view as? MKMapView else { return }
-            let point = map.convert(gesture.location(in: map), toCoordinateFrom: map)
-            if CLLocationCoordinate2DIsValid(point) { selectTentative(point) }
+            let location = gesture.location(in: map)
+            if let held = pins.values.first(where: { pin in
+                pin.kind == .node && (map.view(for: pin)?.frame.contains(location) ?? false)
+            }), let node = nodesByPin[held.id] {
+                place(held.coordinate, node)
+                return
+            }
+            let point = map.convert(location, toCoordinateFrom: map)
+            if CLLocationCoordinate2DIsValid(point) { place(point, nil) }
         }
 
-        func updatePins(_ map: MKMapView, coordinate: CLLocationCoordinate2D?,
-                        tentative: CLLocationCoordinate2D?, nodes: [MeshNode], statuses: [String: CoverageNodeStatus]) {
+        func updatePins(_ map: MKMapView, coordinate: CLLocationCoordinate2D?, nodes: [MeshNode],
+                        statuses: [String: CoverageNodeStatus], openingRegion: MKCoordinateRegion?) {
+            nodesByPin = [:]
             var desired = nodes.compactMap { node -> Pin? in
                 guard let point = node.coordinate else { return nil }
                 let pin = Pin(id: "node:" + node.id, title: node.name ?? String(localized: "Known node"),
                            coordinate: point, kind: .node)
+                pin.role = node.role
+                nodesByPin[pin.id] = node
                 if let status = statuses[node.id] {
                     pin.nodeState = status.state
+                    pin.marginDb = status.adjustedMarginDb
                     pin.subtitle = status.coverageLabel
-                    if let margin = status.adjustedMarginDb { pin.subtitle = status.coverageLabel + String(format: " · %.1f dB", margin) }
+                    if let margin = status.adjustedMarginDb {
+                        pin.subtitle = status.coverageLabel + String(format: " · %.1f dB", margin)
+                        if let budget = layer?.budget {
+                            pin.subtitle = (pin.subtitle ?? "") + String(format: " · RX %.1f dBm", margin + budget.sensitivityDbm + budget.reserveDb)
+                        }
+                    }
                 }
                 return pin
             }
             if let coordinate {
                 desired.append(Pin(id: "transmitter", title: String(localized: "Transmitter"),
                                    coordinate: coordinate, kind: .transmitter))
-            }
-            if let tentative {
-                desired.append(Pin(id: "tentative", title: String(localized: "Proposed location"),
-                                   coordinate: tentative, kind: .tentative))
             }
             let ids = Set(desired.map(\.id))
             for id in Array(pins.keys) where !ids.contains(id) {
@@ -112,9 +171,11 @@ struct CoverageMapHost: UIViewRepresentable {
             for pin in desired {
                 if let existing = pins[pin.id] {
                     if !same(existing.coordinate, pin.coordinate) { existing.coordinate = pin.coordinate }
-                    if existing.title != pin.title || existing.subtitle != pin.subtitle || existing.nodeState != pin.nodeState {
+                    if existing.title != pin.title || existing.subtitle != pin.subtitle || existing.nodeState != pin.nodeState || existing.marginDb != pin.marginDb || existing.role != pin.role {
                         existing.subtitle = pin.subtitle
                         existing.nodeState = pin.nodeState
+                        existing.marginDb = pin.marginDb
+                        existing.role = pin.role
                         existing.title = pin.title
                         (map.view(for: existing) as? PinView)?.configure(existing)
                     }
@@ -123,9 +184,14 @@ struct CoverageMapHost: UIViewRepresentable {
                     map.addAnnotation(pin)
                 }
             }
-            if let coordinate, lastTransmitter == nil || !same(lastTransmitter, coordinate) {
-                map.setRegion(MKCoordinateRegion(center: coordinate,
-                    latitudinalMeters: 20_000, longitudinalMeters: 20_000), animated: centered)
+            if layer != nil {
+                // The result owns the initial camera; do not replace its extent with the pin's default zoom.
+                centered = true
+            } else if let coordinate, lastTransmitter == nil || !same(lastTransmitter, coordinate) {
+                frame(map, center: coordinate, meters: 20_000, animated: centered)
+                centered = true
+            } else if !centered, let openingRegion {
+                map.setRegion(openingRegion, animated: false)
                 centered = true
             } else if !centered && !desired.isEmpty {
                 map.showAnnotations(desired, animated: false)
@@ -138,18 +204,44 @@ struct CoverageMapHost: UIViewRepresentable {
             left?.latitude == right.latitude && left?.longitude == right.longitude
         }
 
+        /// Frames a square around the center, keeping it clear of the controls above and the
+        /// panel below instead of under them.
+        private func frame(_ map: MKMapView, center: CLLocationCoordinate2D, meters: Double, animated: Bool) {
+            let region = MKCoordinateRegion(center: center, latitudinalMeters: meters, longitudinalMeters: meters)
+            let padding = UIEdgeInsets(top: 72, left: 16, bottom: bottomInset + 16, right: 16)
+            map.setVisibleMapRect(Self.mapRect(region), edgePadding: padding, animated: animated)
+        }
+
+        static func mapRect(_ region: MKCoordinateRegion) -> MKMapRect {
+            let topLeft = MKMapPoint(CLLocationCoordinate2D(
+                latitude: region.center.latitude + region.span.latitudeDelta / 2,
+                longitude: region.center.longitude - region.span.longitudeDelta / 2))
+            let bottomRight = MKMapPoint(CLLocationCoordinate2D(
+                latitude: region.center.latitude - region.span.latitudeDelta / 2,
+                longitude: region.center.longitude + region.span.longitudeDelta / 2))
+            return MKMapRect(x: min(topLeft.x, bottomRight.x), y: min(topLeft.y, bottomRight.y),
+                             width: abs(bottomRight.x - topLeft.x), height: abs(bottomRight.y - topLeft.y))
+        }
+
         func updateLayer(_ map: MKMapView, layer: CoverageMapLayer?) {
             guard executionID != layer?.executionID else { return }
             removeLayer(map)
             guard let layer else { return }
+            self.layer = layer
             do {
-                let newOverlay = try CoverageMapKitOverlay(raster: layer.raster, cacheBytes: 8 * 1024 * 1024)
+                let id = layer.executionID
+                let newOverlay = try CoverageMapKitOverlay(raster: layer.raster, cacheBytes: 8 * 1024 * 1024) { [weak self, weak map] zoom, x, y in
+                    guard let self, let map, self.executionID == id, let overlay = self.overlay,
+                          let renderer = map.renderer(for: overlay) else { return }
+                    let side = MKMapRect.world.size.width / pow(2, Double(zoom))
+                    renderer.setNeedsDisplay(MKMapRect(x: Double(x) * side, y: Double(y) * side,
+                                                      width: side, height: side))
+                }
                 executionID = layer.executionID
                 overlay = newOverlay
                 map.addOverlay(newOverlay, level: .aboveRoads)
-                map.setRegion(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: layer.raster.transmitter.latitude,
-                    longitude: layer.raster.transmitter.longitude), latitudinalMeters: Double(layer.raster.grid.radiusMeters) * 2.4,
-                    longitudinalMeters: Double(layer.raster.grid.radiusMeters) * 2.4), animated: true)
+                frame(map, center: CLLocationCoordinate2D(latitude: layer.raster.transmitter.latitude,
+                    longitude: layer.raster.transmitter.longitude), meters: Double(layer.raster.grid.radiusMeters) * 2.4, animated: centered && map.window != nil)
             } catch {
                 // The adapter's only initialization failure is an invalid constant cache capacity.
                 assertionFailure("Invalid coverage overlay cache capacity: \(error)")
@@ -157,6 +249,9 @@ struct CoverageMapHost: UIViewRepresentable {
         }
 
         func removeLayer(_ map: MKMapView) {
+            if let inspectionPin { map.removeAnnotation(inspectionPin) }
+            inspectionPin = nil
+            layer = nil
             overlay?.invalidate()
             if let overlay { map.removeOverlay(overlay) }
             overlay = nil
@@ -180,55 +275,36 @@ struct CoverageMapHost: UIViewRepresentable {
     }
 
     @MainActor
-    final class PinView: MKAnnotationView {
-        private let glyph = UIImageView()
-        private let name = UILabel()
-
+    final class PinView: MKMarkerAnnotationView {
         override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
             super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
-            addSubview(glyph)
-            addSubview(name)
-            glyph.contentMode = .scaleAspectFit
-            name.textAlignment = .center
-            name.numberOfLines = 2
-            name.adjustsFontForContentSizeCategory = true
-            name.backgroundColor = .secondarySystemBackground
-            name.layer.cornerRadius = 4
-            name.clipsToBounds = true
             isAccessibilityElement = true
             canShowCallout = true
             collisionMode = .rectangle
+            titleVisibility = .adaptive
+            subtitleVisibility = .adaptive
         }
 
         required init?(coder: NSCoder) { return nil }
 
         func configure(_ pin: Pin) {
             annotation = pin
-            name.text = pin.title
-            name.font = pin.kind == .node ? AppFont.uiFont(.caption1) : .preferredFont(forTextStyle: .caption1)
-            glyph.image = UIImage(systemName: pin.kind == .node ? "questionmark.circle.fill" :
-                pin.kind == .transmitter ? "antenna.radiowaves.left.and.right.circle.fill" : "mappin.circle.fill")
-            glyph.tintColor = switch pin.kind {
-            case .node: pin.nodeState == .inCoverage ? .systemGreen : pin.nodeState == .belowThreshold ? .systemRed : .systemGray
+            glyphImage = UIImage(systemName: pin.kind == .node
+                ? NodeRoleStyle.symbolName(for: pin.role)
+                : pin.kind == .sample ? "scope" : "antenna.radiowaves.left.and.right")
+            glyphTintColor = .white
+            markerTintColor = switch pin.kind {
+            case .node, .sample:
+                switch pin.nodeState {
+                case .inCoverage: (pin.marginDb ?? 0) <= 10 ? .systemOrange : .systemGreen
+                case .belowThreshold: .systemRed
+                case .notEvaluated: UIColor(NodeScopeStyle.signal)
+                case .unknown, .stale: .systemGray
+                }
             case .transmitter: .systemOrange
-            case .tentative: .systemBlue
             }
+            displayPriority = pin.kind == .transmitter ? .required : .defaultHigh
             accessibilityLabel = [pin.title, pin.subtitle].compactMap { $0 }.joined(separator: ", ")
-            updateSize()
-            setNeedsLayout()
-        }
-
-        private func updateSize() {
-            let size = name.sizeThatFits(CGSize(width: 180, height: CGFloat.greatestFiniteMagnitude))
-            bounds.size = CGSize(width: max(34, size.width + 8), height: 38 + size.height)
-            centerOffset = CGPoint(x: 0, y: bounds.height / 2 - 15)
-        }
-
-        override func layoutSubviews() {
-            super.layoutSubviews()
-            updateSize()
-            glyph.frame = CGRect(x: (bounds.width - 30) / 2, y: 0, width: 30, height: 30)
-            name.frame = CGRect(x: 0, y: 34, width: bounds.width, height: bounds.height - 34)
         }
     }
 }

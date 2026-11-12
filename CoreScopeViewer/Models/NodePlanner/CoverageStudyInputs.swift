@@ -72,9 +72,7 @@ struct CoverageStudyInputs: Sendable {
             sensitivityDbm: value("sensitivity"), reserveDb: value("reserve"))
         // Validate radius before negating it, including hostile Int.min values.
         guard (1000...100_000).contains(radiusMeters) else { throw CoverageGridFailure.invalidParameters }
-        let grid = try CoverageGrid(radiusMeters: radiusMeters, spacingMeters: spacingMeters,
-            minEastMeters: -radiusMeters, maxEastMeters: radiusMeters,
-            minNorthMeters: -radiusMeters, maxNorthMeters: radiusMeters)
+        let grid = try CoverageGrid.studyArea(radiusMeters: radiusMeters, spacingMeters: spacingMeters)
         return try Self(transmitter: coordinate, grid: grid, budget: budget, frequencyMHz: frequency,
                         transmitHeightMeters: txHeight, receiveHeightMeters: rxHeight)
     }

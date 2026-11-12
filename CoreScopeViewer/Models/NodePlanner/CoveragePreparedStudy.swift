@@ -11,10 +11,22 @@ enum CoveragePreparedStudy {
                          catalog: [CoverageTerrainDescriptor]? = nil, samplingHaloMeters: Double,
                          cacheRoot: URL, cacheQuota: Int64, downloadLimit: Int64,
                          offline: Bool, executionID: UUID,
+                         resuming previous: CoverageStudyResult? = nil, diagnosticURL: URL? = nil,
                          progress: (CoveragePreparationStage) async -> Void = { _ in },
                          predictLoss: ((CoverageTerrainProfile, CoverageStudyInputs) throws -> Double)? = nil) async throws -> CoverageStudyResult {
         let model = predictLoss == nil ? CoverageStudyModel(sourceRevision: CoverageRFKernel.sourceRevision,
             scenario: CoverageRFKernel.scenario) : nil
+        let diagnostics = CoverageRunDiagnostics(inputs: inputs, fileURL: diagnosticURL)
+        diagnostics.setPhase("validating")
+        defer { diagnostics.finishIfNeeded(cancelled: Task.isCancelled) }
+        let validatedNodes = try CoverageNodeRun(nodes: nodes, catalogComplete: catalogComplete,
+            evaluationLimit: nodeLimit, radiusMeters: Double(inputs.grid.radiusMeters))
+        if let previous {
+            guard previous.inputs.matches(inputs), previous.model == model,
+                  previous.nodes.run.nodesToEvaluate == validatedNodes.nodesToEvaluate,
+                  previous.nodes.run.catalogComplete == catalogComplete,
+                  previous.terrainSources != nil else { throw CoverageTerrainProfileFailure.invalidInput }
+        }
         let predictor = predictLoss ?? { profile, inputs in
             guard let latitude = profile.pathCenterLatitude else { throw CoverageRFConvergenceFailure.invalidInput }
             return try CoverageRFKernel.predict(profile: profile, inputs: inputs, pathCenterLatitude: latitude)
@@ -23,8 +35,6 @@ enum CoveragePreparedStudy {
         await progress(.validating)
         try Task.checkCancellation()
         try limits.validate()
-        _ = try CoverageNodeRun(nodes: nodes, catalogComplete: catalogComplete,
-            evaluationLimit: nodeLimit, radiusMeters: Double(inputs.grid.radiusMeters))
         _ = try CoverageGridPreflight.estimate(grid: inputs.grid,
             sampleBudget: Int64(limits.areaSamples), geometryBudget: Int64(limits.areaGeometry))
         let footprint = try CoverageTerrainFootprint.make(latitude: inputs.transmitter.latitude,
@@ -32,10 +42,14 @@ enum CoveragePreparedStudy {
             haloMeters: samplingHaloMeters)
         let budget = try CoverageTerrainDownloadBudget(limit: downloadLimit)
         try Task.checkCancellation()
+        diagnostics.setPhase("preparing terrain")
         await progress(.preparingTerrain)
         try Task.checkCancellation()
         let descriptors: [CoverageTerrainDescriptor]
-        if let catalog { descriptors = try footprint.resolve(catalog: catalog) }
+        if let previous, let sources = previous.terrainSources {
+            // Resume against exactly the same immutable terrain identities, even if discovery changes.
+            descriptors = try footprint.resolve(catalog: sources.descriptors)
+        } else if let catalog { descriptors = try footprint.resolve(catalog: catalog) }
         else {
             guard !offline else { throw CoverageTerrainCacheFailure.missing }
             descriptors = try await CoverageSkadiProvider.discover(footprint: footprint)
@@ -48,11 +62,13 @@ enum CoveragePreparedStudy {
             let study: CoverageStudyResult
             do {
                 try Task.checkCancellation()
+                diagnostics.setPhase("calculating")
                 await progress(.calculating)
                 try Task.checkCancellation()
                 study = try CoverageStudy.evaluate(inputs: inputs, nodes: nodes, catalogComplete: catalogComplete,
                     nodeLimit: nodeLimit, limits: limits, mosaic: mosaic, executionID: executionID,
-                    cancelled: { Task.isCancelled }, predictLoss: predictor)
+                    cancelled: { Task.isCancelled }, resuming: previous?.area, resumingNodes: previous?.nodes,
+                    shouldPause: { diagnostics.shouldPause() }, predictLoss: predictor)
             } catch {
                 mosaic.close()
                 throw error
@@ -60,10 +76,13 @@ enum CoveragePreparedStudy {
             mosaic.close()
             try cache.close()
             try Task.checkCancellation()
-            return CoverageStudyResult(executionID: study.executionID, inputs: study.inputs,
+            let result = CoverageStudyResult(executionID: study.executionID, inputs: study.inputs,
                 limits: study.limits, area: study.area, nodes: study.nodes,
                 terrainSources: CoverageStudyTerrainSources(descriptors: descriptors), model: model)
+            diagnostics.finish(result)
+            return result
         } catch {
+            diagnostics.setPhase(Task.isCancelled ? "cancelled" : "failed: \(String(describing: error))")
             // Retain the calculation/transport failure; close is retried after readers were released.
             try? cache.close()
             throw error

@@ -1,6 +1,6 @@
 import Foundation
 
-struct CoverageStudyLimits: Sendable {
+struct CoverageStudyLimits: Codable, Sendable {
     let areaSamples: Int
     let areaGeometry: Int
     let nodeSamples: Int
@@ -18,7 +18,7 @@ struct CoverageStudyTerrainSources: Sendable {
     let descriptors: [CoverageTerrainDescriptor]
 }
 
-struct CoverageStudyModel: Sendable, Equatable {
+struct CoverageStudyModel: Codable, Sendable, Equatable {
     let sourceRevision: String
     let scenario: String
 }
@@ -34,6 +34,9 @@ struct CoverageStudyResult: Sendable {
     let nodes: CoverageNodeBatchResult
     let model: CoverageStudyModel?
     let terrainSources: CoverageStudyTerrainSources?
+    var hasPendingWork: Bool {
+        area.pendingCount > 0 || nodes.run.nodesToEvaluate.contains { nodes.run.status(for: $0).reason == .processingLimit }
+    }
 
     init(executionID: UUID, inputs: CoverageStudyInputs, limits: CoverageStudyLimits,
          area: CoverageAreaResult, nodes: CoverageNodeBatchResult,
@@ -54,6 +57,8 @@ enum CoverageStudy {
                          nodes: [CoverageNodeSnapshot], catalogComplete: Bool, nodeLimit: Int,
                          limits: CoverageStudyLimits, mosaic: CoverageTerrainMosaic, executionID: UUID = UUID(),
                          cancelled: () -> Bool = { false },
+                         resuming: CoverageAreaResult? = nil, resumingNodes: CoverageNodeBatchResult? = nil,
+                         shouldPause: () -> Bool = { false },
                          predictLoss: (CoverageTerrainProfile, CoverageStudyInputs) throws -> Double) throws -> CoverageStudyResult {
         try limits.validate()
         let transmitter = inputs.transmitter, grid = inputs.grid, budget = inputs.budget
@@ -67,11 +72,11 @@ enum CoverageStudy {
         }
         let area = try CoverageArea.evaluate(grid: grid, transmitter: transmitter, budget: budget,
             sampleBudget: Int64(limits.areaSamples), geometryBudget: Int64(limits.areaGeometry),
-            cancelled: cancelled, profile: profile, predictLoss: predict)
+            cancelled: cancelled, resuming: resuming, shouldPause: shouldPause, profile: profile, predictLoss: predict)
         let nodeResults = try CoverageNodeBatch.evaluate(nodes: nodes, catalogComplete: catalogComplete,
             evaluationLimit: nodeLimit, transmitter: transmitter, radiusMeters: Double(grid.radiusMeters), budget: budget,
             terrainLimit: limits.nodeSamples, geometryLimit: limits.nodeGeometry, modelCallLimit: limits.nodeModelCalls,
-            cancelled: cancelled, profile: profile, predictLoss: predict)
+            cancelled: cancelled, shouldPause: shouldPause, resuming: resumingNodes, profile: profile, predictLoss: predict)
         if cancelled() { throw CoverageTerrainProfileFailure.cancelled }
         return CoverageStudyResult(executionID: executionID, inputs: inputs, limits: limits,
                                    area: area, nodes: nodeResults)
