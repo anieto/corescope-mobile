@@ -61,10 +61,13 @@ sealed class AnalyzerPagingException(message: String) : IllegalStateException(me
 @Serializable
 private data class BeaconRawPage(val items: JsonArray = JsonArray(emptyList()), val hasMore: Boolean, val nextCursor: JsonElement? = null)
 
-private fun pageQuery(pageSize: Int, region: String?): MutableList<Pair<String, String>> {
+private fun pageQuery(pageSize: Int, region: String?, maximum: Int = 200): MutableList<Pair<String, String>> {
     if (pageSize <= 0) throw AnalyzerPagingException.InvalidPageSize()
-    return mutableListOf("limit" to minOf(pageSize, 200).toString()).apply { region?.let { add("iatas" to it) } }
+    return mutableListOf("limit" to minOf(pageSize, maximum).toString()).apply { region?.let { add("iatas" to it) } }
 }
+
+/** Beacon 2.1 pages nodes up to 2000 rows; older servers clamp to 200 and keep paging. */
+const val BEACON_NODE_PAGE_SIZE = 2000
 
 private fun <T> continuation(page: BeaconRawPage, items: List<T>, encode: (JsonPrimitive) -> AnalyzerCursor): AnalyzerCursor? {
     if (!page.hasMore) return null
@@ -131,9 +134,9 @@ class BeaconNodeReader(val client: BeaconApiClient, private val verifiedServerIn
 
     init { verifiedServerInfo.requireSupported() }
 
-    suspend fun nodePage(region: String?, pageSize: Int = 200, cursor: AnalyzerCursor? = null): AnalyzerPage<BeaconNode> {
+    suspend fun nodePage(region: String?, pageSize: Int = BEACON_NODE_PAGE_SIZE, cursor: AnalyzerCursor? = null): AnalyzerPage<BeaconNode> {
         client.sourceSession.check()
-        val query = pageQuery(pageSize, region)
+        val query = pageQuery(pageSize, region, BEACON_NODE_PAGE_SIZE)
         cursor?.let { query += "cursor" to BeaconCursor.decode(it, "nodes", client, region, null) }
         val page = client.get(BeaconRawPage.serializer(), listOf("nodes"), query)
         val items = decodeItems(page, BeaconNode.serializer()).onEach { it.validate() }
@@ -192,6 +195,12 @@ class BeaconNodeReader(val client: BeaconApiClient, private val verifiedServerIn
     suspend fun observationHistory(publicKey: String, since: Long, maximumPages: Int = 19): BeaconObservationHistory? {
         if (maximumPages <= 0) throw AnalyzerPagingException.InvalidPageSize()
         val node = nodeSummary(publicKey) ?: return null
+        return observationHistory(node, since, maximumPages)
+    }
+
+    /** The walk for a node already resolved by [nodeSummary], so callers that also read its activity look it up once. */
+    suspend fun observationHistory(node: BeaconNode, since: Long, maximumPages: Int = 19): BeaconObservationHistory {
+        if (maximumPages <= 0) throw AnalyzerPagingException.InvalidPageSize()
         val observations = mutableListOf<BeaconObservation>()
         var cursor: String? = null
         val seenCursors = HashSet<String>()
@@ -222,6 +231,58 @@ class BeaconNodeReader(val client: BeaconApiClient, private val verifiedServerIn
         }
         client.sourceSession.check()
         return BeaconObservationHistory(node, observations.sortedByDescending { it.heardAt }, complete, pages + 1)
+    }
+
+    /**
+     * Hourly totals of the node's observations over the last [hours] (at most 720), counted in full from
+     * Beacon's rollup. Null when the server predates the endpoint.
+     */
+    suspend fun activity(node: BeaconNode, hours: Int): BeaconNodeActivity? {
+        if (!verifiedServerInfo.supportsNodeActivity) return null
+        val range = hours.coerceIn(1, BeaconNodeActivity.MAXIMUM_HOURS)
+        val activity = try {
+            client.get(BeaconNodeActivity.serializer(), listOf("nodes", node.id, "activity"), listOf("range" to "${range}h"))
+        } catch (e: BeaconApiException.Server) {
+            // A version that should have the route but doesn't: fall back, don't fail the screen.
+            if (e.status == 404) return null
+            throw e
+        }
+        activity.validate()
+        client.sourceSession.check()
+        return activity
+    }
+}
+
+@Serializable
+data class BeaconNodeActivity(
+    val windowStart: Long,
+    val windowEnd: Long,
+    val summary: Summary,
+    val points: List<Point> = emptyList(),
+    val latest: Latest? = null,
+) {
+    @Serializable
+    data class Summary(val observations: Int, val snrAvg: Double? = null, val rssiAvg: Double? = null, val hopAvg: Double? = null)
+
+    @Serializable
+    data class Point(val t: Long, val observations: Int, val snrAvg: Double? = null, val rssiAvg: Double? = null, val hopAvg: Double? = null)
+
+    @Serializable
+    data class Latest(val packetHash: String, val heardAt: Long)
+
+    /** Observations in the hours that started within the last [millis] before the window's end. */
+    fun observationsInLast(millis: Long): Int = points.filter { it.t >= windowEnd - millis }.sumOf { it.observations }
+
+    fun validate() {
+        fun finite(value: Double?) = value?.isFinite() != false
+        val valid = windowStart <= windowEnd && summary.observations >= 0 &&
+            finite(summary.snrAvg) && finite(summary.rssiAvg) && finite(summary.hopAvg) &&
+            points.all { it.observations >= 0 && finite(it.snrAvg) && finite(it.rssiAvg) && finite(it.hopAvg) }
+        if (!valid) throw BeaconApiException.InvalidResponse()
+    }
+
+    companion object {
+        const val MAXIMUM_HOURS = 720
     }
 }
 
@@ -516,10 +577,18 @@ class BeaconRegionReader(
     data class Region(
         val id: Int, val slug: String, val name: String, val iatas: List<String>,
         val centerLat: Double? = null, val centerLng: Double? = null, val zoomLevel: Int? = null,
+        val description: String? = null,
     )
 
+    /** Beacon 2.1 lists every region with its IATAs; older servers list only id, slug and name. */
     @Serializable
-    private data class Summary(val id: Int, val slug: String, val name: String)
+    private data class Summary(
+        val id: Int, val slug: String, val name: String, val iatas: List<String>? = null,
+        val centerLat: Double? = null, val centerLng: Double? = null, val zoomLevel: Int? = null,
+        val description: String? = null,
+    ) {
+        val region: Region? get() = iatas?.let { Region(id, slug, name, it, centerLat, centerLng, zoomLevel, description) }
+    }
 
     data class Catalog(val iatas: List<Iata>, val regions: List<Region>) {
         val names: Map<String, String> get() = iatas.associate { it.iata.uppercase() to (it.displayName ?: it.iata) }
@@ -568,6 +637,10 @@ class BeaconRegionReader(
             summaries.all { it.id > 0 && it.slug.isNotEmpty() }
         if (!valid) throw BeaconApiException.InvalidResponse()
         val regions = summaries.map { summary ->
+            summary.region?.let { listed ->
+                if (!listed.iatas.all(::validCode)) throw BeaconApiException.InvalidResponse()
+                return@map listed
+            }
             val detail = client.get(Region.serializer(), listOf("regions", summary.id.toString()))
             if (detail.id != summary.id || detail.slug != summary.slug || !detail.iatas.all(::validCode)) {
                 throw BeaconApiException.InvalidResponse()

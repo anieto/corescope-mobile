@@ -22,6 +22,7 @@ actor BeaconRegionReader {
         let id: Int
         let slug: String
         let name: String
+        var description: String? = nil
         let iatas: [String]
         let centerLat: Double?
         let centerLng: Double?
@@ -89,10 +90,23 @@ actor BeaconRegionReader {
         }
     }
 
+    /// Beacon 2.1 lists every region with its IATAs; older servers list only id, slug and name.
     private struct Summary: Decodable, Sendable {
         let id: Int
         let slug: String
         let name: String
+        let description: String?
+        let iatas: [String]?
+        let centerLat: Double?
+        let centerLng: Double?
+        let zoomLevel: Int?
+
+        var region: Region? {
+            iatas.map {
+                Region(id: id, slug: slug, name: name, description: description, iatas: $0,
+                       centerLat: centerLat, centerLng: centerLng, zoomLevel: zoomLevel)
+            }
+        }
     }
 
     private let client: BeaconAPIClient
@@ -140,6 +154,11 @@ actor BeaconRegionReader {
         }
         var regions: [Region] = []
         for summary in summaries {
+            if let listed = summary.region {
+                guard listed.iatas.allSatisfy({ validCode($0) }) else { throw APIError.invalidResponse }
+                regions.append(listed)
+                continue
+            }
             let detail: Region = try await client.get(["regions", String(summary.id)])
             guard detail.id == summary.id, detail.slug == summary.slug,
                   detail.iatas.allSatisfy({ validCode($0) }) else { throw APIError.invalidResponse }

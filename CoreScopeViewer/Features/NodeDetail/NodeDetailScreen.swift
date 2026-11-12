@@ -33,7 +33,8 @@ struct NodeDetailScreen: View {
                     lastUpdatedAt: viewModel.lastUpdatedAt,
                     errorMessage: viewModel.errorMessage,
                     hasContent: viewModel.health != nil || viewModel.paths != nil
-                        || viewModel.reach != nil || viewModel.neighbors != nil,
+                        || viewModel.reach != nil || viewModel.neighbors != nil
+                        || viewModel.beaconHealth != nil,
                     retry: retryNodeData
                 )
 
@@ -74,6 +75,15 @@ struct NodeDetailScreen: View {
                             observers: health.observers,
                             openObserver: { appNavigationStore.openObserver(id: $0) }
                         )
+                    }
+                }
+
+                if let beaconHealth = viewModel.beaconHealth {
+                    if beaconHealth.hasActivity {
+                        BeaconNodeHealthCard(health: beaconHealth)
+                    }
+                    if !beaconHealth.heardIn.isEmpty {
+                        BeaconHeardInCard(regions: beaconHealth.heardIn)
                     }
                 }
 
@@ -426,6 +436,89 @@ private struct NodeMetricTile: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
         .background(NodeScopeStyle.signal.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+/// Beacon's counterpart to the health card: observations, not transmissions, from
+/// Beacon's hourly totals. Averages cover the seven days.
+private struct BeaconNodeHealthCard: View {
+    let health: BeaconNodeHealth
+
+    var body: some View {
+        NodeDetailCard(title: "Health", symbol: "waveform.path.ecg", learn: .observation) {
+            HStack(spacing: 8) {
+                NodeMetricTile(value: health.observationsDay?.formatted() ?? "—", label: "24 h")
+                NodeMetricTile(value: health.observationsWeek?.formatted() ?? "—", label: "7 days")
+                NodeMetricTile(
+                    value: health.avgSnr.map { String(format: "%.1f", $0) } ?? "—",
+                    label: "Avg SNR",
+                    learn: .snr
+                )
+            }
+
+            if health.avgRssi != nil || health.avgHops != nil {
+                HStack(spacing: 14) {
+                    if let avgRssi = health.avgRssi {
+                        Label("\(avgRssi, specifier: "%.0f") dBm avg RSSI", systemImage: "antenna.radiowaves.left.and.right")
+                    }
+                    if let avgHops = health.avgHops {
+                        Label("\(avgHops, specifier: "%.1f") avg hops", systemImage: "point.3.connected.trianglepath.dotted")
+                    }
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            }
+
+            if let lastHeard = health.lastHeard {
+                Text("Last heard \(RelativeTime.string(from: lastHeard))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+/// Where a Beacon node was heard. Beacon reports regions, not observers.
+private struct BeaconHeardInCard: View {
+    let regions: [BeaconNodeHealth.HeardIn]
+    @State private var isExpanded = false
+
+    private var visibleRegions: ArraySlice<BeaconNodeHealth.HeardIn> {
+        regions.prefix(isExpanded ? regions.count : 3)
+    }
+
+    var body: some View {
+        NodeDetailCard(title: "Heard In", symbol: "map") {
+            VStack(spacing: 0) {
+                ForEach(visibleRegions) { region in
+                    HStack(spacing: 10) {
+                        Text(region.iata)
+                            .font(.monaspace(.subheadline).weight(.semibold))
+                            .frame(minWidth: 40, alignment: .leading)
+                        if let name = region.name, name.uppercased() != region.iata {
+                            Text(name)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        Spacer(minLength: 8)
+                        if let lastHeard = region.lastHeard {
+                            Text(RelativeTime.string(from: lastHeard))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.vertical, 9)
+                    .accessibilityElement(children: .combine)
+                    if region.id != visibleRegions.last?.id {
+                        Divider().opacity(0.3)
+                    }
+                }
+            }
+            if regions.count > 3 {
+                ExpandSectionButton(isExpanded: $isExpanded, totalCount: regions.count, noun: "regions")
+            }
+        }
     }
 }
 

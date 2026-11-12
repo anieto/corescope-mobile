@@ -585,7 +585,7 @@ struct BeaconAPITests {
 
     @Test func beaconBackendProjectsNodesAndObserversWithoutInventingMetadata() async throws {
         let routes: [String: Any] = [
-            "/api/v1/nodes?limit=200": try Self.fixtureBody("node-by-pubkey"),
+            "/api/v1/nodes?limit=2000": try Self.fixtureBody("node-by-pubkey"),
             "/api/v1/observers?limit=200": try Self.fixtureBody("observers-page")
         ]
         let session = Self.session(targets: Array(routes.keys),
@@ -1194,7 +1194,7 @@ struct BeaconAPITests {
     }
 
     @Test func nodeSummaryPreservesUnknownDatesAndUsesNewestRegion() async throws {
-        let session = Self.session(targets: ["/api/v1/nodes?limit=200"], fixture: "node-by-pubkey")
+        let session = Self.session(targets: ["/api/v1/nodes?limit=2000"], fixture: "node-by-pubkey")
         defer { session.invalidateAndCancel() }
         let reader = try BeaconNodeReader(client: Self.client(session), verifiedServerInfo: .init(serverVersion: "2.0.3"))
         let page = try await reader.nodePage(region: nil, pageSize: 1000)
@@ -1571,7 +1571,7 @@ struct BeaconAPITests {
         let pages = try #require(fixture["pages"] as? [[String: Any]])
         let items = try #require(fixture["items"] as? [[String: Any]])
         let targets = pages.map { page in
-            "/api/v1/nodes?limit=200" + ((page["cursor"] as? NSNumber).map { "&cursor=\($0)" } ?? "")
+            "/api/v1/nodes?limit=2000" + ((page["cursor"] as? NSNumber).map { "&cursor=\($0)" } ?? "")
         }
         let session = Self.session(targets: targets, fixture: "nodes-page")
         defer { session.invalidateAndCancel() }
@@ -1583,7 +1583,7 @@ struct BeaconAPITests {
     }
 
     @Test func nodeCursorsAreBoundToEndpointSourceSessionAndRegion() async throws {
-        let session = Self.session(targets: ["/api/v1/nodes?limit=200&iatas=SAT"], fixture: "nodes-page")
+        let session = Self.session(targets: ["/api/v1/nodes?limit=2000&iatas=SAT"], fixture: "nodes-page")
         defer { session.invalidateAndCancel() }
         let client = try Self.client(session)
         let reader = try BeaconNodeReader(client: client, verifiedServerInfo: .init(serverVersion: "2.0.3"))
@@ -1619,7 +1619,7 @@ struct BeaconAPITests {
         for cursor in [nil, "opaque-continuation"] as [String?] {
             fixture["nextCursor"] = cursor
             let body = String(decoding: try JSONSerialization.data(withJSONObject: fixture), as: UTF8.self)
-            let target = "/api/v1/nodes?limit=200"
+            let target = "/api/v1/nodes?limit=2000"
             let session = Self.session(targets: [target, target + "&cursor=opaque-continuation"], body: body)
             defer { session.invalidateAndCancel() }
             let reader = try BeaconNodeReader(client: Self.client(session), verifiedServerInfo: .init(serverVersion: "2.0.3"))
