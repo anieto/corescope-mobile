@@ -25,8 +25,8 @@ android {
         applicationId = "org.nodescope.android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 24
-        versionName = "0.10.4"
+        versionCode = 25
+        versionName = "0.10.5"
         buildConfigField("String", "CARTO_API_KEY", "\"" + cartoKey.replace("\\", "\\\\").replace("\"", "\\\"") + "\"")
         buildConfigField("boolean", "MAPS_CONFIGURED", cartoKey.isNotBlank().toString())
         buildConfigField("boolean", "GOOGLE_MAPS_CONFIGURED", googleMapsKey.isNotBlank().toString())
