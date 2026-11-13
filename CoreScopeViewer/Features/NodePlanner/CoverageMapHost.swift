@@ -26,7 +26,9 @@ struct CoverageMapHost: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(place: place) }
 
     func makeUIView(context: Context) -> MKMapView {
-        let map = MKMapView()
+        let map = TracedMapView()
+        map.trace = context.coordinator.trace
+        context.coordinator.trace.record("map created")
         map.delegate = context.coordinator
         // The style menu takes the compass's corner; two-finger rotation still works.
         map.showsCompass = false
@@ -43,6 +45,7 @@ struct CoverageMapHost: UIViewRepresentable {
 
     func updateUIView(_ map: MKMapView, context: Context) {
         let coordinator = context.coordinator
+        coordinator.trace.record("update layer=\(layer?.executionID.uuidString ?? "none") size=\(map.bounds.size) window=\(map.window != nil)")
         coordinator.place = place
         coordinator.bottomInset = bottomInset
         let mapType: MKMapType = switch style {
@@ -81,6 +84,7 @@ struct CoverageMapHost: UIViewRepresentable {
 
     @MainActor
     final class Coordinator: NSObject, MKMapViewDelegate {
+        let trace = CoverageRenderTrace()
         var place: (CLLocationCoordinate2D, MeshNode?) -> Void
         var bottomInset: CGFloat = 0
         private var pins: [String: Pin] = [:]
@@ -207,6 +211,7 @@ struct CoverageMapHost: UIViewRepresentable {
         /// Frames a square around the center, keeping it clear of the controls above and the
         /// panel below instead of under them.
         private func frame(_ map: MKMapView, center: CLLocationCoordinate2D, meters: Double, animated: Bool) {
+            trace.record("camera frame meters=\(meters) size=\(map.bounds.size) bottomInset=\(bottomInset) animated=\(animated)")
             let region = MKCoordinateRegion(center: center, latitudinalMeters: meters, longitudinalMeters: meters)
             let padding = UIEdgeInsets(top: 72, left: 16, bottom: bottomInset + 16, right: 16)
             map.setVisibleMapRect(Self.mapRect(region), edgePadding: padding, animated: animated)
@@ -230,15 +235,10 @@ struct CoverageMapHost: UIViewRepresentable {
             self.layer = layer
             do {
                 let id = layer.executionID
-                let newOverlay = try CoverageMapKitOverlay(raster: layer.raster, cacheBytes: 8 * 1024 * 1024) { [weak self, weak map] zoom, x, y in
-                    guard let self, let map, self.executionID == id, let overlay = self.overlay,
-                          let renderer = map.renderer(for: overlay) else { return }
-                    let side = MKMapRect.world.size.width / pow(2, Double(zoom))
-                    renderer.setNeedsDisplay(MKMapRect(x: Double(x) * side, y: Double(y) * side,
-                                                      width: side, height: side))
-                }
+                let newOverlay = try CoverageMapKitOverlay(raster: layer.raster, cacheBytes: 8 * 1024 * 1024, trace: trace)
                 executionID = layer.executionID
                 overlay = newOverlay
+                trace.record("install overlay execution=\(id) size=\(map.bounds.size) window=\(map.window != nil)")
                 map.addOverlay(newOverlay, level: .aboveRoads)
                 frame(map, center: CLLocationCoordinate2D(latitude: layer.raster.transmitter.latitude,
                     longitude: layer.raster.transmitter.longitude), meters: Double(layer.raster.grid.radiusMeters) * 2.4, animated: centered && map.window != nil)
@@ -249,6 +249,7 @@ struct CoverageMapHost: UIViewRepresentable {
         }
 
         func removeLayer(_ map: MKMapView) {
+            trace.record("remove layer execution=\(executionID?.uuidString ?? "none")")
             if let inspectionPin { map.removeAnnotation(inspectionPin) }
             inspectionPin = nil
             layer = nil
@@ -260,9 +261,22 @@ struct CoverageMapHost: UIViewRepresentable {
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
             if let tiles = overlay as? CoverageMapKitOverlay {
-                return MKTileOverlayRenderer(tileOverlay: tiles)
+                trace.record("renderer created size=\(mapView.bounds.size) window=\(mapView.window != nil)")
+                return CoverageRasterRenderer(source: tiles, trace: trace)
             }
             return MKOverlayRenderer(overlay: overlay)
+        }
+
+        func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
+            trace.record("region settled size=\(mapView.bounds.size) window=\(mapView.window != nil)")
+        }
+
+        func mapViewDidFinishLoadingMap(_ mapView: MKMapView) {
+            trace.record("map loaded size=\(mapView.bounds.size)")
+        }
+
+        func mapViewDidFinishRenderingMap(_ mapView: MKMapView, fullyRendered: Bool) {
+            trace.record("map rendered fully=\(fullyRendered) size=\(mapView.bounds.size)")
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
@@ -271,6 +285,25 @@ struct CoverageMapHost: UIViewRepresentable {
                 ?? PinView(annotation: pin, reuseIdentifier: "coverage-pin")
             view.configure(pin)
             return view
+        }
+    }
+
+    @MainActor
+    final class TracedMapView: MKMapView {
+        var trace: CoverageRenderTrace?
+        private var lastSize: CGSize?
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            if lastSize != bounds.size {
+                lastSize = bounds.size
+                trace?.record("layout size=\(bounds.size) safeInsets=\(safeAreaInsets) window=\(window != nil)")
+            }
+        }
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            trace?.record("window changed attached=\(window != nil) size=\(bounds.size)")
         }
     }
 

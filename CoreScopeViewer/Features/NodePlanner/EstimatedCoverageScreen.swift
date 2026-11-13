@@ -273,6 +273,10 @@ final class EstimatedCoverageModel {
 
     init(distanceUnit: DistanceUnit = DistanceUnit(rawValue: UserDefaults.standard.string(forKey: DistanceUnit.defaultsKey) ?? "") ?? .imperial) {
         radiusMeters = distanceUnit == .imperial ? 16_093 : 20_000
+        if distanceUnit == .imperial {
+            transmitHeightMeters = distanceUnit.meters(fromDisplayedHeight: 20)
+            receiveHeightMeters = distanceUnit.meters(fromDisplayedHeight: 5)
+        }
     }
     var spacingMeters = 1000
     var acceptsScenario = false

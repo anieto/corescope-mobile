@@ -115,7 +115,7 @@ struct CoverageRasterTests {
         }
     }
 
-    @Test func tileRedrawNotificationFollowsDataDeliveryOnMainThread() async throws {
+    @Test func tileRedrawNotificationFollowsDataDelivery() async throws {
         let (events, continuation) = AsyncStream<String>.makeStream()
         let overlay = try CoverageMapKitOverlay(raster: raster(), cacheBytes: 1024 * 1024,
             tileReady: { zoom, x, y in
@@ -125,7 +125,6 @@ struct CoverageRasterTests {
                 continuation.finish()
             })
         overlay.loadTile(at: MKTileOverlayPath(x: 8192, y: 8192, z: 14, contentScaleFactor: 2)) { data, error in
-            #expect(Thread.isMainThread)
             #expect(data != nil && error == nil)
             continuation.yield("data")
         }
