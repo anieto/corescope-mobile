@@ -74,7 +74,7 @@ fun NodeDetailScreen(
     model: NodeDetailViewModel?, host: String, publicKey: String, initial: MeshNode?,
     favorite: Boolean, onFavorite: (MeshNode) -> Unit, onMap: (MeshNode) -> Unit,
     onObserver: (id: String, name: String) -> Unit, onNode: (String) -> Unit, onAnalytics: (() -> Unit)? = null,
-    onViewed: (MeshNode) -> Unit = {},
+    onViewed: (MeshNode) -> Unit = {}, onNodeCheck: (() -> Unit)? = null,
 ) {
     // Without a network layer (previews/tests) only the identity card is shown.
     val health = model?.health?.state?.collectAsStateWithLifecycle()?.value ?: Loaded()
@@ -82,6 +82,7 @@ fun NodeDetailScreen(
     val paths = model?.paths?.state?.collectAsStateWithLifecycle()?.value ?: Loaded()
     val neighbors = model?.neighbors?.state?.collectAsStateWithLifecycle()?.value ?: Loaded()
     val beaconHealth = model?.beaconHealth?.state?.collectAsStateWithLifecycle()?.value ?: Loaded()
+    val nodeCheck = model?.nodeCheck?.state?.collectAsStateWithLifecycle()?.value ?: Loaded()
     val key = host to publicKey
     // Beacon has no health, reach or path statistics; it reports neighbors instead.
     val beacon = LocalBeaconSource.current
@@ -111,6 +112,12 @@ fun NodeDetailScreen(
             if (node != null) IdentityCard(node, publicKey, favorite, now, onFavorite, onMap)
             else if (sections[0].loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             else Text("This node is not in the loaded results for $host.", style = MaterialTheme.typography.bodyMedium)
+        }
+        if (!beacon) onNodeCheck?.let { open ->
+            item {
+                org.nodescope.android.feature.nodecheck.NodeCheckLinkCard(
+                    nodeCheck.value?.takeIf { nodeCheck.key == key }, loading = nodeCheck.key != key || nodeCheck.loading, onClick = open)
+            }
         }
         reachValue?.let { value -> item { ReachCard(value) } }
             ?: neighborsValue?.let { value -> item { BeaconReachCard(value.neighbors.size) } }

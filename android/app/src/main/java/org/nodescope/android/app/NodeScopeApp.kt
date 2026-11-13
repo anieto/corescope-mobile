@@ -123,6 +123,8 @@ enum class Destination(val title: Int, val icon: ImageVector, val route: TopLeve
 @Serializable data class NodeRoute(val publicKey: String)
 @Serializable data class NodeAnalyticsRoute(val publicKey: String)
 @Serializable data object NodePlannerRoute
+/** [publicKey] is set when opened from a node's page; Explore opens it empty to look a node up. */
+@Serializable data class NodeCheckRoute(val publicKey: String? = null)
 @Serializable data object LinkProfileRoute
 @Serializable data object SourceRoute
 @Serializable data object PacketRoute
@@ -466,6 +468,7 @@ internal fun AppShell(
                             destination?.hasRoute<CoreScopeAccountRoute>() == true -> "CoreScope account"
                             destination?.hasRoute<FavoritesRoute>() == true -> "Favorites"
                             destination?.hasRoute<NodePlannerRoute>() == true -> "Node Planner"
+                            destination?.hasRoute<NodeCheckRoute>() == true -> "Node Check"
                             destination?.hasRoute<LinkProfileRoute>() == true -> "Link Profile"
                             else -> stringResource(when {
                                 destination?.hasRoute<SourceRoute>() == true -> R.string.analyzer
@@ -601,6 +604,7 @@ internal fun AppShell(
                                 state.snapshot, currentFeed, library, monitoredList, ExploreActions(
                                     onFavorites = { nav.navigate(FavoritesRoute) },
                                     onNodePlanner = { nav.navigate(NodePlannerRoute) },
+                                    onNodeCheck = { nav.navigate(NodeCheckRoute()) },
                                     onNode = ::openNode,
                                     onObserver = { id, name -> nav.navigate(ObserverRoute(id, name)) },
                                     onChannel = { id, name -> nav.navigate(ChannelRoute(id, name)) },
@@ -611,6 +615,14 @@ internal fun AppShell(
                                     onChannels = { selectTab(Destination.CHANNELS) },
                                     onObservers = { activeOnly -> if (activeOnly) observerActiveRequest = System.nanoTime(); selectTab(Destination.OBSERVERS) },
                                 ))
+                        }
+                        screen<NodeCheckRoute> { backStack ->
+                            val initialKey = backStack.toRoute<NodeCheckRoute>().publicKey
+                            org.nodescope.android.feature.nodecheck.NodeCheckScreen(
+                                browse?.let { repository -> viewModel(backStack) { org.nodescope.android.feature.nodecheck.NodeCheckViewModel(repository) } },
+                                preferences.host, initialKey,
+                                library.favorites.filter { it.kind == SavedKind.NODE },
+                                feed = { currentFeed }, onNodePage = ::openNode)
                         }
                         screen<NodePlannerRoute> {
                             org.nodescope.android.feature.linkprofile.NodePlannerScreen { nav.navigate(LinkProfileRoute) }
@@ -737,7 +749,8 @@ internal fun AppShell(
                                     selectTab(Destination.MAP)
                                 },
                                 onObserver = { id, name -> nav.navigate(ObserverRoute(id, name)) }, onNode = ::openNode,
-                                onAnalytics = browse?.let { { nav.navigate(NodeAnalyticsRoute(publicKey)) } })
+                                onAnalytics = browse?.let { { nav.navigate(NodeAnalyticsRoute(publicKey)) } },
+                                onNodeCheck = browse?.let { { nav.navigate(NodeCheckRoute(publicKey)) } })
                         }
                         screen<NodeAnalyticsRoute> { backStack ->
                             val publicKey = backStack.toRoute<NodeAnalyticsRoute>().publicKey
