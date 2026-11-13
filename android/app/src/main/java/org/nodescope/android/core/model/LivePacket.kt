@@ -39,6 +39,10 @@ data class LivePacket(
     /** Decoded payload fields used for previews: message text, advert name, channel. */
     val payloadText: String? = null, val payloadName: String? = null, val payloadChannel: String? = null,
     val payloadVersion: Int? = null, val rawHex: String? = null,
+    /** An advert's sender, from the decoded payload's `pubKey` (Node Check's live test). */
+    val advertKey: String? = null,
+    /** 0 and 1 are flood, 2 and 3 direct (how a zero-hop advert travels). */
+    val routeType: Int? = null,
 ) {
     // Same transmission can have different observers and routes; retain those observations.
     // Built once per packet: the feed compares keys against every stored packet on each arrival.
@@ -76,7 +80,9 @@ fun parseLivePacket(data: JsonObject, live: Boolean, now: Long = System.currentT
         data.text("timestamp") ?: data.text("first_seen"), now, live, data.number("observation_count")?.toInt() ?: 1,
         payload?.text("text")?.takeIf(String::isNotBlank), payload?.text("name")?.takeIf(String::isNotBlank),
         payload?.text("channel")?.takeIf(String::isNotBlank), header?.number("payloadVersion")?.toInt(),
-        (data.text("raw_hex") ?: data.text("raw"))?.takeIf(String::isNotBlank))
+        (data.text("raw_hex") ?: data.text("raw"))?.takeIf(String::isNotBlank),
+        payload?.text("pubKey")?.takeIf(String::isNotBlank)?.lowercase(),
+        (data.number("route_type") ?: header?.number("routeType"))?.toInt())
 }
 private fun JsonObject.text(key: String) = (this[key] as? JsonPrimitive)?.contentOrNull
 private fun JsonObject.number(key: String) = (this[key] as? JsonPrimitive)?.doubleOrNull

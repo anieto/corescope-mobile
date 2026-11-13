@@ -10,6 +10,7 @@ enum BackendCapability: String, CaseIterable, Sendable {
     case channelDecryptOnPhone
     case serverChannels
     case mapDefaults
+    case nodeCheck
 
     var beaconExplanation: String {
         switch self {
@@ -27,6 +28,8 @@ enum BackendCapability: String, CaseIterable, Sendable {
             String(localized: "Route and network-importance statistics, and per-observer health, are currently available only with CoreScope servers.")
         case .mapDefaults:
             String(localized: "Beacon servers don’t provide map defaults. NodeScope uses region coordinates to frame the map instead.")
+        case .nodeCheck:
+            String(localized: "Node Check needs to know which observers heard a node, which is currently available only with CoreScope servers.")
         }
     }
 }
@@ -56,9 +59,17 @@ protocol AnalyzerBackend: FieldCatalogBackend {
     func iataCoordinates() async throws -> IataCoordsResponse
     func mapDefaults() async throws -> MapDefaults
     func liveMapConfig() async throws -> LiveMapClientConfig
+    /// Node Check's view of one node, or nil when the analyzer has never heard it.
+    func nodeCheckInput(publicKey: String) async throws -> NodeCheckInput?
+    /// Nodes whose name or key matches, for Node Check's lookup.
+    func searchNodes(query: String) async throws -> [MeshNode]
 }
 
 extension AnalyzerBackend {
+    /// Only CoreScope identifies the observers behind each report, which Node Check needs.
+    func nodeCheckInput(publicKey: String) async throws -> NodeCheckInput? { throw NodeCheckError.unsupported }
+    func searchNodes(query: String) async throws -> [MeshNode] { throw NodeCheckError.unsupported }
+
     /// Only CoreScope publishes quick picks; other backends offer single regions.
     func regionQuickPicks() async throws -> [RegionQuickPick] { [] }
 

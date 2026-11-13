@@ -1,5 +1,7 @@
 package org.nodescope.android.core.network
 
+import kotlinx.coroutines.async
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
@@ -49,6 +51,12 @@ interface BrowseRepository {
         return AnalyzerPage(recentPackets(host, size), null)
     }
     /** Runs [block] against saved responses only (null when not saved or older than [maxAgeMillis]). */
+    /** Node Check's view of one node, or null when the analyzer has never heard it. CoreScope only. */
+    suspend fun nodeCheckInput(host: String, publicKey: String): NodeCheckInput? =
+        throw BeaconUnsupportedException(BackendCapability.NODE_CHECK)
+    /** Nodes whose name or key matches, for Node Check's lookup. CoreScope only. */
+    suspend fun searchNodes(host: String, query: String): List<MeshNode> =
+        throw BeaconUnsupportedException(BackendCapability.NODE_CHECK)
     suspend fun <T> saved(maxAgeMillis: Long, block: suspend BrowseRepository.() -> T): Cached<T>? = null
 }
 
@@ -117,7 +125,35 @@ class HttpBrowseRepository(private val client: BodySource, private val ephemeral
         protocolJson.decodeFromString<PacketDetail>(client.read(packetDetailUrl(host, hash)))
     override suspend fun nodeAnalytics(host: String, publicKey: String, days: Int) =
         protocolJson.decodeFromString<NodeAnalytics>(client.read(nodeAnalyticsUrl(host, publicKey, days)))
+
+    // Node Check reads are never saved: a check should always reflect what the analyzer hears now.
+    override suspend fun nodeCheckInput(host: String, publicKey: String): NodeCheckInput? = kotlinx.coroutines.coroutineScope {
+        val observers = async { runCatching { observers(host) }.getOrNull().orEmpty() }
+        val detailBody = try {
+            ephemeral.read(endpoint(host, "api", "nodes", publicKey))
+        } catch (e: HttpFailure) {
+            observers.cancel()
+            if (e.status == 404) return@coroutineScope null
+            if (e.status == 409) throw NodeCheckAmbiguousKeyException()
+            throw e
+        }
+        val regions = observers.await().mapNotNull { observer -> observer.iata?.takeIf(String::isNotBlank)?.let { observer.id to it } }.toMap()
+        val (node, adverts) = parseNodeCheckDetail(detailBody, regions)
+        // A key prefix resolves to the full key; health and clock need the full one.
+        val health = async { runCatching { parseNodeCheckHealth(ephemeral.read(nodeSectionUrl(host, node.publicKey, "health"))) }.getOrNull() }
+        val clock = async { runCatching { parseNodeCheckClock(ephemeral.read(nodeSectionUrl(host, node.publicKey, "clock-skew"))) }.getOrNull() }
+        val healthValue = health.await()
+        NodeCheckInput(node, adverts, healthValue?.first.orEmpty(), healthValue?.second, clock.await(), regions)
+    }
+
+    override suspend fun searchNodes(host: String, query: String): List<MeshNode> = protocolJson.decodeFromString<NodeSearchResponse>(
+        ephemeral.read(endpoint(host, "api", "nodes", "search").newBuilder().addQueryParameter("q", query).build())).nodes
 }
+
+/** `/api/nodes/search` lists nodes without a total. */
+@Serializable private data class NodeSearchResponse(val nodes: List<MeshNode> = emptyList())
+
+class NodeCheckAmbiguousKeyException : IllegalStateException("More than one node starts with that key. Enter more of it.")
 
 /** Malformed or non-channel packets are skipped rather than failing the whole response. */
 fun parseChannelPackets(body: String): List<ChannelPacket> {

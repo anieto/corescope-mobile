@@ -1,6 +1,6 @@
 # Estimated Coverage beta testing
 
-The 0.10.5 development build now supports an in-app calculation from setup through coverage overlay
+The 0.10.6 development build now supports an in-app calculation from setup through coverage overlay
 and known-node predictions. Open **Explore → Node Planner → Estimated Coverage**. This is a
 terrain-only inland estimate, not measured reception; coast/sea paths, buildings and tree clutter
 are not modeled. Accept the displayed assumptions before Calculate becomes available.
@@ -185,14 +185,21 @@ identity, invalid data and stale-input handling. Interactive device restoration 
 
 ### Saved overlay rendering follow-up
 
-The initial one-time renderer reload did not resolve intermittent missing tiles. The tile adapter
-now delivers data on the main queue and notifies the coordinator on the next main-queue turn to
-invalidate that tile rectangle. Notifications from replaced studies are ignored. Burst tile requests
-are queued instead of rejected at a 64-request admission cap. These changes await Adam's interactive
-reopening/pan/zoom checks; do not consider the intermittent rendering issue visually verified.
+The initial one-time renderer reload did not resolve intermittent missing tiles, and neither did
+delivering tile data on the main queue with a follow-up invalidation. iOS now draws coverage tiles
+through its own `MKOverlayRenderer` (`CoverageRasterRenderer`): `canDraw` requests missing tiles and
+returns false, tile completion decodes the PNG into a bounded image cache and only then invalidates
+that tile's rectangle, and `draw` never starts a reload. Tile completion happens on the worker queue
+and each tile announces readiness once, so a cache hit cannot restart a load → redraw → load loop.
+A bounded, DEBUG-only OSLog trace (`CoverageRenderTrace`, subsystem `org.nodescope.coverage`) records
+map layout, camera, overlay install and tile request/decode/draw events without coordinates or node
+IDs. Burst tile requests are queued instead of rejected at a 64-request admission cap. These changes
+await Adam's interactive reopening/pan/zoom checks; do not consider the intermittent rendering issue
+visually verified.
 
-The branch is now 0.10.5, merged with main's 0.10.4 Beacon 2.2 release. Merge validation compiles both
-apps and their test sources only; Adam runs the apps and tests.
+The branch is now 0.10.6, merged with main's 0.10.5 Node Check release (which includes 0.10.4 Beacon 2.2
+and the live map options). Merge validation compiles both apps and their test sources only; Adam runs
+the apps and tests.
 
 Generic iOS simulator builds target arm64, matching the RF XCFramework; Intel simulator x86_64
 is excluded in both project configurations. Physical iOS architectures are unchanged.

@@ -182,7 +182,27 @@ Released from `feature/beacon-2.2`, on top of the 0.10.3 live map beta. Notes:
 - **Android route details for replays:** tapping a replayed route opens its stops, observer and message.
 - Builds: iOS 0.10.4 (1), Android 0.10.4 (versionCode 24).
 
-### 0.10.5 — Estimated Coverage and saved planning work (in progress)
+### 0.10.5 — Node Check (release)
+
+Is a node getting out? Notes: [v0.10.5 release](docs/node-planner/v0.10.5-release.md). The same check
+runs on meshtexas.org/node-check; the rules are the same in all three places and must change together
+(`NodeCheckRules` on iOS and Android, `functions/_shared/node-check.js` in meshtexas-site).
+
+- **Entry points:** Explore → Node Check (any node, including one the analyzer has never heard) and a
+  verdict card on a node's page.
+- **Findings** grouped into Needs attention, Looking good and Good to know, each with what to do: last
+  heard (repeaters quiet after 24 h, rooms after a day; silent after 2 and 3 days), how far the last
+  flood advert reached, direct observers, whether a repeater relays, its clock, a missing location.
+- **Who heard it:** the last advert's observers and the direct-RF observers, grouped by region, closest
+  first.
+- **Live test:** watches the shared live feed for the node's adverts for two minutes and lists observers
+  as they report, with a map (iOS MapKit; Android on the live map's engine). A full key never heard yet
+  can be watched for its first advert.
+- CoreScope only. Beacon could support a reduced report (last advert's observers via packet detail; no
+  relaying or clock) and a live test triggered by `nodeUpdated`; not started.
+- Builds: iOS 0.10.5 (1), Android 0.10.5 (versionCode 25).
+
+### 0.10.6 — Candidate Sites (in progress)
 
 - **Direction revised 2026-11-02:** Estimated Coverage is a standalone peer of Link Profile:
   select a point, enter radio/antenna and receiver assumptions, and calculate a terrain-aware
@@ -301,11 +321,13 @@ Released from `feature/beacon-2.2`, on top of the 0.10.3 live map beta. Notes:
   layout (as the Duo already does), then remove the 0.10.1 launch workaround
   (`RootTabView.settleIPadMapLayout()`). On first launch iPadOS doesn't merge the top tab bar into
   the split view's bar, which pushed both panes 64 pt down until the tab was revisited.
-- Builds: iOS 0.10.5 (1), Android 0.10.5 (versionCode 25). Updated from main after the
-  0.10.4 Beacon 2.2 release; the live map beta is included.
+- Builds: iOS 0.10.6 (1), Android 0.10.6 (versionCode 26). 0.10.5 went to Node Check, 0.10.4 to the
+  Beacon 2.2 release, and the branch's earlier 0.10.3 numbers to the live map release. Updated from
+  `main` after the 0.10.5 Node Check release; the live map beta, Beacon 2.2 and Node Check are included.
 
-Still deferred: comparing/exporting plans, multi-transmitter coverage and advanced receiver overrides.
-Saving Link Profile studies belongs in the shared Saved Plans collection, not a separate library.
+Still to come after 0.10.6: Potential Links, comparing and exporting plans, multi-transmitter coverage
+and advanced receiver overrides. Saving Link Profile studies belongs in the shared Saved Plans collection,
+not a separate library ([saved Link Profiles plan](docs/node-planner/saved-link-profiles.md)).
 
 ### Node preview card (planned)
 
@@ -377,7 +399,6 @@ and 3 are at parity. See [implementation progress](docs/android/progress.md).
 ## Current priority
 
 0.10.2 (Learn layer, Monaspace Neon, Settings refresh, foldable fixes) is uploaded to the App Store
-and Google Play. 0.10.4 is the Beacon 2.2 release, built on the 0.10.3 live map beta.
-0.10.5 is standalone Estimated Coverage, shared Saved Plans, and the separately tracked iPad
-two-pane map layout. Android touch &
+and Google Play. 0.10.4 (the 0.10.3 live map options plus Beacon 2.2 support) and 0.10.5 (Node Check) are the next
+releases; then 0.10.6: Candidate Sites and the iPad two-pane map layout. Android touch &
 hold still needs a device test.

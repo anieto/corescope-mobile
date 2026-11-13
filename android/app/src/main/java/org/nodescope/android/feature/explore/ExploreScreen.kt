@@ -49,6 +49,7 @@ import org.nodescope.android.feature.settings.NavigationRow
 /** Where Explore can take the person; wired by the app shell. */
 class ExploreActions(
     val onNodePlanner: () -> Unit = {},
+    val onNodeCheck: () -> Unit = {},
     val onFavorites: () -> Unit = {},
     val onActivity: () -> Unit = {},
     val onAccount: () -> Unit = {},
@@ -154,6 +155,7 @@ fun ExploreScreen(model: ExploreViewModel?, host: String, snapshot: AnalyzerSnap
                 Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
                     Column(Modifier.padding(16.dp)) {
                         NavigationRow("Node Planner", "Evaluate proposed sites and point-to-point terrain paths", Icons.Outlined.GraphicEq, actions.onNodePlanner)
+                        NavigationRow("Node Check", "Is your node getting out? Check any node, or watch for a new one’s first advert", Icons.Outlined.Verified, actions.onNodeCheck)
                     }
                 }
             }

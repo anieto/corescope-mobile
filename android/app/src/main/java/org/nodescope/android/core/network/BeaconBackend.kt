@@ -23,6 +23,8 @@ val BackendCapability.beaconExplanation: String get() = when (this) {
         "Route and network-importance statistics, and per-observer health, are currently available only with CoreScope servers."
     BackendCapability.MAP_DEFAULTS ->
         "Beacon servers don’t provide map defaults. NodeScope uses region coordinates to frame the map instead."
+    BackendCapability.NODE_CHECK ->
+        "Node Check needs to know which observers heard a node, which is currently available only with CoreScope servers."
 }
 
 class BeaconUnsupportedException(val capability: BackendCapability) : IllegalStateException(capability.beaconExplanation)

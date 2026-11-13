@@ -1,6 +1,6 @@
 # Direct Skadi terrain provider
 
-Implemented 2026-11-07 for 0.10.5 Estimated Coverage on iOS and Android.
+Implemented 2026-11-07 for Estimated Coverage (now 0.10.6) on iOS and Android.
 
 Prepared studies without an explicit catalog discover required one-degree tiles directly from
 `https://elevation-tiles-prod.s3.amazonaws.com/v2/skadi/{latitude}/{tile}.hgt.gz`.

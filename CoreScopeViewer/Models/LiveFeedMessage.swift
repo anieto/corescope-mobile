@@ -65,9 +65,13 @@ struct LivePacketData: Codable, Sendable {
     /// hex prefixes, which collide unpredictably once there are more than a
     /// couple hundred nodes.
     let resolvedPath: [String?]?
+    /// CoreScope sends the route type at the top level of the frame, not in `decoded.header`:
+    /// 0 and 1 are flood, 2 and 3 direct (how a zero-hop advert travels).
+    var routeType: Int? = nil
 
     enum CodingKeys: String, CodingKey {
         case id, raw, decoded, snr, rssi, hash
+        case routeType = "route_type"
         case observerId = "observer_id"
         case observerName = "observer_name"
         case pathJson = "path_json"

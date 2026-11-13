@@ -51,6 +51,8 @@ struct NodeDetailScreen: View {
 
                 if settings.beaconBackend != nil {
                     BeaconFeatureNotice(capability: .nodeHealth)
+                } else {
+                    NodeCheckLinkCard(node: displayedNode)
                 }
 
                 NavigationLink {

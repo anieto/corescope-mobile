@@ -18,6 +18,10 @@ class NodeDetailViewModel(repository: BrowseRepository) : ViewModel() {
     val paths = KeyedLoader(viewModelScope, 5 * 60_000, restore = { key: Pair<String, String> -> repository.saved(ResponseCache.DETAIL_LIFETIME) { nodePaths(key.first, key.second) } }) { key -> repository.nodePaths(key.first, key.second) }
     val neighbors = KeyedLoader(viewModelScope, 5 * 60_000) { key: Pair<String, String> -> repository.neighbors(key.first, key.second) }
     val beaconHealth = KeyedLoader(viewModelScope, 60_000) { key: Pair<String, String> -> repository.beaconNodeHealth(key.first, key.second) }
+    /** Node Check's verdict for the link card; CoreScope only. */
+    val nodeCheck = KeyedLoader(viewModelScope, 60_000) { key: Pair<String, String> ->
+        repository.nodeCheckInput(key.first, key.second)?.let { org.nodescope.android.core.model.NodeCheckRules.report(it) }
+    }
 
     fun load(host: String, publicKey: String, force: Boolean = false, beacon: Boolean = false) {
         val key = host to publicKey
@@ -29,6 +33,7 @@ class NodeDetailViewModel(repository: BrowseRepository) : ViewModel() {
         health.load(key, force)
         reach.load(key, force)
         paths.load(key, force)
+        nodeCheck.load(key, force)
     }
 }
 

@@ -6,7 +6,7 @@ import org.nodescope.android.core.model.AnalyzerSelection
 
 enum class BackendCapability {
     NEIGHBORS, NODE_HEALTH, NODE_REACH, NODE_PATHS, NODE_ANALYTICS,
-    OBSERVER_ANALYTICS, CHANNEL_DECRYPT_ON_PHONE, SERVER_CHANNELS, MAP_DEFAULTS,
+    OBSERVER_ANALYTICS, CHANNEL_DECRYPT_ON_PHONE, SERVER_CHANNELS, MAP_DEFAULTS, NODE_CHECK,
 }
 
 interface AnalyzerBackend : AnalyzerRepository, BrowseRepository {
@@ -41,6 +41,10 @@ class CapabilityBrowseRepository(
         requireCapability(BackendCapability.NEIGHBORS).let { delegate.neighbors(host, publicKey) }
     override suspend fun nodeAnalytics(host: String, publicKey: String, days: Int) =
         requireCapability(BackendCapability.NODE_ANALYTICS).let { delegate.nodeAnalytics(host, publicKey, days) }
+    override suspend fun nodeCheckInput(host: String, publicKey: String) =
+        requireCapability(BackendCapability.NODE_CHECK).let { delegate.nodeCheckInput(host, publicKey) }
+    override suspend fun searchNodes(host: String, query: String) =
+        requireCapability(BackendCapability.NODE_CHECK).let { delegate.searchNodes(host, query) }
 
     override suspend fun <T> saved(maxAgeMillis: Long, block: suspend BrowseRepository.() -> T): Cached<T>? =
         delegate.saved(maxAgeMillis) { block(CapabilityBrowseRepository(this, capabilities)) }
@@ -55,7 +59,7 @@ class CoreScopeBackend(
         BackendCapability.NEIGHBORS, BackendCapability.NODE_HEALTH, BackendCapability.NODE_REACH,
         BackendCapability.NODE_PATHS, BackendCapability.NODE_ANALYTICS,
         BackendCapability.OBSERVER_ANALYTICS, BackendCapability.CHANNEL_DECRYPT_ON_PHONE,
-        BackendCapability.SERVER_CHANNELS, BackendCapability.MAP_DEFAULTS,
+        BackendCapability.SERVER_CHANNELS, BackendCapability.MAP_DEFAULTS, BackendCapability.NODE_CHECK,
     )
 }
 

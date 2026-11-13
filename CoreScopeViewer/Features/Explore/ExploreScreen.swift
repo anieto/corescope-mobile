@@ -57,6 +57,11 @@ struct ExploreScreen: View {
                 }
                 .favoritesListRow(top: 0, bottom: 8)
 
+                NodeCheckExploreCard {
+                    navigationPath.append(ExploreDestination.nodeCheck)
+                }
+                .favoritesListRow(top: 0, bottom: 8)
+
                 DataLoadStatusView(
                     lastUpdatedAt: nodeViewModel.lastUpdatedAt,
                     errorMessage: nodeViewModel.errorMessage,
@@ -133,6 +138,8 @@ struct ExploreScreen: View {
                     MyNodesScreen(isTabActive: isTabActive).id(settings.sourceSession.id)
                 case .nodePlanner:
                     NodePlannerScreen()
+                case .nodeCheck:
+                    NodeCheckScreen()
                 }
             }
                 }
@@ -503,7 +510,7 @@ private struct FavoritesScreen: View {
 }
 
 private enum ExploreDestination: Hashable {
-    case livePackets, favorites, activity, nodePlanner
+    case livePackets, favorites, activity, nodePlanner, nodeCheck
 }
 
 private struct ExploreEmptyGuidance: View {
