@@ -29,9 +29,29 @@ sealed interface CoverageTerrainSample {
  * One background worker owns all readers, including on failed construction. Pinned files remain
  * immutable until close. Point interpolation does not perform terrain-profile ridge preservation.
  */
-class CoverageTerrainMosaic(readers: Map<CoverageTerrainTile, LeasedTerrainReader>) : AutoCloseable {
+class CoverageTerrainMosaic(readers: Map<CoverageTerrainTile, LeasedTerrainReader>,
+    /** Off only for comparison runs and parity tests. */
+    private val reusePreparedPaths: Boolean = true) : AutoCloseable {
     private val readers = readers.toMap()
     private var closed = false
+    // The current path's crossings, features and heights, reused across its refinement passes as on iOS.
+    private var pathKey: List<Double>? = null
+    private var cachedCrossings: CoverageTerrainCrossings? = null
+    private var preparation = CoverageTerrainProfileSampler.Preparation()
+    private val elevations = HashMap<Double, Double>()
+    var crossingCacheHits = 0; private set
+    var elevationCacheHits = 0L; private set
+    var elevationReads = 0L; private set
+    val profilePassCounts = sortedMapOf<String, Int>()
+    /** Reader counters for the calculation report. */
+    val readerCounters: Map<String, Long> get() = mapOf(
+        "terrainMappedReaders" to readers.values.count { it.isMapped }.toLong(),
+        "terrainFallbackReaders" to readers.values.count { !it.isMapped }.toLong(),
+        "terrainMappedReadCalls" to readers.values.sumOf { it.mappedReadCalls },
+        "terrainMappedAddressBytes" to readers.values.sumOf { it.mappedBytes },
+        "terrainBlockHits" to readers.values.sumOf { it.blockHits },
+        "terrainBlockMisses" to readers.values.sumOf { it.blockMisses },
+        "terrainFileReadBytes" to readers.values.sumOf { it.fileReadBytes })
     init {
         if (readers.size > MAXIMUM_TILES || readers.values.toSet().size != readers.size) {
             close()
@@ -54,16 +74,20 @@ class CoverageTerrainMosaic(readers: Map<CoverageTerrainTile, LeasedTerrainReade
         val row = floor(y).toInt()
         val dx = x - column
         val dy = y - row
+        // Up to four heights read in place: no file call or allocation per sample (iOS's mapped reader).
         var elevation = 0.0
-        // At most two reads of two samples each, never a whole-tile allocation.
-        for ((r, weight) in listOf(row to 1 - dy, minOf(row + 1, intervals) to dy)) {
+        for (step in 0..1) {
+            val r = if (step == 0) row else minOf(row + 1, intervals)
+            val weight = if (step == 0) 1 - dy else dy
             if (weight <= 0) continue
-            val samples = reader.read(r * reader.side + column, if (dx > 0) 2 else 1, cancelled)
-            if (samples[0] == Short.MIN_VALUE) return CoverageTerrainSample.NoData
-            var rowElevation = samples[0] * (1 - dx)
+            val base = r * reader.side + column
+            val first = reader.value(base)
+            if (first == Short.MIN_VALUE) return CoverageTerrainSample.NoData
+            var rowElevation = first * (1 - dx)
             if (dx > 0) {
-                if (samples[1] == Short.MIN_VALUE) return CoverageTerrainSample.NoData
-                rowElevation += samples[1] * dx
+                val second = reader.value(base + 1)
+                if (second == Short.MIN_VALUE) return CoverageTerrainSample.NoData
+                rowElevation += second * dx
             }
             elevation += rowElevation * weight
         }
@@ -78,12 +102,33 @@ class CoverageTerrainMosaic(readers: Map<CoverageTerrainTile, LeasedTerrainReade
         val dimensions = readers.values.map { it.side }.toSet()
         val side = dimensions.firstOrNull() ?: throw CoverageTerrainProfileFailure(CoverageTerrainProfileState.MISSING_TERRAIN)
         if (dimensions.size != 1) throw CoverageTerrainProfileFailure(CoverageTerrainProfileState.INVALID_INPUT)
-        val crossings = path.crossings(side - 1, geometryLimit, cancelled)
+        if (cancelled()) throw CoverageTerrainProfileFailure(CoverageTerrainProfileState.CANCELLED)
+        if (spacingMeters.isFinite() && spacingMeters in 1.0..30.0) {
+            val name = "profilePassesAt${spacingMeters.toInt()}m"
+            profilePassCounts[name] = (profilePassCounts[name] ?: 0) + 1
+        }
+        val key = listOf(path.latitude, path.longitude, path.bearingDegrees, path.distanceMeters)
+        if (!reusePreparedPaths || pathKey != key) {
+            pathKey = key
+            cachedCrossings = null
+            preparation = CoverageTerrainProfileSampler.Preparation()
+            elevations.clear()
+        }
+        val crossings = cachedCrossings?.also {
+            // Logical work limits still apply when the work is served from cache.
+            if (geometryLimit !in 1..200_000 || it.geometryEvaluations > geometryLimit) throw CoverageTerrainProfileFailure(CoverageTerrainProfileState.WORK_LIMIT)
+            crossingCacheHits++
+        } ?: path.crossings(side - 1, geometryLimit, cancelled).also { cachedCrossings = it }
         val profile = CoverageTerrainProfileSampler.build(path.distanceMeters, crossings.distancesMeters,
-            spacingMeters, sampleLimit, cancelled) { distance ->
+            spacingMeters, sampleLimit, cancelled, if (reusePreparedPaths) preparation else null) { distance ->
+            if (reusePreparedPaths) elevations[distance]?.let { elevationCacheHits++; return@build it }
+            elevationReads++
             val point = path.point(distance)
             when (val sample = sample(point.latitude, point.longitude, cancelled)) {
-                is CoverageTerrainSample.ElevationMeters -> sample.value
+                is CoverageTerrainSample.ElevationMeters -> sample.value.also {
+                    // Exact distance keys, bounded per path, so no two positions ever share a height.
+                    if (reusePreparedPaths && elevations.size < 250_000) elevations[distance] = it
+                }
                 else -> null
             }
         }

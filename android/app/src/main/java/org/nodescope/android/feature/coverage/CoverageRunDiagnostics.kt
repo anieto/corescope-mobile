@@ -43,6 +43,15 @@ class CoverageRunDiagnostics(private val inputs: CoverageStudyInputs, private va
         counters["radiusPendingSamples"] = area.pendingCount
     }
 
+    /** Path reuse and terrain reader counters; logical work charges are unchanged by cache hits. */
+    fun recordCache(mosaic: CoverageTerrainMosaic) {
+        counters["crossingCacheHits"] = mosaic.crossingCacheHits
+        counters["elevationCacheHits"] = mosaic.elevationCacheHits.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        counters["elevationReads"] = mosaic.elevationReads.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        counters.putAll(mosaic.profilePassCounts)
+        mosaic.readerCounters.forEach { (name, value) -> counters[name] = value.coerceAtMost(Int.MAX_VALUE.toLong()).toInt() }
+    }
+
     fun setPhase(phase: String) {
         this.phase = phase
         finished = phase.startsWith("failed") || phase == "cancelled"
@@ -82,6 +91,7 @@ class CoverageRunDiagnostics(private val inputs: CoverageStudyInputs, private va
             put("executionID", result?.executionID?.toString() ?: "")
             put("phase", phase); put("elapsedSeconds", (System.nanoTime() - started) / 1e9)
             put("predictionFingerprint", result?.let(::predictionFingerprint) ?: "")
+            put("terrainMappingRequested", LeasedTerrainReader.mappingEnabled)
             put("timingSeconds", JsonObject(timings.mapValues { JsonPrimitive(it.value) }))
             put("performanceCounters", JsonObject(counters.mapValues { JsonPrimitive(it.value) }))
             put("peakObservedHeapBytes", peakUsedHeapBytes)

@@ -181,7 +181,8 @@ class CoverageTerrainMosaicTest {
     @Test fun cancellationNeverReturnsPartialElevationAndKeepsPins() {
         MosaicFiles().use { files ->
             CoverageTerrainMosaic(mapOf(CoverageTerrainTile(0, 0) to files.reader(List(9) { 20 }))).use { mosaic ->
-                for (checkpoint in 1..8) {
+                // A lookup reads heights in place, checking cancellation before and after (step 6).
+                for (checkpoint in 1..2) {
                     var checks = 0
                     failure(TerrainReadState.CANCELLED) { mosaic.sample(0.25, 0.25) { ++checks == checkpoint } }
                     assertEquals(0, files.released)
@@ -211,15 +212,22 @@ class CoverageTerrainMosaicTest {
         }
     }
 
+    /**
+     * Truncating a leased file breaks the reader contract; through a memory mapping it can't be
+     * detected (iOS has the same rule), and the cache only replaces files by rename. The fallback
+     * reader still reports it as corruption, never as missing terrain.
+     */
     @Test fun readerCorruptionIsFailureNotMissingTerrain() {
-        MosaicFiles().use { files ->
+        val mapping = LeasedTerrainReader.mappingEnabled
+        LeasedTerrainReader.mappingEnabled = false
+        try { MosaicFiles().use { files ->
             val reader = files.reader(List(9) { 1 })
             CoverageTerrainMosaic(mapOf(CoverageTerrainTile(0, 0) to reader)).use { mosaic ->
                 RandomAccessFile(requireNotNull(files.folder.listFiles()).single(), "rw").use { it.setLength(2) }
                 failure(TerrainReadState.CORRUPT) { mosaic.sample(0.25, 0.25) }
                 assertEquals(0, files.released)
             }
-        }
+        } } finally { LeasedTerrainReader.mappingEnabled = mapping }
     }
 
     @Test fun boundedReaderAndMosaicOwnership() {

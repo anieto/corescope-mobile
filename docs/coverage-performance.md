@@ -64,3 +64,15 @@ Simulator measurements (2026-11-13), same warm study, inputs and terrain sources
 - Peak simulator memory: 614 MiB mapped, 618 MiB fallback.
 
 Still to do: physical-iPhone memory and responsiveness checks, cancellation on device, and running `TerrainMappedPredictionTests`. Simulator memory does not establish device safety, and matching fingerprints establish implementation consistency, not real-world RF accuracy.
+
+## Android (step 6 of the Android parity port)
+
+Android now has the same three speedups, without iOS's sampled-timing instrumentation:
+
+- Leased terrain files are memory-mapped read-only (`FileChannel.map`) after the existing size and SHA-256 checks. Java cannot unmap explicitly; closing a reader drops the buffer and the system reclaims it later. The disk cache replaces files only by atomic rename, so a mapping never sees a file shrink. If mapping fails, reads use four 16 KiB blocks per reader, as iOS's fallback.
+- A path's crossings, terrain features and heights (at most 250,000) are reused across its 30/10/5/2/1 m refinement passes. Logical work charges are unchanged on cache hits.
+- Height lookups no longer allocate arrays or make a file call each.
+
+`CoverageTerrainPerformanceTest` checks that mapped reads, the block-cache fallback and path reuse each give the same prediction fingerprint, cells and work charges as plain reads on rough synthetic terrain. Reports gain `terrainMappingRequested`, crossing/elevation cache counters, profile pass counts, and mapped/fallback reader counters.
+
+JVM measurement (2026-11-14, Mac, same synthetic 1201×1201 tile, 16 km radius, 500 m spacing, no nodes): step 5's reader 28.7 s, step 6 2.4 s, about 12× faster, identical classifications. A desktop JVM is not a phone; compare the Last calculation report's `elapsedSeconds` on a device, warm terrain, before and after.

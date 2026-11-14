@@ -88,6 +88,7 @@ object CoveragePreparedStudy {
                         cancelled = { !context.isActive }, progress = calculationProgress,
                         resuming = retainedArea, resumingNodes = previous?.nodes,
                         shouldPause = diagnostics::shouldPause, diagnostics = diagnostics, predictLoss = predictor)
+                        .also { diagnostics.recordCache(mosaic) }
                 }
             }
             context.ensureActive()

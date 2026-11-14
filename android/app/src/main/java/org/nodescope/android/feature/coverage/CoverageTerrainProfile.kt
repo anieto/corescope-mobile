@@ -15,8 +15,22 @@ data class CoverageTerrainProfile(
  * The 0.01 m fit check is empirical; it does not qualify RF accuracy or discover absent DEM ridges.
  */
 object CoverageTerrainProfileSampler {
+    /**
+     * A path's terrain features, kept across its refinement passes as iOS does. The charged evaluation
+     * count is kept with them, so a reused pass charges the same logical work as a fresh one.
+     */
+    private val QUARTERS = doubleArrayOf(0.25, 0.75)
+
+    class Preparation {
+        internal var distance: Double? = null
+        internal var crossings: List<Double> = emptyList()
+        internal var features: Set<Long>? = null
+        internal var evaluations = 0
+    }
+
     fun build(distanceMeters: Double, cellCrossingsMeters: List<Double>, spacingMeters: Double,
               sampleLimit: Int = 250_000, cancelled: () -> Boolean = { false },
+              preparation: Preparation? = null,
               elevation: (Double) -> Double?): CoverageTerrainProfile {
         fun fail(state: CoverageTerrainProfileState): Nothing = throw CoverageTerrainProfileFailure(state)
         if (!distanceMeters.isFinite() || distanceMeters !in 0.001..100_000.0 ||
@@ -46,7 +60,13 @@ object CoverageTerrainProfileSampler {
         val crossings = cellCrossingsMeters.map(::key).distinct().sorted()
         val features = crossings.toMutableSet()
         check()
-        for (index in 0 until crossings.size - 1) {
+        val cached = preparation?.takeIf { it.distance == distanceMeters && it.crossings == cellCrossingsMeters }?.features
+        if (cached != null) {
+            if (preparation.evaluations > sampleLimit) fail(CoverageTerrainProfileState.WORK_LIMIT)
+            features.clear()
+            features.addAll(cached)
+            evaluations = preparation.evaluations
+        } else for (index in 0 until crossings.size - 1) {
             check()
             val a = meters(crossings[index])
             val b = meters(crossings[index + 1])
@@ -55,7 +75,7 @@ object CoverageTerrainProfileSampler {
             val quadratic = 2 * (h1 + h0 - 2 * hm)
             val linear = h1 - h0 - quadratic
             if (!quadratic.isFinite() || !linear.isFinite()) fail(CoverageTerrainProfileState.INVALID_INPUT)
-            for (t in listOf(0.25, 0.75)) {
+            for (t in QUARTERS) {
                 val actual = height(a + (b - a) * t)
                 if (abs(actual - (h0 + linear * t + quadratic * t * t)) > 0.01) fail(CoverageTerrainProfileState.ACCURACY_UNRESOLVED)
             }
@@ -64,6 +84,12 @@ object CoverageTerrainProfileSampler {
                 if (t > 0 && t < 1) features.add(key(a + (b - a) * t))
             }
             if (features.size > 50_000) fail(CoverageTerrainProfileState.WORK_LIMIT)
+        }
+        if (cached == null && preparation != null) {
+            preparation.distance = distanceMeters
+            preparation.crossings = cellCrossingsMeters
+            preparation.features = features.toSet()
+            preparation.evaluations = evaluations
         }
         val featureCount = features.size
         val intervals = ceil(distanceMeters / spacingMeters).toInt()
