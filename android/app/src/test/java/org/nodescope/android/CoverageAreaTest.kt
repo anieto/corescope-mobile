@@ -47,16 +47,21 @@ class CoverageAreaTest {
         assertTrue(unresolved.cells.all { it.lossDb == null && it.marginDb == null })
     }
     @Test fun exhaustionAndMissingTerrainNeverBecomeCoverage() {
+        // Out of batch budget: samples are left for Continue, not marked as failed paths (iOS expectations).
         val exhausted = evaluate(CoverageTerrainProfileState.WORK_LIMIT)
         assertTrue(exhausted.workLimited)
         assertEquals(CoverageAreaState.outsideRadius, exhausted.cells[0].state)
-        assertEquals(CoverageAreaState.workLimit, exhausted.cells[1].state)
-        assertTrue(exhausted.cells.drop(2).all { it.state == CoverageAreaState.notComputed && it.lossDb == null })
+        assertEquals(CoverageAreaState.notComputed, exhausted.cells[1].state)
+        assertEquals(4, exhausted.pendingCount)
+        assertTrue(listOf(3, 5, 7).all { exhausted.cells[it].state == CoverageAreaState.notComputed })
+        assertEquals(4, exhausted.cells.count { it.state == CoverageAreaState.outsideRadius })
+        assertEquals(CoverageAreaState.nearSite, exhausted.cells[4].state)
+        assertTrue(exhausted.cells.all { it.lossDb == null })
         assertEquals(10_000L, exhausted.chargedSamples)
         assertEquals(10_000L, exhausted.chargedGeometry)
         val missing = evaluate(CoverageTerrainProfileState.MISSING_TERRAIN)
         assertEquals(CoverageAreaState.missingTerrain, missing.cells[1].state)
-        assertEquals(CoverageAreaState.workLimit, missing.cells[3].state)
+        assertEquals(CoverageAreaState.notComputed, missing.cells[5].state)
         assertTrue(missing.cells.all { it.lossDb == null })
     }
     @Test fun cancellationAndInvalidModelDiscardArea() {

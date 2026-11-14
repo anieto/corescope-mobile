@@ -252,7 +252,13 @@ internal fun EstimatedCoverageScreen(model: EstimatedCoverageViewModel, nodes: L
                     }
                     Text("${counts.first} above threshold · ${counts.second} below · ${counts.third} unresolved",
                         fontFamily = MonaspaceNeon, style = MaterialTheme.typography.bodyMedium, color = secondary)
-                    if (result.area.workLimited) {
+                    val pathLimited = result.nodes.run.nodesToEvaluate.any { result.nodes.run.status(it).reason == CoverageNodeReason.pathWorkLimit }
+                    if (result.hasPendingWork) {
+                        // A batch stopped early (its budget or low memory): Continue picks up where it left off.
+                        Text("This batch left samples unfinished. Continue to calculate them using the same inputs and terrain.",
+                            style = MaterialTheme.typography.bodySmall, color = secondary)
+                        Button(onClick = { model.calculate(continuing = true) }, enabled = model.canCalculate) { Text("Continue calculation") }
+                    } else if (result.area.workLimited || pathLimited) {
                         Text(if (result.area.chargedSamples >= result.limits.areaSamples || result.area.chargedGeometry >= result.limits.areaGeometry)
                             "The study exhausted its work budget. Some samples were not calculated. Try a smaller radius or wider sample spacing."
                             else "Some individual paths exceeded their work limits. Wider grid spacing may not fix these paths; try a smaller radius.",
@@ -345,10 +351,13 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
             TextButton(onClick = model::refreshNodesFromSource, contentPadding = PaddingValues(0.dp)) { Text("Refresh nodes from current source") }
         }
         CoverageSetupGuide(model)
+        CoverageReportCard(model.diagnosticReport)
         CoverageTransmitterCard(model)
         CoverageRadioCard(model)
         CoverageReceiverCard(model)
         CoverageStudyAreaCard(model)
+        if (model.canReuseSmallerStudy) Text("The next calculation will reuse matching samples from the smaller study and calculate the added area.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         CoverageCalculationCard(model, showNodes)
         Text("Planning estimates only: terrain does not account for buildings, foliage or interference. Terrain is downloaded from AWS Skadi and cached on this device. Use Save to keep this setup before leaving the tool.",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -638,6 +647,34 @@ private fun CoverageSetupIssue.message(): String = when (this) {
     CoverageSetupIssue.height -> "Antenna height must be between 1 and 3000 m above ground (about 3 to 9843 ft)."
     CoverageSetupIssue.nonnegative -> "Enter zero or a positive value."
     CoverageSetupIssue.unknownField -> "This field is not supported."
+}
+
+/** The last calculation report, as iOS: collapsed by default, shared only when asked. */
+@Composable private fun CoverageReportCard(report: String?) {
+    report ?: return
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var open by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth().clickable { open = !open }, verticalAlignment = Alignment.CenterVertically) {
+                Text("Last calculation report", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                Text(if (open) "▴" else "▾", style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { contentDescription = if (open) "Collapse" else "Expand" })
+            }
+            if (open) {
+                Text("Includes coordinates, radio assumptions, work counters and available-memory observations. A run left in progress does not identify why the app stopped.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedButton(onClick = {
+                    val send = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain")
+                        .putExtra(android.content.Intent.EXTRA_SUBJECT, "Coverage calculation report")
+                        .putExtra(android.content.Intent.EXTRA_TEXT, report)
+                    context.startActivity(android.content.Intent.createChooser(send, "Share calculation report"))
+                }) { Text("Share calculation report") }
+                androidx.compose.foundation.text.selection.SelectionContainer {
+                    Text(report, fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+    }
 }
 
 /** Android's standard drop-down field, so the spacing reads as a choice to change, not a label. */

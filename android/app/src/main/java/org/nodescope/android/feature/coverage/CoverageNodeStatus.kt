@@ -9,7 +9,9 @@ data class CoverageNodeSnapshot(val sourceID: String, val nodeID: String, val la
 enum class CoverageNodeState { inCoverage, belowThreshold, unknown, notEvaluated, stale }
 enum class CoverageNodeReason {
     predicted, noResult, changedNode, changedInputs, outsideRadius, invalidInput,
-    missingTerrain, unsupportedPath, missingAssumptions, accuracyUnresolved, thresholdUnresolved, cancelled, processingLimit
+    missingTerrain, unsupportedPath, missingAssumptions, accuracyUnresolved, thresholdUnresolved, cancelled, processingLimit,
+    /** One node's path needs more work than a single path may use; Continue won't change it. */
+    pathWorkLimit
 }
 sealed interface CoverageNodePrediction {
     /** Only an exact-coordinate, qualified prediction may use this case. */
@@ -61,7 +63,8 @@ data class CoverageNodeStatus(val state: CoverageNodeState, val reason: Coverage
                 is CoverageNodePrediction.Unavailable -> when (prediction.reason) {
                     CoverageNodeReason.cancelled, CoverageNodeReason.processingLimit, CoverageNodeReason.noResult -> result(CoverageNodeState.notEvaluated, prediction.reason)
                     CoverageNodeReason.missingTerrain, CoverageNodeReason.unsupportedPath, CoverageNodeReason.missingAssumptions,
-                    CoverageNodeReason.accuracyUnresolved, CoverageNodeReason.thresholdUnresolved -> result(CoverageNodeState.unknown, prediction.reason)
+                    CoverageNodeReason.accuracyUnresolved, CoverageNodeReason.thresholdUnresolved,
+                    CoverageNodeReason.pathWorkLimit -> result(CoverageNodeState.unknown, prediction.reason)
                     else -> result(CoverageNodeState.unknown, CoverageNodeReason.invalidInput)
                 }
             }

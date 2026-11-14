@@ -19,6 +19,7 @@ internal fun CoverageStudyRunFailure.coverageMessage(): String = when (this) {
 internal fun CoverageNodeStatus.coverageLabel(): String = when (reason) {
     CoverageNodeReason.outsideRadius -> "Outside study radius"
     CoverageNodeReason.processingLimit -> "Not evaluated — work limit"
+    CoverageNodeReason.pathWorkLimit -> "Unknown — individual path work limit"
     CoverageNodeReason.missingTerrain -> "Unknown — missing terrain"
     CoverageNodeReason.unsupportedPath -> "Unknown — unsupported path"
     CoverageNodeReason.accuracyUnresolved -> "Unknown — sampling did not converge"

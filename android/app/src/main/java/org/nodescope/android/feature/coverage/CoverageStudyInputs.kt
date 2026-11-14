@@ -33,6 +33,28 @@ class CoverageStudyInputs(val transmitter: CoverageTerrainCoordinate, val grid: 
         budget.sensitivityDbm == other.budget.sensitivityDbm &&
         budget.reserveDb == other.budget.reserveDb
 
+    /** Same paths and losses; only the link budget may differ, as iOS. */
+    fun matchesPropagation(other: CoverageStudyInputs): Boolean =
+        transmitter.latitude == other.transmitter.latitude &&
+        transmitter.longitude == other.transmitter.longitude &&
+        frequencyMHz == other.frequencyMHz &&
+        transmitHeightMeters == other.transmitHeightMeters &&
+        receiveHeightMeters == other.receiveHeightMeters &&
+        grid.radiusMeters == other.grid.radiusMeters &&
+        grid.spacingMeters == other.grid.spacingMeters &&
+        grid.minEastMeters == other.grid.minEastMeters &&
+        grid.maxNorthMeters == other.grid.maxNorthMeters &&
+        grid.columns == other.grid.columns &&
+        grid.rows == other.grid.rows
+
+    /** [other] is this study with a larger radius and everything else unchanged, so its samples carry over. */
+    fun canExpand(other: CoverageStudyInputs): Boolean {
+        if (other.grid.radiusMeters <= grid.radiusMeters || other.grid.spacingMeters != grid.spacingMeters) return false
+        val sameGrid = runCatching { CoverageStudyInputs(other.transmitter, grid, other.budget, other.frequencyMHz,
+            other.transmitHeightMeters, other.receiveHeightMeters) }.getOrNull() ?: return false
+        return matches(sameGrid)
+    }
+
     companion object {
         fun fromEditor(fields: Map<String, String>, radiusMeters: Int, spacingMeters: Int, heightInFeet: Boolean = false): CoverageStudyInputs {
             fun value(field: String): Double {

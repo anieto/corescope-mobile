@@ -37,6 +37,8 @@ internal class EstimatedCoverageViewModel(
     private val preferences: SharedPreferences,
     /** Heights are entered in feet for this setup when the app uses imperial units, as before. */
     val heightInFeet: Boolean,
+    /** Where the last calculation report is kept (app files, not the cache); null keeps no report. */
+    private val diagnosticsFile: File? = null,
 ) : ViewModel() {
     /** The last transmitter placement, offered back for a few seconds. */
     data class Undo(val id: Long, val message: String, val latitude: String, val longitude: String, val name: String?)
@@ -95,13 +97,17 @@ internal class EstimatedCoverageViewModel(
     private var calculatedCatalog: List<org.nodescope.android.feature.candidatesites.SavedCoverageNode> = emptyList()
     /** A restored result, shown while its inputs and catalog are unchanged. */
     private var checkpoint by mutableStateOf<CoverageStudyResult?>(null)
+    /** A smaller or differently budgeted result whose work a new calculation reuses, as iOS. */
+    private var reusableResult by mutableStateOf<CoverageStudyResult?>(null)
+    /** The last calculation report's text, for the report card. */
+    var diagnosticReport by mutableStateOf<String?>(null); private set
     private val catalogComplete: Boolean get() = usesSavedCatalog && savedCatalogComplete
 
     init {
         // Any input change makes a result stale and cancels a running batch, as on iOS.
         viewModelScope.launch {
             // A restored result already matches its restored inputs, so it is left alone.
-            snapshotFlow { inputSignature }.distinctUntilChanged().drop(1).collect { if (activeResult == null) invalidate() }
+            snapshotFlow { inputSignature }.distinctUntilChanged().drop(1).collect { inputsChanged() }
         }
         viewModelScope.launch {
             snapshotFlow { radiusMeters to spacingMeters }.distinctUntilChanged().collectLatest { (radius, spacing) -> checkWork(radius, spacing) }
@@ -109,6 +115,7 @@ internal class EstimatedCoverageViewModel(
         viewModelScope.launch {
             snapshotFlow { activeResult?.executionID }.distinctUntilChanged().collectLatest { renderOverlay() }
         }
+        viewModelScope.launch { readReport() }
     }
 
     // MARK: Derived state
@@ -264,7 +271,45 @@ internal class EstimatedCoverageViewModel(
 
     // MARK: Execution
 
+    /** Whether Calculate will grow the previous, smaller study instead of starting over. */
+    val canReuseSmallerStudy: Boolean get() {
+        val source = reusableResult ?: return false
+        val current = inputs() ?: return false
+        return source.inputs.canExpand(current)
+    }
+
+    /**
+     * Any input change makes a result stale, as iOS, but keeps what can be reused: a larger radius
+     * grows the old study on Calculate, and a link-budget change re-scores the old losses at once.
+     */
+    private fun inputsChanged() {
+        if (activeResult != null) return // A restored result already matches its restored inputs.
+        val completed = runner.snapshot.result.takeIf { runner.snapshot.phase == CoverageStudyPublicationPhase.completed }
+        val source = reusableResult ?: completed ?: checkpoint
+        invalidate()
+        val current = inputs() ?: return
+        if (source == null || source.nodes.run.nodesToEvaluate != nodeSnapshots) return
+        if (source.inputs.canExpand(current) && source.terrainSources != null &&
+            source.model == CoverageStudyModel(CoverageRFKernel.sourceRevision, CoverageRFKernel.scenario)) {
+            reusableResult = source
+            return
+        }
+        if (!source.inputs.matchesPropagation(current)) return
+        val diagnostics = CoverageRunDiagnostics(current, diagnosticsFile)
+        val updated = runCatching { diagnostics.measure("budgetReuse") { source.updatingBudget(current) } }.getOrNull() ?: return
+        diagnostics.finish(updated)
+        reusableResult = source
+        checkpoint = updated
+        viewModelScope.launch { readReport() }
+    }
+
+    private suspend fun readReport() {
+        val file = diagnosticsFile ?: return
+        diagnosticReport = withContext(Dispatchers.IO) { CoverageRunDiagnostics.readLatest(file) }
+    }
+
     fun invalidate() {
+        reusableResult = null
         checkpoint = null
         runner.invalidate()
         calculation?.cancel()
@@ -278,15 +323,20 @@ internal class EstimatedCoverageViewModel(
         if (activeResult == null) layer = null
     }
 
-    fun calculate() {
+    /** Calculates; [continuing] finishes the shown result's unfinished samples and nodes with its terrain. */
+    fun calculate(continuing: Boolean = false) {
         if (calculation != null || runner.isBusy) return
         val captured = inputs()
         if (captured == null) { inputError = "Review the highlighted inputs and choose a smaller area or wider spacing."; return }
+        val previous = if (continuing) activeResult else reusableResult?.takeIf { it.inputs.canExpand(captured) }
+        if (continuing && previous == null) return
+        // The result stays on the map while it's being continued.
+        checkpoint = previous
         val snapshots = nodeSnapshots
         calculatedCatalog = currentSavedNodes
         val complete = catalogComplete
         inputError = null
-        layer = null
+        if (previous == null) layer = null
         startedAt = System.currentTimeMillis()
         calculating = true
         calculationProgress = null
@@ -302,9 +352,12 @@ internal class EstimatedCoverageViewModel(
                         CoverageStudyLimits(120_000_000, 120_000_000, 30_000_000, 30_000_000, 1000),
                         samplingHaloMeters = 100.0, cacheRoot = cacheRoot,
                         cacheQuota = 1_000_000_000, downloadLimit = 500_000_000, offline = false,
-                        executionID = id, progress = progress, calculationProgress = report)
+                        executionID = id, previous = previous, diagnosticsFile = diagnosticsFile,
+                        progress = progress, calculationProgress = report)
                 }
             } finally {
+                if (runner.snapshot.phase == CoverageStudyPublicationPhase.completed) { checkpoint = null; reusableResult = null }
+                viewModelScope.launch { readReport() }
                 calculation = null
                 calculating = false
                 startedAt = null
@@ -318,6 +371,7 @@ internal class EstimatedCoverageViewModel(
         layer = null
         overlayError = false
         val result = activeResult ?: return
+        val started = System.nanoTime()
         try {
             layer = withContext(Dispatchers.Default) {
                 val raster = CoverageRaster(result.grid, result.transmitter, result.area)
@@ -333,6 +387,10 @@ internal class EstimatedCoverageViewModel(
                     }
                 }
                 CoverageMapLayer(result.executionID, raster, zoom)
+            }
+            diagnosticsFile?.let { file ->
+                withContext(Dispatchers.IO) { CoverageRunDiagnostics.recordRasterPreparation(file, result.executionID, (System.nanoTime() - started) / 1e9) }
+                readReport()
             }
         } catch (cancelled: CancellationException) {
             throw cancelled
