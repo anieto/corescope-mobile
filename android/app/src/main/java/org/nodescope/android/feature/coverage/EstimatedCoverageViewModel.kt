@@ -81,11 +81,27 @@ internal class EstimatedCoverageViewModel(
     private var catalogSource: String? = null
     private var locatedNodes by mutableStateOf<List<MeshNode>>(emptyList())
     var sourceID by mutableStateOf(""); private set
+    /** The latest live catalog, kept while a saved one is shown so Refresh can switch to it. */
+    private var liveNodes: List<MeshNode> = emptyList()
+    private var liveSource: String? = null
+
+    // Saved studies. A reopened study keeps the node locations it was saved with until refreshed.
+    /** The saved study this setup came from, so Save replaces it rather than adding another. */
+    var savedStudy by mutableStateOf<org.nodescope.android.feature.candidatesites.SavedStudy?>(null)
+    var usesSavedCatalog by mutableStateOf(false); private set
+    private var savedCatalog: List<org.nodescope.android.feature.candidatesites.SavedCoverageNode> = emptyList()
+    private var savedCatalogComplete = false
+    /** The catalog the active result was calculated against, saved with it. */
+    private var calculatedCatalog: List<org.nodescope.android.feature.candidatesites.SavedCoverageNode> = emptyList()
+    /** A restored result, shown while its inputs and catalog are unchanged. */
+    private var checkpoint by mutableStateOf<CoverageStudyResult?>(null)
+    private val catalogComplete: Boolean get() = usesSavedCatalog && savedCatalogComplete
 
     init {
         // Any input change makes a result stale and cancels a running batch, as on iOS.
         viewModelScope.launch {
-            snapshotFlow { inputSignature }.distinctUntilChanged().drop(1).collect { invalidate() }
+            // A restored result already matches its restored inputs, so it is left alone.
+            snapshotFlow { inputSignature }.distinctUntilChanged().drop(1).collect { if (activeResult == null) invalidate() }
         }
         viewModelScope.launch {
             snapshotFlow { radiusMeters to spacingMeters }.distinctUntilChanged().collectLatest { (radius, spacing) -> checkWork(radius, spacing) }
@@ -143,17 +159,20 @@ internal class EstimatedCoverageViewModel(
     /** Before a transmitter is placed, a bounded catalog stays visible so it can be placed on a node. */
     val knownNodes: List<MeshNode> get() = coordinate?.let { nearestCoverageNodes(locatedNodes, it) } ?: locatedNodes.take(200)
 
-    val nodeSnapshots: List<CoverageNodeSnapshot> get() = knownNodes.mapNotNull { node ->
+    val nodeSnapshots: List<CoverageNodeSnapshot> get() = if (usesSavedCatalog) savedCatalog.map {
+        CoverageNodeSnapshot(it.sourceID, it.nodeID, it.latitude, it.longitude)
+    } else knownNodes.mapNotNull { node ->
         node.coordinate?.let { CoverageNodeSnapshot(sourceID, node.publicKey, it.latitude, it.longitude) }
     }
 
     /** The published result, while the inputs and catalog it was made from are unchanged. */
     val activeResult: CoverageStudyResult? get() {
-        val result = runner.snapshot.result ?: return null
-        if (runner.snapshot.phase != CoverageStudyPublicationPhase.completed) return null
+        val available = if (runner.snapshot.phase == CoverageStudyPublicationPhase.completed) runner.snapshot.result else checkpoint
+        val result = available ?: return null
         val current = inputs() ?: return null
         return result.takeIf { it.inputs.matches(current) && it.nodes.run.nodesToEvaluate == nodeSnapshots }
     }
+
 
     val nodeStatuses: Map<String, CoverageNodeStatus> get() {
         val result = activeResult ?: return emptyMap()
@@ -232,6 +251,9 @@ internal class EstimatedCoverageViewModel(
 
     /** Takes the first located catalog for each source; later refreshes of the same source are ignored. */
     fun offerCatalog(nodes: List<MeshNode>, source: String) {
+        liveNodes = nodes
+        liveSource = source
+        if (usesSavedCatalog) return
         if (source == catalogSource && locatedNodes.isNotEmpty()) return
         val located = nodes.filter { it.coordinate != null }.distinctBy { it.publicKey }
         if (located.isEmpty() && source == catalogSource) return
@@ -243,6 +265,7 @@ internal class EstimatedCoverageViewModel(
     // MARK: Execution
 
     fun invalidate() {
+        checkpoint = null
         runner.invalidate()
         calculation?.cancel()
         layer = null
@@ -260,6 +283,8 @@ internal class EstimatedCoverageViewModel(
         val captured = inputs()
         if (captured == null) { inputError = "Review the highlighted inputs and choose a smaller area or wider spacing."; return }
         val snapshots = nodeSnapshots
+        calculatedCatalog = currentSavedNodes
+        val complete = catalogComplete
         inputError = null
         layer = null
         startedAt = System.currentTimeMillis()
@@ -273,7 +298,7 @@ internal class EstimatedCoverageViewModel(
         calculation = viewModelScope.launch {
             try {
                 runner.runWithProgress(captured) { id, fixed, progress ->
-                    CoveragePreparedStudy.evaluate(fixed, snapshots, false, 200,
+                    CoveragePreparedStudy.evaluate(fixed, snapshots, complete, 200,
                         CoverageStudyLimits(120_000_000, 120_000_000, 30_000_000, 30_000_000, 1000),
                         samplingHaloMeters = 100.0, cacheRoot = cacheRoot,
                         cacheQuota = 1_000_000_000, downloadLimit = 500_000_000, offline = false,
@@ -329,6 +354,88 @@ internal class EstimatedCoverageViewModel(
         }
         workCheck = Triple(radius, spacing, estimate != null)
         minimumWorkSamples = estimate?.minimumSamples
+    }
+
+    // MARK: Saved studies
+
+    /** Leaves the saved node locations for the current source's catalog. */
+    fun refreshNodesFromSource() {
+        usesSavedCatalog = false
+        catalogSource = null
+        liveSource?.let { offerCatalog(liveNodes, it) }
+    }
+
+    private val currentSavedNodes: List<org.nodescope.android.feature.candidatesites.SavedCoverageNode> get() =
+        if (usesSavedCatalog) savedCatalog else knownNodes.mapNotNull { node ->
+            node.coordinate?.let { point ->
+                org.nodescope.android.feature.candidatesites.SavedCoverageNode(sourceID, node.publicKey, node.name, node.role,
+                    point.latitude, point.longitude,
+                    org.nodescope.android.core.model.parseInstant(node.lastSeen)?.toEpochMilli()?.takeIf { it in 0..253_402_300_799_999 })
+            }
+        }
+
+    /** The current setup as a study to save, with the result and its catalog when there is one. Matches iOS. */
+    fun savedSnapshot(): org.nodescope.android.feature.candidatesites.SavedStudy? {
+        val inputs = inputs() ?: return null
+        val point = coordinate ?: return null
+        val result = activeResult
+        fun antenna(prefix: String): org.nodescope.android.feature.candidatesites.SavedAntenna? {
+            val gain = number("${prefix}Gain") ?: return null
+            val loss = number("${prefix}Loss") ?: return null
+            return org.nodescope.android.feature.candidatesites.SavedAntenna(
+                if (prefix == "tx") inputs.transmitHeightMeters else inputs.receiveHeightMeters, gain, loss)
+        }
+        val coverage = org.nodescope.android.feature.candidatesites.SavedCoverage(
+            org.nodescope.android.feature.candidatesites.SavedEndpoint(transmitterName, point.latitude, point.longitude, antenna("tx") ?: return null),
+            antenna("rx") ?: return null, inputs.frequencyMHz, inputs.budget.transmitPowerDbm, inputs.budget.sensitivityDbm,
+            inputs.budget.reserveDb, radiusMeters, spacingMeters,
+            if (result == null) currentSavedNodes else calculatedCatalog, catalogComplete,
+            result?.let { runCatching { SavedCoverageCalculation.of(it)?.encoded() }.getOrNull() })
+        val now = System.currentTimeMillis()
+        val previous = savedStudy
+        val study = org.nodescope.android.feature.candidatesites.SavedStudy(
+            previous?.id ?: org.nodescope.android.feature.candidatesites.SavedPlansLibrary.newStudyID(),
+            previous?.name ?: "Estimated Coverage", previous?.createdAtMilliseconds ?: now, maxOf(now, previous?.createdAtMilliseconds ?: now),
+            org.nodescope.android.feature.candidatesites.SavedStudy.Kind.COVERAGE, coverage = coverage)
+        return study.takeIf { runCatching { it.validate() }.isSuccess }
+    }
+
+    /** Reopens a saved study: its inputs, its node locations and, when it checks out, its result. Nothing is downloaded or calculated. */
+    fun restore(study: org.nodescope.android.feature.candidatesites.SavedStudy) {
+        val coverage = study.coverage?.takeIf { runCatching { study.validate() }.isSuccess } ?: return
+        invalidate()
+        savedStudy = study
+        fun meters(value: Double) = if (heightInFeet) value / 0.3048 else value
+        fun heightText(value: Double) = meters(value).let { if (heightInFeet) String.format(java.util.Locale.US, "%.2f", it).trimEnd('0').trimEnd('.') else it.editorText() }
+        latitudeText = coverage.transmitter.latitude.toString()
+        longitudeText = coverage.transmitter.longitude.toString()
+        transmitterName = coverage.transmitter.name
+        values = mapOf(
+            "frequency" to coverage.frequencyMHz.editorText(), "power" to coverage.transmitPowerDbm.editorText(),
+            "txHeight" to heightText(coverage.transmitter.antenna.heightMeters), "txGain" to coverage.transmitter.antenna.gainDbi.editorText(),
+            "txLoss" to coverage.transmitter.antenna.lossDb.editorText(),
+            "rxHeight" to heightText(coverage.receiver.heightMeters), "rxGain" to coverage.receiver.gainDbi.editorText(),
+            "rxLoss" to coverage.receiver.lossDb.editorText(),
+            "sensitivity" to coverage.sensitivityDbm.editorText(), "reserve" to coverage.reserveDb.editorText())
+        radiusMeters = coverage.radiusMeters
+        spacingMeters = coverage.spacingMeters
+        savedCatalog = coverage.nodes
+        savedCatalogComplete = coverage.catalogComplete
+        usesSavedCatalog = true
+        locatedNodes = coverage.nodes.map { MeshNode(it.nodeID, it.name, it.role, it.latitude, it.longitude, it.lastSeenMilliseconds?.let { ms ->
+            java.time.Instant.ofEpochMilli(ms).toString() } ?: "") }
+        sourceID = coverage.nodes.firstOrNull()?.sourceID ?: "saved"
+        catalogSource = sourceID
+        calculatedCatalog = coverage.nodes
+        coverage.calculatedResult?.let { encoded ->
+            val inputs = inputs()
+            checkpoint = try {
+                SavedCoverageCalculation.decode(encoded).restore(requireNotNull(inputs), nodeSnapshots, catalogComplete)
+            } catch (_: Exception) {
+                inputError = "The saved calculation could not be restored. Your inputs are available; calculate again to replace the result."
+                null
+            }
+        }
     }
 
     override fun onCleared() {

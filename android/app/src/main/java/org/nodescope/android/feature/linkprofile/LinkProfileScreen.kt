@@ -68,7 +68,7 @@ import java.util.Locale
 @Composable
 fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = LocalDistanceUnit.current, nodes: List<org.nodescope.android.core.model.MeshNode> = emptyList(),
     snapshot: org.nodescope.android.core.model.AnalyzerSnapshot? = null, selectedRegion: String? = null,
-    sourceViewport: org.nodescope.android.core.model.RegionCoordinate? = null) {
+    sourceViewport: org.nodescope.android.core.model.RegionCoordinate? = null, onOpenSaved: () -> Unit = {}) {
     val state by model.state.collectAsStateWithLifecycle()
     // A point chosen anew from its card or pin; otherwise the next touch & hold places the first
     // missing point, so a new profile needs no arming at all.
@@ -125,7 +125,7 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
             })
     }
     val details: @Composable () -> Unit = {
-        LinkDetails(model, state, distanceUnit, onMove = ::choose)
+        LinkDetails(model, state, distanceUnit, onMove = ::choose, onOpenSaved = onOpenSaved)
     }
     val fold = rememberFoldSplit()
     val tabletop = rememberTabletopSplit()
@@ -245,6 +245,11 @@ private fun LinkHeader(state: LinkProfileViewModel.State, selecting: String?, pl
                 if (placing != null && showsElevationNotice) Text("Placing a point sends its coordinates to Open-Meteo for elevation.",
                     style = MaterialTheme.typography.bodySmall, color = secondary)
             }
+            // Reopened from Saved Plans: no elevation or analysis until asked for.
+            state.awaitingCalculation -> {
+                Text("Saved inputs · No calculated result", style = MaterialTheme.typography.titleMedium)
+                Button(onClick = onRetry) { Text("Calculate") }
+            }
             state.loading -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                 Text("Analyzing link…", style = MaterialTheme.typography.titleMedium)
@@ -295,9 +300,12 @@ private val ClearanceStatus.pathClearance get() = when (this) {
 /** Everything under the header: the two points, the radio and the full result. */
 @Composable
 private fun LinkDetails(model: LinkProfileViewModel, state: LinkProfileViewModel.State, distanceUnit: DistanceUnit,
-    onMove: (String) -> Unit) {
+    onMove: (String) -> Unit, onOpenSaved: () -> Unit) {
     var customizing by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Read state so Save enables as soon as both points are placed.
+        org.nodescope.android.feature.candidatesites.SavedStudyActions(
+            snapshot = { state.fields.let { model.savedSnapshot() } }, didSave = { model.savedStudy = it }, onOpen = onOpenSaved)
         listOf("A", "B").forEach { endpoint -> PointCard(model, state, endpoint, distanceUnit, onMove) }
         Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

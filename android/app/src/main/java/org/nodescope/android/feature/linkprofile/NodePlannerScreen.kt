@@ -15,7 +15,7 @@ import org.nodescope.android.feature.settings.NavigationRow
 
 /** The tools listed as rows, the same row Explore uses to open this screen. */
 @Composable
-fun NodePlannerScreen(onLinkProfile: () -> Unit, onCandidateSites: () -> Unit, onEstimatedCoverage: () -> Unit) {
+fun NodePlannerScreen(onLinkProfile: () -> Unit, onSavedPlans: () -> Unit, onEstimatedCoverage: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Plan before you deploy", style = MaterialTheme.typography.headlineSmall)
         Text("Evaluate proposed locations, terrain paths, and radio assumptions before installing a node.")
@@ -25,7 +25,7 @@ fun NodePlannerScreen(onLinkProfile: () -> Unit, onCandidateSites: () -> Unit, o
                 HorizontalDivider()
                 NavigationRow("Estimated Coverage", "Set up an area study and review known nodes around a proposed transmitter.", Icons.Outlined.AddLocationAlt, onEstimatedCoverage)
                 HorizontalDivider()
-                NavigationRow("Candidate Sites", "Save proposed locations and equipment assumptions in deployment plans.", Icons.Outlined.AddLocationAlt, onCandidateSites)
+                NavigationRow("Saved Plans", "Reopen saved link profiles, coverage studies and candidate sites.", Icons.Outlined.AddLocationAlt, onSavedPlans)
             }
         }
         Text("Planner results are estimates based on terrain data and the assumptions you enter. Buildings, vegetation, interference, hardware variation, and weather can change real-world performance.", style = MaterialTheme.typography.bodySmall)

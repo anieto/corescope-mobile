@@ -126,7 +126,7 @@ class EstimatedCoverageViewModelTest {
 }
 
 /** An in-memory SharedPreferences for JVM tests. */
-private class CoverageMemoryPreferences : SharedPreferences {
+internal class CoverageMemoryPreferences : SharedPreferences {
     private val values = mutableMapOf<String, Any?>()
     override fun getAll(): MutableMap<String, *> = values.toMutableMap()
     override fun getString(key: String, defValue: String?) = values[key] as? String ?: defValue

@@ -123,11 +123,13 @@ enum class Destination(val title: Int, val icon: ImageVector, val route: TopLeve
 @Serializable data class NodeRoute(val publicKey: String)
 @Serializable data class NodeAnalyticsRoute(val publicKey: String)
 @Serializable data object NodePlannerRoute
-@Serializable data object EstimatedCoverageRoute
+@Serializable data class EstimatedCoverageRoute(val studyId: String? = null)
 @Serializable data object CandidateSitesRoute
+/** Saved studies and candidate sites; [kind] narrows the list to one tool's studies (its Open button). */
+@Serializable data class SavedPlansRoute(val kind: String? = null)
 /** [publicKey] is set when opened from a node's page; Explore opens it empty to look a node up. */
 @Serializable data class NodeCheckRoute(val publicKey: String? = null)
-@Serializable data object LinkProfileRoute
+@Serializable data class LinkProfileRoute(val studyId: String? = null)
 @Serializable data object SourceRoute
 @Serializable data object PacketRoute
 @Serializable data class PacketDetailRoute(val groupId: String)
@@ -472,6 +474,7 @@ internal fun AppShell(
                             destination?.hasRoute<NodePlannerRoute>() == true -> "Node Planner"
                             destination?.hasRoute<EstimatedCoverageRoute>() == true -> "Estimated Coverage"
                             destination?.hasRoute<CandidateSitesRoute>() == true -> "Candidate Sites"
+                            destination?.hasRoute<SavedPlansRoute>() == true -> "Saved Plans"
                             destination?.hasRoute<NodeCheckRoute>() == true -> "Node Check"
                             destination?.hasRoute<LinkProfileRoute>() == true -> "Link Profile"
                             else -> stringResource(when {
@@ -630,39 +633,56 @@ internal fun AppShell(
                         }
                         screen<NodePlannerRoute> {
                             org.nodescope.android.feature.linkprofile.NodePlannerScreen(
-                                onLinkProfile = { nav.navigate(LinkProfileRoute) },
-                                onCandidateSites = { nav.navigate(CandidateSitesRoute) },
-                                onEstimatedCoverage = { nav.navigate(EstimatedCoverageRoute) })
+                                onLinkProfile = { nav.navigate(LinkProfileRoute()) },
+                                onSavedPlans = { nav.navigate(SavedPlansRoute()) },
+                                onEstimatedCoverage = { nav.navigate(EstimatedCoverageRoute()) })
+                        }
+                        screen<SavedPlansRoute> { backStack ->
+                            val kind = backStack.toRoute<SavedPlansRoute>().kind?.let { org.nodescope.android.feature.candidatesites.SavedStudy.Kind.valueOf(it) }
+                            // Opening a study pushes a fresh tool with its inputs, keeping any draft underneath.
+                            org.nodescope.android.feature.candidatesites.SavedPlansScreen(kind, onOpen = { study ->
+                                when (study.kind) {
+                                    org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE -> nav.navigate(LinkProfileRoute(study.id))
+                                    org.nodescope.android.feature.candidatesites.SavedStudy.Kind.COVERAGE -> nav.navigate(EstimatedCoverageRoute(study.id))
+                                }
+                            }, onCandidateSites = { nav.navigate(CandidateSitesRoute) })
                         }
                         screen<EstimatedCoverageRoute> { backStack ->
                             val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
+                            val library = org.nodescope.android.feature.candidatesites.SavedPlansLibrary.shared(context)
+                            val studyId = backStack.toRoute<EstimatedCoverageRoute>().studyId
                             val coverageModel = viewModel<org.nodescope.android.feature.coverage.EstimatedCoverageViewModel>(backStack) {
                                 org.nodescope.android.feature.coverage.EstimatedCoverageViewModel(
                                     java.io.File(context.cacheDir, "estimated-coverage-terrain-v1"),
                                     context.getSharedPreferences("estimated-coverage", android.content.Context.MODE_PRIVATE),
                                     heightInFeet = preferences.distanceUnit == org.nodescope.android.core.storage.DistanceUnit.IMPERIAL)
+                                    .also { model -> library.studies.firstOrNull { it.id == studyId }?.let(model::restore) }
                             }
                             org.nodescope.android.feature.coverage.EstimatedCoverageScreen(coverageModel, state.snapshot?.nodes.orEmpty(),
-                                preferences.host, state.snapshot, preferences.region, sourceViewport)
+                                preferences.host, state.snapshot, preferences.region, sourceViewport,
+                                onOpenSaved = { nav.navigate(SavedPlansRoute(org.nodescope.android.feature.candidatesites.SavedStudy.Kind.COVERAGE.name)) })
                         }
                         screen<CandidateSitesRoute> { backStack ->
                             val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
                             val model = viewModel<org.nodescope.android.feature.candidatesites.CandidatePlansViewModel>(backStack) {
                                 org.nodescope.android.feature.candidatesites.CandidatePlansViewModel(
-                                    org.nodescope.android.feature.candidatesites.DeploymentPlanStore(
-                                        java.io.File(context.filesDir, "CandidateSites/plans.json")))
+                                    org.nodescope.android.feature.candidatesites.SavedPlansLibrary.shared(context))
                             }
                             org.nodescope.android.feature.candidatesites.CandidateSitesScreen(model)
                         }
                         screen<LinkProfileRoute> { backStack ->
                             val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
+                            val library = org.nodescope.android.feature.candidatesites.SavedPlansLibrary.shared(context)
+                            val studyId = backStack.toRoute<LinkProfileRoute>().studyId
                             val profileModel = viewModel<org.nodescope.android.feature.linkprofile.LinkProfileViewModel>(backStack) {
                                 org.nodescope.android.feature.linkprofile.LinkProfileViewModel(
                                     org.nodescope.android.feature.linkprofile.LinkTerrainProvider(java.io.File(context.cacheDir, "link-profile/elevations.json")),
                                     createSavedStateHandle(), preferences.distanceUnit)
+                                    .also { model -> library.studies.firstOrNull { it.id == studyId }?.let(model::restore) }
                             }
                             org.nodescope.android.feature.linkprofile.LinkProfileScreen(profileModel, preferences.distanceUnit, state.snapshot?.nodes.orEmpty(),
-                                state.snapshot, preferences.region, sourceViewport)
+                                state.snapshot, preferences.region, sourceViewport,
+                                onOpenSaved = { nav.navigate(SavedPlansRoute(org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE.name)) })
                         }
                         screen<PacketRoute> {
                             if (org.nodescope.android.core.design.LocalBeaconSource.current)

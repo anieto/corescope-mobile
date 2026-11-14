@@ -50,6 +50,9 @@ class CoverageNodeRun(nodes: List<CoverageNodeSnapshot>, val catalogComplete: Bo
         phase = CoverageNodeRunPhase.cancelled
     }
     fun invalidate() { phase = CoverageNodeRunPhase.invalidated }
+    /** A completed run's evaluation of [node], for saving the result; null otherwise. */
+    fun evaluation(node: CoverageNodeSnapshot): CoverageNodeEvaluation? =
+        if (phase == CoverageNodeRunPhase.completed) evaluations[Key(node)] else null
     fun status(node: CoverageNodeSnapshot): CoverageNodeStatus {
         fun status(state: CoverageNodeState, reason: CoverageNodeReason) = CoverageNodeStatus(state, reason, null)
         if (!node.isValid) return status(CoverageNodeState.unknown, CoverageNodeReason.invalidInput)

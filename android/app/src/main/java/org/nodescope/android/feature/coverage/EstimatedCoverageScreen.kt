@@ -65,7 +65,8 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun EstimatedCoverageScreen(model: EstimatedCoverageViewModel, nodes: List<MeshNode>, sourceKey: String,
-    snapshot: AnalyzerSnapshot? = null, selectedRegion: String? = null, sourceViewport: RegionCoordinate? = null) {
+    snapshot: AnalyzerSnapshot? = null, selectedRegion: String? = null, sourceViewport: RegionCoordinate? = null,
+    onOpenSaved: () -> Unit = {}) {
     LaunchedEffect(nodes, sourceKey) { model.offerCatalog(nodes, sourceKey) }
     // Leaving or backgrounding cancels active work, as before and on iOS.
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { model.cancel() }
@@ -85,7 +86,7 @@ internal fun EstimatedCoverageScreen(model: EstimatedCoverageViewModel, nodes: L
         }
     }
     val header: @Composable () -> Unit = { CoverageHeader(model) }
-    val details: @Composable () -> Unit = { CoverageDetails(model) { showsNodes = true } }
+    val details: @Composable () -> Unit = { CoverageDetails(model, onOpenSaved) { showsNodes = true } }
     val fold = rememberFoldSplit()
     val tabletop = rememberTabletopSplit()
     BoxWithConstraints(Modifier.fillMaxSize().then(fold.modifier).then(tabletop.modifier)) {
@@ -333,15 +334,23 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
 // MARK: - Details
 
 /** Everything under the header: the guide, transmitter, radio, receiver, study area and result. */
-@Composable private fun CoverageDetails(model: EstimatedCoverageViewModel, showNodes: () -> Unit) {
+@Composable private fun CoverageDetails(model: EstimatedCoverageViewModel, onOpenSaved: () -> Unit, showNodes: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        org.nodescope.android.feature.candidatesites.SavedStudyActions(snapshot = model::savedSnapshot,
+            didSave = { model.savedStudy = it }, onOpen = onOpenSaved)
+        if (model.usesSavedCatalog) {
+            Text(if (model.savedStudy?.coverage?.calculatedResult == null) "Saved node locations · Inputs-only save"
+                else "Saved node locations · Saved coverage results",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton(onClick = model::refreshNodesFromSource, contentPadding = PaddingValues(0.dp)) { Text("Refresh nodes from current source") }
+        }
         CoverageSetupGuide(model)
         CoverageTransmitterCard(model)
         CoverageRadioCard(model)
         CoverageReceiverCard(model)
         CoverageStudyAreaCard(model)
         CoverageCalculationCard(model, showNodes)
-        Text("Planning estimates only: terrain does not account for buildings, foliage or interference. Terrain is downloaded from AWS Skadi and cached on this device. This setup is not saved when you leave the tool.",
+        Text("Planning estimates only: terrain does not account for buildings, foliage or interference. Terrain is downloaded from AWS Skadi and cached on this device. Use Save to keep this setup before leaving the tool.",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

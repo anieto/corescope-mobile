@@ -34,7 +34,9 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         /** The known node each endpoint was placed on, by endpoint; absent for a dropped pin or typed coordinates. */
         val names: Map<String, String> = emptyMap(),
         /** The last placement, removal or reset, which Undo takes back for a few seconds. */
-        val undo: Undo? = null)
+        val undo: Undo? = null,
+        /** Reopened from Saved Plans: nothing is fetched or analyzed until Calculate, as on iOS. */
+        val awaitingCalculation: Boolean = false)
     /** Both endpoints' coordinate fields and node names, as they were before a change. */
     data class Placement(val fields: Map<String, String>, val names: Map<String, String>)
     data class Undo(val message: String, val before: Placement, val id: Long = System.nanoTime())
@@ -43,10 +45,13 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         .mapValues { (key, value) -> saved.get<String>(key) ?: value }, saved["preset"] ?: "US/Canada Narrow",
         names = listOf("A", "B").mapNotNull { endpoint -> saved.get<String>("Name $endpoint")?.let { endpoint to it } }.toMap()))
     val state = mutable.asStateFlow()
+    /** The saved study this profile came from, so Save replaces it rather than adding another. */
+    var savedStudy: org.nodescope.android.feature.candidatesites.SavedStudy? = null
     private var job: Job? = null
     private val elevationJobs = mutableMapOf<String, Job>()
 
     init {
+        if (saved.get<Boolean>("awaitingCalculation") == true) mutable.value = mutable.value.copy(awaitingCalculation = true)
         scheduleElevation("A")
         scheduleElevation("B")
         scheduleAnalysis()
@@ -55,7 +60,7 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
     /** Both endpoints parse: analysis runs on its own, shortly after the last change. */
     private fun scheduleAnalysis() {
         job?.cancel()
-        if (coordinate("A") == null || coordinate("B") == null) return
+        if (mutable.value.awaitingCalculation || coordinate("A") == null || coordinate("B") == null) return
         mutable.value = mutable.value.copy(loading = true)
         job = viewModelScope.launch {
             delay(600)
@@ -76,7 +81,8 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
 
     private fun scheduleElevation(endpoint: String) {
         elevationJobs.remove(endpoint)?.cancel()
-        val point = coordinate(endpoint)
+        // A reopened study sends no coordinates for elevation until Calculate.
+        val point = coordinate(endpoint)?.takeUnless { mutable.value.awaitingCalculation }
         setElevation(endpoint, EndpointElevation(loading = point != null))
         if (point == null) return
         elevationJobs[endpoint] = viewModelScope.launch {
@@ -173,8 +179,12 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         mutable.value = mutable.value.copy(fields = fields, preset = name, loading = false, result = null, error = null)
         scheduleAnalysis()
     }
-    /** Analyzes now, as Try Again after a failure. */
+    /** Analyzes now, as Try Again after a failure or Calculate on a reopened study. */
     fun analyze() {
+        if (mutable.value.awaitingCalculation) {
+            saved["awaitingCalculation"] = false
+            mutable.value = mutable.value.copy(awaitingCalculation = false)
+        }
         job?.cancel()
         job = viewModelScope.launch { runAnalysis() }
     }
@@ -206,5 +216,63 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
             coroutineContext.ensureActive()
             mutable.value = mutable.value.copy(loading = false, error = if (error is IllegalArgumentException) error.message else "Unable to load terrain. Check your connection and try again.")
         }
+    }
+
+    /** The current inputs as a study to save; null until both points are placed. Matches iOS. */
+    fun savedSnapshot(): org.nodescope.android.feature.candidatesites.SavedStudy? {
+        val fields = mutable.value.fields
+        fun number(key: String) = fields.getValue(key).trim().toDoubleOrNull()?.takeIf(Double::isFinite)
+        val a = coordinate("A") ?: return null
+        val b = coordinate("B") ?: return null
+        fun endpoint(letter: String, point: ProfileCoordinate): org.nodescope.android.feature.candidatesites.SavedEndpoint? {
+            val antenna = org.nodescope.android.feature.candidatesites.SavedAntenna(
+                number("Height $letter (m)") ?: return null, number("Gain $letter (dBi)") ?: return null, number("Loss $letter (dB)") ?: return null)
+            return org.nodescope.android.feature.candidatesites.SavedEndpoint(mutable.value.names[letter], point.latitude, point.longitude, antenna)
+        }
+        val inputs = org.nodescope.android.feature.candidatesites.SavedLinkProfile(endpoint("A", a) ?: return null, endpoint("B", b) ?: return null,
+            number("Frequency (MHz)") ?: return null, number("Transmit power (dBm)") ?: return null,
+            number("Sensitivity (dBm)") ?: return null, refractionK = 4.0 / 3.0, sampleCount = null)
+        val now = System.currentTimeMillis()
+        val study = org.nodescope.android.feature.candidatesites.SavedStudy(
+            savedStudy?.id ?: org.nodescope.android.feature.candidatesites.SavedPlansLibrary.newStudyID(),
+            savedStudy?.name ?: "Link Profile", savedStudy?.createdAtMilliseconds ?: now, maxOf(now, savedStudy?.createdAtMilliseconds ?: now),
+            org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE, linkProfile = inputs)
+        return study.takeIf { runCatching { it.validate() }.isSuccess }
+    }
+
+    /**
+     * Fills in a saved study's inputs without fetching elevation or analyzing, until Calculate.
+     * Applied once per back-stack entry, so a process restart keeps edits made after reopening.
+     */
+    fun restore(study: org.nodescope.android.feature.candidatesites.SavedStudy) {
+        savedStudy = study
+        if (saved.get<String>("restoredStudy") == study.id) return
+        val inputs = study.linkProfile?.takeIf { runCatching { study.validate() }.isSuccess } ?: return
+        job?.cancel()
+        elevationJobs.values.forEach { it.cancel() }
+        elevationJobs.clear()
+        fun text(value: Double) = if (value % 1.0 == 0.0) value.toLong().toString() else value.toString()
+        val values = mapOf(
+            "Latitude A" to inputs.pointA.latitude.toString(), "Longitude A" to inputs.pointA.longitude.toString(),
+            "Height A (m)" to text(inputs.pointA.antenna.heightMeters), "Gain A (dBi)" to text(inputs.pointA.antenna.gainDbi),
+            "Loss A (dB)" to text(inputs.pointA.antenna.lossDb),
+            "Latitude B" to inputs.pointB.latitude.toString(), "Longitude B" to inputs.pointB.longitude.toString(),
+            "Height B (m)" to text(inputs.pointB.antenna.heightMeters), "Gain B (dBi)" to text(inputs.pointB.antenna.gainDbi),
+            "Loss B (dB)" to text(inputs.pointB.antenna.lossDb),
+            "Frequency (MHz)" to text(inputs.frequencyMHz), "Transmit power (dBm)" to text(inputs.transmitPowerDbm),
+            "Sensitivity (dBm)" to text(inputs.sensitivityDbm))
+        val names = listOfNotNull(inputs.pointA.name?.let { "A" to it }, inputs.pointB.name?.let { "B" to it }).toMap()
+        val preset = when (Triple(inputs.frequencyMHz, inputs.transmitPowerDbm, inputs.sensitivityDbm)) {
+            Triple(910.525, 22.0, -128.0) -> "US/Canada Narrow"
+            Triple(869.618, 14.0, -130.0) -> "EU/UK Narrow"
+            else -> "Custom"
+        }
+        values.forEach { (key, value) -> saved[key] = value }
+        listOf("A", "B").forEach { letter -> names[letter]?.let { saved["Name $letter"] = it } ?: saved.remove<String>("Name $letter") }
+        saved["preset"] = preset
+        saved["awaitingCalculation"] = true
+        saved["restoredStudy"] = study.id
+        mutable.value = mutable.value.copy(fields = mutable.value.fields + values, names = names, preset = preset, loading = false,
+            result = null, error = null, elevations = emptyMap(), undo = null, awaitingCalculation = true)
     }
 }
