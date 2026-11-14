@@ -14,6 +14,8 @@ class CandidatePlansViewModel(private val store: DeploymentPlanStore) : ViewMode
     var busy by mutableStateOf(false); private set
     var error by mutableStateOf<String?>(null); private set
     var editing by mutableStateOf<DeploymentPlan?>(null); private set
+    /** The library as loaded; saves replace only its plans, keeping its version and saved studies. */
+    private var document = DeploymentPlanDocument(1, emptyList())
 
     init { reload() }
 
@@ -23,7 +25,8 @@ class CandidatePlansViewModel(private val store: DeploymentPlanStore) : ViewMode
         loaded = false
         viewModelScope.launch {
             try {
-                plans = withContext(Dispatchers.IO) { store.load().plans }
+                document = withContext(Dispatchers.IO) { store.load() }
+                plans = document.plans
                 loaded = true
                 error = null
             } catch (_: Exception) {
@@ -46,7 +49,9 @@ class CandidatePlansViewModel(private val store: DeploymentPlanStore) : ViewMode
         busy = true
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) { store.save(DeploymentPlanDocument(1, next)) }
+                val updated = document.copy(plans = next)
+                withContext(Dispatchers.IO) { store.save(updated) }
+                document = updated
                 plans = next
                 error = null
                 if (closeEditor) editing = null

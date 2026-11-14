@@ -9,11 +9,16 @@ data class CoverageGridPoint(val eastMeters: Int, val northMeters: Int, val dist
 /** Local east/north sampling layout, not a coverage footprint or geographic raster projection. */
 class CoverageGrid(val radiusMeters: Int, val spacingMeters: Int, val minEastMeters: Int, maxEastMeters: Int,
                    minNorthMeters: Int, val maxNorthMeters: Int) {
+    companion object {
+        /** Whole-unit UI presets converted to the integer-meter grid, plus legacy spacings. Matches iOS. */
+        val SUPPORTED_SPACINGS = listOf(50, 100, 152, 200, 201, 305, 402, 500, 610, 805, 1000, 1609, 2000, 2414,
+            3219, 5000, 8047, 10_000, 20_000)
+    }
     val columns: Int
     val rows: Int
     val count: Int get() = columns * rows
     init {
-        if (radiusMeters !in 1000..100_000 || spacingMeters !in listOf(50, 100, 200, 500, 1000, 2000, 5000, 10_000, 20_000)) {
+        if (radiusMeters !in 1000..100_000 || spacingMeters !in SUPPORTED_SPACINGS) {
             throw CoverageGridFailure(CoverageGridFailureState.invalidParameters)
         }
         if (listOf(minEastMeters, maxEastMeters, minNorthMeters, maxNorthMeters).any { it !in -radiusMeters..radiusMeters } ||

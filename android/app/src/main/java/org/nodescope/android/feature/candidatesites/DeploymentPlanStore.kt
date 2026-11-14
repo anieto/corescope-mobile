@@ -32,6 +32,18 @@ class DeploymentPlanStore(
         val bytes = DeploymentPlanCodec.encode(document)
         if (!read().contentEquals(baseline)) throw DeploymentPlanStoreException(DeploymentPlanStoreFailure.CHANGED_ON_DISK)
         Files.createDirectories(file.toPath().parent)
+        val stored = baseline?.let { DeploymentPlanCodec.decode(it).schemaVersion }
+        if (stored == 1 && document.schemaVersion == 2) {
+            // Backup first, replace second. An interrupted migration leaves the original readable;
+            // a retry verifies the existing backup instead of replacing it.
+            val backup = File(file.path + ".v1-backup")
+            if (backup.exists()) {
+                if (!backup.readBytes().contentEquals(baseline)) throw DeploymentPlanStoreException(DeploymentPlanStoreFailure.CHANGED_ON_DISK)
+            } else {
+                writePlanAtomically(requireNotNull(baseline), backup)
+            }
+        }
+        if (stored == 2 && document.schemaVersion != 2) throw DeploymentPlanException(DeploymentPlanFailure.UNSUPPORTED_VERSION)
         write(bytes, file)
         baseline = bytes
     }

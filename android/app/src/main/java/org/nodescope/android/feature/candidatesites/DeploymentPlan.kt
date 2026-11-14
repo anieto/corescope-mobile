@@ -5,13 +5,26 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.UUID
 
+/**
+ * Version 1 holds candidate sites; version 2 adds typed studies with optional coverage result
+ * snapshots. Version 2 requires `studies`; version 1 may only carry an empty list. Matches iOS.
+ */
 @Serializable
-data class DeploymentPlanDocument(val schemaVersion: Int, val plans: List<DeploymentPlan>) {
+data class DeploymentPlanDocument(
+    val schemaVersion: Int, val plans: List<DeploymentPlan>, val studies: List<SavedStudy>? = null,
+) {
     fun validate() {
-        if (schemaVersion != 1) throw DeploymentPlanException(DeploymentPlanFailure.UNSUPPORTED_VERSION)
+        if (schemaVersion != 1 && schemaVersion != 2) throw DeploymentPlanException(DeploymentPlanFailure.UNSUPPORTED_VERSION)
+        val saved = studies.orEmpty()
+        valid(if (schemaVersion == 2) studies != null else saved.isEmpty())
+        valid(saved.size <= 100 && saved.map { it.id }.toSet().size == saved.size)
+        saved.forEach { it.validate() }
         valid(plans.size <= 100 && plans.map { it.id }.toSet().size == plans.size)
         plans.forEach { it.validate() }
     }
+
+    /** Studies as stored; version 1 has none. */
+    val savedStudies: List<SavedStudy> get() = studies.orEmpty()
 }
 
 @Serializable
@@ -80,6 +93,10 @@ object CandidateSiteInput {
 
 class DeploymentPlanException(val reason: DeploymentPlanFailure) : Exception(reason.name)
 
+internal fun planValid(condition: Boolean) = valid(condition)
+internal fun validPlanID(value: String) = validID(value)
+internal fun validPlanName(value: String) = validName(value)
+
 private fun valid(condition: Boolean) {
     if (!condition) throw DeploymentPlanException(DeploymentPlanFailure.INVALID_DATA)
 }
@@ -91,8 +108,10 @@ private fun validName(value: String): Boolean = value.trim(' ', '\t', '\r', '\n'
 
 /** Use at every disk boundary; deserialization alone does not validate stored input. */
 object DeploymentPlanCodec {
-    const val MAXIMUM_BYTES = 4 * 1024 * 1024
-    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    // Matches iOS: a saved coverage result can reach 8 MiB on its own.
+    const val MAXIMUM_BYTES = 32 * 1024 * 1024
+    // Absent optionals are omitted, as iOS writes them; version 1 never writes `studies`.
+    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true; explicitNulls = false }
 
     fun decode(bytes: ByteArray): DeploymentPlanDocument {
         if (bytes.size > MAXIMUM_BYTES) throw DeploymentPlanException(DeploymentPlanFailure.TOO_LARGE)
@@ -102,7 +121,8 @@ object DeploymentPlanCodec {
 
     fun encode(document: DeploymentPlanDocument): ByteArray {
         document.validate()
-        return json.encodeToString(document).toByteArray(Charsets.UTF_8).also {
+        val stored = if (document.schemaVersion == 1) document.copy(studies = null) else document
+        return json.encodeToString(stored).toByteArray(Charsets.UTF_8).also {
             if (it.size > MAXIMUM_BYTES) throw DeploymentPlanException(DeploymentPlanFailure.TOO_LARGE)
         }
     }
