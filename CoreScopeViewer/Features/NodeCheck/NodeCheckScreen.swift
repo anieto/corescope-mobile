@@ -165,10 +165,15 @@ struct NodeCheckScreen: View {
                     } label: {
                         Image(systemName: "arrow.clockwise")
                     }
+                    .keyboardCommand(.refresh) {
+                        guard let key = model.shownKey else { return }
+                        Task { await model.check(key: key) }
+                    }
                     .accessibilityLabel("Check Again")
                 }
             }
         }
+        .keyboardCommand(.search) { searchFocused = true }
         .task(id: settings.sourceSession.id) {
             model.configure(settings: settings)
             if let initialNode {

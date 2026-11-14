@@ -172,6 +172,8 @@ struct ObserversListScreen: View {
             }
             updateVisibleObservers()
         }
+        .keyboardCommand(.refresh, action: retryObserverLoad)
+        .keyboardCommand(.search, action: toggleSearch)
         .onChange(of: viewModel.observers) { updateVisibleObservers() }
         .onChange(of: liveFeed.beaconObserverSequence) {
             updateVisibleObservers()

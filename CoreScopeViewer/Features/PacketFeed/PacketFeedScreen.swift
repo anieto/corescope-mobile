@@ -1381,14 +1381,18 @@ private struct LivePacketCard: View {
                         .foregroundStyle(color)
                         .lineLimit(1)
 
+                    // The badges keep their size; in a narrow sidebar the type name truncates
+                    // rather than the counts wrapping a digit per line.
                     if hopCount > 0 {
                         Label("\(hopCount)", systemImage: "arrow.right")
                             .liveObservationBadge()
+                            .fixedSize()
                     }
 
                     if observationCount > 1 {
                         Label("\(observationCount)", systemImage: "eye.fill")
                             .liveObservationBadge(color: .purple)
+                            .fixedSize()
                     }
 
                     if let region {
@@ -1398,6 +1402,7 @@ private struct LivePacketCard: View {
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3)
                             .background(Color.indigo, in: RoundedRectangle(cornerRadius: 5))
+                            .fixedSize()
                     }
 
                     Spacer(minLength: 0)

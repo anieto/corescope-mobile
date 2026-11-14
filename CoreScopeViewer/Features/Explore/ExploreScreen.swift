@@ -114,6 +114,10 @@ struct ExploreScreen: View {
             .refreshable {
                 await refreshExploreData()
             }
+            .keyboardCommand(.refresh) {
+                Task { await refreshExploreData() }
+            }
+            .keyboardCommand(.search) { isSearchPresented = true }
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: MeshNode.self) { node in
                 NodeDetailScreen(node: node)

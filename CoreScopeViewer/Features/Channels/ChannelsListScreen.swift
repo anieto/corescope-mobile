@@ -166,6 +166,8 @@ struct ChannelsListScreen: View {
             await viewModel.loadChannels(region: regionFilter.selectedRegion, forceRefresh: true)
             updateVisibleChannels()
         }
+        .keyboardCommand(.refresh, action: retryChannelLoad)
+        .keyboardCommand(.search, action: toggleSearch)
         .onChange(of: viewModel.channels) { updateVisibleChannels() }
         // Whenever the channels, region or observer regions change; only channels with new
         // messages are fetched again.
@@ -694,22 +696,22 @@ private struct ChannelCard: View {
                 )
 
             VStack(alignment: .leading, spacing: 7) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(name)
-                        .font(.monaspace(.headline))
-                    Spacer()
-                    if let messageCount {
-                        HStack(spacing: 4) {
-                            Image(systemName: "bubble.left.fill")
-                            Text("\(messageCount)")
-                        }
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                // A long name keeps its line and moves the count and time beneath it, rather
+                // than breaking mid-word beside them in a narrow sidebar.
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        nameText
+                            .fixedSize()
+                        Spacer()
+                        activityDetails
                     }
-                    if lastActivity != .distantPast {
-                        Text(RelativeTime.string(from: lastActivity))
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                    VStack(alignment: .leading, spacing: 3) {
+                        nameText
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        HStack(spacing: 8) {
+                            activityDetails
+                        }
                     }
                 }
                 if let lastMessage {
@@ -749,6 +751,30 @@ private struct ChannelCard: View {
         }
         .padding(14)
         .instrumentCard(isSelected: isSelected)
+    }
+
+    private var nameText: some View {
+        Text(name)
+            .font(.monaspace(.headline))
+    }
+
+    @ViewBuilder
+    private var activityDetails: some View {
+        if let messageCount {
+            HStack(spacing: 4) {
+                Image(systemName: "bubble.left.fill")
+                Text("\(messageCount)")
+            }
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .fixedSize()
+        }
+        if lastActivity != .distantPast {
+            Text(RelativeTime.string(from: lastActivity))
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .fixedSize()
+        }
     }
 }
 

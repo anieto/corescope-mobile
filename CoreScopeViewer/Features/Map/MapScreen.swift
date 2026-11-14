@@ -355,12 +355,14 @@ struct MapScreen: View {
                             .frame(width: 44, height: 44)
                     }
                     .disabled(isRefreshing)
+                    .keyboardCommand(.refresh, action: retry)
                     .accessibilityLabel("Refresh map data")
 
                     Button(action: search) {
                         Image(systemName: "magnifyingglass")
                             .frame(width: 44, height: 44)
                     }
+                    .keyboardCommand(.search, action: search)
                     .accessibilityLabel("Search nodes")
 
                     Menu {
@@ -462,11 +464,13 @@ struct MapScreen: View {
                             Image(systemName: "arrow.clockwise")
                         }
                         .disabled(isRefreshingMap)
+                        .keyboardCommand(.refresh, action: retryMapLoad)
                         .accessibilityLabel("Refresh map data")
 
                         Button(action: toggleMapSearch) {
                             Image(systemName: "magnifyingglass")
                         }
+                        .keyboardCommand(.search, action: toggleMapSearch)
                         .accessibilityLabel("Search nodes")
 
                         Menu {
