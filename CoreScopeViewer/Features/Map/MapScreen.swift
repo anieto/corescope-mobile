@@ -7,6 +7,7 @@ struct MapScreen: View {
     let resetID: UUID
     var showLivePackets: (() -> Void)? = nil
     var togglePacketSidebar: (() -> Void)? = nil
+    var extendsMapBehindSidebar = false
     var pinsPacketSidebarToggle = false
     var centersBottomControlsInLeadingPane = false
     var bottomObscuredFraction: Double = 0
@@ -413,6 +414,7 @@ struct MapScreen: View {
                 ) { context in
                     mapContent(at: isReplayMode ? replayClock(context.date) : .now)
                 }
+                .modifier(MapSidebarBackgroundExtension(isEnabled: extendsMapBehindSidebar))
                 .onAppear { mapViewportSize = geometry.size }
                 .onChange(of: geometry.size) { _, size in
                     mapViewportSize = size
@@ -5076,5 +5078,16 @@ enum MapDisplayStyle: String, CaseIterable, Identifiable {
         case .imagery: .imagery
         case .hybrid: .hybrid
         }
+    }
+}
+
+/// Runs the map imagery on under the floating sidebar and the space around it, leaving the
+/// controls in their original safe area. The map keeps the full width whether or not the
+/// sidebar shows, so opening or closing it covers or uncovers the map without moving it.
+private struct MapSidebarBackgroundExtension: ViewModifier {
+    let isEnabled: Bool
+
+    func body(content: Content) -> some View {
+        content.ignoresSafeArea(.container, edges: isEnabled ? [.vertical, .leading] : [])
     }
 }

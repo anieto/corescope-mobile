@@ -1,17 +1,6 @@
 import SwiftUI
 import Observation
 
-private extension View {
-    @ViewBuilder
-    func workspaceBackgroundExtensionEffect() -> some View {
-        if #available(iOS 26.0, *) {
-            backgroundExtensionEffect()
-        } else {
-            self
-        }
-    }
-}
-
 struct MapPacketWorkspaceScreen: View {
     let isTabActive: Bool
     let resetID: UUID
@@ -178,6 +167,7 @@ struct MapPacketWorkspaceScreen: View {
                 routeReplayStarted: { replayingLivePacketGroupID = $0 }
             )
             .toolbar(removing: .sidebarToggle)
+            .floatingSidebarColumn(true)
             .navigationSplitViewColumnWidth(min: 280, ideal: 340, max: 420)
         } detail: {
             MapScreen(
@@ -185,13 +175,14 @@ struct MapPacketWorkspaceScreen: View {
                 resetID: resetID,
                 togglePacketSidebar: columnVisibility == .detailOnly
                     ? { toggleRegularSidebar() }
-                    : nil
+                    : nil,
+                extendsMapBehindSidebar: true
             )
         }
         .navigationSplitViewStyle(.balanced)
-        // Match the other iPad split workspaces; the native sidebar supplies its own inset.
+        // Inset native sidebar chrome without shrinking the full-screen background.
+        .safeAreaPadding(.bottom, 12)
         .ignoresSafeArea(.container, edges: .top)
-        .workspaceBackgroundExtensionEffect()
         .onAppear { updateRegularColumns() }
         .onChange(of: columnVisibility) { _, visibility in
             prefersPacketSidebar = visibility != .detailOnly

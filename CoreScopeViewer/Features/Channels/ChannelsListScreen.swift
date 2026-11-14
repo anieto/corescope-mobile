@@ -78,7 +78,7 @@ struct ChannelsListScreen: View {
                 }
 
                 if !visibleMonitoredChannels.isEmpty {
-                    Section {
+                    AdaptiveSidebarSection {
                         ForEach(visibleMonitoredChannels) { channel in
                             channelRow(channel)
                         }
@@ -98,7 +98,7 @@ struct ChannelsListScreen: View {
                         }
                     }
                 } else {
-                    Section {
+                    AdaptiveSidebarSection {
                         ForEach(visibleServerChannels) { channel in
                             channelRow(channel)
                         }

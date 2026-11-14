@@ -155,14 +155,19 @@ private struct AdaptiveSidebarListModifier: ViewModifier {
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.isHingedDevice) private var isHingedDevice
+    @Environment(\.isFloatingSidebar) private var isFloatingSidebar
 
     @ViewBuilder
     func body(content: Content) -> some View {
-        if horizontalSizeClass == .regular {
+        // The floating sidebar reports a compact size class but takes the regular layout,
+        // whose section headers scroll with the list rather than pinning under the panel's top.
+        if horizontalSizeClass == .regular || isFloatingSidebar {
             content
                 .scrollContentBackground(.hidden)
                 .listStyle(.insetGrouped)
                 .contentMargins(.top, 0, for: .scrollContent)
+                // Rows set their own insets; keep the grouped style's side margins out of the panel.
+                .contentMargins(.horizontal, isFloatingSidebar ? 0 : nil, for: .scrollContent)
                 .background {
                     if meshBackground {
                         MeshBackground(subdued: true)
@@ -247,5 +252,28 @@ struct LoadingIndicator: View {
                 .stroke(NodeScopeStyle.signal.opacity(0.16), lineWidth: 1)
         }
         .shadow(color: .black.opacity(0.12), radius: 8, y: 3)
+    }
+}
+
+/// Floating iPad panels use scrolling labels instead of sticky section headers,
+/// which otherwise reserve a translucent region above the first visible row.
+struct AdaptiveSidebarSection<Content: View, Header: View>: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.isHingedDevice) private var isHingedDevice
+    @ViewBuilder let content: Content
+    @ViewBuilder let header: Header
+
+    var body: some View {
+        if horizontalSizeClass == .regular && !isHingedDevice {
+            Section {
+                header
+                    .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                content
+            }
+        } else {
+            Section { content } header: { header }
+        }
     }
 }

@@ -78,7 +78,7 @@ struct ObserversListScreen: View {
                     .instrumentListRow(top: 2, bottom: 12)
                 }
 
-                Section {
+                AdaptiveSidebarSection {
                     if viewModel.isLoading && viewModel.observers.isEmpty {
                         ForEach(0..<4, id: \.self) { _ in
                             ObserverSkeletonCard()
