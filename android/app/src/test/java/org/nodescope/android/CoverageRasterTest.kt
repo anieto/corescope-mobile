@@ -276,9 +276,39 @@ class CoverageRasterTest {
             val image = raster(row.getValue("latitude").jsonPrimitive.double, row.getValue("longitude").jsonPrimitive.double)
             for (point in row.getValue("points").jsonArray) {
                 val p = point.jsonObject
-                assertEquals(p.getValue("state").jsonPrimitive.content,
+                // The fixture's qualified samples have a 1 dB margin, which is the limited-headroom band.
+                val state = p.getValue("state").jsonPrimitive.content
+                assertEquals(if (state == "aboveThreshold") "limitedHeadroom" else state,
                     image.classification(p.getValue("latitude").jsonPrimitive.double, p.getValue("longitude").jsonPrimitive.double).name)
             }
+        }
+    }
+
+    @Test fun marginBandsUseUnroundedBoundariesAndDistinctPixels() {
+        for ((margin, expected) in listOf(-0.001 to CoverageRasterClass.belowThreshold, 0.0 to CoverageRasterClass.limitedHeadroom,
+            9.999 to CoverageRasterClass.limitedHeadroom, 10.0 to CoverageRasterClass.limitedHeadroom,
+            10.001 to CoverageRasterClass.aboveThreshold)) {
+            assertEquals(expected, CoverageRasterClass.margin(margin))
+        }
+        assertEquals(CoverageRasterClass.unresolved, CoverageRasterClass.margin(Double.NaN))
+        assertEquals(CoverageRasterClass.unresolved, CoverageRasterClass.margin(Double.POSITIVE_INFINITY))
+        assertEquals(0, CoverageRaster.rgba(CoverageRasterClass.outsideAnalysis, 0, 0))
+        val colors = listOf(CoverageRasterClass.belowThreshold, CoverageRasterClass.limitedHeadroom,
+            CoverageRasterClass.aboveThreshold, CoverageRasterClass.unresolved).map { CoverageRaster.rgba(it, 0, 0) }
+        assertEquals(4, colors.toSet().size)
+        assertTrue(colors.all { it and 255 > 0 })
+    }
+
+    @Test fun inspectionOnlyExposesQualifiedSampleValues() {
+        val image = raster()
+        val known = image.sample(-0.0045, 0.0045)
+        assertEquals(CoverageRasterClass.limitedHeadroom, known.state)
+        assertEquals(120.0, known.lossDb)
+        assertEquals(1.0, known.marginDb)
+        for ((latitude, longitude) in listOf(0.0045 to 0.0045, 0.0 to 0.0, 1.0 to 1.0)) {
+            val unknown = image.sample(latitude, longitude)
+            assertNull(unknown.lossDb)
+            assertNull(unknown.marginDb)
         }
     }
 
@@ -291,8 +321,8 @@ class CoverageRasterTest {
         assertEquals(listOf(0x66, 0x66, 0x66, 0x90), pixel(data, 33, 224))
         assertEquals(listOf(0, 0, 0, 0), pixel(data, 34, 224))
         assertEquals(listOf(0, 0, 0, 0), pixel(data, 255, 0))
-        assertEquals(listOf(0x26, 0xB8, 0x5A, 0xA0), pixel(raster.tile(14, 8192, 8192), 32, 32))
-        assertEquals(0, CoverageRaster.rgba(CoverageRasterClass.belowThreshold, 0, 0))
+        assertEquals(listOf(0xE8, 0xA3, 0x17, 0xA0), pixel(raster.tile(14, 8192, 8192), 32, 32))
+        assertEquals(0xD84A4A90.toInt(), CoverageRaster.rgba(CoverageRasterClass.belowThreshold, 0, 0))
         assertEquals(CoverageRaster.rgba(CoverageRasterClass.unresolved, 0, 0), CoverageRaster.rgba(CoverageRasterClass.unresolved, 256, 0))
     }
 

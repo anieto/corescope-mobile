@@ -15,6 +15,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.ensureActive
 import kotlin.coroutines.coroutineContext
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -53,7 +55,7 @@ fun EstimatedCoverageScreen(nodes: List<MeshNode>) {
     val heightInFeet = rememberSaveable { preference == DistanceUnit.IMPERIAL }
     var latitude by rememberSaveable { mutableStateOf("") }
     var longitude by rememberSaveable { mutableStateOf("") }
-    var values by rememberSaveable { mutableStateOf(List(10) { "" }) }
+    var values by rememberSaveable { mutableStateOf(CoverageSetupFields.defaults(heightInFeet)) }
     var radius by rememberSaveable { mutableIntStateOf(20_000) }
     var spacing by rememberSaveable { mutableIntStateOf(1000) }
     var showNodes by rememberSaveable { mutableStateOf(false) }
@@ -149,12 +151,25 @@ fun EstimatedCoverageScreen(nodes: List<MeshNode>) {
                 CoverageInput("Longitude", longitude, "longitude", showsRequired) { longitude = it }
                 TextButton(onClick = { showNodes = true }) { Text("Known nodes (${known.size})") }
             }
+            val set: (Int, String) -> Unit = { index, value -> values = values.toMutableList().also { it[index] = value } }
             CoverageSetupCard("Transmitter") {
-                CoverageRadioInputs(CoverageSetupFields.transmitter, values, showsRequired, heightInFeet) { index, value -> values = values.toMutableList().also { it[index] = value } }
+                CoverageRadioPresetMenu(values) { preset ->
+                    values = values.toMutableList().also {
+                        it[0] = preset.frequencyMHz.editorText()
+                        it[1] = preset.transmitPowerDbm.editorText()
+                        it[8] = preset.sensitivityDbm.editorText()
+                    }
+                }
+                CoverageHeightPresets(CoverageHeightPreset.transmitter, values[2], heightInFeet) { set(2, it) }
+                CoverageAntennaPresets(values[3]) { set(3, it) }
+                CoverageRadioInputs(CoverageSetupFields.transmitter, values, showsRequired, heightInFeet, set)
             }
             CoverageSetupCard("Receiver assumptions") {
                 Text("Use the same assumed receiver for the coverage map and known nodes. These are not the nodes’ reported equipment settings.", style = MaterialTheme.typography.bodySmall)
-                CoverageRadioInputs(CoverageSetupFields.receiver, values, showsRequired, heightInFeet) { index, value -> values = values.toMutableList().also { it[index] = value } }
+                CoverageHeightPresets(CoverageHeightPreset.receiver, values[5], heightInFeet) { set(5, it) }
+                CoverageAntennaPresets(values[6]) { set(6, it) }
+                CoverageReservePresets(values[9]) { set(9, it) }
+                CoverageRadioInputs(CoverageSetupFields.receiver, values, showsRequired, heightInFeet, set)
             }
             CoverageSetupCard("Study area") {
                 LearnLabel("Study radius", GlossaryTerm.STUDY_RADIUS)
@@ -234,6 +249,16 @@ internal fun nearestCoverageNodes(nodes: List<MeshNode>, selected: Coordinate?):
 private data class CoverageSetupField(val index: Int, val title: String, val term: GlossaryTerm)
 private object CoverageSetupFields {
     val keys = listOf("frequency", "power", "txHeight", "txGain", "txLoss", "rxHeight", "rxGain", "rxLoss", "sensitivity", "reserve")
+
+    /** The iOS starting setup: the standard radio preset, a rooftop transmitter and a handheld receiver. */
+    fun defaults(heightInFeet: Boolean): List<String> {
+        val radio = CoverageRadioPreset.standard
+        // Whole-foot heights in imperial, as iOS: 20 ft up and 5 ft for the receiver.
+        val txHeight = if (heightInFeet) "20" else CoverageHeightPreset.ROOFTOP.meters.editorText()
+        val rxHeight = if (heightInFeet) "5" else CoverageHeightPreset.HANDHELD.meters.editorText()
+        return listOf(radio.frequencyMHz.editorText(), radio.transmitPowerDbm.editorText(), txHeight, "2.15", "1",
+            rxHeight, "2.15", "1", radio.sensitivityDbm.editorText(), "10")
+    }
     val transmitter = listOf(
         CoverageSetupField(0, "Frequency (MHz)", GlossaryTerm.RADIO_FREQUENCY),
         CoverageSetupField(1, "Transmit power (dBm)", GlossaryTerm.TRANSMIT_POWER),
@@ -353,7 +378,8 @@ private object CoverageSetupFields {
                 } else Text("Touch and hold to choose a transmitter location.", style = MaterialTheme.typography.bodySmall)
                 if (preparingOverlay) { LinearProgressIndicator(Modifier.fillMaxWidth()); Text("Preparing coverage overlay…", style = MaterialTheme.typography.bodySmall) }
                 overlayFailure?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
-                Text(if (layer == null) "Nodes: not evaluated" else "Node labels show predictions; green shading is estimated coverage", style = MaterialTheme.typography.bodySmall)
+                if (layer == null) Text("Nodes: not evaluated", style = MaterialTheme.typography.bodySmall)
+                else CoverageMarginLegend()
             }
         }
     }
@@ -416,4 +442,111 @@ private object CoverageSetupFields {
         TextButton(onClick = { cancel() }) { Text("Cancel location request") }
     }
     message?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+}
+
+/** A setup value as the editor shows it: no trailing ".0". */
+private fun Double.editorText(): String = if (this % 1.0 == 0.0) toLong().toString() else toString()
+
+/** Region/modem presets; editing frequency, power or sensitivity makes the radio custom. */
+@Composable private fun CoverageRadioPresetMenu(values: List<String>, choose: (CoverageRadioPreset) -> Unit) {
+    val current = CoverageRadioPreset.matching(CoverageSetupValidation.number(values[0]),
+        CoverageSetupValidation.number(values[1]), CoverageSetupValidation.number(values[8]))
+    var open by remember { mutableStateOf(false) }
+    Text("Radio settings", style = MaterialTheme.typography.labelLarge)
+    Box {
+        OutlinedButton(onClick = { open = true }, Modifier.fillMaxWidth()) {
+            Column(Modifier.weight(1f)) {
+                Text(current?.let { "${it.family.title} · ${it.title}" } ?: "Custom radio")
+                Text(current?.modemSummary ?: "Frequency, power or sensitivity edited", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        DropdownMenu(open, { open = false }) {
+            CoverageRadioPreset.Family.entries.forEach { family ->
+                Text(family.title, Modifier.padding(horizontal = 16.dp, vertical = 8.dp), style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary)
+                CoverageRadioPreset.presets(family).forEach { preset ->
+                    DropdownMenuItem(text = { Column { Text(preset.title); Text("${preset.modemSummary} · ${preset.frequencyMHz.editorText()} MHz",
+                        style = MaterialTheme.typography.bodySmall) } },
+                        trailingIcon = if (preset == current) ({ Text("✓") }) else null,
+                        onClick = { choose(preset); open = false })
+                }
+            }
+        }
+    }
+}
+
+/** Typical heights; each fills the height field in the editor's unit. */
+@Composable private fun CoverageHeightPresets(presets: List<CoverageHeightPreset>, value: String, heightInFeet: Boolean, choose: (String) -> Unit) {
+    val meters = CoverageSetupValidation.number(value)?.let { if (heightInFeet) it * 0.3048 else it }
+    CoveragePresetRow("Height", presets.map { preset ->
+        val shown = if (heightInFeet) "%.0f ft".format(preset.meters / 0.3048) else "${preset.meters.editorText()} m"
+        Triple("${preset.title} · $shown", meters != null && CoverageHeightPreset.matching(meters, presets) == preset) {
+            choose(if (heightInFeet) "%.0f".format(preset.meters / 0.3048) else preset.meters.editorText())
+        }
+    })
+}
+
+@Composable private fun CoverageAntennaPresets(value: String, choose: (String) -> Unit) {
+    val gain = CoverageSetupValidation.number(value)
+    CoveragePresetRow("Antenna", CoverageAntennaPreset.all.map { preset ->
+        Triple("${preset.title} · ${preset.gainDbi.editorText()} dBi", gain != null && CoverageAntennaPreset.matching(gain) == preset) {
+            choose(preset.gainDbi.editorText())
+        }
+    })
+}
+
+@Composable private fun CoverageReservePresets(value: String, choose: (String) -> Unit) {
+    val reserve = CoverageSetupValidation.number(value)
+    CoveragePresetRow("Planning reserve", CoverageReservePreset.choicesDb.map { db ->
+        Triple(if (db == 0.0) "None" else "${db.editorText()} dB", reserve == db) { choose(db.editorText()) }
+    })
+}
+
+@Composable private fun CoveragePresetRow(title: String, options: List<Triple<String, Boolean, () -> Unit>>) {
+    Text(title, style = MaterialTheme.typography.labelLarge)
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { (label, selected, action) -> FilterChip(selected, action, label = { Text(label) }) }
+    }
+}
+
+/** Swatches under the map once a result shows; the dialog explains what the bands do and don't mean. */
+@Composable private fun CoverageMarginLegend() {
+    var open by remember { mutableStateOf(false) }
+    TextButton(onClick = { open = true }, contentPadding = PaddingValues(0.dp)) {
+        Column {
+            Text("Predicted margin ⓘ", style = MaterialTheme.typography.labelMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                CoverageMarginSwatch(CoverageRasterClass.belowThreshold, "<0")
+                CoverageMarginSwatch(CoverageRasterClass.limitedHeadroom, "0–10")
+                CoverageMarginSwatch(CoverageRasterClass.aboveThreshold, ">10 dB")
+                CoverageMarginSwatch(CoverageRasterClass.unresolved, "?")
+            }
+        }
+    }
+    if (open) AlertDialog(onDismissRequest = { open = false }, title = { Text("Coverage colors") }, text = {
+        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Margin after planning reserve", style = MaterialTheme.typography.titleSmall)
+            Text("Red · Below 0 dB: predicted below threshold")
+            Text("Amber · 0–10 dB: limited predicted headroom")
+            Text("Green · Above 10 dB: greater predicted headroom")
+            Text("Gray hatching · No usable prediction")
+            Text("Outside the study radius is unshaded. The area within 250 m of the transmitter is unsupported and hatched.",
+                style = MaterialTheme.typography.bodySmall)
+            Text("What this means", style = MaterialTheme.typography.titleSmall)
+            Text("Margin is the predicted received signal minus receiver sensitivity and your planning reserve. Colors use unrounded values.")
+            Text("Green does not mean reachable. This is a one-way terrain prediction, not a test of packet delivery, return-link strength, modem compatibility or interference.")
+            Text("Map cells use the nearest calculated sample. Known nodes are calculated at their exact coordinates and can differ from the surrounding cell.")
+        }
+    }, confirmButton = { TextButton(onClick = { open = false }) { Text("Done") } })
+}
+
+@Composable private fun CoverageMarginSwatch(state: CoverageRasterClass, label: String) {
+    // The overlay's own colours, opaque enough to read at swatch size.
+    val color = androidx.compose.ui.graphics.Color(CoverageRaster.rgba(state, 0, 0).let { rgba ->
+        (0xB3 shl 24) or (rgba ushr 8)
+    })
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Box(Modifier.size(10.dp).background(color, androidx.compose.foundation.shape.RoundedCornerShape(2.dp)))
+        Text(label, style = MaterialTheme.typography.labelSmall)
+    }
 }

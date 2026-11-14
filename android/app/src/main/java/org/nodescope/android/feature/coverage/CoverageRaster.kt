@@ -4,7 +4,22 @@ import kotlin.math.*
 
 enum class CoverageRasterState { invalidResult, invalidTile, cancelled }
 class CoverageRasterFailure(val state: CoverageRasterState) : Exception(state.name)
-enum class CoverageRasterClass { outsideAnalysis, unsupportedNearSite, unresolved, belowThreshold, aboveThreshold }
+enum class CoverageRasterClass {
+    outsideAnalysis, unsupportedNearSite, unresolved, belowThreshold, limitedHeadroom, aboveThreshold;
+
+    companion object {
+        /** Display bands, not probabilities of packet delivery. Classify before rounding. Matches iOS. */
+        fun margin(value: Double): CoverageRasterClass = when {
+            !value.isFinite() -> unresolved
+            value < 0 -> belowThreshold
+            value <= 10 -> limitedHeadroom
+            else -> aboveThreshold
+        }
+    }
+}
+
+/** The nearby grid sample behind a map point; loss and margin exist only for qualified samples. */
+data class CoverageRasterSample(val state: CoverageRasterClass, val lossDb: Double? = null, val marginDb: Double? = null)
 
 /** Immutable nearest-sample Web Mercator rasterization, with no interpolation of RF evidence. */
 class CoverageRaster(val grid: CoverageGrid, val transmitter: CoverageTerrainCoordinate, area: CoverageAreaResult) {
@@ -20,30 +35,35 @@ class CoverageRaster(val grid: CoverageGrid, val transmitter: CoverageTerrainCoo
         }
     }
 
-    fun classification(latitude: Double, longitude: Double): CoverageRasterClass {
+    fun classification(latitude: Double, longitude: Double): CoverageRasterClass = sample(latitude, longitude).state
+
+    /** Inspection reports the nearby grid sample, never an exact-coordinate prediction. */
+    fun sample(latitude: Double, longitude: Double): CoverageRasterSample {
         if (!latitude.isFinite() || !longitude.isFinite() || latitude !in -85.0..85.0 || longitude !in -180.0..180.0)
-            return CoverageRasterClass.outsideAnalysis
+            return CoverageRasterSample(CoverageRasterClass.outsideAnalysis)
         val phi = Math.toRadians(transmitter.latitude)
         val target = Math.toRadians(latitude)
         val delta = Math.toRadians(longitude - transmitter.longitude)
         val h = sin((target - phi) / 2).pow(2) + cos(phi) * cos(target) * sin(delta / 2).pow(2)
         val distance = 2 * asin(sqrt(h.coerceIn(0.0, 1.0))) * CoverageTerrainFootprint.EARTH_RADIUS_METERS
-        if (distance > grid.radiusMeters) return CoverageRasterClass.outsideAnalysis
-        if (distance < 250) return CoverageRasterClass.unsupportedNearSite
+        if (distance > grid.radiusMeters) return CoverageRasterSample(CoverageRasterClass.outsideAnalysis)
+        if (distance < 250) return CoverageRasterSample(CoverageRasterClass.unsupportedNearSite)
         val bearing = atan2(sin(delta) * cos(target), cos(phi) * sin(target) - sin(phi) * cos(target) * cos(delta))
         val east = distance * sin(bearing)
         val north = distance * cos(bearing)
         val column = floor((east - grid.minEastMeters) / grid.spacingMeters + 0.5).toInt()
         val row = floor((grid.maxNorthMeters - north) / grid.spacingMeters + 0.5).toInt()
-        if (column !in 0 until grid.columns || row !in 0 until grid.rows) return CoverageRasterClass.outsideAnalysis
+        // Inside the radius but beyond the sampled lattice (a radius that isn't a whole number of
+        // spacings): no prediction exists, so it hatches as unresolved rather than going clear.
+        if (column !in 0 until grid.columns || row !in 0 until grid.rows) return CoverageRasterSample(CoverageRasterClass.unresolved)
         val cell = cells[row * grid.columns + column]
         return when (cell.state) {
             // The pixel is inside the radius, but its nearest sample may be outside it.
             // No prediction exists there; transparency would imply a below-threshold result.
-            CoverageAreaState.outsideRadius -> CoverageRasterClass.unresolved
-            CoverageAreaState.nearSite -> CoverageRasterClass.unsupportedNearSite
-            CoverageAreaState.qualified -> if ((cell.marginDb ?: Double.NEGATIVE_INFINITY) >= 0) CoverageRasterClass.aboveThreshold else CoverageRasterClass.belowThreshold
-            else -> CoverageRasterClass.unresolved
+            CoverageAreaState.outsideRadius -> CoverageRasterSample(CoverageRasterClass.unresolved)
+            CoverageAreaState.nearSite -> CoverageRasterSample(CoverageRasterClass.unsupportedNearSite)
+            CoverageAreaState.qualified -> CoverageRasterSample(CoverageRasterClass.margin(cell.marginDb ?: Double.NaN), cell.lossDb, cell.marginDb)
+            else -> CoverageRasterSample(CoverageRasterClass.unresolved)
         }
     }
 
@@ -73,11 +93,16 @@ class CoverageRaster(val grid: CoverageGrid, val transmitter: CoverageTerrainCoo
     }
 
     companion object {
-        /** A legend must distinguish qualified below-threshold pixels, excluded areas and unresolved hatching. */
+        /**
+         * Only outside-analysis pixels are entirely clear. Unknowns hatch gray; qualified samples show
+         * adjusted-margin bands without implying measurement precision or a working return link.
+         */
         fun rgba(state: CoverageRasterClass, column: Int, row: Int): Int = when (state) {
             CoverageRasterClass.aboveThreshold -> 0x26B85AA0
+            CoverageRasterClass.limitedHeadroom -> 0xE8A317A0.toInt()
+            CoverageRasterClass.belowThreshold -> 0xD84A4A90.toInt()
             CoverageRasterClass.unresolved, CoverageRasterClass.unsupportedNearSite -> if ((column + row) % 8 < 2) 0x66666690 else 0
-            CoverageRasterClass.outsideAnalysis, CoverageRasterClass.belowThreshold -> 0
+            CoverageRasterClass.outsideAnalysis -> 0
         }
         private fun invalid(): Nothing = throw CoverageRasterFailure(CoverageRasterState.invalidResult)
     }
