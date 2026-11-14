@@ -74,6 +74,17 @@ final class CoverageRenderTrace: @unchecked Sendable {
     private let id = UUID().uuidString
     private let lock = NSLock()
     private var count = 0
+    private var lifecycleCount = 0
+
+    func lifecycle(_ message: String) {
+        #if DEBUG
+        lock.lock()
+        let allowed = lifecycleCount < 200
+        lifecycleCount += 1
+        lock.unlock()
+        if allowed { logger.notice("CoverageRendering [\(self.id, privacy: .public)] lifecycle \(message, privacy: .public)") }
+        #endif
+    }
 
     func record(_ message: @autoclosure () -> String) {
         #if DEBUG
@@ -107,6 +118,7 @@ final class CoverageRasterRenderer: MKOverlayRenderer, @unchecked Sendable {
     private var images: [Key: CGImage] = [:]
     private var recency: [Key] = []
     private var pending = Set<Key>()
+    private var invalidated = false
     // 128 × 256 × 256 × 4 = 32 MiB of decoded pixels at most.
     private let imageLimit = 128
 
@@ -116,11 +128,23 @@ final class CoverageRasterRenderer: MKOverlayRenderer, @unchecked Sendable {
         super.init(overlay: source)
     }
 
+    /// Stop queued completions from redrawing a renderer detached from its map.
+    @MainActor
+    func invalidate() {
+        lock.lock()
+        invalidated = true
+        images.removeAll()
+        recency.removeAll()
+        pending.removeAll()
+        lock.unlock()
+    }
+
     override func canDraw(_ mapRect: MKMapRect, zoomScale: MKZoomScale) -> Bool {
         let keys = keys(in: mapRect, zoomScale: zoomScale)
         var ready = true
         var requests: [Key] = []
         lock.lock()
+        guard !invalidated else { lock.unlock(); return false }
         for key in keys where images[key] == nil {
             ready = false
             if pending.insert(key).inserted { requests.append(key) }
@@ -134,6 +158,7 @@ final class CoverageRasterRenderer: MKOverlayRenderer, @unchecked Sendable {
                 let image = data.flatMap { CGImageSourceCreateWithData($0 as CFData, nil) }
                     .flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) }
                 self.lock.lock()
+                guard !self.invalidated else { self.lock.unlock(); return }
                 self.pending.remove(key)
                 if let image {
                     while self.images.count >= self.imageLimit, let oldest = self.recency.first {
@@ -150,7 +175,11 @@ final class CoverageRasterRenderer: MKOverlayRenderer, @unchecked Sendable {
                 }
                 self.trace.record("decoded image cached zoom=\(key.z)")
                 DispatchQueue.main.async { [weak self] in
-                    self?.setNeedsDisplay(key.mapRect)
+                    guard let self else { return }
+                    self.lock.lock()
+                    let active = !self.invalidated
+                    self.lock.unlock()
+                    if active { self.setNeedsDisplay(key.mapRect) }
                 }
             }
         }
@@ -161,6 +190,7 @@ final class CoverageRasterRenderer: MKOverlayRenderer, @unchecked Sendable {
     override func draw(_ mapRect: MKMapRect, zoomScale: MKZoomScale, in context: CGContext) {
         let keys = keys(in: mapRect, zoomScale: zoomScale)
         lock.lock()
+        guard !invalidated else { lock.unlock(); return }
         let available = keys.compactMap { key -> (Key, CGImage)? in
             guard let image = images[key] else { return nil }
             recency.removeAll { $0 == key }

@@ -16,6 +16,7 @@ extension CoverageNodeStatus {
     var coverageLabel: String {
         switch reason {
         case .outsideRadius: return String(localized: "Outside study radius")
+        case .pathWorkLimit: return String(localized: "Unknown — individual path work limit")
         case .processingLimit: return String(localized: "Not evaluated — work limit")
         case .missingTerrain: return String(localized: "Unknown — missing terrain")
         case .unsupportedPath: return String(localized: "Unknown — unsupported path")

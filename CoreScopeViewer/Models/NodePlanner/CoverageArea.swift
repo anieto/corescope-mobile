@@ -16,11 +16,39 @@ struct CoverageAreaResult: Codable, Sendable {
     var pendingCount: Int { cells.filter { $0.state == .notComputed }.count }
 }
 
+extension CoverageAreaResult {
+    /// Match physical offsets, never array indices. Legacy shifted grids reuse only exact matches.
+    func expanded(from old: CoverageGrid, to grid: CoverageGrid) throws -> CoverageAreaResult {
+        guard cells.count == old.count, grid.radiusMeters > old.radiusMeters,
+              grid.spacingMeters == old.spacingMeters else { throw CoverageTerrainProfileFailure.invalidInput }
+        let mapped = try (0..<grid.count).map { index -> CoverageAreaCell in
+            guard let point = grid.point(at: index) else { throw CoverageGridFailure.invalidParameters }
+            if point.state != .eligible {
+                return CoverageAreaCell(state: point.state == .nearSite ? .nearSite : .outsideRadius,
+                                        lossDb: nil, marginDb: nil)
+            }
+            let dx = point.eastMeters - old.minEastMeters
+            let dy = old.maxNorthMeters - point.northMeters
+            if dx >= 0, dy >= 0, dx % old.spacingMeters == 0, dy % old.spacingMeters == 0 {
+                let column = dx / old.spacingMeters, row = dy / old.spacingMeters
+                if column < old.columns, row < old.rows {
+                    let saved = cells[row * old.columns + column]
+                    if saved.state != .outsideRadius && saved.state != .nearSite { return saved }
+                }
+            }
+            return CoverageAreaCell(state: .notComputed, lossDb: nil, marginDb: nil)
+        }
+        return CoverageAreaResult(cells: mapped, chargedSamples: 0, chargedGeometry: 0,
+                                  workLimited: mapped.contains { $0.state == .notComputed })
+    }
+}
+
 /// Serialized worker execution. Results are returned only after completion or explicit work exhaustion.
 enum CoverageArea {
     static func evaluate(grid: CoverageGrid, transmitter: CoverageTerrainCoordinate, budget: CoverageLinkBudget,
                          sampleBudget: Int64, geometryBudget: Int64, cancelled: () -> Bool = { false },
                          resuming previous: CoverageAreaResult? = nil, shouldPause: () -> Bool = { false },
+                         progress: (Int, Int) -> Void = { _, _ in },
                          profile: (CoverageTerrainPath, Double, Int, Int) throws -> CoverageTerrainSampledPath,
                          predictLoss: (CoverageTerrainProfile) throws -> Double) throws -> CoverageAreaResult {
         guard transmitter.latitude.isFinite, transmitter.longitude.isFinite,
@@ -61,11 +89,23 @@ enum CoverageArea {
         func cell(_ state: CoverageAreaState) -> CoverageAreaCell {
             CoverageAreaCell(state: state, lossDb: nil, marginDb: nil)
         }
+        let total = cells.filter { $0.state != .nearSite && $0.state != .outsideRadius }.count
+        var completed = total - cells.filter { $0.state == .notComputed }.count
+        var lastReport = ContinuousClock.now
+        progress(completed, total)
+        defer { progress(completed, total) }
         for index in distributedOrder(count: grid.count) {
             if cancelled() { throw CoverageTerrainProfileFailure.cancelled }
             guard let point = grid.point(at: index) else { throw CoverageGridFailure.invalidParameters }
             guard point.state == .eligible, cells[index].state == .notComputed else { continue }
             if shouldPause() { limited = true; break }
+            defer {
+                if cells[index].state != .notComputed { completed += 1 }
+                if lastReport.duration(to: .now) >= .milliseconds(250) {
+                    progress(completed, total)
+                    lastReport = .now
+                }
+            }
             var batchConstrained = false
             // A per-path limit does not exhaust the whole study. Preserve the masks and
             // continue other paths while aggregate work remains available.

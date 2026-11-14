@@ -26,8 +26,16 @@ struct CoverageTerrainProfile: Sendable {
 /// Caller must supply every DEM cell crossing and geodesic latitude extremum in path order.
 /// The 0.01 m fit check is empirical; this does not qualify RF accuracy or discover absent DEM ridges.
 enum CoverageTerrainProfileSampler {
+    /// Owned by one serialized mosaic path; discarded when that path changes.
+    final class Preparation {
+        var distance: Double?
+        var crossings: [Double] = []
+        var features: Set<Int64>?
+        var evaluations = 0
+    }
     static func build(distanceMeters: Double, cellCrossingsMeters: [Double], spacingMeters: Double,
                       sampleLimit: Int = 250_000, cancelled: () -> Bool = { false },
+                      preparation: Preparation? = nil,
                       elevation: (Double) throws -> Double?) throws -> CoverageTerrainProfile {
         guard distanceMeters.isFinite, (0.001...100_000).contains(distanceMeters),
               spacingMeters.isFinite, (1...30).contains(spacingMeters),
@@ -58,26 +66,37 @@ enum CoverageTerrainProfileSampler {
         let crossings = Array(Set(cellCrossingsMeters.map(key))).sorted()
         var features = Set(crossings)
         try check()
-        for index in 0..<(crossings.count - 1) {
-            try check()
-            let a = meters(crossings[index])
-            let b = meters(crossings[index + 1])
-            if b - a < 0.002 { continue }
-            let h0 = try height(a), hm = try height((a + b) / 2), h1 = try height(b)
-            let quadratic = 2 * (h1 + h0 - 2 * hm)
-            let linear = h1 - h0 - quadratic
-            guard quadratic.isFinite, linear.isFinite else { throw CoverageTerrainProfileFailure.invalidInput }
-            for t in [0.25, 0.75] {
-                let actual = try height(a + (b - a) * t)
-                guard abs(actual - (h0 + linear * t + quadratic * t * t)) <= 0.01 else {
-                    throw CoverageTerrainProfileFailure.accuracyUnresolved
+        if let preparation, preparation.distance == distanceMeters,
+           preparation.crossings == cellCrossingsMeters, let cached = preparation.features {
+            guard preparation.evaluations <= sampleLimit else { throw CoverageTerrainProfileFailure.workLimit }
+            features = cached
+            evaluations = preparation.evaluations
+        } else {
+            for index in 0..<(crossings.count - 1) {
+                try check()
+                let a = meters(crossings[index])
+                let b = meters(crossings[index + 1])
+                if b - a < 0.002 { continue }
+                let h0 = try height(a), hm = try height((a + b) / 2), h1 = try height(b)
+                let quadratic = 2 * (h1 + h0 - 2 * hm)
+                let linear = h1 - h0 - quadratic
+                guard quadratic.isFinite, linear.isFinite else { throw CoverageTerrainProfileFailure.invalidInput }
+                for t in [0.25, 0.75] {
+                    let actual = try height(a + (b - a) * t)
+                    guard abs(actual - (h0 + linear * t + quadratic * t * t)) <= 0.01 else {
+                        throw CoverageTerrainProfileFailure.accuracyUnresolved
+                    }
                 }
+                if abs(quadratic) > 1e-7 {
+                    let t = -linear / (2 * quadratic)
+                    if t > 0 && t < 1 { features.insert(key(a + (b - a) * t)) }
+                }
+                guard features.count <= 50_000 else { throw CoverageTerrainProfileFailure.workLimit }
             }
-            if abs(quadratic) > 1e-7 {
-                let t = -linear / (2 * quadratic)
-                if t > 0 && t < 1 { features.insert(key(a + (b - a) * t)) }
-            }
-            guard features.count <= 50_000 else { throw CoverageTerrainProfileFailure.workLimit }
+            preparation?.distance = distanceMeters
+            preparation?.crossings = cellCrossingsMeters
+            preparation?.features = features
+            preparation?.evaluations = evaluations
         }
         let featureCount = features.count
         let intervals = Int(ceil(distanceMeters / spacingMeters))

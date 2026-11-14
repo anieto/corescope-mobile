@@ -106,6 +106,8 @@ private struct SaveStudySheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model = CandidatePlansModel.shared
     @State private var study: SavedStudy
+    @State private var hasEditedName = false
+    @FocusState private var nameFocused: Bool
     let didSave: (SavedStudy) -> Void
 
     init(study: SavedStudy, didSave: @escaping (SavedStudy) -> Void) {
@@ -118,6 +120,13 @@ private struct SaveStudySheet: View {
             Form {
                 Section("Study name") {
                     TextField("Name", text: $study.name)
+                        .focused($nameFocused)
+                        .onChange(of: nameFocused) { _, focused in
+                            if focused && !hasEditedName {
+                                study.name = ""
+                                hasEditedName = true
+                            }
+                        }
                     Text("Saves the current inputs and captured node locations. Estimated Coverage also saves available results; Link Profile saves inputs only.")
                         .font(.caption).foregroundStyle(.secondary)
                 }.instrumentListRows()

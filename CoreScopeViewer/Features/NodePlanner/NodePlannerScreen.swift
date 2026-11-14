@@ -37,7 +37,7 @@ private struct NodePlannerToolGrid: View {
                 EstimatedCoverageScreen()
             } label: {
                 NodePlannerToolCard(icon: "antenna.radiowaves.left.and.right", title: "Estimated Coverage",
-                    detail: "Set up an area study and review known nodes around a proposed transmitter.", isEnabled: true)
+                    detail: "Set up an area study and review known nodes around a proposed transmitter.", isEnabled: true, isBeta: true)
             }.buttonStyle(.plain)
             CandidateSitesToolCard()
         }
@@ -84,6 +84,7 @@ private struct NodePlannerToolCard: View {
     /// Shown only for a tool that is not ready; an available tool's chevron says enough.
     var availability: LocalizedStringResource? = nil
     let isEnabled: Bool
+    var isBeta = false
 
     /// Explore's row: a filled-circle icon, title and description, and a chevron on a tool that
     /// opens. A tool that is not ready yet is greyed and says so instead of showing a chevron.
@@ -97,9 +98,12 @@ private struct NodePlannerToolCard: View {
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.monaspace(.headline))
-                    .foregroundStyle(.primary)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(title)
+                        .font(.monaspace(.headline))
+                        .foregroundStyle(.primary)
+                    if isBeta { CoverageBetaBadge() }
+                }
                 Text(detail)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -133,5 +137,17 @@ private struct NodePlannerLimitations: View {
         .font(.caption)
         .foregroundStyle(.secondary)
         .accessibilityElement(children: .combine)
+    }
+}
+
+struct CoverageBetaBadge: View {
+    var body: some View {
+        Text("Beta")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(.quaternary, in: Capsule())
+            .fixedSize()
     }
 }

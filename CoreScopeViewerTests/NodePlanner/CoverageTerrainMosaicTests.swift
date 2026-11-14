@@ -35,7 +35,7 @@ private final class MosaicFiles {
     var released = 0
     init() throws { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
 
-    func reader(samples: [Int16], side: Int = 3, digest: String? = nil,
+    func reader(samples: [Int16], side: Int = 3, digest: String? = nil, blockCaching: Bool = true, memoryMapping: Bool = false,
                 cancelled: () -> Bool = { false }) throws -> LeasedTerrainReader {
         let url = folder.appendingPathComponent(UUID().uuidString)
         let data = Data(samples.flatMap { value -> [UInt8] in
@@ -45,7 +45,7 @@ private final class MosaicFiles {
         try data.write(to: url)
         return try LeasedTerrainReader.open(url: url, side: side,
             decodedSHA256: digest ?? SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined(),
-            cancelled: cancelled, release: { self.released += 1 })
+            cancelled: cancelled, blockCaching: blockCaching, memoryMapping: memoryMapping, release: { self.released += 1 })
     }
     deinit { try? FileManager.default.removeItem(at: folder) }
 }
@@ -288,4 +288,163 @@ struct CoverageTerrainMosaicTests {
         #expect(files.released == 258)
     }
 
+}
+
+struct CoverageMosaicReuseTests {
+    @Test func cachedAndUncachedPathsMatchAcrossRefinementsAndPathChanges() throws {
+        let files = try MosaicFiles()
+        let tile = try CoverageTerrainTile(south: 0, west: 0)
+        let samples = Array(repeating: Int16(200), count: 121 * 121)
+        let cached = try CoverageTerrainMosaic(readers: [tile: files.reader(samples: samples, side: 121)], reusePreparedPaths: true)
+        let baseline = try CoverageTerrainMosaic(readers: [tile: files.reader(samples: samples, side: 121)], reusePreparedPaths: false)
+        defer { cached.close(); baseline.close() }
+        for bearing in [90.0, 0.0] {
+            let path = try CoverageTerrainPath(latitude: 0.5, longitude: 0.5, bearingDegrees: bearing, distanceMeters: 1000)
+            for spacing in [30.0, 10, 5] {
+                let a = try cached.profile(path: path, spacingMeters: spacing)
+                let b = try baseline.profile(path: path, spacingMeters: spacing)
+                #expect(a.profile.distancesMeters == b.profile.distancesMeters)
+                #expect(a.profile.elevationsMeters == b.profile.elevationsMeters)
+                #expect(a.profile.terrainEvaluations == b.profile.terrainEvaluations)
+                #expect(a.geometryEvaluations == b.geometryEvaluations)
+            }
+        }
+        #expect(cached.crossingCacheHits == 4)
+        #expect(cached.elevationCacheHits > 0)
+        #expect(cached.elevationReads < baseline.elevationReads)
+    }
+}
+
+struct TerrainBlockCacheTests {
+    @Test func cachedReadsMatchSourceAcrossBoundariesEvictionAndNoData() throws {
+        let files = try MosaicFiles()
+        let samples = (0..<(241 * 241)).map { Int16(truncatingIfNeeded: $0) }
+        let cached = try files.reader(samples: samples, side: 241, blockCaching: true)
+        let baseline = try files.reader(samples: samples, side: 241, blockCaching: false)
+        defer { cached.close(); baseline.close() }
+        let requests = [(0, 2), (1, 2), (8191, 2), (8190, 5), (32767, 2),
+                        (0, 32768), (40000, 100), (samples.count - 2, 2), (0, 2)]
+        for (start, count) in requests {
+            let actual = try cached.read(start: start, count: count)
+            let expected = try baseline.read(start: start, count: count)
+            #expect(actual == expected)
+            #expect(actual == Array(samples[start..<(start + count)]))
+            #expect(cached.cachedBlockBytes <= 65536)
+        }
+        let reads = cached.fileReadCalls
+        for _ in 0..<100 { _ = try cached.read(start: 1, count: 2) }
+        #expect(cached.fileReadCalls == reads)
+        #expect(cached.blockHits >= 100)
+        #expect(throws: TerrainReadFailure.cancelled) {
+            try cached.read(start: 1, count: 2, cancelled: { true })
+        }
+        #expect(throws: TerrainReadFailure.invalidRange) {
+            try cached.read(start: samples.count - 1, count: 2)
+        }
+        cached.close()
+        #expect(cached.cachedBlockBytes == 0)
+        #expect(throws: TerrainReadFailure.closed) { try cached.read(start: 1, count: 2) }
+    }
+}
+
+struct TerrainBlockCacheCapacityTests {
+    @Test func expandedCacheRetainsWorkingSetAndShrinksSafely() throws {
+        let files = try MosaicFiles()
+        let samples = (0..<(241 * 241)).map { Int16(truncatingIfNeeded: $0) }
+        let reader = try files.reader(samples: samples, side: 241)
+        defer { reader.close() }
+        reader.configureBlockCache(blockCount: 64)
+        #expect(reader.blockCacheCapacityBytes == 1024 * 1024)
+        for start in stride(from: 0, to: samples.count, by: 8192) {
+            #expect(try reader.read(start: start, count: 1) == [samples[start]])
+        }
+        let misses = reader.blockMisses
+        for start in stride(from: 0, to: samples.count, by: 8192) {
+            #expect(try reader.read(start: start, count: 1) == [samples[start]])
+        }
+        #expect(reader.blockMisses == misses)
+        reader.configureBlockCache(blockCount: 4)
+        #expect(reader.cachedBlockBytes <= 65536)
+        #expect(try reader.read(start: 0, count: 2) == Array(samples.prefix(2)))
+        reader.configureBlockCache(blockCount: Int.max)
+        #expect(reader.blockCacheCapacityBytes == 1024 * 1024)
+    }
+}
+
+struct TerrainMappedReaderTests {
+    @Test func mappedReadsMatchFallbackAndReleaseMapping() throws {
+        let files = try MosaicFiles()
+        let samples = (0..<(241 * 241)).map { Int16(truncatingIfNeeded: $0) }
+        let mapped = try files.reader(samples: samples, side: 241, memoryMapping: true)
+        let fallback = try files.reader(samples: samples, side: 241, memoryMapping: false)
+        defer { mapped.close(); fallback.close() }
+        #expect(mapped.mappedBytes == samples.count * 2)
+        for (start, count) in [(0, 2), (8191, 3), (32767, 2), (0, 32768), (samples.count - 2, 2)] {
+            #expect(try mapped.read(start: start, count: count) == fallback.read(start: start, count: count))
+        }
+        #expect(mapped.mappedReadCalls == 5)
+        #expect(mapped.fileReadCalls == 0)
+        #expect(mapped.cachedBlockBytes == 0)
+        #expect(throws: TerrainReadFailure.invalidRange) { try mapped.read(start: Int.max, count: 2) }
+        #expect(throws: TerrainReadFailure.cancelled) { try mapped.read(start: 0, count: 2, cancelled: { true }) }
+        mapped.close()
+        #expect(mapped.mappedBytes == 0)
+        #expect(files.released == 1)
+        mapped.close()
+        #expect(files.released == 1)
+        #expect(throws: TerrainReadFailure.closed) { try mapped.read(start: 0, count: 2) }
+    }
+}
+
+struct TerrainMappedPredictionTests {
+    @Test func pairsPreserveNoDataEdgesAndCancellation() throws {
+        let files = try MosaicFiles()
+        let values: [Int16] = [-32768, -1, 0, 1, 32767, 10, 20, 30, 40]
+        for mapping in [false, true] {
+            let reader = try files.reader(samples: values, memoryMapping: mapping)
+            defer { reader.close() }
+            for index in values.indices {
+                let pair = try reader.readPair(start: index, adjacent: false)
+                #expect(pair.0 == values[index] && pair.1 == values[index])
+                if index + 1 < values.count {
+                    let adjacent = try reader.readPair(start: index, adjacent: true)
+                    #expect(adjacent.0 == values[index] && adjacent.1 == values[index + 1])
+                }
+            }
+            #expect(throws: TerrainReadFailure.invalidRange) { try reader.readPair(start: 8, adjacent: true) }
+            #expect(throws: TerrainReadFailure.cancelled) {
+                try reader.readPair(start: 0, adjacent: true, cancelled: { true })
+            }
+            reader.close()
+            #expect(throws: TerrainReadFailure.closed) { try reader.readPair(start: 0, adjacent: false) }
+        }
+    }
+
+    @Test func mappedAndFallbackProductionPredictionsMatch() throws {
+        let files = try MosaicFiles()
+        let tile = try CoverageTerrainTile(south: 0, west: 0)
+        let samples = Array(repeating: Int16(200), count: 121 * 121)
+        let mapped = try CoverageTerrainMosaic(readers: [tile: files.reader(samples: samples, side: 121, memoryMapping: true)])
+        let fallback = try CoverageTerrainMosaic(readers: [tile: files.reader(samples: samples, side: 121, memoryMapping: false)])
+        defer { mapped.close(); fallback.close() }
+        let inputs = try CoverageStudyInputs(transmitter: .init(latitude: 0.5, longitude: 0.5),
+            grid: CoverageGrid.studyArea(radiusMeters: 1000, spacingMeters: 1000),
+            budget: CoverageLinkBudget(transmitPowerDbm: 22, transmitGainDbi: 2, receiveGainDbi: 2,
+                transmitLossDb: 1, receiveLossDb: 1, sensitivityDbm: -127.5, reserveDb: 10),
+            frequencyMHz: 910.525, transmitHeightMeters: 20, receiveHeightMeters: 2)
+        let limits = CoverageStudyLimits(areaSamples: 1_000_000, areaGeometry: 1_000_000,
+            nodeSamples: 1_000_000, nodeGeometry: 1_000_000, nodeModelCalls: 30)
+        let nodes = [CoverageNodeSnapshot(sourceID: "test", nodeID: "node", latitude: 0.505, longitude: 0.5)]
+        func run(_ mosaic: CoverageTerrainMosaic) throws -> CoverageStudyResult {
+            try CoverageStudy.evaluate(inputs: inputs, nodes: nodes, catalogComplete: true, nodeLimit: 1,
+                limits: limits, mosaic: mosaic) { profile, inputs in
+                    let latitude = try #require(profile.pathCenterLatitude)
+                    return try CoverageRFKernel.predict(profile: profile, inputs: inputs, pathCenterLatitude: latitude)
+                }
+        }
+        let a = try run(mapped)
+        let b = try run(fallback)
+        #expect(a.area.cells.contains { $0.state == .qualified })
+        #expect(CoverageRunDiagnostics.predictionFingerprint(a) == CoverageRunDiagnostics.predictionFingerprint(b))
+    }
 }

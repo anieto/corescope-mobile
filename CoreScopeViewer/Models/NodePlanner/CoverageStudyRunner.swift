@@ -31,6 +31,7 @@ final class CoverageStudyRunner {
     private(set) var failure: CoverageStudyRunFailure?
     private(set) var isBusy = false
     private(set) var preparationStage: CoveragePreparationStage?
+    private(set) var startedAt: Date?
     @ObservationIgnored private let publication = CoverageStudyPublication()
     @ObservationIgnored private var worker: Task<CoverageStudyResult, Error>?
     @ObservationIgnored private var executionID: UUID?
@@ -49,6 +50,11 @@ final class CoverageStudyRunner {
 
     private func report(_ stage: CoveragePreparationStage, executionID id: UUID) {
         guard executionID == id, publication.phase == .running else { return }
+        // Worker notifications cross to the main actor asynchronously. Never let a
+        // delayed map count replace the later node stage or regress the count.
+        if case .checkingNodes = preparationStage { return }
+        if case .mapSamples(let old, _) = preparationStage,
+           case .mapSamples(let next, _) = stage, next < old { return }
         preparationStage = stage
     }
 
@@ -58,6 +64,7 @@ final class CoverageStudyRunner {
              operation: @escaping @Sendable (UUID, CoverageStudyInputs) async throws -> CoverageStudyResult) async -> Bool {
         guard !isBusy else { return false }
         isBusy = true
+        startedAt = Date()
         failure = nil
         preparationStage = nil
         let id = publication.begin()

@@ -3,6 +3,51 @@ import Testing
 @testable import CoreScopeViewer
 
 struct CoverageGridTests {
+    @Test func expansionPreservesExactSamplesAndLeavesNewAreaPending() throws {
+        let old = try CoverageGrid.studyArea(radiusMeters: 3000, spacingMeters: 1000)
+        let larger = try CoverageGrid.studyArea(radiusMeters: 5000, spacingMeters: 1000)
+        let cells = try (0..<old.count).map { index -> CoverageAreaCell in
+            let point = try #require(old.point(at: index))
+            switch point.state {
+            case .nearSite: return CoverageAreaCell(state: .nearSite, lossDb: nil, marginDb: nil)
+            case .outsideRadius: return CoverageAreaCell(state: .outsideRadius, lossDb: nil, marginDb: nil)
+            case .eligible:
+                if point.eastMeters == 0 { return CoverageAreaCell(state: .workLimit, lossDb: nil, marginDb: nil) }
+                return CoverageAreaCell(state: .qualified, lossDb: Double(index), marginDb: Double(-index))
+            }
+        }
+        let oldArea = CoverageAreaResult(cells: cells, chargedSamples: 123, chargedGeometry: 456, workLimited: true)
+        let expanded = try oldArea.expanded(from: old, to: larger)
+        #expect(expanded.pendingCount > 0)
+        #expect(expanded.chargedSamples == 0 && expanded.chargedGeometry == 0)
+        for index in 0..<old.count {
+            let point = try #require(old.point(at: index))
+            guard point.state == .eligible else { continue }
+            let column = (point.eastMeters - larger.minEastMeters) / larger.spacingMeters
+            let row = (larger.maxNorthMeters - point.northMeters) / larger.spacingMeters
+            let retained = expanded.cells[row * larger.columns + column]
+            #expect(retained.state == cells[index].state)
+            #expect(retained.lossDb == cells[index].lossDb)
+            #expect(retained.marginDb == cells[index].marginDb)
+        }
+        // Legacy half-cell grids must never attach a prediction to a different path.
+        let shifted = try CoverageGrid(radiusMeters: 3000, spacingMeters: 2000,
+            minEastMeters: -3000, maxEastMeters: 3000, minNorthMeters: -3000, maxNorthMeters: 3000)
+        let legacy = CoverageAreaResult(cells: Array(repeating: CoverageAreaCell(state: .qualified,
+            lossDb: 100, marginDb: 20), count: shifted.count), chargedSamples: 0, chargedGeometry: 0, workLimited: false)
+        let mapped = try legacy.expanded(from: shifted, to: CoverageGrid.studyArea(radiusMeters: 5000, spacingMeters: 2000))
+        #expect(!mapped.cells.contains { $0.state == .qualified })
+    }
+
+    @Test func fractionalMileSpacingsAreSupportedAndAnchored() throws {
+        for spacing in [201, 402, 805, 1609] {
+            let grid = try CoverageGrid.studyArea(radiusMeters: 16_093, spacingMeters: spacing)
+            #expect(grid.minEastMeters % spacing == 0)
+            #expect(grid.maxNorthMeters % spacing == 0)
+            #expect(grid.point(at: grid.count / 2)?.state == .nearSite)
+        }
+    }
+
     @Test func wholeMileRadiiKeepRequestedBoundaryAndSampleSpacing() throws {
         for radius in [8047, 16_093, 40_234, 80_467] {
             for spacing in [1000, 2000] {
@@ -15,8 +60,8 @@ struct CoverageGridTests {
             }
         }
         let metric = try CoverageGrid.studyArea(radiusMeters: 5000, spacingMeters: 2000)
-        #expect(metric.minEastMeters == -5000 && metric.maxNorthMeters == 5000)
-        #expect(metric.columns == 6)
+        #expect(metric.minEastMeters == -4000 && metric.maxNorthMeters == 4000)
+        #expect(metric.columns == 5)
         #expect(throws: CoverageGridFailure.invalidParameters) {
             try CoverageGrid.studyArea(radiusMeters: Int.min, spacingMeters: 0)
         }

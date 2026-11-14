@@ -1,6 +1,10 @@
 import Foundation
 
-enum CoveragePreparationStage: Sendable { case validating, preparingTerrain, calculating }
+enum CoveragePreparationStage: Sendable, Equatable {
+    case validating, preparingTerrain, calculating
+    case mapSamples(completed: Int, total: Int)
+    case checkingNodes
+}
 
 /// Run from the study runner's worker. Owns the cache and all terrain readers for one operation.
 /// An omitted catalog uses direct AWS Skadi discovery. Offline runs require retained descriptors.
@@ -12,7 +16,7 @@ enum CoveragePreparedStudy {
                          cacheRoot: URL, cacheQuota: Int64, downloadLimit: Int64,
                          offline: Bool, executionID: UUID,
                          resuming previous: CoverageStudyResult? = nil, diagnosticURL: URL? = nil,
-                         progress: (CoveragePreparationStage) async -> Void = { _ in },
+                         progress: @escaping @Sendable (CoveragePreparationStage) async -> Void = { _ in },
                          predictLoss: ((CoverageTerrainProfile, CoverageStudyInputs) throws -> Double)? = nil) async throws -> CoverageStudyResult {
         let model = predictLoss == nil ? CoverageStudyModel(sourceRevision: CoverageRFKernel.sourceRevision,
             scenario: CoverageRFKernel.scenario) : nil
@@ -22,7 +26,7 @@ enum CoveragePreparedStudy {
         let validatedNodes = try CoverageNodeRun(nodes: nodes, catalogComplete: catalogComplete,
             evaluationLimit: nodeLimit, radiusMeters: Double(inputs.grid.radiusMeters))
         if let previous {
-            guard previous.inputs.matches(inputs), previous.model == model,
+            guard (previous.inputs.matches(inputs) || previous.inputs.canExpand(to: inputs)), previous.model == model,
                   previous.nodes.run.nodesToEvaluate == validatedNodes.nodesToEvaluate,
                   previous.nodes.run.catalogComplete == catalogComplete,
                   previous.terrainSources != nil else { throw CoverageTerrainProfileFailure.invalidInput }
@@ -42,23 +46,45 @@ enum CoveragePreparedStudy {
             haloMeters: samplingHaloMeters)
         let budget = try CoverageTerrainDownloadBudget(limit: downloadLimit)
         try Task.checkCancellation()
+        let terrainStarted = ContinuousClock.now
         diagnostics.setPhase("preparing terrain")
         await progress(.preparingTerrain)
         try Task.checkCancellation()
         let descriptors: [CoverageTerrainDescriptor]
         if let previous, let sources = previous.terrainSources {
             // Resume against exactly the same immutable terrain identities, even if discovery changes.
-            descriptors = try footprint.resolve(catalog: sources.descriptors)
+            if let retained = try? footprint.resolve(catalog: sources.descriptors) {
+                descriptors = retained
+            } else if previous.inputs.canExpand(to: inputs) {
+                let discovered: [CoverageTerrainDescriptor]
+                if let catalog { discovered = catalog }
+                else {
+                    guard !offline else { throw CoverageTerrainCacheFailure.missing }
+                    discovered = try await CoverageSkadiProvider.discover(footprint: footprint)
+                }
+                let pinned = Set(sources.descriptors.map(\.coordinate))
+                descriptors = try footprint.resolve(catalog: sources.descriptors + discovered.filter { !pinned.contains($0.coordinate) })
+            } else {
+                descriptors = try footprint.resolve(catalog: sources.descriptors)
+            }
         } else if let catalog { descriptors = try footprint.resolve(catalog: catalog) }
         else {
             guard !offline else { throw CoverageTerrainCacheFailure.missing }
             descriptors = try await CoverageSkadiProvider.discover(footprint: footprint)
         }
         try Task.checkCancellation()
+        let retainedArea = try previous.map { old in
+            old.inputs.canExpand(to: inputs)
+                ? try old.area.expanded(from: old.grid, to: inputs.grid) : old.area
+        }
+        if let previous, previous.inputs.canExpand(to: inputs), let retainedArea {
+            diagnostics.recordRadiusReuse(retainedArea)
+        }
         let cache = try CoverageTerrainDiskCache(root: cacheRoot, quota: cacheQuota)
         do {
             let mosaic = try await cache.prepareMosaic(footprint: footprint, catalog: descriptors,
                 budget: budget, offline: offline)
+            diagnostics.recordDuration("terrainPreparation", since: terrainStarted)
             let study: CoverageStudyResult
             do {
                 try Task.checkCancellation()
@@ -67,12 +93,14 @@ enum CoveragePreparedStudy {
                 try Task.checkCancellation()
                 study = try CoverageStudy.evaluate(inputs: inputs, nodes: nodes, catalogComplete: catalogComplete,
                     nodeLimit: nodeLimit, limits: limits, mosaic: mosaic, executionID: executionID,
-                    cancelled: { Task.isCancelled }, resuming: previous?.area, resumingNodes: previous?.nodes,
-                    shouldPause: { diagnostics.shouldPause() }, predictLoss: predictor)
+                    cancelled: { Task.isCancelled }, resuming: retainedArea, resumingNodes: previous?.nodes,
+                    shouldPause: { diagnostics.shouldPause() },
+                    progress: { stage in Task { await progress(stage) } }, diagnostics: diagnostics, predictLoss: predictor)
             } catch {
                 mosaic.close()
                 throw error
             }
+            diagnostics.recordCache(mosaic)
             mosaic.close()
             try cache.close()
             try Task.checkCancellation()

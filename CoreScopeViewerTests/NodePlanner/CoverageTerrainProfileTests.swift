@@ -68,3 +68,37 @@ struct CoverageTerrainProfileTests {
         }
     }
 }
+
+struct CoveragePreparationReuseTests {
+    @Test func cachedFeaturesPreserveProfilesAndReduceElevationCalls() throws {
+        let cache = CoverageTerrainProfileSampler.Preparation()
+        let crossings = [0.0, 100, 200, 300]
+        var reads = 0
+        func elevation(_ distance: Double) -> Double? {
+            reads += 1
+            return 100 + 0.001 * distance * distance
+        }
+        _ = try CoverageTerrainProfileSampler.build(distanceMeters: 300, cellCrossingsMeters: crossings,
+            spacingMeters: 30, preparation: cache, elevation: elevation)
+        reads = 0
+        let cached = try CoverageTerrainProfileSampler.build(distanceMeters: 300, cellCrossingsMeters: crossings,
+            spacingMeters: 5, preparation: cache, elevation: elevation)
+        let cachedReads = reads
+        reads = 0
+        let fresh = try CoverageTerrainProfileSampler.build(distanceMeters: 300, cellCrossingsMeters: crossings,
+            spacingMeters: 5, elevation: elevation)
+        #expect(cachedReads < reads)
+        #expect(cached.distancesMeters == fresh.distancesMeters)
+        #expect(cached.elevationsMeters == fresh.elevationsMeters)
+        #expect(cached.terrainEvaluations == fresh.terrainEvaluations)
+        #expect(cached.featureCount == fresh.featureCount)
+        #expect(throws: CoverageTerrainProfileFailure.cancelled) {
+            try CoverageTerrainProfileSampler.build(distanceMeters: 300, cellCrossingsMeters: crossings,
+                spacingMeters: 5, cancelled: { true }, preparation: cache, elevation: elevation)
+        }
+        #expect(throws: CoverageTerrainProfileFailure.workLimit) {
+            try CoverageTerrainProfileSampler.build(distanceMeters: 300, cellCrossingsMeters: crossings,
+                spacingMeters: 5, sampleLimit: 1, preparation: cache, elevation: elevation)
+        }
+    }
+}

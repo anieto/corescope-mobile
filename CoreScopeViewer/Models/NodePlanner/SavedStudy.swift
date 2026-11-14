@@ -113,7 +113,7 @@ struct SavedCoverage: Codable, Equatable, Sendable {
               frequencyMHz.isFinite, (30...6000).contains(frequencyMHz),
               transmitPowerDbm.isFinite, sensitivityDbm.isFinite, reserveDb.isFinite, reserveDb >= 0,
               (1000...100_000).contains(radiusMeters),
-              [50, 100, 200, 500, 1000, 2000, 5000, 10_000, 20_000].contains(spacingMeters),
+              CoverageGrid.supportedSpacings.contains(spacingMeters),
               nodes.count <= 200, Set(nodes.map(\.nodeID)).count == nodes.count else { throw DeploymentPlanError.invalidData }
         var identities = Set<[String]>()
         for node in nodes {

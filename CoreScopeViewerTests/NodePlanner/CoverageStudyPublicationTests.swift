@@ -238,3 +238,48 @@ struct CoverageStudyPublicationTests {
         #expect(gate.phase == .failed && gate.result == nil)
     }
 }
+
+struct CoverageBudgetReuseTests {
+    @Test func updatesMarginsButKeepsThresholdAdjacentPathsPending() throws {
+        let grid = try CoverageGrid.studyArea(radiusMeters: 1000, spacingMeters: 1000)
+        func inputs(power: Double, height: Double = 20) throws -> CoverageStudyInputs {
+            try CoverageStudyInputs(transmitter: .init(latitude: 0, longitude: 0), grid: grid,
+                budget: CoverageLinkBudget(transmitPowerDbm: power, transmitGainDbi: 0, receiveGainDbi: 0,
+                    transmitLossDb: 0, receiveLossDb: 0, sensitivityDbm: -120, reserveDb: 10),
+                frequencyMHz: 915, transmitHeightMeters: height, receiveHeightMeters: 2)
+        }
+        let original = try inputs(power: 20)
+        let node = CoverageNodeSnapshot(sourceID: "test", nodeID: "node", latitude: 0.005, longitude: 0)
+        var run = try CoverageNodeRun(nodes: [node], catalogComplete: true, evaluationLimit: 1, radiusMeters: 1000)
+        let accepted = run.accept(CoverageNodeEvaluation(runID: run.id, node: node, distanceMeters: 500,
+            prediction: .qualifiedMargin(10)))
+        let completed = run.complete()
+        #expect(accepted)
+        #expect(completed)
+        let cells = (0..<grid.count).map { index -> CoverageAreaCell in
+            switch grid.point(at: index)?.state {
+            case .nearSite: return .init(state: .nearSite, lossDb: nil, marginDb: nil)
+            case .outsideRadius: return .init(state: .outsideRadius, lossDb: nil, marginDb: nil)
+            case .eligible: return .init(state: .qualified, lossDb: 120, marginDb: 10)
+            case nil: return .init(state: .notComputed, lossDb: nil, marginDb: nil)
+            }
+        }
+        let source = CoverageStudyResult(executionID: UUID(), inputs: original,
+            limits: .init(areaSamples: 1000, areaGeometry: 1000, nodeSamples: 1000, nodeGeometry: 1000, nodeModelCalls: 10),
+            area: .init(cells: cells, chargedSamples: 100, chargedGeometry: 100, workLimited: false),
+            nodes: .init(run: run, chargedTerrainEvaluations: 100, chargedGeometryEvaluations: 100, modelCalls: 3),
+            terrainSources: .init(descriptors: []),
+            model: .init(sourceRevision: CoverageRFKernel.sourceRevision, scenario: CoverageRFKernel.scenario))
+        let stronger = try source.updatingBudget(inputs(power: 25))
+        #expect(stronger.area.cells.filter { $0.state == .qualified }.allSatisfy { $0.marginDb == 15 && $0.lossDb == 120 })
+        #expect(stronger.nodes.run.status(for: node).adjustedMarginDb == 15)
+        #expect(stronger.nodes.modelCalls == 0)
+        #expect(stronger.executionID != source.executionID)
+        let threshold = try source.updatingBudget(inputs(power: 10))
+        #expect(threshold.area.pendingCount > 0)
+        #expect(threshold.nodes.run.status(for: node).reason == .processingLimit)
+        #expect(throws: CoverageTerrainProfileFailure.invalidInput) {
+            try source.updatingBudget(inputs(power: 25, height: 21))
+        }
+    }
+}

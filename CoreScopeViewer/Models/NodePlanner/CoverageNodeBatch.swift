@@ -25,26 +25,33 @@ enum CoverageNodeBatch {
                                       evaluationLimit: evaluationLimit, radiusMeters: radiusMeters)
         if let previous {
             guard previous.run.phase == .completed, previous.run.nodesToEvaluate == run.nodesToEvaluate,
-                  previous.run.radiusMeters == run.radiusMeters else { throw CoverageTerrainProfileFailure.invalidInput }
+                  previous.run.radiusMeters <= run.radiusMeters else { throw CoverageTerrainProfileFailure.invalidInput }
         }
         var terrainRemaining = terrainLimit, geometryRemaining = geometryLimit, modelCalls = 0
         for node in run.nodesToEvaluate {
             if cancelled() { throw CoverageTerrainProfileFailure.cancelled }
-            if let old = previous?.run.evaluation(for: node),
-               previous?.run.status(for: node).reason != .processingLimit {
+            if let previous, let old = previous.run.evaluation(for: node),
+               (previous.run.radiusMeters == radiusMeters || old.distanceMeters <= previous.run.radiusMeters),
+               previous.run.status(for: node).reason != .processingLimit {
                 guard run.accept(CoverageNodeEvaluation(runID: run.id, node: node,
                     distanceMeters: old.distanceMeters, prediction: old.prediction)) else {
                     throw CoverageTerrainProfileFailure.invalidInput
                 }
                 continue
             }
-            let evaluation = try CoverageNodeEvaluator.evaluate(runID: run.id, transmitter: transmitter,
+            var batchConstrained = false
+            var evaluation = try CoverageNodeEvaluator.evaluate(runID: run.id, transmitter: transmitter,
                 node: node, radiusMeters: radiusMeters, budget: budget, cancelled: cancelled,
                 profile: { path, spacing, samples, geometry in
-                    guard !shouldPause() else { throw CoverageTerrainProfileFailure.workLimit }
+                    guard !shouldPause() else {
+                        batchConstrained = true
+                        throw CoverageTerrainProfileFailure.workLimit
+                    }
                     let terrainAllowance = min(samples, terrainRemaining)
                     let geometryAllowance = min(geometry, geometryRemaining)
+                    if terrainAllowance < samples || geometryAllowance < geometry { batchConstrained = true }
                     guard terrainAllowance > 0, geometryAllowance > 0, modelCalls < modelCallLimit else {
+                        batchConstrained = true
                         throw CoverageTerrainProfileFailure.workLimit
                     }
                     // Reserve before invoking work. Refund only validated, successfully reported work.
@@ -59,10 +66,17 @@ enum CoverageNodeBatch {
                     geometryRemaining += geometryAllowance - sampled.geometryEvaluations
                     return sampled
                 }, predictLoss: { input in
-                    guard modelCalls < modelCallLimit else { throw CoverageTerrainProfileFailure.workLimit }
+                    guard modelCalls < modelCallLimit else {
+                        batchConstrained = true
+                        throw CoverageTerrainProfileFailure.workLimit
+                    }
                     modelCalls += 1
                     return try predictLoss(input)
                 })
+            if case .unavailable(.processingLimit) = evaluation.prediction, !batchConstrained {
+                evaluation = CoverageNodeEvaluation(runID: evaluation.runID, node: node,
+                    distanceMeters: evaluation.distanceMeters, prediction: .unavailable(.pathWorkLimit))
+            }
             guard run.accept(evaluation) else { throw CoverageTerrainProfileFailure.invalidInput }
         }
         // No partially completed run escapes cancellation or any unhandled failure.

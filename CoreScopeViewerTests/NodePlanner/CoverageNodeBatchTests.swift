@@ -20,6 +20,24 @@ struct CoverageNodeBatchTests {
             }, predictLoss: predict)
     }
 
+    @Test func individualPathLimitsAreNotRetriedByContinue() throws {
+        var calls = 0
+        let first = try evaluate(terrain: 30_000_000, geometry: 30_000_000, profile: { _, _, _, _ in
+            calls += 1
+            throw CoverageTerrainProfileFailure.workLimit
+        })
+        #expect(calls == 2)
+        #expect(first.run.status(for: nodes[0]).reason == .pathWorkLimit)
+        #expect(first.run.status(for: nodes[0]).state == .unknown)
+        calls = 0
+        let resumed = try evaluate(previous: first, profile: { _, _, _, _ in
+            calls += 1
+            throw CoverageTerrainProfileFailure.workLimit
+        })
+        #expect(calls == 0)
+        #expect(resumed.run.status(for: nodes[1]).reason == .pathWorkLimit)
+    }
+
     @Test func budgetsAreSharedAcrossNodesAndRefinements() throws {
         for result in [try evaluate(terrain: 6), try evaluate(geometry: 3), try evaluate(models: 3)] {
             #expect(result.run.phase == .completed)

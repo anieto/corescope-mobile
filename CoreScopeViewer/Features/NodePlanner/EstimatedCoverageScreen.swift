@@ -86,6 +86,13 @@ struct EstimatedCoverageScreen: View {
         .toolbar(usesSystemBar ? .visible : .hidden, for: .navigationBar)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                                    to: nil, from: nil, for: nil)
+                }
+            }
             if isWideLayout && !isHingedDevice {
                 ToolbarItem(placement: .topBarLeading) {
                     LinkProfileMapStyleMenu(style: $mapDisplayStyle, inToolbar: true)
@@ -98,11 +105,22 @@ struct EstimatedCoverageScreen: View {
                 .opacity(showsOverlayBackButton ? 1 : 0)
                 .allowsHitTesting(showsOverlayBackButton)
         }
-        .onChange(of: model.inputSignature) { model.invalidate() }
+        .onChange(of: model.inputSignature) { model.inputsChanged() }
         .onChange(of: model.coordinateSignature) { model.refreshKnownNodes() }
         .onChange(of: scenePhase) { _, phase in if phase == .background { model.cancel() } }
         .onDisappear { model.cancel() }
         .task { model.diagnosticReport = CoverageRunDiagnostics.readLatest() }
+        .task {
+            for await notification in NotificationCenter.default.notifications(named: UITextField.textDidBeginEditingNotification) {
+                guard let field = notification.object as? UITextField,
+                      [.decimalPad, .numberPad, .numbersAndPunctuation].contains(field.keyboardType) else { continue }
+                // Wait for the initial tap to finish positioning the caret.
+                Task { @MainActor [weak field] in
+                    await Task.yield()
+                    if let field, field.isFirstResponder { field.selectAll(nil) }
+                }
+            }
+        }
         .task(id: model.activeResult?.executionID) { await model.renderOverlay() }
         .task(id: "\(model.radiusMeters):\(model.spacingMeters)") { await model.checkWork() }
         .sheet(isPresented: $showsNodes) { CoverageKnownNodesSheet(model: model) }
@@ -218,7 +236,6 @@ final class EstimatedCoverageModel {
         radiusMeters = coverage.radiusMeters
         spacingMeters = coverage.spacingMeters
         radioPresetID = nil
-        acceptsScenario = false
         savedCatalog = coverage.nodes
         savedCatalogComplete = coverage.catalogComplete
         usesSavedCatalog = true
@@ -249,6 +266,9 @@ final class EstimatedCoverageModel {
     var transmitterName: String?
     /// Choose New Point: the panel collapses and the header prompts for a touch & hold.
     var isChoosingLocation = false
+    var transmitterPlacementID: UUID?
+    var settledPlacementID: UUID?
+    var transmitterSettingsExpanded = false
     var undo: CoverageUndo?
 
     // Radio. The preset is nil once a value it sets is edited.
@@ -273,13 +293,18 @@ final class EstimatedCoverageModel {
 
     init(distanceUnit: DistanceUnit = DistanceUnit(rawValue: UserDefaults.standard.string(forKey: DistanceUnit.defaultsKey) ?? "") ?? .imperial) {
         radiusMeters = distanceUnit == .imperial ? 16_093 : 20_000
+        spacingMeters = distanceUnit == .imperial ? 1609 : 1000
         if distanceUnit == .imperial {
             transmitHeightMeters = distanceUnit.meters(fromDisplayedHeight: 20)
             receiveHeightMeters = distanceUnit.meters(fromDisplayedHeight: 5)
         }
     }
     var spacingMeters = 1000
-    var acceptsScenario = false
+    // Bump this key when the disclosed model assumptions change.
+    private static let assumptionsKey = "coverage.acceptedModelAssumptions.v1"
+    var acceptsScenario = UserDefaults.standard.bool(forKey: EstimatedCoverageModel.assumptionsKey) {
+        didSet { UserDefaults.standard.set(acceptsScenario, forKey: Self.assumptionsKey) }
+    }
 
     // Execution.
     let runner = CoverageStudyRunner()
@@ -289,6 +314,7 @@ final class EstimatedCoverageModel {
     var inputError: LocalizedStringResource?
     var overlayError = false
     private var checkpoint: CoverageStudyResult?
+    private var reusableResult: CoverageStudyResult?
     var diagnosticReport: String?
     var workCheck: (radius: Int, spacing: Int, fits: Bool)?
     var minimumWorkSamples: Int64?
@@ -300,8 +326,7 @@ final class EstimatedCoverageModel {
     var catalogLoading = false
     var catalogError: String?
 
-    static let radiusChoices = [5000, 20_000, 50_000, 100_000]
-    static let imperialRadiusChoices = [8047, 16_093, 40_234, 80_467]
+    static let imperialSpacingChoices = [201, 402, 805, 1609, 2414, 3219, 8047]
     static let spacingChoices = [100, 200, 500, 1000, 2000, 5000, 10_000]
 
     var coordinate: CLLocationCoordinate2D? {
@@ -435,6 +460,8 @@ final class EstimatedCoverageModel {
         latitude = coordinate.latitude
         longitude = coordinate.longitude
         transmitterName = name
+        transmitterSettingsExpanded = true
+        transmitterPlacementID = UUID()
         isChoosingLocation = false
         undo = CoverageUndo(message: moved ? "Transmitter moved" : "Transmitter placed", coordinate: before.0, name: before.1)
     }
@@ -498,7 +525,33 @@ final class EstimatedCoverageModel {
 
     // MARK: Execution
 
+    var canReuseSmallerStudy: Bool {
+        guard let source = reusableResult, let current = try? inputs() else { return false }
+        return source.inputs.canExpand(to: current)
+    }
+
+    func inputsChanged() {
+        if activeResult != nil { return } // A restored result already matches its restored inputs.
+        let source = reusableResult ?? (runner.phase == .completed ? runner.result : checkpoint)
+        invalidate()
+        guard let source, let current = try? inputs(),
+              source.nodes.run.nodesToEvaluate == nodeSnapshots else { return }
+        if source.inputs.canExpand(to: current),
+           source.model == CoverageStudyModel(sourceRevision: CoverageRFKernel.sourceRevision, scenario: CoverageRFKernel.scenario),
+           source.terrainSources != nil {
+            reusableResult = source
+            return
+        }
+        guard source.inputs.matchesPropagation(current) else { return }
+        let diagnostics = CoverageRunDiagnostics(inputs: current, fileURL: CoverageRunDiagnostics.applicationURL)
+        guard let updated = try? diagnostics.measure("budgetReuse", { try source.updatingBudget(current) }) else { return }
+        diagnostics.finish(updated)
+        reusableResult = source
+        checkpoint = updated
+    }
+
     func invalidate() {
+        reusableResult = nil
         checkpoint = nil
         runner.invalidate()
         layer = nil
@@ -517,7 +570,7 @@ final class EstimatedCoverageModel {
         let inputs: CoverageStudyInputs
         do { inputs = try self.inputs() }
         catch { inputError = "Review the highlighted inputs and choose a smaller area or wider spacing."; return }
-        let previous = continuing ? activeResult : nil
+        let previous = continuing ? activeResult : reusableResult.flatMap { $0.inputs.canExpand(to: inputs) ? $0 : nil }
         if continuing && previous == nil { return }
         checkpoint = previous
         let snapshots = nodeSnapshots
@@ -530,7 +583,7 @@ final class EstimatedCoverageModel {
         calculation = Task {
             defer {
                 calculation = nil
-                if runner.phase == .completed { checkpoint = nil }
+                if runner.phase == .completed { checkpoint = nil; reusableResult = nil }
                 isCalculating = false
                 diagnosticReport = CoverageRunDiagnostics.readLatest()
             }
@@ -551,6 +604,7 @@ final class EstimatedCoverageModel {
         layer = nil
         overlayError = false
         guard let result = activeResult else { return }
+        let started = ContinuousClock.now
         let worker = Task.detached {
             try CoverageRaster(grid: result.grid, transmitter: result.transmitter, area: result.area)
         }
@@ -558,6 +612,10 @@ final class EstimatedCoverageModel {
             let raster = try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
             guard !Task.isCancelled, activeResult?.executionID == result.executionID else { return }
             layer = CoverageMapLayer(executionID: result.executionID, raster: raster, budget: result.budget)
+            let elapsed = started.duration(to: .now).components
+            CoverageRunDiagnostics.recordRasterPreparation(executionID: result.executionID,
+                seconds: Double(elapsed.seconds) + Double(elapsed.attoseconds) / 1e18)
+            diagnosticReport = CoverageRunDiagnostics.readLatest()
         } catch {
             if !Task.isCancelled { overlayError = true }
         }
@@ -682,6 +740,29 @@ struct SavedCoverageCalculation: Codable {
     }
 }
 
+/// Reserve scroll viewport space for the floating keyboard accessory so focus scrolling
+/// keeps the active field above Done, rather than underneath its translucent surface.
+private struct CoverageKeyboardClearance: ViewModifier {
+    @State private var keyboardVisible = false
+
+    func body(content: Content) -> some View {
+        content
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if keyboardVisible { Color.clear.frame(height: 52).allowsHitTesting(false) }
+            }
+            .task {
+                for await _ in NotificationCenter.default.notifications(named: UIResponder.keyboardWillShowNotification) {
+                    keyboardVisible = true
+                }
+            }
+            .task {
+                for await _ in NotificationCenter.default.notifications(named: UIResponder.keyboardWillHideNotification) {
+                    keyboardVisible = false
+                }
+            }
+    }
+}
+
 private struct EstimatedCoverageCompactWorkspace: View {
     let model: EstimatedCoverageModel
     @Binding var showsNodes: Bool
@@ -690,6 +771,7 @@ private struct EstimatedCoverageCompactWorkspace: View {
     @State private var isExpanded = false
     @State private var headerHeight: CGFloat = 0
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         // The panel floats over the map: the map's safe area only clears the collapsed panel, so
@@ -717,6 +799,13 @@ private struct EstimatedCoverageCompactWorkspace: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(isExpanded ? "Hide coverage setup" : "Show coverage setup")
+                        HStack(spacing: 6) {
+                            Text("Estimated Coverage").font(.monaspace(.subheadline))
+                            CoverageBetaBadge()
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.horizontal)
+                        .padding(.bottom, 6)
                         CoverageHeader(model: model)
                             .padding(.horizontal)
                             .padding(.bottom, 14)
@@ -736,6 +825,7 @@ private struct EstimatedCoverageCompactWorkspace: View {
                                 .padding(.bottom)
                         }
                         .scrollDismissesKeyboard(.interactively)
+                        .modifier(CoverageKeyboardClearance())
                         // Open nearly to the top, leaving the back button and a strip of map.
                         .frame(height: max(160, geometry.size.height - headerHeight - 72))
                         .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -755,6 +845,18 @@ private struct EstimatedCoverageCompactWorkspace: View {
                 .padding(.bottom, 8)
             }
         }
+        .onChange(of: model.transmitterPlacementID) { setExpanded(false) }
+        .onChange(of: model.settledPlacementID) {
+            if model.settledPlacementID == model.transmitterPlacementID, !model.isCalculating {
+                setExpanded(true)
+            }
+        }
+        .onChange(of: model.isCalculating) { _, calculating in
+            if calculating {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                setExpanded(false)
+            }
+        }
         // Choosing a point needs the map.
         .onChange(of: model.isChoosingLocation) { _, choosing in
             if choosing { setExpanded(false) }
@@ -762,7 +864,7 @@ private struct EstimatedCoverageCompactWorkspace: View {
     }
 
     private func setExpanded(_ expanded: Bool) {
-        withAnimation(.easeInOut) { isExpanded = expanded }
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.3)) { isExpanded = expanded }
     }
 }
 
@@ -775,8 +877,11 @@ private struct EstimatedCoverageEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Label("Estimated Coverage", systemImage: "antenna.radiowaves.left.and.right")
-                .font(.monaspace(.title2).bold())
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Label("Estimated Coverage", systemImage: "antenna.radiowaves.left.and.right")
+                    .font(.monaspace(.title2).bold())
+                CoverageBetaBadge()
+            }
             CoverageHeader(model: model)
             ScrollView {
                 CoverageDetails(model: model, showsNodes: $showsNodes)
@@ -784,6 +889,7 @@ private struct EstimatedCoverageEditor: View {
             }
             .scrollIndicators(.hidden)
             .scrollDismissesKeyboard(.interactively)
+            .modifier(CoverageKeyboardClearance())
         }
         .padding(.leading, 20)
         .padding(.trailing, trailingPadding)
@@ -820,14 +926,18 @@ private struct EstimatedCoverageMapPane: View {
             layer: model.activeResult == nil ? nil : model.layer,
             nodeStatuses: model.nodeStatuses,
             openingRegion: RegionCameraFraming.openingRegion(regionFilter: regionFilter, registry: analyzerSourceRegistry, host: settings.host),
-            bottomInset: bottomInset
+            bottomInset: bottomInset,
+            placementRequest: model.transmitterPlacementID,
+            placementSettled: { request in
+                if request == model.transmitterPlacementID { model.settledPlacementID = request }
+            }
         ) { coordinate, node in
             holds += 1
             model.place(coordinate, name: node?.name)
         }
         // Extend the map beneath the status bar, floating panel and tab bar while
         // its overlays continue to respect the safe area reserved for controls.
-        .ignoresSafeArea(.container, edges: extendsUnderSafeArea ? .all : [])
+        .ignoresSafeArea(extendsUnderSafeArea ? .all : .container, edges: extendsUnderSafeArea ? .all : [])
         .sensoryFeedback(.impact(weight: .medium), trigger: holds)
         .overlay(alignment: .topTrailing) {
             if showsStyleMenu {
@@ -936,6 +1046,20 @@ private struct CoverageHeader: View {
                     Text(stageText)
                         .font(.headline)
                 }
+                if let startedAt = model.runner.startedAt {
+                    HStack {
+                        Text("Elapsed")
+                        Text(startedAt, style: .timer).font(.monaspace(.body))
+                    }
+                }
+                if case .mapSamples(let completed, let total) = model.runner.preparationStage {
+                    ProgressView(value: Double(completed), total: Double(max(1, total)))
+                    Text("\(completed.formatted()) of \(total.formatted()) map samples processed")
+                        .font(.monaspace(.subheadline))
+                    Text("Some samples may remain unresolved. Difficult terrain takes longer.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 Text("Keep this screen open; leaving cancels the calculation.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -966,7 +1090,7 @@ private struct CoverageHeader: View {
                     Button("Continue calculation") { model.calculate(continuing: true) }
                         .buttonStyle(.borderedProminent)
                         .disabled(!model.canCalculate)
-                } else if result.area.workLimited {
+                } else if result.area.workLimited || result.nodes.run.nodesToEvaluate.contains(where: { result.nodes.run.status(for: $0).reason == .pathWorkLimit }) {
                     Text(result.area.chargedSamples >= Int64(result.limits.areaSamples)
                         || result.area.chargedGeometry >= Int64(result.limits.areaGeometry)
                         ? "The study exhausted its work budget. Some samples were not calculated. Try a smaller radius or wider sample spacing."
@@ -1014,7 +1138,8 @@ private struct CoverageHeader: View {
     private var stageText: LocalizedStringKey {
         switch model.runner.preparationStage {
         case .preparingTerrain: "Downloading and preparing terrain…"
-        case .calculating: "Calculating paths…"
+        case .calculating, .mapSamples: "Calculating map samples…"
+        case .checkingNodes: "Checking known-node paths…"
         default: "Validating and cleaning up…"
         }
     }
@@ -1023,7 +1148,7 @@ private struct CoverageHeader: View {
         switch model.runner.phase {
         case .stale: "Inputs changed. Calculate again."
         case .cancelled: "Calculation cancelled."
-        default: model.setupProblem == nil ? "Ready to calculate." : "Review the setup."
+        default: model.setupProblem == nil || model.setupProblem == .checkingWork ? "Ready to calculate." : "Review the setup."
         }
     }
 
@@ -1042,7 +1167,7 @@ private struct CoverageHeader: View {
         case .field: "A value is out of range. Open the setup to fix it."
         case .radio: "The combined radio values exceed calculation limits."
         case .grid, .tooMuchWork: "This area needs more work than the limit allows. Choose wider spacing or a smaller radius."
-        case .checkingWork: "Checking calculation limits for this study area."
+        case .checkingWork: nil
         case nil:
             if model.catalogLoading { "Loading known nodes…" }
             else if !model.acceptsScenario { "Accept the model assumptions in the setup to calculate." }
@@ -1067,11 +1192,16 @@ private struct CoverageDetails: View {
                     ? "Saved node locations · Inputs-only save" : "Saved node locations · Saved coverage results").font(.caption).foregroundStyle(.secondary)
                 Button("Refresh nodes from current source") { model.usesSavedCatalog = false }
             }
+            CoverageSetupGuide(model: model)
             CoverageDiagnosticsView(report: model.diagnosticReport)
             CoverageTransmitterCard(model: model)
             CoverageRadioCard(model: model)
             CoverageReceiverCard(model: model)
             CoverageStudyAreaCard(model: model)
+            if model.canReuseSmallerStudy {
+                Text("The next calculation will reuse matching samples from the smaller study and calculate the added area.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             CoverageCalculationCard(model: model, showsNodes: $showsNodes)
             Text("Planning estimates only: terrain does not account for buildings, foliage or interference. Terrain is downloaded from AWS Skadi and cached on this device. Use Save to keep this setup before leaving the tool.")
                 .font(.caption)
@@ -1080,25 +1210,67 @@ private struct CoverageDetails: View {
     }
 }
 
+/// Optional inline guidance stays beside the setup without blocking map interaction.
+private struct CoverageSetupGuide: View {
+    let model: EstimatedCoverageModel
+    @AppStorage("coverage.setupGuideDismissed.v1") private var dismissed = false
+
+    var body: some View {
+        if dismissed {
+            Button("Show setup guide", systemImage: "questionmark.circle") { dismissed = false }
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Your first coverage study").font(.monaspace(.headline))
+                Text("1. Place your transmitter").font(.monaspace(.subheadline))
+                Text("Touch and hold the map, or open Transmitter settings to enter coordinates or use your location.")
+                if model.coordinate == nil {
+                    Button("Choose on Map", systemImage: "mappin.and.ellipse") {
+                        model.isChoosingLocation = true
+                    }
+                }
+                Text("2. Check the equipment").font(.monaspace(.subheadline))
+                Text("Open the transmitter, radio and receiver sections. Set antenna heights above ground and choose the radio preset used by your mesh.")
+                Text("3. Choose the area and calculate").font(.monaspace(.subheadline))
+                Text("Start with a small radius. Wider sample spacing is faster; finer spacing reveals smaller coverage gaps. Review the model assumptions, then tap Calculate coverage above.")
+                Text("Colors show predicted margin, not guaranteed connectivity. Hatched areas have no prediction.")
+                    .font(.caption).foregroundStyle(.secondary)
+                ViewThatFits(in: .horizontal) {
+                    HStack {
+                        Button("Got it") { dismissed = true }.buttonStyle(.borderedProminent)
+                        Button("Skip guide") { dismissed = true }.buttonStyle(.bordered)
+                    }
+                    VStack(alignment: .leading) {
+                        Button("Got it") { dismissed = true }.buttonStyle(.borderedProminent)
+                        Button("Skip guide") { dismissed = true }.buttonStyle(.bordered)
+                    }
+                }
+            }
+            .font(.subheadline)
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .instrumentCard(showsShadow: false)
+        }
+    }
+}
+
 /// The transmitter: where it is and its antenna. Tapping opens the height, antenna and loss,
 /// moving the point, and typed coordinates.
 private struct CoverageTransmitterCard: View {
     @Bindable var model: EstimatedCoverageModel
-    @State private var isExpanded = false
     @State private var showsCoordinates = false
     @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Button {
-                withAnimation(.easeInOut) { isExpanded.toggle() }
+                withAnimation(.easeInOut) { model.transmitterSettingsExpanded.toggle() }
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: "antenna.radiowaves.left.and.right")
                         .font(.monaspace(.subheadline).bold())
                         .foregroundStyle(.white)
                         .frame(width: 30, height: 30)
-                        .background(.orange, in: Circle())
+                        .background(.purple, in: Circle())
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Transmitter settings")
                             .font(.monaspace(.headline))
@@ -1106,7 +1278,7 @@ private struct CoverageTransmitterCard: View {
                         Text(title)
                             .font(.monaspace(.subheadline))
                             .foregroundStyle(.secondary)
-                        Text(isExpanded ? "Hide location & antenna settings" : "Edit location & antenna")
+                        Text(model.transmitterSettingsExpanded ? "Hide location & antenna settings" : "Edit location & antenna")
                             .font(.subheadline)
                             .foregroundStyle(.tint)
                         Text(summary)
@@ -1115,16 +1287,16 @@ private struct CoverageTransmitterCard: View {
                     }
                     Spacer(minLength: 8)
                     Image(systemName: "chevron.down")
-                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                        .rotationEffect(.degrees(model.transmitterSettingsExpanded ? 180 : 0))
                         .foregroundStyle(.secondary)
                 }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
+            .accessibilityValue(model.transmitterSettingsExpanded ? "Expanded" : "Collapsed")
             .accessibilityHint("Shows or hides transmitter location, antenna height, gain, and system loss.")
 
-            if isExpanded {
+            if model.transmitterSettingsExpanded {
                 CoverageHeightSetting(title: "Antenna height", meters: model.binding(\.transmitHeightMeters),
                     presets: CoverageHeightPreset.transmitter, issue: model.issue(for: "txHeight"))
                 CoverageAntennaSetting(gainDbi: model.binding(\.transmitGainDbi))
@@ -1197,59 +1369,67 @@ private struct CoverageTransmitterCard: View {
 /// Region and modem presets, then the values a preset sets. Editing one makes the radio custom.
 private struct CoverageRadioCard: View {
     @Bindable var model: EstimatedCoverageModel
+    @State private var isExpanded = false
     @State private var isCustomizing = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Radio settings")
-                .font(.monaspace(.headline))
-            Picker(selection: presetSelection) {
-                ForEach(CoverageRadioPreset.Family.allCases) { family in
-                    Section(family.title) {
-                        ForEach(CoverageRadioPreset.presets(in: family)) { preset in
-                            Text(preset.title).tag(preset.id)
+            DisclosureGroup(isExpanded: $isExpanded) {
+                LabeledContent("Preset") {
+                Picker(selection: presetSelection) {
+                    ForEach(CoverageRadioPreset.Family.allCases) { family in
+                        Section(family.title) {
+                            ForEach(CoverageRadioPreset.presets(in: family)) { preset in
+                                Text(preset.title).tag(preset.id)
+                            }
                         }
                     }
+                    if model.radioPreset == nil {
+                        Text("Custom").tag("custom")
+                    }
+                } label: {
+                    Text("Preset")
                 }
-                if model.radioPreset == nil {
-                    Text("Custom").tag("custom")
+                .pickerStyle(.menu)
+                .labelsHidden()
+                }
+                Button {
+                    withAnimation(.easeInOut) { isCustomizing.toggle() }
+                } label: {
+                    HStack {
+                        Text(customizeTitle)
+                        Spacer()
+                        Image(systemName: "chevron.down")
+                            .rotationEffect(.degrees(isCustomizing ? 180 : 0))
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.tint)
+                if isCustomizing {
+                    CoverageNumericSetting(title: "Frequency", term: .radioFrequency, value: model.radioBinding(\.frequencyMHz), unit: "MHz",
+                        issue: model.issue(for: "frequency"))
+                    CoverageNumericSetting(title: "Transmit power", term: .transmitPower, value: model.radioBinding(\.transmitPowerDbm), unit: "dBm",
+                        issue: model.issue(for: "power"))
+                    CoverageNumericSetting(title: "Receiver sensitivity", term: .receiverSensitivity, value: model.radioBinding(\.sensitivityDbm), unit: "dBm",
+                        issue: model.issue(for: "sensitivity"))
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    LearnLabel("Planning reserve", term: .planningReserve)
+                    CoveragePresetChips(
+                        titles: CoverageReservePreset.choicesDb.map { $0 == 0 ? String(localized: "None") : "\($0.formatted()) dB" },
+                        selected: CoverageReservePreset.choicesDb.firstIndex { abs($0 - model.reserveDb) < 0.01 }
+                    ) { model.reserveDb = CoverageReservePreset.choicesDb[$0] }
+                    CoverageNumericSetting(title: "Reserve", term: nil, value: model.binding(\.reserveDb), unit: "dB",
+                        issue: model.issue(for: "reserve"))
                 }
             } label: {
-                Text("Preset")
-            }
-            .pickerStyle(.menu)
-            Text(summary)
-                .font(.monaspace(.caption))
-                .foregroundStyle(.secondary)
-            Button {
-                withAnimation(.easeInOut) { isCustomizing.toggle() }
-            } label: {
-                HStack {
-                    Text(customizeTitle)
-                    Spacer()
-                    Image(systemName: "chevron.down")
-                        .rotationEffect(.degrees(isCustomizing ? 180 : 0))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Radio settings").font(.monaspace(.headline))
+                    Text(summary).font(.caption).foregroundStyle(.secondary)
+                    Text("Reserve: \(model.reserveDb.formatted()) dB")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.tint)
-            if isCustomizing {
-                CoverageNumericSetting(title: "Frequency", term: .radioFrequency, value: model.radioBinding(\.frequencyMHz), unit: "MHz",
-                    issue: model.issue(for: "frequency"))
-                CoverageNumericSetting(title: "Transmit power", term: .transmitPower, value: model.radioBinding(\.transmitPowerDbm), unit: "dBm",
-                    issue: model.issue(for: "power"))
-                CoverageNumericSetting(title: "Receiver sensitivity", term: .receiverSensitivity, value: model.radioBinding(\.sensitivityDbm), unit: "dBm",
-                    issue: model.issue(for: "sensitivity"))
-            }
-            VStack(alignment: .leading, spacing: 6) {
-                LearnLabel("Planning reserve", term: .planningReserve)
-                CoveragePresetChips(
-                    titles: CoverageReservePreset.choicesDb.map { $0 == 0 ? String(localized: "None") : "\($0.formatted()) dB" },
-                    selected: CoverageReservePreset.choicesDb.firstIndex { abs($0 - model.reserveDb) < 0.01 }
-                ) { model.reserveDb = CoverageReservePreset.choicesDb[$0] }
-                CoverageNumericSetting(title: "Reserve", term: nil, value: model.binding(\.reserveDb), unit: "dB",
-                    issue: model.issue(for: "reserve"))
             }
         }
         .padding()
@@ -1284,19 +1464,27 @@ private struct CoverageRadioCard: View {
 /// The assumed receiver: the same for the map and every known node.
 private struct CoverageReceiverCard: View {
     @Bindable var model: EstimatedCoverageModel
+    @State private var isExpanded = false
+    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Receiver assumptions")
-                .font(.monaspace(.headline))
-            Text("One assumed receiver for the coverage map and the known nodes. These are not the nodes’ reported equipment.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            CoverageHeightSetting(title: "Antenna height", meters: model.binding(\.receiveHeightMeters),
-                presets: CoverageHeightPreset.receiver, issue: model.issue(for: "rxHeight"))
-            CoverageAntennaSetting(gainDbi: model.binding(\.receiveGainDbi))
-            CoverageNumericSetting(title: "System loss", term: .cableLoss, value: model.binding(\.receiveLossDb), unit: "dB",
-                issue: model.issue(for: "rxLoss"))
+            DisclosureGroup(isExpanded: $isExpanded) {
+                Text("One assumed receiver for the coverage map and the known nodes. These are not the nodes’ reported equipment.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                CoverageHeightSetting(title: "Antenna height", meters: model.binding(\.receiveHeightMeters),
+                    presets: CoverageHeightPreset.receiver, issue: model.issue(for: "rxHeight"))
+                CoverageAntennaSetting(gainDbi: model.binding(\.receiveGainDbi))
+                CoverageNumericSetting(title: "System loss", term: .cableLoss, value: model.binding(\.receiveLossDb), unit: "dB",
+                    issue: model.issue(for: "rxLoss"))
+            } label: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Receiver assumptions").font(.monaspace(.headline))
+                    Text("Antenna \(distanceUnit.formatHeight(meters: model.receiveHeightMeters)) · \(model.receiveGainDbi.formatted()) dBi · loss \(model.receiveLossDb.formatted()) dB")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1305,11 +1493,44 @@ private struct CoverageReceiverCard: View {
 }
 
 private struct CoverageStudyAreaCard: View {
-    private var radiusChoices: [Int] {
+    @State private var draftRadius: Double?
+    @State private var isDraggingRadius = false
+    private var radiusStep: Double { distanceUnit == .imperial ? 2 : 5 }
+    private var radiusMaximum: Double { distanceUnit == .imperial ? 50 : 80 }
+    private var metersPerRadiusUnit: Double { distanceUnit == .imperial ? 1609.344 : 1000 }
+    private var displayedRadius: Double { draftRadius ?? Double(model.radiusMeters) / metersPerRadiusUnit }
+    private var radiusLabel: String {
+        let value = displayedRadius.formatted(.number.precision(.fractionLength(0...3)))
+        return "\(value) \(distanceUnit == .imperial ? "mi" : "km")"
+    }
+
+    private func setRadius(_ value: Double) {
+        let bounded = min(radiusMaximum, max(radiusStep, value))
+        model.radiusMeters = Int((bounded * metersPerRadiusUnit).rounded())
+    }
+
+    private func adjustRadius(increasing: Bool) {
+        // Snap legacy/off-step radii only in response to an explicit adjustment.
+        let steps = displayedRadius / radiusStep
+        let next = increasing ? floor(steps + 0.0005) + 1 : ceil(steps - 0.0005) - 1
+        setRadius(next * radiusStep)
+    }
+
+    private var spacingChoices: [Int] {
         let choices = distanceUnit == .imperial
-            ? EstimatedCoverageModel.imperialRadiusChoices : EstimatedCoverageModel.radiusChoices
-        // A unit change changes presentation, never the active study's radius.
-        return choices.contains(model.radiusMeters) ? choices : (choices + [model.radiusMeters]).sorted()
+            ? EstimatedCoverageModel.imperialSpacingChoices : EstimatedCoverageModel.spacingChoices
+        return choices.contains(model.spacingMeters) ? choices : (choices + [model.spacingMeters]).sorted()
+    }
+
+    private func spacingLabel(_ meters: Int) -> String {
+        if distanceUnit == .imperial {
+            let presets = [201: "⅛ mi", 402: "¼ mi", 805: "½ mi",
+                           1609: "1 mi", 2414: "1½ mi", 3219: "2 mi", 8047: "5 mi"]
+            if let label = presets[meters] { return label }
+            return "\(meters.formatted()) m (saved/current)"
+        }
+        return meters >= 1000 && meters % 1000 == 0
+            ? "\((meters / 1000).formatted()) km" : "\(meters.formatted()) m"
     }
 
     @Bindable var model: EstimatedCoverageModel
@@ -1321,15 +1542,47 @@ private struct CoverageStudyAreaCard: View {
                 .font(.monaspace(.headline))
             VStack(alignment: .leading, spacing: 6) {
                 LearnLabel("Study radius", term: .studyRadius)
-                CoveragePresetChips(
-                    titles: radiusChoices.map { distanceUnit.format(kilometers: Double($0) / 1000) },
-                    selected: radiusChoices.firstIndex(of: model.radiusMeters)
-                ) { model.radiusMeters = radiusChoices[$0] }
+                Text(radiusLabel)
+                    .font(.monaspace(.body))
+                HStack {
+                    Button { adjustRadius(increasing: false) } label: {
+                        Image(systemName: "minus")
+                            .frame(minWidth: 44, minHeight: 44)
+                    }
+                    .accessibilityLabel("Decrease study radius")
+                    .disabled(displayedRadius <= radiusStep)
+                    Slider(value: Binding(
+                        get: { min(radiusMaximum, max(radiusStep, displayedRadius)) },
+                        set: { value in
+                            if isDraggingRadius { draftRadius = value }
+                            else { setRadius(value) }
+                        }
+                    ), in: radiusStep...radiusMaximum, step: radiusStep, onEditingChanged: { editing in
+                        isDraggingRadius = editing
+                        if editing {
+                            draftRadius = displayedRadius
+                        } else if let radius = draftRadius {
+                            setRadius(radius)
+                            draftRadius = nil
+                        }
+                    })
+                    .accessibilityLabel("Study radius")
+                    .accessibilityValue(radiusLabel)
+                    Button { adjustRadius(increasing: true) } label: {
+                        Image(systemName: "plus")
+                            .frame(minWidth: 44, minHeight: 44)
+                    }
+                    .accessibilityLabel("Increase study radius")
+                    .disabled(displayedRadius >= radiusMaximum - 0.0005)
+                }
+                Text("Doubling the radius roughly quadruples the map samples at the same spacing. Longer paths also take more work.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             LabeledContent {
                 Picker("Sample spacing", selection: $model.spacingMeters) {
-                    ForEach(EstimatedCoverageModel.spacingChoices, id: \.self) { meters in
-                        Text(distanceUnit.format(kilometers: Double(meters) / 1000)).tag(meters)
+                    ForEach(spacingChoices, id: \.self) { meters in
+                        Text(spacingLabel(meters)).tag(meters)
                     }
                 }
                 .pickerStyle(.menu)
@@ -1341,26 +1594,27 @@ private struct CoverageStudyAreaCard: View {
                 LabeledContent("Map samples") {
                     Text(grid.count.formatted()).font(.monaspace(.body))
                 }
-                if let minimum = model.minimumWorkSamples {
-                    LabeledContent("Minimum terrain samples") {
-                        Text(minimum.formatted()).font(.monaspace(.caption))
-                    }
-                    Text("Lower bound only; extra terrain detail and refinement add work. The area budget is 120 million samples per batch.")
-                        .font(.caption).foregroundStyle(.secondary)
+                LabeledContent("Minimum terrain samples") {
+                    Text(model.minimumWorkSamples?.formatted() ?? "—")
+                        .font(.monaspace(.caption))
                 }
-                switch model.workFits {
-                case nil:
-                    ProgressView("Checking calculation limits")
-                        .font(.caption)
-                case false:
-                    Text("This area needs more calculation work than the current limit allows. Choose wider spacing or a smaller radius.")
-                        .font(.subheadline)
-                        .foregroundStyle(.red)
-                case true:
+                Text("Lower bound only; extra terrain detail and refinement add work. The area budget is 120 million samples per batch.")
+                    .font(.caption).foregroundStyle(.secondary)
+                // Reserve the final explanation's height while the async check runs.
+                ZStack(alignment: .topLeading) {
                     Text("Minimum work fits one batch; complex terrain can require more. Each Continue action gets a new bounded work budget without recalculating completed samples.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .hidden().accessibilityHidden(true)
+                    switch model.workFits {
+                    case nil:
+                        Text("Checking calculation limits…")
+                    case false:
+                        Text("This area needs more calculation work than the current limit allows. Choose wider spacing or a smaller radius.")
+                            .foregroundStyle(.red)
+                    case true:
+                        Text("Minimum work fits one batch; complex terrain can require more. Each Continue action gets a new bounded work budget without recalculating completed samples.")
+                    }
                 }
+                .font(.caption).foregroundStyle(.secondary)
             } else {
                 Text("This radius and detail exceed the current grid limit. Choose wider spacing or a smaller radius.")
                     .font(.subheadline)
@@ -1514,7 +1768,7 @@ private struct CoverageNumericSetting: View {
             HStack(spacing: 4) {
                 TextField(title, value: $value, format: .number.precision(.fractionLength(0...3)))
                     .multilineTextAlignment(.trailing)
-                    .keyboardType(.numbersAndPunctuation)
+                    .keyboardType(unit == "MHz" || unit == "dB" ? .decimalPad : .numbersAndPunctuation)
                     .font(.monaspace(.body))
                 Text(unit)
                     .foregroundStyle(.secondary)

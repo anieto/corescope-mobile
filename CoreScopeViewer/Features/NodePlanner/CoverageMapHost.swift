@@ -20,6 +20,8 @@ struct CoverageMapHost: UIViewRepresentable {
     var openingRegion: MKCoordinateRegion? = nil
     /// How far the panel over the map's bottom edge reaches up; the camera keeps clear of it.
     var bottomInset: CGFloat = 0
+    var placementRequest: UUID? = nil
+    var placementSettled: (UUID) -> Void = { _ in }
     /// A touch & hold on the map, with the known node whose marker was held, if any.
     let place: (CLLocationCoordinate2D, MeshNode?) -> Void
 
@@ -28,7 +30,7 @@ struct CoverageMapHost: UIViewRepresentable {
     func makeUIView(context: Context) -> MKMapView {
         let map = TracedMapView()
         map.trace = context.coordinator.trace
-        context.coordinator.trace.record("map created")
+        context.coordinator.trace.lifecycle("map created")
         map.delegate = context.coordinator
         // The style menu takes the compass's corner; two-finger rotation still works.
         map.showsCompass = false
@@ -46,6 +48,12 @@ struct CoverageMapHost: UIViewRepresentable {
     func updateUIView(_ map: MKMapView, context: Context) {
         let coordinator = context.coordinator
         coordinator.trace.record("update layer=\(layer?.executionID.uuidString ?? "none") size=\(map.bounds.size) window=\(map.window != nil)")
+        coordinator.placementSettled = placementSettled
+        if coordinator.lastPlacementRequest != placementRequest {
+            coordinator.lastPlacementRequest = placementRequest
+            coordinator.pendingPlacement = placementRequest
+            coordinator.needsPlacementFrame = placementRequest != nil
+        }
         coordinator.place = place
         coordinator.bottomInset = bottomInset
         let mapType: MKMapType = switch style {
@@ -59,6 +67,7 @@ struct CoverageMapHost: UIViewRepresentable {
     }
 
     static func dismantleUIView(_ map: MKMapView, coordinator: Coordinator) {
+        coordinator.trace.lifecycle("map dismantled")
         coordinator.removeLayer(map)
         map.delegate = nil
         map.gestureRecognizers?.filter { $0 is UILongPressGestureRecognizer }.forEach(map.removeGestureRecognizer)
@@ -86,6 +95,10 @@ struct CoverageMapHost: UIViewRepresentable {
     final class Coordinator: NSObject, MKMapViewDelegate {
         let trace = CoverageRenderTrace()
         var place: (CLLocationCoordinate2D, MeshNode?) -> Void
+        var lastPlacementRequest: UUID?
+        var pendingPlacement: UUID?
+        var needsPlacementFrame = false
+        var placementSettled: (UUID) -> Void = { _ in }
         var bottomInset: CGFloat = 0
         private var pins: [String: Pin] = [:]
         private var nodesByPin: [String: MeshNode] = [:]
@@ -93,8 +106,10 @@ struct CoverageMapHost: UIViewRepresentable {
         private var centered = false
         private var executionID: UUID?
         private var overlay: CoverageMapKitOverlay?
+        private weak var renderer: CoverageRasterRenderer?
         private var layer: CoverageMapLayer?
         private var inspectionPin: Pin?
+        private var sampleDetails: UIView?
 
         init(place: @escaping (CLLocationCoordinate2D, MeshNode?) -> Void) {
             self.place = place
@@ -103,8 +118,12 @@ struct CoverageMapHost: UIViewRepresentable {
         @objc func inspectSample(_ gesture: UITapGestureRecognizer) {
             guard gesture.state == .ended, let map = gesture.view as? MKMapView, let layer else { return }
             let location = gesture.location(in: map)
+            if let sampleDetails, sampleDetails.frame.contains(location) { return }
             // Let MapKit open known-node callouts without placing a second annotation.
             guard !pins.values.contains(where: { map.view(for: $0)?.frame.contains(location) ?? false }) else { return }
+            if let inspectionPin, map.view(for: inspectionPin)?.frame.contains(location) == true { return }
+            sampleDetails?.removeFromSuperview()
+            sampleDetails = nil
             if let inspectionPin { map.removeAnnotation(inspectionPin) }
             inspectionPin = nil
             let coordinate = map.convert(location, toCoordinateFrom: map)
@@ -121,11 +140,12 @@ struct CoverageMapHost: UIViewRepresentable {
             } else {
                 pin.subtitle = String(localized: "No usable prediction")
             }
+            let unit = DistanceUnit(rawValue: UserDefaults.standard.string(forKey: DistanceUnit.defaultsKey) ?? "") ?? .imperial
             pin.subtitle = (pin.subtitle ?? "") + " · " + String(localized: "Grid spacing")
-                + " " + layer.raster.grid.spacingMeters.formatted() + " m"
+                + " " + unit.format(kilometers: Double(layer.raster.grid.spacingMeters) / 1000)
             inspectionPin = pin
             map.addAnnotation(pin)
-            map.selectAnnotation(pin, animated: true)
+            showSampleDetails(pin, on: map)
         }
 
         /// Places the transmitter where the finger is; on a known node's marker, on that node.
@@ -191,8 +211,11 @@ struct CoverageMapHost: UIViewRepresentable {
             if layer != nil {
                 // The result owns the initial camera; do not replace its extent with the pin's default zoom.
                 centered = true
-            } else if let coordinate, lastTransmitter == nil || !same(lastTransmitter, coordinate) {
-                frame(map, center: coordinate, meters: 20_000, animated: centered)
+            } else if let coordinate, lastTransmitter == nil || !same(lastTransmitter, coordinate) || needsPlacementFrame {
+                needsPlacementFrame = false
+                let animated = centered && map.window != nil && !UIAccessibility.isReduceMotionEnabled
+                frame(map, center: coordinate, meters: 20_000, animated: animated)
+                if !animated { finishPlacement() }
                 centered = true
             } else if !centered, let openingRegion {
                 map.setRegion(openingRegion, animated: false)
@@ -249,10 +272,14 @@ struct CoverageMapHost: UIViewRepresentable {
         }
 
         func removeLayer(_ map: MKMapView) {
-            trace.record("remove layer execution=\(executionID?.uuidString ?? "none")")
+            trace.lifecycle("remove layer execution=\(executionID?.uuidString ?? "none")")
+            sampleDetails?.removeFromSuperview()
+            sampleDetails = nil
             if let inspectionPin { map.removeAnnotation(inspectionPin) }
             inspectionPin = nil
             layer = nil
+            renderer?.invalidate()
+            renderer = nil
             overlay?.invalidate()
             if let overlay { map.removeOverlay(overlay) }
             overlay = nil
@@ -262,12 +289,22 @@ struct CoverageMapHost: UIViewRepresentable {
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
             if let tiles = overlay as? CoverageMapKitOverlay {
                 trace.record("renderer created size=\(mapView.bounds.size) window=\(mapView.window != nil)")
-                return CoverageRasterRenderer(source: tiles, trace: trace)
+                let renderer = CoverageRasterRenderer(source: tiles, trace: trace)
+                self.renderer = renderer
+                return renderer
             }
             return MKOverlayRenderer(overlay: overlay)
         }
 
+        private func finishPlacement() {
+            guard let request = pendingPlacement else { return }
+            pendingPlacement = nil
+            // Do not publish SwiftUI state inside updateUIView.
+            DispatchQueue.main.async { [weak self] in self?.placementSettled(request) }
+        }
+
         func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
+            finishPlacement()
             trace.record("region settled size=\(mapView.bounds.size) window=\(mapView.window != nil)")
         }
 
@@ -277,6 +314,57 @@ struct CoverageMapHost: UIViewRepresentable {
 
         func mapViewDidFinishRenderingMap(_ mapView: MKMapView, fullyRendered: Bool) {
             trace.record("map rendered fully=\(fullyRendered) size=\(mapView.bounds.size)")
+        }
+
+        private func showSampleDetails(_ pin: Pin, on map: MKMapView) {
+            sampleDetails?.removeFromSuperview()
+            let card = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterial))
+            card.layer.cornerRadius = 16
+            card.clipsToBounds = true
+            card.translatesAutoresizingMaskIntoConstraints = false
+            let title = UILabel()
+            title.text = pin.title
+            title.font = AppFont.uiFont(.headline)
+            title.adjustsFontForContentSizeCategory = true
+            title.numberOfLines = 0
+            let detail = UILabel()
+            detail.text = pin.subtitle?.replacingOccurrences(of: " · ", with: "\n")
+            detail.font = .preferredFont(forTextStyle: .subheadline)
+            detail.adjustsFontForContentSizeCategory = true
+            detail.numberOfLines = 0
+            let close = UIButton(type: .system)
+            close.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
+            close.accessibilityLabel = String(localized: "Close sample details")
+            close.addAction(UIAction { [weak self, weak map] _ in
+                guard let self else { return }
+                self.sampleDetails?.removeFromSuperview()
+                self.sampleDetails = nil
+                if let pin = self.inspectionPin { map?.removeAnnotation(pin) }
+                self.inspectionPin = nil
+            }, for: .touchUpInside)
+            close.widthAnchor.constraint(equalToConstant: 44).isActive = true
+            close.heightAnchor.constraint(equalToConstant: 44).isActive = true
+            let header = UIStackView(arrangedSubviews: [title, close])
+            header.spacing = 8
+            let stack = UIStackView(arrangedSubviews: [header, detail])
+            stack.axis = .vertical
+            stack.spacing = 4
+            stack.translatesAutoresizingMaskIntoConstraints = false
+            card.contentView.addSubview(stack)
+            map.addSubview(card)
+            NSLayoutConstraint.activate([
+                // The compact workspace reserves its result panel in the map's safe area.
+                // Anchor here so the card follows that panel and window-size changes.
+                card.bottomAnchor.constraint(equalTo: map.safeAreaLayoutGuide.bottomAnchor, constant: -12),
+                card.leadingAnchor.constraint(equalTo: map.safeAreaLayoutGuide.leadingAnchor, constant: 16),
+                card.trailingAnchor.constraint(lessThanOrEqualTo: map.safeAreaLayoutGuide.trailingAnchor, constant: -16),
+                card.widthAnchor.constraint(lessThanOrEqualToConstant: 320),
+                stack.leadingAnchor.constraint(equalTo: card.contentView.leadingAnchor, constant: 12),
+                stack.trailingAnchor.constraint(equalTo: card.contentView.trailingAnchor, constant: -12),
+                stack.topAnchor.constraint(equalTo: card.contentView.topAnchor, constant: 8),
+                stack.bottomAnchor.constraint(equalTo: card.contentView.bottomAnchor, constant: -12)
+            ])
+            sampleDetails = card
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
@@ -293,17 +381,30 @@ struct CoverageMapHost: UIViewRepresentable {
         var trace: CoverageRenderTrace?
         private var lastSize: CGSize?
 
+        // Presentation animations can propose many subpixel sizes. MapKit forces a
+        // render on each size change; keep its drawable size stable within a pixel.
+        override var frame: CGRect {
+            get { super.frame }
+            set {
+                let scale = max(1, traitCollection.displayScale)
+                var aligned = newValue
+                aligned.size.width = (newValue.width * scale).rounded() / scale
+                aligned.size.height = (newValue.height * scale).rounded() / scale
+                super.frame = aligned
+            }
+        }
+
         override func layoutSubviews() {
             super.layoutSubviews()
             if lastSize != bounds.size {
                 lastSize = bounds.size
-                trace?.record("layout size=\(bounds.size) safeInsets=\(safeAreaInsets) window=\(window != nil)")
+                trace?.lifecycle("layout size=\(bounds.size) safeInsets=\(safeAreaInsets) window=\(window != nil)")
             }
         }
 
         override func didMoveToWindow() {
             super.didMoveToWindow()
-            trace?.record("window changed attached=\(window != nil) size=\(bounds.size)")
+            trace?.lifecycle("window changed attached=\(window != nil) size=\(bounds.size)")
         }
     }
 
@@ -322,6 +423,9 @@ struct CoverageMapHost: UIViewRepresentable {
 
         func configure(_ pin: Pin) {
             annotation = pin
+            canShowCallout = pin.kind != .sample
+            titleVisibility = pin.kind == .sample ? .hidden : .adaptive
+            subtitleVisibility = pin.kind == .sample ? .hidden : .adaptive
             glyphImage = UIImage(systemName: pin.kind == .node
                 ? NodeRoleStyle.symbolName(for: pin.role)
                 : pin.kind == .sample ? "scope" : "antenna.radiowaves.left.and.right")
@@ -334,7 +438,7 @@ struct CoverageMapHost: UIViewRepresentable {
                 case .notEvaluated: UIColor(NodeScopeStyle.signal)
                 case .unknown, .stale: .systemGray
                 }
-            case .transmitter: .systemOrange
+            case .transmitter: .systemPurple
             }
             displayPriority = pin.kind == .transmitter ? .required : .defaultHigh
             accessibilityLabel = [pin.title, pin.subtitle].compactMap { $0 }.joined(separator: ", ")

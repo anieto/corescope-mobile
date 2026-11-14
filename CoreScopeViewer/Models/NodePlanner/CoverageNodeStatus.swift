@@ -20,7 +20,7 @@ enum CoverageNodeState: String, Sendable {
 enum CoverageNodeReason: String, Codable, Sendable {
     case predicted, noResult, changedNode, changedInputs, outsideRadius, invalidInput
     case missingTerrain, unsupportedPath, missingAssumptions, accuracyUnresolved, thresholdUnresolved
-    case cancelled, processingLimit
+    case cancelled, processingLimit, pathWorkLimit
 }
 
 enum CoverageNodePrediction: Codable, Sendable {
@@ -83,7 +83,7 @@ struct CoverageNodeStatus: Sendable {
             switch reason {
             case .cancelled, .processingLimit, .noResult:
                 return result(.notEvaluated, reason)
-            case .missingTerrain, .unsupportedPath, .missingAssumptions, .accuracyUnresolved, .thresholdUnresolved:
+            case .missingTerrain, .unsupportedPath, .missingAssumptions, .accuracyUnresolved, .thresholdUnresolved, .pathWorkLimit:
                 return result(.unknown, reason)
             default:
                 return result(.unknown, .invalidInput)

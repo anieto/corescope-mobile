@@ -75,19 +75,20 @@ struct CoverageTerrainDiskCacheTests {
             let id = UUID()
             let root = fixture.root
             let task = Task {
-                var stages: [CoveragePreparationStage] = []
+                let stages = PreparationStageRecorder()
                 let output = try await CoveragePreparedStudy.evaluate(inputs: inputs, nodes: [],
                     catalogComplete: true, nodeLimit: 1, limits: limits, catalog: [descriptor],
                     samplingHaloMeters: 100, cacheRoot: root, cacheQuota: 100000, downloadLimit: 0,
                     offline: true, executionID: id, progress: { stage in
-                        stages.append(stage)
+                        await stages.append(stage)
                         if mode == 2 && stage == .calculating { withUnsafeCurrentTask { $0?.cancel() } }
                     }, predictLoss: { _, radio in
                         #expect(radio.frequencyMHz == 915)
                         if mode == 1 { throw CoverageLinkBudgetFailure.invalidInput }
                         return 140
                     })
-                #expect(stages == [.validating, .preparingTerrain, .calculating])
+                let recorded = await stages.values
+                #expect(Array(recorded.prefix(3)) == [.validating, .preparingTerrain, .calculating])
                 return output
             }
             switch await task.result {
@@ -353,4 +354,9 @@ struct CoverageTerrainDiskCacheTests {
         #expect(!FileManager.default.fileExists(atPath: stage.path))
     }
 
+}
+
+private actor PreparationStageRecorder {
+    var values: [CoveragePreparationStage] = []
+    func append(_ stage: CoveragePreparationStage) { values.append(stage) }
 }

@@ -32,8 +32,8 @@ struct CoverageStudyInputs: Sendable {
         self.receiveHeightMeters = receiveHeightMeters
     }
 
-    /// Compare every captured assumption, not just derived loss or grid cell count.
-    func matches(_ other: CoverageStudyInputs) -> Bool {
+    /// Inputs that change terrain paths or propagation loss; excludes the radio budget.
+    func matchesPropagation(_ other: CoverageStudyInputs) -> Bool {
         transmitter.latitude == other.transmitter.latitude &&
         transmitter.longitude == other.transmitter.longitude &&
         frequencyMHz == other.frequencyMHz &&
@@ -44,7 +44,11 @@ struct CoverageStudyInputs: Sendable {
         grid.minEastMeters == other.grid.minEastMeters &&
         grid.maxNorthMeters == other.grid.maxNorthMeters &&
         grid.columns == other.grid.columns &&
-        grid.rows == other.grid.rows &&
+        grid.rows == other.grid.rows
+    }
+
+    func matches(_ other: CoverageStudyInputs) -> Bool {
+        matchesPropagation(other) &&
         budget.transmitPowerDbm == other.budget.transmitPowerDbm &&
         budget.transmitGainDbi == other.budget.transmitGainDbi &&
         budget.receiveGainDbi == other.budget.receiveGainDbi &&
@@ -52,6 +56,17 @@ struct CoverageStudyInputs: Sendable {
         budget.receiveLossDb == other.budget.receiveLossDb &&
         budget.sensitivityDbm == other.budget.sensitivityDbm &&
         budget.reserveDb == other.budget.reserveDb
+    }
+
+    /// Radius-only growth may reuse exact sample positions; every RF input must match.
+    func canExpand(to other: CoverageStudyInputs) -> Bool {
+        guard other.grid.radiusMeters > grid.radiusMeters,
+              other.grid.spacingMeters == grid.spacingMeters,
+              let sameGrid = try? CoverageStudyInputs(transmitter: other.transmitter, grid: grid,
+                  budget: other.budget, frequencyMHz: other.frequencyMHz,
+                  transmitHeightMeters: other.transmitHeightMeters,
+                  receiveHeightMeters: other.receiveHeightMeters) else { return false }
+        return matches(sameGrid)
     }
 
     static func fromEditor(fields: [String: String], radiusMeters: Int, spacingMeters: Int, heightInFeet: Bool = false) throws -> Self {

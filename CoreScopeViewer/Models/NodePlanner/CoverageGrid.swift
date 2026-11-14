@@ -11,6 +11,9 @@ struct CoverageGridPoint: Sendable {
 
 /// Local east/north sampling layout, not a coverage footprint or geographic raster projection.
 struct CoverageGrid: Sendable {
+    // Whole-unit UI presets converted to the integer-meter grid, plus legacy spacings.
+    static let supportedSpacings = [50, 100, 152, 200, 201, 305, 402, 500, 610, 805, 1000, 1609, 2000, 2414, 3219, 5000, 8047, 10_000, 20_000]
+
     let radiusMeters: Int
     let spacingMeters: Int
     let minEastMeters: Int
@@ -22,7 +25,7 @@ struct CoverageGrid: Sendable {
     init(radiusMeters: Int, spacingMeters: Int, minEastMeters: Int, maxEastMeters: Int,
          minNorthMeters: Int, maxNorthMeters: Int) throws {
         guard (1000...100_000).contains(radiusMeters),
-              [50, 100, 200, 500, 1000, 2000, 5000, 10_000, 20_000].contains(spacingMeters) else {
+              CoverageGrid.supportedSpacings.contains(spacingMeters) else {
             throw CoverageGridFailure.invalidParameters
         }
         let bounds = [minEastMeters, maxEastMeters, minNorthMeters, maxNorthMeters]
@@ -46,11 +49,10 @@ struct CoverageGrid: Sendable {
     /// Unsampled boundary areas remain unresolved rather than extending the requested study.
     static func studyArea(radiusMeters: Int, spacingMeters: Int) throws -> Self {
         guard (1000...100_000).contains(radiusMeters),
-              [50, 100, 200, 500, 1000, 2000, 5000, 10_000, 20_000].contains(spacingMeters) else {
+              CoverageGrid.supportedSpacings.contains(spacingMeters) else {
             throw CoverageGridFailure.invalidParameters
         }
-        let extent = (2 * radiusMeters) % spacingMeters == 0
-            ? radiusMeters : (radiusMeters / spacingMeters) * spacingMeters
+        let extent = (radiusMeters / spacingMeters) * spacingMeters
         return try Self(radiusMeters: radiusMeters, spacingMeters: spacingMeters,
             minEastMeters: -extent, maxEastMeters: extent,
             minNorthMeters: -extent, maxNorthMeters: extent)
