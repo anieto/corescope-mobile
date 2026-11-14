@@ -13,6 +13,25 @@ class CoverageAreaTest {
                 if (failure != null) throw CoverageTerrainProfileFailure(failure)
                 CoverageTerrainSampledPath(CoverageTerrainProfile(listOf(0.0, path.distanceMeters), listOf(0.0, 0.0), 2, 2), 4)
             }, predictLoss = loss)
+    @Test fun progressCountsOnlySamplesThatNeedAPath() {
+        fun reports(failure: CoverageTerrainProfileState? = null): List<Pair<Int, Int>> {
+            val seen = mutableListOf<Pair<Int, Int>>()
+            CoverageArea.evaluate(CoverageGrid(1000, 1000, -1000, 1000, -1000, 1000), CoverageTerrainCoordinate(0.0, 0.0),
+                CoverageLinkBudget(22.0, 3.0, 2.0, 1.0, 1.0, -130.0, 5.0), 10_000, 10_000,
+                progress = { completed, total -> seen += completed to total },
+                profile = { path, _, _, _ ->
+                    if (failure != null) throw CoverageTerrainProfileFailure(failure)
+                    CoverageTerrainSampledPath(CoverageTerrainProfile(listOf(0.0, path.distanceMeters), listOf(0.0, 0.0), 2, 2), 4)
+                }, predictLoss = { 140.0 })
+            return seen
+        }
+        // Four eligible samples: the near-site centre and outside corners are not counted.
+        val complete = reports()
+        assertEquals(0 to 4, complete.first())
+        assertEquals(4 to 4, complete.last())
+        // A work-limited run ends short of the total; those samples are not done.
+        assertTrue(reports(CoverageTerrainProfileState.WORK_LIMIT).last().first < 4)
+    }
     @Test fun completeAreaPreservesMasksAndRawMargins() {
         val result = evaluate()
         assertEquals(9, result.cells.size)

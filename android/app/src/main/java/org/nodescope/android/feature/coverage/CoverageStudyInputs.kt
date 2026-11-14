@@ -48,7 +48,7 @@ class CoverageStudyInputs(val transmitter: CoverageTerrainCoordinate, val grid: 
             val budget = CoverageLinkBudget(value("power"), value("txGain"), value("rxGain"),
                 value("txLoss"), value("rxLoss"), value("sensitivity"), value("reserve"))
             if (radiusMeters !in 1000..100_000) throw CoverageGridFailure(CoverageGridFailureState.invalidParameters)
-            val grid = CoverageGrid(radiusMeters, spacingMeters, -radiusMeters, radiusMeters, -radiusMeters, radiusMeters)
+            val grid = CoverageGrid.studyArea(radiusMeters, spacingMeters)
             return CoverageStudyInputs(coordinate, grid, budget, frequency, txHeight, rxHeight)
         }
     }

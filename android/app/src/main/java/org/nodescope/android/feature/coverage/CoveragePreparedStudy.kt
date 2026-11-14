@@ -16,6 +16,8 @@ object CoveragePreparedStudy {
                          cacheRoot: File, cacheQuota: Long, downloadLimit: Long,
                          offline: Boolean, executionID: UUID,
                          progress: suspend (CoveragePreparationStage) -> Unit = {},
+                         /** Called on the worker, about four times a second while the map samples run. */
+                         calculationProgress: (CoverageCalculationProgress) -> Unit = {},
                          predictLoss: ((CoverageTerrainProfile, CoverageStudyInputs) -> Double)? = null): CoverageStudyResult {
         val model = if (predictLoss == null) CoverageStudyModel(CoverageRFKernel.sourceRevision, CoverageRFKernel.scenario) else null
         val predictor: (CoverageTerrainProfile, CoverageStudyInputs) -> Double = predictLoss ?: { profile, captured ->
@@ -51,7 +53,7 @@ object CoveragePreparedStudy {
                 progress(CoveragePreparationStage.calculating)
                 context.ensureActive()
                 CoverageStudy.evaluate(inputs, snapshot, catalogComplete, nodeLimit, limits, mosaic, executionID,
-                    cancelled = { !context.isActive }, predictLoss = predictor)
+                    cancelled = { !context.isActive }, progress = calculationProgress, predictLoss = predictor)
             }
         }
         context.ensureActive()

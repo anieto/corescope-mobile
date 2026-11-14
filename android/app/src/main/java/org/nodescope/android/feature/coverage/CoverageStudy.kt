@@ -25,11 +25,18 @@ data class CoverageStudyResult(val executionID: UUID, val inputs: CoverageStudyI
     val grid get() = inputs.grid
     val budget get() = inputs.budget
 }
+/** How far the calculation stage has got: map samples done of those needing a path, then the known nodes. */
+sealed interface CoverageCalculationProgress {
+    data class MapSamples(val completed: Int, val total: Int) : CoverageCalculationProgress
+    data object CheckingNodes : CoverageCalculationProgress
+}
+
 /** Serialized worker operation borrowing terrain. No area-only result escapes node failure. */
 object CoverageStudy {
     fun evaluate(inputs: CoverageStudyInputs,
                  nodes: List<CoverageNodeSnapshot>, catalogComplete: Boolean, nodeLimit: Int,
                  limits: CoverageStudyLimits, mosaic: CoverageTerrainMosaic, executionID: UUID = UUID.randomUUID(), cancelled: () -> Boolean = { false },
+                 progress: (CoverageCalculationProgress) -> Unit = {},
                  predictLoss: (CoverageTerrainProfile, CoverageStudyInputs) -> Double): CoverageStudyResult {
         limits.validate()
         val transmitter = inputs.transmitter
@@ -43,7 +50,8 @@ object CoverageStudy {
             mosaic.profile(path, spacing, samples, geometry, cancelled)
         }
         val area = CoverageArea.evaluate(grid, transmitter, budget, limits.areaSamples.toLong(), limits.areaGeometry.toLong(),
-            cancelled, profile, predict)
+            cancelled, { completed, total -> progress(CoverageCalculationProgress.MapSamples(completed, total)) }, profile, predict)
+        progress(CoverageCalculationProgress.CheckingNodes)
         val nodeResults = CoverageNodeBatch.evaluate(snapshot, catalogComplete, nodeLimit, transmitter,
             grid.radiusMeters.toDouble(), budget, limits.nodeSamples, limits.nodeGeometry, limits.nodeModelCalls,
             cancelled, profile, predict)

@@ -128,7 +128,9 @@ internal fun Int.hexColor(): String = String.format("#%06X", this and 0xFFFFFF)
 
 /** A dropped pin, styled apart from node markers so a chosen place never reads as a node. */
 internal data class MapPin(val coordinate: Coordinate, val kind: Kind, val name: String) {
-    enum class Kind { POINT_A, POINT_B, TENTATIVE }
+    enum class Kind { POINT_A, POINT_B, TENTATIVE,
+        /** Estimated Coverage: the transmitter, then known nodes by their predicted margin band (iOS tints). */
+        TRANSMITTER, COVERAGE_STRONG, COVERAGE_LIMITED, COVERAGE_BELOW, COVERAGE_PENDING, COVERAGE_UNKNOWN }
 }
 
 /** iOS Marker tints: A blue, B orange (brighter on dark maps), a tentative choice grey. */
@@ -136,12 +138,20 @@ internal fun MapPin.Kind.color(dark: Boolean): Int = when (this) {
     MapPin.Kind.POINT_A -> if (dark) 0xFF0A84FF.toInt() else 0xFF007AFF.toInt()
     MapPin.Kind.POINT_B -> if (dark) 0xFFFF9F0A.toInt() else 0xFFFF9500.toInt()
     MapPin.Kind.TENTATIVE -> 0xFF8E8E93.toInt()
+    MapPin.Kind.TRANSMITTER -> if (dark) 0xFFBF5AF2.toInt() else 0xFFAF52DE.toInt()
+    MapPin.Kind.COVERAGE_STRONG -> if (dark) 0xFF30D158.toInt() else 0xFF34C759.toInt()
+    MapPin.Kind.COVERAGE_LIMITED -> if (dark) 0xFFFF9F0A.toInt() else 0xFFFF9500.toInt()
+    MapPin.Kind.COVERAGE_BELOW -> if (dark) 0xFFFF453A.toInt() else 0xFFFF3B30.toInt()
+    MapPin.Kind.COVERAGE_PENDING -> 0xFF299EFF.toInt()
+    MapPin.Kind.COVERAGE_UNKNOWN -> 0xFF8E8E93.toInt()
 }
 
 internal val MapPin.Kind.glyph: String? get() = when (this) {
     MapPin.Kind.POINT_A -> "A"
     MapPin.Kind.POINT_B -> "B"
     MapPin.Kind.TENTATIVE -> null
+    MapPin.Kind.TRANSMITTER -> "T"
+    else -> null
 }
 
 /** A teardrop pin with a white ring and a glyph (or dot), its tip at the bottom centre. */

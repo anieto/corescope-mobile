@@ -8,6 +8,7 @@ data class CoverageAreaResult(val cells: List<CoverageAreaCell>, val chargedSamp
 object CoverageArea {
     fun evaluate(grid: CoverageGrid, transmitter: CoverageTerrainCoordinate, budget: CoverageLinkBudget,
                  sampleBudget: Long, geometryBudget: Long, cancelled: () -> Boolean = { false },
+                 progress: (completed: Int, total: Int) -> Unit = { _, _ -> },
                  profile: (CoverageTerrainPath, Double, Int, Int) -> CoverageTerrainSampledPath,
                  predictLoss: (CoverageTerrainProfile) -> Double): CoverageAreaResult {
         if (!transmitter.latitude.isFinite() || !transmitter.longitude.isFinite() ||
@@ -19,8 +20,14 @@ object CoverageArea {
         var geometryRemaining = geometryBudget
         var limited = false
         val cells = ArrayList<CoverageAreaCell>(grid.count)
+        // Progress counts the samples that need a path, as iOS: near-site and outside cells don't.
+        val total = (0 until grid.count).count { grid.point(it)?.state == CoverageGridPointState.eligible }
+        var completed = 0
+        var lastReport = System.nanoTime()
+        progress(completed, total)
         for (index in 0 until grid.count) {
             if (cancelled()) throw CoverageTerrainProfileFailure(CoverageTerrainProfileState.CANCELLED)
+            if (System.nanoTime() - lastReport >= 250_000_000L) { progress(completed, total); lastReport = System.nanoTime() }
             if (limited) { cells.add(CoverageAreaCell(CoverageAreaState.notComputed)); continue }
             val point = requireNotNull(grid.point(index))
             if (point.state != CoverageGridPointState.eligible) {
@@ -49,16 +56,18 @@ object CoverageArea {
                     CoverageRFConvergenceState.ACCURACY_UNRESOLVED -> CoverageAreaCell(CoverageAreaState.accuracyUnresolved)
                     CoverageRFConvergenceState.THRESHOLD_UNRESOLVED -> CoverageAreaCell(CoverageAreaState.thresholdUnresolved)
                 })
+                completed++
             } catch (failure: CoverageTerrainProfileFailure) {
                 when (failure.state) {
-                    CoverageTerrainProfileState.MISSING_TERRAIN -> cells.add(CoverageAreaCell(CoverageAreaState.missingTerrain))
-                    CoverageTerrainProfileState.ACCURACY_UNRESOLVED -> cells.add(CoverageAreaCell(CoverageAreaState.accuracyUnresolved))
+                    CoverageTerrainProfileState.MISSING_TERRAIN -> { cells.add(CoverageAreaCell(CoverageAreaState.missingTerrain)); completed++ }
+                    CoverageTerrainProfileState.ACCURACY_UNRESOLVED -> { cells.add(CoverageAreaCell(CoverageAreaState.accuracyUnresolved)); completed++ }
                     CoverageTerrainProfileState.WORK_LIMIT -> { cells.add(CoverageAreaCell(CoverageAreaState.workLimit)); limited = true }
                     CoverageTerrainProfileState.CANCELLED, CoverageTerrainProfileState.INVALID_INPUT -> throw failure
                 }
             }
         }
         if (cancelled()) throw CoverageTerrainProfileFailure(CoverageTerrainProfileState.CANCELLED)
+        progress(completed, total)
         return CoverageAreaResult(java.util.Collections.unmodifiableList(cells), sampleBudget - samplesRemaining,
             geometryBudget - geometryRemaining, limited)
     }

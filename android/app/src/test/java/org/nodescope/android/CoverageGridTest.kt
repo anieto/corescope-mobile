@@ -5,6 +5,34 @@ import org.junit.Test
 import org.nodescope.android.feature.coverage.*
 
 class CoverageGridTest {
+    @Test fun fractionalMileSpacingsAreSupportedAndAnchored() {
+        for (spacing in listOf(201, 402, 805, 1609)) {
+            val grid = CoverageGrid.studyArea(16_093, spacing)
+            assertEquals(0, grid.minEastMeters % spacing)
+            assertEquals(0, grid.maxNorthMeters % spacing)
+            assertEquals(CoverageGridPointState.nearSite, grid.point(grid.count / 2)?.state)
+        }
+    }
+
+    @Test fun wholeMileRadiiKeepRequestedBoundaryAndSampleSpacing() {
+        for (radius in listOf(8047, 16_093, 40_234, 80_467)) {
+            for (spacing in listOf(1000, 2000)) {
+                val grid = CoverageGrid.studyArea(radius, spacing)
+                assertEquals(radius, grid.radiusMeters)
+                assertEquals(spacing, grid.spacingMeters)
+                assertTrue(grid.minEastMeters >= -radius && grid.maxNorthMeters <= radius)
+                assertTrue(radius - grid.maxNorthMeters < spacing)
+                assertEquals(CoverageGridPointState.nearSite, grid.point(grid.count / 2)?.state)
+            }
+        }
+        val metric = CoverageGrid.studyArea(5000, 2000)
+        assertEquals(-4000, metric.minEastMeters)
+        assertEquals(4000, metric.maxNorthMeters)
+        assertEquals(5, metric.columns)
+        assertEquals(CoverageGridFailureState.invalidParameters,
+            assertThrows(CoverageGridFailure::class.java) { CoverageGrid.studyArea(Int.MIN_VALUE, 0) }.state)
+    }
+
     @Test fun studyLayoutsPreserveRadiusSpacingAndRowOrder() {
         for (values in listOf(listOf(20_000, 1000, 20_000, 1681), listOf(100_000, 20_000, 100_000, 121), listOf(20_000, 100, 2000, 1681))) {
             val (radius, spacing, extent, expected) = values

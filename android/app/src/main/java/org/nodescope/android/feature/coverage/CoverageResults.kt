@@ -24,7 +24,8 @@ internal fun CoverageNodeStatus.coverageLabel(): String = when (reason) {
     CoverageNodeReason.accuracyUnresolved -> "Unknown — sampling did not converge"
     CoverageNodeReason.thresholdUnresolved -> "Unknown — too close to threshold"
     else -> when (state) {
-        CoverageNodeState.inCoverage -> "Predicted above threshold"
+        CoverageNodeState.inCoverage -> if ((adjustedMarginDb ?: 0.0) <= 10) "Predicted above threshold — limited headroom"
+            else "Predicted above threshold — greater headroom"
         CoverageNodeState.belowThreshold -> "Predicted below threshold"
         CoverageNodeState.unknown -> "Unknown"
         CoverageNodeState.stale -> "Changed — calculate again"
@@ -45,7 +46,9 @@ internal fun CoverageNodeStatus.coverageLabel(): String = when (reason) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Estimated result", style = MaterialTheme.typography.titleMedium)
         Text("${counts.first} above threshold · ${counts.second} below · ${counts.third} unresolved samples", fontFamily = MonaspaceNeon)
-        Text("Green: predicted above threshold. Clear within the study radius: below threshold. Gray hatching: unresolved or within the unsupported 250 m near-site area. Outside the radius is not analyzed.", style = MaterialTheme.typography.bodySmall)
+        if (result.area.workLimited) Text("Calculation limits left some paths unresolved. Paths that reach their individual limit may need a smaller radius or wider sample spacing. Unresolved cells are not predictions of poor reception.",
+            style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFFFF9500))
+        Text("Predicted margin after reserve: red below 0 dB; amber 0–10 dB; green above 10 dB. Gray hatching means no prediction, including the unsupported 250 m near-site area. Outside the study is unshaded. Green does not establish reachability or a working return link.", style = MaterialTheme.typography.bodySmall)
         Text("This is a sampled estimate, not measured reception or a guarantee. Gaps and work-limited areas remain unknown. The nearest 200 available nodes use the same assumed receiver; the catalog is incomplete.", style = MaterialTheme.typography.bodySmall)
         result.model?.let {
             Text(it.scenario, style = MaterialTheme.typography.bodySmall)

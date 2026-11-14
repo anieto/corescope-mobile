@@ -634,8 +634,16 @@ internal fun AppShell(
                                 onCandidateSites = { nav.navigate(CandidateSitesRoute) },
                                 onEstimatedCoverage = { nav.navigate(EstimatedCoverageRoute) })
                         }
-                        screen<EstimatedCoverageRoute> {
-                            org.nodescope.android.feature.coverage.EstimatedCoverageScreen(state.snapshot?.nodes.orEmpty())
+                        screen<EstimatedCoverageRoute> { backStack ->
+                            val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
+                            val coverageModel = viewModel<org.nodescope.android.feature.coverage.EstimatedCoverageViewModel>(backStack) {
+                                org.nodescope.android.feature.coverage.EstimatedCoverageViewModel(
+                                    java.io.File(context.cacheDir, "estimated-coverage-terrain-v1"),
+                                    context.getSharedPreferences("estimated-coverage", android.content.Context.MODE_PRIVATE),
+                                    heightInFeet = preferences.distanceUnit == org.nodescope.android.core.storage.DistanceUnit.IMPERIAL)
+                            }
+                            org.nodescope.android.feature.coverage.EstimatedCoverageScreen(coverageModel, state.snapshot?.nodes.orEmpty(),
+                                preferences.host, state.snapshot, preferences.region, sourceViewport)
                         }
                         screen<CandidateSitesRoute> { backStack ->
                             val context = androidx.compose.ui.platform.LocalContext.current.applicationContext

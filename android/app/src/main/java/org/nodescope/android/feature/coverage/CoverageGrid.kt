@@ -13,6 +13,18 @@ class CoverageGrid(val radiusMeters: Int, val spacingMeters: Int, val minEastMet
         /** Whole-unit UI presets converted to the integer-meter grid, plus legacy spacings. Matches iOS. */
         val SUPPORTED_SPACINGS = listOf(50, 100, 152, 200, 201, 305, 402, 500, 610, 805, 1000, 1609, 2000, 2414,
             3219, 5000, 8047, 10_000, 20_000)
+
+        /**
+         * Keeps the requested radius independent of the sample lattice (for example, whole miles).
+         * Unsampled boundary areas remain unresolved rather than extending the requested study. Matches iOS.
+         */
+        fun studyArea(radiusMeters: Int, spacingMeters: Int): CoverageGrid {
+            if (radiusMeters !in 1000..100_000 || spacingMeters !in SUPPORTED_SPACINGS) {
+                throw CoverageGridFailure(CoverageGridFailureState.invalidParameters)
+            }
+            val extent = (radiusMeters / spacingMeters) * spacingMeters
+            return CoverageGrid(radiusMeters, spacingMeters, -extent, extent, -extent, extent)
+        }
     }
     val columns: Int
     val rows: Int
