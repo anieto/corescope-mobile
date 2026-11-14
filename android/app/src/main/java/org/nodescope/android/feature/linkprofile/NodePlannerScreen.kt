@@ -23,7 +23,8 @@ fun NodePlannerScreen(onLinkProfile: () -> Unit, onSavedPlans: () -> Unit, onEst
             Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 NavigationRow("Link Profile", "Estimate terrain clearance and modeled path loss between two locations.", Icons.Outlined.Route, onLinkProfile)
                 HorizontalDivider()
-                NavigationRow("Estimated Coverage", "Set up an area study and review known nodes around a proposed transmitter.", Icons.Outlined.AddLocationAlt, onEstimatedCoverage)
+                NavigationRow("Estimated Coverage", "Set up an area study and review known nodes around a proposed transmitter.", Icons.Outlined.AddLocationAlt, onEstimatedCoverage,
+                    badge = "Beta")
                 HorizontalDivider()
                 NavigationRow("Saved Plans", "Reopen saved link profiles, coverage studies and candidate sites.", Icons.Outlined.AddLocationAlt, onSavedPlans)
             }

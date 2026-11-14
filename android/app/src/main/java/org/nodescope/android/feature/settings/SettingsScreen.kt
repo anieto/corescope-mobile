@@ -233,14 +233,23 @@ private fun CardRow(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-fun NavigationRow(title: String, value: String, icon: ImageVector, onClick: () -> Unit, external: Boolean = false) {
+fun NavigationRow(title: String, value: String, icon: ImageVector, onClick: () -> Unit, external: Boolean = false,
+    /** A short tag after the title, such as "Beta", in a capsule as on iOS. */
+    badge: String? = null) {
     Row(Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small).clickable(onClick = onClick).heightIn(min = 56.dp).padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(Modifier.size(32.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.11f), MaterialTheme.shapes.small), contentAlignment = Alignment.Center) {
             Icon(icon, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
         }
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleSmall)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(title, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.titleSmall)
+                if (badge != null) Text(badge,
+                    Modifier.background(MaterialTheme.colorScheme.surfaceVariant, androidx.compose.foundation.shape.CircleShape)
+                        .padding(horizontal = 7.dp, vertical = 2.dp),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            }
             Text(value, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         // A link that leaves the app says so instead of implying another screen.
