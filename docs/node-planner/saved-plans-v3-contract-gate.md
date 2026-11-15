@@ -91,6 +91,6 @@ From the schema review, beyond the 38 reference cases:
 - [x] Backup selection and migration-original policy chosen (path rules, table above). Remaining: implement in A1 for Android 8–11 and 12+, and specify the acceptance procedure for actual cloud and device transfers.
 - [x] Margin recomputation vectors match bit for bit on Swift and Kotlin, using each platform's production `CoverageLinkBudget`. Margins stay out of the coverage payload.
 - [x] Legacy fixture inventory includes both native formats and existing v1 backups (November 15): the iOS 0.10.6 plist recorded from the production encoder, Android's legacy bytes checked against its production reader, and the existing v1/v2 plan cases. Both apps' tests pass (iOS run in Xcode by Adam). Deferred to B, where the codecs exist: portable fixtures for iOS→Android→iOS and Android→iOS→Android; production codec round trips pass in B.
-- [ ] Gate reviewed before A1 runtime changes begin.
+- [x] Gate reviewed before A1 runtime changes begin: closed November 15 by Adam. A1 implemented by Claude on this branch.
 
 A1 then proves upgrade over 0.10.6 and real backup/restore with today's tool/save UI. A2 adds plan UI/save flow/context. B implements portable codecs and historical Link Profile snapshots. C adds durable drafts and fixes Android source-switch/process-death loss. D adds export/import after B. Every stage has a separately numbered tester build and its own acceptance record. Actual Android cloud restore, phone-to-phone transfer and iOS device restore remain unperformed, not inferred from unit tests.
