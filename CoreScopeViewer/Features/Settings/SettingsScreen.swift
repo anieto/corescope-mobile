@@ -146,7 +146,7 @@ struct SettingsScreen: View {
                                 )
                             }
                             .buttonStyle(.plain)
-                            .sheet(isPresented: $showsWhatsNew) { WhatsNewSheet(releases: [latest]) }
+                            .sheet(isPresented: $showsWhatsNew) { WhatsNewSheet(releases: [latest], showsSettingsHint: false) }
 
                             Divider()
                         }

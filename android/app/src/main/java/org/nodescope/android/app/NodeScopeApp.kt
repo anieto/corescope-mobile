@@ -288,11 +288,12 @@ internal fun AppShell(
     // What's New: once per update with highlights, recorded as soon as it is shown so it never repeats.
     val whatsNewReleases = remember { org.nodescope.android.feature.settings.WhatsNew.load(context) }
     var whatsNew by rememberSaveable { mutableStateOf<List<String>?>(null) }
+    var whatsNewFromSettings by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         val store = (context.applicationContext as NodeScopeApplication).container.preferences
         val lastSeen = store.takeWhatsNewLastSeen(org.nodescope.android.BuildConfig.VERSION_NAME)
         val pending = org.nodescope.android.feature.settings.WhatsNew.pending(whatsNewReleases, lastSeen, org.nodescope.android.BuildConfig.VERSION_NAME)
-        if (pending.isNotEmpty()) whatsNew = pending.map { it.version }
+        if (pending.isNotEmpty()) { whatsNewFromSettings = false; whatsNew = pending.map { it.version } }
     }
     fun openFeature(feature: org.nodescope.android.feature.settings.AppFeature) {
         // Node Planner's tools sit under Explore → Node Planner, as when tapped there.
@@ -307,7 +308,8 @@ internal fun AppShell(
     }
     whatsNew?.let { versions ->
         org.nodescope.android.feature.settings.WhatsNewDialog(whatsNewReleases.filter { it.version in versions }.sortedWith { a, b ->
-            org.nodescope.android.feature.settings.WhatsNew.compare(b.version, a.version) }, onDismiss = { whatsNew = null }, onOpen = ::openFeature)
+            org.nodescope.android.feature.settings.WhatsNew.compare(b.version, a.version) }, onDismiss = { whatsNew = null }, onOpen = ::openFeature,
+            showsSettingsHint = !whatsNewFromSettings)
     }
     val selection = AnalyzerSelection(preferences.host, preferences.region)
     var replay by remember { mutableStateOf<RouteReplay?>(null) }
@@ -786,7 +788,7 @@ internal fun AppShell(
                                 onAbout = { nav.navigate(AboutRoute) }, onGlossary = { nav.navigate(GlossaryRoute) }, onMapLab = { nav.navigate(MapLabRoute) },
                                 onSupport = { runCatching { uriHandler.openUri(SUPPORT_URL) } }, onDistanceUnit = onDistanceUnit, onBackgroundTexture = onBackgroundTexture,
                                 whatsNewVersion = org.nodescope.android.feature.settings.WhatsNew.latest(whatsNewReleases, org.nodescope.android.BuildConfig.VERSION_NAME)?.version,
-                                onWhatsNew = { org.nodescope.android.feature.settings.WhatsNew.latest(whatsNewReleases, org.nodescope.android.BuildConfig.VERSION_NAME)?.let { whatsNew = listOf(it.version) } })
+                                onWhatsNew = { org.nodescope.android.feature.settings.WhatsNew.latest(whatsNewReleases, org.nodescope.android.BuildConfig.VERSION_NAME)?.let { whatsNewFromSettings = true; whatsNew = listOf(it.version) } })
                         }
                         screen<DiagnosticsRoute> { diagnostics?.let { DiagnosticsScreen(it, preferences.host, currentFeed.connection) } }
                         screen<FavoritesRoute> { backStack ->

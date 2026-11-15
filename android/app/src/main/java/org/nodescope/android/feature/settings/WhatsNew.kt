@@ -20,6 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -29,14 +31,17 @@ import org.nodescope.android.core.design.MonaspaceNeon
 enum class AppFeature { nodePlanner, estimatedCoverage, linkProfile, savedPlans, nodeCheck }
 
 @Serializable data class WhatsNewItem(val id: String, val title: String, val detail: String, val icon: String,
-    val destination: AppFeature? = null, val platforms: List<String>? = null)
+    val destination: AppFeature? = null,
+    /** Where to find it again, such as "Explore → Node Planner → Link Profile". */
+    val location: String? = null, val platforms: List<String>? = null)
 @Serializable data class WhatsNewRelease(val version: String, val items: List<WhatsNewItem>)
 @Serializable private data class WhatsNewDocument(val version: Int, val releases: List<WhatsNewRelease>)
 
 /**
  * A release's highlights, shown once after an update so people with automatic updates hear about
  * new features. The text is shared with iOS (Resources/whats-new.json); a test keeps the copies
- * identical. Items can be limited to one platform with `platforms`.
+ * identical. `platforms` limits an item to "android", or to iOS devices ("ios", "ipad", "mac");
+ * an item without it shows everywhere.
  */
 object WhatsNew {
     private val json = Json { ignoreUnknownKeys = true }
@@ -77,14 +82,18 @@ object WhatsNew {
 
 /** The What's New dialog. Tapping an item closes it and opens that feature. */
 @Composable
-fun WhatsNewDialog(releases: List<WhatsNewRelease>, onDismiss: () -> Unit, onOpen: (AppFeature) -> Unit) {
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("What's New") }, text = {
+fun WhatsNewDialog(releases: List<WhatsNewRelease>, onDismiss: () -> Unit, onOpen: (AppFeature) -> Unit,
+    /** Off when opened from Settings, which is where the hint points. */
+    showsSettingsHint: Boolean = true) {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("What's New in NodeScope") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             releases.forEach { release ->
                 if (releases.size > 1) Text("Version ${release.version}", style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
                 release.items.forEach { item -> WhatsNewRow(item) { item.destination?.let { onDismiss(); onOpen(it) } } }
             }
+            if (showsSettingsHint) Text("You can review these anytime in Settings → Help & support → What's new.",
+                Modifier.padding(top = 8.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }, confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } })
 }
@@ -98,6 +107,10 @@ fun WhatsNewDialog(releases: List<WhatsNewRelease>, onDismiss: () -> Unit, onOpe
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(item.title, style = MaterialTheme.typography.titleSmall, fontFamily = MonaspaceNeon)
             Text(item.detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            item.location?.let { location ->
+                Text(location, Modifier.padding(top = 2.dp).semantics { contentDescription = "Found in $location" },
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+            }
         }
         if (opens) Icon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }

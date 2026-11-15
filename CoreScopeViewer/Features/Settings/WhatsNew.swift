@@ -2,7 +2,8 @@ import SwiftUI
 
 /// A release's highlights, shown once after an update so people with automatic updates hear about
 /// new features. The text is shared with Android (assets/whats-new.json); an Android test keeps the
-/// two copies identical. Items can be limited to one platform with `platforms`.
+/// two copies identical. `platforms` limits an item to "ios" (iPhone, iPad and Mac), "ipad", "mac" or
+/// "android"; an item without it shows everywhere.
 struct WhatsNewRelease: Decodable, Identifiable {
     let version: String
     let items: [WhatsNewItem]
@@ -15,7 +16,18 @@ struct WhatsNewItem: Decodable, Identifiable {
     let detail: String
     let icon: String
     let destination: AppFeature?
+    /// Where to find it again, such as "Explore → Node Planner → Link Profile".
+    let location: String?
     let platforms: [String]?
+
+    /// Whether this item applies here. The Mac runs the iPad app, so it counts as an iPad too.
+    var appliesHere: Bool {
+        guard let platforms else { return true }
+        if platforms.contains("ios") { return true }
+        let isMac = ProcessInfo.processInfo.isiOSAppOnMac
+        if platforms.contains("mac") && isMac { return true }
+        return platforms.contains("ipad") && UIDevice.current.userInterfaceIdiom == .pad && !isMac
+    }
 
     var symbol: String {
         switch icon {
@@ -42,7 +54,7 @@ enum WhatsNew {
         }
         return document.releases.map { release in
             WhatsNewRelease(version: release.version,
-                items: release.items.filter { $0.platforms?.contains("ios") ?? true })
+                items: release.items.filter(\.appliesHere))
         }.filter { !$0.items.isEmpty }
     }()
 
@@ -84,6 +96,8 @@ enum WhatsNew {
 /// The What's New sheet. Tapping an item closes it and opens that feature.
 struct WhatsNewSheet: View {
     let releases: [WhatsNewRelease]
+    /// Off when opened from Settings, which is where the hint points.
+    var showsSettingsHint = true
     @Environment(\.dismiss) private var dismiss
     @Environment(AppNavigationStore.self) private var appNavigationStore
 
@@ -107,11 +121,15 @@ struct WhatsNewSheet: View {
                         }
                     } header: {
                         if releases.count > 1 { Text("Version \(release.version)") }
+                    } footer: {
+                        if showsSettingsHint && release.id == releases.last?.id {
+                            Text("You can review these anytime in Settings → Help & Support → What's New.")
+                        }
                     }
                 }
             }
             .meshPageBackground()
-            .navigationTitle("What's New")
+            .navigationTitle("What's New in NodeScope")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -136,6 +154,11 @@ private struct WhatsNewRow: View {
                 Text(item.title).font(.monaspace(.headline))
                 Text(item.detail).font(.subheadline).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                if let location = item.location {
+                    Label(location, systemImage: "location.north.circle")
+                        .labelStyle(WhatsNewLocationLabelStyle())
+                        .accessibilityLabel("Found in \(location)")
+                }
             }
             Spacer(minLength: 0)
             if opens {
@@ -149,5 +172,18 @@ private struct WhatsNewRow: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityHint(opens ? "Opens \(item.title)" : "")
+    }
+}
+
+/// The location line: a small icon and caption, aligned to its first line.
+private struct WhatsNewLocationLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            configuration.icon
+            configuration.title.fixedSize(horizontal: false, vertical: true)
+        }
+        .font(.caption.weight(.medium))
+        .foregroundStyle(.tint)
+        .padding(.top, 2)
     }
 }

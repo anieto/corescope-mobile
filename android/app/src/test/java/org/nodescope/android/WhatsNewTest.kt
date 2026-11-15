@@ -19,6 +19,8 @@ class WhatsNewTest {
         assertTrue(releases.flatMap { it.items }.all { it.title.isNotBlank() && it.detail.isNotBlank() && it.icon.isNotBlank() })
         assertEquals(AppFeature.estimatedCoverage, current!!.items.first { it.id == "estimated-coverage" }.destination)
         assertEquals(AppFeature.linkProfile, current.items.first { it.id == "link-profile" }.destination)
+        // Anything that opens a feature also says where to find it again.
+        assertTrue(releases.flatMap { it.items }.filter { it.destination != null }.all { !it.location.isNullOrBlank() })
     }
 
     @Test fun showsOnlyUnseenShippedReleasesOnce() {
