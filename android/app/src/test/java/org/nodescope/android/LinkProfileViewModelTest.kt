@@ -16,6 +16,36 @@ class LinkProfileViewModelTest {
     private fun profile(coordinates: List<ProfileCoordinate>, elevation: Double) = TerrainProfile(
         coordinates.mapIndexed { index, _ -> ElevationPoint(index * 100.0, elevation) }, 1000, "cache")
 
+    @Test fun coverageHandoffUsesSelectedEndpointAndLeavesLinkUntouched() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        try {
+            val model = LinkProfileViewModel(LinkTerrainProviding { profile(it, 120.0) }, SavedStateHandle())
+            assertNull(model.coverageSeed("A"))
+            model.place("A", ProfileCoordinate(40.0, -90.0), "Site A")
+            model.place("B", ProfileCoordinate(41.0, -91.0), "Site B")
+            model.edit("Height A (m)", "6")
+            model.edit("Height B (m)", "30")
+            model.edit("Gain B (dBi)", "9")
+            model.edit("Loss B (dB)", "2")
+            model.edit("Frequency (MHz)", "868")
+            val before = model.state.value
+            val seed = requireNotNull(model.coverageSeed("B"))
+            assertEquals("Site B", seed.point.name)
+            assertEquals(41.0, seed.point.latitude, 0.0)
+            assertEquals(-91.0, seed.point.longitude, 0.0)
+            assertEquals(30.0, seed.point.antenna.heightMeters, 0.0)
+            assertEquals(9.0, seed.point.antenna.gainDbi, 0.0)
+            assertEquals(2.0, seed.point.antenna.lossDb, 0.0)
+            assertEquals(868.0, seed.frequencyMHz, 0.0)
+            assertEquals(before, model.state.value)
+            val encoded = kotlinx.serialization.json.Json.encodeToString(
+                org.nodescope.android.feature.coverage.LinkCoverageSeed.serializer(), seed)
+            assertEquals(seed, kotlinx.serialization.json.Json.decodeFromString(
+                org.nodescope.android.feature.coverage.LinkCoverageSeed.serializer(), encoded))
+            advanceUntilIdle()
+        } finally { Dispatchers.resetMain() }
+    }
+
     @Test fun incompleteCoordinatesDoNotFetchAndTypingIsDebounced() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         try {

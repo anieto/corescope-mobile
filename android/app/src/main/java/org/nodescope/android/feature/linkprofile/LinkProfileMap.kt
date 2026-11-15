@@ -59,7 +59,7 @@ internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, point
     sourceViewport: org.nodescope.android.core.model.RegionCoordinate? = null, analysis: LinkAnalysis? = null,
     bottomInset: androidx.compose.ui.unit.Dp = 0.dp, names: Map<String, String> = emptyMap(),
     undo: LinkProfileViewModel.Undo? = null, onPlace: (String, ProfileCoordinate, String?) -> Unit = { _, _, _ -> },
-    onChooseNew: (String) -> Unit = {}, onRemove: (String) -> Unit = {}, onUndo: () -> Unit = {}, onUndoExpired: (Long) -> Unit = {}) {
+    onCoverage: (String) -> Unit = {}, onChooseNew: (String) -> Unit = {}, onRemove: (String) -> Unit = {}, onUndo: () -> Unit = {}, onUndoExpired: (Long) -> Unit = {}) {
     Box(modifier) {
         var camera by mapState.camera
         var menu by remember { mutableStateOf<LinkMapMenu?>(null) }
@@ -177,6 +177,9 @@ internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, point
                             Text("Point ${open.endpoint} · ${names[open.endpoint] ?: "Dropped pin"}", Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             DropdownMenuItem(text = { Text("Choose new point") }, onClick = { menu = null; onChooseNew(open.endpoint) })
+                            DropdownMenuItem(text = { Text("Estimate coverage from here") }, onClick = {
+                                menu = null; onCoverage(open.endpoint)
+                            })
                             DropdownMenuItem(text = { Text("Remove", color = MaterialTheme.colorScheme.error) }, onClick = { menu = null; onRemove(open.endpoint) })
                         }
                     }

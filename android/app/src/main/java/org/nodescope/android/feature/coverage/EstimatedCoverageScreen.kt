@@ -129,7 +129,7 @@ internal fun EstimatedCoverageScreen(model: EstimatedCoverageViewModel, nodes: L
             // covering the map rather than moving it. A plain overlay, as in Link Profile.
             val density = LocalDensity.current
             val focus = LocalFocusManager.current
-            var expanded by rememberSaveable { mutableStateOf(false) }
+            var expanded by rememberSaveable { mutableStateOf(model.fromLinkProfile) }
             var headerHeight by remember { mutableStateOf(0.dp) }
             SideEffect { mapInset = headerHeight + 16.dp }
             val detailsMax = (maxHeight - headerHeight - 88.dp).coerceAtLeast(160.dp)
@@ -580,6 +580,11 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
 /** An antenna type whose gain fills the field, or a custom gain. */
 @Composable private fun CoverageAntennaSetting(model: EstimatedCoverageViewModel, field: String) {
     val gain = model.number(field)
+    AntennaPresetMenu(gain) { model.set(field, it.editorText()) }
+    CoverageNumberField(model, field, "Antenna gain", "dBi", null)
+}
+
+@Composable internal fun AntennaPresetMenu(gain: Double?, choose: (Double) -> Unit) {
     val match = gain?.let(CoverageAntennaPreset::matching)
     var open by remember { mutableStateOf(false) }
     LearnLabel("Antenna", GlossaryTerm.ANTENNA_GAIN)
@@ -589,11 +594,10 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
             CoverageAntennaPreset.all.forEach { preset ->
                 DropdownMenuItem(text = { Text("${preset.title} · ${preset.gainDbi.editorText()} dBi") },
                     trailingIcon = if (preset == match) ({ Text("✓") }) else null,
-                    onClick = { model.set(field, preset.gainDbi.editorText()); open = false })
+                    onClick = { choose(preset.gainDbi); open = false })
             }
         }
     }
-    CoverageNumberField(model, field, "Antenna gain", "dBi", null)
 }
 
 @Composable private fun CoverageRadioPresetMenu(current: CoverageRadioPreset?, choose: (CoverageRadioPreset) -> Unit) {

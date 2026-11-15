@@ -1,6 +1,8 @@
 package org.nodescope.android.feature.linkprofile
 
 import org.nodescope.android.feature.learn.*
+import org.nodescope.android.feature.coverage.AntennaPresetMenu
+import org.nodescope.android.feature.coverage.CoverageHeightPreset
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
@@ -17,10 +19,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
+import org.nodescope.android.core.design.MonaspaceNeon
 import org.nodescope.android.core.design.ActivityAmber
 import androidx.compose.runtime.*
 import org.nodescope.android.core.design.meshCardColors
 import org.nodescope.android.core.design.meshCardColor
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.background
@@ -69,7 +73,8 @@ import java.util.Locale
 @Composable
 fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = LocalDistanceUnit.current, nodes: List<org.nodescope.android.core.model.MeshNode> = emptyList(),
     snapshot: org.nodescope.android.core.model.AnalyzerSnapshot? = null, selectedRegion: String? = null,
-    sourceViewport: org.nodescope.android.core.model.RegionCoordinate? = null, onOpenSaved: () -> Unit = {}) {
+    sourceViewport: org.nodescope.android.core.model.RegionCoordinate? = null, onOpenSaved: () -> Unit = {},
+    onCoverage: (org.nodescope.android.feature.coverage.LinkCoverageSeed) -> Unit = {}) {
     val state by model.state.collectAsStateWithLifecycle()
     // A point chosen anew from its card or pin; otherwise the next touch & hold places the first
     // missing point, so a new profile needs no arming at all.
@@ -106,6 +111,7 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
                     selecting = null
                     if (!hasPlacedPoint) { hasPlacedPoint = true; preferences.edit { putBoolean("placed-point", true) } }
                 },
+                onCoverage = { endpoint -> model.coverageSeed(endpoint)?.let(onCoverage) },
                 onChooseNew = { selecting = it },
                 onRemove = { selecting = null; model.remove(it) },
                 onUndo = { selecting = null; mapState.fittedPath.value = null; model.undo() },
@@ -119,6 +125,7 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
         LinkHeader(state, selecting, placing, showsElevationNotice = !hasPlacedPoint, distanceUnit,
             onCancel = { selecting = null },
             onRetry = model::analyze,
+            usesDefaultEquipment = model.usesDefaultEquipment,
             onReset = {
                 model.startOver()
                 mapState.fittedPath.value = null
@@ -126,7 +133,7 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
             })
     }
     val details: @Composable () -> Unit = {
-        LinkDetails(model, state, distanceUnit, onMove = ::choose, onOpenSaved = onOpenSaved)
+        LinkDetails(model, state, distanceUnit, onMove = ::choose, onOpenSaved = onOpenSaved, onCoverage = { endpoint -> model.coverageSeed(endpoint)?.let(onCoverage) })
     }
     val fold = rememberFoldSplit()
     val tabletop = rememberTabletopSplit()
@@ -205,7 +212,12 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
                         Box(Modifier.fillMaxWidth().clickable(onClickLabel = if (expanded) "Collapse" else "Expand") { expanded = !expanded }
                             .semantics { contentDescription = if (expanded) "Collapse results" else "Expand results" },
                             contentAlignment = Alignment.Center) { BottomSheetDefaults.DragHandle() }
-                        Box(Modifier.padding(horizontal = 16.dp).padding(bottom = 14.dp)) { header() }
+                        Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 14.dp)) {
+                            header()
+                            if (!expanded && selecting == null && state.result != null && !state.loading && state.error == null) {
+                                Button(onClick = { expanded = true }) { Text("Adjust antennas & radio") }
+                            }
+                        }
                     }
                     if (expanded) {
                         // Open nearly to the top, leaving the back button and a strip of map.
@@ -227,7 +239,7 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
  */
 @Composable
 private fun LinkHeader(state: LinkProfileViewModel.State, selecting: String?, placing: String?, showsElevationNotice: Boolean,
-    distanceUnit: DistanceUnit, onCancel: () -> Unit, onRetry: () -> Unit, onReset: () -> Unit) {
+    distanceUnit: DistanceUnit, onCancel: () -> Unit, onRetry: () -> Unit, usesDefaultEquipment: Boolean, onReset: () -> Unit) {
     fun placed(endpoint: String) = state.fields.getValue("Latitude $endpoint").isNotBlank() && state.fields.getValue("Longitude $endpoint").isNotBlank()
     val secondary = MaterialTheme.colorScheme.onSurfaceVariant
     val anyPlaced = listOf("Latitude A", "Longitude A", "Latitude B", "Longitude B").any { state.fields.getValue(it).isNotBlank() }
@@ -268,6 +280,9 @@ private fun LinkHeader(state: LinkProfileViewModel.State, selecting: String?, pl
                 }
                 val margin = result.result.linkMarginDB?.let { "Link margin ${String.format(Locale.getDefault(), "%.1f", it)} dB · " }.orEmpty()
                 Text(margin + formatDistance(result.result.distanceMeters / 1000, distanceUnit), color = secondary)
+                Text(if (usesDefaultEquipment) "Using default antenna and radio settings."
+                    else "Using your antenna and radio settings.",
+                    style = MaterialTheme.typography.bodySmall, color = secondary)
             }
             else -> Text("Analyzing link…", style = MaterialTheme.typography.titleMedium)
         }
@@ -301,13 +316,13 @@ private val ClearanceStatus.pathClearance get() = when (this) {
 /** Everything under the header: the two points, the radio and the full result. */
 @Composable
 private fun LinkDetails(model: LinkProfileViewModel, state: LinkProfileViewModel.State, distanceUnit: DistanceUnit,
-    onMove: (String) -> Unit, onOpenSaved: () -> Unit) {
+    onMove: (String) -> Unit, onOpenSaved: () -> Unit, onCoverage: (String) -> Unit) {
     var customizing by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         // Read state so Save enables as soon as both points are placed.
         org.nodescope.android.feature.candidatesites.SavedStudyActions(
             snapshot = { state.fields.let { model.savedSnapshot() } }, didSave = { model.savedStudy = it }, onOpen = onOpenSaved)
-        listOf("A", "B").forEach { endpoint -> PointCard(model, state, endpoint, distanceUnit, onMove) }
+        listOf("A", "B").forEach { endpoint -> PointCard(model, state, endpoint, distanceUnit, onMove, onCoverage) }
         Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Radio settings", style = MaterialTheme.typography.titleMedium)
@@ -338,7 +353,7 @@ private fun LinkDetails(model: LinkProfileViewModel, state: LinkProfileViewModel
  * Tapping opens the antenna settings, moving the point, and typed coordinates.
  */
 @Composable
-private fun PointCard(model: LinkProfileViewModel, state: LinkProfileViewModel.State, endpoint: String, distanceUnit: DistanceUnit, onMove: (String) -> Unit) {
+private fun PointCard(model: LinkProfileViewModel, state: LinkProfileViewModel.State, endpoint: String, distanceUnit: DistanceUnit, onMove: (String) -> Unit, onCoverage: (String) -> Unit) {
     var expanded by androidx.compose.runtime.saveable.rememberSaveable(endpoint) { mutableStateOf(false) }
     // Without a map, typing is the only way to place a point.
     var coordinatesShown by androidx.compose.runtime.saveable.rememberSaveable(endpoint) { mutableStateOf(!BuildConfig.MAPS_CONFIGURED) }
@@ -376,10 +391,16 @@ private fun PointCard(model: LinkProfileViewModel, state: LinkProfileViewModel.S
                 val height = state.fields.getValue("Height $endpoint (m)").toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }
                 val total = elevation?.meters?.let { ground -> height?.let { ground + it } }
                 Text("Total height: ${total?.let { formatProfileHeight(it, distanceUnit) } ?: "—"}", style = MaterialTheme.typography.bodyMedium)
+                AntennaPresetMenu(state.fields.getValue("Gain $endpoint (dBi)").toDoubleOrNull()) {
+                    model.edit("Gain $endpoint (dBi)", it.toString())
+                }
                 listOf("Gain $endpoint (dBi)", "Loss $endpoint (dB)").forEach { key -> ProfileField(key, state.fields.getValue(key)) { model.edit(key, it) } }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (BuildConfig.MAPS_CONFIGURED) Button(onClick = { onMove(endpoint) }) { Text(if (placed) "Choose new point" else "Choose on map") }
                     Button(onClick = { coordinatesShown = !coordinatesShown }) { Text(if (coordinatesShown) "Hide coordinates" else "Enter coordinates") }
+                }
+                if (placed) Button(onClick = { onCoverage(endpoint) }, enabled = model.coverageSeed(endpoint) != null) {
+                    Text("Estimate coverage from here")
                 }
                 if (coordinatesShown) listOf("Latitude $endpoint", "Longitude $endpoint").forEach { key -> ProfileField(key, state.fields.getValue(key)) { model.edit(key, it) } }
             }
@@ -585,6 +606,19 @@ private fun ChartLegend(color: Color, title: String) {
 /** Slider range and one-unit increments match iOS; switching units never rewrites the input. */
 @Composable
 internal fun ProfileHeightControl(endpoint: String, meters: Double, unit: DistanceUnit, onMetersChanged: (Double) -> Unit) {
+    val presets = listOf(CoverageHeightPreset.HANDHELD, CoverageHeightPreset.VEHICLE,
+        CoverageHeightPreset.ROOFTOP, CoverageHeightPreset.MAST, CoverageHeightPreset.TOWER)
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        presets.forEach { preset ->
+            FilterChip(selected = CoverageHeightPreset.matching(meters, presets) == preset,
+                onClick = {
+                    val value = if (unit == DistanceUnit.IMPERIAL)
+                        profileHeightMeters(profileDisplayHeight(preset.meters, unit).roundToInt().toDouble(), unit)
+                    else preset.meters
+                    onMetersChanged(value)
+                }, label = { Text("${preset.title} · ${formatProfileHeight(preset.meters, unit)}") })
+        }
+    }
     val maximum = profileHeightMaximum(unit)
     val displayed = profileDisplayHeight(meters, unit)
     Text("Additional antenna height $endpoint: ${formatProfileHeight(meters, unit)}", style = MaterialTheme.typography.bodyMedium)
@@ -598,5 +632,18 @@ internal fun ProfileHeightControl(endpoint: String, meters: Double, unit: Distan
             stateDescription = formatProfileHeight(meters, unit)
         },
     )
-    Text("Above ground · ${if (unit == DistanceUnit.IMPERIAL) "0–100 ft" else "0–30 m"}", style = MaterialTheme.typography.bodySmall)
+    var exact by remember(unit) { mutableStateOf(profileDisplayHeight(meters, unit).toString()) }
+    var editingExact by remember { mutableStateOf(false) }
+    LaunchedEffect(meters, unit, editingExact) {
+        if (!editingExact) exact = profileDisplayHeight(meters, unit).toString()
+    }
+    OutlinedTextField(value = exact, onValueChange = { text ->
+        exact = text
+        text.toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }?.let {
+            onMetersChanged(profileHeightMeters(it, unit))
+        }
+    }, label = { Text("Above ground (${if (unit == DistanceUnit.IMPERIAL) "ft" else "m"})") },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        textStyle = TextStyle(fontFamily = MonaspaceNeon), modifier = Modifier.fillMaxWidth()
+            .onFocusChanged { editingExact = it.isFocused })
 }

@@ -45,6 +45,13 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         .mapValues { (key, value) -> saved.get<String>(key) ?: value }, saved["preset"] ?: "US/Canada Narrow",
         names = listOf("A", "B").mapNotNull { endpoint -> saved.get<String>("Name $endpoint")?.let { endpoint to it } }.toMap()))
     val state = mutable.asStateFlow()
+    val usesDefaultEquipment: Boolean get() {
+        val equipment = defaults.filterKeys { !it.startsWith("Latitude") && !it.startsWith("Longitude") } +
+            mapOf("Height A (m)" to defaultHeight, "Height B (m)" to defaultHeight)
+        return equipment.all { (key, value) ->
+            mutable.value.fields[key]?.toDoubleOrNull()?.let { kotlin.math.abs(it - value.toDouble()) < 0.0001 } == true
+        }
+    }
     /** The saved study this profile came from, so Save replaces it rather than adding another. */
     var savedStudy: org.nodescope.android.feature.candidatesites.SavedStudy? = null
     private var job: Job? = null
@@ -101,6 +108,20 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
     }
 
     /** A typed coordinate replaces whatever Undo would have restored. */
+    fun coverageSeed(endpoint: String): org.nodescope.android.feature.coverage.LinkCoverageSeed? {
+        val fields = state.value.fields
+        fun number(key: String) = fields[key]?.toDoubleOrNull()?.takeIf { it.isFinite() }
+        val point = org.nodescope.android.feature.candidatesites.SavedEndpoint(
+            state.value.names[endpoint] ?: "Point $endpoint",
+            number("Latitude $endpoint") ?: return null, number("Longitude $endpoint") ?: return null,
+            org.nodescope.android.feature.candidatesites.SavedAntenna(
+                number("Height $endpoint (m)") ?: return null, number("Gain $endpoint (dBi)") ?: return null,
+                number("Loss $endpoint (dB)") ?: return null))
+        return org.nodescope.android.feature.coverage.LinkCoverageSeed(point,
+            number("Frequency (MHz)") ?: return null, number("Transmit power (dBm)") ?: return null,
+            number("Sensitivity (dBm)") ?: return null)
+    }
+
     fun edit(key: String, value: String) {
         if (key.startsWith("Latitude ") || key.startsWith("Longitude ")) mutable.value = mutable.value.copy(undo = null)
         update(key, value)

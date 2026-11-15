@@ -188,6 +188,21 @@ internal class EstimatedCoverageViewModel(
 
     // MARK: Editing
 
+    var fromLinkProfile = false; private set
+
+    fun applyLinkSeed(seed: LinkCoverageSeed) {
+        latitudeText = seed.point.latitude.toString()
+        longitudeText = seed.point.longitude.toString()
+        transmitterName = seed.point.name
+        fun height(meters: Double) = (if (heightInFeet) meters / 0.3048 else meters).toString()
+        values = values + mapOf("txHeight" to height(seed.point.antenna.heightMeters),
+            "txGain" to seed.point.antenna.gainDbi.toString(), "txLoss" to seed.point.antenna.lossDb.toString(),
+            "frequency" to seed.frequencyMHz.toString(), "power" to seed.transmitPowerDbm.toString(),
+            "sensitivity" to seed.sensitivityDbm.toString())
+        transmitterExpanded = true
+        fromLinkProfile = true
+    }
+
     fun set(field: String, text: String) { values = values + (field to text) }
 
     fun applyRadioPreset(preset: CoverageRadioPreset) {
@@ -537,3 +552,7 @@ internal fun nearestCoverageNodes(nodes: List<MeshNode>, selected: Coordinate?):
     }.sortedWith(compareBy<Pair<MeshNode, Double>> { it.second }.thenBy { it.first.publicKey })
         .take(200).map { it.first }.toList()
 }
+
+@kotlinx.serialization.Serializable
+data class LinkCoverageSeed(val point: org.nodescope.android.feature.candidatesites.SavedEndpoint,
+    val frequencyMHz: Double, val transmitPowerDbm: Double, val sensitivityDbm: Double)

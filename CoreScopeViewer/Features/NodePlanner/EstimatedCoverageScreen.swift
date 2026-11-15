@@ -5,6 +5,14 @@ import SwiftUI
 /// Estimated Coverage, laid out like Link Profile: the map fills the screen, and the setup and
 /// result live in a panel that collapses to a status header. A touch & hold places the
 /// transmitter; presets fill in the radio, antennas and heights so a study takes a few taps.
+struct LinkCoverageSeed: Identifiable {
+    let id = UUID()
+    let point: SavedEndpoint
+    let frequencyMHz: Double
+    let transmitPowerDbm: Double
+    let sensitivityDbm: Double
+}
+
 struct EstimatedCoverageScreen: View {
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(RegionFilterStore.self) private var regionFilter
@@ -19,9 +27,23 @@ struct EstimatedCoverageScreen: View {
     /// Shared with the live map and Link Profile: picking a style here changes them all.
     @AppStorage(MapDisplayStyle.defaultsKey) private var mapDisplayStyle = MapDisplayStyle.standard
 
-    init(savedStudy: SavedStudy? = nil) {
+    init(savedStudy: SavedStudy? = nil, seed: LinkCoverageSeed? = nil) {
         let model = EstimatedCoverageModel()
         if let savedStudy { model.restore(savedStudy) }
+        if let seed {
+            model.latitude = seed.point.latitude
+            model.longitude = seed.point.longitude
+            model.transmitterName = seed.point.name
+            model.transmitHeightMeters = seed.point.antenna.heightMeters
+            model.transmitGainDbi = seed.point.antenna.gainDbi
+            model.transmitLossDb = seed.point.antenna.lossDb
+            model.frequencyMHz = seed.frequencyMHz
+            model.transmitPowerDbm = seed.transmitPowerDbm
+            model.sensitivityDbm = seed.sensitivityDbm
+            model.radioPresetID = nil
+            model.transmitterSettingsExpanded = true
+            model.opensSetup = true
+        }
         _model = State(initialValue: model)
     }
 
@@ -178,6 +200,7 @@ enum CoverageSetupProblem: Equatable {
 @MainActor
 @Observable
 final class EstimatedCoverageModel {
+    var opensSetup = false
     var savedStudy: SavedStudy?
     var usesSavedCatalog = false
     private var savedCatalog: [SavedCoverageNode] = []
@@ -860,6 +883,9 @@ private struct EstimatedCoverageCompactWorkspace: View {
         // Choosing a point needs the map.
         .onChange(of: model.isChoosingLocation) { _, choosing in
             if choosing { setExpanded(false) }
+        }
+        .onAppear {
+            if model.opensSetup { isExpanded = true; model.opensSetup = false }
         }
     }
 
@@ -1688,7 +1714,7 @@ private struct CoverageCalculationCard: View {
 // MARK: - Settings controls
 
 /// Typical heights as chips, then the exact value in the preferred unit.
-private struct CoverageHeightSetting: View {
+struct CoverageHeightSetting: View {
     let title: LocalizedStringKey
     @Binding var meters: Double
     let presets: [CoverageHeightPreset]
@@ -1733,7 +1759,7 @@ private struct CoverageHeightSetting: View {
 }
 
 /// An antenna type whose gain fills the field, or a custom gain.
-private struct CoverageAntennaSetting: View {
+struct CoverageAntennaSetting: View {
     @Binding var gainDbi: Double
 
     var body: some View {

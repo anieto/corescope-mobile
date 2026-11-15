@@ -99,6 +99,12 @@ struct LinkProfileScreen: View {
         // the side column on the Duo); the bar is otherwise invisible, with no background and
         // no title, since the editor pane carries the heading.
         .navigationTitle(usesSystemBar ? "" : "Link Profile")
+        .navigationDestination(isPresented: Binding(
+            get: { model.coverageSeed != nil },
+            set: { if !$0 { model.coverageSeed = nil } }
+        )) {
+            if let seed = model.coverageSeed { EstimatedCoverageScreen(seed: seed) }
+        }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(usesSystemBar ? .visible : .hidden, for: .navigationBar)
         .toolbarBackground(.hidden, for: .navigationBar)
@@ -231,7 +237,14 @@ private struct LinkProfileCompactWorkspace: View {
                         .accessibilityLabel(isExpanded ? "Hide link details" : "Show link details")
                         LinkProfileHeader(model: model, activeEndpoint: $activeEndpoint)
                             .padding(.horizontal)
-                            .padding(.bottom, 14)
+                        if !isExpanded && activeEndpoint == nil && model.result != nil && !model.isAnalyzing {
+                            Button("Adjust antennas & radio") { setExpanded(true) }
+                                .buttonStyle(.borderedProminent)
+                                .tint(.blue)
+                                .padding(.horizontal)
+                                .padding(.top, 8)
+                        }
+                        Color.clear.frame(height: 14)
                     }
                     .contentShape(Rectangle())
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
@@ -614,6 +627,12 @@ private struct LinkProfilePersistentMap: View {
                 }
                 Divider()
                 menuButton {
+                    Label("Estimate coverage from here", systemImage: "dot.radiowaves.left.and.right")
+                } action: {
+                    model.estimateCoverage(from: endpoint)
+                }
+                Divider()
+                menuButton {
                     Label("Remove", systemImage: "trash")
                         .foregroundStyle(.red)
                 } action: {
@@ -875,7 +894,28 @@ final class LinkProfileModel {
     /// Where the map last settled. Each layout (Duo open or closed, iPad, iPhone) has a map of its
     /// own, so a fold or unfold picks the view up here instead of opening on every node.
     @ObservationIgnored var lastCamera: MapCamera?
+    var coverageSeed: LinkCoverageSeed?
+
+    func estimateCoverage(from endpoint: LinkProfileEndpoint) {
+        guard let coordinate = coordinate(for: endpoint) else { return }
+        let isA = endpoint == .pointA
+        coverageSeed = LinkCoverageSeed(
+            point: SavedEndpoint(name: name(for: endpoint) ?? "Point \(endpoint.letter)",
+                latitude: coordinate.latitude, longitude: coordinate.longitude,
+                antenna: SavedAntenna(heightMeters: isA ? heightA : heightB,
+                    gainDbi: isA ? gainADB : gainBDB, lossDb: isA ? lossADB : lossBDB)),
+            frequencyMHz: frequencyMHz, transmitPowerDbm: transmitPowerDBm,
+            sensitivityDbm: receiverSensitivityDBm)
+    }
+
     var radioPreset = LinkProfileRadioPreset.unitedStatesNarrow
+    private var defaultAntennaHeight = 6.096
+    var usesDefaultEquipment: Bool {
+        abs(heightA - defaultAntennaHeight) < 0.0001 && abs(heightB - defaultAntennaHeight) < 0.0001
+            && frequencyMHz == 910.525 && transmitPowerDBm == 22
+            && gainADB == 2.15 && gainBDB == 2.15 && lossADB == 1 && lossBDB == 1
+            && receiverSensitivityDBm == -128
+    }
     var frequencyMHz = 910.525
     var transmitPowerDBm = 22.0
     var gainADB = 2.15
@@ -935,6 +975,7 @@ final class LinkProfileModel {
         let unit = UserDefaults.standard.string(forKey: DistanceUnit.defaultsKey).flatMap(DistanceUnit.init(rawValue:)) ?? .imperial
         heightA = unit == .imperial ? 6.096 : 6
         heightB = heightA
+        defaultAntennaHeight = heightA
     }
 
     /// Any change clears the result; once both endpoints are set the link is analyzed on its own,
@@ -1261,6 +1302,11 @@ private struct LinkProfileHeader: View {
                 .font(.monaspace(.headline))
                 Text(summary(result.result))
                     .foregroundStyle(.secondary)
+                Text(model.usesDefaultEquipment
+                    ? "Using default antenna and radio settings."
+                    : "Using your antenna and radio settings.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             } else {
                 HStack(spacing: 10) {
                     ProgressView()
@@ -1370,6 +1416,8 @@ private struct LinkProfilePointCard: View {
             .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
 
             if isExpanded {
+                CoverageHeightSetting(title: "Antenna height", meters: height,
+                    presets: [.handheld, .vehicle, .rooftop, .mast, .tower], issue: nil)
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         Text("Additional antenna height")
@@ -1390,7 +1438,7 @@ private struct LinkProfilePointCard: View {
                         Text("—")
                     }
                 }
-                LinkProfileNumericSetting(title: "Antenna gain", value: budgetBinding(\.gainADB, \.gainBDB), unit: "dBi")
+                CoverageAntennaSetting(gainDbi: budgetBinding(\.gainADB, \.gainBDB))
                 LinkProfileNumericSetting(title: "System loss", value: budgetBinding(\.lossADB, \.lossBDB), unit: "dB")
                 ViewThatFits(in: .horizontal) {
                     HStack { actions }
@@ -1398,6 +1446,13 @@ private struct LinkProfilePointCard: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.blue)
+                if hasCoordinate {
+                    Button("Estimate coverage from here", systemImage: "dot.radiowaves.left.and.right") {
+                        model.estimateCoverage(from: endpoint)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.blue)
+                }
                 if showsCoordinates {
                     LabeledContent("Latitude") {
                         TextField("Latitude", value: latitude, format: .number.precision(.fractionLength(0...6)))

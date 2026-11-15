@@ -123,7 +123,7 @@ enum class Destination(val title: Int, val icon: ImageVector, val route: TopLeve
 @Serializable data class NodeRoute(val publicKey: String)
 @Serializable data class NodeAnalyticsRoute(val publicKey: String)
 @Serializable data object NodePlannerRoute
-@Serializable data class EstimatedCoverageRoute(val studyId: String? = null)
+@Serializable data class EstimatedCoverageRoute(val studyId: String? = null, val linkSeed: String? = null)
 @Serializable data object CandidateSitesRoute
 /** Saved studies and candidate sites; [kind] narrows the list to one tool's studies (its Open button). */
 @Serializable data class SavedPlansRoute(val kind: String? = null)
@@ -683,7 +683,12 @@ internal fun AppShell(
                                     context.getSharedPreferences("estimated-coverage", android.content.Context.MODE_PRIVATE),
                                     heightInFeet = preferences.distanceUnit == org.nodescope.android.core.storage.DistanceUnit.IMPERIAL,
                                     diagnosticsFile = java.io.File(context.filesDir, "CoverageDiagnostics/latest.json"))
-                                    .also { model -> library.studies.firstOrNull { it.id == studyId }?.let(model::restore) }
+                                    .also { model ->
+                                        library.studies.firstOrNull { it.id == studyId }?.let(model::restore)
+                                        backStack.toRoute<EstimatedCoverageRoute>().linkSeed?.let { encoded ->
+                                            model.applyLinkSeed(kotlinx.serialization.json.Json.decodeFromString<org.nodescope.android.feature.coverage.LinkCoverageSeed>(encoded))
+                                        }
+                                    }
                             }
                             org.nodescope.android.feature.coverage.EstimatedCoverageScreen(coverageModel, state.snapshot?.nodes.orEmpty(),
                                 preferences.host, state.snapshot, preferences.region, sourceViewport,
@@ -709,7 +714,9 @@ internal fun AppShell(
                             }
                             org.nodescope.android.feature.linkprofile.LinkProfileScreen(profileModel, preferences.distanceUnit, state.snapshot?.nodes.orEmpty(),
                                 state.snapshot, preferences.region, sourceViewport,
-                                onOpenSaved = { nav.navigate(SavedPlansRoute(org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE.name)) })
+                                onOpenSaved = { nav.navigate(SavedPlansRoute(org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE.name)) },
+                                onCoverage = { seed -> nav.navigate(EstimatedCoverageRoute(linkSeed =
+                                    kotlinx.serialization.json.Json.encodeToString(org.nodescope.android.feature.coverage.LinkCoverageSeed.serializer(), seed))) })
                         }
                         screen<PacketRoute> {
                             if (org.nodescope.android.core.design.LocalBeaconSource.current)
