@@ -1,0 +1,383 @@
+{
+  "schemaVersion": 3,
+  "documentRevision": 12,
+  "plans": [
+    {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "name": "West-side options",
+      "createdAtMilliseconds": 1793448000000,
+      "updatedAtMilliseconds": 1793448000000,
+      "revision": 1,
+      "selectedSiteID": "22222222-2222-4222-8222-222222222222",
+      "sites": [
+        {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "name": "Ridge – Café",
+          "latitude": 29.43212,
+          "longitude": -98.61774,
+          "assumptions": {}
+        }
+      ]
+    }
+  ],
+  "studyPlans": [
+    {
+      "id": "30000000-0000-4000-8000-000000000001",
+      "name": "Ridge relay site",
+      "notes": "Compare the roof mount with a 10 m mast.",
+      "createdAtMilliseconds": 1794600000000,
+      "updatedAtMilliseconds": 1794780000000,
+      "revision": 4
+    },
+    {
+      "id": "30000000-0000-4000-8000-000000000002",
+      "name": "Downtown (empty)",
+      "createdAtMilliseconds": 1794500000000,
+      "updatedAtMilliseconds": 1794500000000,
+      "revision": 1
+    }
+  ],
+  "studies": [
+    {
+      "id": "40000000-0000-4000-8000-000000000001",
+      "name": "Ridge relay coverage",
+      "createdAtMilliseconds": 1794700000000,
+      "updatedAtMilliseconds": 1794780000000,
+      "kind": "coverage",
+      "revision": 2,
+      "coverage": {
+        "transmitter": {
+          "name": "Ridge relay",
+          "latitude": 29.4241,
+          "longitude": -98.4936,
+          "antenna": {
+            "heightMeters": 6.096,
+            "gainDbi": 2.15,
+            "lossDb": 1.0
+          }
+        },
+        "receiver": {
+          "heightMeters": 1.524,
+          "gainDbi": 2.15,
+          "lossDb": 1.0
+        },
+        "frequencyMHz": 910.525,
+        "transmitPowerDbm": 22.0,
+        "sensitivityDbm": -128.0,
+        "reserveDb": 5.0,
+        "radiusMeters": 1000,
+        "spacingMeters": 1000,
+        "catalogComplete": false,
+        "nodes": [
+          {
+            "sourceID": "analyzer.example",
+            "nodeID": "a1b2c3d4",
+            "name": "Hilltop",
+            "role": "repeater",
+            "latitude": 29.4282,
+            "longitude": -98.4936,
+            "lastSeenMilliseconds": 1794770000000
+          },
+          {
+            "sourceID": "analyzer.example",
+            "nodeID": "e5f6a7b8",
+            "name": "Far repeater",
+            "role": "repeater",
+            "latitude": 29.5,
+            "longitude": -98.4,
+            "lastSeenMilliseconds": 1794760000000
+          }
+        ]
+      },
+      "planID": "30000000-0000-4000-8000-000000000001",
+      "origin": {
+        "host": "analyzer.example",
+        "region": "SAT",
+        "capturedAtMilliseconds": 1794700000000
+      },
+      "resultRef": {
+        "format": "nodescope.coverage-result",
+        "version": 1,
+        "byteLength": 2079,
+        "sha256": "bc7aa9e1b052c228197a9db1fccee9625f30aed41915152c27309feb980f48a8",
+        "inputFingerprint": "6d0c99ba96034364d0e06e2ae4f9615938050f6e4feb7ec35ef2527a1fb6d84f"
+      }
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000002",
+      "name": "Ridge to valley",
+      "createdAtMilliseconds": 1794600000000,
+      "updatedAtMilliseconds": 1794610000000,
+      "kind": "linkProfile",
+      "revision": 1,
+      "linkProfile": {
+        "pointA": {
+          "name": "Ridge relay",
+          "latitude": 29.4241,
+          "longitude": -98.4936,
+          "antenna": {
+            "heightMeters": 6.096,
+            "gainDbi": 2.15,
+            "lossDb": 1.0
+          }
+        },
+        "pointB": {
+          "name": "Valley home",
+          "latitude": 29.4384,
+          "longitude": -98.4721,
+          "antenna": {
+            "heightMeters": 3.048,
+            "gainDbi": 5.8,
+            "lossDb": 0.5
+          }
+        },
+        "frequencyMHz": 910.525,
+        "transmitPowerDbm": 22.0,
+        "sensitivityDbm": -128.0,
+        "refractionK": 1.3333333333333333,
+        "sampleCount": 20
+      },
+      "planID": "30000000-0000-4000-8000-000000000001",
+      "origin": {
+        "host": "analyzer.example",
+        "region": "SAT",
+        "capturedAtMilliseconds": 1794700000000
+      },
+      "resultRef": {
+        "format": "nodescope.link-profile-result",
+        "version": 1,
+        "byteLength": 3626,
+        "sha256": "49dcd76abd58db3e414d43a1c60090b1131c68baa1aafd7b874515e06f8344c4",
+        "inputFingerprint": "25201f5737cf9859dd86992c3630a0f073744813e79cd37d9dd23eb1b9521406"
+      }
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000003",
+      "name": "Coverage saved on 0.10.6",
+      "createdAtMilliseconds": 1794700000000,
+      "updatedAtMilliseconds": 1794780000000,
+      "kind": "coverage",
+      "revision": 1,
+      "coverage": {
+        "transmitter": {
+          "name": "Ridge relay",
+          "latitude": 29.4241,
+          "longitude": -98.4936,
+          "antenna": {
+            "heightMeters": 6.096,
+            "gainDbi": 2.15,
+            "lossDb": 1.0
+          }
+        },
+        "receiver": {
+          "heightMeters": 1.524,
+          "gainDbi": 2.15,
+          "lossDb": 1.0
+        },
+        "frequencyMHz": 910.525,
+        "transmitPowerDbm": 22.0,
+        "sensitivityDbm": -128.0,
+        "reserveDb": 5.0,
+        "radiusMeters": 1000,
+        "spacingMeters": 1000,
+        "catalogComplete": false,
+        "nodes": [
+          {
+            "sourceID": "analyzer.example",
+            "nodeID": "a1b2c3d4",
+            "name": "Hilltop",
+            "role": "repeater",
+            "latitude": 29.4282,
+            "longitude": -98.4936,
+            "lastSeenMilliseconds": 1794770000000
+          },
+          {
+            "sourceID": "analyzer.example",
+            "nodeID": "e5f6a7b8",
+            "name": "Far repeater",
+            "role": "repeater",
+            "latitude": 29.5,
+            "longitude": -98.4,
+            "lastSeenMilliseconds": 1794760000000
+          }
+        ]
+      },
+      "origin": null,
+      "resultRef": {
+        "format": "legacy.android-json-coverage",
+        "version": 1,
+        "byteLength": 1167,
+        "sha256": "bbf87455060cd72e5fc0ea75c6baaff4c3315d283a23a733be19edbf7d4dbbec",
+        "inputFingerprint": null
+      }
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000004",
+      "name": "Inputs only",
+      "createdAtMilliseconds": 1794600000000,
+      "updatedAtMilliseconds": 1794610000000,
+      "kind": "linkProfile",
+      "revision": 1,
+      "linkProfile": {
+        "pointA": {
+          "name": "Ridge relay",
+          "latitude": 29.4241,
+          "longitude": -98.4936,
+          "antenna": {
+            "heightMeters": 6.096,
+            "gainDbi": 2.15,
+            "lossDb": 1.0
+          }
+        },
+        "pointB": {
+          "name": "Valley home",
+          "latitude": 29.4384,
+          "longitude": -98.4721,
+          "antenna": {
+            "heightMeters": 3.048,
+            "gainDbi": 5.8,
+            "lossDb": 0.5
+          }
+        },
+        "frequencyMHz": 910.525,
+        "transmitPowerDbm": 22.0,
+        "sensitivityDbm": -128.0,
+        "refractionK": 1.3333333333333333,
+        "sampleCount": null
+      },
+      "origin": null
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000005",
+      "name": "Restored without results",
+      "createdAtMilliseconds": 1794700000000,
+      "updatedAtMilliseconds": 1794780000000,
+      "kind": "coverage",
+      "revision": 2,
+      "coverage": {
+        "transmitter": {
+          "name": "Ridge relay",
+          "latitude": 29.4241,
+          "longitude": -98.4936,
+          "antenna": {
+            "heightMeters": 6.096,
+            "gainDbi": 2.15,
+            "lossDb": 1.0
+          }
+        },
+        "receiver": {
+          "heightMeters": 1.524,
+          "gainDbi": 2.15,
+          "lossDb": 1.0
+        },
+        "frequencyMHz": 910.525,
+        "transmitPowerDbm": 22.0,
+        "sensitivityDbm": -128.0,
+        "reserveDb": 10.0,
+        "radiusMeters": 1000,
+        "spacingMeters": 1000,
+        "catalogComplete": false,
+        "nodes": [
+          {
+            "sourceID": "analyzer.example",
+            "nodeID": "a1b2c3d4",
+            "name": "Hilltop",
+            "role": "repeater",
+            "latitude": 29.4282,
+            "longitude": -98.4936,
+            "lastSeenMilliseconds": 1794770000000
+          },
+          {
+            "sourceID": "analyzer.example",
+            "nodeID": "e5f6a7b8",
+            "name": "Far repeater",
+            "role": "repeater",
+            "latitude": 29.5,
+            "longitude": -98.4,
+            "lastSeenMilliseconds": 1794760000000
+          }
+        ]
+      },
+      "origin": {
+        "host": "analyzer.example",
+        "region": "SAT",
+        "capturedAtMilliseconds": 1794700000000
+      },
+      "resultRef": {
+        "format": "nodescope.coverage-result",
+        "version": 1,
+        "byteLength": 2080,
+        "sha256": "67217d5b7436fa1a9a94febe450f6ca6a81304c772e704e0ab692bbd804d7d97",
+        "inputFingerprint": "8d304425533a38a7923c8ff582da4a9f64321196c6d176e71117ffde8b731e87"
+      }
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000006",
+      "name": "Ridge relay coverage (copy)",
+      "createdAtMilliseconds": 1794785000000,
+      "updatedAtMilliseconds": 1794785000000,
+      "kind": "coverage",
+      "revision": 1,
+      "coverage": {
+        "transmitter": {
+          "name": "Ridge relay",
+          "latitude": 29.4241,
+          "longitude": -98.4936,
+          "antenna": {
+            "heightMeters": 6.096,
+            "gainDbi": 2.15,
+            "lossDb": 1.0
+          }
+        },
+        "receiver": {
+          "heightMeters": 1.524,
+          "gainDbi": 2.15,
+          "lossDb": 1.0
+        },
+        "frequencyMHz": 910.525,
+        "transmitPowerDbm": 22.0,
+        "sensitivityDbm": -128.0,
+        "reserveDb": 5.0,
+        "radiusMeters": 1000,
+        "spacingMeters": 1000,
+        "catalogComplete": false,
+        "nodes": [
+          {
+            "sourceID": "analyzer.example",
+            "nodeID": "a1b2c3d4",
+            "name": "Hilltop",
+            "role": "repeater",
+            "latitude": 29.4282,
+            "longitude": -98.4936,
+            "lastSeenMilliseconds": 1794770000000
+          },
+          {
+            "sourceID": "analyzer.example",
+            "nodeID": "e5f6a7b8",
+            "name": "Far repeater",
+            "role": "repeater",
+            "latitude": 29.5,
+            "longitude": -98.4,
+            "lastSeenMilliseconds": 1794760000000
+          }
+        ]
+      },
+      "origin": {
+        "host": "analyzer.example",
+        "region": "SAT",
+        "capturedAtMilliseconds": 1794700000000
+      },
+      "resultRef": {
+        "format": "nodescope.coverage-result",
+        "version": 1,
+        "byteLength": 2079,
+        "sha256": "bc7aa9e1b052c228197a9db1fccee9625f30aed41915152c27309feb980f48a8",
+        "inputFingerprint": "6d0c99ba96034364d0e06e2ae4f9615938050f6e4feb7ec35ef2527a1fb6d84f"
+      },
+      "importOrigin": {
+        "studyID": "40000000-0000-4000-8000-000000000001",
+        "revision": 2
+      }
+    }
+  ]
+}

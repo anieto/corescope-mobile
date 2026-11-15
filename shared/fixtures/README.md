@@ -68,3 +68,9 @@ store per-observer medians/counts and evidence, never raw sample histories.
   Profile input fingerprints, margin recomputation and JSON number round trips, with doubles
   given as binary64 bit patterns. Android `PortableContractTest` and iOS `PortableContractTests`
   must reproduce every value. Regenerate only when the contract version changes.
+- `saved-plans/v3/`: draft saved-plans v3 library, generated and validated by
+  `saved-plans/make-v3-fixtures.py` (see docs/node-planner/saved-plans-v3-schema.md):
+  `reference/plans.json` with its content-addressed `reference/results/`, one result
+  deliberately missing, and `v3-cases.json` with valid and invalid manifests and the
+  reason each invalid one is refused. Not yet consumed by app tests; A1 adds them.
+
