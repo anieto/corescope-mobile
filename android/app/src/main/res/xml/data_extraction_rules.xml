@@ -1,12 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12 and later. Only saved plans (Candidate Sites and saved studies) are backed up and
+  carried to a new phone; settings, caches, terrain and analyzer data stay on the device, as before.
+  Listing an include makes it the only thing backed up. Cloud backup stops for the whole app above
+  25 MB, so large saved coverage results are a known limit until they move to their own files.
+-->
 <data-extraction-rules>
     <cloud-backup>
-        <exclude domain="sharedpref" path="." />
-        <exclude domain="file" path="." />
-        <exclude domain="database" path="." />
+        <include domain="file" path="CandidateSites/" />
     </cloud-backup>
     <device-transfer>
-        <exclude domain="sharedpref" path="." />
-        <exclude domain="file" path="." />
-        <exclude domain="database" path="." />
+        <include domain="file" path="CandidateSites/" />
     </device-transfer>
 </data-extraction-rules>
