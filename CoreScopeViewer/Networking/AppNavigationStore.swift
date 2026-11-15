@@ -1,7 +1,13 @@
 import Foundation
 import Observation
 
+/// A tool a What's New item can open directly.
+enum AppFeature: String, Decodable, Sendable {
+    case nodePlanner, estimatedCoverage, linkProfile, savedPlans, nodeCheck
+}
+
 enum AppNavigationDestination: Sendable {
+    case feature(AppFeature)
     case mapNode(MeshNode)
     case activeNodes
     case node(String)
@@ -34,6 +40,11 @@ final class AppNavigationStore {
         case .channel(let hash): .channel(hash)
         case .packet(let hash): .packet(hash)
         }
+        requestID = UUID()
+    }
+
+    func open(_ feature: AppFeature) {
+        destination = .feature(feature)
         requestID = UUID()
     }
 

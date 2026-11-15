@@ -48,6 +48,8 @@ fun SettingsScreen(
     onAbout: () -> Unit, onGlossary: () -> Unit, onMapLab: () -> Unit, onSupport: (() -> Unit)? = null,
     onDistanceUnit: (DistanceUnit) -> Unit = {},
     onBackgroundTexture: (Boolean) -> Unit = {},
+    /** Shows this build's highlights again; null hides the row. */
+    whatsNewVersion: String? = null, onWhatsNew: () -> Unit = {},
 ) {
     // After an analyzer change, report whether the new source connects (as iOS does).
     var status by remember { mutableStateOf<SourceStatus?>(null) }
@@ -173,6 +175,10 @@ fun SettingsScreen(
             }
             item {
                 Panel("Help & support", Icons.Outlined.HelpOutline) {
+                    whatsNewVersion?.let { version ->
+                        NavigationRow("What's new", "Highlights in version $version", Icons.Outlined.AutoAwesome, onWhatsNew)
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    }
                     NavigationRow("About & how to use", "NodeScope field guide", Icons.Outlined.Info, onAbout)
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     NavigationRow("Glossary", "What the terms in NodeScope mean", Icons.AutoMirrored.Outlined.MenuBook, onGlossary)

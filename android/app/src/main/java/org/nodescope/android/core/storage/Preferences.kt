@@ -32,10 +32,13 @@ interface PreferencesStore {
     suspend fun setDistanceUnit(unit: DistanceUnit) {}
     suspend fun setBackgroundTexture(enabled: Boolean) {}
     suspend fun setOnboarded(value: Boolean) {}
+    /** Records [current] as the last What's New seen and returns the previous one (null if never recorded). */
+    suspend fun takeWhatsNewLastSeen(current: String): String? = current
 }
 private val Context.preferences by preferencesDataStore("nodescope")
-class AndroidPreferences(context: Context) : PreferencesStore {
+class AndroidPreferences(context: Context, private val appVersion: String = "") : PreferencesStore {
     private val store = context.preferences
+    private val whatsNewLastSeen = stringPreferencesKey("whats_new_last_seen")
     private val host = stringPreferencesKey("host")
     private val onboarded = booleanPreferencesKey("onboarded")
     private val appearance = stringPreferencesKey("appearance")
@@ -55,7 +58,11 @@ class AndroidPreferences(context: Context) : PreferencesStore {
             it[backgroundTexture] ?: true)
     }
     override suspend fun selectSource(host: String) {
-        store.edit { it[this.host] = host; it[onboarded] = true; it.remove(region) }
+        store.edit {
+            // Finishing onboarding counts as having seen this build's highlights: new installs aren't shown them.
+            if (it[onboarded] != true && appVersion.isNotEmpty()) it[whatsNewLastSeen] = appVersion
+            it[this.host] = host; it[onboarded] = true; it.remove(region)
+        }
     }
     override suspend fun setRegion(region: String?) {
         store.edit { if (region == null) it.remove(this.region) else it[this.region] = region }
@@ -66,4 +73,9 @@ class AndroidPreferences(context: Context) : PreferencesStore {
     override suspend fun setDistanceUnit(unit: DistanceUnit) { store.edit { it[distanceUnit] = unit.name } }
     override suspend fun setBackgroundTexture(enabled: Boolean) { store.edit { it[backgroundTexture] = enabled } }
     override suspend fun setOnboarded(value: Boolean) { store.edit { it[onboarded] = value } }
+    override suspend fun takeWhatsNewLastSeen(current: String): String? {
+        var previous: String? = null
+        store.edit { previous = it[whatsNewLastSeen]; it[whatsNewLastSeen] = current }
+        return previous
+    }
 }

@@ -4,6 +4,7 @@ struct SettingsScreen: View {
     let resetID: UUID
 
     @Environment(AnalyzerSettings.self) private var settings
+    @State private var showsWhatsNew = false
     @Environment(LiveFeedService.self) private var liveFeed
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(ObserverRegionLookup.self) private var observerRegionLookup
@@ -136,6 +137,20 @@ struct SettingsScreen: View {
                     }
 
                     SettingsPanel(title: "Help & Support", symbol: "questionmark.circle") {
+                        if let latest = WhatsNew.latest {
+                            Button { showsWhatsNew = true } label: {
+                                SettingsNavigationRow(
+                                    title: "What's New",
+                                    value: "Highlights in version \(latest.version)",
+                                    symbol: "sparkles"
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .sheet(isPresented: $showsWhatsNew) { WhatsNewSheet(releases: [latest]) }
+
+                            Divider()
+                        }
+
                         NavigationLink {
                             AboutScreen()
                         } label: {

@@ -205,6 +205,8 @@
 		597B05A58DFD199CB78FAAC0 /* PacketDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1995A14EECD0A20DEE44C713 /* PacketDetailViewModel.swift */; };
 		5A2BF6C3CBC0FF87E26AA483 /* MonaspaceNeon-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 13D380B1339F9747DE599399 /* MonaspaceNeon-SemiBold.otf */; };
 		5D1CF26F5BFB0EA0CEB372DF /* GlossaryScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482B3FDFDF3F46A70BC134B5 /* GlossaryScreen.swift */; };
+		A1B2C3D4E5F6A7B8C9D0E1F2 /* WhatsNew.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6A7B8C9D0E1F2A3 /* WhatsNew.swift */; };
+		C3D4E5F6A7B8C9D0E1F2A3B4 /* whats-new.json in Resources */ = {isa = PBXBuildFile; fileRef = D4E5F6A7B8C9D0E1F2A3B4C5 /* whats-new.json */; };
 		61E23F61BF8C5250F0A86106 /* glossary.json in Resources */ = {isa = PBXBuildFile; fileRef = 4C9B9243A3286306042C94FD /* glossary.json */; };
 		6444F2623473A5D38104F233 /* MapLocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E1E309A8A435B7E5A61ADE9 /* MapLocationManager.swift */; };
 		67B0687608CD2E73C4D606AE /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 156F101DF4008880E14D2E48 /* APIClient.swift */; };
@@ -463,6 +465,8 @@
 		3EA14BD4E3A32FA9B63B54B0 /* PacketReplayStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketReplayStore.swift; sourceTree = "<group>"; };
 		3F21B6371EF991370D1D03DF /* MonaspaceNeon-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "MonaspaceNeon-Regular.otf"; sourceTree = "<group>"; };
 		482B3FDFDF3F46A70BC134B5 /* GlossaryScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlossaryScreen.swift; sourceTree = "<group>"; };
+		B2C3D4E5F6A7B8C9D0E1F2A3 /* WhatsNew.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhatsNew.swift; sourceTree = "<group>"; };
+		D4E5F6A7B8C9D0E1F2A3B4C5 /* whats-new.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "whats-new.json"; sourceTree = "<group>"; };
 		4870DE8A0F792B95F998D889 /* NodeCheckScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeCheckScreen.swift; sourceTree = "<group>"; };
 		4B3BFBBCF86390A7CA4DC384 /* ChannelDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelDetailScreen.swift; sourceTree = "<group>"; };
 		4BA4982D8889A079D6CEBCB9 /* AnalyzerSourcePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyzerSourcePicker.swift; sourceTree = "<group>"; };
@@ -803,6 +807,7 @@
 				13D380B1339F9747DE599399 /* MonaspaceNeon-SemiBold.otf */,
 				3F21B6371EF991370D1D03DF /* MonaspaceNeon-Regular.otf */,
 				4C9B9243A3286306042C94FD /* glossary.json */,
+				D4E5F6A7B8C9D0E1F2A3B4C5 /* whats-new.json */,
 				31CCA84E306DBC7A00D01155 /* LaunchScreen.storyboard */,
 			);
 			path = Resources;
@@ -813,6 +818,7 @@
 			children = (
 				37795BF9DC79999D3E6DE8A3 /* AboutScreen.swift */,
 				482B3FDFDF3F46A70BC134B5 /* GlossaryScreen.swift */,
+				B2C3D4E5F6A7B8C9D0E1F2A3 /* WhatsNew.swift */,
 				32A0B4E835C764626FE71370 /* AnalyzerSourceLogo.swift */,
 				4BA4982D8889A079D6CEBCB9 /* AnalyzerSourcePicker.swift */,
 				78E6E9CACE3528A4828C2A2D /* AppearanceSettings.swift */,
@@ -1078,6 +1084,7 @@
 				5A2BF6C3CBC0FF87E26AA483 /* MonaspaceNeon-SemiBold.otf in Resources */,
 				4AEBBBA4B1200C2E2CEA82EF /* MonaspaceNeon-Regular.otf in Resources */,
 				61E23F61BF8C5250F0A86106 /* glossary.json in Resources */,
+				C3D4E5F6A7B8C9D0E1F2A3B4 /* whats-new.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1161,6 +1168,7 @@
 				67B0687608CD2E73C4D606AE /* APIClient.swift in Sources */,
 				991103E1F7308562934622AD /* AboutScreen.swift in Sources */,
 				5D1CF26F5BFB0EA0CEB372DF /* GlossaryScreen.swift in Sources */,
+				A1B2C3D4E5F6A7B8C9D0E1F2 /* WhatsNew.swift in Sources */,
 				316FE00C305E1C9400FBA3B4 /* AnalyzerDiagnosticsService.swift in Sources */,
 				B5BD63C91E6B93FAA59ED007 /* ActivePing.swift in Sources */,
 				315E3A0F309B7CD800BAEC98 /* CoverageRaster.swift in Sources */,

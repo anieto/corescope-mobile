@@ -144,6 +144,12 @@ struct ExploreScreen: View {
                     NodePlannerScreen()
                 case .nodeCheck:
                     NodeCheckScreen()
+                case .estimatedCoverage:
+                    EstimatedCoverageScreen()
+                case .linkProfile:
+                    LinkProfileScreen()
+                case .savedPlans:
+                    SavedPlansScreen()
                 }
             }
                 }
@@ -174,6 +180,8 @@ struct ExploreScreen: View {
         .onChange(of: appNavigationStore.requestID) {
             openRequestedDeepLinkIfAvailable()
         }
+        // A request made before this tab first loaded (What's New on launch) needs no data to open.
+        .onAppear { openRequestedDeepLinkIfAvailable() }
         .task(id: settings.sourceSession.id) {
             updateVisibleItems()
             nodeViewModel.resetForAnalyzerSource()
@@ -278,6 +286,22 @@ struct ExploreScreen: View {
         guard lastHandledNavigationRequestID != appNavigationStore.requestID else { return }
 
         switch appNavigationStore.destination {
+        case .feature(let feature):
+            // Opened from What's New: Node Planner's tools sit under Node Planner, as when tapped.
+            navigationPath = NavigationPath()
+            switch feature {
+            case .nodeCheck: navigationPath.append(ExploreDestination.nodeCheck)
+            case .nodePlanner: navigationPath.append(ExploreDestination.nodePlanner)
+            case .estimatedCoverage:
+                navigationPath.append(ExploreDestination.nodePlanner)
+                navigationPath.append(ExploreDestination.estimatedCoverage)
+            case .linkProfile:
+                navigationPath.append(ExploreDestination.nodePlanner)
+                navigationPath.append(ExploreDestination.linkProfile)
+            case .savedPlans:
+                navigationPath.append(ExploreDestination.nodePlanner)
+                navigationPath.append(ExploreDestination.savedPlans)
+            }
         case .node(let publicKey):
             guard let node = nodeViewModel.nodes.first(where: {
                 $0.publicKey.caseInsensitiveCompare(publicKey) == .orderedSame
@@ -514,7 +538,7 @@ private struct FavoritesScreen: View {
 }
 
 private enum ExploreDestination: Hashable {
-    case livePackets, favorites, activity, nodePlanner, nodeCheck
+    case livePackets, favorites, activity, nodePlanner, nodeCheck, estimatedCoverage, linkProfile, savedPlans
 }
 
 private struct ExploreEmptyGuidance: View {

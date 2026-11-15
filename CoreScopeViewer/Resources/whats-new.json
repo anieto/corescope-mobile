@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "releases": [
+    {
+      "version": "0.10.6",
+      "items": [
+        {
+          "id": "estimated-coverage",
+          "title": "Estimated Coverage (Beta)",
+          "detail": "Place a transmitter anywhere and see where it's likely to be heard, based on terrain and your radio settings. Tap the map to check any spot.",
+          "icon": "coverage",
+          "destination": "estimatedCoverage"
+        },
+        {
+          "id": "link-profile",
+          "title": "Link Profile",
+          "detail": "Check whether two locations can hear each other: see the terrain between them, how much clearance the signal has, and the expected margin.",
+          "icon": "linkProfile",
+          "destination": "linkProfile"
+        },
+        {
+          "id": "saved-plans",
+          "title": "Saved Plans",
+          "detail": "Save link profiles and coverage studies, with their results, and pick up where you left off. Candidate sites live here too.",
+          "icon": "savedPlans",
+          "destination": "savedPlans"
+        },
+        {
+          "id": "ipad-mac",
+          "title": "Better on iPad and Mac",
+          "detail": "Cleaner sidebars on iPad, and keyboard shortcuts: ⌘1–⌘5 switch tabs, ⌘F searches, ⌘R refreshes.",
+          "icon": "keyboard",
+          "platforms": ["ios"]
+        }
+      ]
+    }
+  ]
+}

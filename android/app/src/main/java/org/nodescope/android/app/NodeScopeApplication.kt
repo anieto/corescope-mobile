@@ -26,7 +26,7 @@ class NodeScopeApplication : Application() {
     val container: AppContainer by lazy { AppContainer(this) }
 }
 class AppContainer(application: Application) {
-    val preferences = AndroidPreferences(application)
+    val preferences = AndroidPreferences(application, BuildConfig.VERSION_NAME)
     val client = OkHttpClient.Builder().addInterceptor { chain ->
         chain.proceed(chain.request().newBuilder().header("User-Agent", "NodeScope-Android/${BuildConfig.VERSION_NAME}").build())
     }.connectTimeout(15, TimeUnit.SECONDS)

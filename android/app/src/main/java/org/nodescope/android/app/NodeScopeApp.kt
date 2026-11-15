@@ -285,6 +285,30 @@ internal fun AppShell(
             restoreState = true
         }
     }
+    // What's New: once per update with highlights, recorded as soon as it is shown so it never repeats.
+    val whatsNewReleases = remember { org.nodescope.android.feature.settings.WhatsNew.load(context) }
+    var whatsNew by rememberSaveable { mutableStateOf<List<String>?>(null) }
+    LaunchedEffect(Unit) {
+        val store = (context.applicationContext as NodeScopeApplication).container.preferences
+        val lastSeen = store.takeWhatsNewLastSeen(org.nodescope.android.BuildConfig.VERSION_NAME)
+        val pending = org.nodescope.android.feature.settings.WhatsNew.pending(whatsNewReleases, lastSeen, org.nodescope.android.BuildConfig.VERSION_NAME)
+        if (pending.isNotEmpty()) whatsNew = pending.map { it.version }
+    }
+    fun openFeature(feature: org.nodescope.android.feature.settings.AppFeature) {
+        // Node Planner's tools sit under Explore → Node Planner, as when tapped there.
+        selectTab(Destination.EXPLORE)
+        when (feature) {
+            org.nodescope.android.feature.settings.AppFeature.nodeCheck -> nav.navigate(NodeCheckRoute())
+            org.nodescope.android.feature.settings.AppFeature.nodePlanner -> nav.navigate(NodePlannerRoute)
+            org.nodescope.android.feature.settings.AppFeature.estimatedCoverage -> { nav.navigate(NodePlannerRoute); nav.navigate(EstimatedCoverageRoute()) }
+            org.nodescope.android.feature.settings.AppFeature.linkProfile -> { nav.navigate(NodePlannerRoute); nav.navigate(LinkProfileRoute()) }
+            org.nodescope.android.feature.settings.AppFeature.savedPlans -> { nav.navigate(NodePlannerRoute); nav.navigate(SavedPlansRoute()) }
+        }
+    }
+    whatsNew?.let { versions ->
+        org.nodescope.android.feature.settings.WhatsNewDialog(whatsNewReleases.filter { it.version in versions }.sortedWith { a, b ->
+            org.nodescope.android.feature.settings.WhatsNew.compare(b.version, a.version) }, onDismiss = { whatsNew = null }, onOpen = ::openFeature)
+    }
     val selection = AnalyzerSelection(preferences.host, preferences.region)
     var replay by remember { mutableStateOf<RouteReplay?>(null) }
     // Explore's "Observers online" opens Observers filtered to recently active ones.
@@ -760,7 +784,9 @@ internal fun AppShell(
                                 onDiagnostics = { if (diagnostics != null) nav.navigate(DiagnosticsRoute) },
                                 onStorage = { if (cacheStorage != null) nav.navigate(StorageRoute) },
                                 onAbout = { nav.navigate(AboutRoute) }, onGlossary = { nav.navigate(GlossaryRoute) }, onMapLab = { nav.navigate(MapLabRoute) },
-                                onSupport = { runCatching { uriHandler.openUri(SUPPORT_URL) } }, onDistanceUnit = onDistanceUnit, onBackgroundTexture = onBackgroundTexture)
+                                onSupport = { runCatching { uriHandler.openUri(SUPPORT_URL) } }, onDistanceUnit = onDistanceUnit, onBackgroundTexture = onBackgroundTexture,
+                                whatsNewVersion = org.nodescope.android.feature.settings.WhatsNew.latest(whatsNewReleases, org.nodescope.android.BuildConfig.VERSION_NAME)?.version,
+                                onWhatsNew = { org.nodescope.android.feature.settings.WhatsNew.latest(whatsNewReleases, org.nodescope.android.BuildConfig.VERSION_NAME)?.let { whatsNew = listOf(it.version) } })
                         }
                         screen<DiagnosticsRoute> { diagnostics?.let { DiagnosticsScreen(it, preferences.host, currentFeed.connection) } }
                         screen<FavoritesRoute> { backStack ->

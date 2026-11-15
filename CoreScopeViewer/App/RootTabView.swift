@@ -6,6 +6,7 @@ struct RootTabView: View {
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(AppNavigationStore.self) private var appNavigationStore
+    @State private var whatsNew: PendingWhatsNew?
 
     fileprivate enum Tab: String, Hashable, CaseIterable {
         case map
@@ -124,6 +125,15 @@ struct RootTabView: View {
                     .transition(.opacity)
             }
         }
+        .sheet(item: $whatsNew) { pending in
+            WhatsNewSheet(releases: pending.releases)
+        }
+        .task {
+            // Once per update with highlights; recorded as soon as shown, so it never repeats.
+            let pending = WhatsNew.pending(lastSeen: UserDefaults.standard.string(forKey: WhatsNew.lastSeenDefaultsKey))
+            WhatsNew.markCurrentSeen()
+            if !pending.isEmpty { whatsNew = PendingWhatsNew(releases: pending) }
+        }
         .onChange(of: packetReplayStore.requestID) {
             selectedTab = .map
         }
@@ -133,7 +143,7 @@ struct RootTabView: View {
                 selectedTab = .map
             case .observer, .activeObservers:
                 selectedTab = .observers
-            case .node, .channel, .packet:
+            case .node, .channel, .packet, .feature:
                 selectedTab = .explore
             case nil:
                 break
@@ -265,4 +275,10 @@ extension View {
     func keyboardCommand(_ command: KeyboardCommands.Command, action: @escaping () -> Void) -> some View {
         modifier(KeyboardCommandModifier(command: command, action: action))
     }
+}
+
+/// The highlights the launch sheet shows.
+private struct PendingWhatsNew: Identifiable {
+    let id = UUID()
+    let releases: [WhatsNewRelease]
 }

@@ -43,6 +43,7 @@ struct NodeScopeApp: App {
                     }
                 } else {
                     OnboardingScreen {
+                        WhatsNew.markCurrentSeen()
                         hasCompletedOnboarding = true
                     }
                 }
