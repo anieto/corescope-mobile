@@ -87,15 +87,20 @@ struct SavedStudyActions: View {
 
     var body: some View {
         HStack {
-            Button("Save", systemImage: "square.and.arrow.down") { draft = snapshot() }
-                .disabled(snapshot() == nil)
+            Button { draft = snapshot() } label: {
+                Label("Save", systemImage: "square.and.arrow.down")
+                    .frame(maxWidth: .infinity)
+            }
+            .disabled(snapshot() == nil)
             NavigationLink {
                 SavedPlansScreen(kind: kind)
             } label: {
                 Label("Open", systemImage: "folder")
+                    .frame(maxWidth: .infinity)
             }
         }
-        .buttonStyle(.bordered)
+        .buttonStyle(.borderedProminent)
+        .tint(.blue)
         .sheet(item: $draft) { study in
             SaveStudySheet(study: study, didSave: didSave)
         }

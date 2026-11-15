@@ -288,7 +288,7 @@ private fun SummaryCard(report: NodeCheckReport, onLiveTest: () -> Unit, onNodeP
                     Icon(Icons.Outlined.SettingsInputAntenna, null); Spacer(Modifier.width(6.dp)); Text("Run live test")
                 }
                 onNodePage?.let { open ->
-                    OutlinedButton({ open(node.publicKey) }, Modifier.fillMaxWidth()) {
+                    Button({ open(node.publicKey) }, Modifier.fillMaxWidth()) {
                         Icon(Icons.Outlined.Info, null); Spacer(Modifier.width(6.dp)); Text("Open node page")
                     }
                 }

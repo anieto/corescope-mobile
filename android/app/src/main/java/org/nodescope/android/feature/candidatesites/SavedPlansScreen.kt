@@ -90,8 +90,8 @@ fun SavedStudyActions(snapshot: () -> SavedStudy?, didSave: (SavedStudy) -> Unit
     var draft by remember { mutableStateOf<SavedStudy?>(null) }
     val available = snapshot() != null
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = { draft = snapshot() }, enabled = available) { Text("Save") }
-        OutlinedButton(onClick = onOpen) { Text("Open") }
+        Button(onClick = { draft = snapshot() }, modifier = Modifier.weight(1f), enabled = available) { Text("Save") }
+        Button(onClick = onOpen, modifier = Modifier.weight(1f)) { Text("Open") }
     }
     draft?.let { study -> SaveStudyDialog(study, { draft = null }) { saved -> draft = null; didSave(saved) } }
 }

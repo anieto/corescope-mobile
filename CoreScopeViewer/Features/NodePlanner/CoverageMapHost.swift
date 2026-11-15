@@ -99,7 +99,10 @@ struct CoverageMapHost: UIViewRepresentable {
         var pendingPlacement: UUID?
         var needsPlacementFrame = false
         var placementSettled: (UUID) -> Void = { _ in }
-        var bottomInset: CGFloat = 0
+        var bottomInset: CGFloat = 0 {
+            didSet { sampleDetailsBottomConstraint?.constant = -(bottomInset + 12) }
+        }
+        private var sampleDetailsBottomConstraint: NSLayoutConstraint?
         private var pins: [String: Pin] = [:]
         private var nodesByPin: [String: MeshNode] = [:]
         private var lastTransmitter: CLLocationCoordinate2D?
@@ -124,6 +127,7 @@ struct CoverageMapHost: UIViewRepresentable {
             if let inspectionPin, map.view(for: inspectionPin)?.frame.contains(location) == true { return }
             sampleDetails?.removeFromSuperview()
             sampleDetails = nil
+            sampleDetailsBottomConstraint = nil
             if let inspectionPin { map.removeAnnotation(inspectionPin) }
             inspectionPin = nil
             let coordinate = map.convert(location, toCoordinateFrom: map)
@@ -275,6 +279,7 @@ struct CoverageMapHost: UIViewRepresentable {
             trace.lifecycle("remove layer execution=\(executionID?.uuidString ?? "none")")
             sampleDetails?.removeFromSuperview()
             sampleDetails = nil
+            sampleDetailsBottomConstraint = nil
             if let inspectionPin { map.removeAnnotation(inspectionPin) }
             inspectionPin = nil
             layer = nil
@@ -339,6 +344,7 @@ struct CoverageMapHost: UIViewRepresentable {
                 guard let self else { return }
                 self.sampleDetails?.removeFromSuperview()
                 self.sampleDetails = nil
+                self.sampleDetailsBottomConstraint = nil
                 if let pin = self.inspectionPin { map?.removeAnnotation(pin) }
                 self.inspectionPin = nil
             }, for: .touchUpInside)
@@ -352,11 +358,15 @@ struct CoverageMapHost: UIViewRepresentable {
             stack.translatesAutoresizingMaskIntoConstraints = false
             card.contentView.addSubview(stack)
             map.addSubview(card)
+            // The map extends underneath the floating panel, so its UIKit safe area
+            // does not include that panel. Reserve the measured panel height explicitly.
+            let bottomConstraint = card.bottomAnchor.constraint(
+                equalTo: map.safeAreaLayoutGuide.bottomAnchor, constant: -(bottomInset + 12))
+            sampleDetailsBottomConstraint = bottomConstraint
             NSLayoutConstraint.activate([
-                // The compact workspace reserves its result panel in the map's safe area.
-                // Anchor here so the card follows that panel and window-size changes.
-                card.bottomAnchor.constraint(equalTo: map.safeAreaLayoutGuide.bottomAnchor, constant: -12),
-                card.leadingAnchor.constraint(equalTo: map.safeAreaLayoutGuide.leadingAnchor, constant: 16),
+                bottomConstraint,
+                card.centerXAnchor.constraint(equalTo: map.safeAreaLayoutGuide.centerXAnchor),
+                card.leadingAnchor.constraint(greaterThanOrEqualTo: map.safeAreaLayoutGuide.leadingAnchor, constant: 16),
                 card.trailingAnchor.constraint(lessThanOrEqualTo: map.safeAreaLayoutGuide.trailingAnchor, constant: -16),
                 card.widthAnchor.constraint(lessThanOrEqualToConstant: 320),
                 stack.leadingAnchor.constraint(equalTo: card.contentView.leadingAnchor, constant: 12),

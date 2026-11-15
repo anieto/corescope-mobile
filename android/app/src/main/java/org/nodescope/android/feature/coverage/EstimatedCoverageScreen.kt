@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
+import org.nodescope.android.core.design.ActivityAmber
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -240,7 +241,7 @@ internal fun EstimatedCoverageScreen(model: EstimatedCoverageViewModel, nodes: L
                         Icon(Icons.Filled.Warning, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error)
                         Text(failure.coverageMessage(), color = MaterialTheme.colorScheme.error)
                     }
-                    OutlinedButton(onClick = model::calculate, enabled = model.canCalculate) { Text("Try Again") }
+                    Button(onClick = model::calculate, enabled = model.canCalculate, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = ActivityAmber, contentColor = Color.White)) { Text("Try Again") }
                 }
                 result != null -> {
                     val counts = remember(result.executionID) { result.sampleCounts() }
@@ -257,7 +258,7 @@ internal fun EstimatedCoverageScreen(model: EstimatedCoverageViewModel, nodes: L
                         // A batch stopped early (its budget or low memory): Continue picks up where it left off.
                         Text("This batch left samples unfinished. Continue to calculate them using the same inputs and terrain.",
                             style = MaterialTheme.typography.bodySmall, color = secondary)
-                        Button(onClick = { model.calculate(continuing = true) }, enabled = model.canCalculate) { Text("Continue calculation") }
+                        Button(onClick = { model.calculate(continuing = true) }, enabled = model.canCalculate, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = ActivityAmber, contentColor = Color.White)) { Text("Continue calculation") }
                     } else if (result.area.workLimited || pathLimited) {
                         Text(if (result.area.chargedSamples >= result.limits.areaSamples || result.area.chargedGeometry >= result.limits.areaGeometry)
                             "The study exhausted its work budget. Some samples were not calculated. Try a smaller radius or wider sample spacing."
@@ -281,14 +282,14 @@ internal fun EstimatedCoverageScreen(model: EstimatedCoverageViewModel, nodes: L
                     }, style = MaterialTheme.typography.titleMedium)
                     Text(setupSummary(model, unit), style = MaterialTheme.typography.bodyMedium, color = secondary)
                     readyHint(model, problem)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = secondary) }
-                    Button(onClick = model::calculate, enabled = model.canCalculate) { Text("Calculate coverage") }
+                    Button(onClick = model::calculate, enabled = model.canCalculate, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = ActivityAmber, contentColor = Color.White)) { Text("Calculate coverage") }
                 }
             }
             model.inputError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
         }
         if (!model.isChoosingLocation && model.coordinate != null && !model.isCalculating) {
-            // A primary-coloured outline, as Link Profile's Reset.
-            OutlinedButton(onClick = model::clearTransmitter, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+            // A blue tonal fill keeps Reset subordinate to calculation.
+            FilledTonalButton(onClick = model::clearTransmitter, colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer),
                 contentPadding = PaddingValues(horizontal = 12.dp)) {
                 Icon(Icons.Filled.Refresh, contentDescription = null, Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
@@ -400,7 +401,7 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
         Text("Your first coverage study", style = MaterialTheme.typography.titleMedium)
         Text("1. Place your transmitter", style = MaterialTheme.typography.titleSmall)
         Text("Touch and hold the map, or open Transmitter settings to enter coordinates or use your location.", style = MaterialTheme.typography.bodyMedium)
-        if (model.coordinate == null) OutlinedButton(onClick = { model.isChoosingLocation = true }) { Text("Choose on map") }
+        if (model.coordinate == null) Button(onClick = { model.isChoosingLocation = true }) { Text("Choose on map") }
         Text("2. Check the equipment", style = MaterialTheme.typography.titleSmall)
         Text("Open the transmitter, radio and receiver sections. Set antenna heights above ground and choose the radio preset used by your mesh.",
             style = MaterialTheme.typography.bodyMedium)
@@ -429,8 +430,8 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
         CoverageAntennaSetting(model, "txGain")
         CoverageNumberField(model, "txLoss", "System loss", "dB", GlossaryTerm.CABLE_LOSS)
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { model.isChoosingLocation = true }) { Text(if (point != null) "Choose new point" else "Choose on map") }
-            OutlinedButton(onClick = { showsCoordinates = !showsCoordinates }) { Text(if (showsCoordinates) "Hide coordinates" else "Enter coordinates") }
+            Button(onClick = { model.isChoosingLocation = true }) { Text(if (point != null) "Choose new point" else "Choose on map") }
+            Button(onClick = { showsCoordinates = !showsCoordinates }) { Text(if (showsCoordinates) "Hide coordinates" else "Enter coordinates") }
         }
         CoverageCurrentLocationButton(model)
         if (showsCoordinates) {
@@ -759,12 +760,12 @@ private fun spacingLabel(meters: Int, unit: DistanceUnit): String {
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { cancel() }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = {
+            Button(onClick = {
                 generation++
                 locating = true
                 message = null
                 if (hasLocationPermission(context)) locate() else permission.launch(LOCATION_PERMISSIONS)
-            }, enabled = !locating) { Text("Use current location") }
+            }, modifier = Modifier.weight(1f), enabled = !locating) { Text("Use current location") }
             if (locating) {
                 CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                 TextButton(onClick = { cancel() }) { Text("Cancel") }

@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
+import org.nodescope.android.core.design.ActivityAmber
 import androidx.compose.runtime.*
 import org.nodescope.android.core.design.meshCardColors
 import org.nodescope.android.core.design.meshCardColor
@@ -248,7 +249,7 @@ private fun LinkHeader(state: LinkProfileViewModel.State, selecting: String?, pl
             // Reopened from Saved Plans: no elevation or analysis until asked for.
             state.awaitingCalculation -> {
                 Text("Saved inputs · No calculated result", style = MaterialTheme.typography.titleMedium)
-                Button(onClick = onRetry) { Text("Calculate") }
+                Button(onClick = onRetry, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = ActivityAmber, contentColor = Color.White)) { Text("Calculate") }
             }
             state.loading -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
@@ -256,7 +257,7 @@ private fun LinkHeader(state: LinkProfileViewModel.State, selecting: String?, pl
             }
             state.error != null -> {
                 Text(state.error, color = MaterialTheme.colorScheme.error)
-                TextButton(onClick = onRetry) { Text("Try Again") }
+                Button(onClick = onRetry, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = ActivityAmber, contentColor = Color.White)) { Text("Try Again") }
             }
             result != null -> {
                 val (title, icon) = verdict(result.result.clearanceStatus)
@@ -272,8 +273,8 @@ private fun LinkHeader(state: LinkProfileViewModel.State, selecting: String?, pl
         }
     }
     if (selecting == null && anyPlaced) {
-        // A primary-coloured outline: the tonal fill nearly vanished on the light mesh.
-        OutlinedButton(onClick = onReset, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+        // A blue tonal fill keeps Reset subordinate to calculation.
+        FilledTonalButton(onClick = onReset, colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer),
             contentPadding = PaddingValues(horizontal = 12.dp)) {
             Icon(Icons.Filled.Refresh, contentDescription = null, Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
@@ -377,8 +378,8 @@ private fun PointCard(model: LinkProfileViewModel, state: LinkProfileViewModel.S
                 Text("Total height: ${total?.let { formatProfileHeight(it, distanceUnit) } ?: "—"}", style = MaterialTheme.typography.bodyMedium)
                 listOf("Gain $endpoint (dBi)", "Loss $endpoint (dB)").forEach { key -> ProfileField(key, state.fields.getValue(key)) { model.edit(key, it) } }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (BuildConfig.MAPS_CONFIGURED) TextButton(onClick = { onMove(endpoint) }) { Text(if (placed) "Choose new point" else "Choose on map") }
-                    TextButton(onClick = { coordinatesShown = !coordinatesShown }) { Text(if (coordinatesShown) "Hide coordinates" else "Enter coordinates") }
+                    if (BuildConfig.MAPS_CONFIGURED) Button(onClick = { onMove(endpoint) }) { Text(if (placed) "Choose new point" else "Choose on map") }
+                    Button(onClick = { coordinatesShown = !coordinatesShown }) { Text(if (coordinatesShown) "Hide coordinates" else "Enter coordinates") }
                 }
                 if (coordinatesShown) listOf("Latitude $endpoint", "Longitude $endpoint").forEach { key -> ProfileField(key, state.fields.getValue(key)) { model.edit(key, it) } }
             }

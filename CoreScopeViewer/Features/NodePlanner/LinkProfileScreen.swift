@@ -1204,7 +1204,9 @@ private struct LinkProfileHeader: View {
                 } label: {
                     Label("Reset", systemImage: "arrow.counterclockwise")
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.borderedProminent)
+                .tint(Color.blue.opacity(0.18))
+                .foregroundStyle(Color.blue)
             }
         }
     }
@@ -1231,12 +1233,23 @@ private struct LinkProfileHeader: View {
                 }
             } else if model.awaitsExplicitCalculation {
                 Text("Saved inputs · No calculated result").font(.headline)
-                Button("Calculate") { model.analyze() }.buttonStyle(.borderedProminent)
+                Button { model.analyze() } label: {
+                    Label("Calculate", systemImage: "dot.radiowaves.left.and.right")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(NodeScopeStyle.activity)
+                .foregroundStyle(.white)
             } else if let errorMessage = model.errorMessage {
                 Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.red)
-                Button("Try Again") { model.analyze() }
-                    .buttonStyle(.bordered)
+                Button { model.analyze() } label: {
+                    Label("Try Again", systemImage: "dot.radiowaves.left.and.right")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(NodeScopeStyle.activity)
+                .foregroundStyle(.white)
             } else if let result = model.result, !model.isAnalyzing {
                 let status = result.result.clearanceStatus
                 Label {
@@ -1383,7 +1396,8 @@ private struct LinkProfilePointCard: View {
                     HStack { actions }
                     VStack(alignment: .leading) { actions }
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.borderedProminent)
+                .tint(.blue)
                 if showsCoordinates {
                     LabeledContent("Latitude") {
                         TextField("Latitude", value: latitude, format: .number.precision(.fractionLength(0...6)))

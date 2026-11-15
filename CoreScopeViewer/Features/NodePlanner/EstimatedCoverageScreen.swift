@@ -1017,7 +1017,9 @@ private struct CoverageHeader: View {
                 } label: {
                     Label("Reset", systemImage: "arrow.counterclockwise")
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.borderedProminent)
+                .tint(Color.blue.opacity(0.18))
+                .foregroundStyle(Color.blue)
             }
         }
     }
@@ -1069,9 +1071,14 @@ private struct CoverageHeader: View {
             } else if let failure = model.runner.failure {
                 Label(failure.coverageMessage, systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.red)
-                Button("Try Again") { model.calculate(continuing: model.activeResult != nil) }
-                    .buttonStyle(.bordered)
-                    .disabled(!model.canCalculate)
+                Button { model.calculate(continuing: model.activeResult != nil) } label: {
+                    Label("Try Again", systemImage: "dot.radiowaves.left.and.right")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(NodeScopeStyle.activity)
+                .foregroundStyle(.white)
+                .disabled(!model.canCalculate)
             } else if let result = model.activeResult {
                 let counts = result.sampleCounts
                 Label {
@@ -1087,9 +1094,14 @@ private struct CoverageHeader: View {
                 if result.hasPendingWork {
                     Text("This batch left samples unfinished. Continue to calculate them using the same inputs and terrain.")
                         .font(.caption).foregroundStyle(.secondary)
-                    Button("Continue calculation") { model.calculate(continuing: true) }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(!model.canCalculate)
+                    Button { model.calculate(continuing: true) } label: {
+                        Label("Continue calculation", systemImage: "dot.radiowaves.left.and.right")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(NodeScopeStyle.activity)
+                    .foregroundStyle(.white)
+                    .disabled(!model.canCalculate)
                 } else if result.area.workLimited || result.nodes.run.nodesToEvaluate.contains(where: { result.nodes.run.status(for: $0).reason == .pathWorkLimit }) {
                     Text(result.area.chargedSamples >= Int64(result.limits.areaSamples)
                         || result.area.chargedGeometry >= Int64(result.limits.areaGeometry)
@@ -1120,10 +1132,15 @@ private struct CoverageHeader: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                Button("Calculate coverage") { model.calculate() }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!model.canCalculate)
-                    .padding(.top, 4)
+                Button { model.calculate() } label: {
+                    Label("Calculate coverage", systemImage: "dot.radiowaves.left.and.right")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(NodeScopeStyle.activity)
+                .foregroundStyle(.white)
+                .disabled(!model.canCalculate)
+                .padding(.top, 4)
             }
             if let inputError = model.inputError {
                 Text(inputError)
@@ -1306,7 +1323,8 @@ private struct CoverageTransmitterCard: View {
                     HStack { actions }
                     VStack(alignment: .leading) { actions }
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.borderedProminent)
+                .tint(.blue)
                 CoverageCurrentLocationButton(model: model)
                 if showsCoordinates {
                     LabeledContent {
@@ -1860,7 +1878,7 @@ private struct CoverageCurrentLocationButton: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Button("Use Current Location", systemImage: "location") {
+                Button {
                     locating = true
                     message = nil
                     manager.requestCurrentLocation { coordinate in
@@ -1875,8 +1893,12 @@ private struct CoverageCurrentLocationButton: View {
                         locating = false
                         message = "Couldn't get your location. Check location permission and services in Settings, or choose a point on the map."
                     }
+                } label: {
+                    Label("Use Current Location", systemImage: "location")
+                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.borderedProminent)
+                .tint(.blue)
                 .disabled(locating)
                 if locating {
                     ProgressView()

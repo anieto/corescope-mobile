@@ -1,6 +1,16 @@
 package org.nodescope.android.feature.coverage
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.withStyle
+import org.nodescope.android.core.design.LocalDistanceUnit
+import org.nodescope.android.core.design.MonaspaceNeon
+import org.nodescope.android.core.design.formatDistance
+import java.util.Locale
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material3.*
@@ -63,6 +73,9 @@ internal fun CoverageMap(model: EstimatedCoverageViewModel, modifier: Modifier, 
         val nodes = model.knownNodes
         val statuses = model.nodeStatuses
         val layer = model.layer?.takeIf { it.executionID == model.activeResult?.executionID }
+        // Selection belongs to this exact result; changing inputs or replacing the layer clears it.
+        var inspection by remember(layer?.executionID, transmitter, nodes, statuses) { mutableStateOf<CoverageMapInspection?>(null) }
+        val unit = LocalDistanceUnit.current
         var overlayFailure by remember { mutableStateOf<String?>(null) }
         CoverageMapAttachment(engine, layer) { overlayFailure = it }
 
@@ -90,13 +103,22 @@ internal fun CoverageMap(model: EstimatedCoverageViewModel, modifier: Modifier, 
             mapState.framed.value = true
             onPlacementSettled(placement)
         }
-        LaunchedEffect(engine.overlays, nodes, statuses, transmitter, model.transmitterName) {
+        // A completed or restored study owns its initial camera, as on iOS.
+        LaunchedEffect(engine.camera, layer?.executionID) {
+            val ready = engine.camera ?: return@LaunchedEffect
+            val current = layer ?: return@LaunchedEffect
+            val center = Coordinate.valid(current.raster.transmitter.latitude, current.raster.transmitter.longitude)
+                ?: return@LaunchedEffect
+            ready.animate(CameraMove.Center(center, studyZoom(current.raster.grid.radiusMeters)))
+            mapState.framed.value = true
+        }
+        LaunchedEffect(engine.overlays, nodes, statuses, transmitter, model.transmitterName, inspection) {
             engine.overlays?.setPins(nodes.mapNotNull { node ->
                 node.coordinate?.let { point ->
                     val status = statuses[node.publicKey]
                     MapPin(point, status.pinKind(), node.displayName + (status?.let { " · ${it.coverageLabel()}" } ?: ""))
                 }
-            } + listOfNotNull(transmitter?.let { MapPin(it, MapPin.Kind.TRANSMITTER, model.transmitterName ?: "Transmitter") }))
+            } + listOfNotNull(transmitter?.let { MapPin(it, MapPin.Kind.TRANSMITTER, model.transmitterName ?: "Transmitter") }) + listOfNotNull(inspection?.pin))
         }
         // A known node under the finger wins over the spot itself.
         val onLongPress: (MapTap) -> Unit = { tap ->
@@ -104,13 +126,36 @@ internal fun CoverageMap(model: EstimatedCoverageViewModel, modifier: Modifier, 
             if (spot != null) {
                 val node = engine.camera?.let { ready -> nodeNear(spot, nodes, ready, 28 * density) }
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                inspection = null
                 model.place(node?.coordinate ?: spot, node?.name?.takeIf { it.isNotBlank() })
             }
         }
+        val onTap: (MapTap) -> Boolean = { tap ->
+            val point = tap.coordinate
+            val camera = engine.camera
+            if (point == null || camera == null) false else {
+                val node = nodeNear(point, nodes, camera, 28 * density)
+                inspection = if (node != null) {
+                    val status = statuses[node.publicKey]
+                    val margin = status?.adjustedMarginDb
+                    val budget = model.activeResult?.budget
+                    CoverageMapInspection(node.displayName, status?.coverageLabel() ?: "Not evaluated",
+                        margin?.let { value -> budget?.let { value + it.sensitivityDbm + it.reserveDb } }, margin)
+                } else if (transmitter != null && pinNear(point, transmitter, camera, 28 * density)) {
+                    CoverageMapInspection(model.transmitterName ?: "Transmitter", "Transmitter")
+                } else {
+                    layer?.let { current ->
+                        coverageSampleInspection(current.raster.sample(point.latitude, point.longitude),
+                            model.activeResult?.budget, point, current.raster.grid.spacingMeters)
+                    }
+                }
+                true
+            }
+        }
         when (engine) {
-            is MapLibreEngine -> MapLibreEngineHost(engine, choice.cartoStyle(dark), retry, insetPx, camera, { camera = it }, { false },
+            is MapLibreEngine -> MapLibreEngineHost(engine, choice.cartoStyle(dark), retry, insetPx, camera, { camera = it }, onTap,
                 Modifier.fillMaxSize(), onLongPress = onLongPress)
-            is GoogleMapEngine -> GoogleMapEngineHost(engine, choice.googleType, dark, insetPx, camera, { camera = it }, { false },
+            is GoogleMapEngine -> GoogleMapEngineHost(engine, choice.googleType, dark, insetPx, camera, { camera = it }, onTap,
                 Modifier.fillMaxSize(), hidesBusinesses = true, onLongPress = onLongPress)
         }
         // Prompts live in the header; the map only carries the legend once there is a result.
@@ -146,6 +191,34 @@ internal fun CoverageMap(model: EstimatedCoverageViewModel, modifier: Modifier, 
             Snackbar(Modifier.align(Alignment.BottomCenter).padding(horizontal = 16.dp)
                 .padding(bottom = bottomInset + if (engine is MapLibreEngine) 44.dp else 12.dp),
                 action = { TextButton(onClick = model::undoLastChange) { Text("Undo", color = SnackbarDefaults.actionColor) } }) { Text(offer.message) }
+        }
+        inspection?.let { selected ->
+            Surface(Modifier.align(Alignment.BottomCenter)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = bottomInset + (if (engine is MapLibreEngine) 44.dp else 12.dp)
+                    + if (model.undo != null) 64.dp else 0.dp)
+                .widthIn(max = 320.dp), shape = MaterialTheme.shapes.large,
+                tonalElevation = 3.dp, shadowElevation = 4.dp) {
+                Column(Modifier.heightIn(max = 280.dp).verticalScroll(rememberScrollState()).padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(selected.title, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+                        IconButton(onClick = { inspection = null }) {
+                            Icon(Icons.Outlined.Close, "Close sample details")
+                        }
+                    }
+                    selected.status?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+                    selected.receiveDbm?.let {
+                        CoverageInspectionValue("Predicted RX", String.format(Locale.US, "%.1f dBm", it))
+                    }
+                    selected.marginDb?.let {
+                        CoverageInspectionValue("Margin after reserve", String.format(Locale.US, "%.1f dB", it))
+                    }
+                    selected.spacingMeters?.let {
+                        CoverageInspectionValue("Grid spacing", formatDistance(it / 1000.0, unit))
+                    }
+                }
+            }
         }
         // Google draws its own logo and attribution on the map.
         if (engine is MapLibreEngine) Row(Modifier.align(Alignment.BottomEnd).padding(bottom = bottomInset)) {
@@ -183,4 +256,39 @@ internal fun studyZoom(radiusMeters: Int): Double = when {
     radiusMeters <= 20_000 -> 9.0
     radiusMeters <= 50_000 -> 8.0
     else -> 7.0
+}
+
+/** Display-only selection; RF values always come from the completed study, never current edits. */
+internal data class CoverageMapInspection(val title: String, val status: String? = null,
+    val receiveDbm: Double? = null, val marginDb: Double? = null, val spacingMeters: Int? = null,
+    val pin: MapPin? = null)
+
+internal fun CoverageRasterSample.pinKind(): MapPin.Kind = when (state) {
+    CoverageRasterClass.aboveThreshold -> MapPin.Kind.COVERAGE_STRONG
+    CoverageRasterClass.limitedHeadroom -> MapPin.Kind.COVERAGE_LIMITED
+    CoverageRasterClass.belowThreshold -> MapPin.Kind.COVERAGE_BELOW
+    else -> MapPin.Kind.COVERAGE_UNKNOWN
+}
+
+private fun pinNear(point: Coordinate, pin: Coordinate, camera: MapCamera, reach: Float): Boolean {
+    val (x, y) = camera.toScreen(point)
+    val (px, py) = camera.toScreen(pin)
+    return kotlin.math.abs(x - px) <= reach * 0.75f && y - py in -reach * 1.7f..reach * 0.45f
+}
+
+internal fun coverageSampleInspection(sample: CoverageRasterSample, budget: CoverageLinkBudget?,
+    coordinate: Coordinate, spacingMeters: Int): CoverageMapInspection? {
+    if (sample.state == CoverageRasterClass.outsideAnalysis) return null
+    val reception = sample.lossDb?.let { budget?.reception(it) }
+    return CoverageMapInspection("Nearby grid sample", if (reception == null) "No usable prediction" else null,
+        reception?.receiveLevelDbm, reception?.adjustedMarginDb, spacingMeters,
+        MapPin(coordinate, sample.pinKind(), "Nearby grid sample"))
+}
+
+@Composable
+private fun CoverageInspectionValue(label: String, value: String) {
+    Text(buildAnnotatedString {
+        append("$label: ")
+        withStyle(SpanStyle(fontFamily = MonaspaceNeon)) { append(value) }
+    }, style = MaterialTheme.typography.bodyMedium)
 }

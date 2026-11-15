@@ -493,7 +493,8 @@ private struct NodeCheckSummaryCard: View {
                         Label("Open Node Page", systemImage: "info.circle")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.borderedProminent)
+                    .tint(.blue)
                 }
             }
         }
