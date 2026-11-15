@@ -58,8 +58,18 @@ def keys(obj, required, optional=(), where=''):
     need(not missing, f'{where} is missing {sorted(missing)}')
 
 
+CONTROL = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]')
+MAX_REVISION = 2 ** 63 - 1
+
+
 def utf8(text, limit, where):
     need(isinstance(text, str) and 0 < len(text.encode('utf-8')) <= limit, f'{where} must be 1-{limit} UTF-8 bytes')
+    need(text.strip() != '', f'{where} must not be only whitespace')
+    need(not CONTROL.search(text), f'{where} must not contain control characters')
+
+
+def optional_string(value, limit, where):
+    need(value is None or (isinstance(value, str) and len(value.encode('utf-8')) <= limit), f'{where} must be null or a string up to {limit} bytes')
 
 
 def times(obj, where):
@@ -70,11 +80,16 @@ def times(obj, where):
 
 
 def revision(value, where):
-    need(isinstance(value, int) and not isinstance(value, bool) and value >= 1, f'{where} revision must be >= 1')
+    need(isinstance(value, int) and not isinstance(value, bool) and 1 <= value <= MAX_REVISION,
+         f'{where} revision must be >= 1 and fit a signed 64-bit integer')
 
 
 def validate(document):
-    """Manifest rules. Returns nothing; raises Invalid. Payload contents are checked separately."""
+    """Manifest rules. Returns nothing; raises Invalid. Payload contents are checked separately.
+
+    Covers the v3 manifest rules only. Nested study inputs and candidate-site assumptions keep their
+    v2 validation, which each app already implements (SavedStudy, DeploymentPlan); A1 runs both.
+    """
     need(isinstance(document, dict), 'document must be an object')
     version = document.get('schemaVersion')
     need(version == 3, f'unsupported schemaVersion {version!r}: this reader handles 3 (and 1-2 via migration)')
@@ -87,10 +102,15 @@ def validate(document):
 
     for plan in plans:  # Candidate Sites keep their v2 shape, plus a revision.
         keys(plan, ['id', 'name', 'createdAtMilliseconds', 'updatedAtMilliseconds', 'sites', 'revision'],
-             ['selectedSiteID', 'notes'], 'candidate-site plan')
+             ['selectedSiteID'], 'candidate-site plan')
         revision(plan['revision'], 'candidate-site plan')
         need(UUID.match(plan['id']), 'candidate-site plan id must be a lowercase UUID')
         times(plan, 'candidate-site plan')
+        need(isinstance(plan['sites'], list) and len(plan['sites']) <= 100, 'candidate-site plan: at most 100 sites')
+        site_ids = [site.get('id') for site in plan['sites']]
+        need(len(set(site_ids)) == len(site_ids), 'duplicate candidate site id')
+        if plan.get('selectedSiteID') is not None:
+            need(plan['selectedSiteID'] in site_ids, 'selectedSiteID must name one of the plan\'s sites')
     need(len({p['id'] for p in plans}) == len(plans), 'duplicate candidate-site plan id')
 
     ids = set()
@@ -127,6 +147,11 @@ def validate(document):
         origin = study.get('origin')
         if origin is not None:
             keys(origin, ['host', 'region', 'capturedAtMilliseconds'], where='origin')
+            optional_string(origin['host'], 253, 'origin.host')
+            optional_string(origin['region'], 64, 'origin.region')
+            captured = origin['capturedAtMilliseconds']
+            need(captured is None or (isinstance(captured, int) and not isinstance(captured, bool) and 0 <= captured <= MAX_MS),
+                 'origin.capturedAtMilliseconds must be null or epoch milliseconds')
         imported = study.get('importOrigin')
         if imported is not None:
             keys(imported, ['studyID', 'revision'], where='importOrigin')
@@ -440,6 +465,18 @@ def cases(reference):
            variant('unknown_origin_is_valid', set_study(0, origin=None)),
            variant('import_origin_needs_revision', set_study(5, importOrigin={'studyID': '40000000-0000-4000-8000-000000000001'}), 'missing'),
            variant('kind_and_payload_disagree', lambda d: d['studies'][3].update(kind='coverage'), 'exactly the payload'),
+           variant('candidate_plan_notes_are_not_a_field', lambda d: d['plans'][0].update(notes='x'), 'unknown fields'),
+           variant('selected_site_not_in_plan', lambda d: d['plans'][0].update(selectedSiteID='22222222-2222-4222-8222-2222222222ff'),
+                   "name one of the plan's sites"),
+           variant('whitespace_only_name', set_study(0, name='   '), 'only whitespace'),
+           variant('control_character_name', lambda d: d['studyPlans'][0].update(name='Ridge\x07relay'), 'control characters'),
+           variant('revision_at_64_bit_limit', set_study(0, revision=2 ** 63 - 1)),
+           variant('revision_overflows_64_bits', set_study(0, revision=2 ** 63), 'signed 64-bit'),
+           variant('origin_host_wrong_type', set_study(0, origin={'host': 42, 'region': None, 'capturedAtMilliseconds': None}),
+                   'origin.host'),
+           variant('origin_time_out_of_range', set_study(0, origin={'host': None, 'region': None, 'capturedAtMilliseconds': -1}),
+                   'origin.capturedAtMilliseconds'),
+           variant('origin_all_unknown_fields_null', set_study(0, origin={'host': None, 'region': None, 'capturedAtMilliseconds': None})),
            ]
     return out
 
