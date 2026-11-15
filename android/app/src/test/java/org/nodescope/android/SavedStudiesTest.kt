@@ -108,6 +108,22 @@ class SavedStudiesTest {
         assertEquals(model.fields, fallback.fields)
     }
 
+    @Test fun linkProfileHandoffFillsCoverageLikeAReopenedStudy() = withMain { root ->
+        val seed = LinkCoverageSeed(SavedEndpoint("Site B", 41.0, -91.0, SavedAntenna(10.0, 9.0, 2.0)), 910.525, 22.0, -128.0)
+        val imperial = EstimatedCoverageViewModel(File(root, "terrain"), CoverageMemoryPreferences(), heightInFeet = true)
+        imperial.applyLinkSeed(seed)
+        assertEquals("32.81", imperial.fields["txHeight"])
+        assertEquals("22", imperial.fields["power"])
+        assertEquals("9", imperial.fields["txGain"])
+        assertEquals("2", imperial.fields["txLoss"])
+        assertEquals("910.525", imperial.fields["frequency"])
+        assertEquals("-128", imperial.fields["sensitivity"])
+        val metric = coverageModel(root).apply { applyLinkSeed(seed.copy(point = seed.point.copy(antenna = SavedAntenna(6.096, 2.15, 1.0)))) }
+        assertEquals("6.096", metric.fields["txHeight"])
+        assertEquals("2.15", metric.fields["txGain"])
+        assertEquals("1", metric.fields["txLoss"])
+    }
+
     @Test fun linkProfileSavesOncePlacedAndReopensWithoutAnalyzing() = withMain { _ ->
         val calls = mutableListOf<List<ProfileCoordinate>>()
         val terrain = LinkTerrainProviding { calls += it; TerrainProfile(it.mapIndexed { index, _ -> ElevationPoint(index * 100.0, 100.0) }, 1000, "cache") }

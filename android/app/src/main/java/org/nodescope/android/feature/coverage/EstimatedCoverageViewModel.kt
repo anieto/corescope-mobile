@@ -194,14 +194,18 @@ internal class EstimatedCoverageViewModel(
         latitudeText = seed.point.latitude.toString()
         longitudeText = seed.point.longitude.toString()
         transmitterName = seed.point.name
-        fun height(meters: Double) = (if (heightInFeet) meters / 0.3048 else meters).toString()
-        values = values + mapOf("txHeight" to height(seed.point.antenna.heightMeters),
-            "txGain" to seed.point.antenna.gainDbi.toString(), "txLoss" to seed.point.antenna.lossDb.toString(),
-            "frequency" to seed.frequencyMHz.toString(), "power" to seed.transmitPowerDbm.toString(),
-            "sensitivity" to seed.sensitivityDbm.toString())
+        // Formatted as a reopened study is: "20 ft" and "22", never "20.0" or 32.808398950131235.
+        values = values + mapOf("txHeight" to heightEditorText(seed.point.antenna.heightMeters),
+            "txGain" to seed.point.antenna.gainDbi.editorText(), "txLoss" to seed.point.antenna.lossDb.editorText(),
+            "frequency" to seed.frequencyMHz.editorText(), "power" to seed.transmitPowerDbm.editorText(),
+            "sensitivity" to seed.sensitivityDbm.editorText())
         transmitterExpanded = true
         fromLinkProfile = true
     }
+
+    /** A height in metres as the setup shows it: feet to two decimals when imperial, trailing zeros dropped. */
+    private fun heightEditorText(meters: Double): String =
+        if (heightInFeet) String.format(java.util.Locale.US, "%.2f", meters / 0.3048).trimEnd('0').trimEnd('.') else meters.editorText()
 
     fun set(field: String, text: String) { values = values + (field to text) }
 
@@ -478,8 +482,7 @@ internal class EstimatedCoverageViewModel(
         val coverage = study.coverage?.takeIf { runCatching { study.validate() }.isSuccess } ?: return
         invalidate()
         savedStudy = study
-        fun meters(value: Double) = if (heightInFeet) value / 0.3048 else value
-        fun heightText(value: Double) = meters(value).let { if (heightInFeet) String.format(java.util.Locale.US, "%.2f", it).trimEnd('0').trimEnd('.') else it.editorText() }
+        fun heightText(value: Double) = heightEditorText(value)
         latitudeText = coverage.transmitter.latitude.toString()
         longitudeText = coverage.transmitter.longitude.toString()
         transmitterName = coverage.transmitter.name

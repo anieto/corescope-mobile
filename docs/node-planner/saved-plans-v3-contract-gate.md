@@ -40,6 +40,8 @@ The comparison gives both layouts the same 200 synthetic nodes. Per-cell objects
 
 Columnar is the preferred candidate. These measurements do not support promising a several-fold reduction for every case. Repeated synthetic values compress unusually well; gzip sizes are informational, not capacity limits. Files will carry raw JSON, without legacy base64 expansion. No float quantization or precision reduction is proposed.
 
+**Decision (November 15): store losses, not margins.** A qualified cell's margin is fully determined by its loss and the study's link budget, and both platforms already reject a restored cell whose stored margin differs from `budget.reception(loss).adjustedMarginDb`. The portable payload therefore carries `stateCodes` and `lossesDb` only, and readers recompute margins. That removes one of the three columns (about a third of the measured columnar size) and the possibility of a stored margin disagreeing with its loss. Condition for freezing: the Swift and Kotlin margin calculations must perform the same IEEE-754 operations in the same order, proven by shared vectors that compare recomputed margins bit for bit. If any vector differs, keep the margins column and the existing equality check. Code review (November 15): iOS `CoverageLinkBudget` and Android `CoverageLinkBudget.kt` already use identical left-to-right binary64 arithmetic: `power + txGain + rxGain − txLoss − rxLoss`, then `− sensitivity − reserve` for the maximum loss, then `maximumLoss − pathLoss` for the margin. Neither uses fused multiply-add or reassociation, so recomputation is expected to match; the vectors must still confirm it. Exact-node predictions stay structured, with their margins, since they are few.
+
 Candidate state codes follow the current common states: 0 qualified, 1 nearSite, 2 outsideRadius, 3 missingTerrain, 4 accuracyUnresolved, 5 thresholdUnresolved, 6 workLimit, 7 notComputed. Never use language enum ordinals. Reject unknown codes for v1; require equal array lengths matching rows×columns and existing state/margin/mask invariants. Nodes remain a separate structured array.
 
 Before freezing limits, add the full envelope, all 64 terrain descriptors with bounded strings, exact inputs, model/limits/provenance and worst-length finite numbers. Compare actual Swift and Kotlin encoders, decoded memory, partial results and valid engine-generated grids. An 8 MiB portable coverage cap appears plausible from this initial probe but is **not frozen**. Link Profile needs its own field inventory and size measurements. A1 cannot proceed with this work unresolved.
@@ -48,11 +50,24 @@ Before freezing limits, add the full envelope, all 64 terrain descriptors with b
 
 The current broad CandidateSites include works for c149ac7 but cannot remain unchanged when results grow to hundreds of MiB. XML inclusion is path-based, not quota-based. Android's [Auto Backup documentation](https://developer.android.com/identity/data/autobackup) confirms the 25 MB cloud limit and separate cloud/transfer rules. An oversized migration original is another way to lose cloud protection for small records.
 
-Target: one coherent manifest/small-record selection under 20,000,000 bytes, with a provisional 16 MiB manifest ceiling. Preserve the 32 MiB legacy reader and never truncate an oversized migration. Decide between a tested quota-aware backup agent that adds whole immutable results only if they fit, and explicitly excluding results from cloud while retaining them for device transfer. Do not duplicate every result just to form a backup staging tree. Android 8–11 behavior needs explicit validation; Android 12+ rules alone are insufficient. Transport overhead, concurrent writes, missing results and migration-backup exclusions must be tested before selecting an implementation.
+Target: one coherent manifest/small-record selection under 20,000,000 bytes, with a provisional 16 MiB manifest ceiling. Preserve the 32 MiB legacy reader and never truncate an oversized migration. **Decision (November 15): path rules, no custom backup agent.** A quota-aware BackupAgent is more code to maintain and test than the gain justifies. Use the XML rules instead:
 
-Migration backups, including the legacy sibling filename, stay locally available. Their retention and device-transfer rules must avoid both duplicate copies of identical bytes and quota pollution of cloud backups. iOS retains Application Support eligibility for the library and results.
+| Data | Android cloud backup | Android device transfer | iOS |
+|---|---|---|---|
+| `CandidateSites/plans.json` (manifest and small records) | Included | Included | Included |
+| `CandidateSites/results/` | Excluded | Included | Included |
+| Migration backups, including `plans.json.v1-backup` | Excluded | Included | Included (local backups) |
+| Everything else (settings, caches, terrain, analyzer data) | Excluded | Excluded | Unchanged |
+
+A study restored from Android cloud backup shows “Saved result not on this device” with its inputs, as required below. Keep the manifest under the 20,000,000-byte target so cloud backup never stops for size. Do not duplicate every result just to form a backup staging tree. Android 8–11 behavior needs explicit validation; Android 12+ rules alone are insufficient. Transport overhead, concurrent writes, missing results and migration-backup exclusions must be tested before selecting an implementation.
+
+Migration backups, including the legacy sibling filename, stay locally available and travel with device transfer, but are excluded from Android cloud backup: a pre-upgrade copy of a large library could exceed the 25 MB limit on its own and stop backup of everything else. Their retention rules must avoid duplicate copies of identical bytes. c149ac7 currently includes the whole folder in both; A1 narrows the cloud rule as above, with the matching Android 8–11 `backup_rules.xml`. iOS retains Application Support eligibility for the library and results.
 
 Required restore display: “Saved result not on this device” with preserved inputs/reference. Settings in A1 and the export screen in D explain actual coverage. OS restore replaces the data before launch and runs normal validation; export/import merge is a separate user flow.
+
+## Fixes since the gate started
+
+- Android Link Profile → Coverage handoff (f0dbd73) filled coverage fields with raw `toString()`, showing "20.0 ft", "22.0" and "32.808398950131235 ft". It now uses the same formatting as a reopened study (`heightEditorText`, `editorText`). SavedStudiesTest covers both unit systems. iOS stores the numbers directly and was unaffected.
 
 ## Exit checklist and staged evidence
 
@@ -60,7 +75,8 @@ Required restore display: “Saved result not on this device” with preserved i
 - [ ] Swift/Kotlin fingerprint vectors match, including bit-exact numeric JSON round trips.
 - [ ] Complete payload sizing and bounded manifest sizing justify frozen limits.
 - [ ] Final v3 schema/reference fixture: revisions without baseRevision, provenance, missing-result behavior and strict future-version refusal.
-- [ ] Backup selection and migration-original policy is implementable across supported Android versions; acceptance procedure specified for actual cloud and device transfers.
+- [x] Backup selection and migration-original policy chosen (path rules, table above). Remaining: implement in A1 for Android 8–11 and 12+, and specify the acceptance procedure for actual cloud and device transfers.
+- [ ] Margin recomputation vectors match bit for bit on Swift and Kotlin, or margins stay in the payload.
 - [ ] Legacy fixture inventory includes both native formats and existing v1 backups. Portable fixture contract defines iOS→Android→iOS and Android→iOS→Android; production codec round trips pass in B.
 - [ ] Gate reviewed before A1 runtime changes begin.
 
