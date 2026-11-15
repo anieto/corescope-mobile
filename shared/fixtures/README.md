@@ -73,4 +73,7 @@ store per-observer medians/counts and evidence, never raw sample histories.
   `reference/plans.json` with its content-addressed `reference/results/`, one result
   deliberately missing, and `v3-cases.json` with valid and invalid manifests and the
   reason each invalid one is refused. Not yet consumed by app tests; A1 adds them.
+- `saved-plans/legacy/ios-0.10.6-coverage.plist`: a coverage result recorded by iOS
+  `LegacyCoverageFixtureTests` from the 0.10.6 production encoder, with the same inputs as the
+  v3 reference's migrated study. Delete it and rerun that test to re-record.
 

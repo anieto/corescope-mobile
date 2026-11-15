@@ -54,6 +54,7 @@
 		311598FD30A560A900C0B35D /* SavedPlansScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311598FC30A560A900C0B35D /* SavedPlansScreen.swift */; };
 		311598FF30A5612A00C0B35D /* SavedStudyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311598FE30A5612A00C0B35D /* SavedStudyTests.swift */; };
 		A3B4C5D6E7F8A9B0C1D2E3F4 /* PortableContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4C5D6E7F8A9B0C1D2E3F4A5 /* PortableContractTests.swift */; };
+		C5D6E7F8A9B0C1D2E3F4A5B6 /* LegacyCoverageFixtureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6E7F8A9B0C1D2E3F4A5B6C7 /* LegacyCoverageFixtureTests.swift */; };
 		3115990130A561A000C0B35D /* SavedStudyRestorationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3115990030A561A000C0B35D /* SavedStudyRestorationTests.swift */; };
 		3115990330A56A3800C0B35D /* CoverageMarginLegend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3115990230A56A3800C0B35D /* CoverageMarginLegend.swift */; };
 		3115990530A56A8F00C0B35D /* CoverageRunDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3115990430A56A8F00C0B35D /* CoverageRunDiagnostics.swift */; };
@@ -318,6 +319,7 @@
 		311598FC30A560A900C0B35D /* SavedPlansScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedPlansScreen.swift; sourceTree = "<group>"; };
 		311598FE30A5612A00C0B35D /* SavedStudyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedStudyTests.swift; sourceTree = "<group>"; };
 		B4C5D6E7F8A9B0C1D2E3F4A5 /* PortableContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortableContractTests.swift; sourceTree = "<group>"; };
+		D6E7F8A9B0C1D2E3F4A5B6C7 /* LegacyCoverageFixtureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyCoverageFixtureTests.swift; sourceTree = "<group>"; };
 		3115990030A561A000C0B35D /* SavedStudyRestorationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedStudyRestorationTests.swift; sourceTree = "<group>"; };
 		3115990230A56A3800C0B35D /* CoverageMarginLegend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageMarginLegend.swift; sourceTree = "<group>"; };
 		3115990430A56A8F00C0B35D /* CoverageRunDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageRunDiagnostics.swift; sourceTree = "<group>"; };
@@ -638,6 +640,7 @@
 				31399AC2309FB06B000519FF /* CoverageSkadiProviderTests.swift */,
 				311598FE30A5612A00C0B35D /* SavedStudyTests.swift */,
 				B4C5D6E7F8A9B0C1D2E3F4A5 /* PortableContractTests.swift */,
+				D6E7F8A9B0C1D2E3F4A5B6C7 /* LegacyCoverageFixtureTests.swift */,
 				3115990030A561A000C0B35D /* SavedStudyRestorationTests.swift */,
 			);
 			path = NodePlanner;
@@ -1110,6 +1113,7 @@
 				31E0056E309A2F6100178350 /* CoverageLinkBudgetTests.swift in Sources */,
 				311598FF30A5612A00C0B35D /* SavedStudyTests.swift in Sources */,
 				A3B4C5D6E7F8A9B0C1D2E3F4 /* PortableContractTests.swift in Sources */,
+				C5D6E7F8A9B0C1D2E3F4A5B6 /* LegacyCoverageFixtureTests.swift in Sources */,
 				310F864C3096A44B009EC5E8 /* DeploymentPlanTests.swift in Sources */,
 				31DFA7F3308EA0CB00B8C681 /* NodePlannerLinkAnalyzerTests.swift in Sources */,
 				31E00576309A31BD00178350 /* CoverageNodeRunTests.swift in Sources */,
