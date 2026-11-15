@@ -1,0 +1,86 @@
+{
+  "scope": "synthetic raster plus 200 nodes; excludes envelope, inputs, terrain and other metadata",
+  "measurements": [
+    {
+      "cells": 1681,
+      "case": "full",
+      "objectsBytes": 179835,
+      "columnarBytes": 112627,
+      "objectsGzipBytes": 35261,
+      "columnarGzipBytes": 30963,
+      "rawRatio": 1.597
+    },
+    {
+      "cells": 1681,
+      "case": "partial",
+      "objectsBytes": 110218,
+      "columnarBytes": 78290,
+      "objectsGzipBytes": 10199,
+      "columnarGzipBytes": 9743,
+      "rawRatio": 1.408
+    },
+    {
+      "cells": 1681,
+      "case": "long-numbers",
+      "objectsBytes": 189506,
+      "columnarBytes": 122298,
+      "objectsGzipBytes": 1364,
+      "columnarGzipBytes": 1072,
+      "rawRatio": 1.55
+    },
+    {
+      "cells": 14641,
+      "case": "full",
+      "objectsBytes": 1206682,
+      "columnarBytes": 621074,
+      "objectsGzipBytes": 296489,
+      "columnarGzipBytes": 251873,
+      "rawRatio": 1.943
+    },
+    {
+      "cells": 14641,
+      "case": "partial",
+      "objectsBytes": 600170,
+      "columnarBytes": 322002,
+      "objectsGzipBytes": 79315,
+      "columnarGzipBytes": 71924,
+      "rawRatio": 1.864
+    },
+    {
+      "cells": 14641,
+      "case": "long-numbers",
+      "objectsBytes": 1291106,
+      "columnarBytes": 705498,
+      "objectsGzipBytes": 5101,
+      "columnarGzipBytes": 2480,
+      "rawRatio": 1.83
+    },
+    {
+      "cells": 60000,
+      "case": "full",
+      "objectsBytes": 4800957,
+      "columnarBytes": 2400989,
+      "objectsGzipBytes": 1210170,
+      "columnarGzipBytes": 1023733,
+      "rawRatio": 2.0
+    },
+    {
+      "cells": 60000,
+      "case": "partial",
+      "objectsBytes": 2315325,
+      "columnarBytes": 1175357,
+      "objectsGzipBytes": 320846,
+      "columnarGzipBytes": 287797,
+      "rawRatio": 1.97
+    },
+    {
+      "cells": 60000,
+      "case": "long-numbers",
+      "objectsBytes": 5146621,
+      "columnarBytes": 2746653,
+      "objectsGzipBytes": 18189,
+      "columnarGzipBytes": 7346,
+      "rawRatio": 1.874
+    }
+  ]
+}
