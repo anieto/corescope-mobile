@@ -92,3 +92,16 @@ struct CoverageStudyInputs: Sendable {
                         transmitHeightMeters: txHeight, receiveHeightMeters: rxHeight)
     }
 }
+
+extension PortableInputFingerprint {
+    static func coverage(_ inputs: CoverageStudyInputs, nodes: [CoverageNodeSnapshot], catalogComplete: Bool) throws -> String {
+        let b = inputs.budget, g = inputs.grid
+        return try coverage(doubles: [inputs.transmitter.latitude, inputs.transmitter.longitude, inputs.frequencyMHz,
+                                      inputs.transmitHeightMeters, inputs.receiveHeightMeters, b.transmitPowerDbm,
+                                      b.transmitGainDbi, b.receiveGainDbi, b.transmitLossDb, b.receiveLossDb,
+                                      b.sensitivityDbm, b.reserveDb],
+                            grid: [g.radiusMeters, g.spacingMeters, g.minEastMeters, g.maxNorthMeters, g.columns, g.rows].map(Int64.init),
+                            catalogComplete: catalogComplete,
+                            nodes: nodes.map { Node(sourceID: $0.sourceID, nodeID: $0.nodeID, latitude: $0.latitude, longitude: $0.longitude) })
+    }
+}

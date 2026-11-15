@@ -1,0 +1,677 @@
+{
+  "format": "nodescope.contract-vectors",
+  "version": 1,
+  "rules": "saved-plans-v3-contract-gate.md: fingerprint wire contract and margin recomputation",
+  "coverageInputs": [
+    {
+      "name": "basic",
+      "input": {
+        "transmitterLatitude": "0x403d6c91d14e3bcd",
+        "transmitterLongitude": "0xc0589f972474538f",
+        "frequencyMHz": "0x408c743333333333",
+        "transmitHeightMeters": "0x4018624dd2f1a9fc",
+        "receiveHeightMeters": "0x3ff8624dd2f1a9fc",
+        "transmitPowerDbm": "0x4036000000000000",
+        "transmitGainDbi": "0x4001333333333333",
+        "receiveGainDbi": "0x4001333333333333",
+        "transmitLossDb": "0x3ff0000000000000",
+        "receiveLossDb": "0x3ff0000000000000",
+        "sensitivityDbm": "0xc060000000000000",
+        "reserveDb": "0x4014000000000000",
+        "radiusMeters": 16093,
+        "spacingMeters": 1609,
+        "minEastMeters": -16090,
+        "maxNorthMeters": 16090,
+        "columns": 21,
+        "rows": 21,
+        "catalogComplete": false,
+        "nodes": [
+          {
+            "sourceID": "analyzer.meshtexas.org",
+            "nodeID": "a1b2c3d4",
+            "latitude": "0x403d800000000000",
+            "longitude": "0xc058a66666666666"
+          },
+          {
+            "sourceID": "analyzer.meshtexas.org",
+            "nodeID": "e5f6a7b8",
+            "latitude": "0x403d6147ae147ae1",
+            "longitude": "0xc0589a3d70a3d70a"
+          }
+        ]
+      },
+      "sha256": "4cbadd635bccd2364cc1efad0ebe9e01df7c8d17c55c17cfba3f0988a30ff497"
+    },
+    {
+      "name": "catalog-complete",
+      "input": {
+        "transmitterLatitude": "0x403d6c91d14e3bcd",
+        "transmitterLongitude": "0xc0589f972474538f",
+        "frequencyMHz": "0x408c743333333333",
+        "transmitHeightMeters": "0x4018624dd2f1a9fc",
+        "receiveHeightMeters": "0x3ff8624dd2f1a9fc",
+        "transmitPowerDbm": "0x4036000000000000",
+        "transmitGainDbi": "0x4001333333333333",
+        "receiveGainDbi": "0x4001333333333333",
+        "transmitLossDb": "0x3ff0000000000000",
+        "receiveLossDb": "0x3ff0000000000000",
+        "sensitivityDbm": "0xc060000000000000",
+        "reserveDb": "0x4014000000000000",
+        "radiusMeters": 16093,
+        "spacingMeters": 1609,
+        "minEastMeters": -16090,
+        "maxNorthMeters": 16090,
+        "columns": 21,
+        "rows": 21,
+        "catalogComplete": true,
+        "nodes": [
+          {
+            "sourceID": "analyzer.meshtexas.org",
+            "nodeID": "a1b2c3d4",
+            "latitude": "0x403d800000000000",
+            "longitude": "0xc058a66666666666"
+          },
+          {
+            "sourceID": "analyzer.meshtexas.org",
+            "nodeID": "e5f6a7b8",
+            "latitude": "0x403d6147ae147ae1",
+            "longitude": "0xc0589a3d70a3d70a"
+          }
+        ]
+      },
+      "sha256": "375a8dcae294487a041446d964e100acf1b563dc6b0155bdac700df7108195ea"
+    },
+    {
+      "name": "positive-zero-longitude",
+      "input": {
+        "transmitterLatitude": "0x403d6c91d14e3bcd",
+        "transmitterLongitude": "0x0000000000000000",
+        "frequencyMHz": "0x408c743333333333",
+        "transmitHeightMeters": "0x4018624dd2f1a9fc",
+        "receiveHeightMeters": "0x3ff8624dd2f1a9fc",
+        "transmitPowerDbm": "0x4036000000000000",
+        "transmitGainDbi": "0x4001333333333333",
+        "receiveGainDbi": "0x4001333333333333",
+        "transmitLossDb": "0x3ff0000000000000",
+        "receiveLossDb": "0x3ff0000000000000",
+        "sensitivityDbm": "0xc060000000000000",
+        "reserveDb": "0x4014000000000000",
+        "radiusMeters": 16093,
+        "spacingMeters": 1609,
+        "minEastMeters": -16090,
+        "maxNorthMeters": 16090,
+        "columns": 21,
+        "rows": 21,
+        "catalogComplete": false,
+        "nodes": [
+          {
+            "sourceID": "analyzer.meshtexas.org",
+            "nodeID": "a1b2c3d4",
+            "latitude": "0x403d800000000000",
+            "longitude": "0xc058a66666666666"
+          },
+          {
+            "sourceID": "analyzer.meshtexas.org",
+            "nodeID": "e5f6a7b8",
+            "latitude": "0x403d6147ae147ae1",
+            "longitude": "0xc0589a3d70a3d70a"
+          }
+        ]
+      },
+      "sha256": "666e62286db2e1d5482fe6f008e74c4dbe9c90ee7a19584b0b65de946a3d495b"
+    },
+    {
+      "name": "negative-zero-longitude",
+      "input": {
+        "transmitterLatitude": "0x403d6c91d14e3bcd",
+        "transmitterLongitude": "0x8000000000000000",
+        "frequencyMHz": "0x408c743333333333",
+        "transmitHeightMeters": "0x4018624dd2f1a9fc",
+        "receiveHeightMeters": "0x3ff8624dd2f1a9fc",
+        "transmitPowerDbm": "0x4036000000000000",
+        "transmitGainDbi": "0x4001333333333333",
+        "receiveGainDbi": "0x4001333333333333",
+        "transmitLossDb": "0x3ff0000000000000",
+        "receiveLossDb": "0x3ff0000000000000",
+        "sensitivityDbm": "0xc060000000000000",
+        "reserveDb": "0x4014000000000000",
+        "radiusMeters": 16093,
+        "spacingMeters": 1609,
+        "minEastMeters": -16090,
+        "maxNorthMeters": 16090,
+        "columns": 21,
+        "rows": 21,
+        "catalogComplete": false,
+        "nodes": [
+          {
+            "sourceID": "analyzer.meshtexas.org",
+            "nodeID": "a1b2c3d4",
+            "latitude": "0x403d800000000000",
+            "longitude": "0xc058a66666666666"
+          },
+          {
+            "sourceID": "analyzer.meshtexas.org",
+            "nodeID": "e5f6a7b8",
+            "latitude": "0x403d6147ae147ae1",
+            "longitude": "0xc0589a3d70a3d70a"
+          }
+        ]
+      },
+      "sha256": "13fc68a4714b38599b1fb872a86035305cd1351daa45cd896b349748b2510457"
+    },
+    {
+      "name": "fractional-heights",
+      "input": {
+        "transmitterLatitude": "0x403d6c91d14e3bcd",
+        "transmitterLongitude": "0xc0589f972474538f",
+        "frequencyMHz": "0x408c743333333333",
+        "transmitHeightMeters": "0x4008624dd2f1a9fc",
+        "receiveHeightMeters": "0x3ffd42c3c9eecbfb",
+        "transmitPowerDbm": "0x4036000000000000",
+        "transmitGainDbi": "0x4001333333333333",
+        "receiveGainDbi": "0x4001333333333333",
+        "transmitLossDb": "0x3ff0000000000000",
+        "receiveLossDb": "0x3ff0000000000000",
+        "sensitivityDbm": "0xc060000000000000",
+        "reserveDb": "0x4014000000000000",
+        "radiusMeters": 16093,
+        "spacingMeters": 1609,
+        "minEastMeters": -16090,
+        "maxNorthMeters": 16090,
+        "columns": 21,
+        "rows": 21,
+        "catalogComplete": false,
+        "nodes": [
+          {
+            "sourceID": "analyzer.meshtexas.org",
+            "nodeID": "a1b2c3d4",
+            "latitude": "0x403d800000000000",
+            "longitude": "0xc058a66666666666"
+          },
+          {
+            "sourceID": "analyzer.meshtexas.org",
+            "nodeID": "e5f6a7b8",
+            "latitude": "0x403d6147ae147ae1",
+            "longitude": "0xc0589a3d70a3d70a"
+          }
+        ]
+      },
+      "sha256": "0d917db0e25bf46d62ea7301c87e34d1e46287d04085265f7d8906ecab25fb1f"
+    },
+    {
+      "name": "southern-eastern",
+      "input": {
+        "transmitterLatitude": "0xc040ef34d6a161e5",
+        "transmitterLongitude": "0x4062e6b295e9e1b1",
+        "frequencyMHz": "0x408c743333333333",
+        "transmitHeightMeters": "0x4018624dd2f1a9fc",
+        "receiveHeightMeters": "0x3ff8624dd2f1a9fc",
+        "transmitPowerDbm": "0x4036000000000000",
+        "transmitGainDbi": "0x4001333333333333",
+        "receiveGainDbi": "0x4001333333333333",
+        "transmitLossDb": "0x3ff0000000000000",
+        "receiveLossDb": "0x3ff0000000000000",
+        "sensitivityDbm": "0xc060000000000000",
+        "reserveDb": "0x4014000000000000",
+        "radiusMeters": 8000,
+        "spacingMeters": 1000,
+        "minEastMeters": -8000,
+        "maxNorthMeters": 8000,
+        "columns": 17,
+        "rows": 17,
+        "catalogComplete": false,
+        "nodes": [
+          {
+            "sourceID": "analyzer.meshtexas.org",
+            "nodeID": "a1b2c3d4",
+            "latitude": "0x403d800000000000",
+            "longitude": "0xc058a66666666666"
+          },
+          {
+            "sourceID": "analyzer.meshtexas.org",
+            "nodeID": "e5f6a7b8",
+            "latitude": "0x403d6147ae147ae1",
+            "longitude": "0xc0589a3d70a3d70a"
+          }
+        ]
+      },
+      "sha256": "1e08ec62e460b1621dfbb53b5880d26ee901c39963e09a633806f7226ca25e1c"
+    },
+    {
+      "name": "nodes-reordered",
+      "input": {
+        "transmitterLatitude": "0x403d6c91d14e3bcd",
+        "transmitterLongitude": "0xc0589f972474538f",
+        "frequencyMHz": "0x408c743333333333",
+        "transmitHeightMeters": "0x4018624dd2f1a9fc",
+        "receiveHeightMeters": "0x3ff8624dd2f1a9fc",
+        "transmitPowerDbm": "0x4036000000000000",
+        "transmitGainDbi": "0x4001333333333333",
+        "receiveGainDbi": "0x4001333333333333",
+        "transmitLossDb": "0x3ff0000000000000",
+        "receiveLossDb": "0x3ff0000000000000",
+        "sensitivityDbm": "0xc060000000000000",
+        "reserveDb": "0x4014000000000000",
+        "radiusMeters": 16093,
+        "spacingMeters": 1609,
+        "minEastMeters": -16090,
+        "maxNorthMeters": 16090,
+        "columns": 21,
+        "rows": 21,
+        "catalogComplete": false,
+        "nodes": [
+          {
+            "sourceID": "analyzer.meshtexas.org",
+            "nodeID": "e5f6a7b8",
+            "latitude": "0x403d6147ae147ae1",
+            "longitude": "0xc0589a3d70a3d70a"
+          },
+          {
+            "sourceID": "analyzer.meshtexas.org",
+            "nodeID": "a1b2c3d4",
+            "latitude": "0x403d800000000000",
+            "longitude": "0xc058a66666666666"
+          }
+        ]
+      },
+      "sha256": "2745b6f13259a1befd7ad71a977d831f45daf23034b173620a4a7181f3c05f23"
+    },
+    {
+      "name": "no-nodes",
+      "input": {
+        "transmitterLatitude": "0x403d6c91d14e3bcd",
+        "transmitterLongitude": "0xc0589f972474538f",
+        "frequencyMHz": "0x408c743333333333",
+        "transmitHeightMeters": "0x4018624dd2f1a9fc",
+        "receiveHeightMeters": "0x3ff8624dd2f1a9fc",
+        "transmitPowerDbm": "0x4036000000000000",
+        "transmitGainDbi": "0x4001333333333333",
+        "receiveGainDbi": "0x4001333333333333",
+        "transmitLossDb": "0x3ff0000000000000",
+        "receiveLossDb": "0x3ff0000000000000",
+        "sensitivityDbm": "0xc060000000000000",
+        "reserveDb": "0x4014000000000000",
+        "radiusMeters": 16093,
+        "spacingMeters": 1609,
+        "minEastMeters": -16090,
+        "maxNorthMeters": 16090,
+        "columns": 21,
+        "rows": 21,
+        "catalogComplete": false,
+        "nodes": []
+      },
+      "sha256": "f506a206f39c547ccef3590294ffef4370179274ffd2356c8755efa3a92b03db"
+    },
+    {
+      "name": "non-ascii-identifiers",
+      "input": {
+        "transmitterLatitude": "0x403d6c91d14e3bcd",
+        "transmitterLongitude": "0xc0589f972474538f",
+        "frequencyMHz": "0x408c743333333333",
+        "transmitHeightMeters": "0x4018624dd2f1a9fc",
+        "receiveHeightMeters": "0x3ff8624dd2f1a9fc",
+        "transmitPowerDbm": "0x4036000000000000",
+        "transmitGainDbi": "0x4001333333333333",
+        "receiveGainDbi": "0x4001333333333333",
+        "transmitLossDb": "0x3ff0000000000000",
+        "receiveLossDb": "0x3ff0000000000000",
+        "sensitivityDbm": "0xc060000000000000",
+        "reserveDb": "0x4014000000000000",
+        "radiusMeters": 16093,
+        "spacingMeters": 1609,
+        "minEastMeters": -16090,
+        "maxNorthMeters": 16090,
+        "columns": 21,
+        "rows": 21,
+        "catalogComplete": false,
+        "nodes": [
+          {
+            "sourceID": "mesh.example",
+            "nodeID": "ノード-é",
+            "latitude": "0x403d800000000000",
+            "longitude": "0xc058a66666666666"
+          }
+        ]
+      },
+      "sha256": "d6cca0db94357e38398f9c6509ad7d1fd062d100a4615faa60029c932e1d49f3"
+    }
+  ],
+  "linkProfileInputs": [
+    {
+      "name": "basic",
+      "input": {
+        "pointA": {
+          "latitude": "0x403e4467381d7dbf",
+          "longitude": "0xc0586f8ef34d6a16",
+          "heightMeters": "0x4018624dd2f1a9fc",
+          "gainDbi": "0x4001333333333333",
+          "lossDb": "0x3ff0000000000000"
+        },
+        "pointB": {
+          "latitude": "0x403e821ff2e48e8a",
+          "longitude": "0xc0586b7318fc5048",
+          "heightMeters": "0x4024000000000000",
+          "gainDbi": "0x4017333333333333",
+          "lossDb": "0x3fe0000000000000"
+        },
+        "frequencyMHz": "0x408c743333333333",
+        "transmitPowerDbm": "0x4036000000000000",
+        "sensitivityDbm": "0xc060000000000000",
+        "refractionK": "0x3ff5555555555555",
+        "sampleCount": null
+      },
+      "sha256": "e0b712e0cccf6a9a3707e4956db11b421d205eff7a0e9c8beebef7b4bae06bcc"
+    },
+    {
+      "name": "sample-count-50",
+      "input": {
+        "pointA": {
+          "latitude": "0x403e4467381d7dbf",
+          "longitude": "0xc0586f8ef34d6a16",
+          "heightMeters": "0x4018624dd2f1a9fc",
+          "gainDbi": "0x4001333333333333",
+          "lossDb": "0x3ff0000000000000"
+        },
+        "pointB": {
+          "latitude": "0x403e821ff2e48e8a",
+          "longitude": "0xc0586b7318fc5048",
+          "heightMeters": "0x4024000000000000",
+          "gainDbi": "0x4017333333333333",
+          "lossDb": "0x3fe0000000000000"
+        },
+        "frequencyMHz": "0x408c743333333333",
+        "transmitPowerDbm": "0x4036000000000000",
+        "sensitivityDbm": "0xc060000000000000",
+        "refractionK": "0x3ff5555555555555",
+        "sampleCount": 50
+      },
+      "sha256": "26e3fc097b2cb0b068c09bba89b62a21925b1c4fd589193eddf46b0dba1b027d"
+    },
+    {
+      "name": "sample-count-absent-vs-zero-tag",
+      "input": {
+        "pointA": {
+          "latitude": "0x403e4467381d7dbf",
+          "longitude": "0xc0586f8ef34d6a16",
+          "heightMeters": "0x4018624dd2f1a9fc",
+          "gainDbi": "0x4001333333333333",
+          "lossDb": "0x3ff0000000000000"
+        },
+        "pointB": {
+          "latitude": "0x403e821ff2e48e8a",
+          "longitude": "0xc0586b7318fc5048",
+          "heightMeters": "0x4024000000000000",
+          "gainDbi": "0x4017333333333333",
+          "lossDb": "0x3fe0000000000000"
+        },
+        "frequencyMHz": "0x408c743333333333",
+        "transmitPowerDbm": "0x4036000000000000",
+        "sensitivityDbm": "0xc060000000000000",
+        "refractionK": "0x3ff5555555555555",
+        "sampleCount": 0
+      },
+      "sha256": "eb9952a3ded428b9cdf23cc982930c17211aa41451efe6e53cb0b0484bddea4e"
+    },
+    {
+      "name": "positive-zero-latitude",
+      "input": {
+        "pointA": {
+          "latitude": "0x0000000000000000",
+          "longitude": "0xc0586f8ef34d6a16",
+          "heightMeters": "0x4018624dd2f1a9fc",
+          "gainDbi": "0x4001333333333333",
+          "lossDb": "0x3ff0000000000000"
+        },
+        "pointB": {
+          "latitude": "0x403e821ff2e48e8a",
+          "longitude": "0xc0586b7318fc5048",
+          "heightMeters": "0x4024000000000000",
+          "gainDbi": "0x4017333333333333",
+          "lossDb": "0x3fe0000000000000"
+        },
+        "frequencyMHz": "0x408c743333333333",
+        "transmitPowerDbm": "0x4036000000000000",
+        "sensitivityDbm": "0xc060000000000000",
+        "refractionK": "0x3ff5555555555555",
+        "sampleCount": null
+      },
+      "sha256": "8c3a1d45353373340846a19f14e5c0073b94c8b2602a3b9181d11e18a9b49cb1"
+    },
+    {
+      "name": "negative-zero-latitude",
+      "input": {
+        "pointA": {
+          "latitude": "0x8000000000000000",
+          "longitude": "0xc0586f8ef34d6a16",
+          "heightMeters": "0x4018624dd2f1a9fc",
+          "gainDbi": "0x4001333333333333",
+          "lossDb": "0x3ff0000000000000"
+        },
+        "pointB": {
+          "latitude": "0x403e821ff2e48e8a",
+          "longitude": "0xc0586b7318fc5048",
+          "heightMeters": "0x4024000000000000",
+          "gainDbi": "0x4017333333333333",
+          "lossDb": "0x3fe0000000000000"
+        },
+        "frequencyMHz": "0x408c743333333333",
+        "transmitPowerDbm": "0x4036000000000000",
+        "sensitivityDbm": "0xc060000000000000",
+        "refractionK": "0x3ff5555555555555",
+        "sampleCount": null
+      },
+      "sha256": "ec07be8cb61f80863e45991c81a0de149808ffcf728c14973142012ef25dfaa2"
+    },
+    {
+      "name": "southern-western",
+      "input": {
+        "pointA": {
+          "latitude": "0xc0414d460aa64c30",
+          "longitude": "0xc04d30d844d013a9",
+          "heightMeters": "0x3ff8000000000000",
+          "gainDbi": "0x0000000000000000",
+          "lossDb": "0x0000000000000000"
+        },
+        "pointB": {
+          "latitude": "0xc04173573eab367a",
+          "longitude": "0xc04c150e56041893",
+          "heightMeters": "0x403e7ae147ae147b",
+          "gainDbi": "0x4021000000000000",
+          "lossDb": "0x4002000000000000"
+        },
+        "frequencyMHz": "0x408c743333333333",
+        "transmitPowerDbm": "0x4036000000000000",
+        "sensitivityDbm": "0xc060000000000000",
+        "refractionK": "0x3ff5555555555555",
+        "sampleCount": null
+      },
+      "sha256": "70df7cd4cdd95531a44745c3c47720b138a934689895d6cf64f5fdb05427b738"
+    },
+    {
+      "name": "endpoints-swapped",
+      "input": {
+        "pointA": {
+          "latitude": "0x403e821ff2e48e8a",
+          "longitude": "0xc0586b7318fc5048",
+          "heightMeters": "0x4024000000000000",
+          "gainDbi": "0x4017333333333333",
+          "lossDb": "0x3fe0000000000000"
+        },
+        "pointB": {
+          "latitude": "0x403e4467381d7dbf",
+          "longitude": "0xc0586f8ef34d6a16",
+          "heightMeters": "0x4018624dd2f1a9fc",
+          "gainDbi": "0x4001333333333333",
+          "lossDb": "0x3ff0000000000000"
+        },
+        "frequencyMHz": "0x408c743333333333",
+        "transmitPowerDbm": "0x4036000000000000",
+        "sensitivityDbm": "0xc060000000000000",
+        "refractionK": "0x3ff5555555555555",
+        "sampleCount": null
+      },
+      "sha256": "9c1d2347a657a12004bc64c18b8b020d2d9e5f9c5fd07dee91dd1ce0180704d8"
+    },
+    {
+      "name": "refraction-one",
+      "input": {
+        "pointA": {
+          "latitude": "0x403e4467381d7dbf",
+          "longitude": "0xc0586f8ef34d6a16",
+          "heightMeters": "0x4018624dd2f1a9fc",
+          "gainDbi": "0x4001333333333333",
+          "lossDb": "0x3ff0000000000000"
+        },
+        "pointB": {
+          "latitude": "0x403e821ff2e48e8a",
+          "longitude": "0xc0586b7318fc5048",
+          "heightMeters": "0x4024000000000000",
+          "gainDbi": "0x4017333333333333",
+          "lossDb": "0x3fe0000000000000"
+        },
+        "frequencyMHz": "0x408c743333333333",
+        "transmitPowerDbm": "0x4036000000000000",
+        "sensitivityDbm": "0xc060000000000000",
+        "refractionK": "0x3ff0000000000000",
+        "sampleCount": null
+      },
+      "sha256": "303954c6423322f9274c835544316a7ef9ee7315ace72554352e6886ebd3a9ef"
+    }
+  ],
+  "margins": [
+    {
+      "name": "default-budget",
+      "budget": {
+        "transmitPowerDbm": "0x4036000000000000",
+        "transmitGainDbi": "0x4001333333333333",
+        "receiveGainDbi": "0x4001333333333333",
+        "transmitLossDb": "0x3ff0000000000000",
+        "receiveLossDb": "0x3ff0000000000000",
+        "sensitivityDbm": "0xc060000000000000",
+        "reserveDb": "0x4014000000000000"
+      },
+      "lossDb": "0x406043f35ba6e72c",
+      "receiveLevelDbm": "0xc05a74b3841a9b25",
+      "maximumLossDb": "0x406269999999999a",
+      "adjustedMarginDb": "0x40312d31ef959370"
+    },
+    {
+      "name": "just-below-threshold",
+      "budget": {
+        "transmitPowerDbm": "0x4036000000000000",
+        "transmitGainDbi": "0x4001333333333333",
+        "receiveGainDbi": "0x4001333333333333",
+        "transmitLossDb": "0x3ff0000000000000",
+        "receiveLossDb": "0x3ff0000000000000",
+        "sensitivityDbm": "0xc060000000000000",
+        "reserveDb": "0x4014000000000000"
+      },
+      "lossDb": "0x406269999999999a",
+      "receiveLevelDbm": "0xc05ec00000000001",
+      "maximumLossDb": "0x406269999999999a",
+      "adjustedMarginDb": "0x0000000000000000"
+    },
+    {
+      "name": "fractional-everything",
+      "budget": {
+        "transmitPowerDbm": "0x40344ccccccccccd",
+        "transmitGainDbi": "0x3fb999999999999a",
+        "receiveGainDbi": "0x3fc999999999999a",
+        "transmitLossDb": "0x3fe6666666666666",
+        "receiveLossDb": "0x3ff4cccccccccccd",
+        "sensitivityDbm": "0xc060880000000000",
+        "reserveDb": "0x400a666666666666"
+      },
+      "lossDb": "0x4061bf9add3c1bea",
+      "receiveLevelDbm": "0xc05ed8cf5411d16e",
+      "maximumLossDb": "0x4062719999999999",
+      "adjustedMarginDb": "0x40163fd78bafb5e0"
+    },
+    {
+      "name": "eu-narrow",
+      "budget": {
+        "transmitPowerDbm": "0x402c000000000000",
+        "transmitGainDbi": "0x4008000000000000",
+        "receiveGainDbi": "0x4000000000000000",
+        "transmitLossDb": "0x3ff0000000000000",
+        "receiveLossDb": "0x3ff0000000000000",
+        "sensitivityDbm": "0xc060400000000000",
+        "reserveDb": "0x4014000000000000"
+      },
+      "lossDb": "0x4058ffffffffffff",
+      "receiveLevelDbm": "0xc054bfffffffffff",
+      "maximumLossDb": "0x4061c00000000000",
+      "adjustedMarginDb": "0x4045000000000002"
+    },
+    {
+      "name": "large-loss",
+      "budget": {
+        "transmitPowerDbm": "0x4036000000000000",
+        "transmitGainDbi": "0x4001333333333333",
+        "receiveGainDbi": "0x4001333333333333",
+        "transmitLossDb": "0x3ff0000000000000",
+        "receiveLossDb": "0x3ff0000000000000",
+        "sensitivityDbm": "0xc060000000000000",
+        "reserveDb": "0x4014000000000000"
+      },
+      "lossDb": "0x4066900000000000",
+      "receiveLevelDbm": "0xc063866666666666",
+      "maximumLossDb": "0x406269999999999a",
+      "adjustedMarginDb": "0xc040999999999998"
+    }
+  ],
+  "jsonNumbers": [
+    {
+      "text": "0.1",
+      "bits": "0x3fb999999999999a"
+    },
+    {
+      "text": "2.15",
+      "bits": "0x4001333333333333"
+    },
+    {
+      "text": "-98.4936",
+      "bits": "0xc0589f972474538f"
+    },
+    {
+      "text": "32.808398950131235",
+      "bits": "0x404067799de6779a"
+    },
+    {
+      "text": "123.12345678901234",
+      "bits": "0x405ec7e6b74dd1bd"
+    },
+    {
+      "text": "1e-300",
+      "bits": "0x01a56e1fc2f8f359"
+    },
+    {
+      "text": "5e-324",
+      "bits": "0x0000000000000001"
+    },
+    {
+      "text": "1.7976931348623157e+308",
+      "bits": "0x7fefffffffffffff"
+    },
+    {
+      "text": "-0.0",
+      "bits": "0x8000000000000000"
+    },
+    {
+      "text": "0.0",
+      "bits": "0x0000000000000000"
+    },
+    {
+      "text": "1.0",
+      "bits": "0x3ff0000000000000"
+    },
+    {
+      "text": "910.525",
+      "bits": "0x408c743333333333"
+    },
+    {
+      "text": "1.3333333333333333",
+      "bits": "0x3ff5555555555555"
+    }
+  ]
+}

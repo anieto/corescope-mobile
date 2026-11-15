@@ -122,3 +122,15 @@ struct SavedCoverage: Codable, Equatable, Sendable {
         }
     }
 }
+
+extension PortableInputFingerprint {
+    static func linkProfile(_ inputs: SavedLinkProfile) throws -> String {
+        func endpoint(_ point: SavedEndpoint) -> [Double] {
+            [point.latitude, point.longitude, point.antenna.heightMeters, point.antenna.gainDbi, point.antenna.lossDb]
+        }
+        return try linkProfile(pointA: endpoint(inputs.pointA), pointB: endpoint(inputs.pointB),
+                               frequencyMHz: inputs.frequencyMHz, transmitPowerDbm: inputs.transmitPowerDbm,
+                               sensitivityDbm: inputs.sensitivityDbm, refractionK: inputs.refractionK,
+                               sampleCount: inputs.sampleCount.map(Int64.init))
+    }
+}
