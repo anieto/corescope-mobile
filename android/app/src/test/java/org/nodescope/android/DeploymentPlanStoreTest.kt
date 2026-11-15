@@ -22,9 +22,12 @@ class DeploymentPlanStoreTest {
         val store = DeploymentPlanStore(file)
         assertTrue(store.load().plans.isEmpty())
         store.save(document("First"))
-        assertEquals(document("First"), DeploymentPlanStore(file).load())
+        assertEquals(document("First").content(), DeploymentPlanStore(file).load().content())
         store.save(document("Renamed"))
-        assertEquals(document("Renamed"), DeploymentPlanStore(file).load())
+        val renamed = DeploymentPlanStore(file).load()
+        assertEquals(document("Renamed").content(), renamed.content())
+        assertEquals(3, renamed.schemaVersion)
+        assertEquals(2L, renamed.plans.single().revision)
         store.save(DeploymentPlanDocument(1, emptyList()))
         assertTrue(DeploymentPlanStore(file).load().plans.isEmpty())
         assertEquals(listOf("plans.json"), requireNotNull(requireNotNull(file.parentFile).list()).toList())
@@ -66,7 +69,7 @@ class DeploymentPlanStoreTest {
         val store = DeploymentPlanStore(file)
         store.load(); store.save(document("First"))
         assertThrows(DeploymentPlanException::class.java) { store.save(document("")) }
-        assertEquals(document("First"), store.load())
+        assertEquals(document("First").content(), store.load().content())
     }
 
     @Test fun oversizedLibraryIsNotReset() = fixture { file ->

@@ -2,7 +2,7 @@ package org.nodescope.android.feature.candidatesites
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.*
 import java.util.UUID
 
 /**
@@ -12,9 +12,14 @@ import java.util.UUID
 @Serializable
 data class DeploymentPlanDocument(
     val schemaVersion: Int, val plans: List<DeploymentPlan>, val studies: List<SavedStudy>? = null,
+    /** Version 3 only (docs/node-planner/saved-plans-v3-schema.md). */
+    val documentRevision: Long? = null, val studyPlans: List<StudyPlan>? = null,
 ) {
     fun validate() {
-        if (schemaVersion != 1 && schemaVersion != 2) throw DeploymentPlanException(DeploymentPlanFailure.UNSUPPORTED_VERSION)
+        if (schemaVersion !in 1..3) throw DeploymentPlanException(DeploymentPlanFailure.UNSUPPORTED_VERSION)
+        if (schemaVersion == 3) return validateVersion3()
+        valid(documentRevision == null && studyPlans == null && plans.all { it.revision == null } &&
+            studies.orEmpty().all { it.revision == null && it.planID == null && it.origin == null && it.importOrigin == null && it.resultRef == null })
         val saved = studies.orEmpty()
         valid(if (schemaVersion == 2) studies != null else saved.isEmpty())
         valid(saved.size <= 100 && saved.map { it.id }.toSet().size == saved.size)
@@ -31,6 +36,8 @@ data class DeploymentPlanDocument(
 data class DeploymentPlan(
     val id: String, val name: String, val createdAtMilliseconds: Long, val updatedAtMilliseconds: Long,
     val selectedSiteID: String? = null, val sites: List<CandidateSite>,
+    /** Version 3 only; the store assigns it. */
+    val revision: Long? = null,
 ) {
     fun validate() {
         valid(validID(id) && validName(name) && createdAtMilliseconds >= 0 &&
@@ -108,19 +115,50 @@ private fun validName(value: String): Boolean = value.trim(' ', '\t', '\r', '\n'
 
 /** Use at every disk boundary; deserialization alone does not validate stored input. */
 object DeploymentPlanCodec {
-    // Matches iOS: a saved coverage result can reach 8 MiB on its own.
+    // Matches iOS: a saved coverage result can reach 8 MiB on its own inside a v2 file.
     const val MAXIMUM_BYTES = 32 * 1024 * 1024
+    /** Version 3 keeps results in their own files, so its manifest has a smaller cap. */
+    const val MAXIMUM_VERSION3_BYTES = 16 * 1024 * 1024
     // Absent optionals are omitted, as iOS writes them; version 1 never writes `studies`.
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true; explicitNulls = false }
+    // Version 3 is strict: unknown fields are refused and nulls are written out.
+    private val strict = Json { ignoreUnknownKeys = false; encodeDefaults = true; explicitNulls = true }
 
     fun decode(bytes: ByteArray): DeploymentPlanDocument {
         if (bytes.size > MAXIMUM_BYTES) throw DeploymentPlanException(DeploymentPlanFailure.TOO_LARGE)
-        return json.decodeFromString<DeploymentPlanDocument>(bytes.decodeToString(throwOnInvalidSequence = true))
-            .also { it.validate() }
+        val text = bytes.decodeToString(throwOnInvalidSequence = true)
+        val element = try { Json.parseToJsonElement(text).jsonObject } catch (_: Exception) {
+            throw DeploymentPlanException(DeploymentPlanFailure.INVALID_DATA)
+        }
+        val version = (element["schemaVersion"] as? JsonPrimitive)?.intOrNull
+            ?: throw DeploymentPlanException(DeploymentPlanFailure.INVALID_DATA)
+        if (version !in 1..3) throw DeploymentPlanException(DeploymentPlanFailure.UNSUPPORTED_VERSION)
+        if (version == 3) {
+            if (bytes.size > MAXIMUM_VERSION3_BYTES) throw DeploymentPlanException(DeploymentPlanFailure.TOO_LARGE)
+            // Results live in result files from version 3 on; an inline one means the file is malformed.
+            val inline = element["studies"]?.jsonArray?.any { (it.jsonObject["coverage"] as? JsonObject)?.containsKey("calculatedResult") == true }
+            if (inline == true) throw DeploymentPlanException(DeploymentPlanFailure.INVALID_DATA)
+        }
+        val document = try { (if (version == 3) strict else json).decodeFromJsonElement<DeploymentPlanDocument>(element) }
+            catch (error: DeploymentPlanException) { throw error }
+            catch (_: Exception) { throw DeploymentPlanException(DeploymentPlanFailure.INVALID_DATA) }
+        return document.also { it.validate() }
     }
 
     fun encode(document: DeploymentPlanDocument): ByteArray {
         document.validate()
+        if (document.schemaVersion == 3) {
+            val element = strict.encodeToJsonElement(document).jsonObject
+            val studies = element.getValue("studies").jsonArray.map { study ->
+                val coverage = study.jsonObject["coverage"] as? JsonObject ?: return@map study
+                // In memory, coverage results ride in calculatedResult; on disk they're result files.
+                JsonObject(study.jsonObject + ("coverage" to JsonObject(coverage - "calculatedResult")))
+            }
+            return Json.encodeToString(JsonObject.serializer(), JsonObject(element + ("studies" to JsonArray(studies))))
+                .toByteArray(Charsets.UTF_8).also {
+                    if (it.size > MAXIMUM_VERSION3_BYTES) throw DeploymentPlanException(DeploymentPlanFailure.TOO_LARGE)
+                }
+        }
         val stored = if (document.schemaVersion == 1) document.copy(studies = null) else document
         return json.encodeToString(stored).toByteArray(Charsets.UTF_8).also {
             if (it.size > MAXIMUM_BYTES) throw DeploymentPlanException(DeploymentPlanFailure.TOO_LARGE)

@@ -10,6 +10,11 @@ import java.util.Base64
 data class SavedStudy(
     val id: String, val name: String, val createdAtMilliseconds: Long, val updatedAtMilliseconds: Long,
     val kind: Kind, val linkProfile: SavedLinkProfile? = null, val coverage: SavedCoverage? = null,
+    // Version 3 only (docs/node-planner/saved-plans-v3-schema.md); the store assigns revisions and result references.
+    val revision: Long? = null, val planID: String? = null, val origin: StudyOrigin? = null,
+    val importOrigin: ImportOrigin? = null, val resultRef: ResultRef? = null,
+    /** Whether a referenced result file could be read on this device. Not stored. */
+    @kotlinx.serialization.Transient val resultStatus: SavedResultStatus = SavedResultStatus.NONE,
 ) {
     @Serializable
     enum class Kind { @SerialName("linkProfile") LINK_PROFILE, @SerialName("coverage") COVERAGE }

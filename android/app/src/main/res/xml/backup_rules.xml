@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Android 11 and earlier: the same as data_extraction_rules.xml, saved plans only. -->
+<!--
+  Android 8–11, which uses one set of rules for cloud backup and device transfer: the library file
+  only, to stay under the 25 MB cloud limit. Results stay on the device; restored studies show
+  "Saved result not on this device". Android 12+ also transfers results (data_extraction_rules.xml).
+-->
 <full-backup-content>
-    <include domain="file" path="CandidateSites/" />
+    <include domain="file" path="CandidateSites/plans.json" />
 </full-backup-content>

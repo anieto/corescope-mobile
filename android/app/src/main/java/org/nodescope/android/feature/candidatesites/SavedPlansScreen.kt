@@ -71,10 +71,12 @@ fun SavedPlansScreen(kind: SavedStudy.Kind?, onOpen: (SavedStudy) -> Unit, onCan
             Text(study.name, style = MaterialTheme.typography.titleSmall)
             Text(if (study.kind == SavedStudy.Kind.LINK_PROFILE) "Link Profile" else "Estimated Coverage",
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(when {
-                study.kind == SavedStudy.Kind.LINK_PROFILE -> "Inputs only · Calculate to see results"
-                study.coverage?.calculatedResult == null -> "Inputs only · Calculate to see results"
-                else -> "Includes saved coverage results"
+            Text(when (study.resultStatus) {
+                SavedResultStatus.AVAILABLE -> "Includes saved coverage results"
+                SavedResultStatus.MISSING -> "Saved result not on this device"
+                SavedResultStatus.UNVERIFIED -> "Saved result could not be verified"
+                SavedResultStatus.UNSUPPORTED -> "Saved result needs another version of NodeScope"
+                SavedResultStatus.NONE -> "Inputs only · Calculate to see results"
             }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         TextButton(onClick = delete, enabled = enabled) { Text("Delete", color = MaterialTheme.colorScheme.error) }
@@ -117,7 +119,7 @@ fun SavedStudyActions(snapshot: () -> SavedStudy?, didSave: (SavedStudy) -> Unit
             }
         }
     }, confirmButton = {
-        TextButton(onClick = { scope.launch { if (library.saveStudy(study)) saved(study) } },
+        TextButton(onClick = { scope.launch { library.saveStudy(study)?.let(saved) } },
             enabled = library.loaded && !library.busy && valid) { Text("Save") }
     }, dismissButton = { TextButton(onClick = dismiss, enabled = !library.busy) { Text("Cancel") } })
 }

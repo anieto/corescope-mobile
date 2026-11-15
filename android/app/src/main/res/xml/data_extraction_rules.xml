@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Android 12 and later. Only saved plans (Candidate Sites and saved studies) are backed up and
-  carried to a new phone; settings, caches, terrain and analyzer data stay on the device, as before.
-  Listing an include makes it the only thing backed up. Cloud backup stops for the whole app above
-  25 MB, so large saved coverage results are a known limit until they move to their own files.
+  Android 12 and later. Saved plans only; settings, caches, terrain and analyzer data stay on the
+  device. Listing an include makes it the only thing backed up.
+  Cloud backup stops for the whole app above 25 MB, so it takes the library file alone: result files
+  and migration backups (CandidateSites/results/, migration-backups/, plans.json.v1-backup) go only
+  by device transfer. A study restored from the cloud shows "Saved result not on this device".
+  See docs/node-planner/saved-plans-v3-schema.md.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <include domain="file" path="CandidateSites/" />
+        <include domain="file" path="CandidateSites/plans.json" />
     </cloud-backup>
     <device-transfer>
         <include domain="file" path="CandidateSites/" />

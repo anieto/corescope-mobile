@@ -20,16 +20,15 @@ class SavedPlansLibrary(private val store: DeploymentPlanStore) {
     var loaded by mutableStateOf(false); private set
     var busy by mutableStateOf(false); private set
     var error by mutableStateOf<String?>(null)
-    private var schemaVersion = 1
+    /** Named study plans (version 3); kept through every save even before A2 shows them. */
+    var studyPlans by mutableStateOf<List<StudyPlan>>(emptyList()); private set
 
     suspend fun load() {
         if (busy || loaded) return
         busy = true
         try {
             val document = withContext(Dispatchers.IO) { store.load() }
-            plans = document.plans
-            studies = document.savedStudies
-            schemaVersion = document.schemaVersion
+            apply(document)
             loaded = true
             error = null
         } catch (_: Exception) {
@@ -44,34 +43,57 @@ class SavedPlansLibrary(private val store: DeploymentPlanStore) {
     }
 
     suspend fun savePlan(plan: DeploymentPlan): Boolean =
-        commit(if (plans.any { it.id == plan.id }) plans.map { if (it.id == plan.id) plan else it } else plans + plan, null)
+        commit(if (plans.any { it.id == plan.id }) plans.map { if (it.id == plan.id) plan else it } else plans + plan, studies) != null
 
-    suspend fun deletePlan(plan: DeploymentPlan): Boolean = commit(plans.filterNot { it.id == plan.id }, null)
+    suspend fun deletePlan(plan: DeploymentPlan): Boolean = commit(plans.filterNot { it.id == plan.id }, studies) != null
 
-    /** Saving a study moves the file to version 2, backing up a version-1 original first. */
-    suspend fun saveStudy(study: SavedStudy): Boolean =
-        commit(plans, if (studies.any { it.id == study.id }) studies.map { if (it.id == study.id) study else it } else studies + study)
+    /**
+     * Saves [study] and returns it as stored, with its revision; null if it couldn't be saved. A study
+     * changed elsewhere since it was opened isn't overwritten. One deleted since it was opened is saved
+     * under a new ID rather than brought back. Saving moves the library to version 3, keeping the
+     * original version 1 or 2 file first.
+     */
+    suspend fun saveStudy(study: SavedStudy): SavedStudy? {
+        val current = studies.firstOrNull { it.id == study.id }
+        val opened = study.revision
+        if (current != null && opened != null && current.revision != opened) {
+            error = "This study was changed elsewhere since you opened it. Reopen it to see the latest, or save under a new name."
+            return null
+        }
+        // Keep the plan membership the library has now; an old editor must not undo a later move.
+        val saving = when {
+            current != null -> study.copy(planID = current.planID, importOrigin = current.importOrigin, origin = current.origin)
+            opened != null -> study.copy(id = newStudyID(), revision = null, planID = null, importOrigin = null)
+            else -> study
+        }
+        val document = commit(plans, if (current != null) studies.map { if (it.id == saving.id) saving else it } else studies + saving)
+        return document?.savedStudies?.firstOrNull { it.id == saving.id }
+    }
 
-    suspend fun deleteStudy(study: SavedStudy): Boolean = commit(plans, studies.filterNot { it.id == study.id })
+    suspend fun deleteStudy(study: SavedStudy): Boolean = commit(plans, studies.filterNot { it.id == study.id }) != null
 
-    private suspend fun commit(nextPlans: List<DeploymentPlan>, nextStudies: List<SavedStudy>?): Boolean {
-        if (!loaded || busy) return false
+    private fun apply(document: DeploymentPlanDocument) {
+        plans = document.plans
+        studies = document.savedStudies
+        studyPlans = document.studyPlans.orEmpty()
+    }
+
+    private suspend fun commit(nextPlans: List<DeploymentPlan>, nextStudies: List<SavedStudy>): DeploymentPlanDocument? {
+        if (!loaded || busy) return null
         busy = true
         try {
-            val version = if (nextStudies == null) schemaVersion else 2
-            val document = DeploymentPlanDocument(version, nextPlans, if (version == 2) nextStudies ?: studies else null)
-            withContext(Dispatchers.IO) { store.save(document) }
-            plans = document.plans
-            studies = document.savedStudies
-            schemaVersion = version
+            val saved = withContext(Dispatchers.IO) { store.save(DeploymentPlanDocument(3, nextPlans, nextStudies, studyPlans = studyPlans)) }
+            apply(saved)
             error = null
-            return true
-        } catch (_: DeploymentPlanStoreException) {
-            error = "Saved plans changed outside this editor. Your draft is still open. Close it before reloading the library."
+            return saved
+        } catch (failure: DeploymentPlanStoreException) {
+            error = if (failure.reason == DeploymentPlanStoreFailure.STORAGE_FULL)
+                "There isn’t enough storage to save this result. Your previous save is unchanged. Remove an older study, or save inputs only."
+            else "Saved plans changed outside this editor. Your draft is still open. Close it before reloading the library."
         } catch (_: Exception) {
             error = "The plan could not be saved. Your draft is still open and the previous save is unchanged."
         } finally { busy = false }
-        return false
+        return null
     }
 
     companion object {

@@ -58,16 +58,17 @@ class SavedStudyTest {
         file.writeBytes(bytes)
         val store = DeploymentPlanStore(file)
         assertEquals(legacy, store.load())
-        assertFalse(backup(file).exists())
+        assertFalse(migrationBackup(file, bytes).exists())
         store.save(next)
-        assertArrayEquals(bytes, backup(file).readBytes())
+        // Version 3 keeps the exact original before replacing it; no sibling file is invented.
+        assertArrayEquals(bytes, migrationBackup(file, bytes).readBytes())
+        assertFalse(backup(file).exists())
         val reopened = DeploymentPlanStore(file).load()
-        assertEquals(next, reopened)
-        assertEquals(legacy.plans, reopened.plans)
+        assertEquals(3, reopened.schemaVersion)
+        assertEquals(next.content(), reopened.content())
         assertNull(reopened.plans.first().sites.first().assumptions.frequencyMHz)
-        val error = assertThrows(DeploymentPlanException::class.java) { store.save(legacy) }
-        assertEquals(DeploymentPlanFailure.UNSUPPORTED_VERSION, error.reason)
-        assertEquals(next, store.load())
+        store.save(reopened)
+        assertEquals(1, requireNotNull(File(file.parentFile, "migration-backups").list()).size)
     }
 
     @Test fun interruptedMigrationCanBeRetriedWithoutLosingOriginal() = fixture { file ->
@@ -78,28 +79,40 @@ class SavedStudyTest {
         failing.load()
         assertThrows(IOException::class.java) { failing.save(next) }
         assertArrayEquals(bytes, file.readBytes())
-        assertArrayEquals(bytes, backup(file).readBytes())
+        assertArrayEquals(bytes, migrationBackup(file, bytes).readBytes())
         val retry = DeploymentPlanStore(file)
         retry.load()
         retry.save(next)
-        assertEquals(next, retry.load())
+        assertEquals(next.content(), retry.load().content())
+        assertArrayEquals(bytes, migrationBackup(file, bytes).readBytes())
     }
 
-    @Test fun conflictingBackupAndCorruptLibraryStayProtected() = fixture { file ->
+    /** An existing sibling backup of other bytes is left alone; this original gets its own. */
+    @Test fun differentExistingBackupIsKeptAndCorruptLibraryStaysProtected() = fixture { file ->
         val next = document()
         val bytes = DeploymentPlanCodec.encode(DeploymentPlanDocument(1, next.plans))
         file.writeBytes(bytes)
         backup(file).writeText("other original")
         val store = DeploymentPlanStore(file)
         store.load()
-        val conflict = assertThrows(DeploymentPlanStoreException::class.java) { store.save(next) }
-        assertEquals(DeploymentPlanStoreFailure.CHANGED_ON_DISK, conflict.reason)
-        assertArrayEquals(bytes, file.readBytes())
+        store.save(next)
+        assertEquals("other original", backup(file).readText())
+        assertArrayEquals(bytes, migrationBackup(file, bytes).readBytes())
         file.writeText("corrupt")
         assertThrows(Exception::class.java) { store.load() }
         val unloaded = assertThrows(DeploymentPlanStoreException::class.java) { store.save(next) }
         assertEquals(DeploymentPlanStoreFailure.NOT_LOADED, unloaded.reason)
         assertEquals("corrupt", file.readText())
+    }
+
+    /** The sibling backup v2 wrote is recognized in place when it holds these exact bytes. */
+    @Test fun identicalSiblingBackupIsReused() = fixture { file ->
+        val bytes = DeploymentPlanCodec.encode(DeploymentPlanDocument(1, document().plans))
+        file.writeBytes(bytes)
+        backup(file).writeBytes(bytes)
+        DeploymentPlanStore(file).apply { load(); save(document()) }
+        assertFalse(File(file.parentFile, "migration-backups").exists())
+        assertArrayEquals(bytes, backup(file).readBytes())
     }
 
     @Test fun nonfiniteValuesAndOversizeResultsAreRejected() {

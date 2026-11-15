@@ -503,6 +503,16 @@ internal class EstimatedCoverageViewModel(
         sourceID = coverage.nodes.firstOrNull()?.sourceID ?: "saved"
         catalogSource = sourceID
         calculatedCatalog = coverage.nodes
+        // A referenced result this device can't show: the inputs open alone, with the reason.
+        inputError = when (study.resultStatus) {
+            org.nodescope.android.feature.candidatesites.SavedResultStatus.MISSING ->
+                "Saved result not on this device. Your inputs are available; calculate to see results."
+            org.nodescope.android.feature.candidatesites.SavedResultStatus.UNVERIFIED ->
+                "The saved result could not be verified, so it isn't shown. Your inputs are available; calculate to see results."
+            org.nodescope.android.feature.candidatesites.SavedResultStatus.UNSUPPORTED ->
+                "This saved result needs another version of NodeScope. Your inputs are available; calculate to see results."
+            else -> null
+        }
         coverage.calculatedResult?.let { encoded ->
             val inputs = inputs()
             checkpoint = try {
