@@ -187,6 +187,23 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
             val live = { rawLive.takeIf { it.selection?.host == preferences.host && it.selection.region == preferences.region } ?: LiveFeedState() }
             val sourceChangedAt by model.sourceChangedAt.collectAsStateWithLifecycle()
             val pendingLink by model.pendingLink.collectAsStateWithLifecycle()
+            val pendingSwitch by model.pendingSourceSwitch.collectAsStateWithLifecycle()
+            pendingSwitch?.let { pending ->
+                AlertDialog(onDismissRequest = model::cancelSourceSwitch, title = { Text("Unsaved work couldn't be kept") },
+                    text = {
+                        Text("These unfinished studies couldn't be saved on this device: ${pending.affected.joinToString()}. " +
+                            "Switching analyzer now loses their latest changes. Saved plans aren't affected.")
+                    },
+                    confirmButton = { TextButton(onClick = { model.selectSource(pending.input, pending.onSaved) }) { Text("Retry") } },
+                    dismissButton = {
+                        Row {
+                            TextButton(onClick = model::cancelSourceSwitch) { Text("Cancel") }
+                            TextButton(onClick = { model.selectSource(pending.input, pending.onSaved, keepDrafts = false) }) {
+                                Text("Switch without saving", color = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    })
+            }
             AppShell(preferences, state, model::setRegion, { model.refresh(); model.reconnectLive() }, model::setAppearance, model::selectDestination,
                 sourceScreen = { onDone -> SourceScreen(sources, preferences.host, saving, error, { host -> model.selectSource(host, onDone) }, model.sourceIcons) },
                 feed = live, onReconnect = model::reconnectLive, browse = model.browse, monitoredChannels = { model.monitoredChannels },
@@ -722,9 +739,11 @@ internal fun AppShell(
                                         val linkSeed = backStack.toRoute<EstimatedCoverageRoute>().linkSeed
                                         val draftId = backStack.toRoute<EstimatedCoverageRoute>().draftId
                                         // Opened empty or from a saved study: that's the clean state. Seeded or resumed work is unsaved.
-                                        if (linkSeed == null && draftId == null) model.markClean()
-                                        draftId?.let { id -> org.nodescope.android.feature.candidatesites.StudyDraftStore.application(context.filesDir).resume(id, library) }
-                                            ?.let { model.restoreDraft(it.draft, it.study, it.result) }
+                                        // After process death the entry still names its draft session: resume that work.
+                                        val resuming = draftId ?: backStack.savedStateHandle.get<String>("draftID")
+                                        val draft = resuming?.let { id -> org.nodescope.android.feature.candidatesites.StudyDraftStore.application(context.filesDir).resume(id, library) }
+                                        if (draft != null) model.restoreDraft(draft.draft, draft.study, draft.result)
+                                        else if (linkSeed == null) model.markClean()
                                         linkSeed?.let { encoded ->
                                             val seed = kotlinx.serialization.json.Json.decodeFromString<org.nodescope.android.feature.coverage.LinkCoverageSeed>(encoded)
                                             model.applyLinkSeed(seed)
@@ -760,10 +779,10 @@ internal fun AppShell(
                                     .also { model ->
                                         library.studies.firstOrNull { it.id == studyId }?.let(model::restore)
                                         model.suggestedPlanID = backStack.toRoute<LinkProfileRoute>().planId
-                                        val draftId = backStack.toRoute<LinkProfileRoute>().draftId
-                                        if (draftId == null) model.markClean()
-                                        else org.nodescope.android.feature.candidatesites.StudyDraftStore.application(context.filesDir).resume(draftId, library)
-                                            ?.let { model.restoreDraft(it.draft, it.study, it.result) }
+                                        // A resumed draft, or after process death the entry's own draft session.
+                                        val resuming = backStack.toRoute<LinkProfileRoute>().draftId ?: backStack.savedStateHandle.get<String>("draftID")
+                                        val draft = resuming?.let { id -> org.nodescope.android.feature.candidatesites.StudyDraftStore.application(context.filesDir).resume(id, library) }
+                                        if (draft != null) model.restoreDraft(draft.draft, draft.study, draft.result) else model.markClean()
                                     }
                             }
                             org.nodescope.android.feature.candidatesites.StudyDraftAutosave(rememberDraftSession(backStack, org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE,
@@ -979,12 +998,26 @@ private fun rememberDraftSession(entry: androidx.navigation.NavBackStackEntry,
                                  /** A resumed draft keeps its own ID, so further edits update it. */
                                  resuming: String? = null): org.nodescope.android.feature.candidatesites.StudyDraftSession {
     val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
-    return remember(entry.id) {
+    val session = remember(entry.id) {
         val handle = entry.savedStateHandle
         val id = handle.get<String>("draftID") ?: (resuming ?: java.util.UUID.randomUUID().toString()).also { handle["draftID"] = it }
         org.nodescope.android.feature.candidatesites.StudyDraftSession(
             org.nodescope.android.feature.candidatesites.StudyDraftStore.application(context.filesDir), id, kind)
     }
+    // Open for as long as its back-stack entry lives, including while another screen covers it: the
+    // observer stays on the entry (not this composition) and removes itself when the entry is destroyed.
+    LaunchedEffect(entry, session) {
+        org.nodescope.android.feature.candidatesites.StudyDraftRegistry.register(session)
+        entry.lifecycle.addObserver(object : androidx.lifecycle.LifecycleEventObserver {
+            override fun onStateChanged(source: androidx.lifecycle.LifecycleOwner, event: androidx.lifecycle.Lifecycle.Event) {
+                if (event == androidx.lifecycle.Lifecycle.Event.ON_DESTROY) {
+                    org.nodescope.android.feature.candidatesites.StudyDraftRegistry.unregister(session)
+                    source.lifecycle.removeObserver(this)
+                }
+            }
+        })
+    }
+    return session
 }
 
 /** Where a recovery draft resumes: its tool, with the draft's ID. */

@@ -38,7 +38,13 @@ final class StudyDraftSession: @unchecked Sendable {
         self.id = id
         self.kind = kind
         self.store = store
+        StudyDraftRegistry.shared.register(self)
     }
+
+    deinit { StudyDraftRegistry.shared.unregister(id) }
+
+    /// The last title written, for naming this session if a write fails.
+    private(set) var title: String?
 
     func flush(_ content: DraftContent?, host: String?, region: String?) {
         lock.withLock {
@@ -50,6 +56,7 @@ final class StudyDraftSession: @unchecked Sendable {
                 failure = nil
                 return
             }
+            title = content.title
             let now = Int64(Date().timeIntervalSince1970 * 1000)
             let previous = written ?? store.draft(id)
             var draft = StudyDraft(id: id, kind: kind, createdAtMilliseconds: previous?.createdAtMilliseconds ?? now,
@@ -91,6 +98,11 @@ private struct StudyDraftAutosave: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            // While on screen, a source switch can write this tool's latest work first.
+            .onAppear {
+                let source = source, host = host, region = region
+                StudyDraftRegistry.shared.flushers[session.id] = { (source.draftContent(), host, region) }
+            }
             .task(id: session.id) {
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .seconds(1.5))
@@ -98,7 +110,10 @@ private struct StudyDraftAutosave: ViewModifier {
                 }
             }
             .onChange(of: scenePhase) { _, phase in if phase != .active { flush() } }
-            .onDisappear { flush() }
+            .onDisappear {
+                StudyDraftRegistry.shared.flushers[session.id] = nil
+                flush()
+            }
     }
 }
 
@@ -131,5 +146,35 @@ extension CandidatePlansModel {
                               updatedAtMilliseconds: draft.updatedAtMilliseconds, kind: draft.kind, revision: draft.savedRevision)
         }
         return ResumedDraft(draft: draft, study: study, result: store.result(draft))
+    }
+}
+
+/// Editing sessions alive now (their tool exists, even if covered), so a source switch can write their
+/// work first and the Unfinished studies list can leave out drafts that are already open. Mirrors Android.
+final class StudyDraftRegistry: @unchecked Sendable {
+    static let shared = StudyDraftRegistry()
+    private let lock = NSLock()
+    private var sessions: [String: Weak] = [:]
+    /// For each tool on screen: its current content, analyzer and region. Main actor only.
+    @MainActor var flushers: [String: @MainActor () -> (DraftContent?, String?, String?)] = [:]
+
+    private struct Weak { weak var session: StudyDraftSession? }
+
+    var openIDs: Set<String> { lock.withLock { Set(sessions.filter { $0.value.session != nil }.keys) } }
+
+    func register(_ session: StudyDraftSession) { lock.withLock { sessions[session.id] = Weak(session: session) } }
+    func unregister(_ id: String) { lock.withLock { if sessions[id]?.session == nil { sessions[id] = nil } } }
+
+    /// Writes every open session's work now. Returns the titles of work that couldn't be kept, so a source
+    /// switch can wait for Retry, Cancel or Switch without saving.
+    @MainActor func flushAll() -> [String] {
+        let contents = flushers.mapValues { $0() }
+        let open = lock.withLock { sessions.values.compactMap(\.session) }
+        var failed: [String] = []
+        for session in open {
+            if let (content, host, region) = contents[session.id] { session.flush(content, host: host, region: region) }
+            if session.failure != nil { failed.append(session.title ?? String(localized: "An unfinished study")) }
+        }
+        return failed
     }
 }

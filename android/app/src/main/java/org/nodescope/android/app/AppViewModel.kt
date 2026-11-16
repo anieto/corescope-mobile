@@ -57,6 +57,12 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     val sourceChangedAt = sourceChangeState.asStateFlow()
     private val sourceState = MutableStateFlow(container.bundledSources.sources)
     val sources = sourceState.asStateFlow()
+    /** A source switch waiting because unsaved work couldn't be kept: the chosen source and what's affected. */
+    class PendingSourceSwitch(val input: String, val affected: List<String>, val onSaved: () -> Unit)
+    private val pendingSwitchState = MutableStateFlow<PendingSourceSwitch?>(null)
+    val pendingSourceSwitch = pendingSwitchState.asStateFlow()
+    fun cancelSourceSwitch() { pendingSwitchState.value = null }
+
     private val savingState = MutableStateFlow(false)
     val saving = savingState.asStateFlow()
     private val writeErrorState = MutableStateFlow<String?>(null)
@@ -103,11 +109,24 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         }
     }.getOrNull()
 
-    fun selectSource(input: String, onSaved: () -> Unit = {}) {
+    /**
+     * Switches analyzer. Open tools' unsaved work is written to recovery drafts first; if that fails, the
+     * switch waits in [pendingSourceSwitch] for Retry, Cancel or Switch without saving ([keepDrafts] false).
+     */
+    fun selectSource(input: String, onSaved: () -> Unit = {}, keepDrafts: Boolean = true) {
         if (savingState.value) return
         savingState.value = true
         viewModelScope.launch {
             writeErrorState.value = null
+            if (keepDrafts) {
+                val failed = org.nodescope.android.feature.candidatesites.StudyDraftRegistry.flushAll()
+                if (failed.isNotEmpty()) {
+                    pendingSwitchState.value = PendingSourceSwitch(input, failed, onSaved)
+                    savingState.value = false
+                    return@launch
+                }
+            }
+            pendingSwitchState.value = null
             try {
                 val host = normalizeHost(input)
                 val sameHost = container.sourceRouter.state.value.host == host.lowercase()

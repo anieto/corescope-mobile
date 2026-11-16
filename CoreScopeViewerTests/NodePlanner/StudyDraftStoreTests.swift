@@ -111,6 +111,22 @@ struct StudyDraftStoreTests {
         #expect(reopened.draftContent() != nil)
     }
 
+    @MainActor @Test func aSourceSwitchLearnsWhichWorkCouldntBeKept() throws {
+        // A store whose folder is a file can't write anything.
+        let blockedFolder = root.appendingPathComponent("not-a-folder")
+        try Data("x".utf8).write(to: blockedFolder)
+        let failing = StudyDraftSession(kind: .linkProfile, store: StudyDraftStore(directory: blockedFolder))
+        let working = StudyDraftSession(kind: .coverage, store: store)
+        let registry = StudyDraftRegistry.shared
+        defer { registry.flushers[failing.id] = nil; registry.flushers[working.id] = nil }
+        registry.flushers[failing.id] = { (DraftContent(title: "Ridge", editor: ["latitude": "29"]), "analyzer.example", "AUS") }
+        registry.flushers[working.id] = { (DraftContent(title: "Valley", editor: ["latitude": "30"]), "analyzer.example", "AUS") }
+        #expect(registry.flushAll() == ["Ridge"])
+        #expect(store.list().map(\.title) == ["Valley"])
+        // Open sessions are known, so their drafts can be left out of the Unfinished list.
+        #expect(registry.openIDs.contains(working.id))
+    }
+
     @Test func aFullStoreRefusesNewDraftsButNeverEvicts() throws {
         let drafts = try (1...StudyDraftStore.maximumDrafts).map { try store.save(draft("Draft \($0)", updated: Int64($0)), result: nil) }
         #expect(throws: StudyDraftStoreError.full) { try store.save(draft("One more"), result: nil) }

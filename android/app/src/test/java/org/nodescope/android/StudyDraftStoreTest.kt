@@ -61,6 +61,26 @@ class StudyDraftStoreTest {
         assertTrue(stray.exists())
     }
 
+    @Test fun aSourceSwitchLearnsWhichWorkCouldntBeKept() = kotlinx.coroutines.test.runTest {
+        // A store whose folder is a file can't write anything.
+        val blocked = StudyDraftStore(File(root, "not-a-folder").apply { writeText("x") })
+        val failing = StudyDraftSession(blocked, UUID.randomUUID().toString(), SavedStudy.Kind.LINK_PROFILE)
+        val working = StudyDraftSession(store, UUID.randomUUID().toString(), SavedStudy.Kind.COVERAGE)
+        val content = { title: String -> DraftContent(title, mapOf("latitude" to "29."), null, null, null) }
+        try {
+            listOf(failing to "Ridge", working to "Valley").forEach { (session, title) ->
+                StudyDraftRegistry.register(session)
+                StudyDraftRegistry.flushers[session.id] = { content(title) to ("analyzer.example" to "AUS") }
+            }
+            assertEquals(listOf("Ridge"), StudyDraftRegistry.flushAll())
+            assertEquals(listOf("Valley"), store.list().map { it.title })
+            // Open sessions are known, so their drafts can be left out of the Unfinished list.
+            assertTrue(working.id in StudyDraftRegistry.openIDs)
+        } finally {
+            listOf(failing, working).forEach { StudyDraftRegistry.unregister(it); StudyDraftRegistry.flushers.remove(it.id) }
+        }
+    }
+
     @Test fun aFullStoreRefusesNewDraftsButNeverEvicts() {
         val drafts = (1..StudyDraftStore.MAXIMUM_DRAFTS).map { store.save(draft("Draft $it", updated = it.toLong()), null) }
         val failure = assertThrows(StudyDraftException::class.java) { store.save(draft("One more"), null) }

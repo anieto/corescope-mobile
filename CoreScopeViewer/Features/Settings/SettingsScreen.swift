@@ -16,6 +16,8 @@ struct SettingsScreen: View {
     @AppStorage(LiveMapPreferences.groupsNodesKey) private var groupsNodes = true
     @State private var hostInput = ""
     @State private var sourceSaveStatus: SourceSaveStatus?
+    /// A source switch waiting because unsaved work couldn't be kept: the chosen host and what's affected.
+    @State private var pendingSwitch: (host: String, affected: [String])?
     @State private var sourceSaveID = UUID()
     @State private var navigationPath = NavigationPath()
 
@@ -210,11 +212,29 @@ struct SettingsScreen: View {
         .onChange(of: resetID) {
             navigationPath = NavigationPath()
         }
+        .alert("Unsaved work couldn't be kept", isPresented: Binding(get: { pendingSwitch != nil }, set: { if !$0 { pendingSwitch = nil } }),
+               presenting: pendingSwitch) { pending in
+            Button("Retry") { applyHostChange(pending.host) }
+            Button("Switch without saving", role: .destructive) { applyHostChange(pending.host, keepingDrafts: false) }
+            Button("Cancel", role: .cancel) { pendingSwitch = nil }
+        } message: { pending in
+            Text("These unfinished studies couldn't be saved on this device: \(pending.affected.joined(separator: ", ")). Switching analyzer now loses their latest changes. Saved plans aren't affected.")
+        }
     }
 
-    private func applyHostChange(_ newHost: String) {
+    /// Open tools' unsaved work is written to recovery drafts first; if that fails, the switch waits for
+    /// Retry, Cancel or Switch without saving.
+    private func applyHostChange(_ newHost: String, keepingDrafts: Bool = true) {
         let normalizedHost = AnalyzerSettings.normalizedHost(newHost)
         guard !normalizedHost.isEmpty else { return }
+        if keepingDrafts {
+            let failed = StudyDraftRegistry.shared.flushAll()
+            guard failed.isEmpty else {
+                pendingSwitch = (normalizedHost, failed)
+                return
+            }
+        }
+        pendingSwitch = nil
         hostInput = normalizedHost
         let sameHost = AnalyzerSettings.normalizedHost(settings.host).lowercased() == normalizedHost.lowercased()
         settings.host = normalizedHost

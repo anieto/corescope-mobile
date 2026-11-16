@@ -590,7 +590,11 @@ fun SavedStudyActions(snapshot: () -> SavedStudy?, didSave: (SavedStudy) -> Unit
 private class DraftList(private val store: StudyDraftStore, private val scope: kotlinx.coroutines.CoroutineScope) {
     var value by mutableStateOf<List<StudyDraft>>(emptyList()); private set
 
-    fun reload() = scope.launch { value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.list() } }
+    /** Drafts whose tool is open somewhere aren't offered: resuming would open the same work twice. */
+    fun reload() = scope.launch {
+        val open = StudyDraftRegistry.openIDs
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.list() }.filter { it.id !in open }
+    }
 
     fun discard(draft: StudyDraft) = scope.launch {
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.delete(draft.id) }

@@ -40,6 +40,8 @@ interface StudyDraftSource {
  */
 class StudyDraftSession(private val store: StudyDraftStore, val id: String, private val kind: SavedStudy.Kind) {
     private var written: StudyDraft? = null
+    /** The last title written, for naming this session if a write fails. */
+    @Volatile var title: String? = null; private set
     private var writtenResult: ByteArray? = null
     @Volatile var failure: StudyDraftFailure? = null; private set
 
@@ -51,6 +53,7 @@ class StudyDraftSession(private val store: StudyDraftStore, val id: String, priv
             failure = null
             return
         }
+        title = content.title
         val now = System.currentTimeMillis()
         val previous = written ?: store.draft(id)
         val draft = StudyDraft(id, kind, previous?.createdAtMilliseconds ?: now, now, content.title, host, region,
@@ -77,6 +80,14 @@ class StudyDraftSession(private val store: StudyDraftStore, val id: String, priv
 @Composable
 fun StudyDraftAutosave(session: StudyDraftSession, source: StudyDraftSource, host: String?, region: String?) {
     val current = rememberUpdatedState(Triple(source, host, region))
+    // While composed, a source switch can flush this tool's latest work first.
+    DisposableEffect(session) {
+        StudyDraftRegistry.flushers[session.id] = {
+            val (tool, analyzer, area) = current.value
+            tool.draftContent() to (analyzer to area)
+        }
+        onDispose { StudyDraftRegistry.flushers.remove(session.id) }
+    }
     fun flushNow() {
         val (tool, analyzer, area) = current.value
         val content = tool.draftContent()
@@ -98,5 +109,36 @@ fun StudyDraftAutosave(session: StudyDraftSession, source: StudyDraftSource, hos
             lifecycle.removeObserver(observer)
             flushNow()
         }
+    }
+}
+
+/**
+ * Editing sessions alive now (their tool is somewhere in the back stack), so a source switch can write
+ * their work first and the Unfinished studies list can leave out drafts that are already open.
+ */
+object StudyDraftRegistry {
+    internal val open = java.util.concurrent.ConcurrentHashMap<String, StudyDraftSession>()
+    /** For each composed tool: its current content, analyzer and region. Main thread. */
+    internal val flushers = java.util.concurrent.ConcurrentHashMap<String, () -> Pair<DraftContent?, Pair<String?, String?>>>()
+
+    val openIDs: Set<String> get() = open.keys.toSet()
+
+    fun register(session: StudyDraftSession) { open[session.id] = session }
+    fun unregister(session: StudyDraftSession) { open.remove(session.id) }
+
+    /**
+     * Writes every open session's work now (call on the main thread; writes happen on IO). Returns the
+     * sessions that couldn't be kept, by title, so the switch can wait for Retry, Cancel or Switch without saving.
+     */
+    suspend fun flushAll(): List<String> {
+        val contents = flushers.mapValues { it.value() }
+        val failed = mutableListOf<String>()
+        withContext(Dispatchers.IO) {
+            for (session in open.values) {
+                contents[session.id]?.let { (content, place) -> session.flush(content, place.first, place.second) }
+                if (session.failure != null) failed += session.title ?: "An unfinished study"
+            }
+        }
+        return failed
     }
 }

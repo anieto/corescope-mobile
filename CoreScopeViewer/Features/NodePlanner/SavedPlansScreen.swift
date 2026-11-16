@@ -798,7 +798,11 @@ final class DraftList {
     var discarding: StudyDraft?
     @ObservationIgnored private let store = try? StudyDraftStore.application()
 
-    func reload() { items = store?.list() ?? [] }
+    /// Drafts whose tool is open somewhere aren't offered: resuming would open the same work twice.
+    func reload() {
+        let open = StudyDraftRegistry.shared.openIDs
+        items = (store?.list() ?? []).filter { !open.contains($0.id) }
+    }
 
     func resume(_ draft: StudyDraft) {
         guard let store else { return }
