@@ -235,6 +235,11 @@ final class CandidatePlansModel {
         return saved.studies.first { $0.id == copy.id }
     }
 
+    /// Appends whole records in one save (an import). Nothing changes if it fails.
+    func addRecords(plans newPlans: [DeploymentPlan], studyPlans newContainers: [StudyPlan], studies newStudies: [SavedStudy]) async -> Bool {
+        await commit(plans + newPlans, studies: studies + newStudies, studyPlans: studyPlans + newContainers) != nil
+    }
+
     func deleteStudy(_ id: String) async -> Bool {
         let planID = studies.first { $0.id == id }?.planID
         return await commit(plans, studies: studies.filter { $0.id != id },

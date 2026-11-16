@@ -10,6 +10,8 @@ struct SavedPlansScreen: View {
     @State private var action: StudyAction?
     @State private var creatingPlan = false
     @State private var backingUp = false
+    @State private var choosingImport = false
+    @State private var importing: PackageImportRequest?
     @State private var drafts = DraftList()
 
     init(kind: SavedStudy.Kind? = nil) {
@@ -120,12 +122,20 @@ struct SavedPlansScreen: View {
                     .disabled(!model.isLoaded)
             }
             ToolbarItem(placement: .secondaryAction) {
+                Button("Import…", systemImage: "square.and.arrow.down") { choosingImport = true }
+                    .disabled(!model.isLoaded)
+            }
+            ToolbarItem(placement: .secondaryAction) {
                 Button("Back up library…", systemImage: "square.and.arrow.up") { backingUp = true }
                     .disabled(!model.isLoaded || (model.studies.isEmpty && model.studyPlans.isEmpty && model.plans.isEmpty))
             }
         }
         .sheet(isPresented: $creatingPlan) { PlanEditorSheet(plan: nil) }
         .sheet(isPresented: $backingUp) { ExportPackageSheet(contents: .library) }
+        .fileImporter(isPresented: $choosingImport, allowedContentTypes: [.nodescopePackage]) { result in
+            if case .success(let url) = result { importing = PackageImportRequest(url: url) }
+        }
+        .sheet(item: $importing) { request in ImportPackageSheet(request: request) }
         .studyActionPresenter($action)
         .draftResumeDestination(drafts)
         .task { await model.load() }

@@ -56,6 +56,10 @@ fun SavedPlansScreen(kind: SavedStudy.Kind?, onOpen: (SavedStudy) -> Unit, onPla
     var query by rememberSaveable { mutableStateOf("") }
     var creatingPlan by rememberSaveable { mutableStateOf(false) }
     var backingUp by rememberSaveable { mutableStateOf(false) }
+    var importing by remember { mutableStateOf<android.net.Uri?>(null) }
+    // Most file providers don't know the package's type, so any file can be picked; reading checks it.
+    val chooser = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri -> importing = uri }
     val actions = rememberStudyActions()
     val searching = query.isNotBlank()
     fun matches(text: String?) = text != null && text.contains(query.trim(), ignoreCase = true)
@@ -126,11 +130,17 @@ fun SavedPlansScreen(kind: SavedStudy.Kind?, onOpen: (SavedStudy) -> Unit, onPla
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
                         }
                     }
-                    if (library.loaded && (library.studies.isNotEmpty() || library.studyPlans.isNotEmpty() || library.plans.isNotEmpty()))
-                        OutlinedButton(onClick = { backingUp = true }) {
-                            Icon(Icons.Outlined.Share, null)
-                            Text("Back up library…", Modifier.padding(start = 8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (library.loaded && (library.studies.isNotEmpty() || library.studyPlans.isNotEmpty() || library.plans.isNotEmpty()))
+                            OutlinedButton(onClick = { backingUp = true }) {
+                                Icon(Icons.Outlined.Share, null)
+                                Text("Back up library…", Modifier.padding(start = 8.dp))
+                            }
+                        OutlinedButton(onClick = { chooser.launch(arrayOf("*/*")) }, enabled = library.loaded) {
+                            Icon(Icons.Outlined.FileOpen, null)
+                            Text("Import…", Modifier.padding(start = 8.dp))
                         }
+                    }
                     Text("Stored on this device. Backup details are in Settings › Cache & Storage.",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -142,6 +152,7 @@ fun SavedPlansScreen(kind: SavedStudy.Kind?, onOpen: (SavedStudy) -> Unit, onPla
     }
     if (creatingPlan) PlanEditorDialog(null) { creatingPlan = false }
     if (backingUp) ExportPackageSheet(SavedPlansExport.Contents.Library) { backingUp = false }
+    importing?.let { uri -> ImportPackageSheet(uri) { importing = null } }
     StudyActionDialogs(actions)
 }
 

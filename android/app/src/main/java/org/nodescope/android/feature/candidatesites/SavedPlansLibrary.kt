@@ -219,6 +219,10 @@ class SavedPlansLibrary(private val store: DeploymentPlanStore) {
         return commit(plans, studies + copy, touch(studyPlans, setOf(copy.planID), now))?.savedStudies?.firstOrNull { it.id == copy.id }
     }
 
+    /** Appends whole records in one save (an import). Nothing changes if it fails. */
+    suspend fun addRecords(newPlans: List<DeploymentPlan>, newContainers: List<StudyPlan>, newStudies: List<SavedStudy>): Boolean =
+        commit(plans + newPlans, studies + newStudies, studyPlans + newContainers) != null
+
     suspend fun deleteStudy(id: String): Boolean {
         val planID = studies.firstOrNull { it.id == id }?.planID
         return commit(plans, studies.filterNot { it.id == id }, touch(studyPlans, setOf(planID), System.currentTimeMillis())) != null

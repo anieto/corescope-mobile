@@ -23,6 +23,30 @@
                 <data android:host="channel" />
                 <data android:host="packet" />
             </intent-filter>
+            <!-- .nodescope saved-plans files: opened from a file manager or attachment, or shared to NodeScope. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/vnd.nodescope.saved-plans+zip" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:host="*" />
+                <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.nodescope" />
+                <data android:pathPattern=".*\\..*\\.nodescope" />
+                <data android:pathPattern=".*\\..*\\..*\\.nodescope" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/vnd.nodescope.saved-plans+zip" />
+            </intent-filter>
         </activity>
         <!-- Export packages only: files under cache/exports, shared read-only with the app the user picks. -->
         <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.exports"

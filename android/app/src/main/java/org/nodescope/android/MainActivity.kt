@@ -33,8 +33,18 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        ViewModelProvider(this, AppViewModel.factory((application as NodeScopeApplication).container))[AppViewModel::class.java]
-            .openLink(intent.dataString)
+        route(intent, ViewModelProvider(this, AppViewModel.factory((application as NodeScopeApplication).container))[AppViewModel::class.java])
+    }
+
+    /** A nodescope:// link, or a saved-plans file opened (VIEW) or shared (SEND) to NodeScope. */
+    private fun route(intent: android.content.Intent?, model: AppViewModel) {
+        when {
+            intent == null -> Unit
+            intent.action == android.content.Intent.ACTION_SEND -> model.openImport(
+                androidx.core.content.IntentCompat.getParcelableExtra(intent, android.content.Intent.EXTRA_STREAM, android.net.Uri::class.java))
+            intent.action == android.content.Intent.ACTION_VIEW && intent.data?.scheme in setOf("content", "file") -> model.openImport(intent.data)
+            else -> model.openLink(intent.dataString)
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,7 +53,7 @@ class MainActivity : ComponentActivity() {
         val container = (application as NodeScopeApplication).container
         val appModel = ViewModelProvider(this, AppViewModel.factory(container))[AppViewModel::class.java]
         // A link that launched the app; not re-read after rotation or process recreation.
-        if (savedInstanceState == null) appModel.openLink(intent?.dataString)
+        if (savedInstanceState == null) route(intent, appModel)
         setContent {
             val model: AppViewModel = viewModel(factory = AppViewModel.factory(container))
             val preferences by model.preferences.collectAsStateWithLifecycle()

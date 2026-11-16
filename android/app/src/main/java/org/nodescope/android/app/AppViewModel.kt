@@ -52,6 +52,12 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     val pendingLink = linkState.asStateFlow()
     fun openLink(data: String?) { NodeScopeLink.parse(data)?.let { linkState.value = PendingLink(System.nanoTime(), it) } }
     fun linkHandled(id: Long) { if (linkState.value?.id == id) linkState.value = null }
+
+    /** A `.nodescope` file opened from another app or shared to NodeScope; the import sheet reads it. */
+    private val importState = MutableStateFlow<android.net.Uri?>(null)
+    val pendingImport = importState.asStateFlow()
+    fun openImport(uri: android.net.Uri?) { if (uri != null) importState.value = uri }
+    fun importHandled() { importState.value = null }
     private val sourceChangeState = MutableStateFlow<Long?>(null)
     /** When the analyzer was last changed from Settings; drives the connection banner. */
     val sourceChangedAt = sourceChangeState.asStateFlow()

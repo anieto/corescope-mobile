@@ -187,6 +187,8 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
             val live = { rawLive.takeIf { it.selection?.host == preferences.host && it.selection.region == preferences.region } ?: LiveFeedState() }
             val sourceChangedAt by model.sourceChangedAt.collectAsStateWithLifecycle()
             val pendingLink by model.pendingLink.collectAsStateWithLifecycle()
+            val pendingImport by model.pendingImport.collectAsStateWithLifecycle()
+            pendingImport?.let { uri -> org.nodescope.android.feature.candidatesites.ImportPackageSheet(uri, model::importHandled) }
             val pendingSwitch by model.pendingSourceSwitch.collectAsStateWithLifecycle()
             pendingSwitch?.let { pending ->
                 AlertDialog(onDismissRequest = model::cancelSourceSwitch, title = { Text("Unsaved work couldn't be kept") },
