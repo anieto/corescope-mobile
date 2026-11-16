@@ -25,7 +25,7 @@ protocol StudyDraftSource: AnyObject {
 /// One editing session's draft. `flush` writes it when it changed, or removes it once nothing is
 /// unsaved; a failed write is kept in `failure` and retried on the next flush. Mirrors Android.
 final class StudyDraftSession: @unchecked Sendable {
-    let id = UUID().uuidString.lowercased()
+    let id: String
     private let store: StudyDraftStore?
     private let kind: SavedStudy.Kind
     private let lock = NSLock()
@@ -33,7 +33,9 @@ final class StudyDraftSession: @unchecked Sendable {
     private var writtenResult: Data?
     private(set) var failure: StudyDraftStoreError?
 
-    init(kind: SavedStudy.Kind, store: StudyDraftStore? = try? .application()) {
+    /// `id` continues a resumed draft; otherwise this is a new session.
+    init(kind: SavedStudy.Kind, id: String = UUID().uuidString.lowercased(), store: StudyDraftStore? = try? .application()) {
+        self.id = id
         self.kind = kind
         self.store = store
     }
@@ -105,5 +107,29 @@ extension View {
     /// foreground and when the screen goes away. This only writes; restoring never starts work.
     func studyDraftAutosave(_ session: StudyDraftSession, source: any StudyDraftSource, host: String?, region: String?) -> some View {
         modifier(StudyDraftAutosave(session: session, source: source, host: host, region: region))
+    }
+}
+
+/// A draft ready to resume: the saved study it edits (at the draft's revision) and its result, if intact.
+struct ResumedDraft {
+    let draft: StudyDraft
+    let study: SavedStudy?
+    let result: Data?
+}
+
+extension CandidatePlansModel {
+    /// Loads `draft` for resuming. The saved study is the library's current record with the draft's
+    /// revision, so Update still refuses a study changed since; a deleted one becomes a stand-in that the
+    /// save sheet offers to save as new. Mirrors Android's `resume`.
+    func resume(_ draft: StudyDraft, from store: StudyDraftStore) -> ResumedDraft {
+        let study = draft.savedStudyID.map { savedID -> SavedStudy in
+            if var current = studies.first(where: { $0.id == savedID }) {
+                current.revision = draft.savedRevision
+                return current
+            }
+            return SavedStudy(id: savedID, name: draft.title, createdAtMilliseconds: draft.createdAtMilliseconds,
+                              updatedAtMilliseconds: draft.updatedAtMilliseconds, kind: draft.kind, revision: draft.savedRevision)
+        }
+        return ResumedDraft(draft: draft, study: study, result: store.result(draft))
     }
 }

@@ -117,3 +117,20 @@ class StudyDraftStore(private val directory: File) {
         fun application(filesDir: File) = StudyDraftStore(File(filesDir, "CandidateSites"))
     }
 }
+
+/** A draft ready to resume: the saved study it edits (at the draft's revision) and its result, if intact. */
+class ResumedDraft(val draft: StudyDraft, val study: SavedStudy?, val result: ByteArray?)
+
+/**
+ * Loads draft [id] for resuming. The saved study is the library's current record with the draft's
+ * revision, so Update still refuses a study changed since; a deleted one becomes a stand-in that the
+ * save sheet offers to save as new.
+ */
+fun StudyDraftStore.resume(id: String, library: SavedPlansLibrary): ResumedDraft? {
+    val draft = draft(id) ?: return null
+    val study = draft.savedStudyID?.let { savedID ->
+        library.studies.firstOrNull { it.id == savedID }?.copy(revision = draft.savedRevision)
+            ?: SavedStudy(savedID, draft.title, draft.createdAtMilliseconds, draft.updatedAtMilliseconds, draft.kind, revision = draft.savedRevision)
+    }
+    return ResumedDraft(draft, study, result(draft))
+}

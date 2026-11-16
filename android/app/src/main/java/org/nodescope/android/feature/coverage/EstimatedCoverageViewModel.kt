@@ -135,6 +135,39 @@ internal class EstimatedCoverageViewModel(
     /** What's open now counts as saved: on opening, and after a successful Save. */
     fun markClean() { cleanEditor = draftEditor() }
 
+    /**
+     * Resumes a recovery draft: its setup (including incomplete text), its captured catalog, the saved
+     * study it edits ([study], at the draft's revision) and, if it's for these inputs, its result.
+     * Nothing is downloaded or calculated.
+     */
+    fun restoreDraft(draft: org.nodescope.android.feature.candidatesites.StudyDraft, study: org.nodescope.android.feature.candidatesites.SavedStudy?, result: ByteArray?) {
+        invalidate()
+        savedStudy = study
+        suggestedPlanID = draft.planID
+        val editor = draft.editor
+        latitudeText = editor["latitude"].orEmpty()
+        longitudeText = editor["longitude"].orEmpty()
+        transmitterName = editor["transmitterName"]?.takeIf(String::isNotEmpty)
+        values = values + editor.filterKeys { it in values.keys }
+        editor["radiusMeters"]?.toIntOrNull()?.let { radiusMeters = it }
+        editor["spacingMeters"]?.toIntOrNull()?.let { spacingMeters = it }
+        draft.catalog?.let { nodes ->
+            calculatedCatalog = nodes
+            if (editor["usesSavedCatalog"] == "true") {
+                savedCatalog = nodes
+                savedCatalogComplete = draft.catalogComplete
+                usesSavedCatalog = true
+                locatedNodes = nodes.map { MeshNode(it.nodeID, it.name, it.role, it.latitude, it.longitude,
+                    it.lastSeenMilliseconds?.let { ms -> java.time.Instant.ofEpochMilli(ms).toString() } ?: "") }
+                sourceID = nodes.firstOrNull()?.sourceID ?: "saved"
+                catalogSource = sourceID
+            }
+        }
+        checkpoint = result?.let { bytes ->
+            inputs()?.let { inputs -> runCatching { PortableCoverageResult.decode(bytes, inputs, nodeSnapshots, catalogComplete) }.getOrNull() }
+        }
+    }
+
     override fun draftContent(): org.nodescope.android.feature.candidatesites.DraftContent? {
         val editor = draftEditor()
         if (editor == cleanEditor || (savedStudy == null && coordinate == null)) return null

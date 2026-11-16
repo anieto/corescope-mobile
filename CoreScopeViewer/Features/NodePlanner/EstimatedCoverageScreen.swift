@@ -30,12 +30,17 @@ struct EstimatedCoverageScreen: View {
     /// Shared with the live map and Link Profile: picking a style here changes them all.
     @AppStorage(MapDisplayStyle.defaultsKey) private var mapDisplayStyle = MapDisplayStyle.standard
 
-    init(savedStudy: SavedStudy? = nil, seed: LinkCoverageSeed? = nil, planID: String? = nil) {
+    /// `draft` resumes unsaved work, which stays unsaved.
+    init(savedStudy: SavedStudy? = nil, seed: LinkCoverageSeed? = nil, planID: String? = nil, draft: ResumedDraft? = nil) {
         let model = EstimatedCoverageModel()
         model.suggestedPlanID = seed?.planID ?? planID
         if let savedStudy { model.restore(savedStudy) }
-        // Opened empty or from a saved study: that's the clean state. A seeded study is unsaved work.
-        if seed == nil { model.markClean() }
+        if let draft {
+            model.restore(draft: draft.draft, study: draft.study, result: draft.result)
+            _draftSession = State(initialValue: StudyDraftSession(kind: .coverage, id: draft.draft.id))
+        }
+        // Opened empty or from a saved study: that's the clean state. Seeded or resumed work is unsaved.
+        if seed == nil && draft == nil { model.markClean() }
         if let seed {
             model.latitude = seed.point.latitude
             model.longitude = seed.point.longitude
@@ -2036,6 +2041,46 @@ extension EstimatedCoverageModel: StudyDraftSource {
 
     /// What's open now counts as saved: on opening, and after a successful Save.
     func markClean() { cleanDraftEditor = draftEditor() }
+
+    /// Resumes a recovery draft: its setup, its captured catalog, the saved study it edits (`study`, at the
+    /// draft's revision) and, if it's for these inputs, its result. Nothing is downloaded or calculated.
+    func restore(draft: StudyDraft, study: SavedStudy?, result data: Data?) {
+        let editor = draft.editor
+        func number(_ key: String) -> Double? { editor[key].flatMap(Double.init) }
+        let transmitter = SavedAntenna(heightMeters: number("transmitHeightMeters") ?? transmitHeightMeters,
+                                       gainDbi: number("transmitGainDbi") ?? transmitGainDbi, lossDb: number("transmitLossDb") ?? transmitLossDb)
+        let receiver = SavedAntenna(heightMeters: number("receiveHeightMeters") ?? receiveHeightMeters,
+                                    gainDbi: number("receiveGainDbi") ?? receiveGainDbi, lossDb: number("receiveLossDb") ?? receiveLossDb)
+        let name = editor["transmitterName"].flatMap { $0.isEmpty ? nil : $0 }
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        if let latitude = number("latitude"), let longitude = number("longitude") {
+            // A complete setup goes through the saved-study restore, which checks the catalog and result.
+            let coverage = SavedCoverage(
+                transmitter: SavedEndpoint(name: name, latitude: latitude, longitude: longitude, antenna: transmitter),
+                receiver: receiver, frequencyMHz: number("frequencyMHz") ?? frequencyMHz,
+                transmitPowerDbm: number("transmitPowerDbm") ?? transmitPowerDbm, sensitivityDbm: number("sensitivityDbm") ?? sensitivityDbm,
+                reserveDb: number("reserveDb") ?? reserveDb, radiusMeters: editor["radiusMeters"].flatMap(Int.init) ?? radiusMeters,
+                spacingMeters: editor["spacingMeters"].flatMap(Int.init) ?? spacingMeters, nodes: draft.catalog ?? [],
+                catalogComplete: draft.catalogComplete, calculatedResult: data)
+            restore(SavedStudy(id: draft.id, name: draft.title, createdAtMilliseconds: draft.createdAtMilliseconds,
+                               updatedAtMilliseconds: max(draft.createdAtMilliseconds, now), kind: .coverage, coverage: coverage))
+            if editor["usesSavedCatalog"] == "false" { usesSavedCatalog = false }
+        } else {
+            invalidate()
+            transmitterName = name
+            transmitHeightMeters = transmitter.heightMeters; transmitGainDbi = transmitter.gainDbi; transmitLossDb = transmitter.lossDb
+            receiveHeightMeters = receiver.heightMeters; receiveGainDbi = receiver.gainDbi; receiveLossDb = receiver.lossDb
+            frequencyMHz = number("frequencyMHz") ?? frequencyMHz
+            transmitPowerDbm = number("transmitPowerDbm") ?? transmitPowerDbm
+            sensitivityDbm = number("sensitivityDbm") ?? sensitivityDbm
+            reserveDb = number("reserveDb") ?? reserveDb
+            radiusMeters = editor["radiusMeters"].flatMap(Int.init) ?? radiusMeters
+            spacingMeters = editor["spacingMeters"].flatMap(Int.init) ?? spacingMeters
+        }
+        radioPresetID = editor["radioPresetID"].flatMap { $0.isEmpty ? nil : $0 }
+        savedStudy = study
+        suggestedPlanID = draft.planID
+    }
 
     func draftContent() -> DraftContent? {
         let editor = draftEditor()

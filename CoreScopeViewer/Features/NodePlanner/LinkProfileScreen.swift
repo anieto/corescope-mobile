@@ -19,11 +19,17 @@ struct LinkProfileScreen: View {
     @State private var mapDisplayStyle = MapDisplayStyle.persisted
 
     /// `planID` is the plan this tool was opened from: the suggested place to save a new study.
-    init(savedStudy: SavedStudy? = nil, planID: String? = nil) {
+    /// `draft` resumes unsaved work, which stays unsaved.
+    init(savedStudy: SavedStudy? = nil, planID: String? = nil, draft: ResumedDraft? = nil) {
         let model = LinkProfileModel()
         model.suggestedPlanID = planID
         if let savedStudy { model.restore(savedStudy) }
-        model.markClean()
+        if let draft {
+            model.restore(draft: draft.draft, study: draft.study, result: draft.result)
+            _draftSession = State(initialValue: StudyDraftSession(kind: .linkProfile, id: draft.draft.id))
+        } else {
+            model.markClean()
+        }
         _model = State(initialValue: model)
     }
 
@@ -2247,6 +2253,46 @@ extension LinkProfileModel: StudyDraftSource {
 
     /// What's open now counts as saved: on opening, and after a successful Save.
     func markClean() { cleanDraftEditor = draftEditor() }
+
+    /// Resumes a recovery draft: its values, the saved study it edits (`study`, at the draft's revision)
+    /// and, if it's for these inputs, its result. Nothing is fetched or analyzed until Calculate.
+    func restore(draft: StudyDraft, study: SavedStudy?, result data: Data?) {
+        let editor = draft.editor
+        func number(_ key: String) -> Double? { editor[key].flatMap(Double.init) }
+        func name(_ key: String) -> String? { editor[key].flatMap { $0.isEmpty ? nil : $0 } }
+        analysisTask?.cancel()
+        elevationTaskA?.cancel()
+        elevationTaskB?.cancel()
+        savedStudy = study
+        suggestedPlanID = draft.planID
+        awaitsExplicitCalculation = true
+        latitudeA = number("latitudeA")
+        longitudeA = number("longitudeA")
+        latitudeB = number("latitudeB")
+        longitudeB = number("longitudeB")
+        nameA = name("nameA")
+        nameB = name("nameB")
+        heightA = number("heightA") ?? heightA
+        heightB = number("heightB") ?? heightB
+        gainADB = number("gainA") ?? gainADB
+        gainBDB = number("gainB") ?? gainBDB
+        lossADB = number("lossA") ?? lossADB
+        lossBDB = number("lossB") ?? lossBDB
+        frequencyMHz = number("frequencyMHz") ?? frequencyMHz
+        transmitPowerDBm = number("transmitPowerDbm") ?? transmitPowerDBm
+        receiverSensitivityDBm = number("sensitivityDbm") ?? receiverSensitivityDBm
+        refractionK = number("refractionK") ?? refractionK
+        sampleCount = editor["sampleCount"].flatMap(Int.init)
+        radioPreset = editor["radioPreset"].flatMap(LinkProfileRadioPreset.init(rawValue:)) ?? .custom
+        errorMessage = nil
+        savedResultNote = nil
+        isAnalyzing = false
+        isLoadingElevationA = false
+        isLoadingElevationB = false
+        result = data.flatMap { bytes in savedSnapshot()?.linkProfile.flatMap { try? PortableLinkProfileResult.decode(bytes, inputs: $0) } }
+        groundElevationA = result?.terrain.samples.first?.elevationMeters
+        groundElevationB = result?.terrain.samples.last?.elevationMeters
+    }
 
     func draftContent() -> DraftContent? {
         let editor = draftEditor()

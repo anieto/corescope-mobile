@@ -91,6 +91,26 @@ struct StudyDraftStoreTests {
         #expect(store.list().isEmpty)
     }
 
+    @MainActor @Test func aLinkProfileDraftResumesExactly() throws {
+        let model = LinkProfileModel()
+        model.markClean()
+        model.latitudeA = 40
+        model.longitudeA = -90
+        model.nameA = "Hill"
+        model.heightB = 7.5
+        model.sampleCount = 40
+        let session = StudyDraftSession(kind: .linkProfile, store: store)
+        session.flush(model.draftContent(), host: "analyzer.example", region: "AUS")
+        let draft = try #require(store.draft(session.id))
+        let resumed = CandidatePlansModel().resume(draft, from: store)
+        let reopened = LinkProfileModel()
+        reopened.restore(draft: resumed.draft, study: resumed.study, result: resumed.result)
+        #expect(reopened.draftEditor() == model.draftEditor())
+        #expect(reopened.awaitsExplicitCalculation && reopened.result == nil)
+        // Still unsaved work, so it stays a draft.
+        #expect(reopened.draftContent() != nil)
+    }
+
     @Test func aFullStoreRefusesNewDraftsButNeverEvicts() throws {
         let drafts = try (1...StudyDraftStore.maximumDrafts).map { try store.save(draft("Draft \($0)", updated: Int64($0)), result: nil) }
         #expect(throws: StudyDraftStoreError.full) { try store.save(draft("One more"), result: nil) }

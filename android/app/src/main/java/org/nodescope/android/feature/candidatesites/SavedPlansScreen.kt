@@ -47,9 +47,11 @@ enum class StudyFilter(val title: String) {
  */
 @Composable
 fun SavedPlansScreen(kind: SavedStudy.Kind?, onOpen: (SavedStudy) -> Unit, onPlan: (String, StudyFilter) -> Unit,
-                     onCandidateSites: () -> Unit) {
-    val library = SavedPlansLibrary.shared(LocalContext.current)
+                     onCandidateSites: () -> Unit, onResumeDraft: (StudyDraft) -> Unit = {}, onUnfinished: () -> Unit = {}) {
+    val context = LocalContext.current
+    val library = SavedPlansLibrary.shared(context)
     LaunchedEffect(library) { library.load() }
+    val drafts = rememberDrafts()
     var filter by rememberSaveable { mutableStateOf(StudyFilter.of(kind)) }
     var query by rememberSaveable { mutableStateOf("") }
     var creatingPlan by rememberSaveable { mutableStateOf(false) }
@@ -71,6 +73,24 @@ fun SavedPlansScreen(kind: SavedStudy.Kind?, onOpen: (SavedStudy) -> Unit, onPla
                     leadingIcon = { Icon(Icons.Outlined.Search, null) }, placeholder = { Text("Plans, notes and studies") })
             }
             if (kind != null) item { StudyFilterRow(filter) { filter = it } }
+            // Unfinished work first: one draft resumes from here; several open their own list.
+            if (kind == null && !searching) when (drafts.value.size) {
+                0 -> Unit
+                1 -> item { DraftRow(drafts.value.single(), "Continue unfinished study", onResumeDraft) { drafts.discard(it) } }
+                else -> item {
+                    Card(Modifier.fillMaxWidth().clickable(onClick = onUnfinished), colors = meshCardColors()) {
+                        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Icon(Icons.Outlined.EditNote, null, tint = MaterialTheme.colorScheme.primary)
+                            Column(Modifier.weight(1f)) {
+                                Text("Unfinished studies", style = MaterialTheme.typography.titleMedium)
+                                Text("${drafts.value.size} with unsaved changes", style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
+                        }
+                    }
+                }
+            }
             if (library.loaded && library.studyPlans.isEmpty() && library.studies.isEmpty()) item {
                 Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -562,4 +582,70 @@ fun SavedStudyActions(snapshot: () -> SavedStudy?, didSave: (SavedStudy) -> Unit
             }
         }
     }
+}
+
+// Recovery drafts (deliverable C)
+
+/** Drafts on this device, read when the screen appears; [discard] removes one after confirmation. */
+private class DraftList(private val store: StudyDraftStore, private val scope: kotlinx.coroutines.CoroutineScope) {
+    var value by mutableStateOf<List<StudyDraft>>(emptyList()); private set
+
+    fun reload() = scope.launch { value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.list() } }
+
+    fun discard(draft: StudyDraft) = scope.launch {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.delete(draft.id) }
+        reload()
+    }
+}
+
+@Composable private fun rememberDrafts(): DraftList {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val drafts = remember { DraftList(StudyDraftStore.application(context.applicationContext.filesDir), scope) }
+    LaunchedEffect(drafts) { drafts.reload() }
+    return drafts
+}
+
+/** All unfinished studies, most recently edited first. */
+@Composable
+fun UnfinishedStudiesScreen(onResume: (StudyDraft) -> Unit) {
+    val drafts = rememberDrafts()
+    LazyColumn(Modifier.fillMaxSize().meshPageBackground(), contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        item {
+            Text("Changes you haven't saved, kept on this device. Resume one to keep working, or discard it.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        items(drafts.value, key = { it.id }) { draft -> DraftRow(draft, null, onResume) { drafts.discard(it) } }
+        if (drafts.value.isEmpty()) item { Text("No unfinished studies.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    }
+}
+
+@Composable private fun DraftRow(draft: StudyDraft, heading: String?, resume: (StudyDraft) -> Unit, discard: (StudyDraft) -> Unit) {
+    var confirming by rememberSaveable(draft.id) { mutableStateOf(false) }
+    val edited = java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT)
+        .format(Date(draft.updatedAtMilliseconds))
+    Card(Modifier.fillMaxWidth().clickable { resume(draft) }, colors = meshCardColors()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            heading?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(kindIcon(draft.kind), null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(draft.title, style = MaterialTheme.typography.titleSmall)
+                    Text(listOfNotNull(kindTitle(draft.kind), draft.host).joinToString(" · "),
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Edited $edited", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = { confirming = true }) { Text("Discard") }
+                TextButton(onClick = { resume(draft) }) { Text("Resume") }
+            }
+        }
+    }
+    if (confirming) AlertDialog(onDismissRequest = { confirming = false }, title = { Text("Discard “${draft.title}”?") },
+        text = { Text("Its unsaved changes can't be recovered. Saved studies aren't affected.") },
+        confirmButton = { TextButton(onClick = { confirming = false; discard(draft) }) {
+            Text("Discard", color = MaterialTheme.colorScheme.error) } },
+        dismissButton = { TextButton(onClick = { confirming = false }) { Text("Cancel") } })
 }

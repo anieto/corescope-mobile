@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import org.nodescope.android.feature.candidatesites.resume
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.rememberScrollState
@@ -123,7 +124,10 @@ enum class Destination(val title: Int, val icon: ImageVector, val route: TopLeve
 @Serializable data class NodeRoute(val publicKey: String)
 @Serializable data class NodeAnalyticsRoute(val publicKey: String)
 @Serializable data object NodePlannerRoute
-@Serializable data class EstimatedCoverageRoute(val studyId: String? = null, val linkSeed: String? = null, val planId: String? = null)
+@Serializable data class EstimatedCoverageRoute(val studyId: String? = null, val linkSeed: String? = null, val planId: String? = null,
+    /** A recovery draft to resume. */
+    val draftId: String? = null)
+@Serializable data object UnfinishedStudiesRoute
 @Serializable data object CandidateSitesRoute
 /** Saved studies and candidate sites; [kind] narrows the list to one tool's studies (its Open button). */
 @Serializable data class SavedPlansRoute(val kind: String? = null)
@@ -131,7 +135,7 @@ enum class Destination(val title: Int, val icon: ImageVector, val route: TopLeve
 @Serializable data class StudyPlanRoute(val planId: String, val filter: String = "ALL")
 /** [publicKey] is set when opened from a node's page; Explore opens it empty to look a node up. */
 @Serializable data class NodeCheckRoute(val publicKey: String? = null)
-@Serializable data class LinkProfileRoute(val studyId: String? = null, val planId: String? = null)
+@Serializable data class LinkProfileRoute(val studyId: String? = null, val planId: String? = null, val draftId: String? = null)
 @Serializable data object SourceRoute
 @Serializable data object PacketRoute
 @Serializable data class PacketDetailRoute(val groupId: String)
@@ -503,6 +507,7 @@ internal fun AppShell(
                             destination?.hasRoute<EstimatedCoverageRoute>() == true -> "Estimated Coverage"
                             destination?.hasRoute<CandidateSitesRoute>() == true -> "Candidate Sites"
                             destination?.hasRoute<SavedPlansRoute>() == true -> "Saved Plans"
+                            destination?.hasRoute<UnfinishedStudiesRoute>() == true -> "Unfinished studies"
                             destination?.hasRoute<StudyPlanRoute>() == true ->
                                 org.nodescope.android.feature.candidatesites.SavedPlansLibrary.shared(androidx.compose.ui.platform.LocalContext.current)
                                     .plan(entry!!.toRoute<StudyPlanRoute>().planId)?.name ?: "Plan"
@@ -677,7 +682,12 @@ internal fun AppShell(
                                     org.nodescope.android.feature.candidatesites.SavedStudy.Kind.COVERAGE -> nav.navigate(EstimatedCoverageRoute(study.id))
                                 }
                             }, onPlan = { id, filter -> nav.navigate(StudyPlanRoute(id, filter.name)) },
-                                onCandidateSites = { nav.navigate(CandidateSitesRoute) })
+                                onCandidateSites = { nav.navigate(CandidateSitesRoute) },
+                                onResumeDraft = { draft -> nav.navigate(resumeRoute(draft)) },
+                                onUnfinished = { nav.navigate(UnfinishedStudiesRoute) })
+                        }
+                        screen<UnfinishedStudiesRoute> {
+                            org.nodescope.android.feature.candidatesites.UnfinishedStudiesScreen(onResume = { draft -> nav.navigate(resumeRoute(draft)) })
                         }
                         screen<StudyPlanRoute> { backStack ->
                             val route = backStack.toRoute<StudyPlanRoute>()
@@ -710,8 +720,11 @@ internal fun AppShell(
                                         library.studies.firstOrNull { it.id == studyId }?.let(model::restore)
                                         model.suggestedPlanID = backStack.toRoute<EstimatedCoverageRoute>().planId
                                         val linkSeed = backStack.toRoute<EstimatedCoverageRoute>().linkSeed
-                                        // Opened empty or from a saved study: that's the clean state. A seeded study is unsaved work.
-                                        if (linkSeed == null) model.markClean()
+                                        val draftId = backStack.toRoute<EstimatedCoverageRoute>().draftId
+                                        // Opened empty or from a saved study: that's the clean state. Seeded or resumed work is unsaved.
+                                        if (linkSeed == null && draftId == null) model.markClean()
+                                        draftId?.let { id -> org.nodescope.android.feature.candidatesites.StudyDraftStore.application(context.filesDir).resume(id, library) }
+                                            ?.let { model.restoreDraft(it.draft, it.study, it.result) }
                                         linkSeed?.let { encoded ->
                                             val seed = kotlinx.serialization.json.Json.decodeFromString<org.nodescope.android.feature.coverage.LinkCoverageSeed>(encoded)
                                             model.applyLinkSeed(seed)
@@ -719,7 +732,8 @@ internal fun AppShell(
                                         }
                                     }
                             }
-                            org.nodescope.android.feature.candidatesites.StudyDraftAutosave(rememberDraftSession(backStack, org.nodescope.android.feature.candidatesites.SavedStudy.Kind.COVERAGE),
+                            org.nodescope.android.feature.candidatesites.StudyDraftAutosave(rememberDraftSession(backStack, org.nodescope.android.feature.candidatesites.SavedStudy.Kind.COVERAGE,
+                                backStack.toRoute<EstimatedCoverageRoute>().draftId),
                                 coverageModel, preferences.host, preferences.region)
                             org.nodescope.android.feature.coverage.EstimatedCoverageScreen(coverageModel, state.snapshot?.nodes.orEmpty(),
                                 preferences.host, state.snapshot, preferences.region, sourceViewport,
@@ -746,10 +760,14 @@ internal fun AppShell(
                                     .also { model ->
                                         library.studies.firstOrNull { it.id == studyId }?.let(model::restore)
                                         model.suggestedPlanID = backStack.toRoute<LinkProfileRoute>().planId
-                                        model.markClean()
+                                        val draftId = backStack.toRoute<LinkProfileRoute>().draftId
+                                        if (draftId == null) model.markClean()
+                                        else org.nodescope.android.feature.candidatesites.StudyDraftStore.application(context.filesDir).resume(draftId, library)
+                                            ?.let { model.restoreDraft(it.draft, it.study, it.result) }
                                     }
                             }
-                            org.nodescope.android.feature.candidatesites.StudyDraftAutosave(rememberDraftSession(backStack, org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE),
+                            org.nodescope.android.feature.candidatesites.StudyDraftAutosave(rememberDraftSession(backStack, org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE,
+                                backStack.toRoute<LinkProfileRoute>().draftId),
                                 profileModel, preferences.host, preferences.region)
                             org.nodescope.android.feature.linkprofile.LinkProfileScreen(profileModel, preferences.distanceUnit, state.snapshot?.nodes.orEmpty(),
                                 state.snapshot, preferences.region, sourceViewport,
@@ -957,12 +975,20 @@ private fun UnavailableScreen(title: Int, description: Int) {
 /** The recovery draft session for a tool's back-stack entry; its ID survives process death with the entry. */
 @Composable
 private fun rememberDraftSession(entry: androidx.navigation.NavBackStackEntry,
-                                 kind: org.nodescope.android.feature.candidatesites.SavedStudy.Kind): org.nodescope.android.feature.candidatesites.StudyDraftSession {
+                                 kind: org.nodescope.android.feature.candidatesites.SavedStudy.Kind,
+                                 /** A resumed draft keeps its own ID, so further edits update it. */
+                                 resuming: String? = null): org.nodescope.android.feature.candidatesites.StudyDraftSession {
     val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
     return remember(entry.id) {
         val handle = entry.savedStateHandle
-        val id = handle.get<String>("draftID") ?: java.util.UUID.randomUUID().toString().also { handle["draftID"] = it }
+        val id = handle.get<String>("draftID") ?: (resuming ?: java.util.UUID.randomUUID().toString()).also { handle["draftID"] = it }
         org.nodescope.android.feature.candidatesites.StudyDraftSession(
             org.nodescope.android.feature.candidatesites.StudyDraftStore.application(context.filesDir), id, kind)
     }
+}
+
+/** Where a recovery draft resumes: its tool, with the draft's ID. */
+private fun resumeRoute(draft: org.nodescope.android.feature.candidatesites.StudyDraft): Any = when (draft.kind) {
+    org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE -> LinkProfileRoute(draftId = draft.id)
+    org.nodescope.android.feature.candidatesites.SavedStudy.Kind.COVERAGE -> EstimatedCoverageRoute(draftId = draft.id)
 }

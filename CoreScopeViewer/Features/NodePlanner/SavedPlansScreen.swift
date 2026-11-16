@@ -9,6 +9,7 @@ struct SavedPlansScreen: View {
     @State private var query = ""
     @State private var action: StudyAction?
     @State private var creatingPlan = false
+    @State private var drafts = DraftList()
 
     init(kind: SavedStudy.Kind? = nil) {
         self.kind = kind
@@ -42,6 +43,29 @@ struct SavedPlansScreen: View {
             if kind != nil {
                 Section {
                     StudyFilterPicker(filter: $filter)
+                }.instrumentListRows()
+            }
+            // Unfinished work first: one draft resumes from here; several open their own list.
+            if kind == nil && !searching && !drafts.items.isEmpty {
+                Section {
+                    if drafts.items.count == 1, let draft = drafts.items.first {
+                        DraftRow(draft: draft, drafts: drafts)
+                    } else {
+                        NavigationLink {
+                            UnfinishedStudiesScreen()
+                        } label: {
+                            Label {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Unfinished studies").font(.monaspace(.headline))
+                                    Text("\(drafts.items.count) with unsaved changes").font(.subheadline).foregroundStyle(.secondary)
+                                }
+                            } icon: {
+                                Image(systemName: "square.and.pencil")
+                            }
+                        }
+                    }
+                } header: {
+                    if drafts.items.count == 1 { Text("Continue unfinished study") }
                 }.instrumentListRows()
             }
             if model.isLoaded && model.studyPlans.isEmpty && model.studies.isEmpty {
@@ -97,7 +121,9 @@ struct SavedPlansScreen: View {
         }
         .sheet(isPresented: $creatingPlan) { PlanEditorSheet(plan: nil) }
         .studyActionPresenter($action)
+        .draftResumeDestination(drafts)
         .task { await model.load() }
+        .onAppear { drafts.reload() }
     }
 }
 
@@ -247,8 +273,10 @@ private struct LibraryStatus: View {
                 Button("Reload library") { Task { await model.reload() } }
             }.instrumentListRows()
         }
+        // Always in its own section: a loose row joined the section before it, changing that section's
+        // row count without an insertion, which made UICollectionView throw during a delete.
         if model.isBusy {
-            ProgressView().instrumentListRows()
+            Section { ProgressView() }.instrumentListRows()
         }
     }
 }
@@ -357,8 +385,10 @@ private struct StudyActionsModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .contextMenu { buttons }
+            // Not role: .destructive, which removes the row at once and expects the data to follow; deleting
+            // waits for the confirmation, and the early removal crashed the list when the data didn't match.
             .swipeActions {
-                Button("Delete", systemImage: "trash", role: .destructive) { action = .delete(study) }
+                Button("Delete", systemImage: "trash") { action = .delete(study) }.tint(.red)
                 Button("Move", systemImage: "folder") { action = .move(study) }.tint(.indigo)
             }
     }
@@ -399,13 +429,15 @@ private struct StudyActionPresenter: ViewModifier {
             } message: {
                 Text("Renaming doesn't change the study's inputs or results.")
             }
-            .confirmationDialog("Delete “\(deleting?.name ?? "")”?", isPresented: Binding(
+            // A centred alert: a dialog attached to the list opened as a popover at its top.
+            .alert("Delete “\(deleting?.name ?? "")”?", isPresented: Binding(
                 get: { deleting != nil }, set: { if !$0 { deleting = nil } }
-            ), titleVisibility: .visible) {
+            )) {
                 Button("Delete study", role: .destructive) {
-                    if let deleting { Task { _ = await CandidatePlansModel.shared.deleteStudy(deleting.id) } }
+                    if let id = deleting?.id { Task { _ = await CandidatePlansModel.shared.deleteStudy(id) } }
                     deleting = nil
                 }
+                Button("Cancel", role: .cancel) { deleting = nil }
             } message: {
                 Text("This removes the study and its saved result from this device.")
             }
@@ -749,6 +781,108 @@ private struct SaveStudySheet: View {
                                                  inputsOnly: needsInputsOnly && inputsOnly) {
                 didSave(saved)
                 dismiss()
+            }
+        }
+    }
+}
+
+// MARK: - Recovery drafts (deliverable C)
+
+/// Drafts on this device, read when Saved Plans appears; resuming loads one draft only when tapped.
+@MainActor @Observable
+final class DraftList {
+    private(set) var items: [StudyDraft] = []
+    var resuming: ResumedDraft?
+    /// The draft whose Discard is being confirmed. Asked at screen level: a dialog on the row went away
+    /// with the swipe that opened it.
+    var discarding: StudyDraft?
+    @ObservationIgnored private let store = try? StudyDraftStore.application()
+
+    func reload() { items = store?.list() ?? [] }
+
+    func resume(_ draft: StudyDraft) {
+        guard let store else { return }
+        resuming = CandidatePlansModel.shared.resume(draft, from: store)
+    }
+
+    func discard(_ draft: StudyDraft) {
+        store?.delete(draft.id)
+        reload()
+    }
+}
+
+/// All unfinished studies, most recently edited first.
+private struct UnfinishedStudiesScreen: View {
+    /// Its own list, so resuming here doesn't also push from the screen underneath.
+    @State private var drafts = DraftList()
+
+    var body: some View {
+        List {
+            Section {
+                ForEach(drafts.items) { DraftRow(draft: $0, drafts: drafts) }
+                if drafts.items.isEmpty { Text("No unfinished studies.").foregroundStyle(.secondary) }
+            } footer: {
+                Text("Changes you haven't saved, kept on this device. Resume one to keep working, or discard it.")
+            }.instrumentListRows()
+        }
+        .meshPageBackground()
+        .navigationTitle("Unfinished studies")
+        .navigationBarTitleDisplayMode(.inline)
+        .draftResumeDestination(drafts)
+        .onAppear { drafts.reload() }
+    }
+}
+
+private struct DraftRow: View {
+    let draft: StudyDraft
+    let drafts: DraftList
+
+    var body: some View {
+        Button { drafts.resume(draft) } label: {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Image(systemName: draft.kind == .linkProfile ? "point.topleft.down.to.point.bottomright.curvepath"
+                      : "antenna.radiowaves.left.and.right")
+                    .foregroundStyle(.secondary).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(draft.title).font(.monaspace(.headline)).foregroundStyle(.primary)
+                    Text([draft.kind == .linkProfile ? String(localized: "Link Profile") : String(localized: "Estimated Coverage"),
+                          draft.host].compactMap { $0 }.joined(separator: " · "))
+                        .font(.subheadline).foregroundStyle(.secondary)
+                    Text("Edited \(Date(timeIntervalSince1970: Double(draft.updatedAtMilliseconds) / 1000).formatted(date: .abbreviated, time: .shortened))")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .accessibilityHint("Resumes this study")
+        // Not role: .destructive: that removes the row before the confirmation (see the study rows).
+        .swipeActions { Button("Discard", systemImage: "trash") { drafts.discarding = draft }.tint(.red) }
+        .contextMenu {
+            Button("Resume", systemImage: "arrow.uturn.forward") { drafts.resume(draft) }
+            Button("Discard", systemImage: "trash", role: .destructive) { drafts.discarding = draft }
+        }
+    }
+}
+
+extension View {
+    /// Opens the tool for a draft being resumed.
+    fileprivate func draftResumeDestination(_ drafts: DraftList) -> some View {
+        alert("Discard “\(drafts.discarding?.title ?? "")”?", isPresented: Binding(
+            get: { drafts.discarding != nil }, set: { if !$0 { drafts.discarding = nil } }
+        )) {
+            Button("Discard", role: .destructive) {
+                if let draft = drafts.discarding { drafts.discard(draft) }
+                drafts.discarding = nil
+            }
+            Button("Cancel", role: .cancel) { drafts.discarding = nil }
+        } message: {
+            Text("Its unsaved changes can't be recovered. Saved studies aren't affected.")
+        }
+        .navigationDestination(isPresented: Binding(get: { drafts.resuming != nil }, set: { if !$0 { drafts.resuming = nil } })) {
+            if let resumed = drafts.resuming {
+                switch resumed.draft.kind {
+                case .linkProfile: LinkProfileScreen(draft: resumed)
+                case .coverage: EstimatedCoverageScreen(draft: resumed)
+                }
             }
         }
     }

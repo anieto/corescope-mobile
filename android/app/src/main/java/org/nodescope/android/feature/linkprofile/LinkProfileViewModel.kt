@@ -74,6 +74,37 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
     /** What's open now counts as saved: on opening, and after a successful Save. */
     fun markClean() { cleanEditor = draftEditor() }
 
+    /**
+     * Resumes a recovery draft: its fields (including incomplete text), names and preset, the saved study
+     * it edits ([study], at the draft's revision) and, if it's for these inputs, its result. Nothing is
+     * fetched or analyzed until Calculate. Applied once per back-stack entry, as [restore].
+     */
+    fun restoreDraft(draft: org.nodescope.android.feature.candidatesites.StudyDraft, study: org.nodescope.android.feature.candidatesites.SavedStudy?, result: ByteArray?) {
+        savedStudy = study
+        suggestedPlanID = draft.planID
+        if (saved.get<String>("restoredDraft") == draft.id) return
+        job?.cancel()
+        elevationJobs.values.forEach { it.cancel() }
+        elevationJobs.clear()
+        val fields = draft.editor.filterKeys { it in defaults.keys }
+        val names = listOf("A", "B").mapNotNull { letter -> draft.editor["Name $letter"]?.takeIf(String::isNotEmpty)?.let { letter to it } }.toMap()
+        val preset = draft.editor["preset"] ?: "Custom"
+        fields.forEach { (key, value) -> saved[key] = value }
+        listOf("A", "B").forEach { letter -> names[letter]?.let { saved["Name $letter"] = it } ?: saved.remove<String>("Name $letter") }
+        saved["preset"] = preset
+        saved["awaitingCalculation"] = true
+        saved["restoredDraft"] = draft.id
+        mutable.value = mutable.value.copy(fields = mutable.value.fields + fields, names = names, preset = preset, loading = false,
+            result = null, error = null, elevations = emptyMap(), undo = null, awaitingCalculation = true, savedResultNote = null)
+        val restored = result?.let { bytes ->
+            savedSnapshot()?.linkProfile?.let { inputs -> runCatching { PortableLinkProfileResult.decode(bytes, inputs) }.getOrNull() }
+        }
+        val elevations = restored?.terrain?.points?.let {
+            mapOf("A" to EndpointElevation(it.first().elevationMeters), "B" to EndpointElevation(it.last().elevationMeters))
+        } ?: emptyMap()
+        mutable.value = mutable.value.copy(result = restored, elevations = elevations)
+    }
+
     override fun draftContent(): org.nodescope.android.feature.candidatesites.DraftContent? {
         val editor = draftEditor()
         if (editor == cleanEditor || (savedStudy == null && coordinate("A") == null && coordinate("B") == null)) return null

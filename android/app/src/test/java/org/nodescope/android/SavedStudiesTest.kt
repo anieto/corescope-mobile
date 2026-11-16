@@ -151,6 +151,34 @@ class SavedStudiesTest {
         assertNotNull(store.result(calculated))
     }
 
+    @Test fun aLinkProfileDraftResumesExactlyWithoutTerrain() = withMain { root ->
+        val calls = mutableListOf<List<ProfileCoordinate>>()
+        val terrain = LinkTerrainProviding { calls += it; TerrainProfile(it.mapIndexed { index, _ -> ElevationPoint(index * 100.0, 100.0) }, 1000, "cache", it) }
+        val model = LinkProfileViewModel(terrain, SavedStateHandle()).apply { markClean() }
+        model.place("A", ProfileCoordinate(40.0, -90.0), "Hill")
+        model.place("B", ProfileCoordinate(40.1, -90.1), null)
+        advanceUntilIdle()
+        model.edit("Height B (m)", "7.")
+        val store = StudyDraftStore(root)
+        val session = StudyDraftSession(store, java.util.UUID.randomUUID().toString(), SavedStudy.Kind.LINK_PROFILE)
+        // The original's own recalculation after the edit finishes before counting the resumed tool's requests.
+        advanceUntilIdle()
+        session.flush(model.draftContent(), "analyzer.example", "AUS")
+        calls.clear()
+
+        val library = SavedPlansLibrary(DeploymentPlanStore(File(root, "plans.json"))).apply { load() }
+        val resumed = requireNotNull(store.resume(session.id, library))
+        val reopened = LinkProfileViewModel(terrain, SavedStateHandle())
+        reopened.restoreDraft(resumed.draft, resumed.study, resumed.result)
+        advanceUntilIdle()
+        assertEquals(model.draftEditor(), reopened.draftEditor())
+        assertEquals("7.", reopened.state.value.fields["Height B (m)"])
+        assertTrue(reopened.state.value.awaitingCalculation)
+        assertTrue(calls.isEmpty())
+        // Still unsaved work, so it stays a draft.
+        assertNotNull(reopened.draftContent())
+    }
+
     @Test fun unsavedCoverageWorkKeepsItsCatalogAndResult() = withMain { root ->
         val model = coverageModel(root).apply { markClean() }
         assertNull(model.draftContent())
@@ -174,6 +202,16 @@ class SavedStudiesTest {
         val edited = requireNotNull(reopened.draftContent())
         assertEquals(study.coverage!!.nodes, edited.catalog)
         assertEquals(study.id, edited.savedStudyID)
+        // Resumed into a fresh tool: the same setup, nodes and saved-study identity, nothing calculated.
+        val store = StudyDraftStore(root)
+        val session = StudyDraftSession(store, java.util.UUID.randomUUID().toString(), SavedStudy.Kind.COVERAGE)
+        session.flush(edited, "analyzer.example", "AUS")
+        val draft = requireNotNull(store.draft(session.id))
+        val resumed = coverageModel(root).apply { restoreDraft(draft, study.copy(revision = draft.savedRevision), store.result(draft)) }
+        assertEquals(reopened.draftEditor(), resumed.draftEditor())
+        assertEquals(study.coverage!!.nodes.map { it.nodeID }, resumed.nodeSnapshots.map { it.nodeID })
+        assertEquals(study.id, resumed.savedStudy?.id)
+        assertNotNull(resumed.draftContent())
     }
 
     @Test fun aCalculatedLinkProfileSavesItsResultAndReopensItWithoutTerrain() = withMain { root ->
