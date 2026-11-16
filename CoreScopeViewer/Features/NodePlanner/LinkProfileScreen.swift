@@ -829,6 +829,8 @@ enum LinkProfileRadioPreset: String, CaseIterable, Identifiable {
 final class LinkProfileModel {
     var savedStudy: SavedStudy?
     var suggestedPlanID: String?
+    /// Why a reopened study's saved result isn't shown; nil when there's none or it's shown.
+    var savedResultNote: LocalizedStringResource?
     var awaitsExplicitCalculation = false
     var refractionK = 4.0 / 3.0
     var sampleCount: Int?
@@ -845,7 +847,9 @@ final class LinkProfileModel {
         let now = Int64(Date().timeIntervalSince1970 * 1000)
         let study = SavedStudy(id: savedStudy?.id ?? UUID().uuidString.lowercased(),
             name: savedStudy?.name ?? "Link Profile", createdAtMilliseconds: savedStudy?.createdAtMilliseconds ?? now,
-            updatedAtMilliseconds: now, kind: .linkProfile, linkProfile: inputs, revision: savedStudy?.revision)
+            updatedAtMilliseconds: now, kind: .linkProfile, linkProfile: inputs, revision: savedStudy?.revision,
+            // The calculated result, when it's for exactly these inputs.
+            linkProfileResult: result.flatMap { PortableLinkProfileResult.encode($0, inputs: inputs) })
         return (try? study.validate()) != nil ? study : nil
     }
 
@@ -875,9 +879,16 @@ final class LinkProfileModel {
         refractionK = inputs.refractionK
         sampleCount = inputs.sampleCount
         radioPreset = .custom
-        result = nil
-        groundElevationA = nil
-        groundElevationB = nil
+        // A saved result opens as it was, without fetching terrain; edits clear it and wait for Calculate.
+        result = study.linkProfileResult.flatMap { try? PortableLinkProfileResult.decode($0, inputs: inputs) }
+        savedResultNote = switch (result, study.resultStatus) {
+        case (.some, _), (nil, .none): nil
+        case (nil, .missing): "Saved result not on this device"
+        case (nil, .unverified), (nil, .available): "Saved result could not be verified"
+        case (nil, .unsupported): "Saved result needs another version of NodeScope"
+        }
+        groundElevationA = result?.terrain.samples.first?.elevationMeters
+        groundElevationB = result?.terrain.samples.last?.elevationMeters
         isAnalyzing = false
         isLoadingElevationA = false
         isLoadingElevationB = false
@@ -1282,8 +1293,8 @@ private struct LinkProfileHeader: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-            } else if model.awaitsExplicitCalculation {
-                Text("Saved inputs · No calculated result").font(.headline)
+            } else if model.awaitsExplicitCalculation && model.result == nil {
+                Text(model.savedResultNote ?? "Saved inputs · No calculated result").font(.headline)
                 Button { model.analyze() } label: {
                     Label("Calculate", systemImage: "dot.radiowaves.left.and.right")
                         .frame(maxWidth: .infinity)
@@ -1312,6 +1323,12 @@ private struct LinkProfileHeader: View {
                 .font(.monaspace(.headline))
                 Text(summary(result.result))
                     .foregroundStyle(.secondary)
+                // Still waiting for Calculate, so this is the result saved with the study.
+                if model.awaitsExplicitCalculation {
+                    Text("Saved result · calculated \(result.calculatedAt.formatted(date: .abbreviated, time: .shortened))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 Text(model.usesDefaultEquipment
                     ? "Using default antenna and radio settings."
                     : "Using your antenna and radio settings.")

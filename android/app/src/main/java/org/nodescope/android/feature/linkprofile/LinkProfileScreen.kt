@@ -259,8 +259,8 @@ private fun LinkHeader(state: LinkProfileViewModel.State, selecting: String?, pl
                     style = MaterialTheme.typography.bodySmall, color = secondary)
             }
             // Reopened from Saved Plans: no elevation or analysis until asked for.
-            state.awaitingCalculation -> {
-                Text("Saved inputs · No calculated result", style = MaterialTheme.typography.titleMedium)
+            state.awaitingCalculation && result == null -> {
+                Text(state.savedResultNote ?: "Saved inputs · No calculated result", style = MaterialTheme.typography.titleMedium)
                 Button(onClick = onRetry, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = ActivityAmber, contentColor = Color.White)) { Text("Calculate") }
             }
             state.loading -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -280,6 +280,10 @@ private fun LinkHeader(state: LinkProfileViewModel.State, selecting: String?, pl
                 }
                 val margin = result.result.linkMarginDB?.let { "Link margin ${String.format(Locale.getDefault(), "%.1f", it)} dB · " }.orEmpty()
                 Text(margin + formatDistance(result.result.distanceMeters / 1000, distanceUnit), color = secondary)
+                // Still waiting for Calculate, so this is the result saved with the study.
+                if (state.awaitingCalculation) Text("Saved result · calculated " + java.text.DateFormat.getDateTimeInstance(
+                    java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(java.util.Date(result.calculatedAt)),
+                    style = MaterialTheme.typography.bodySmall, color = secondary)
                 Text(if (usesDefaultEquipment) "Using default antenna and radio settings."
                     else "Using your antenna and radio settings.",
                     style = MaterialTheme.typography.bodySmall, color = secondary)

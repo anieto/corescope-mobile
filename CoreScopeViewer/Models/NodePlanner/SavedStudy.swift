@@ -18,6 +18,8 @@ struct SavedStudy: Codable, Equatable, Identifiable, Sendable {
     var resultRef: ResultRef? = nil
     /// Whether a referenced result file could be read on this device. Not stored.
     var resultStatus: SavedResultStatus = .none
+    /// A Link Profile's result payload, in memory only: on disk it's a result file. Not stored.
+    var linkProfileResult: Data? = nil
 
     private enum CodingKeys: String, CodingKey {
         case id, name, createdAtMilliseconds, updatedAtMilliseconds, kind, linkProfile, coverage

@@ -36,7 +36,9 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         /** The last placement, removal or reset, which Undo takes back for a few seconds. */
         val undo: Undo? = null,
         /** Reopened from Saved Plans: nothing is fetched or analyzed until Calculate, as on iOS. */
-        val awaitingCalculation: Boolean = false)
+        val awaitingCalculation: Boolean = false,
+        /** Why a reopened study's saved result isn't shown; null when there's none or it's shown. */
+        val savedResultNote: String? = null)
     /** Both endpoints' coordinate fields and node names, as they were before a change. */
     data class Placement(val fields: Map<String, String>, val names: Map<String, String>)
     data class Undo(val message: String, val before: Placement, val id: Long = System.nanoTime())
@@ -259,7 +261,10 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         val study = org.nodescope.android.feature.candidatesites.SavedStudy(
             savedStudy?.id ?: org.nodescope.android.feature.candidatesites.SavedPlansLibrary.newStudyID(),
             savedStudy?.name ?: "Link Profile", savedStudy?.createdAtMilliseconds ?: now, maxOf(now, savedStudy?.createdAtMilliseconds ?: now),
-            org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE, linkProfile = inputs, revision = savedStudy?.revision)
+            org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE, linkProfile = inputs, revision = savedStudy?.revision,
+            // The calculated result, when it's for exactly these inputs.
+            linkProfileResult = mutable.value.result?.let { PortableLinkProfileResult.encode(it, inputs) }
+                ?.let(java.util.Base64.getEncoder()::encodeToString))
         return study.takeIf { runCatching { it.validate() }.isSuccess }
     }
 
@@ -295,7 +300,21 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         saved["preset"] = preset
         saved["awaitingCalculation"] = true
         saved["restoredStudy"] = study.id
+        // A saved result opens as it was, without fetching terrain; edits clear it and wait for Calculate.
+        val restored = study.linkProfileResult?.let { encoded ->
+            runCatching { PortableLinkProfileResult.decode(java.util.Base64.getDecoder().decode(encoded), inputs) }.getOrNull()
+        }
+        val elevations = restored?.terrain?.points?.let {
+            mapOf("A" to EndpointElevation(it.first().elevationMeters), "B" to EndpointElevation(it.last().elevationMeters))
+        } ?: emptyMap()
+        val note = if (restored != null) null else when (study.resultStatus) {
+            org.nodescope.android.feature.candidatesites.SavedResultStatus.MISSING -> "Saved result not on this device"
+            org.nodescope.android.feature.candidatesites.SavedResultStatus.UNVERIFIED,
+            org.nodescope.android.feature.candidatesites.SavedResultStatus.AVAILABLE -> "Saved result could not be verified"
+            org.nodescope.android.feature.candidatesites.SavedResultStatus.UNSUPPORTED -> "Saved result needs another version of NodeScope"
+            org.nodescope.android.feature.candidatesites.SavedResultStatus.NONE -> null
+        }
         mutable.value = mutable.value.copy(fields = mutable.value.fields + values, names = names, preset = preset, loading = false,
-            result = null, error = null, elevations = emptyMap(), undo = null, awaitingCalculation = true)
+            result = restored, error = null, elevations = elevations, undo = null, awaitingCalculation = true, savedResultNote = note)
     }
 }

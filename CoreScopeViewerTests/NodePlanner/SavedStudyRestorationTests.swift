@@ -10,8 +10,62 @@ private actor SavedStudyElevationProbe: NodePlannerElevationProviding {
     }
 }
 
+/// Flat terrain at the requested coordinates, counting requests.
+private actor FlatTerrainProbe: NodePlannerElevationProviding {
+    var requests = 0
+    func elevations(for coordinates: [NodePlannerCoordinate]) async throws -> NodePlannerTerrainProfile {
+        requests += 1
+        return NodePlannerTerrainProfile(
+            samples: coordinates.enumerated().map { NodePlannerTerrainSample(coordinate: $1, elevationMeters: 100 + Double($0)) },
+            provenance: NodePlannerElevationProvenance(fetchedAt: Date(timeIntervalSince1970: 1_794_000_000), origin: .network))
+    }
+}
+
 @MainActor
 struct SavedStudyRestorationTests {
+    @Test func aCalculatedLinkProfileSavesItsResultAndReopensItWithoutTerrain() async throws {
+        let probe = FlatTerrainProbe()
+        let original = LinkProfileModel(elevationProvider: probe)
+        original.latitudeA = 50.5
+        original.longitudeA = -115.5
+        original.latitudeB = 50.51
+        original.longitudeB = -115.52
+        original.heightA = 6.096
+        original.heightB = 1.5
+        original.sampleCount = 30
+        let budget = NodePlannerLinkBudget(transmitPowerDBm: original.transmitPowerDBm, gainADB: original.gainADB,
+            gainBDB: original.gainBDB, lossADB: original.lossADB, lossBDB: original.lossBDB,
+            receiverSensitivityDBm: original.receiverSensitivityDBm)
+        let analysis = try await NodePlannerLinkAnalyzer(elevationProvider: probe,
+                                                         now: { Date(timeIntervalSince1970: 1_794_000_100) }).analyze(
+            NodePlannerLinkAnalysisRequest(pointA: try NodePlannerCoordinate(latitude: 50.5, longitude: -115.5),
+                pointB: try NodePlannerCoordinate(latitude: 50.51, longitude: -115.52), heightAMeters: 6.096, heightBMeters: 1.5,
+                frequencyMHz: original.frequencyMHz, refractionK: original.refractionK, linkBudget: budget, sampleCount: 30))
+        original.result = analysis
+        let snapshot = try #require(original.savedSnapshot())
+        #expect(snapshot.linkProfileResult != nil)
+
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let store = DeploymentPlanStore(fileURL: directory.appendingPathComponent("plans.json"))
+        _ = try await store.load()
+        try await store.save(DeploymentPlanDocument(schemaVersion: 3, plans: [], studies: [snapshot]))
+        let stored = try #require(try await DeploymentPlanStore(fileURL: directory.appendingPathComponent("plans.json")).load().studies.first)
+        #expect(stored.resultRef?.format == ResultRef.portableLinkProfile)
+        #expect(stored.resultStatus == .available)
+
+        let requests = await probe.requests
+        let reopened = LinkProfileModel(elevationProvider: probe)
+        reopened.restore(stored)
+        #expect(reopened.result == analysis)
+        #expect(await probe.requests == requests)
+        // Saving it again keeps the same result bytes.
+        #expect(reopened.savedSnapshot()?.linkProfileResult == snapshot.linkProfileResult)
+        // An edit clears it and waits for Calculate.
+        reopened.configurationChanged()
+        #expect(reopened.result == nil && reopened.awaitsExplicitCalculation)
+    }
+
     @Test func linkRestoresBothEndpointsWithoutRequestingTerrain() async throws {
         let probe = SavedStudyElevationProbe()
         let original = LinkProfileModel(elevationProvider: probe)

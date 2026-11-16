@@ -124,6 +124,44 @@ class SavedStudiesTest {
         assertEquals("1", metric.fields["txLoss"])
     }
 
+    @Test fun aCalculatedLinkProfileSavesItsResultAndReopensItWithoutTerrain() = withMain { root ->
+        val calls = mutableListOf<List<ProfileCoordinate>>()
+        val terrain = LinkTerrainProviding { calls += it; TerrainProfile(it.mapIndexed { index, _ -> ElevationPoint(index * 100.0, 100.0 + index) }, 1000, "network", it) }
+        val model = LinkProfileViewModel(terrain, SavedStateHandle())
+        model.place("A", ProfileCoordinate(40.0, -90.0), "Hill")
+        model.place("B", ProfileCoordinate(40.1, -90.1), null)
+        advanceUntilIdle()
+        val calculated = requireNotNull(model.state.value.result)
+        val snapshot = requireNotNull(model.savedSnapshot())
+        assertNotNull(snapshot.linkProfileResult)
+
+        val file = File(root, "plans.json")
+        val library = SavedPlansLibrary(DeploymentPlanStore(file))
+        library.load()
+        requireNotNull(library.saveStudy(snapshot, SavedPlansLibrary.SaveMode.SAVE_AS_NEW, SavedPlansLibrary.Destination.Standalone))
+        val stored = DeploymentPlanStore(file).load().savedStudies.single()
+        assertEquals(ResultRef.PORTABLE_LINK_PROFILE, stored.resultRef?.format)
+        assertEquals(SavedResultStatus.AVAILABLE, stored.resultStatus)
+
+        calls.clear()
+        val reopened = LinkProfileViewModel(terrain, SavedStateHandle())
+        reopened.restore(stored)
+        advanceUntilIdle()
+        assertTrue(calls.isEmpty())
+        val restored = requireNotNull(reopened.state.value.result)
+        assertEquals(calculated.result, restored.result)
+        assertEquals(calculated.terrain.points, restored.terrain.points)
+        assertEquals(calculated.bearing, restored.bearing, 0.0)
+        assertEquals(calculated.calculatedAt, restored.calculatedAt)
+        // Saving it again keeps the same result file.
+        assertEquals(snapshot.linkProfileResult, reopened.savedSnapshot()?.linkProfileResult)
+        // An edit clears it and waits for Calculate.
+        reopened.edit("Height A (m)", "25")
+        advanceUntilIdle()
+        assertNull(reopened.state.value.result)
+        assertTrue(calls.isEmpty())
+    }
+
     @Test fun linkProfileSavesOncePlacedAndReopensWithoutAnalyzing() = withMain { _ ->
         val calls = mutableListOf<List<ProfileCoordinate>>()
         val terrain = LinkTerrainProviding { calls += it; TerrainProfile(it.mapIndexed { index, _ -> ElevationPoint(index * 100.0, 100.0) }, 1000, "cache", it) }
@@ -169,7 +207,9 @@ class SavedStudiesTest {
         assertTrue(library.savePlan(plan.copy(name = "Renamed")))
         val reopened = DeploymentPlanStore(file).load()
         assertEquals(3, reopened.schemaVersion)
-        assertEquals(listOf(study.copy(id = stored.id)), reopened.content().second)
+        // Save as new gives the record its own ID and timestamps; everything else is the study as given.
+        assertEquals(listOf(study.copy(id = stored.id, createdAtMilliseconds = stored.createdAtMilliseconds,
+            updatedAtMilliseconds = stored.updatedAtMilliseconds)), reopened.content().second)
         assertEquals("Renamed", reopened.plans.single().name)
         assertTrue(library.deleteStudy(stored.id))
         assertTrue(DeploymentPlanStore(file).load().savedStudies.isEmpty())

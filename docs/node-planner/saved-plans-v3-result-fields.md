@@ -55,6 +55,8 @@ Continue eligibility is derived, not stored. Pending work means state-7 cells or
 
 ## nodescope.link-profile-result, version 1
 
+Implemented in B (`PortableLinkProfileResult` on both platforms): saving a calculated Link Profile stores its result; reopening shows it without fetching terrain, until an edit clears it and Calculate runs again. Android's tool still has no refraction or sample-count controls, so it saves 4/3 and adaptive sampling; a study made on iOS with other values loses them when saved again on Android (unchanged from before B).
+
 Engine sources: iOS `NodePlannerLinkAnalysis`, `NodePlannerLinkAnalysisRequest`, `NodePlannerPathResult`, `NodePlannerTerrainProfile`; Android `LinkAnalysis`, `PathRequest`, `PathResult`, `TerrainProfile`.
 
 | Field | Type | Notes |

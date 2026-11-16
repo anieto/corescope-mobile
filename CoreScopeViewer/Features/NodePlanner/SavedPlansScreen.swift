@@ -286,7 +286,7 @@ struct SavedStudyRow: View {
 
     static func resultText(_ status: SavedResultStatus) -> LocalizedStringKey {
         switch status {
-        case .available: "Includes saved coverage results"
+        case .available: "Includes saved results"
         case .missing: "Saved result not on this device"
         case .unverified: "Saved result could not be verified"
         case .unsupported: "Saved result needs another version of NodeScope"
@@ -683,7 +683,7 @@ private struct SaveStudySheet: View {
                 } header: {
                     Text("Study name")
                 } footer: {
-                    Text("Saves the current inputs and captured node locations. Estimated Coverage also saves available results; Link Profile saves inputs only.")
+                    Text("Saves the current inputs and, once calculated, the result. Estimated Coverage also keeps the node locations it used.")
                 }.instrumentListRows()
                 Section {
                     Picker("Save in", selection: $destination) {

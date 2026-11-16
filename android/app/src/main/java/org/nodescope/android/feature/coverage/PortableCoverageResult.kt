@@ -13,6 +13,18 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import org.nodescope.android.feature.candidatesites.PortableInputFingerprint
+import org.nodescope.android.feature.candidatesites.PortableJson
+import org.nodescope.android.feature.candidatesites.array
+import org.nodescope.android.feature.candidatesites.asDouble
+import org.nodescope.android.feature.candidatesites.asLong
+import org.nodescope.android.feature.candidatesites.boolean
+import org.nodescope.android.feature.candidatesites.double
+import org.nodescope.android.feature.candidatesites.exactly
+import org.nodescope.android.feature.candidatesites.long
+import org.nodescope.android.feature.candidatesites.nullable
+import org.nodescope.android.feature.candidatesites.obj
+import org.nodescope.android.feature.candidatesites.objectValue
+import org.nodescope.android.feature.candidatesites.string
 import org.nodescope.android.feature.candidatesites.SavedCoverage
 
 /**
@@ -50,7 +62,7 @@ internal object PortableCoverageResult {
 
     /** The payload's input fingerprint, for its result reference; null if it isn't a readable payload. */
     fun fingerprint(bytes: ByteArray): String? = runCatching {
-        (parse(bytes)["inputFingerprint"] as? JsonPrimitive)?.takeIf { it.isString }?.content?.takeIf(sha::matches)
+        (PortableJson.parse(bytes, MAXIMUM_BYTES)["inputFingerprint"] as? JsonPrimitive)?.takeIf { it.isString }?.content?.takeIf(sha::matches)
     }.getOrNull()
 
     /** Captures [result]; null if a node it evaluated has no recorded evaluation. */
@@ -123,7 +135,7 @@ internal object PortableCoverageResult {
      * payload is malformed or belongs to other inputs.
      */
     fun decode(bytes: ByteArray, inputs: CoverageStudyInputs, snapshots: List<CoverageNodeSnapshot>, catalogComplete: Boolean): CoverageStudyResult {
-        val root = parse(bytes)
+        val root = PortableJson.parse(bytes, MAXIMUM_BYTES)
         root.exactly("format", "version", "calculatedAtMilliseconds", "inputFingerprint", "inputs", "limits", "model", "terrain", "area", "nodes")
         require(root.string("format") == FORMAT && root.long("version") == 1L)
         val calculatedAt = root.nullable("calculatedAtMilliseconds")?.let { require(it is JsonPrimitive); it.asLong(0..MAX_MS) }
@@ -209,37 +221,5 @@ internal object PortableCoverageResult {
         return listOf(inputs.transmitter.latitude, inputs.transmitter.longitude, inputs.frequencyMHz, inputs.transmitHeightMeters,
             inputs.receiveHeightMeters, b.transmitPowerDbm, b.transmitGainDbi, b.receiveGainDbi, b.transmitLossDb, b.receiveLossDb,
             b.sensitivityDbm, b.reserveDb)
-    }
-
-    // Strict reading helpers: every accessor throws on a missing field or the wrong type.
-
-    private fun parse(bytes: ByteArray): JsonObject {
-        require(bytes.size <= MAXIMUM_BYTES)
-        return Json.parseToJsonElement(bytes.decodeToString(throwOnInvalidSequence = true)).objectValue()
-    }
-
-    private fun JsonElement.objectValue() = this as? JsonObject ?: throw IllegalArgumentException()
-    private fun JsonObject.exactly(vararg names: String) = require(keys == names.toSet())
-    private fun JsonObject.field(name: String) = this[name] ?: throw IllegalArgumentException()
-    private fun JsonObject.nullable(name: String): JsonElement? = field(name).takeIf { it !is JsonNull }
-    private fun JsonObject.obj(name: String) = field(name).objectValue()
-    private fun JsonObject.array(name: String) = field(name) as? JsonArray ?: throw IllegalArgumentException()
-    private fun JsonObject.string(name: String): String =
-        (field(name) as? JsonPrimitive)?.takeIf { it.isString }?.content ?: throw IllegalArgumentException()
-    private fun JsonObject.boolean(name: String): Boolean =
-        (field(name) as? JsonPrimitive)?.takeIf { !it.isString }?.booleanOrNull ?: throw IllegalArgumentException()
-    private fun JsonObject.long(name: String) = field(name).asLong(Long.MIN_VALUE..Long.MAX_VALUE)
-    private fun JsonObject.double(name: String) = field(name).asDouble()
-
-    private fun JsonElement.asLong(range: LongRange): Long {
-        val primitive = this as? JsonPrimitive ?: throw IllegalArgumentException()
-        require(!primitive.isString && primitive !is JsonNull)
-        return primitive.longOrNull?.takeIf { it in range } ?: throw IllegalArgumentException()
-    }
-
-    private fun JsonElement.asDouble(): Double {
-        val primitive = this as? JsonPrimitive ?: throw IllegalArgumentException()
-        require(!primitive.isString && primitive !is JsonNull && primitive.booleanOrNull == null)
-        return primitive.doubleOrNull?.takeIf { it.isFinite() } ?: throw IllegalArgumentException()
     }
 }

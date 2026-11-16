@@ -111,7 +111,8 @@ final class CandidatePlansModel {
     /// can't stay attached to different inputs, so Update then saves inputs only, once confirmed.
     func dropsUnreadableResult(_ study: SavedStudy) -> Bool {
         guard let current = studies.first(where: { $0.id == study.id }), current.resultRef != nil,
-              current.resultStatus != .available, study.coverage?.calculatedResult == nil else { return false }
+              current.resultStatus != .available, study.coverage?.calculatedResult == nil,
+              study.linkProfileResult == nil else { return false }
         return !DeploymentPlanStore.sameInputs(current, study)
     }
 

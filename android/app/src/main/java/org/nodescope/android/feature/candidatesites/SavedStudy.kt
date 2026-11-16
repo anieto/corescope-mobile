@@ -15,6 +15,8 @@ data class SavedStudy(
     val importOrigin: ImportOrigin? = null, val resultRef: ResultRef? = null,
     /** Whether a referenced result file could be read on this device. Not stored. */
     @kotlinx.serialization.Transient val resultStatus: SavedResultStatus = SavedResultStatus.NONE,
+    /** A Link Profile's result payload (base64), in memory only: on disk it's a result file. */
+    @kotlinx.serialization.Transient val linkProfileResult: String? = null,
 ) {
     @Serializable
     enum class Kind { @SerialName("linkProfile") LINK_PROFILE, @SerialName("coverage") COVERAGE }

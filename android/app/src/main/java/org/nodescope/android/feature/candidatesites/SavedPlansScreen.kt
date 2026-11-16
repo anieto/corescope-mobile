@@ -260,7 +260,7 @@ private fun kindIcon(kind: SavedStudy.Kind): ImageVector = if (kind == SavedStud
 }
 
 private fun resultText(status: SavedResultStatus) = when (status) {
-    SavedResultStatus.AVAILABLE -> "Includes saved coverage results"
+    SavedResultStatus.AVAILABLE -> "Includes saved results"
     SavedResultStatus.MISSING -> "Saved result not on this device"
     SavedResultStatus.UNVERIFIED -> "Saved result could not be verified"
     SavedResultStatus.UNSUPPORTED -> "Saved result needs another version of NodeScope"
@@ -528,7 +528,7 @@ fun SavedStudyActions(snapshot: () -> SavedStudy?, didSave: (SavedStudy) -> Unit
             // The name is kept on focus; select or edit it as usual.
             OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = { Text("Study name") }, singleLine = true,
                 enabled = !submitting)
-            Text("Saves the current inputs and captured node locations. Estimated Coverage also saves available results; Link Profile saves inputs only.",
+            Text("Saves the current inputs and, once calculated, the result. Estimated Coverage also keeps the node locations it used.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("Save in", style = MaterialTheme.typography.titleMedium)
             Column {

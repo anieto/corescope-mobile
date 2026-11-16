@@ -85,14 +85,18 @@ actor DeploymentPlanStore {
         let studies: [SavedStudy] = document.studies.map { input in
             var study = input
             let before = old[study.id]
-            if let data = study.coverage?.calculatedResult {
+            if let data = study.coverage?.calculatedResult ?? study.linkProfileResult {
                 let sha = Self.sha256(data)
                 payloads[sha] = data
                 // Unchanged bytes keep the reference they were saved under (a migrated result keeps its format);
                 // a new record with bytes the library already holds, such as a duplicate, shares that reference.
                 let existing = before == nil ? known[sha] : before?.resultRef.flatMap { $0.sha256 == sha ? $0 : nil }
                 // A portable payload without a readable fingerprint fails the manifest's validation, so it's never saved.
-                study.resultRef = existing ?? (PortableCoverageResult.isPortable(data)
+                // A Link Profile accepts only its portable format; anything else fails validation too.
+                study.resultRef = existing ?? (study.kind == .linkProfile
+                    ? ResultRef(format: ResultRef.portableLinkProfile, version: 1, byteLength: data.count, sha256: sha,
+                                inputFingerprint: PortableLinkProfileResult.fingerprint(of: data))
+                    : PortableCoverageResult.isPortable(data)
                     ? ResultRef(format: ResultRef.portableCoverage, version: 1, byteLength: data.count, sha256: sha,
                                 inputFingerprint: PortableCoverageResult.fingerprint(of: data))
                     : ResultRef(format: ResultRef.iosLegacy, version: 1, byteLength: data.count, sha256: sha, inputFingerprint: nil))
@@ -106,6 +110,7 @@ actor DeploymentPlanStore {
                 study.resultRef = nil
             }
             study.coverage?.calculatedResult = nil
+            study.linkProfileResult = nil
             study.resultStatus = .none
             study.revision = nil
             return study
@@ -134,7 +139,7 @@ actor DeploymentPlanStore {
             var next = study
             next.revision = try revised(study, old[study.id], old[study.id]?.revision) {
                 var copy = $0
-                copy.revision = nil; copy.resultStatus = .none; copy.coverage?.calculatedResult = nil
+                copy.revision = nil; copy.resultStatus = .none; copy.coverage?.calculatedResult = nil; copy.linkProfileResult = nil
                 return copy
             }
             return next
@@ -172,6 +177,14 @@ actor DeploymentPlanStore {
             }
             if data.count != ref.byteLength || Self.sha256(data) != ref.sha256 {
                 document.studies[index].resultStatus = .unverified
+            } else if ref.format == ResultRef.portableLinkProfile, let inputs = document.studies[index].linkProfile {
+                // Shown only for the inputs it was calculated from.
+                if ref.inputFingerprint == PortableLinkProfileResult.studyFingerprint(inputs) {
+                    document.studies[index].linkProfileResult = data
+                    document.studies[index].resultStatus = .available
+                } else {
+                    document.studies[index].resultStatus = .unverified
+                }
             } else if ref.format == ResultRef.portableCoverage, let coverage = document.studies[index].coverage,
                       ref.inputFingerprint != PortableCoverageResult.studyFingerprint(coverage) {
                 // A portable result shows only for the inputs it was calculated from.

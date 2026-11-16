@@ -118,7 +118,8 @@ class SavedPlansLibrary(private val store: DeploymentPlanStore) {
      */
     fun dropsUnreadableResult(study: SavedStudy): Boolean {
         val current = studies.firstOrNull { it.id == study.id } ?: return false
-        if (current.resultRef == null || current.resultStatus == SavedResultStatus.AVAILABLE || study.coverage?.calculatedResult != null) return false
+        if (current.resultRef == null || current.resultStatus == SavedResultStatus.AVAILABLE ||
+            study.coverage?.calculatedResult != null || study.linkProfileResult != null) return false
         return !DeploymentPlanStore.sameInputs(current, study)
     }
 

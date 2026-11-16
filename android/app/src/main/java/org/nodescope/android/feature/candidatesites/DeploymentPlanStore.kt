@@ -8,6 +8,7 @@ import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.Base64
 import org.nodescope.android.feature.coverage.PortableCoverageResult
+import org.nodescope.android.feature.linkprofile.PortableLinkProfileResult
 
 enum class DeploymentPlanStoreFailure { NOT_LOADED, CHANGED_ON_DISK, STORAGE_FULL }
 class DeploymentPlanStoreException(val reason: DeploymentPlanStoreFailure) : Exception(reason.name)
@@ -78,9 +79,10 @@ class DeploymentPlanStore(
         val studies = document.savedStudies.map { study ->
             val before = old[study.id]
             val coverage = study.coverage
+            val encoded = coverage?.calculatedResult ?: study.linkProfileResult
             val ref = when {
-                coverage?.calculatedResult != null -> {
-                    val data = try { Base64.getDecoder().decode(coverage.calculatedResult) } catch (_: IllegalArgumentException) {
+                encoded != null -> {
+                    val data = try { Base64.getDecoder().decode(encoded) } catch (_: IllegalArgumentException) {
                         throw DeploymentPlanException(DeploymentPlanFailure.INVALID_DATA)
                     }
                     val sha = sha256(data)
@@ -88,9 +90,15 @@ class DeploymentPlanStore(
                     // Unchanged bytes keep the reference they were saved under (a migrated result keeps its format);
                     // a new record with bytes the library already holds, such as a duplicate, shares that reference.
                     val existing = if (before == null) known[sha] else before.resultRef?.takeIf { it.sha256 == sha }
-                    existing ?: if (PortableCoverageResult.isPortable(data)) ResultRef(ResultRef.PORTABLE_COVERAGE, 1, data.size, sha,
-                        PortableCoverageResult.fingerprint(data) ?: throw DeploymentPlanException(DeploymentPlanFailure.INVALID_DATA))
-                    else ResultRef(ResultRef.ANDROID_LEGACY, 1, data.size, sha)
+                    fun invalid(): Nothing = throw DeploymentPlanException(DeploymentPlanFailure.INVALID_DATA)
+                    existing ?: when {
+                        study.kind == SavedStudy.Kind.LINK_PROFILE -> if (PortableLinkProfileResult.isPortable(data))
+                            ResultRef(ResultRef.PORTABLE_LINK_PROFILE, 1, data.size, sha, PortableLinkProfileResult.fingerprint(data) ?: invalid())
+                            else invalid()
+                        PortableCoverageResult.isPortable(data) ->
+                            ResultRef(ResultRef.PORTABLE_COVERAGE, 1, data.size, sha, PortableCoverageResult.fingerprint(data) ?: invalid())
+                        else -> ResultRef(ResultRef.ANDROID_LEGACY, 1, data.size, sha)
+                    }
                 }
                 // A result that couldn't be read here stays attached while the calculation inputs are unchanged.
                 before?.resultRef != null && sameInputs(before, study) -> before.resultRef
@@ -99,7 +107,7 @@ class DeploymentPlanStore(
                 else -> null
             }
             study.copy(coverage = coverage?.copy(calculatedResult = null), resultRef = ref, revision = null,
-                resultStatus = SavedResultStatus.NONE)
+                resultStatus = SavedResultStatus.NONE, linkProfileResult = null)
         }
         fun <T> revised(item: T, before: T?, revision: Long?, strip: (T) -> T): Long {
             val prior = revision ?: return 1
@@ -121,7 +129,8 @@ class DeploymentPlanStore(
         val revisedStudies = studies.map { study ->
             val before = oldStudies[study.id]
             study.copy(revision = revised(study, before, before?.revision) {
-                it.copy(revision = null, resultStatus = SavedResultStatus.NONE, coverage = it.coverage?.copy(calculatedResult = null))
+                it.copy(revision = null, resultStatus = SavedResultStatus.NONE, coverage = it.coverage?.copy(calculatedResult = null),
+                    linkProfileResult = null)
             })
         }
         val revision = previous.documentRevision ?: 0
@@ -144,6 +153,10 @@ class DeploymentPlanStore(
                 // A portable result shows only for the inputs it was calculated from.
                 ref.format == ResultRef.PORTABLE_COVERAGE && study.coverage != null && ref.inputFingerprint != coverageFingerprint(study.coverage) ->
                     study.copy(resultStatus = SavedResultStatus.UNVERIFIED)
+                ref.format == ResultRef.PORTABLE_LINK_PROFILE && study.linkProfile != null ->
+                    if (ref.inputFingerprint != runCatching { PortableInputFingerprint.linkProfile(study.linkProfile) }.getOrNull())
+                        study.copy(resultStatus = SavedResultStatus.UNVERIFIED)
+                    else study.copy(linkProfileResult = Base64.getEncoder().encodeToString(data), resultStatus = SavedResultStatus.AVAILABLE)
                 (ref.format == ResultRef.ANDROID_LEGACY || ref.format == ResultRef.PORTABLE_COVERAGE) && study.coverage != null ->
                     study.copy(coverage = study.coverage.copy(calculatedResult = Base64.getEncoder().encodeToString(data)),
                         resultStatus = SavedResultStatus.AVAILABLE)
