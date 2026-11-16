@@ -27,6 +27,7 @@
 		310F864A3096A423009EC5E8 /* DeploymentPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 310F86493096A423009EC5E8 /* DeploymentPlan.swift */; };
 		310F864C3096A44B009EC5E8 /* DeploymentPlanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 310F864B3096A44B009EC5E8 /* DeploymentPlanTests.swift */; };
 		310F864E3096B491009EC5E8 /* DeploymentPlanStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 310F864D3096B491009EC5E8 /* DeploymentPlanStore.swift */; };
+		03BA73F53847466C992B1152 /* StudyDraftStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F9C0278E7AB4733A03A5413 /* StudyDraftStore.swift */; };
 		310F86503096B4AA009EC5E8 /* DeploymentPlanStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 310F864F3096B4AA009EC5E8 /* DeploymentPlanStoreTests.swift */; };
 		310F86523096B5AD009EC5E8 /* CandidatePlansModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 310F86513096B5AD009EC5E8 /* CandidatePlansModel.swift */; };
 		310F86543096B5AD009EC5E8 /* CandidateSitesScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 310F86533096B5AD009EC5E8 /* CandidateSitesScreen.swift */; };
@@ -257,6 +258,7 @@
 		7E6F8BC13ADB4703B91A0F56 /* PortableLinkProfileResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 726236A1641E467E8678188B /* PortableLinkProfileResult.swift */; };
 		1B1A3AE8D2FD4FD2A5A092E5 /* PortableCoverageResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E2EC00A7A3C4F94ADBB0C1F /* PortableCoverageResult.swift */; };
 		E7F8A9B0C1D2E3F4A5B6C7D8 /* SavedPlansV3Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8A9B0C1D2E3F4A5B6C7D8E9 /* SavedPlansV3Tests.swift */; };
+		CBC1D2786C274488BFF1D4B8 /* StudyDraftStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBD22701CFCB401CB7EBD9F9 /* StudyDraftStoreTests.swift */; };
 		8B74E1050C064AE686D045E1 /* PortableLinkProfileResultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22C9456FBE934BDCA0560C09 /* PortableLinkProfileResultTests.swift */; };
 		03072D44FFB2413A87EE4942 /* PortableCoverageResultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75320033F9BE4B5AAD348F51 /* PortableCoverageResultTests.swift */; };
 		EACC350C9F65CBA27A0B4D24 /* Channel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33B9A5F539B49B860F434D81 /* Channel.swift */; };
@@ -299,6 +301,7 @@
 		310F86493096A423009EC5E8 /* DeploymentPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeploymentPlan.swift; sourceTree = "<group>"; };
 		310F864B3096A44B009EC5E8 /* DeploymentPlanTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeploymentPlanTests.swift; sourceTree = "<group>"; };
 		310F864D3096B491009EC5E8 /* DeploymentPlanStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeploymentPlanStore.swift; sourceTree = "<group>"; };
+		5F9C0278E7AB4733A03A5413 /* StudyDraftStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyDraftStore.swift; sourceTree = "<group>"; };
 		310F864F3096B4AA009EC5E8 /* DeploymentPlanStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeploymentPlanStoreTests.swift; sourceTree = "<group>"; };
 		310F86513096B5AD009EC5E8 /* CandidatePlansModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidatePlansModel.swift; sourceTree = "<group>"; };
 		310F86533096B5AD009EC5E8 /* CandidateSitesScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateSitesScreen.swift; sourceTree = "<group>"; };
@@ -541,6 +544,7 @@
 		2E2EC00A7A3C4F94ADBB0C1F /* PortableCoverageResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortableCoverageResult.swift; sourceTree = "<group>"; };
 		F4803E09AA9A3CD1D7EF773B /* SignalQualityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalQualityTests.swift; sourceTree = "<group>"; };
 		F8A9B0C1D2E3F4A5B6C7D8E9 /* SavedPlansV3Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedPlansV3Tests.swift; sourceTree = "<group>"; };
+		FBD22701CFCB401CB7EBD9F9 /* StudyDraftStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyDraftStoreTests.swift; sourceTree = "<group>"; };
 		22C9456FBE934BDCA0560C09 /* PortableLinkProfileResultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortableLinkProfileResultTests.swift; sourceTree = "<group>"; };
 		75320033F9BE4B5AAD348F51 /* PortableCoverageResultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortableCoverageResultTests.swift; sourceTree = "<group>"; };
 		FEE734231B3A2D9FDE62ADB6 /* MapViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapViewModel.swift; sourceTree = "<group>"; };
@@ -656,6 +660,7 @@
 				B4C5D6E7F8A9B0C1D2E3F4A5 /* PortableContractTests.swift */,
 				B0C1D2E3F4A5B6C7D8E9F0A1 /* SavedPlansTestSupport.swift */,
 				F8A9B0C1D2E3F4A5B6C7D8E9 /* SavedPlansV3Tests.swift */,
+				FBD22701CFCB401CB7EBD9F9 /* StudyDraftStoreTests.swift */,
 				22C9456FBE934BDCA0560C09 /* PortableLinkProfileResultTests.swift */,
 				75320033F9BE4B5AAD348F51 /* PortableCoverageResultTests.swift */,
 				D2E3F4A5B6C7D8E9F0A1B2C3 /* StudyPlanLibraryTests.swift */,
@@ -979,6 +984,7 @@
 				31DFA7EE308E9FD700B8C681 /* NodePlannerElevationProvider.swift */,
 				31DFA7F8308EA1B800B8C681 /* NodePlannerElevationCache.swift */,
 				310F864D3096B491009EC5E8 /* DeploymentPlanStore.swift */,
+				5F9C0278E7AB4733A03A5413 /* StudyDraftStore.swift */,
 				31E0054F3098DFF500178350 /* CoverageTerrainDiskCache.swift */,
 				31E005533099228D00178350 /* CoverageTerrainDecoder.swift */,
 				31E0055730994EEA00178350 /* CoverageTerrainDownloader.swift */,
@@ -1136,6 +1142,7 @@
 				A3B4C5D6E7F8A9B0C1D2E3F4 /* PortableContractTests.swift in Sources */,
 				A9B0C1D2E3F4A5B6C7D8E9F0 /* SavedPlansTestSupport.swift in Sources */,
 				E7F8A9B0C1D2E3F4A5B6C7D8 /* SavedPlansV3Tests.swift in Sources */,
+				CBC1D2786C274488BFF1D4B8 /* StudyDraftStoreTests.swift in Sources */,
 				8B74E1050C064AE686D045E1 /* PortableLinkProfileResultTests.swift in Sources */,
 				03072D44FFB2413A87EE4942 /* PortableCoverageResultTests.swift in Sources */,
 				C1D2E3F4A5B6C7D8E9F0A1B2 /* StudyPlanLibraryTests.swift in Sources */,
@@ -1245,6 +1252,7 @@
 				14C15315F31A80B68EECD9B5 /* AppearanceSettings.swift in Sources */,
 				310F864A3096A423009EC5E8 /* DeploymentPlan.swift in Sources */,
 				310F864E3096B491009EC5E8 /* DeploymentPlanStore.swift in Sources */,
+				03BA73F53847466C992B1152 /* StudyDraftStore.swift in Sources */,
 				315E3A13309B861A00BAEC98 /* CoverageTilePNG.swift in Sources */,
 				31E005483098D6C600178350 /* CoverageTerrainMosaic.swift in Sources */,
 				EACC350C9F65CBA27A0B4D24 /* Channel.swift in Sources */,

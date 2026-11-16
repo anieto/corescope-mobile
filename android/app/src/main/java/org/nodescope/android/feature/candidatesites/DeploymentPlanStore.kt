@@ -199,9 +199,13 @@ class DeploymentPlanStore(
         writePlanAtomically(original, target)
     }
 
-    /** Remove result files the saved manifest doesn't reference. Backups hold inline results, not references. */
-    private fun collectGarbage(document: DeploymentPlanDocument) {
-        val referenced = document.savedStudies.mapNotNull { it.resultRef?.sha256 }.toSet()
+    /**
+     * Remove result files nothing references: not the saved manifest, not any recovery draft. Backups hold
+     * inline results, not references. If a draft can't be read, nothing is deleted.
+     */
+    private fun collectGarbage(document: DeploymentPlanDocument) = synchronized(StudyDraftStore.LOCK) {
+        val drafts = StudyDraftStore(directory).referencedResults() ?: return@synchronized
+        val referenced = document.savedStudies.mapNotNull { it.resultRef?.sha256 }.toSet() + drafts
         try {
             results.listFiles()?.forEach { candidate ->
                 val sha = candidate.name.removeSuffix(".result")
@@ -242,7 +246,7 @@ class DeploymentPlanStore(
 }
 
 /** Same-directory atomic rename, with no non-atomic fallback. Failure leaves the old file intact. */
-private fun writePlanAtomically(bytes: ByteArray, file: File) {
+internal fun writePlanAtomically(bytes: ByteArray, file: File) {
     val staging = Files.createTempFile(file.toPath().parent, ".plans-", ".tmp")
     try {
         java.io.FileOutputStream(staging.toFile()).use { it.write(bytes); it.fd.sync() }

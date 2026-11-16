@@ -221,8 +221,13 @@ actor DeploymentPlanStore {
     }
 
     /// Remove result files the saved manifest doesn't reference. Backups hold inline results, not references.
+    /// Remove result files nothing references: not the saved manifest, not any recovery draft. If a draft
+    /// can't be read, nothing is deleted.
     private func collectGarbage(_ document: DeploymentPlanDocument) {
-        let referenced = Set(document.studies.compactMap { $0.resultRef?.sha256 })
+        StudyDraftStore.lock.lock()
+        defer { StudyDraftStore.lock.unlock() }
+        guard let drafts = StudyDraftStore(directory: directory).referencedResults() else { return }
+        let referenced = Set(document.studies.compactMap { $0.resultRef?.sha256 }).union(drafts)
         guard let names = try? FileManager.default.contentsOfDirectory(atPath: results.path) else { return }
         for name in names where name.hasSuffix(".result") {
             let sha = String(name.dropLast(".result".count))
