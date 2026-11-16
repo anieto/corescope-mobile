@@ -75,7 +75,10 @@ struct SavedPlansScreen: View {
             }
             if kind == nil && !searching {
                 Section {
-                    NavigationLink("Candidate sites") { CandidateSitesScreen() }
+                    // Superseded by plans of studies: shown only to people who already saved candidate sites.
+                    if !model.plans.isEmpty {
+                        NavigationLink("Candidate sites") { CandidateSitesScreen() }
+                    }
                 } footer: {
                     Text("Stored on this device. Backup details are in Settings › Cache & Storage.")
                 }.instrumentListRows()
