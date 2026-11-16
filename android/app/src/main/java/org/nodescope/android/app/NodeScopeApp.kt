@@ -123,13 +123,15 @@ enum class Destination(val title: Int, val icon: ImageVector, val route: TopLeve
 @Serializable data class NodeRoute(val publicKey: String)
 @Serializable data class NodeAnalyticsRoute(val publicKey: String)
 @Serializable data object NodePlannerRoute
-@Serializable data class EstimatedCoverageRoute(val studyId: String? = null, val linkSeed: String? = null)
+@Serializable data class EstimatedCoverageRoute(val studyId: String? = null, val linkSeed: String? = null, val planId: String? = null)
 @Serializable data object CandidateSitesRoute
 /** Saved studies and candidate sites; [kind] narrows the list to one tool's studies (its Open button). */
 @Serializable data class SavedPlansRoute(val kind: String? = null)
+/** One study plan; [filter] is the type filter it opens with. */
+@Serializable data class StudyPlanRoute(val planId: String, val filter: String = "ALL")
 /** [publicKey] is set when opened from a node's page; Explore opens it empty to look a node up. */
 @Serializable data class NodeCheckRoute(val publicKey: String? = null)
-@Serializable data class LinkProfileRoute(val studyId: String? = null)
+@Serializable data class LinkProfileRoute(val studyId: String? = null, val planId: String? = null)
 @Serializable data object SourceRoute
 @Serializable data object PacketRoute
 @Serializable data class PacketDetailRoute(val groupId: String)
@@ -501,6 +503,9 @@ internal fun AppShell(
                             destination?.hasRoute<EstimatedCoverageRoute>() == true -> "Estimated Coverage"
                             destination?.hasRoute<CandidateSitesRoute>() == true -> "Candidate Sites"
                             destination?.hasRoute<SavedPlansRoute>() == true -> "Saved Plans"
+                            destination?.hasRoute<StudyPlanRoute>() == true ->
+                                org.nodescope.android.feature.candidatesites.SavedPlansLibrary.shared(androidx.compose.ui.platform.LocalContext.current)
+                                    .plan(entry!!.toRoute<StudyPlanRoute>().planId)?.name ?: "Plan"
                             destination?.hasRoute<NodeCheckRoute>() == true -> "Node Check"
                             destination?.hasRoute<LinkProfileRoute>() == true -> "Link Profile"
                             else -> stringResource(when {
@@ -671,7 +676,25 @@ internal fun AppShell(
                                     org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE -> nav.navigate(LinkProfileRoute(study.id))
                                     org.nodescope.android.feature.candidatesites.SavedStudy.Kind.COVERAGE -> nav.navigate(EstimatedCoverageRoute(study.id))
                                 }
-                            }, onCandidateSites = { nav.navigate(CandidateSitesRoute) })
+                            }, onPlan = { id, filter -> nav.navigate(StudyPlanRoute(id, filter.name)) },
+                                onCandidateSites = { nav.navigate(CandidateSitesRoute) })
+                        }
+                        screen<StudyPlanRoute> { backStack ->
+                            val route = backStack.toRoute<StudyPlanRoute>()
+                            org.nodescope.android.feature.candidatesites.StudyPlanScreen(route.planId, org.nodescope.android.feature.candidatesites.StudyFilter.valueOf(route.filter),
+                                onOpen = { study ->
+                                    when (study.kind) {
+                                        org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE -> nav.navigate(LinkProfileRoute(study.id))
+                                        org.nodescope.android.feature.candidatesites.SavedStudy.Kind.COVERAGE -> nav.navigate(EstimatedCoverageRoute(study.id))
+                                    }
+                                },
+                                onNewTool = { kind ->
+                                    when (kind) {
+                                        org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE -> nav.navigate(LinkProfileRoute(planId = route.planId))
+                                        org.nodescope.android.feature.candidatesites.SavedStudy.Kind.COVERAGE -> nav.navigate(EstimatedCoverageRoute(planId = route.planId))
+                                    }
+                                },
+                                onDeleted = { nav.popBackStack() })
                         }
                         screen<EstimatedCoverageRoute> { backStack ->
                             val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
@@ -685,8 +708,11 @@ internal fun AppShell(
                                     diagnosticsFile = java.io.File(context.filesDir, "CoverageDiagnostics/latest.json"))
                                     .also { model ->
                                         library.studies.firstOrNull { it.id == studyId }?.let(model::restore)
+                                        model.suggestedPlanID = backStack.toRoute<EstimatedCoverageRoute>().planId
                                         backStack.toRoute<EstimatedCoverageRoute>().linkSeed?.let { encoded ->
-                                            model.applyLinkSeed(kotlinx.serialization.json.Json.decodeFromString<org.nodescope.android.feature.coverage.LinkCoverageSeed>(encoded))
+                                            val seed = kotlinx.serialization.json.Json.decodeFromString<org.nodescope.android.feature.coverage.LinkCoverageSeed>(encoded)
+                                            model.applyLinkSeed(seed)
+                                            model.suggestedPlanID = seed.planID
                                         }
                                     }
                             }
@@ -710,13 +736,21 @@ internal fun AppShell(
                                 org.nodescope.android.feature.linkprofile.LinkProfileViewModel(
                                     org.nodescope.android.feature.linkprofile.LinkTerrainProvider(java.io.File(context.cacheDir, "link-profile/elevations.json")),
                                     createSavedStateHandle(), preferences.distanceUnit)
-                                    .also { model -> library.studies.firstOrNull { it.id == studyId }?.let(model::restore) }
+                                    .also { model ->
+                                        library.studies.firstOrNull { it.id == studyId }?.let(model::restore)
+                                        model.suggestedPlanID = backStack.toRoute<LinkProfileRoute>().planId
+                                    }
                             }
                             org.nodescope.android.feature.linkprofile.LinkProfileScreen(profileModel, preferences.distanceUnit, state.snapshot?.nodes.orEmpty(),
                                 state.snapshot, preferences.region, sourceViewport,
                                 onOpenSaved = { nav.navigate(SavedPlansRoute(org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE.name)) },
-                                onCoverage = { seed -> nav.navigate(EstimatedCoverageRoute(linkSeed =
-                                    kotlinx.serialization.json.Json.encodeToString(org.nodescope.android.feature.coverage.LinkCoverageSeed.serializer(), seed))) })
+                                onCoverage = { seed ->
+                                    // Coverage is saved where this Link Profile now is, or else where it was opened from.
+                                    val current = profileModel.savedStudy?.let { saved -> library.studies.firstOrNull { it.id == saved.id } }
+                                    val planned = seed.copy(planID = if (current != null) current.planID else profileModel.suggestedPlanID)
+                                    nav.navigate(EstimatedCoverageRoute(linkSeed =
+                                        kotlinx.serialization.json.Json.encodeToString(org.nodescope.android.feature.coverage.LinkCoverageSeed.serializer(), planned)))
+                                })
                         }
                         screen<PacketRoute> {
                             if (org.nodescope.android.core.design.LocalBeaconSource.current)

@@ -164,14 +164,14 @@ class SavedStudiesTest {
         library.load()
         val study = requireNotNull(placedModel(root).savedSnapshot())
         val original = file.readBytes()
-        assertNotNull(library.saveStudy(study))
+        val stored = requireNotNull(library.saveStudy(study, SavedPlansLibrary.SaveMode.SAVE_AS_NEW, SavedPlansLibrary.Destination.Standalone))
         assertArrayEquals(original, migrationBackup(file, original).readBytes())
         assertTrue(library.savePlan(plan.copy(name = "Renamed")))
         val reopened = DeploymentPlanStore(file).load()
         assertEquals(3, reopened.schemaVersion)
-        assertEquals(listOf(study), reopened.content().second)
+        assertEquals(listOf(study.copy(id = stored.id)), reopened.content().second)
         assertEquals("Renamed", reopened.plans.single().name)
-        assertTrue(library.deleteStudy(study))
+        assertTrue(library.deleteStudy(stored.id))
         assertTrue(DeploymentPlanStore(file).load().savedStudies.isEmpty())
     }
 }

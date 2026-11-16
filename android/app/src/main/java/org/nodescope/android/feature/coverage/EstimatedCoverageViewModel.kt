@@ -90,6 +90,8 @@ internal class EstimatedCoverageViewModel(
     // Saved studies. A reopened study keeps the node locations it was saved with until refreshed.
     /** The saved study this setup came from, so Save replaces it rather than adding another. */
     var savedStudy by mutableStateOf<org.nodescope.android.feature.candidatesites.SavedStudy?>(null)
+    /** The plan this tool was opened from, or the Link Profile's: the suggested place to save. */
+    var suggestedPlanID: String? = null
     var usesSavedCatalog by mutableStateOf(false); private set
     private var savedCatalog: List<org.nodescope.android.feature.candidatesites.SavedCoverageNode> = emptyList()
     private var savedCatalogComplete = false
@@ -473,7 +475,7 @@ internal class EstimatedCoverageViewModel(
         val study = org.nodescope.android.feature.candidatesites.SavedStudy(
             previous?.id ?: org.nodescope.android.feature.candidatesites.SavedPlansLibrary.newStudyID(),
             previous?.name ?: "Estimated Coverage", previous?.createdAtMilliseconds ?: now, maxOf(now, previous?.createdAtMilliseconds ?: now),
-            org.nodescope.android.feature.candidatesites.SavedStudy.Kind.COVERAGE, coverage = coverage)
+            org.nodescope.android.feature.candidatesites.SavedStudy.Kind.COVERAGE, coverage = coverage, revision = previous?.revision)
         return study.takeIf { runCatching { it.validate() }.isSuccess }
     }
 
@@ -568,4 +570,6 @@ internal fun nearestCoverageNodes(nodes: List<MeshNode>, selected: Coordinate?):
 
 @kotlinx.serialization.Serializable
 data class LinkCoverageSeed(val point: org.nodescope.android.feature.candidatesites.SavedEndpoint,
-    val frequencyMHz: Double, val transmitPowerDbm: Double, val sensitivityDbm: Double)
+    val frequencyMHz: Double, val transmitPowerDbm: Double, val sensitivityDbm: Double,
+    /** Where to suggest saving the new coverage study. */
+    val planID: String? = null)

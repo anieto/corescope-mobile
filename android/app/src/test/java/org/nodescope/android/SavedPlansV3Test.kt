@@ -151,14 +151,17 @@ class SavedPlansV3Test {
             val library = SavedPlansLibrary(DeploymentPlanStore(file))
             library.load()
             val opened = library.studies.first()
-            val saved = requireNotNull(library.saveStudy(opened.copy(name = "First edit")))
+            val home = opened.planID?.let { SavedPlansLibrary.Destination.Plan(it) } ?: SavedPlansLibrary.Destination.Standalone
+            val saved = requireNotNull(library.saveStudy(opened.copy(name = "First edit"), SavedPlansLibrary.SaveMode.UPDATE, home))
             assertEquals(opened.revision!! + 1, saved.revision)
             // An editor still holding the old revision is refused.
-            assertNull(library.saveStudy(opened.copy(name = "Stale edit")))
+            assertNull(library.saveStudy(opened.copy(name = "Stale edit"), SavedPlansLibrary.SaveMode.UPDATE, home))
             assertEquals("First edit", library.studies.first { it.id == opened.id }.name)
             // An editor whose study was deleted saves a new study, not the old one brought back.
-            assertTrue(library.deleteStudy(saved))
-            val again = requireNotNull(library.saveStudy(saved.copy(name = "After delete")))
+            assertTrue(library.deleteStudy(saved.id))
+            // Update refuses it; the save sheet then offers Save as new.
+            assertNull(library.saveStudy(saved.copy(name = "After delete"), SavedPlansLibrary.SaveMode.UPDATE, home))
+            val again = requireNotNull(library.saveStudy(saved.copy(name = "After delete"), SavedPlansLibrary.SaveMode.SAVE_AS_NEW, home))
             assertNotEquals(opened.id, again.id)
             assertEquals(1L, again.revision)
             // A study plan survives saves made by screens that don't know about plans yet.

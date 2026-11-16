@@ -344,7 +344,7 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
 @Composable private fun CoverageDetails(model: EstimatedCoverageViewModel, onOpenSaved: () -> Unit, showNodes: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         org.nodescope.android.feature.candidatesites.SavedStudyActions(snapshot = model::savedSnapshot,
-            didSave = { model.savedStudy = it }, onOpen = onOpenSaved)
+            didSave = { model.savedStudy = it }, onOpen = onOpenSaved, suggestedPlanID = model.suggestedPlanID)
         if (model.usesSavedCatalog) {
             Text(if (model.savedStudy?.coverage?.calculatedResult == null) "Saved node locations · Inputs-only save"
                 else "Saved node locations · Saved coverage results",

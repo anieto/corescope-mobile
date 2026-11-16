@@ -73,6 +73,7 @@ class DeploymentPlanStore(
     private fun version3(document: DeploymentPlanDocument, previous: DeploymentPlanDocument,
                          payloads: MutableMap<String, ByteArray>): DeploymentPlanDocument {
         val old = previous.savedStudies.associateBy { it.id }
+        val known = previous.savedStudies.mapNotNull { it.resultRef }.associateBy { it.sha256 }
         val studies = document.savedStudies.map { study ->
             val before = old[study.id]
             val coverage = study.coverage
@@ -83,11 +84,15 @@ class DeploymentPlanStore(
                     }
                     val sha = sha256(data)
                     payloads[sha] = data
-                    // Unchanged bytes keep the reference they were saved under (a migrated result keeps its format).
-                    before?.resultRef?.takeIf { it.sha256 == sha } ?: ResultRef(ResultRef.ANDROID_LEGACY, 1, data.size, sha)
+                    // Unchanged bytes keep the reference they were saved under (a migrated result keeps its format);
+                    // a new record with bytes the library already holds, such as a duplicate, shares that reference.
+                    val existing = if (before == null) known[sha] else before.resultRef?.takeIf { it.sha256 == sha }
+                    existing ?: ResultRef(ResultRef.ANDROID_LEGACY, 1, data.size, sha)
                 }
                 // A result that couldn't be read here stays attached while the calculation inputs are unchanged.
                 before?.resultRef != null && sameInputs(before, study) -> before.resultRef
+                // A duplicate shares a reference the library already holds, even one this device can't read.
+                before == null && study.resultRef != null && known[study.resultRef.sha256] == study.resultRef -> study.resultRef
                 else -> null
             }
             study.copy(coverage = coverage?.copy(calculatedResult = null), resultRef = ref, revision = null,

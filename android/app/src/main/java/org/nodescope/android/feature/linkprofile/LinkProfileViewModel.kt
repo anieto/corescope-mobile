@@ -54,6 +54,8 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
     }
     /** The saved study this profile came from, so Save replaces it rather than adding another. */
     var savedStudy: org.nodescope.android.feature.candidatesites.SavedStudy? = null
+    /** The plan this tool was opened from: the suggested place to save a new study. */
+    var suggestedPlanID: String? = null
     private var job: Job? = null
     private val elevationJobs = mutableMapOf<String, Job>()
 
@@ -257,7 +259,7 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         val study = org.nodescope.android.feature.candidatesites.SavedStudy(
             savedStudy?.id ?: org.nodescope.android.feature.candidatesites.SavedPlansLibrary.newStudyID(),
             savedStudy?.name ?: "Link Profile", savedStudy?.createdAtMilliseconds ?: now, maxOf(now, savedStudy?.createdAtMilliseconds ?: now),
-            org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE, linkProfile = inputs)
+            org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE, linkProfile = inputs, revision = savedStudy?.revision)
         return study.takeIf { runCatching { it.validate() }.isSuccess }
     }
 
