@@ -126,9 +126,6 @@ class DeploymentPlanStore(
         return DeploymentPlanDocument(3, plans, revisedStudies, revision + 1, containers)
     }
 
-    /** Calculation inputs only: names, plan membership and result fields don't count. */
-    private fun sameInputs(a: SavedStudy, b: SavedStudy) =
-        a.kind == b.kind && a.linkProfile == b.linkProfile && a.coverage?.copy(calculatedResult = null) == b.coverage?.copy(calculatedResult = null)
 
     /** Attach result bytes and states for callers; the stored form keeps only references. */
     private fun withResults(document: DeploymentPlanDocument): DeploymentPlanDocument {
@@ -212,6 +209,10 @@ class DeploymentPlanStore(
     companion object {
         /** All referenced result files together (schema: 512 MiB for A1). */
         const val MAXIMUM_RESULT_STORAGE = 512L * 1024 * 1024
+
+        /** Calculation inputs only: names, plan membership and result fields don't count. */
+        internal fun sameInputs(a: SavedStudy, b: SavedStudy) =
+            a.kind == b.kind && a.linkProfile == b.linkProfile && a.coverage?.copy(calculatedResult = null) == b.coverage?.copy(calculatedResult = null)
         internal fun sha256(data: ByteArray): String =
             MessageDigest.getInstance("SHA-256").digest(data).joinToString("") { "%02x".format(it) }
     }

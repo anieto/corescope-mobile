@@ -613,6 +613,7 @@ private struct SaveStudySheet: View {
     @State private var newPlanName = ""
     @State private var prepared = false
     @State private var submitting = false
+    @State private var inputsOnly = false
     /// The library's record of this study when the sheet opened; nil for a new or deleted study.
     @State private var existing: SavedStudy?
     let suggestedPlanID: String?
@@ -627,8 +628,11 @@ private struct SaveStudySheet: View {
     /// Previously saved, but no longer in the library.
     private var wasDeleted: Bool { prepared && study.revision != nil && existing == nil }
 
+    /// Update would drop a result this device can't show; the user must confirm saving inputs only.
+    private var needsInputsOnly: Bool { existing != nil && mode == .update && model.dropsUnreadableResult(study) }
+
     private var valid: Bool {
-        guard (try? study.validate()) != nil else { return false }
+        guard (try? study.validate()) != nil, !needsInputsOnly || inputsOnly else { return false }
         if case .newPlan = destination { return PlanValidation.name(newPlanName) }
         return true
     }
@@ -662,6 +666,13 @@ private struct SaveStudySheet: View {
                             ? "Replaces the saved “\(existing.name)” with what's open now."
                             : "Keeps “\(existing.name)” as it is and saves a separate study.")
                     }.instrumentListRows()
+                    if needsInputsOnly {
+                        Section {
+                            Toggle("Save inputs only", isOn: $inputsOnly)
+                        } footer: {
+                            Text("The saved result can't be shown on this device and doesn't match the changed inputs. Updating keeps the new inputs without a result; calculate again to get one. To keep the original and its result, choose Save as new.")
+                        }.instrumentListRows()
+                    }
                 } else if wasDeleted {
                     Section {
                         Text("The study you opened was deleted. This saves it as a new study.").foregroundStyle(.secondary)
@@ -734,7 +745,8 @@ private struct SaveStudySheet: View {
         Task {
             defer { submitting = false }
             if let saved = await model.saveStudy(study, mode: existing == nil ? .saveAsNew : mode,
-                                                 destination: destination, newPlanName: newPlanName) {
+                                                 destination: destination, newPlanName: newPlanName,
+                                                 inputsOnly: needsInputsOnly && inputsOnly) {
                 didSave(saved)
                 dismiss()
             }

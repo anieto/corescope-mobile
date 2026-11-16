@@ -52,7 +52,9 @@ final class CandidatePlansModel {
     /// Saves `study` and returns it as stored, with its revision; nil if it couldn't be saved.
     /// Update refuses a study changed or deleted since it was opened (`study.revision` is the one opened);
     /// Save as new always creates a new record. A new plan and its first study are one commit.
-    func saveStudy(_ study: SavedStudy, mode: SaveMode, destination: Destination, newPlanName: String = "") async -> SavedStudy? {
+    /// `inputsOnly` acknowledges that Update drops a saved result this device can't show (see `dropsUnreadableResult`).
+    func saveStudy(_ study: SavedStudy, mode: SaveMode, destination: Destination, newPlanName: String = "",
+                   inputsOnly: Bool = false) async -> SavedStudy? {
         let now = Self.now()
         var containers = studyPlans
         let target: String?
@@ -83,6 +85,10 @@ final class CandidatePlansModel {
                 error = "This study was changed elsewhere since you opened it. Save as new to keep your version."
                 return nil
             }
+            guard inputsOnly || !dropsUnreadableResult(study) else {
+                error = "The saved result can't be shown on this device and doesn't match the changed inputs. Confirm saving inputs only, or save as new."
+                return nil
+            }
             saving.origin = current.origin
             saving.importOrigin = current.importOrigin
             touched.insert(current.planID)
@@ -98,6 +104,15 @@ final class CandidatePlansModel {
         if let index = next.firstIndex(where: { $0.id == saving.id }) { next[index] = saving } else { next.append(saving) }
         guard let saved = await commit(plans, studies: next, studyPlans: Self.touch(containers, touched, now)) else { return nil }
         return saved.studies.first { $0.id == saving.id }
+    }
+
+    /// Whether updating `study` would detach a saved result this device can't show (missing, unverified or
+    /// another format): its calculation inputs changed and it brings no new result. A matching result
+    /// can't stay attached to different inputs, so Update then saves inputs only, once confirmed.
+    func dropsUnreadableResult(_ study: SavedStudy) -> Bool {
+        guard let current = studies.first(where: { $0.id == study.id }), current.resultRef != nil,
+              current.resultStatus != .available, study.coverage?.calculatedResult == nil else { return false }
+        return !DeploymentPlanStore.sameInputs(current, study)
     }
 
     func createPlan(name: String, notes: String?) async -> StudyPlan? {

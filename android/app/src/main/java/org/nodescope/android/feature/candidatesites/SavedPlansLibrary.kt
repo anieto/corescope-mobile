@@ -71,7 +71,8 @@ class SavedPlansLibrary(private val store: DeploymentPlanStore) {
      * as new always creates a new record. A new plan and its first study are one commit. Saving moves
      * the library to version 3, keeping the original version 1 or 2 file first.
      */
-    suspend fun saveStudy(study: SavedStudy, mode: SaveMode, destination: Destination, newPlanName: String = ""): SavedStudy? {
+    suspend fun saveStudy(study: SavedStudy, mode: SaveMode, destination: Destination, newPlanName: String = "",
+                          inputsOnly: Boolean = false): SavedStudy? {
         val now = System.currentTimeMillis()
         var containers = studyPlans
         val target: String? = when (destination) {
@@ -96,6 +97,10 @@ class SavedPlansLibrary(private val store: DeploymentPlanStore) {
                     error = "This study was changed elsewhere since you opened it. Save as new to keep your version."
                     return null
                 }
+                if (!inputsOnly && dropsUnreadableResult(study)) {
+                    error = "The saved result can't be shown on this device and doesn't match the changed inputs. Confirm saving inputs only, or save as new."
+                    return null
+                }
                 saving = saving.copy(origin = current.origin, importOrigin = current.importOrigin)
                 touched += current.planID
             }
@@ -104,6 +109,17 @@ class SavedPlansLibrary(private val store: DeploymentPlanStore) {
         saving = saving.copy(planID = target, updatedAtMilliseconds = maxOf(saving.createdAtMilliseconds, now))
         val next = if (studies.any { it.id == saving.id }) studies.map { if (it.id == saving.id) saving else it } else studies + saving
         return commit(plans, next, touch(containers, touched, now))?.savedStudies?.firstOrNull { it.id == saving.id }
+    }
+
+    /**
+     * Whether updating [study] would detach a saved result this device can't show (missing, unverified or
+     * another format): its calculation inputs changed and it brings no new result. A result can't stay
+     * attached to different inputs, so Update then saves inputs only, once confirmed ([saveStudy]'s inputsOnly).
+     */
+    fun dropsUnreadableResult(study: SavedStudy): Boolean {
+        val current = studies.firstOrNull { it.id == study.id } ?: return false
+        if (current.resultRef == null || current.resultStatus == SavedResultStatus.AVAILABLE || study.coverage?.calculatedResult != null) return false
+        return !DeploymentPlanStore.sameInputs(current, study)
     }
 
     suspend fun createStudyPlan(name: String, notes: String?): StudyPlan? {

@@ -462,6 +462,7 @@ fun SavedStudyActions(snapshot: () -> SavedStudy?, didSave: (SavedStudy) -> Unit
     var destination by rememberSaveable { mutableStateOf<String?>(null) }
     var newPlanName by rememberSaveable { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
+    var inputsOnly by rememberSaveable { mutableStateOf(false) }
     // Never consume a sheet dismissal while saving.
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true, confirmValueChange = { submitting.not() })
     LaunchedEffect(library) {
@@ -481,13 +482,16 @@ fun SavedStudyActions(snapshot: () -> SavedStudy?, didSave: (SavedStudy) -> Unit
     val mode = if (existing == null || asNew) SavedPlansLibrary.SaveMode.SAVE_AS_NEW else SavedPlansLibrary.SaveMode.UPDATE
     val target = destination?.let(SavedPlansLibrary.Destination::decode) ?: SavedPlansLibrary.Destination.Standalone
     val study = initial.copy(name = name)
-    val valid = runCatching { study.validate() }.isSuccess && (target != SavedPlansLibrary.Destination.NewPlan || validPlanName(newPlanName))
+    // Update would drop a result this device can't show; the user must confirm saving inputs only.
+    val needsInputsOnly = mode == SavedPlansLibrary.SaveMode.UPDATE && library.dropsUnreadableResult(study)
+    val valid = runCatching { study.validate() }.isSuccess && (target != SavedPlansLibrary.Destination.NewPlan || validPlanName(newPlanName)) &&
+        (!needsInputsOnly || inputsOnly)
 
     fun submit() {
         if (submitting) return
         submitting = true
         scope.launch {
-            try { library.saveStudy(study, mode, target, newPlanName)?.let(saved) } finally { submitting = false }
+            try { library.saveStudy(study, mode, target, newPlanName, needsInputsOnly && inputsOnly)?.let(saved) } finally { submitting = false }
         }
     }
 
@@ -509,6 +513,15 @@ fun SavedStudyActions(snapshot: () -> SavedStudy?, didSave: (SavedStudy) -> Unit
                 Text(if (asNew) "Keeps “${existing.name}” as it is and saves a separate study."
                     else "Replaces the saved “${existing.name}” with what's open now.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (needsInputsOnly) {
+                    Row(Modifier.fillMaxWidth().selectable(inputsOnly, !submitting, Role.Checkbox) { inputsOnly = !inputsOnly },
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(inputsOnly, null, enabled = !submitting)
+                        Text("Save inputs only", Modifier.padding(start = 8.dp))
+                    }
+                    Text("The saved result can't be shown on this device and doesn't match the changed inputs. Updating keeps the new inputs without a result; calculate again to get one. To keep the original and its result, choose Save as new.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             } else if (wasDeleted) {
                 Text("The study you opened was deleted. This saves it as a new study.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

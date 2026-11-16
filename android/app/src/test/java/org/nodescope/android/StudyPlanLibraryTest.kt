@@ -34,6 +34,29 @@ class StudyPlanLibraryTest {
         return SavedStudy(UUID.randomUUID().toString(), name, 1, 1, SavedStudy.Kind.LINK_PROFILE, linkProfile = inputs)
     }
 
+    @Test fun changingInputsUnderAnUnreadableResultNeedsConfirmation() = runTest {
+        val reference = File("../../shared/fixtures/saved-plans/v3/reference")
+        File(reference, "plans.json").copyTo(File(root, "plans.json"))
+        File(reference, "results").copyRecursively(File(root, "results"))
+        val library = library()
+        val opened = library.studies.first { it.resultStatus == SavedResultStatus.MISSING }
+        val home = opened.planID?.let { Destination.Plan(it) } ?: Destination.Standalone
+
+        // A rename keeps the reference: a later restore can still bring the file back.
+        val renamed = opened.copy(name = "Renamed")
+        assertFalse(library.dropsUnreadableResult(renamed))
+        val kept = library.saveStudy(renamed, SaveMode.UPDATE, home)!!
+        assertEquals(opened.resultRef, kept.resultRef)
+
+        val changed = kept.copy(coverage = kept.coverage!!.copy(reserveDb = kept.coverage!!.reserveDb + 1))
+        assertTrue(library.dropsUnreadableResult(changed))
+        assertNull(library.saveStudy(changed, SaveMode.UPDATE, home))
+        assertEquals(opened.resultRef, library.studies.first { it.id == opened.id }.resultRef)
+
+        val inputsOnly = library.saveStudy(changed, SaveMode.UPDATE, home, inputsOnly = true)!!
+        assertTrue(inputsOnly.resultRef == null && inputsOnly.resultStatus == SavedResultStatus.NONE)
+    }
+
     @Test fun newPlanAndItsFirstStudyAreOneSave() = runTest {
         val library = library()
         assertNull(library.saveStudy(linkProfile("Ridge"), SaveMode.SAVE_AS_NEW, Destination.NewPlan, ""))

@@ -143,7 +143,7 @@ actor DeploymentPlanStore {
     }
 
     /// Calculation inputs only: names, plan membership and result fields don't count.
-    private static func sameInputs(_ a: SavedStudy, _ b: SavedStudy) -> Bool {
+    static func sameInputs(_ a: SavedStudy, _ b: SavedStudy) -> Bool {
         var left = a.coverage, right = b.coverage
         left?.calculatedResult = nil
         right?.calculatedResult = nil

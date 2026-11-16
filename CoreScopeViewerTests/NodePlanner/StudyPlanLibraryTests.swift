@@ -25,6 +25,46 @@ struct StudyPlanLibraryTests {
                           updatedAtMilliseconds: 1, kind: .linkProfile, linkProfile: inputs)
     }
 
+    /// The shared reference library (one result file deliberately absent), in a new folder.
+    private func referenceLibrary() async throws -> CandidatePlansModel {
+        var root = URL(fileURLWithPath: #filePath).resolvingSymlinksInPath().deletingLastPathComponent()
+        while root.path != "/" && !FileManager.default.fileExists(atPath: root.appendingPathComponent("shared/fixtures").path) {
+            root.deleteLastPathComponent()
+        }
+        let reference = root.appendingPathComponent("shared/fixtures/saved-plans/v3/reference")
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let file = directory.appendingPathComponent("plans.json")
+        try FileManager.default.copyItem(at: reference.appendingPathComponent("plans.json"), to: file)
+        try FileManager.default.copyItem(at: reference.appendingPathComponent("results"), to: directory.appendingPathComponent("results"))
+        let model = CandidatePlansModel(store: DeploymentPlanStore(fileURL: file))
+        await model.load()
+        #expect(model.isLoaded)
+        return model
+    }
+
+    @Test func changingInputsUnderAnUnreadableResultNeedsConfirmation() async throws {
+        let model = try await referenceLibrary()
+        let opened = try #require(model.studies.first { $0.resultStatus == .missing })
+        let home: CandidatePlansModel.Destination = opened.planID.map { .plan($0) } ?? .standalone
+
+        // A rename keeps the reference: a later restore can still bring the file back.
+        var renamed = opened
+        renamed.name = "Renamed"
+        #expect(!model.dropsUnreadableResult(renamed))
+        let kept = try #require(await model.saveStudy(renamed, mode: .update, destination: home))
+        #expect(kept.resultRef == opened.resultRef)
+
+        var changed = kept
+        changed.coverage?.reserveDb += 1
+        #expect(model.dropsUnreadableResult(changed))
+        #expect(await model.saveStudy(changed, mode: .update, destination: home) == nil)
+        #expect(model.studies.first { $0.id == opened.id }?.resultRef == opened.resultRef)
+
+        let inputsOnly = try #require(await model.saveStudy(changed, mode: .update, destination: home, inputsOnly: true))
+        #expect(inputsOnly.resultRef == nil && inputsOnly.resultStatus == .none)
+    }
+
     @Test func newPlanAndItsFirstStudyAreOneSave() async throws {
         let model = try await library()
         #expect(await model.saveStudy(linkProfile("Ridge"), mode: .saveAsNew, destination: .newPlan, newPlanName: "") == nil)
