@@ -5,8 +5,8 @@ import Foundation
 /// Reading is strict and needs the study's own inputs: the payload's fingerprint must match both.
 enum PortableLinkProfileResult {
     static let format = "nodescope.link-profile-result"
-    /// Provisional ceiling for one payload; B measures real encoder output before freezing it.
-    static let maximumBytes = 256 * 1024
+    /// One payload's ceiling: about twice the measured worst case (Android PortableResultSizeTest).
+    static let maximumBytes = 64 * 1024
     /// First and last samples may differ from the endpoints by this much (degrees); longitudes compare modulo 360.
     static let endpointTolerance = 1e-6
     private static let maximumMilliseconds: Int64 = 253_402_300_799_999

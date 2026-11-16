@@ -47,7 +47,7 @@ Study fields new in v3:
 | `legacy.ios-plist-coverage`, 1 | coverage | null: a migrated iOS 0.10.6 binary plist, kept as is |
 | `legacy.android-json-coverage`, 1 | coverage | null: migrated Android 0.10.6 JSON (base64-decoded), kept as is |
 
-`byteLength` is 1 to 8 MiB: that's the existing decoded legacy-payload limit, frozen for A1. Portable payload limits are set in B. `sha256` is 64 lowercase hex digits. v3 coverage studies no longer carry the inline `calculatedResult`; migration moves its bytes into a result file.
+`byteLength` is 1 to 8 MiB: that's the existing decoded legacy-payload limit, frozen for A1. Portable payload limits, set in B: coverage 8 MiB, Link Profile 64 KiB (result-fields Sizes). `sha256` is 64 lowercase hex digits. v3 coverage studies no longer carry the inline `calculatedResult`; migration moves its bytes into a result file.
 
 A legacy format's `version` identifies the wrapper contract, not the native payload. Migration preserves the bytes even when this app can't restore them (for example, the other platform's legacy format). The legacy identifier already names the platform. v2 had no study revisions, so none is invented. A1 also preserves portable references untouched, without needing B's codecs to show them.
 

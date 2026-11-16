@@ -1,6 +1,6 @@
 # Saved Plans v3 portable result fields (draft v1)
 
-Status: drafted November 15, 2026 from both engines' concrete types, for the [contract gate](saved-plans-v3-contract-gate.md); reviewed the same day (Codex answers folded in below). **Fields frozen for v1; byte limits remain provisional** until B measures real encoders. Codecs are deliverable B.
+Status: drafted November 15, 2026 from both engines' concrete types, for the [contract gate](saved-plans-v3-contract-gate.md); reviewed the same day (Codex answers folded in below). **Fields frozen for v1; byte limits measured and frozen in B** (see Sizes). Codecs are deliverable B.
 
 Conventions for both payloads:
 
@@ -98,6 +98,11 @@ A coverage result has no node names. A user-facing study export (D) must include
 
 ## Sizes
 
-Coverage: see the contract gate's measurements. Dropping margins removes one of three columns. Limits are not frozen.
+Measured in B from the real encoders at their maxima (Android `PortableResultSizeTest`), then frozen:
 
-Link Profile: at most 100 samples of four doubles, up to 98 obstructions and a few dozen fields. Roughly 10–20 KB of JSON, estimated, not measured. 256 KiB stays provisional until B measures the complete encoder output at those maxima. Bound each collection and string as well as the total.
+| Payload | Worst case measured | Limit |
+|---|---|---|
+| `nodescope.coverage-result` | 3,098,397 bytes: 243 × 243 cells all qualified at full precision, 200 nodes with 1,024-byte IDs of characters JSON escapes, 64 terrain descriptors with 1,024 four-byte characters per text field | 8 MiB, the A1 result-file ceiling, unchanged |
+| `nodescope.link-profile-result` | 28,827 bytes: 100 samples, 98 obstructions, full-precision numbers | 64 KiB |
+
+Collections and strings are bounded individually as above (cells, nodes, descriptors, samples, obstructions; the study's string limits), so neither total can be reached by one oversized field. Readers refuse a larger payload before parsing it.

@@ -30,8 +30,8 @@ import org.nodescope.android.feature.candidatesites.string
  */
 internal object PortableLinkProfileResult {
     const val FORMAT = "nodescope.link-profile-result"
-    /** Provisional ceiling for one payload; B measures real encoder output before freezing it. */
-    const val MAXIMUM_BYTES = 256 * 1024
+    /** One payload's ceiling: about twice the measured worst case (PortableResultSizeTest). */
+    const val MAXIMUM_BYTES = 64 * 1024
     /** First and last samples may differ from the endpoints by this much (degrees); longitudes compare modulo 360. */
     const val ENDPOINT_TOLERANCE = 1e-6
     private val prefix = "{\"format\":\"$FORMAT\"".toByteArray(Charsets.UTF_8)
