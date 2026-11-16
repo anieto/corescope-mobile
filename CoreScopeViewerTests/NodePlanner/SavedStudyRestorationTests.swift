@@ -154,6 +154,37 @@ struct SavedStudyRestorationTests {
         #expect(reopened.activeResult == nil)
     }
 
+    /// A study records the analyzer its inputs came from and keeps the saved one until they're captured again.
+    /// The screens set `catalogOrigin` and `analyzerOrigin` from the current analyzer; Android tests the same rules.
+    @Test func studiesRecordWhereTheirInputsCameFrom() throws {
+        let link = LinkProfileModel(elevationProvider: SavedStudyElevationProbe())
+        link.analyzerOrigin = StudyOrigin(host: "analyzer.example", region: "AUS", capturedAtMilliseconds: 1)
+        link.latitudeA = 50.5; link.longitudeA = -115.5; link.latitudeB = 50.51; link.longitudeB = -115.52
+        let profile = try #require(link.savedSnapshot())
+        #expect(profile.origin == StudyOrigin(host: "analyzer.example", region: "AUS", capturedAtMilliseconds: 1))
+        let again = LinkProfileModel(elevationProvider: SavedStudyElevationProbe())
+        again.restore(profile)
+        again.analyzerOrigin = StudyOrigin(host: "other.example", region: nil, capturedAtMilliseconds: 2)
+        #expect(again.savedSnapshot()?.origin == profile.origin)
+        again.latitudeB = 50.6
+        #expect(again.savedSnapshot()?.origin?.host == "other.example")
+
+        let coverage = EstimatedCoverageModel(distanceUnit: .metric)
+        coverage.latitude = 50.5
+        coverage.longitude = -115.5
+        coverage.catalogOrigin = StudyOrigin(host: "analyzer.example", region: "AUS", capturedAtMilliseconds: 1)
+        let saved = try #require(coverage.savedSnapshot())
+        #expect(saved.origin?.host == "analyzer.example")
+        let reopened = EstimatedCoverageModel(distanceUnit: .metric)
+        reopened.restore(saved)
+        #expect(reopened.savedSnapshot()?.origin == saved.origin)
+        // A study saved without a source keeps none until its nodes are loaded again.
+        var unknown = saved
+        unknown.origin = nil
+        reopened.restore(unknown)
+        #expect(reopened.savedSnapshot()?.origin == nil)
+    }
+
     @Test func coverageRestoresFrozenNodesAndEveryInputWithoutRunning() throws {
         let original = EstimatedCoverageModel(distanceUnit: .imperial)
         original.latitude = 50.5

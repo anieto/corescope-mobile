@@ -90,6 +90,12 @@ internal class EstimatedCoverageViewModel(
     // Saved studies. A reopened study keeps the node locations it was saved with until refreshed.
     /** The saved study this setup came from, so Save replaces it rather than adding another. */
     var savedStudy by mutableStateOf<org.nodescope.android.feature.candidatesites.SavedStudy?>(null)
+    /**
+     * Where the node catalog came from, for a study's `origin`: the saved study's source while its captured
+     * nodes are in use, otherwise the analyzer and region they were loaded from, and when. Matches iOS.
+     */
+    var catalogOrigin: org.nodescope.android.feature.candidatesites.StudyOrigin? = null
+    private var liveRegion: String? = null
     /** The plan this tool was opened from, or the Link Profile's: the suggested place to save. */
     var suggestedPlanID: String? = null
     var usesSavedCatalog by mutableStateOf(false); private set
@@ -144,6 +150,9 @@ internal class EstimatedCoverageViewModel(
         invalidate()
         savedStudy = study
         suggestedPlanID = draft.planID
+        // The draft's captured nodes are the saved study's, or else came from the analyzer it was edited against.
+        catalogOrigin = if (study != null && study.coverage?.nodes == draft.catalog) study.origin
+            else draft.host?.let { org.nodescope.android.feature.candidatesites.StudyOrigin(it, draft.region, null) }
         val editor = draft.editor
         latitudeText = editor["latitude"].orEmpty()
         longitudeText = editor["longitude"].orEmpty()
@@ -345,9 +354,10 @@ internal class EstimatedCoverageViewModel(
     // MARK: Catalog
 
     /** Takes the first located catalog for each source; later refreshes of the same source are ignored. */
-    fun offerCatalog(nodes: List<MeshNode>, source: String) {
+    fun offerCatalog(nodes: List<MeshNode>, source: String, region: String? = liveRegion) {
         liveNodes = nodes
         liveSource = source
+        liveRegion = region
         if (usesSavedCatalog) return
         if (source == catalogSource && locatedNodes.isNotEmpty()) return
         val located = nodes.filter { it.coordinate != null }.distinctBy { it.publicKey }
@@ -355,6 +365,7 @@ internal class EstimatedCoverageViewModel(
         catalogSource = source
         sourceID = source
         locatedNodes = located
+        catalogOrigin = org.nodescope.android.feature.candidatesites.StudyOrigin(source, region, System.currentTimeMillis())
     }
 
     // MARK: Execution
@@ -543,7 +554,7 @@ internal class EstimatedCoverageViewModel(
         val study = org.nodescope.android.feature.candidatesites.SavedStudy(
             previous?.id ?: org.nodescope.android.feature.candidatesites.SavedPlansLibrary.newStudyID(),
             previous?.name ?: "Estimated Coverage", previous?.createdAtMilliseconds ?: now, maxOf(now, previous?.createdAtMilliseconds ?: now),
-            org.nodescope.android.feature.candidatesites.SavedStudy.Kind.COVERAGE, coverage = coverage, revision = previous?.revision)
+            org.nodescope.android.feature.candidatesites.SavedStudy.Kind.COVERAGE, coverage = coverage, revision = previous?.revision, origin = catalogOrigin)
         return study.takeIf { runCatching { it.validate() }.isSuccess }
     }
 
@@ -552,6 +563,7 @@ internal class EstimatedCoverageViewModel(
         val coverage = study.coverage?.takeIf { runCatching { study.validate() }.isSuccess } ?: return
         invalidate()
         savedStudy = study
+        catalogOrigin = study.origin
         fun heightText(value: Double) = heightEditorText(value)
         latitudeText = coverage.transmitter.latitude.toString()
         longitudeText = coverage.transmitter.longitude.toString()

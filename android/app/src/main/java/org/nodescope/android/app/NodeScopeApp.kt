@@ -788,6 +788,9 @@ internal fun AppShell(
                             org.nodescope.android.feature.candidatesites.StudyDraftAutosave(rememberDraftSession(backStack, org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE,
                                 backStack.toRoute<LinkProfileRoute>().draftId),
                                 profileModel, preferences.host, preferences.region)
+                            LaunchedEffect(preferences.host, preferences.region) {
+                                profileModel.analyzerOrigin = org.nodescope.android.feature.candidatesites.StudyOrigin(preferences.host, preferences.region, System.currentTimeMillis())
+                            }
                             org.nodescope.android.feature.linkprofile.LinkProfileScreen(profileModel, preferences.distanceUnit, state.snapshot?.nodes.orEmpty(),
                                 state.snapshot, preferences.region, sourceViewport,
                                 onOpenSaved = { nav.navigate(SavedPlansRoute(org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE.name)) },

@@ -68,7 +68,7 @@ import java.util.Locale
 internal fun EstimatedCoverageScreen(model: EstimatedCoverageViewModel, nodes: List<MeshNode>, sourceKey: String,
     snapshot: AnalyzerSnapshot? = null, selectedRegion: String? = null, sourceViewport: RegionCoordinate? = null,
     onOpenSaved: () -> Unit = {}) {
-    LaunchedEffect(nodes, sourceKey) { model.offerCatalog(nodes, sourceKey) }
+    LaunchedEffect(nodes, sourceKey, selectedRegion) { model.offerCatalog(nodes, sourceKey, selectedRegion) }
     // Leaving or backgrounding cancels active work, as before and on iOS.
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { model.cancel() }
     BackHandler(enabled = model.isChoosingLocation) { model.isChoosingLocation = false }

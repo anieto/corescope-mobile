@@ -137,6 +137,8 @@ struct LinkProfileScreen: View {
             UserDefaults.standard.set(style.rawValue, forKey: MapDisplayStyle.defaultsKey)
         }
         .task(id: "\(settings.sourceSession.id)|\(regionFilter.selectedRegion ?? "")") {
+            model.analyzerOrigin = StudyOrigin(host: settings.host, region: regionFilter.selectedRegion,
+                                               capturedAtMilliseconds: Int64(Date().timeIntervalSince1970 * 1000))
             catalog.configure(settings: settings)
             await catalog.load(region: regionFilter.selectedRegion)
         }
@@ -846,6 +848,19 @@ final class LinkProfileModel {
     var awaitsExplicitCalculation = false
     var refractionK = 4.0 / 3.0
     var sampleCount: Int?
+    /// The analyzer and region this tool is working against, for a study's `origin`.
+    @ObservationIgnored var analyzerOrigin: StudyOrigin?
+
+    /// Where the endpoints came from: the saved study's source while neither endpoint has moved,
+    /// otherwise the analyzer they were placed against.
+    private func origin(_ inputs: SavedLinkProfile) -> StudyOrigin? {
+        if let saved = savedStudy?.linkProfile, saved.pointA.latitude == inputs.pointA.latitude,
+           saved.pointA.longitude == inputs.pointA.longitude, saved.pointB.latitude == inputs.pointB.latitude,
+           saved.pointB.longitude == inputs.pointB.longitude {
+            return savedStudy?.origin
+        }
+        return analyzerOrigin
+    }
 
     func savedSnapshot() -> SavedStudy? {
         guard let latitudeA, let longitudeA, let latitudeB, let longitudeB else { return nil }
@@ -860,6 +875,7 @@ final class LinkProfileModel {
         let study = SavedStudy(id: savedStudy?.id ?? UUID().uuidString.lowercased(),
             name: savedStudy?.name ?? "Link Profile", createdAtMilliseconds: savedStudy?.createdAtMilliseconds ?? now,
             updatedAtMilliseconds: now, kind: .linkProfile, linkProfile: inputs, revision: savedStudy?.revision,
+            origin: origin(inputs),
             // The calculated result, when it's for exactly these inputs.
             linkProfileResult: result.flatMap { PortableLinkProfileResult.encode($0, inputs: inputs) })
         return (try? study.validate()) != nil ? study : nil

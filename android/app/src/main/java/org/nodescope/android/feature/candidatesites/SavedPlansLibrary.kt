@@ -101,7 +101,8 @@ class SavedPlansLibrary(private val store: DeploymentPlanStore) {
                     error = "The saved result can't be shown on this device and doesn't match the changed inputs. Confirm saving inputs only, or save as new."
                     return null
                 }
-                saving = saving.copy(origin = current.origin, importOrigin = current.importOrigin)
+                // The tool says where its inputs came from; it keeps the saved study's source unless they were captured again.
+                saving = saving.copy(importOrigin = current.importOrigin)
                 touched += current.planID
             }
             SaveMode.SAVE_AS_NEW -> saving = saving.copy(id = newStudyID(), createdAtMilliseconds = now, revision = null, importOrigin = null)

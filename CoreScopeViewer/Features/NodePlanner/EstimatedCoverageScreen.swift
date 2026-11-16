@@ -170,6 +170,8 @@ struct EstimatedCoverageScreen: View {
             model.catalogLoading = false
             model.catalogError = catalog.errorMessage
             model.setCatalog(catalog.nodes, sourceID: settings.sourceSession.id.description)
+            model.catalogOrigin = StudyOrigin(host: settings.host, region: regionFilter.selectedRegion,
+                                              capturedAtMilliseconds: Int64(Date().timeIntervalSince1970 * 1000))
         }
     }
 
@@ -223,6 +225,9 @@ final class EstimatedCoverageModel {
     private var calculatedCatalog: [SavedCoverageNode] = []
     private var savedCatalogComplete = false
     var catalogComplete: Bool { usesSavedCatalog && savedCatalogComplete }
+    /// Where the node catalog came from, for a study's `origin`: the saved study's source while its
+    /// captured nodes are in use, otherwise the analyzer and region they were loaded from, and when.
+    @ObservationIgnored var catalogOrigin: StudyOrigin?
 
     func savedSnapshot() -> SavedStudy? {
         guard (try? inputs()) != nil, let latitude, let longitude else { return nil }
@@ -239,7 +244,7 @@ final class EstimatedCoverageModel {
         let now = Int64(Date().timeIntervalSince1970 * 1000)
         let study = SavedStudy(id: savedStudy?.id ?? UUID().uuidString.lowercased(),
             name: savedStudy?.name ?? "Estimated Coverage", createdAtMilliseconds: savedStudy?.createdAtMilliseconds ?? now,
-            updatedAtMilliseconds: now, kind: .coverage, coverage: coverage, revision: savedStudy?.revision)
+            updatedAtMilliseconds: now, kind: .coverage, coverage: coverage, revision: savedStudy?.revision, origin: catalogOrigin)
         return (try? study.validate()) != nil ? study : nil
     }
 
@@ -260,6 +265,7 @@ final class EstimatedCoverageModel {
         guard (try? study.validate()) != nil, let coverage = study.coverage else { return }
         invalidate()
         savedStudy = study
+        catalogOrigin = study.origin
         latitude = coverage.transmitter.latitude
         longitude = coverage.transmitter.longitude
         transmitterName = coverage.transmitter.name
@@ -2080,6 +2086,12 @@ extension EstimatedCoverageModel: StudyDraftSource {
         radioPresetID = editor["radioPresetID"].flatMap { $0.isEmpty ? nil : $0 }
         savedStudy = study
         suggestedPlanID = draft.planID
+        // The draft's captured nodes are the saved study's, or else came from the analyzer it was edited against.
+        if let study, study.coverage?.nodes == draft.catalog {
+            catalogOrigin = study.origin
+        } else {
+            catalogOrigin = draft.host.map { StudyOrigin(host: $0, region: draft.region, capturedAtMilliseconds: nil) }
+        }
     }
 
     func draftContent() -> DraftContent? {

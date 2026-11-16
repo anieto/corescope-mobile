@@ -53,6 +53,43 @@ class SavedStudiesTest {
         place(Coordinate(10.0, 20.0), "Ridge")
     }
 
+    /** A study records the analyzer its inputs came from, and keeps the saved one until they're captured again. */
+    @Test fun studiesRecordWhereTheirInputsCameFrom() = withMain { root ->
+        val fresh = coverageModel(root).apply {
+            setRadius(5000); setSpacing(1000)
+            offerCatalog(nodes, "analyzer.example", "AUS")
+            place(Coordinate(10.0, 20.0), "Ridge")
+        }
+        val saved = requireNotNull(fresh.savedSnapshot())
+        assertEquals("analyzer.example", saved.origin?.host)
+        assertEquals("AUS", saved.origin?.region)
+        assertNotNull(saved.origin?.capturedAtMilliseconds)
+        // Reopened against another analyzer, the saved nodes and their source stay until Refresh nodes.
+        val reopened = coverageModel(root).apply { restore(saved) }
+        reopened.offerCatalog(nodes, "other.example", "SAT")
+        assertEquals(saved.origin, reopened.savedSnapshot()?.origin)
+        reopened.refreshNodesFromSource()
+        assertEquals("other.example", reopened.savedSnapshot()?.origin?.host)
+        assertEquals("SAT", reopened.savedSnapshot()?.origin?.region)
+        // A study saved without a source never gains one from the analyzer that happens to be active.
+        val unknown = coverageModel(root).apply { restore(saved.copy(origin = null)) }
+        unknown.offerCatalog(nodes, "other.example", "SAT")
+        assertNull(unknown.savedSnapshot()?.origin)
+
+        val terrain = LinkTerrainProviding { TerrainProfile(it.mapIndexed { index, _ -> ElevationPoint(index * 100.0, 100.0) }, 1000, "cache", it) }
+        val link = LinkProfileViewModel(terrain, SavedStateHandle())
+        link.analyzerOrigin = StudyOrigin("analyzer.example", "AUS", 1)
+        link.place("A", ProfileCoordinate(40.0, -90.0), "Hill")
+        link.place("B", ProfileCoordinate(40.1, -90.1), null)
+        val profile = requireNotNull(link.savedSnapshot())
+        assertEquals(StudyOrigin("analyzer.example", "AUS", 1), profile.origin)
+        val again = LinkProfileViewModel(terrain, SavedStateHandle()).apply { restore(profile); analyzerOrigin = StudyOrigin("other.example", null, 2) }
+        assertEquals(profile.origin, again.savedSnapshot()?.origin)
+        again.place("B", ProfileCoordinate(40.2, -90.2), null)
+        assertEquals("other.example", again.savedSnapshot()?.origin?.host)
+        advanceUntilIdle()
+    }
+
     @Test fun savedResultRoundTripsAndRejectsAnythingThatDisagrees() = withMain { root ->
         val model = placedModel(root)
         val result = result(model)

@@ -89,7 +89,7 @@ final class CandidatePlansModel {
                 error = "The saved result can't be shown on this device and doesn't match the changed inputs. Confirm saving inputs only, or save as new."
                 return nil
             }
-            saving.origin = current.origin
+            // The tool says where its inputs came from; it keeps the saved study's source unless they were captured again.
             saving.importOrigin = current.importOrigin
             touched.insert(current.planID)
         case .saveAsNew:

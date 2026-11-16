@@ -56,6 +56,16 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
     }
     /** The saved study this profile came from, so Save replaces it rather than adding another. */
     var savedStudy: org.nodescope.android.feature.candidatesites.SavedStudy? = null
+    /** The analyzer and region this tool is working against, for a study's `origin`. */
+    var analyzerOrigin: org.nodescope.android.feature.candidatesites.StudyOrigin? = null
+
+    /** Where the endpoints came from: the saved study's source while neither has moved, otherwise the analyzer they were placed against. Matches iOS. */
+    private fun origin(inputs: org.nodescope.android.feature.candidatesites.SavedLinkProfile): org.nodescope.android.feature.candidatesites.StudyOrigin? {
+        val saved = savedStudy?.linkProfile
+        val unmoved = saved != null && saved.pointA.latitude == inputs.pointA.latitude && saved.pointA.longitude == inputs.pointA.longitude &&
+            saved.pointB.latitude == inputs.pointB.latitude && saved.pointB.longitude == inputs.pointB.longitude
+        return if (unmoved) savedStudy?.origin else analyzerOrigin
+    }
     /** The plan this tool was opened from: the suggested place to save a new study. */
     var suggestedPlanID: String? = null
 
@@ -320,6 +330,7 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
             savedStudy?.id ?: org.nodescope.android.feature.candidatesites.SavedPlansLibrary.newStudyID(),
             savedStudy?.name ?: "Link Profile", savedStudy?.createdAtMilliseconds ?: now, maxOf(now, savedStudy?.createdAtMilliseconds ?: now),
             org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE, linkProfile = inputs, revision = savedStudy?.revision,
+            origin = origin(inputs),
             // The calculated result, when it's for exactly these inputs.
             linkProfileResult = mutable.value.result?.let { PortableLinkProfileResult.encode(it, inputs) }
                 ?.let(java.util.Base64.getEncoder()::encodeToString))
