@@ -469,7 +469,8 @@ internal class EstimatedCoverageViewModel(
             antenna("rx") ?: return null, inputs.frequencyMHz, inputs.budget.transmitPowerDbm, inputs.budget.sensitivityDbm,
             inputs.budget.reserveDb, radiusMeters, spacingMeters,
             if (result == null) currentSavedNodes else calculatedCatalog, catalogComplete,
-            result?.let { runCatching { SavedCoverageCalculation.of(it)?.encoded() }.getOrNull() })
+            // Saved in the portable format both platforms read; older saves keep their legacy format.
+            result?.let { runCatching { PortableCoverageResult.encode(it)?.let(java.util.Base64.getEncoder()::encodeToString) }.getOrNull() })
         val now = System.currentTimeMillis()
         val previous = savedStudy
         val study = org.nodescope.android.feature.candidatesites.SavedStudy(
@@ -519,7 +520,9 @@ internal class EstimatedCoverageViewModel(
         coverage.calculatedResult?.let { encoded ->
             val inputs = inputs()
             checkpoint = try {
-                SavedCoverageCalculation.decode(encoded).restore(requireNotNull(inputs), nodeSnapshots, catalogComplete)
+                val bytes = java.util.Base64.getDecoder().decode(encoded)
+                if (PortableCoverageResult.isPortable(bytes)) PortableCoverageResult.decode(bytes, requireNotNull(inputs), nodeSnapshots, catalogComplete)
+                else SavedCoverageCalculation.decode(encoded).restore(requireNotNull(inputs), nodeSnapshots, catalogComplete)
             } catch (_: Exception) {
                 inputError = "The saved calculation could not be restored. Your inputs are available; calculate again to replace the result."
                 null

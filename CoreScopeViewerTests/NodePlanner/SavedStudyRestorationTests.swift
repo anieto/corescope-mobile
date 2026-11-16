@@ -88,7 +88,10 @@ struct SavedStudyRestorationTests {
         await reopened.renderOverlay()
         #expect(reopened.layer != nil)
         let resaved = try #require(reopened.savedSnapshot()?.coverage?.calculatedResult)
-        #expect(try SavedCoverageCalculation.decode(resaved).area.pendingCount == 1)
+        // Saving again writes the portable format, which reads back as the same result.
+        #expect(PortableCoverageResult.isPortable(resaved))
+        #expect(try PortableCoverageResult.decode(resaved, inputs: reopened.inputs(), snapshots: [],
+                                                  catalogComplete: false).area.pendingCount == 1)
         reopened.transmitPowerDbm += 1
         #expect(reopened.activeResult == nil)
         #expect(reopened.savedSnapshot()?.coverage?.calculatedResult == nil)

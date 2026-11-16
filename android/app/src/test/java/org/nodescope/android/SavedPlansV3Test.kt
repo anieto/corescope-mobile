@@ -47,8 +47,11 @@ class SavedPlansV3Test {
             assertNotNull(studies.getValue(it).coverage?.calculatedResult)
         }
         ids("inputsOnly").forEach { assertEquals(SavedResultStatus.NONE, studies.getValue(it).resultStatus) }
-        // Portable results come in B; until then they're kept but not shown.
-        ids("sharedResult").forEach { assertEquals(SavedResultStatus.UNSUPPORTED, studies.getValue(it).resultStatus) }
+        // Portable coverage results (B), including one shared by an imported copy, show for their own inputs.
+        ids("sharedResult").forEach {
+            assertEquals(SavedResultStatus.AVAILABLE, studies.getValue(it).resultStatus)
+            assertNotNull(studies.getValue(it).coverage?.calculatedResult)
+        }
         ids("unknownOrigin").forEach { assertNull(studies.getValue(it).origin) }
     }
 

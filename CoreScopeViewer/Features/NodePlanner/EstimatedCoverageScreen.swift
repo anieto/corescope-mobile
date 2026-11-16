@@ -222,7 +222,8 @@ final class EstimatedCoverageModel {
             frequencyMHz: frequencyMHz, transmitPowerDbm: transmitPowerDbm,
             sensitivityDbm: sensitivityDbm, reserveDb: reserveDb, radiusMeters: radiusMeters,
             spacingMeters: spacingMeters, nodes: nodes, catalogComplete: catalogComplete,
-            calculatedResult: activeResult.flatMap { try? SavedCoverageCalculation($0).encoded() })
+            // Saved in the portable format both platforms read; older saves keep their legacy format.
+            calculatedResult: activeResult.flatMap { try? PortableCoverageResult.encode($0) })
         let now = Int64(Date().timeIntervalSince1970 * 1000)
         let study = SavedStudy(id: savedStudy?.id ?? UUID().uuidString.lowercased(),
             name: savedStudy?.name ?? "Estimated Coverage", createdAtMilliseconds: savedStudy?.createdAtMilliseconds ?? now,
@@ -286,8 +287,10 @@ final class EstimatedCoverageModel {
         }
         if let data = coverage.calculatedResult, let inputs = try? inputs() {
             do {
-                checkpoint = try SavedCoverageCalculation.decode(data).restore(inputs: inputs, nodes: nodeSnapshots,
-                    catalogComplete: catalogComplete)
+                checkpoint = PortableCoverageResult.isPortable(data)
+                    ? try PortableCoverageResult.decode(data, inputs: inputs, snapshots: nodeSnapshots, catalogComplete: catalogComplete)
+                    : try SavedCoverageCalculation.decode(data).restore(inputs: inputs, nodes: nodeSnapshots,
+                        catalogComplete: catalogComplete)
             } catch {
                 inputError = "The saved calculation could not be restored. Your inputs are available; calculate again to replace the result."
             }
@@ -737,7 +740,7 @@ struct SavedCoverageCalculation: Codable {
     }
 
     func restore(inputs: CoverageStudyInputs, nodes snapshots: [CoverageNodeSnapshot],
-                 catalogComplete: Bool) throws -> CoverageStudyResult {
+                 catalogComplete: Bool, calculatedAtMilliseconds: Int64? = nil) throws -> CoverageStudyResult {
         guard version == 1, inputValues == Self.values(inputs), area.cells.count == inputs.grid.count,
               nodes.map(\.snapshot) == snapshots, nodes.count <= 200,
               (terrain?.count ?? 0) <= 64,
@@ -762,7 +765,7 @@ struct SavedCoverageCalculation: Codable {
         let sources = try terrain.map { try CoverageStudyTerrainSources(descriptors: $0.map { try $0.restore() }) }
         return CoverageStudyResult(executionID: UUID(), inputs: inputs, limits: limits, area: area,
             nodes: .init(run: run, chargedTerrainEvaluations: 0, chargedGeometryEvaluations: 0, modelCalls: 0),
-            terrainSources: sources, model: model)
+            terrainSources: sources, model: model, calculatedAtMilliseconds: calculatedAtMilliseconds)
     }
 
     private static func values(_ inputs: CoverageStudyInputs) -> [Double] {

@@ -115,8 +115,11 @@ def validate_coverage(study, p):
             need(all(isinstance(t[k], str) for k in ('dataset', 'revision', 'tile', 'url', 'verticalDatum', 'attribution',
                                                     'sourceType', 'originURL'))
                  and DATASET.match(t['dataset']) is not None and t['url'].startswith('https://')
-                 and (t['compressedSHA256'] is None or (isinstance(t['compressedSHA256'], str) and SHA.match(t['compressedSHA256'])))
-                 and (t['sourceETag'] is None or isinstance(t['sourceETag'], str))
+                 # Exactly one identity: a content hash, or an S3 ETag whose origin is the download URL.
+                 and ((isinstance(t['compressedSHA256'], str) and SHA.match(t['compressedSHA256']) is not None and t['sourceETag'] is None)
+                      or (t['compressedSHA256'] is None and isinstance(t['sourceETag'], str)
+                          and re.fullmatch(r'"[A-Za-z0-9-]{1,128}"', t['sourceETag']) is not None
+                          and t['url'].startswith('https://elevation-tiles-prod.s3.amazonaws.com/') and t['originURL'] == t['url']))
                  and integer(t['packedBytes'], 1, 40_000_000) and integer(t['side'], 2, 3601), 'invalid terrain descriptor')
 
     area = p['area']
@@ -329,7 +332,7 @@ def cases():
         coverage_case('coverage_converted_legacy_shape', lambda p: p.update(calculatedAtMilliseconds=None, model=None, terrain=None)),
         coverage_case('coverage_remaining_cell_states', edges([3, 4, 6, 7])),
         coverage_case('coverage_every_unavailable_reason', change_study=every_reason),
-        coverage_case('coverage_terrain_without_optional_hashes', lambda p: p['terrain'][0].update(sourceETag=None)),
+        coverage_case('coverage_terrain_identified_by_hash', lambda p: p['terrain'][0].update(sourceETag=None, compressedSHA256='ab' * 32)),
         coverage_case('coverage_work_limited', at(['area', 'workLimited'], True)),
         # Coverage, invalid.
         coverage_case('coverage_unknown_field', add([], 'extra'), 'payload has unknown fields'),
@@ -351,6 +354,7 @@ def cases():
         coverage_case('coverage_empty_model_revision', at(['model', 'sourceRevision'], ''), 'model fields must be non-empty strings'),
         coverage_case('coverage_too_many_terrain', lambda p: p.update(terrain=p['terrain'] * 65), 'at most 64 terrain descriptors'),
         coverage_case('coverage_terrain_bad_side', lambda p: p['terrain'][0].update(side=1), 'invalid terrain descriptor'),
+        coverage_case('coverage_terrain_without_identity', lambda p: p['terrain'][0].update(sourceETag=None), 'invalid terrain descriptor'),
         coverage_case('coverage_area_short', lambda p: p['area'].update(stateCodes=p['area']['stateCodes'][:8],
                                                                         lossesDb=p['area']['lossesDb'][:8]), 'area must cover the grid'),
         coverage_case('coverage_unknown_state', at(['area', 'stateCodes', 4], 8), 'unknown cell state code'),

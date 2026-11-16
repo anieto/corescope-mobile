@@ -7,6 +7,7 @@ import java.nio.file.NoSuchFileException
 import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.Base64
+import org.nodescope.android.feature.coverage.PortableCoverageResult
 
 enum class DeploymentPlanStoreFailure { NOT_LOADED, CHANGED_ON_DISK, STORAGE_FULL }
 class DeploymentPlanStoreException(val reason: DeploymentPlanStoreFailure) : Exception(reason.name)
@@ -87,7 +88,9 @@ class DeploymentPlanStore(
                     // Unchanged bytes keep the reference they were saved under (a migrated result keeps its format);
                     // a new record with bytes the library already holds, such as a duplicate, shares that reference.
                     val existing = if (before == null) known[sha] else before.resultRef?.takeIf { it.sha256 == sha }
-                    existing ?: ResultRef(ResultRef.ANDROID_LEGACY, 1, data.size, sha)
+                    existing ?: if (PortableCoverageResult.isPortable(data)) ResultRef(ResultRef.PORTABLE_COVERAGE, 1, data.size, sha,
+                        PortableCoverageResult.fingerprint(data) ?: throw DeploymentPlanException(DeploymentPlanFailure.INVALID_DATA))
+                    else ResultRef(ResultRef.ANDROID_LEGACY, 1, data.size, sha)
                 }
                 // A result that couldn't be read here stays attached while the calculation inputs are unchanged.
                 before?.resultRef != null && sameInputs(before, study) -> before.resultRef
@@ -138,13 +141,20 @@ class DeploymentPlanStore(
             when {
                 data == null -> study.copy(resultStatus = SavedResultStatus.MISSING)
                 data.size != ref.byteLength || sha256(data) != ref.sha256 -> study.copy(resultStatus = SavedResultStatus.UNVERIFIED)
-                ref.format == ResultRef.ANDROID_LEGACY && study.coverage != null ->
+                // A portable result shows only for the inputs it was calculated from.
+                ref.format == ResultRef.PORTABLE_COVERAGE && study.coverage != null && ref.inputFingerprint != coverageFingerprint(study.coverage) ->
+                    study.copy(resultStatus = SavedResultStatus.UNVERIFIED)
+                (ref.format == ResultRef.ANDROID_LEGACY || ref.format == ResultRef.PORTABLE_COVERAGE) && study.coverage != null ->
                     study.copy(coverage = study.coverage.copy(calculatedResult = Base64.getEncoder().encodeToString(data)),
                         resultStatus = SavedResultStatus.AVAILABLE)
                 else -> study.copy(resultStatus = SavedResultStatus.UNSUPPORTED)
             }
         })
     }
+
+    private fun coverageFingerprint(coverage: SavedCoverage): String? = runCatching {
+        PortableInputFingerprint.coverage(PortableCoverageResult.inputs(coverage), PortableCoverageResult.snapshots(coverage), coverage.catalogComplete)
+    }.getOrNull()
 
     private fun readResult(sha: String, expected: Int): ByteArray? {
         val path = File(results, "$sha.result")

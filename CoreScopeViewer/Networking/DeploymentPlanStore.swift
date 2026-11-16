@@ -91,8 +91,11 @@ actor DeploymentPlanStore {
                 // Unchanged bytes keep the reference they were saved under (a migrated result keeps its format);
                 // a new record with bytes the library already holds, such as a duplicate, shares that reference.
                 let existing = before == nil ? known[sha] : before?.resultRef.flatMap { $0.sha256 == sha ? $0 : nil }
-                study.resultRef = existing
-                    ?? ResultRef(format: ResultRef.iosLegacy, version: 1, byteLength: data.count, sha256: sha, inputFingerprint: nil)
+                // A portable payload without a readable fingerprint fails the manifest's validation, so it's never saved.
+                study.resultRef = existing ?? (PortableCoverageResult.isPortable(data)
+                    ? ResultRef(format: ResultRef.portableCoverage, version: 1, byteLength: data.count, sha256: sha,
+                                inputFingerprint: PortableCoverageResult.fingerprint(of: data))
+                    : ResultRef(format: ResultRef.iosLegacy, version: 1, byteLength: data.count, sha256: sha, inputFingerprint: nil))
             } else if let before, before.resultRef != nil, Self.sameInputs(before, study) {
                 // A result that couldn't be read here stays attached while the calculation inputs are unchanged.
                 study.resultRef = before.resultRef
@@ -169,7 +172,12 @@ actor DeploymentPlanStore {
             }
             if data.count != ref.byteLength || Self.sha256(data) != ref.sha256 {
                 document.studies[index].resultStatus = .unverified
-            } else if ref.format == ResultRef.iosLegacy, document.studies[index].coverage != nil {
+            } else if ref.format == ResultRef.portableCoverage, let coverage = document.studies[index].coverage,
+                      ref.inputFingerprint != PortableCoverageResult.studyFingerprint(coverage) {
+                // A portable result shows only for the inputs it was calculated from.
+                document.studies[index].resultStatus = .unverified
+            } else if ref.format == ResultRef.iosLegacy || ref.format == ResultRef.portableCoverage,
+                      document.studies[index].coverage != nil {
                 document.studies[index].coverage?.calculatedResult = data
                 document.studies[index].resultStatus = .available
             } else {

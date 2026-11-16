@@ -50,8 +50,13 @@ struct SavedPlansV3Tests {
         try reference(file)
         let studies = Dictionary(uniqueKeysWithValues: try await DeploymentPlanStore(fileURL: file).load().studies.map { ($0.id, $0) })
         for id in ids("missingResults") { #expect(studies[id]?.resultStatus == .missing) }
-        // The Android legacy result is kept but can't be shown on iOS; portable results arrive in B.
-        for id in ids("legacyResults") + ids("sharedResult") { #expect(studies[id]?.resultStatus == .unsupported) }
+        // The Android legacy result is kept but can't be shown on iOS.
+        for id in ids("legacyResults") { #expect(studies[id]?.resultStatus == .unsupported) }
+        // Portable coverage results (B), including one shared by an imported copy, show for their own inputs.
+        for id in ids("sharedResult") {
+            #expect(studies[id]?.resultStatus == .available)
+            #expect(studies[id]?.coverage?.calculatedResult != nil)
+        }
         for id in ids("inputsOnly") { #expect(studies[id]?.resultStatus == SavedResultStatus.none) }
         for id in ids("unknownOrigin") { #expect(studies[id]?.origin == nil) }
     }
