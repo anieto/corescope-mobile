@@ -272,6 +272,13 @@ final class EstimatedCoverageModel {
         locatedNodes = knownNodes
         sourceID = coverage.nodes.first?.sourceID ?? "saved"
         calculatedCatalog = coverage.nodes
+        // A referenced result this device can't show: the inputs open alone, with the reason.
+        switch study.resultStatus {
+        case .missing: inputError = "Saved result not on this device. Your inputs are available; calculate to see results."
+        case .unverified: inputError = "The saved result could not be verified, so it isn't shown. Your inputs are available; calculate to see results."
+        case .unsupported: inputError = "This saved result needs another version of NodeScope. Your inputs are available; calculate to see results."
+        case .none, .available: break
+        }
         if let data = coverage.calculatedResult, let inputs = try? inputs() {
             do {
                 checkpoint = try SavedCoverageCalculation.decode(data).restore(inputs: inputs, nodes: nodeSnapshots,

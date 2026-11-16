@@ -60,6 +60,16 @@ struct SavedPlansScreen: View {
 private struct SavedStudyRow: View {
     let study: SavedStudy
 
+    static func resultText(_ status: SavedResultStatus) -> LocalizedStringKey {
+        switch status {
+        case .available: "Includes saved coverage results"
+        case .missing: "Saved result not on this device"
+        case .unverified: "Saved result could not be verified"
+        case .unsupported: "Saved result needs another version of NodeScope"
+        case .none: "Inputs only · Calculate to see results"
+        }
+    }
+
     var body: some View {
         NavigationLink {
             switch study.kind {
@@ -71,7 +81,7 @@ private struct SavedStudyRow: View {
                 Text(study.name).font(.monaspace(.headline))
                 Text(study.kind == .linkProfile ? "Link Profile" : "Estimated Coverage")
                     .font(.subheadline).foregroundStyle(.secondary)
-                Text(study.coverage?.calculatedResult == nil ? "Inputs only · Calculate to see results" : "Includes saved coverage results")
+                Text(Self.resultText(study.resultStatus))
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -153,8 +163,8 @@ private struct SaveStudySheet: View {
                     Button("Save") {
                         study.updatedAtMilliseconds = max(study.createdAtMilliseconds, Int64(Date().timeIntervalSince1970 * 1000))
                         Task {
-                            if await model.saveStudy(study) {
-                                didSave(study)
+                            if let saved = await model.saveStudy(study) {
+                                didSave(saved)
                                 dismiss()
                             }
                         }

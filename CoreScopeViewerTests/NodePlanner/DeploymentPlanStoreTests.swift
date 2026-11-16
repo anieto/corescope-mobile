@@ -21,9 +21,11 @@ struct DeploymentPlanStoreTests {
         let store = DeploymentPlanStore(fileURL: file)
         #expect(try await store.load().plans.isEmpty)
         try await store.save(document("First"))
-        #expect(try await DeploymentPlanStore(fileURL: file).load() == document("First"))
+        #expect(try await DeploymentPlanStore(fileURL: file).load().content == document("First").content)
         try await store.save(document("Renamed"))
-        #expect(try await DeploymentPlanStore(fileURL: file).load() == document("Renamed"))
+        let renamed = try await DeploymentPlanStore(fileURL: file).load()
+        #expect(renamed.content == document("Renamed").content)
+        #expect(renamed.schemaVersion == 3 && renamed.plans.first?.revision == 2)
         try await store.save(DeploymentPlanDocument(plans: []))
         #expect(try await DeploymentPlanStore(fileURL: file).load().plans.isEmpty)
     }
@@ -49,7 +51,7 @@ struct DeploymentPlanStoreTests {
         try await store.save(document("First"))
         try DeploymentPlanCodec.encode(document("External")).write(to: file)
         await #expect(throws: DeploymentPlanStoreError.changedOnDisk) { try await store.save(document("Draft")) }
-        #expect(try await store.load() == document("External"))
+        #expect(try await store.load().content == document("External").content)
         try FileManager.default.removeItem(at: file)
         await #expect(throws: DeploymentPlanStoreError.changedOnDisk) { try await store.save(document("Draft")) }
     }
@@ -65,7 +67,7 @@ struct DeploymentPlanStoreTests {
         await #expect(throws: (any Error).self) { try await store.save(draft) }
         #expect(draft == document("Unsaved"))
         #expect(try Data(contentsOf: file) == previous)
-        #expect(try await store.load() == document("First"))
+        #expect(try await store.load().content == document("First").content)
     }
 
     @Test func invalidDraftDoesNotReplaceSavedPlan() async throws {
@@ -75,7 +77,7 @@ struct DeploymentPlanStoreTests {
         _ = try await store.load()
         try await store.save(document("First"))
         await #expect(throws: DeploymentPlanError.invalidData) { try await store.save(document("")) }
-        #expect(try await store.load() == document("First"))
+        #expect(try await store.load().content == document("First").content)
     }
 
     @Test func oversizedLibraryIsNotReset() async throws {
