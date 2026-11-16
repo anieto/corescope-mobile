@@ -222,3 +222,19 @@ private fun writePlanAtomically(bytes: ByteArray, file: File) {
         Files.deleteIfExists(staging)
     }
 }
+
+/** Disk use of a saved-plans folder, for Settings: result files and pre-upgrade backups. */
+data class SavedPlansUsage(val resultBytes: Long = 0, val backupBytes: Long = 0) {
+    companion object {
+        /** Measures the folder holding `file` (CandidateSites/plans.json). Missing folders count as empty. Call off the main thread. */
+        fun measure(file: File): SavedPlansUsage {
+            val directory = file.absoluteFile.parentFile ?: return SavedPlansUsage()
+            fun total(folder: String, suffix: String) =
+                File(directory, folder).listFiles()?.filter { it.isFile && it.name.endsWith(suffix) }?.sumOf { it.length() } ?: 0L
+            val sibling = File(file.path + ".v1-backup").takeIf { it.isFile }?.length() ?: 0L
+            return SavedPlansUsage(total("results", ".result"), total("migration-backups", ".json") + sibling)
+        }
+
+        fun application(filesDir: File) = measure(File(filesDir, "CandidateSites/plans.json"))
+    }
+}

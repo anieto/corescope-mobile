@@ -225,3 +225,32 @@ actor DeploymentPlanStore {
         return bytes
     }
 }
+
+/// Disk use of a saved-plans folder, for Settings: result files and pre-upgrade backups.
+struct SavedPlansUsage: Equatable, Sendable {
+    var resultBytes: Int64 = 0
+    var backupBytes: Int64 = 0
+
+    /// Measures CandidateSites/ next to `fileURL`. Missing folders count as empty.
+    static func measure(fileURL: URL) -> SavedPlansUsage {
+        let directory = fileURL.deletingLastPathComponent()
+        func size(of url: URL) -> Int64 {
+            Int64((try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+        }
+        func total(_ folder: String, suffix: String) -> Int64 {
+            let files = (try? FileManager.default.contentsOfDirectory(
+                at: directory.appendingPathComponent(folder, isDirectory: true), includingPropertiesForKeys: [.fileSizeKey])) ?? []
+            return files.filter { $0.lastPathComponent.hasSuffix(suffix) }.reduce(0) { $0 + size(of: $1) }
+        }
+        let sibling = URL(fileURLWithPath: fileURL.path + ".v1-backup")
+        let siblingBytes = FileManager.default.fileExists(atPath: sibling.path) ? size(of: sibling) : 0
+        return SavedPlansUsage(resultBytes: total("results", suffix: ".result"),
+                               backupBytes: total("migration-backups", suffix: ".json") + siblingBytes)
+    }
+
+    static func application() -> SavedPlansUsage {
+        guard let store = try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
+                                                        appropriateFor: nil, create: false) else { return .init() }
+        return measure(fileURL: store.appendingPathComponent("CandidateSites/plans.json"))
+    }
+}

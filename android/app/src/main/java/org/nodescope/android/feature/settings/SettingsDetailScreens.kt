@@ -158,7 +158,13 @@ fun StorageScreen(storage: CacheStorage, onCleared: () -> Unit) {
     var clearedAt by remember { mutableStateOf<Long?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var confirm by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { usage = storage.usage(); busy = false }
+    var savedPlans by remember { mutableStateOf<org.nodescope.android.feature.candidatesites.SavedPlansUsage?>(null) }
+    LaunchedEffect(Unit) {
+        usage = storage.usage(); busy = false
+        savedPlans = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            org.nodescope.android.feature.candidatesites.SavedPlansUsage.application(context.filesDir)
+        }
+    }
     if (confirm) AlertDialog(onDismissRequest = { confirm = false }, title = { Text("Clear cached data?") },
         text = { Text("Downloaded map tiles, temporary files, and Favorites activity comparison snapshots will be removed. Favorites, monitored channels and keys, recent items, appearance, and analyzer settings will be kept.") },
         confirmButton = {
@@ -195,6 +201,25 @@ fun StorageScreen(storage: CacheStorage, onCleared: () -> Unit) {
                 ContentRow("Temporary files", "Short-lived data the app and system keep to speed things up", Icons.Outlined.Autorenew)
                 ContentRow("Favorites activity snapshots", "Saved comparisons reset when you clear cached data", Icons.Outlined.Autorenew)
                 ContentRow("Analyzer responses", "Kept in memory while the app is open and refreshed when you clear", Icons.Outlined.Dns)
+            }
+        }
+        item {
+            val plans = savedPlans
+            val limit = org.nodescope.android.feature.candidatesites.DeploymentPlanStore.MAXIMUM_RESULT_STORAGE
+            val backups = (plans?.backupBytes ?: 0) > 0
+            Section("Saved plans", footer = "Never removed here. Cloud backup keeps your plans and studies but not saved results; after a " +
+                "cloud restore, calculate again. A phone-to-phone transfer (Android 12+) keeps everything. Unsaved changes aren't backed up." +
+                if (backups) " Upgrade backups are copies of your saved plans from before an update, kept in case they're needed." else "") {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Saved results", Modifier.weight(1f))
+                    if (plans == null) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    else Text("${Formatter.formatShortFileSize(context, plans.resultBytes)} of ${Formatter.formatShortFileSize(context, limit)}",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (plans != null && backups) Row {
+                    Text("Upgrade backups", Modifier.weight(1f))
+                    Text(Formatter.formatShortFileSize(context, plans.backupBytes), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
         item {

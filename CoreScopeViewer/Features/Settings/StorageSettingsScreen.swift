@@ -10,6 +10,7 @@ struct StorageSettingsScreen: View {
     @State private var showsClearConfirmation = false
     @State private var clearedAt: Date?
     @State private var clearFailed = false
+    @State private var savedPlans: SavedPlansUsage?
 
     var body: some View {
         List {
@@ -20,6 +21,8 @@ struct StorageSettingsScreen: View {
             )
 
             StorageContentsSection()
+
+            SavedPlansStorageSection(usage: savedPlans)
 
             Section {
                 Button("Clear Cached Data", role: .destructive) {
@@ -62,6 +65,7 @@ struct StorageSettingsScreen: View {
         guard !isClearing else { return }
         isLoading = true
         usage = await CacheStorageService.shared.usage()
+        savedPlans = await Task.detached(priority: .utility) { SavedPlansUsage.application() }.value
         isLoading = false
     }
 
@@ -149,6 +153,33 @@ private struct StorageContentsSection: View {
         }
         .instrumentListRows()
     }
+}
+
+/// Saved plans aren't cache: never cleared here. Shows result storage against its limit and what OS backups cover.
+private struct SavedPlansStorageSection: View {
+    let usage: SavedPlansUsage?
+
+    var body: some View {
+        Section {
+            LabeledContent("Saved results") {
+                if let usage {
+                    Text("\(size(usage.resultBytes)) of \(size(Int64(DeploymentPlanStore.maximumResultStorage)))")
+                } else {
+                    ProgressView()
+                }
+            }
+            if let usage, usage.backupBytes > 0 {
+                LabeledContent("Upgrade backups") { Text(size(usage.backupBytes)) }
+            }
+        } header: {
+            Text("Saved Plans")
+        } footer: {
+            Text("Saved plans, studies and their results are never removed here. They're included in iCloud Backup and computer backups when those are turned on. Changes you haven't saved aren't backed up.\(usage.map { $0.backupBytes > 0 } == true ? " Upgrade backups are copies of your saved plans from before an update, kept in case they're needed." : "")")
+        }
+        .instrumentListRows()
+    }
+
+    private func size(_ bytes: Int64) -> String { ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file) }
 }
 
 private struct StorageContentRow: View {

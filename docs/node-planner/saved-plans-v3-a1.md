@@ -1,6 +1,6 @@
 # Saved Plans v3, deliverable A1: storage and migration
 
-Status: implemented November 15, 2026 on the local branch `feature/saved-plans-v3` (Android `4da3e67`, iOS `48b203c`). Not released and not pushed. Two A1 items remain (below), plus the device checks. Schema: [saved-plans-v3-schema.md](saved-plans-v3-schema.md).
+Status: implemented November 15, 2026 on the local branch `feature/saved-plans-v3` (Android `4da3e67`, iOS `48b203c`). Not released and not pushed. Device checks remain (below). Settings → Cache & Storage → Saved Plans shows result storage against the 512 MiB budget and what OS backups cover. Schema: [saved-plans-v3-schema.md](saved-plans-v3-schema.md).
 
 ## What changed
 
@@ -34,8 +34,7 @@ In every case the study's inputs still open, nothing is calculated automatically
 
 ## Still to do in A1
 
-1. **Settings text** (plan §13): explain what each OS backup actually covers, and show result storage used against the 512 MiB budget. This is the one screen change A1 allows.
-2. **Device checks** (below). Unit tests and file copies don't establish restore behaviour.
+1. **Device checks** (below). Unit tests and file copies don't establish restore behaviour.
 
 ## Tester checklist
 
