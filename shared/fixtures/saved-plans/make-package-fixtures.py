@@ -196,7 +196,7 @@ def read_package(data):
         need(len(plans) == 1 and not sites, 'a plan package holds exactly one plan and its studies')
         need(all(s.get('planID') == plans[0]['id'] for s in studies), 'every study in a plan package belongs to its plan')
     if not m['includesNotes']:
-        need(all('notes' not in p for p in plans), 'notes present although the package says they were omitted')
+        need(all(p.get('notes') is None for p in plans), 'notes present although the package says they were omitted')
 
     # Results: every reference has its entry, every entry is referenced, and bytes match.
     referenced = set()

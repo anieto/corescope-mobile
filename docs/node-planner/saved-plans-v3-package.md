@@ -59,9 +59,9 @@ Outcomes, as the cases record them: `valid`, `resultUnusable` (with the study ID
 }
 ```
 
-- Records are v3 library records exactly as stored: IDs, names, historical dates, revisions, `origin` and `importOrigin` included. `exportedBy` is provenance only, and `appVersion` is 1 to 32 characters from `0-9 A-Z a-z . + -`.
+- Records are v3 library records exactly as stored: IDs, names, historical dates, revisions, `origin` and `importOrigin` included. An optional field may be absent or null (iOS omits it, Android writes null); readers treat both alike. `exportedBy` is provenance only, and `appVersion` is 1 to 32 characters from `0-9 A-Z a-z . + -`.
 - **Scope.** `study`: exactly one study, without `planID`, and nothing else. `plan`: exactly one study plan and only studies whose `planID` is that plan, no candidate sites. `library`: everything the saved library holds (candidate-site plans, study plans, every study including standalone ones), each `planID` naming a plan in the package.
-- **Notes.** With `includesNotes` false, no study plan carries `notes`. Plan notes are the only free-text notes in the library.
+- **Notes.** With `includesNotes` false, no study plan carries `notes` (absent or null). Plan notes are the only free-text notes in the library.
 - **Results.** With `includesResults` false, no study carries `resultRef`. Otherwise a study whose result couldn't be included has no `resultRef` and appears once in `omittedResults` with why: `notOnDevice` (its file is missing), `couldNotBeVerified` (length or hash mismatch), `needsNewerVersion` (a result this app can't read), or `notReadableHere` (a legacy result this platform can't convert). Nothing is dropped silently.
 - **Legacy results** are converted to the portable format on export when this platform can read them: iOS converts its own plist results and Android its own JSON results, the way B converts them on the next save.
 

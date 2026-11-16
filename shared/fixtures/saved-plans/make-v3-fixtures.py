@@ -120,7 +120,7 @@ def validate(document):
         need(plan['id'] not in ids, 'duplicate study plan id')
         ids.add(plan['id'])
         utf8(plan['name'], 160, 'study plan name')
-        if 'notes' in plan:
+        if plan.get('notes') is not None:  # Android writes absent optionals as null
             need(isinstance(plan['notes'], str) and len(plan['notes'].encode('utf-8')) <= 4096,
                  'study plan notes: at most 4096 UTF-8 bytes')
         times(plan, 'study plan')
@@ -138,7 +138,7 @@ def validate(document):
         revision(study['revision'], 'study')
         kind = study['kind']
         need(kind in ('linkProfile', 'coverage'), f'unknown study kind {kind!r}')
-        need((kind == 'linkProfile') == ('linkProfile' in study) and (kind == 'coverage') == ('coverage' in study),
+        need((kind == 'linkProfile') == (study.get('linkProfile') is not None) and (kind == 'coverage') == (study.get('coverage') is not None),
              'a study has exactly the payload its kind names')
         if kind == 'coverage':
             need('calculatedResult' not in study['coverage'], 'v3 coverage results live in resultRef files, not inline')
