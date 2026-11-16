@@ -55,6 +55,7 @@ fun SavedPlansScreen(kind: SavedStudy.Kind?, onOpen: (SavedStudy) -> Unit, onPla
     var filter by rememberSaveable { mutableStateOf(StudyFilter.of(kind)) }
     var query by rememberSaveable { mutableStateOf("") }
     var creatingPlan by rememberSaveable { mutableStateOf(false) }
+    var backingUp by rememberSaveable { mutableStateOf(false) }
     val actions = rememberStudyActions()
     val searching = query.isNotBlank()
     fun matches(text: String?) = text != null && text.contains(query.trim(), ignoreCase = true)
@@ -125,6 +126,11 @@ fun SavedPlansScreen(kind: SavedStudy.Kind?, onOpen: (SavedStudy) -> Unit, onPla
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
                         }
                     }
+                    if (library.loaded && (library.studies.isNotEmpty() || library.studyPlans.isNotEmpty() || library.plans.isNotEmpty()))
+                        OutlinedButton(onClick = { backingUp = true }) {
+                            Icon(Icons.Outlined.Share, null)
+                            Text("Back up library…", Modifier.padding(start = 8.dp))
+                        }
                     Text("Stored on this device. Backup details are in Settings › Cache & Storage.",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -135,6 +141,7 @@ fun SavedPlansScreen(kind: SavedStudy.Kind?, onOpen: (SavedStudy) -> Unit, onPla
             onClick = { if (library.loaded) creatingPlan = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp))
     }
     if (creatingPlan) PlanEditorDialog(null) { creatingPlan = false }
+    if (backingUp) ExportPackageSheet(SavedPlansExport.Contents.Library) { backingUp = false }
     StudyActionDialogs(actions)
 }
 
@@ -153,6 +160,7 @@ fun StudyPlanScreen(planId: String, initialFilter: StudyFilter, onOpen: (SavedSt
     var addingExisting by rememberSaveable { mutableStateOf(false) }
     var planMenu by remember { mutableStateOf(false) }
     var editing by rememberSaveable { mutableStateOf(false) }
+    var exportingPlan by rememberSaveable { mutableStateOf(false) }
     var confirmingDelete by rememberSaveable { mutableStateOf(false) }
     val actions = rememberStudyActions()
     val plan = library.plan(planId)
@@ -180,6 +188,8 @@ fun StudyPlanScreen(planId: String, initialFilter: StudyFilter, onOpen: (SavedSt
                         DropdownMenu(planMenu, { planMenu = false }) {
                             DropdownMenuItem({ Text("Edit name and notes") }, { planMenu = false; editing = true },
                                 leadingIcon = { Icon(Icons.Outlined.Edit, null) })
+                            DropdownMenuItem({ Text("Export plan…") }, { planMenu = false; exportingPlan = true },
+                                leadingIcon = { Icon(Icons.Outlined.Share, null) })
                             DropdownMenuItem({ Text("Delete plan") }, { planMenu = false; confirmingDelete = true },
                                 leadingIcon = { Icon(Icons.Outlined.Delete, null) })
                         }
@@ -216,6 +226,7 @@ fun StudyPlanScreen(planId: String, initialFilter: StudyFilter, onOpen: (SavedSt
     }
     if (editing) PlanEditorDialog(plan) { editing = false }
     if (addingExisting) AddExistingStudyDialog(planId) { addingExisting = false }
+    if (exportingPlan) ExportPackageSheet(SavedPlansExport.Contents.Plan(planId)) { exportingPlan = false }
     if (confirmingDelete) AlertDialog(onDismissRequest = { confirmingDelete = false },
         title = { Text("Delete “${plan.name}”?") },
         text = { Text(if (members.isEmpty()) "This plan is empty."
@@ -316,6 +327,8 @@ private fun resultText(status: SavedResultStatus) = when (status) {
                         leadingIcon = { Icon(Icons.Outlined.DriveFileMove, null) })
                     DropdownMenuItem({ Text("Duplicate") }, { menu = false; scope.launch { library.duplicateStudy(study.id) } },
                         leadingIcon = { Icon(Icons.Outlined.ContentCopy, null) })
+                    DropdownMenuItem({ Text("Export…") }, { menu = false; actions.exporting = study.id },
+                        leadingIcon = { Icon(Icons.Outlined.Share, null) })
                     DropdownMenuItem({ Text("Delete study") }, { menu = false; actions.deleting = study.id },
                         leadingIcon = { Icon(Icons.Outlined.Delete, null) })
                 }
@@ -327,19 +340,21 @@ private fun resultText(status: SavedResultStatus) = when (status) {
 // Study actions
 
 /** Which study a rename, move or delete dialog is open for; kept through configuration changes. */
-private class StudyActions(renaming: String?, moving: String?, deleting: String?) {
+private class StudyActions(renaming: String?, moving: String?, deleting: String?, exporting: String?) {
     var renaming by mutableStateOf(renaming)
     var moving by mutableStateOf(moving)
     var deleting by mutableStateOf(deleting)
+    var exporting by mutableStateOf(exporting)
 }
 
 @Composable private fun rememberStudyActions(): StudyActions = rememberSaveable(saver = listSaver(
-    save = { listOf(it.renaming, it.moving, it.deleting) }, restore = { StudyActions(it[0], it[1], it[2]) },
-)) { StudyActions(null, null, null) }
+    save = { listOf(it.renaming, it.moving, it.deleting, it.exporting) }, restore = { StudyActions(it[0], it[1], it[2], it[3]) },
+)) { StudyActions(null, null, null, null) }
 
 @Composable private fun StudyActionDialogs(actions: StudyActions) {
     val library = SavedPlansLibrary.shared(LocalContext.current)
     val scope = rememberCoroutineScope()
+    actions.exporting?.let { id -> ExportPackageSheet(SavedPlansExport.Contents.Study(id)) { actions.exporting = null } }
     actions.renaming?.let { id ->
         val study = library.studies.firstOrNull { it.id == id } ?: run { actions.renaming = null; return@let }
         var name by rememberSaveable(id) { mutableStateOf(study.name) }

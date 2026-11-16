@@ -53,6 +53,7 @@
 		31152DE03069FCCF00146B37 /* AdaptiveListDetailNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31152DDF3069FCCF00146B37 /* AdaptiveListDetailNavigation.swift */; };
 		311598FB30A5606300C0B35D /* SavedStudy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311598FA30A5606300C0B35D /* SavedStudy.swift */; };
 		311598FD30A560A900C0B35D /* SavedPlansScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311598FC30A560A900C0B35D /* SavedPlansScreen.swift */; };
+		0E813318403C1E040BC2CB53 /* SavedPlansExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8389EFE5BE87C82A859994DE /* SavedPlansExport.swift */; };
 		AC37D71E4C9943229A34B498 /* StudyDraftAutosave.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88A174E7580447ED8548FA06 /* StudyDraftAutosave.swift */; };
 		311598FF30A5612A00C0B35D /* SavedStudyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311598FE30A5612A00C0B35D /* SavedStudyTests.swift */; };
 		3115990130A561A000C0B35D /* SavedStudyRestorationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3115990030A561A000C0B35D /* SavedStudyRestorationTests.swift */; };
@@ -262,6 +263,7 @@
 		E7F8A9B0C1D2E3F4A5B6C7D8 /* SavedPlansV3Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8A9B0C1D2E3F4A5B6C7D8E9 /* SavedPlansV3Tests.swift */; };
 		CBC1D2786C274488BFF1D4B8 /* StudyDraftStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBD22701CFCB401CB7EBD9F9 /* StudyDraftStoreTests.swift */; };
 		DA62BCB6C18DFED45D3A8A68 /* SavedPlansPackageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26F53FC96C7EEBF97039323C /* SavedPlansPackageTests.swift */; };
+		C194BEC07956246F82A7C3C0 /* SavedPlansExportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CF94A884FDF2049837A826D /* SavedPlansExportTests.swift */; };
 		8B74E1050C064AE686D045E1 /* PortableLinkProfileResultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22C9456FBE934BDCA0560C09 /* PortableLinkProfileResultTests.swift */; };
 		03072D44FFB2413A87EE4942 /* PortableCoverageResultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75320033F9BE4B5AAD348F51 /* PortableCoverageResultTests.swift */; };
 		EACC350C9F65CBA27A0B4D24 /* Channel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33B9A5F539B49B860F434D81 /* Channel.swift */; };
@@ -330,6 +332,7 @@
 		31152DDF3069FCCF00146B37 /* AdaptiveListDetailNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveListDetailNavigation.swift; sourceTree = "<group>"; };
 		311598FA30A5606300C0B35D /* SavedStudy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedStudy.swift; sourceTree = "<group>"; };
 		311598FC30A560A900C0B35D /* SavedPlansScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedPlansScreen.swift; sourceTree = "<group>"; };
+		8389EFE5BE87C82A859994DE /* SavedPlansExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedPlansExport.swift; sourceTree = "<group>"; };
 		88A174E7580447ED8548FA06 /* StudyDraftAutosave.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyDraftAutosave.swift; sourceTree = "<group>"; };
 		311598FE30A5612A00C0B35D /* SavedStudyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedStudyTests.swift; sourceTree = "<group>"; };
 		3115990030A561A000C0B35D /* SavedStudyRestorationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedStudyRestorationTests.swift; sourceTree = "<group>"; };
@@ -551,6 +554,7 @@
 		F8A9B0C1D2E3F4A5B6C7D8E9 /* SavedPlansV3Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedPlansV3Tests.swift; sourceTree = "<group>"; };
 		FBD22701CFCB401CB7EBD9F9 /* StudyDraftStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyDraftStoreTests.swift; sourceTree = "<group>"; };
 		26F53FC96C7EEBF97039323C /* SavedPlansPackageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedPlansPackageTests.swift; sourceTree = "<group>"; };
+		1CF94A884FDF2049837A826D /* SavedPlansExportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedPlansExportTests.swift; sourceTree = "<group>"; };
 		22C9456FBE934BDCA0560C09 /* PortableLinkProfileResultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortableLinkProfileResultTests.swift; sourceTree = "<group>"; };
 		75320033F9BE4B5AAD348F51 /* PortableCoverageResultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortableCoverageResultTests.swift; sourceTree = "<group>"; };
 		FEE734231B3A2D9FDE62ADB6 /* MapViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapViewModel.swift; sourceTree = "<group>"; };
@@ -668,6 +672,7 @@
 				F8A9B0C1D2E3F4A5B6C7D8E9 /* SavedPlansV3Tests.swift */,
 				FBD22701CFCB401CB7EBD9F9 /* StudyDraftStoreTests.swift */,
 				26F53FC96C7EEBF97039323C /* SavedPlansPackageTests.swift */,
+				1CF94A884FDF2049837A826D /* SavedPlansExportTests.swift */,
 				22C9456FBE934BDCA0560C09 /* PortableLinkProfileResultTests.swift */,
 				75320033F9BE4B5AAD348F51 /* PortableCoverageResultTests.swift */,
 				D2E3F4A5B6C7D8E9F0A1B2C3 /* StudyPlanLibraryTests.swift */,
@@ -733,6 +738,7 @@
 				31399AB8309E214A000519FF /* CoverageMapHost.swift */,
 				31399AC630A0046F000519FF /* CoverageResultsView.swift */,
 				311598FC30A560A900C0B35D /* SavedPlansScreen.swift */,
+				8389EFE5BE87C82A859994DE /* SavedPlansExport.swift */,
 				88A174E7580447ED8548FA06 /* StudyDraftAutosave.swift */,
 				3115990230A56A3800C0B35D /* CoverageMarginLegend.swift */,
 				3115990630A56AF800C0B35D /* CoverageDiagnosticsView.swift */,
@@ -1153,6 +1159,7 @@
 				E7F8A9B0C1D2E3F4A5B6C7D8 /* SavedPlansV3Tests.swift in Sources */,
 				CBC1D2786C274488BFF1D4B8 /* StudyDraftStoreTests.swift in Sources */,
 				DA62BCB6C18DFED45D3A8A68 /* SavedPlansPackageTests.swift in Sources */,
+				C194BEC07956246F82A7C3C0 /* SavedPlansExportTests.swift in Sources */,
 				8B74E1050C064AE686D045E1 /* PortableLinkProfileResultTests.swift in Sources */,
 				03072D44FFB2413A87EE4942 /* PortableCoverageResultTests.swift in Sources */,
 				C1D2E3F4A5B6C7D8E9F0A1B2 /* StudyPlanLibraryTests.swift in Sources */,
@@ -1297,6 +1304,7 @@
 				316FE001305C6EA300FBA3B4 /* AppNavigationStore.swift in Sources */,
 				D86C8FE8DEB5CE51B1FFC834 /* CoreScopeViewerApp.swift in Sources */,
 				311598FD30A560A900C0B35D /* SavedPlansScreen.swift in Sources */,
+				0E813318403C1E040BC2CB53 /* SavedPlansExport.swift in Sources */,
 				AC37D71E4C9943229A34B498 /* StudyDraftAutosave.swift in Sources */,
 				D10FFE35F47798056E28EB1C /* DataLoadStatusView.swift in Sources */,
 				9599A7997960A45E6E506D71 /* LiveFeedMessage.swift in Sources */,

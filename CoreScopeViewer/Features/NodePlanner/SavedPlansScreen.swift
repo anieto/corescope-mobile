@@ -9,6 +9,7 @@ struct SavedPlansScreen: View {
     @State private var query = ""
     @State private var action: StudyAction?
     @State private var creatingPlan = false
+    @State private var backingUp = false
     @State private var drafts = DraftList()
 
     init(kind: SavedStudy.Kind? = nil) {
@@ -118,8 +119,13 @@ struct SavedPlansScreen: View {
                 Button("New plan", systemImage: "plus") { creatingPlan = true }
                     .disabled(!model.isLoaded)
             }
+            ToolbarItem(placement: .secondaryAction) {
+                Button("Back up library…", systemImage: "square.and.arrow.up") { backingUp = true }
+                    .disabled(!model.isLoaded || (model.studies.isEmpty && model.studyPlans.isEmpty && model.plans.isEmpty))
+            }
         }
         .sheet(isPresented: $creatingPlan) { PlanEditorSheet(plan: nil) }
+        .sheet(isPresented: $backingUp) { ExportPackageSheet(contents: .library) }
         .studyActionPresenter($action)
         .draftResumeDestination(drafts)
         .task { await model.load() }
@@ -211,14 +217,17 @@ private struct PlanActionsMenu: View {
     let count: Int
     @Environment(\.dismiss) private var dismiss
     @State private var editing = false
+    @State private var exporting = false
     @State private var confirmingDelete = false
 
     var body: some View {
         Menu("Plan actions", systemImage: "ellipsis.circle") {
             Button("Edit name and notes", systemImage: "pencil") { editing = true }
+            Button("Export plan…", systemImage: "square.and.arrow.up") { exporting = true }
             Button("Delete plan", systemImage: "trash", role: .destructive) { confirmingDelete = true }
         }
         .sheet(isPresented: $editing) { PlanEditorSheet(plan: plan) }
+        .sheet(isPresented: $exporting) { ExportPackageSheet(contents: .plan(plan.id)) }
         .confirmationDialog("Delete “\(plan.name)”?", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("Delete plan", role: .destructive) {
                 Task { if await CandidatePlansModel.shared.deletePlan(plan.id) { dismiss() } }
@@ -355,16 +364,17 @@ private func savedDate(_ milliseconds: Int64) -> String {
 // MARK: - Study actions
 
 enum StudyAction: Identifiable {
-    case rename(SavedStudy), move(SavedStudy), delete(SavedStudy)
+    case rename(SavedStudy), move(SavedStudy), delete(SavedStudy), export(SavedStudy)
 
     var study: SavedStudy {
-        switch self { case .rename(let study), .move(let study), .delete(let study): study }
+        switch self { case .rename(let study), .move(let study), .delete(let study), .export(let study): study }
     }
     var id: String {
         switch self {
         case .rename(let study): "rename-\(study.id)"
         case .move(let study): "move-\(study.id)"
         case .delete(let study): "delete-\(study.id)"
+        case .export(let study): "export-\(study.id)"
         }
     }
 }
@@ -379,6 +389,7 @@ private struct StudyActionsModifier: ViewModifier {
         Button("Duplicate", systemImage: "plus.square.on.square") {
             Task { _ = await CandidatePlansModel.shared.duplicateStudy(study.id) }
         }
+        Button("Export…", systemImage: "square.and.arrow.up") { action = .export(study) }
         Button("Delete study", systemImage: "trash", role: .destructive) { action = .delete(study) }
     }
 
@@ -407,7 +418,7 @@ private struct StudyActionPresenter: ViewModifier {
                 switch action {
                 case .rename(let study): newName = study.name; renaming = study; self.action = nil
                 case .delete(let study): deleting = study; self.action = nil
-                case .move: break
+                case .move, .export: break
                 }
             }
             .sheet(item: Binding(
@@ -415,6 +426,12 @@ private struct StudyActionPresenter: ViewModifier {
                 set: { if $0 == nil { action = nil } }
             )) { study in
                 MoveStudySheet(study: study)
+            }
+            .sheet(item: Binding(
+                get: { if case .export(let study)? = action { SavedPlansExport.Contents.study(study.id) } else { nil } },
+                set: { if $0 == nil { action = nil } }
+            )) { contents in
+                ExportPackageSheet(contents: contents)
             }
             .alert("Rename study", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
                 TextField("Name", text: $newName)

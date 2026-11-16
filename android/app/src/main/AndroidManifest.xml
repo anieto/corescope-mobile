@@ -24,5 +24,10 @@
                 <data android:host="packet" />
             </intent-filter>
         </activity>
+        <!-- Export packages only: files under cache/exports, shared read-only with the app the user picks. -->
+        <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.exports"
+            android:exported="false" android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/export_paths" />
+        </provider>
     </application>
 </manifest>
