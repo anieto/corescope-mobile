@@ -115,6 +115,71 @@ final class CandidatePlansModel {
         return !DeploymentPlanStore.sameInputs(current, study)
     }
 
+    /// What moving every candidate-site plan to Saved Plans would create, and what can't carry over exactly.
+    struct CandidateConversion {
+        var plans: [StudyPlan] = []
+        var studies: [SavedStudy] = []
+        var notes: [String] = []
+    }
+
+    /// Each candidate-site plan becomes a study plan of the same name; each site an inputs-only Estimated
+    /// Coverage study at its location with its equipment, and the tool's defaults for what a site doesn't
+    /// hold. Nothing is calculated. Sites Coverage can't place (beyond 85° latitude) are listed, not moved.
+    func candidateConversion(unit: DistanceUnit) -> CandidateConversion {
+        let defaults = EstimatedCoverageModel(distanceUnit: unit)
+        let now = Self.now()
+        var conversion = CandidateConversion()
+        for (planIndex, plan) in plans.enumerated() {
+            let created = now - Int64(planIndex)
+            let container = StudyPlan(id: Self.newID(), name: plan.name, notes: nil,
+                                      createdAtMilliseconds: created, updatedAtMilliseconds: created, revision: nil)
+            conversion.plans.append(container)
+            for (siteIndex, site) in plan.sites.enumerated() {
+                let label = "\(plan.name) › \(site.name)"
+                guard (-85...85).contains(site.latitude) else {
+                    conversion.notes.append("\(label): too close to a pole for Coverage, so it isn't moved.")
+                    continue
+                }
+                let assumptions = site.assumptions
+                func value(_ saved: Double?, _ fallback: Double, _ range: ClosedRange<Double>, _ what: String) -> Double {
+                    guard let saved else { return fallback }
+                    if range.contains(saved) { return saved }
+                    conversion.notes.append("\(label): \(what) is outside what Coverage accepts; the default is used.")
+                    return fallback
+                }
+                let loss: Double = assumptions.cableLossDB == nil && assumptions.additionalLossDB == nil
+                    ? defaults.transmitLossDb : (assumptions.cableLossDB ?? 0) + (assumptions.additionalLossDB ?? 0)
+                let coverage = SavedCoverage(
+                    transmitter: SavedEndpoint(name: site.name, latitude: site.latitude, longitude: site.longitude,
+                        antenna: SavedAntenna(
+                            heightMeters: value(assumptions.antennaHeightMeters, defaults.transmitHeightMeters, 1...3000, "antenna height"),
+                            gainDbi: assumptions.antennaGainDBi ?? defaults.transmitGainDbi, lossDb: loss)),
+                    receiver: SavedAntenna(heightMeters: defaults.receiveHeightMeters, gainDbi: defaults.receiveGainDbi,
+                                           lossDb: defaults.receiveLossDb),
+                    frequencyMHz: value(assumptions.frequencyMHz, defaults.frequencyMHz, 30...6000, "frequency"),
+                    transmitPowerDbm: assumptions.transmitPowerDBm ?? defaults.transmitPowerDbm,
+                    sensitivityDbm: defaults.sensitivityDbm, reserveDb: defaults.reserveDb,
+                    radiusMeters: defaults.radiusMeters, spacingMeters: defaults.spacingMeters,
+                    nodes: [], catalogComplete: false)
+                // Later sites slightly older, so the plan lists them in their original order.
+                let time = created - Int64(siteIndex)
+                let study = SavedStudy(id: Self.newID(), name: site.name, createdAtMilliseconds: time,
+                                       updatedAtMilliseconds: time, kind: .coverage, coverage: coverage, planID: container.id)
+                guard (try? study.validate()) != nil else {
+                    conversion.notes.append("\(label): its values can't be used for Coverage, so it isn't moved.")
+                    continue
+                }
+                conversion.studies.append(study)
+            }
+        }
+        return conversion
+    }
+
+    /// Adds the conversion's plans and studies and removes every candidate-site plan, in one save.
+    func moveCandidateSites(_ conversion: CandidateConversion) async -> Bool {
+        await commit([], studies: studies + conversion.studies, studyPlans: studyPlans + conversion.plans) != nil
+    }
+
     func createPlan(name: String, notes: String?) async -> StudyPlan? {
         let now = Self.now()
         let plan = StudyPlan(id: Self.newID(), name: name, notes: Self.cleanNotes(notes),

@@ -65,6 +65,36 @@ struct StudyPlanLibraryTests {
         #expect(inputsOnly.resultRef == nil && inputsOnly.resultStatus == .none)
     }
 
+    @Test func candidateSitesMoveIntoPlansAsInputsOnlyCoverage() async throws {
+        let model = try await library()
+        let tower = CandidateSite(id: UUID().uuidString.lowercased(), name: "Water tower", latitude: 30.27, longitude: -97.74,
+            assumptions: CandidateSiteAssumptions(antennaHeightMeters: 30, frequencyMHz: 915, transmitPowerDBm: 20,
+                                                  antennaGainDBi: 5, cableLossDB: 1.5, additionalLossDB: 0.5))
+        let ridge = CandidateSite(id: UUID().uuidString.lowercased(), name: "Ridge", latitude: 30.40, longitude: -97.90,
+            assumptions: CandidateSiteAssumptions(frequencyMHz: 10_000))
+        let pole = CandidateSite(id: UUID().uuidString.lowercased(), name: "Pole", latitude: 89, longitude: 0,
+            assumptions: CandidateSiteAssumptions())
+        #expect(await model.save(DeploymentPlan(id: UUID().uuidString.lowercased(), name: "North sites", createdAtMilliseconds: 1,
+            updatedAtMilliseconds: 1, selectedSiteID: nil, sites: [tower, ridge, pole])))
+
+        let conversion = model.candidateConversion(unit: .metric)
+        #expect(conversion.notes.count == 2)
+        #expect(await model.moveCandidateSites(conversion))
+        #expect(model.plans.isEmpty)
+        let plan = try #require(model.studyPlans.first)
+        #expect(model.studyPlans.count == 1 && plan.name == "North sites")
+        let studies = CandidatePlansModel.sorted(model.studies, updated: \.updatedAtMilliseconds)
+        #expect(studies.map(\.name) == ["Water tower", "Ridge"])
+        #expect(studies.allSatisfy { $0.planID == plan.id && $0.kind == .coverage && $0.resultRef == nil })
+        let moved = try #require(studies.first?.coverage)
+        #expect(moved.transmitter == SavedEndpoint(name: "Water tower", latitude: 30.27, longitude: -97.74,
+                                                   antenna: SavedAntenna(heightMeters: 30, gainDbi: 5, lossDb: 2)))
+        #expect(moved.frequencyMHz == 915 && moved.transmitPowerDbm == 20)
+        #expect(moved.nodes.isEmpty && moved.calculatedResult == nil)
+        // Out of Coverage's range: the default frequency.
+        #expect(studies.last?.coverage?.frequencyMHz != 10_000)
+    }
+
     @Test func newPlanAndItsFirstStudyAreOneSave() async throws {
         let model = try await library()
         #expect(await model.saveStudy(linkProfile("Ridge"), mode: .saveAsNew, destination: .newPlan, newPlanName: "") == nil)

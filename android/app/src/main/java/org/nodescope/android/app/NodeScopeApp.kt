@@ -726,7 +726,9 @@ internal fun AppShell(
                                 org.nodescope.android.feature.candidatesites.CandidatePlansViewModel(
                                     org.nodescope.android.feature.candidatesites.SavedPlansLibrary.shared(context))
                             }
-                            org.nodescope.android.feature.candidatesites.CandidateSitesScreen(model)
+                            org.nodescope.android.feature.candidatesites.CandidateSitesScreen(model,
+                                heightInFeet = preferences.distanceUnit == org.nodescope.android.core.storage.DistanceUnit.IMPERIAL,
+                                onMoved = { nav.popBackStack() })
                         }
                         screen<LinkProfileRoute> { backStack ->
                             val context = androidx.compose.ui.platform.LocalContext.current.applicationContext

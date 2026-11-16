@@ -4,22 +4,31 @@ struct CandidateSitesScreen: View {
     @State private var model = CandidatePlansModel.shared
     @State private var editing: DeploymentPlan?
     @State private var deleting: DeploymentPlan?
+    @State private var moving: CandidatePlansModel.CandidateConversion?
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 LearnLabel("Deployment plans", term: .deploymentPlan).font(.monaspace(.title2).bold())
-                Text("Save proposed locations and equipment assumptions on this device. Coverage and potential-link analysis are not available here yet.")
+                Text("Candidate sites are moving into Saved Plans. Each list becomes a plan, and each site an Estimated Coverage study with its location and equipment, ready to calculate.")
                     .foregroundStyle(.secondary)
+                if model.isLoaded && !model.plans.isEmpty {
+                    Button("Move to Saved Plans", systemImage: "folder.badge.plus") {
+                        model.error = nil
+                        moving = model.candidateConversion(unit: DistanceUnit(
+                            rawValue: UserDefaults.standard.string(forKey: DistanceUnit.defaultsKey) ?? "") ?? .imperial)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(model.isBusy)
+                }
                 if let error = model.error {
                     Text(error).foregroundStyle(.red)
                     Button("Reload plans") { Task { await model.reload() } }.disabled(model.isBusy)
                 }
                 if model.isBusy { ProgressView() }
                 if model.isLoaded {
-                    Button("New plan", systemImage: "plus") { editing = CandidatePlansModel.newPlan() }
-                        .disabled(model.isBusy || model.plans.count >= 100)
-                    if model.plans.isEmpty { Text("No saved plans. Create one, then add your candidate sites.") }
+                    if model.plans.isEmpty { Text("No candidate sites. Plan new sites in Saved Plans.") }
                     ForEach(model.plans) { plan in
                         CandidatePlanRow(plan: plan, open: { model.error = nil; editing = plan },
                                          delete: { deleting = plan })
@@ -35,6 +44,17 @@ struct CandidateSitesScreen: View {
         .task { await model.load() }
         .sheet(item: $editing) { plan in
             CandidatePlanEditor(initial: plan, model: model)
+        }
+        .alert("Move to Saved Plans?", isPresented: Binding(get: { moving != nil }, set: { if !$0 { moving = nil } }),
+               presenting: moving) { conversion in
+            Button("Move") {
+                Task { if await model.moveCandidateSites(conversion) { dismiss() } }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { conversion in
+            Text(([
+                "Creates \(conversion.plans.count) \(conversion.plans.count == 1 ? "plan" : "plans") with \(conversion.studies.count) Coverage \(conversion.studies.count == 1 ? "study" : "studies"), using Coverage's defaults for the receiver and study area. Nothing is calculated. Candidate Sites is then removed."
+            ] + conversion.notes).joined(separator: "\n\n"))
         }
         .confirmationDialog("Delete this plan and its saved sites?", isPresented: Binding(
             get: { deleting != nil }, set: { if !$0 { deleting = nil } }

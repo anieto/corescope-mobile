@@ -122,6 +122,66 @@ class SavedPlansLibrary(private val store: DeploymentPlanStore) {
         return !DeploymentPlanStore.sameInputs(current, study)
     }
 
+    /** What moving every candidate-site plan to Saved Plans would create, and what can't carry over exactly. */
+    data class CandidateConversion(val plans: List<StudyPlan>, val studies: List<SavedStudy>, val notes: List<String>)
+
+    /**
+     * Each candidate-site plan becomes a study plan of the same name; each site an inputs-only Estimated
+     * Coverage study at its location with its equipment, and the tool's defaults for what a site doesn't
+     * hold. Nothing is calculated. Sites Coverage can't place (beyond 85° latitude) are listed, not moved.
+     */
+    fun candidateConversion(heightInFeet: Boolean): CandidateConversion {
+        val defaults = org.nodescope.android.feature.coverage.EstimatedCoverageViewModel.defaultValues(heightInFeet)
+        fun default(key: String) = defaults.getValue(key).toDouble()
+        fun defaultHeight(key: String) = default(key).let { if (heightInFeet) it * 0.3048 else it }
+        // The tool's starting study area (EstimatedCoverageViewModel).
+        val radius = if (heightInFeet) 16_093 else 20_000
+        val spacing = if (heightInFeet) 1609 else 1000
+        val now = System.currentTimeMillis()
+        val containers = mutableListOf<StudyPlan>()
+        val converted = mutableListOf<SavedStudy>()
+        val notes = mutableListOf<String>()
+        plans.forEachIndexed { planIndex, plan ->
+            val created = now - planIndex
+            val container = StudyPlan(newStudyID(), plan.name, null, created, created)
+            containers += container
+            plan.sites.forEachIndexed { siteIndex, site ->
+                val label = "${plan.name} › ${site.name}"
+                if (site.latitude !in -85.0..85.0) {
+                    notes += "$label: too close to a pole for Coverage, so it isn't moved."
+                    return@forEachIndexed
+                }
+                val assumptions = site.assumptions
+                fun value(saved: Double?, fallback: Double, range: ClosedFloatingPointRange<Double>, what: String): Double {
+                    if (saved == null) return fallback
+                    if (saved in range) return saved
+                    notes += "$label: $what is outside what Coverage accepts; the default is used."
+                    return fallback
+                }
+                val loss = if (assumptions.cableLossDB == null && assumptions.additionalLossDB == null) default("txLoss")
+                    else (assumptions.cableLossDB ?: 0.0) + (assumptions.additionalLossDB ?: 0.0)
+                val coverage = SavedCoverage(
+                    SavedEndpoint(site.name, site.latitude, site.longitude, SavedAntenna(
+                        value(assumptions.antennaHeightMeters, defaultHeight("txHeight"), 1.0..3000.0, "antenna height"),
+                        assumptions.antennaGainDBi ?: default("txGain"), loss)),
+                    SavedAntenna(defaultHeight("rxHeight"), default("rxGain"), default("rxLoss")),
+                    value(assumptions.frequencyMHz, default("frequency"), 30.0..6000.0, "frequency"),
+                    assumptions.transmitPowerDBm ?: default("power"), default("sensitivity"), default("reserve"),
+                    radius, spacing, emptyList(), false)
+                // Later sites slightly older, so the plan lists them in their original order.
+                val time = created - siteIndex
+                val study = SavedStudy(newStudyID(), site.name, time, time, SavedStudy.Kind.COVERAGE, coverage = coverage, planID = container.id)
+                if (runCatching { study.validate() }.isFailure) notes += "$label: its values can't be used for Coverage, so it isn't moved."
+                else converted += study
+            }
+        }
+        return CandidateConversion(containers, converted, notes)
+    }
+
+    /** Adds the conversion's plans and studies and removes every candidate-site plan, in one save. */
+    suspend fun moveCandidateSites(conversion: CandidateConversion): Boolean =
+        commit(emptyList(), studies + conversion.studies, studyPlans + conversion.plans) != null
+
     suspend fun createStudyPlan(name: String, notes: String?): StudyPlan? {
         val now = System.currentTimeMillis()
         val plan = StudyPlan(newStudyID(), name, cleanNotes(notes), now, now)

@@ -57,6 +57,33 @@ class StudyPlanLibraryTest {
         assertTrue(inputsOnly.resultRef == null && inputsOnly.resultStatus == SavedResultStatus.NONE)
     }
 
+    @Test fun candidateSitesMoveIntoPlansAsInputsOnlyCoverage() = runTest {
+        val library = library()
+        val tower = CandidateSite(UUID.randomUUID().toString(), "Water tower", 30.27, -97.74,
+            CandidateSiteAssumptions(antennaHeightMeters = 30.0, frequencyMHz = 915.0, transmitPowerDBm = 20.0,
+                antennaGainDBi = 5.0, cableLossDB = 1.5, additionalLossDB = 0.5))
+        val ridge = CandidateSite(UUID.randomUUID().toString(), "Ridge", 30.40, -97.90, CandidateSiteAssumptions(frequencyMHz = 10_000.0))
+        val pole = CandidateSite(UUID.randomUUID().toString(), "Pole", 89.0, 0.0, CandidateSiteAssumptions())
+        assertTrue(library.savePlan(DeploymentPlan(UUID.randomUUID().toString(), "North sites", 1, 1, sites = listOf(tower, ridge, pole))))
+
+        val conversion = library.candidateConversion(heightInFeet = false)
+        assertEquals(2, conversion.notes.size)
+        assertTrue(library.moveCandidateSites(conversion))
+        assertTrue(library.plans.isEmpty())
+        val plan = library.studyPlans.single()
+        assertEquals("North sites", plan.name)
+        val studies = SavedPlansLibrary.sorted(library.studies, { it.id }, { it.updatedAtMilliseconds })
+        assertEquals(listOf("Water tower", "Ridge"), studies.map { it.name })
+        assertTrue(studies.all { it.planID == plan.id && it.kind == SavedStudy.Kind.COVERAGE && it.resultRef == null })
+        val moved = studies.first().coverage!!
+        assertEquals(SavedEndpoint("Water tower", 30.27, -97.74, SavedAntenna(30.0, 5.0, 2.0)), moved.transmitter)
+        assertEquals(915.0, moved.frequencyMHz, 0.0)
+        assertEquals(20.0, moved.transmitPowerDbm, 0.0)
+        assertTrue(moved.nodes.isEmpty() && moved.calculatedResult == null)
+        // Out of Coverage's range: the default frequency.
+        assertNotEquals(10_000.0, studies.last().coverage!!.frequencyMHz)
+    }
+
     @Test fun newPlanAndItsFirstStudyAreOneSave() = runTest {
         val library = library()
         assertNull(library.saveStudy(linkProfile("Ridge"), SaveMode.SAVE_AS_NEW, Destination.NewPlan, ""))

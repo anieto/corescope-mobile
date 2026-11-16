@@ -499,7 +499,8 @@ internal class EstimatedCoverageViewModel(
         spacingMeters = coverage.spacingMeters
         savedCatalog = coverage.nodes
         savedCatalogComplete = coverage.catalogComplete
-        usesSavedCatalog = true
+        // An inputs-only study saved without nodes (such as a moved candidate site) uses the current source.
+        usesSavedCatalog = !(coverage.nodes.isEmpty() && coverage.calculatedResult == null && study.resultRef == null)
         locatedNodes = coverage.nodes.map { MeshNode(it.nodeID, it.name, it.role, it.latitude, it.longitude, it.lastSeenMilliseconds?.let { ms ->
             java.time.Instant.ofEpochMilli(ms).toString() } ?: "") }
         sourceID = coverage.nodes.firstOrNull()?.sourceID ?: "saved"

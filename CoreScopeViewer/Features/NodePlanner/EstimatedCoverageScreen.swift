@@ -265,7 +265,8 @@ final class EstimatedCoverageModel {
         radioPresetID = nil
         savedCatalog = coverage.nodes
         savedCatalogComplete = coverage.catalogComplete
-        usesSavedCatalog = true
+        // An inputs-only study saved without nodes (such as a moved candidate site) uses the current source.
+        usesSavedCatalog = !(coverage.nodes.isEmpty && coverage.calculatedResult == nil && study.resultRef == nil)
         knownNodes = coverage.nodes.map { node in
             MeshNode(publicKey: node.nodeID, name: node.name, role: node.role,
                 lat: node.latitude, lon: node.longitude,

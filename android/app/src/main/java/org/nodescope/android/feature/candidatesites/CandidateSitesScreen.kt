@@ -38,21 +38,23 @@ import org.nodescope.android.feature.learn.LearnButton
 import java.util.UUID
 
 @Composable
-fun CandidateSitesScreen(model: CandidatePlansViewModel) {
+fun CandidateSitesScreen(model: CandidatePlansViewModel, heightInFeet: Boolean, onMoved: () -> Unit) {
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
+    var moving by remember { mutableStateOf<SavedPlansLibrary.CandidateConversion?>(null) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
         Column(Modifier.widthIn(max = 760.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             TermTitle("Deployment plans", GlossaryTerm.DEPLOYMENT_PLAN)
-            Text("Save proposed locations and equipment assumptions on this device. Coverage and potential-link analysis are not available here yet.")
+            Text("Candidate sites are moving into Saved Plans. Each list becomes a plan, and each site an Estimated Coverage study with its location and equipment, ready to calculate.")
+            if (model.loaded && model.plans.isNotEmpty())
+                Button(onClick = { moving = model.conversion(heightInFeet) }, enabled = !model.busy) { Text("Move to Saved Plans") }
             model.error?.let {
                 Text(it, color = MaterialTheme.colorScheme.error)
                 TextButton(onClick = model::reload, enabled = !model.busy) { Text("Reload plans") }
             }
             if (model.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (model.loaded) {
-                Button(onClick = { model.open(CandidatePlansViewModel.newPlan()) }, enabled = !model.busy && model.plans.size < 100) { Text("New plan") }
-                if (model.plans.isEmpty()) Text("No saved plans. Create one, then add your candidate sites.")
+                if (model.plans.isEmpty()) Text("No candidate sites. Plan new sites in Saved Plans.")
                 model.plans.forEach { plan -> key(plan.id) {
                     Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -73,6 +75,19 @@ fun CandidateSitesScreen(model: CandidatePlansViewModel) {
             model.plans.firstOrNull { it.id == id }?.let(model::delete)
             deleting = null
         }
+    }
+    moving?.let { conversion ->
+        AlertDialog(onDismissRequest = { moving = null }, title = { Text("Move to Saved Plans?") },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val plans = conversion.plans.size
+                    val studies = conversion.studies.size
+                    Text("Creates $plans ${if (plans == 1) "plan" else "plans"} with $studies Coverage ${if (studies == 1) "study" else "studies"}, using Coverage's defaults for the receiver and study area. Nothing is calculated. Candidate Sites is then removed.")
+                    conversion.notes.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+                }
+            },
+            confirmButton = { TextButton(onClick = { moving = null; model.move(conversion, onMoved) }) { Text("Move") } },
+            dismissButton = { TextButton(onClick = { moving = null }) { Text("Cancel") } })
     }
     model.editing?.let { initial -> key(initial.id) { CandidatePlanEditor(initial, model) } }
 }

@@ -19,6 +19,12 @@ class CandidatePlansViewModel(private val library: SavedPlansLibrary) : ViewMode
 
     init { viewModelScope.launch { library.load() } }
 
+    fun conversion(heightInFeet: Boolean) = library.candidateConversion(heightInFeet)
+
+    fun move(conversion: SavedPlansLibrary.CandidateConversion, moved: () -> Unit) {
+        viewModelScope.launch { if (library.moveCandidateSites(conversion)) moved() }
+    }
+
     fun reload() {
         if (busy || editing != null) return
         viewModelScope.launch { library.reload() }
