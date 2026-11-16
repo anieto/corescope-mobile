@@ -126,7 +126,7 @@ class SavedStudiesTest {
 
     @Test fun linkProfileSavesOncePlacedAndReopensWithoutAnalyzing() = withMain { _ ->
         val calls = mutableListOf<List<ProfileCoordinate>>()
-        val terrain = LinkTerrainProviding { calls += it; TerrainProfile(it.mapIndexed { index, _ -> ElevationPoint(index * 100.0, 100.0) }, 1000, "cache") }
+        val terrain = LinkTerrainProviding { calls += it; TerrainProfile(it.mapIndexed { index, _ -> ElevationPoint(index * 100.0, 100.0) }, 1000, "cache", it) }
         val model = LinkProfileViewModel(terrain, SavedStateHandle())
         assertNull(model.savedSnapshot())
         model.place("A", ProfileCoordinate(40.0, -90.0), "Hill")

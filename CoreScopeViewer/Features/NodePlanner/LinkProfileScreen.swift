@@ -1714,11 +1714,7 @@ private struct LinkProfileResultCard: View {
     }
 
     private var bearingText: String {
-        let bearing = NodePlannerLinkAnalyzer.initialBearing(
-            from: result.request.pointA,
-            to: result.request.pointB
-        )
-        return bearing.formatted(.number.precision(.fractionLength(0))) + "° true"
+        result.bearingDegrees.formatted(.number.precision(.fractionLength(0))) + "° true"
     }
 
     private var assumptionsSummary: String {
@@ -1818,12 +1814,8 @@ private struct LinkProfileTerrainCanvas: View {
         let totalDistance = analysis.result.distanceMeters
         let startHeight = first.elevationMeters + analysis.request.heightAMeters
         let endHeight = last.elevationMeters + analysis.request.heightBMeters
-        var distance = 0.0
-
         return terrain.enumerated().map { index, point in
-            if index > 0 {
-                distance += NodePlannerLinkAnalyzer.distance(from: terrain[index - 1].coordinate, to: point.coordinate)
-            }
+            let distance = analysis.sampleDistancesMeters[index]
             let distanceToEnd = max(0, totalDistance - distance)
             let fraction = totalDistance > 0 ? distance / totalDistance : 0
             let lineOfSight = startHeight + fraction * (endHeight - startHeight)

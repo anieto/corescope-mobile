@@ -41,6 +41,8 @@ class CoverageTerrainMosaicTest {
                         140.0
                     }
                     assertEquals(areaSamples == 337, result.area.workLimited)
+                    // Each batch records when it finished, even a partial one.
+                    assertNotNull(result.calculatedAtMilliseconds)
                     assertEquals(CoverageNodeState.inCoverage, result.nodes.run.status(node).state)
                     assertTrue(result.area.chargedSamples <= limits.areaSamples)
                     assertTrue(result.nodes.chargedTerrainEvaluations <= limits.nodeSamples)

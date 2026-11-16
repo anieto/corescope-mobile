@@ -51,6 +51,10 @@ struct NodePlannerLinkAnalyzerTests {
         #expect(analysis.engineVersion == 1)
         #expect(analysis.result.distanceMeters > 5_000)
         #expect(analysis.result.frequencyMHz == 915)
+        // Kept with the analysis for saved results: the distances the engine used and the bearing.
+        #expect(analysis.sampleDistancesMeters.count == 3 && analysis.sampleDistancesMeters.first == 0)
+        #expect(analysis.sampleDistancesMeters.last == analysis.result.distanceMeters)
+        #expect(analysis.bearingDegrees == NodePlannerLinkAnalyzer.initialBearing(from: pointA, to: pointB))
     }
 
     @Test func rejectsIdenticalEndpointsBeforeFetchingTerrain() async throws {

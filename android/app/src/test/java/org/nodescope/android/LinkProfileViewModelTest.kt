@@ -14,7 +14,7 @@ import org.nodescope.android.feature.linkprofile.*
 @OptIn(ExperimentalCoroutinesApi::class)
 class LinkProfileViewModelTest {
     private fun profile(coordinates: List<ProfileCoordinate>, elevation: Double) = TerrainProfile(
-        coordinates.mapIndexed { index, _ -> ElevationPoint(index * 100.0, elevation) }, 1000, "cache")
+        coordinates.mapIndexed { index, _ -> ElevationPoint(index * 100.0, elevation) }, 1000, "cache", coordinates)
 
     @Test fun coverageHandoffUsesSelectedEndpointAndLeavesLinkUntouched() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))

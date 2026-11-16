@@ -34,13 +34,16 @@ struct CoverageStudyResult: Sendable {
     let nodes: CoverageNodeBatchResult
     let model: CoverageStudyModel?
     let terrainSources: CoverageStudyTerrainSources?
+    /// When the batch that produced this result finished; nil for converted legacy results. Saving never changes it.
+    let calculatedAtMilliseconds: Int64?
     var hasPendingWork: Bool {
         area.pendingCount > 0 || nodes.run.nodesToEvaluate.contains { nodes.run.status(for: $0).reason == .processingLimit }
     }
 
     init(executionID: UUID, inputs: CoverageStudyInputs, limits: CoverageStudyLimits,
          area: CoverageAreaResult, nodes: CoverageNodeBatchResult,
-         terrainSources: CoverageStudyTerrainSources? = nil, model: CoverageStudyModel? = nil) {
+         terrainSources: CoverageStudyTerrainSources? = nil, model: CoverageStudyModel? = nil,
+         calculatedAtMilliseconds: Int64? = nil) {
         self.executionID = executionID
         self.inputs = inputs
         self.limits = limits
@@ -48,6 +51,7 @@ struct CoverageStudyResult: Sendable {
         self.nodes = nodes
         self.terrainSources = terrainSources
         self.model = model
+        self.calculatedAtMilliseconds = calculatedAtMilliseconds
     }
 }
 
@@ -88,7 +92,8 @@ enum CoverageStudy {
             cancelled: cancelled, shouldPause: shouldPause, resuming: resumingNodes, profile: profile, predictLoss: predict)
         if cancelled() { throw CoverageTerrainProfileFailure.cancelled }
         return CoverageStudyResult(executionID: executionID, inputs: inputs, limits: limits,
-                                   area: area, nodes: nodeResults)
+                                   area: area, nodes: nodeResults,
+                                   calculatedAtMilliseconds: Int64(Date().timeIntervalSince1970 * 1000))
     }
 }
 
@@ -137,6 +142,8 @@ extension CoverageStudyResult {
             area: CoverageAreaResult(cells: cells, chargedSamples: 0, chargedGeometry: 0,
                 workLimited: cells.contains { $0.state == .notComputed }),
             nodes: CoverageNodeBatchResult(run: run, chargedTerrainEvaluations: 0,
-                chargedGeometryEvaluations: 0, modelCalls: 0), terrainSources: terrainSources, model: model)
+                chargedGeometryEvaluations: 0, modelCalls: 0), terrainSources: terrainSources, model: model,
+            // Repricing reuses the calculated losses: it isn't a new calculation.
+            calculatedAtMilliseconds: calculatedAtMilliseconds)
     }
 }

@@ -19,7 +19,11 @@ import kotlin.math.*
 data class ProfileCoordinate(val latitude: Double, val longitude: Double) {
     init { require(latitude.isFinite() && longitude.isFinite() && latitude in -90.0..90.0 && longitude in -180.0..180.0) { "Enter valid latitude and longitude." } }
 }
-data class TerrainProfile(val points: List<ElevationPoint>, val fetchedAt: Long, val origin: String)
+/** [coordinates] are the requested sample positions, one per point, kept for saved results (B). */
+data class TerrainProfile(val points: List<ElevationPoint>, val fetchedAt: Long, val origin: String,
+                          val coordinates: List<ProfileCoordinate>) {
+    init { require(coordinates.size == points.size) }
+}
 data class LinkAnalysis(val request: PathRequest, val terrain: TerrainProfile, val result: PathResult, val bearing: Double, val calculatedAt: Long)
 
 object LinkGeometry {
@@ -99,7 +103,8 @@ class LinkTerrainProvider(
                 ElevationPoint(distance, resolved.getValue(coordinate).elevation)
             }
             TerrainProfile(points, coordinates.minOf { resolved.getValue(it).fetchedAt },
-                when { missing.isEmpty() -> "cache"; missing.size == coordinates.distinct().size -> "network"; else -> "mixed" })
+                when { missing.isEmpty() -> "cache"; missing.size == coordinates.distinct().size -> "network"; else -> "mixed" },
+                coordinates)
         }
     }
 }

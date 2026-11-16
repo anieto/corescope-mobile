@@ -20,7 +20,9 @@ data class CoverageStudyModel(val sourceRevision: String, val scenario: String)
 
 data class CoverageStudyResult(val executionID: UUID, val inputs: CoverageStudyInputs,
     val limits: CoverageStudyLimits, val area: CoverageAreaResult, val nodes: CoverageNodeBatchResult,
-    val terrainSources: CoverageStudyTerrainSources? = null, val model: CoverageStudyModel? = null) {
+    val terrainSources: CoverageStudyTerrainSources? = null, val model: CoverageStudyModel? = null,
+    /** When the batch that produced this result finished; null for converted legacy results. Saving never changes it. */
+    val calculatedAtMilliseconds: Long? = null) {
     val transmitter get() = inputs.transmitter
     val grid get() = inputs.grid
     val budget get() = inputs.budget
@@ -68,7 +70,9 @@ data class CoverageStudyResult(val executionID: UUID, val inputs: CoverageStudyI
         if (!run.complete()) invalid()
         return CoverageStudyResult(UUID.randomUUID(), updated, limits,
             CoverageAreaResult(java.util.Collections.unmodifiableList(cells), 0, 0, cells.any { it.state == CoverageAreaState.notComputed }),
-            CoverageNodeBatchResult(run, 0, 0, 0), terrainSources, model)
+            CoverageNodeBatchResult(run, 0, 0, 0), terrainSources, model,
+            // Repricing reuses the calculated losses: it isn't a new calculation.
+            calculatedAtMilliseconds)
     }
 }
 /** How far the calculation stage has got: map samples done of those needing a path, then the known nodes. */
@@ -108,6 +112,6 @@ object CoverageStudy {
             grid.radiusMeters.toDouble(), budget, limits.nodeSamples, limits.nodeGeometry, limits.nodeModelCalls,
             cancelled, shouldPause, resumingNodes, profile, predict)
         if (cancelled()) throw CoverageTerrainProfileFailure(CoverageTerrainProfileState.CANCELLED)
-        return CoverageStudyResult(executionID, inputs, limits, area, nodeResults)
+        return CoverageStudyResult(executionID, inputs, limits, area, nodeResults, calculatedAtMilliseconds = System.currentTimeMillis())
     }
 }

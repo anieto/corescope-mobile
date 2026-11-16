@@ -106,7 +106,8 @@ enum CoveragePreparedStudy {
             try Task.checkCancellation()
             let result = CoverageStudyResult(executionID: study.executionID, inputs: study.inputs,
                 limits: study.limits, area: study.area, nodes: study.nodes,
-                terrainSources: CoverageStudyTerrainSources(descriptors: descriptors), model: model)
+                terrainSources: CoverageStudyTerrainSources(descriptors: descriptors), model: model,
+                calculatedAtMilliseconds: study.calculatedAtMilliseconds)
             diagnostics.finish(result)
             return result
         } catch {

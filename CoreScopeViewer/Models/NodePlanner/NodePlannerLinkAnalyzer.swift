@@ -18,18 +18,18 @@ struct NodePlannerLinkAnalysis: Equatable, Sendable {
     let calculatedAt: Date
     let engineID: String
     let engineVersion: Int
+    /// Running distance from A to each terrain sample, as the engine used it. Kept rather than rebuilt
+    /// from coordinates, so a saved result classifies its stretches exactly as when it was calculated.
+    let sampleDistancesMeters: [Double]
+    /// Initial bearing from A to B, degrees true in [0, 360), as calculated.
+    let bearingDegrees: Double
 }
 
 extension NodePlannerLinkAnalysis {
     /// The analyzed path in stretches of one clearance, indexed into `terrain.samples`.
     var clearanceStretches: [NodePlannerClearanceStretch] {
-        let samples = terrain.samples
-        var distance = 0.0
-        let profile = samples.indices.map { index in
-            if index > 0 {
-                distance += NodePlannerLinkAnalyzer.distance(from: samples[index - 1].coordinate, to: samples[index].coordinate)
-            }
-            return NodePlannerElevationPoint(distanceMeters: distance, elevationMeters: samples[index].elevationMeters)
+        let profile = zip(sampleDistancesMeters, terrain.samples).map {
+            NodePlannerElevationPoint(distanceMeters: $0, elevationMeters: $1.elevationMeters)
         }
         return NodePlannerRFEngine.clearanceStretches(
             NodePlannerPathRequest(
@@ -129,7 +129,9 @@ struct NodePlannerLinkAnalyzer: Sendable {
             result: result,
             calculatedAt: now(),
             engineID: NodePlannerPathResult.engineID,
-            engineVersion: NodePlannerPathResult.engineVersion
+            engineVersion: NodePlannerPathResult.engineVersion,
+            sampleDistancesMeters: elevationProfile.map(\.distanceMeters),
+            bearingDegrees: Self.initialBearing(from: request.pointA, to: request.pointB)
         )
     }
 
