@@ -266,6 +266,7 @@
 		DA62BCB6C18DFED45D3A8A68 /* SavedPlansPackageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26F53FC96C7EEBF97039323C /* SavedPlansPackageTests.swift */; };
 		C194BEC07956246F82A7C3C0 /* SavedPlansExportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CF94A884FDF2049837A826D /* SavedPlansExportTests.swift */; };
 		9708A384DFD6098C324B6AFC /* SavedPlansImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0195932AD8CB6FB9E0F2AB1D /* SavedPlansImportTests.swift */; };
+		998DB8FA456B0D9B58F22CE4 /* CrossPlatformPackageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF401AADC0716FF705F28FB1 /* CrossPlatformPackageTests.swift */; };
 		8B74E1050C064AE686D045E1 /* PortableLinkProfileResultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22C9456FBE934BDCA0560C09 /* PortableLinkProfileResultTests.swift */; };
 		03072D44FFB2413A87EE4942 /* PortableCoverageResultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75320033F9BE4B5AAD348F51 /* PortableCoverageResultTests.swift */; };
 		EACC350C9F65CBA27A0B4D24 /* Channel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33B9A5F539B49B860F434D81 /* Channel.swift */; };
@@ -559,6 +560,7 @@
 		26F53FC96C7EEBF97039323C /* SavedPlansPackageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedPlansPackageTests.swift; sourceTree = "<group>"; };
 		1CF94A884FDF2049837A826D /* SavedPlansExportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedPlansExportTests.swift; sourceTree = "<group>"; };
 		0195932AD8CB6FB9E0F2AB1D /* SavedPlansImportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedPlansImportTests.swift; sourceTree = "<group>"; };
+		DF401AADC0716FF705F28FB1 /* CrossPlatformPackageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrossPlatformPackageTests.swift; sourceTree = "<group>"; };
 		22C9456FBE934BDCA0560C09 /* PortableLinkProfileResultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortableLinkProfileResultTests.swift; sourceTree = "<group>"; };
 		75320033F9BE4B5AAD348F51 /* PortableCoverageResultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortableCoverageResultTests.swift; sourceTree = "<group>"; };
 		FEE734231B3A2D9FDE62ADB6 /* MapViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapViewModel.swift; sourceTree = "<group>"; };
@@ -678,6 +680,7 @@
 				26F53FC96C7EEBF97039323C /* SavedPlansPackageTests.swift */,
 				1CF94A884FDF2049837A826D /* SavedPlansExportTests.swift */,
 				0195932AD8CB6FB9E0F2AB1D /* SavedPlansImportTests.swift */,
+				DF401AADC0716FF705F28FB1 /* CrossPlatformPackageTests.swift */,
 				22C9456FBE934BDCA0560C09 /* PortableLinkProfileResultTests.swift */,
 				75320033F9BE4B5AAD348F51 /* PortableCoverageResultTests.swift */,
 				D2E3F4A5B6C7D8E9F0A1B2C3 /* StudyPlanLibraryTests.swift */,
@@ -1167,6 +1170,7 @@
 				DA62BCB6C18DFED45D3A8A68 /* SavedPlansPackageTests.swift in Sources */,
 				C194BEC07956246F82A7C3C0 /* SavedPlansExportTests.swift in Sources */,
 				9708A384DFD6098C324B6AFC /* SavedPlansImportTests.swift in Sources */,
+				998DB8FA456B0D9B58F22CE4 /* CrossPlatformPackageTests.swift in Sources */,
 				8B74E1050C064AE686D045E1 /* PortableLinkProfileResultTests.swift in Sources */,
 				03072D44FFB2413A87EE4942 /* PortableCoverageResultTests.swift in Sources */,
 				C1D2E3F4A5B6C7D8E9F0A1B2 /* StudyPlanLibraryTests.swift in Sources */,

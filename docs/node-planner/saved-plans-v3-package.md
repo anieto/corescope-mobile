@@ -1,6 +1,6 @@
 # Saved Plans v3 export package (deliverable D)
 
-Status: drafted November 16, 2026 as D's first step. The format, limits and reader rules come before either app's parser, as [grouped-saved-plans-plan.md](grouped-saved-plans-plan.md) §11 requires. Reference reader and cases: `shared/fixtures/saved-plans/make-package-fixtures.py` → `packages/package-cases-v1.json` (68 cases).
+Status: drafted November 16, 2026 as D's first step and implemented on both platforms the same day ([saved-plans-v3-d.md](saved-plans-v3-d.md) has the tester notes). The format, limits and reader rules came before either app's parser, as [grouped-saved-plans-plan.md](grouped-saved-plans-plan.md) §11 requires. Reference reader and cases: `shared/fixtures/saved-plans/make-package-fixtures.py` → `packages/package-cases-v1.json` (68 cases), which also validates the packages each app records from the reference library (`packages/<platform>-library-v1.nodescope`).
 
 ## File
 

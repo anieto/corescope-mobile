@@ -570,6 +570,14 @@ def main():
                                   manifestBytes=MAX_MANIFEST_BYTES, expandedBytes=MAX_EXPANDED_TOTAL, resultBytes=RESULT_LIMITS),
                    'cases': checked}, handle, indent=1, ensure_ascii=False)
         handle.write('\n')
+    # Packages the apps recorded from the reference library (CrossPlatformPackageTest/s): they must read as valid here too.
+    for platform in ('android', 'ios'):
+        path = os.path.join(out, f'{platform}-library-v1.nodescope')
+        if os.path.exists(path):
+            with open(path, 'rb') as handle:
+                expect, reason, _ = outcome(handle.read())
+            need(expect == 'valid', f'{platform}-library-v1.nodescope: {expect} ({reason})')
+            print(f'{platform}-library-v1.nodescope: valid')
     counts = {k: sum(c['expect'] == k for c in checked) for k in ('valid', 'resultUnusable', 'future', 'invalid')}
     size = os.path.getsize(os.path.join(out, 'package-cases-v1.json'))
     print(f'{len(checked)} cases {counts}; {size:,} bytes')
