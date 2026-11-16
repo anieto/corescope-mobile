@@ -11,6 +11,8 @@ struct LinkCoverageSeed: Identifiable {
     let frequencyMHz: Double
     let transmitPowerDbm: Double
     let sensitivityDbm: Double
+    /// Where to suggest saving the new coverage study.
+    var planID: String?
 }
 
 struct EstimatedCoverageScreen: View {
@@ -27,8 +29,9 @@ struct EstimatedCoverageScreen: View {
     /// Shared with the live map and Link Profile: picking a style here changes them all.
     @AppStorage(MapDisplayStyle.defaultsKey) private var mapDisplayStyle = MapDisplayStyle.standard
 
-    init(savedStudy: SavedStudy? = nil, seed: LinkCoverageSeed? = nil) {
+    init(savedStudy: SavedStudy? = nil, seed: LinkCoverageSeed? = nil, planID: String? = nil) {
         let model = EstimatedCoverageModel()
+        model.suggestedPlanID = seed?.planID ?? planID
         if let savedStudy { model.restore(savedStudy) }
         if let seed {
             model.latitude = seed.point.latitude
@@ -202,6 +205,7 @@ enum CoverageSetupProblem: Equatable {
 final class EstimatedCoverageModel {
     var opensSetup = false
     var savedStudy: SavedStudy?
+    var suggestedPlanID: String?
     var usesSavedCatalog = false
     private var savedCatalog: [SavedCoverageNode] = []
     private var calculatedCatalog: [SavedCoverageNode] = []
@@ -222,7 +226,7 @@ final class EstimatedCoverageModel {
         let now = Int64(Date().timeIntervalSince1970 * 1000)
         let study = SavedStudy(id: savedStudy?.id ?? UUID().uuidString.lowercased(),
             name: savedStudy?.name ?? "Estimated Coverage", createdAtMilliseconds: savedStudy?.createdAtMilliseconds ?? now,
-            updatedAtMilliseconds: now, kind: .coverage, coverage: coverage)
+            updatedAtMilliseconds: now, kind: .coverage, coverage: coverage, revision: savedStudy?.revision)
         return (try? study.validate()) != nil ? study : nil
     }
 
@@ -1236,7 +1240,7 @@ private struct CoverageDetails: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SavedStudyActions(kind: .coverage, snapshot: model.savedSnapshot) { model.savedStudy = $0 }
+            SavedStudyActions(kind: .coverage, suggestedPlanID: model.suggestedPlanID, snapshot: model.savedSnapshot) { model.savedStudy = $0 }
             if model.usesSavedCatalog {
                 Text(model.savedStudy?.coverage?.calculatedResult == nil
                     ? "Saved node locations · Inputs-only save" : "Saved node locations · Saved coverage results").font(.caption).foregroundStyle(.secondary)

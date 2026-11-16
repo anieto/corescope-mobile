@@ -17,8 +17,10 @@ struct LinkProfileScreen: View {
     /// Shared with the live map: picking a style here changes both.
     @State private var mapDisplayStyle = MapDisplayStyle.persisted
 
-    init(savedStudy: SavedStudy? = nil) {
+    /// `planID` is the plan this tool was opened from: the suggested place to save a new study.
+    init(savedStudy: SavedStudy? = nil, planID: String? = nil) {
         let model = LinkProfileModel()
+        model.suggestedPlanID = planID
         if let savedStudy { model.restore(savedStudy) }
         _model = State(initialValue: model)
     }
@@ -826,6 +828,7 @@ enum LinkProfileRadioPreset: String, CaseIterable, Identifiable {
 @Observable
 final class LinkProfileModel {
     var savedStudy: SavedStudy?
+    var suggestedPlanID: String?
     var awaitsExplicitCalculation = false
     var refractionK = 4.0 / 3.0
     var sampleCount: Int?
@@ -842,7 +845,7 @@ final class LinkProfileModel {
         let now = Int64(Date().timeIntervalSince1970 * 1000)
         let study = SavedStudy(id: savedStudy?.id ?? UUID().uuidString.lowercased(),
             name: savedStudy?.name ?? "Link Profile", createdAtMilliseconds: savedStudy?.createdAtMilliseconds ?? now,
-            updatedAtMilliseconds: now, kind: .linkProfile, linkProfile: inputs)
+            updatedAtMilliseconds: now, kind: .linkProfile, linkProfile: inputs, revision: savedStudy?.revision)
         return (try? study.validate()) != nil ? study : nil
     }
 
@@ -905,7 +908,14 @@ final class LinkProfileModel {
                 antenna: SavedAntenna(heightMeters: isA ? heightA : heightB,
                     gainDbi: isA ? gainADB : gainBDB, lossDb: isA ? lossADB : lossBDB)),
             frequencyMHz: frequencyMHz, transmitPowerDbm: transmitPowerDBm,
-            sensitivityDbm: receiverSensitivityDBm)
+            sensitivityDbm: receiverSensitivityDBm, planID: coveragePlanID)
+    }
+
+    /// Coverage is saved where this Link Profile now is, or else where it was opened from.
+    private var coveragePlanID: String? {
+        guard let savedStudy,
+              let current = CandidatePlansModel.shared.studies.first(where: { $0.id == savedStudy.id }) else { return suggestedPlanID }
+        return current.planID
     }
 
     var radioPreset = LinkProfileRadioPreset.unitedStatesNarrow
@@ -1364,7 +1374,7 @@ private struct LinkProfileDetails: View {
         VStack(alignment: .leading, spacing: 12) {
             LinkProfilePointCard(model: model, endpoint: .pointA) { activeEndpoint = .pointA }
             LinkProfilePointCard(model: model, endpoint: .pointB) { activeEndpoint = .pointB }
-            SavedStudyActions(kind: .linkProfile, snapshot: model.savedSnapshot) { model.savedStudy = $0 }
+            SavedStudyActions(kind: .linkProfile, suggestedPlanID: model.suggestedPlanID, snapshot: model.savedSnapshot) { model.savedStudy = $0 }
             LinkProfileRadioSettings(model: model)
             if let result = model.result {
                 LinkProfileResultCard(result: result)

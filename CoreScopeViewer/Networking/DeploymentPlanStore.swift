@@ -81,18 +81,24 @@ actor DeploymentPlanStore {
     private func version3(_ document: DeploymentPlanDocument, previous: DeploymentPlanDocument,
                           payloads: inout [String: Data]) throws -> DeploymentPlanDocument {
         let old = Dictionary(previous.studies.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let known = Dictionary(previous.studies.compactMap { $0.resultRef.map { ($0.sha256, $0) } }, uniquingKeysWith: { first, _ in first })
         let studies: [SavedStudy] = document.studies.map { input in
             var study = input
             let before = old[study.id]
             if let data = study.coverage?.calculatedResult {
                 let sha = Self.sha256(data)
                 payloads[sha] = data
-                // Unchanged bytes keep the reference they were saved under (a migrated result keeps its format).
-                study.resultRef = before?.resultRef?.sha256 == sha ? before?.resultRef
-                    : ResultRef(format: ResultRef.iosLegacy, version: 1, byteLength: data.count, sha256: sha, inputFingerprint: nil)
+                // Unchanged bytes keep the reference they were saved under (a migrated result keeps its format);
+                // a new record with bytes the library already holds, such as a duplicate, shares that reference.
+                let existing = before == nil ? known[sha] : before?.resultRef.flatMap { $0.sha256 == sha ? $0 : nil }
+                study.resultRef = existing
+                    ?? ResultRef(format: ResultRef.iosLegacy, version: 1, byteLength: data.count, sha256: sha, inputFingerprint: nil)
             } else if let before, before.resultRef != nil, Self.sameInputs(before, study) {
                 // A result that couldn't be read here stays attached while the calculation inputs are unchanged.
                 study.resultRef = before.resultRef
+            } else if before == nil, let ref = study.resultRef, known[ref.sha256] == ref {
+                // A duplicate shares a reference the library already holds, even one this device can't read.
+                study.resultRef = ref
             } else {
                 study.resultRef = nil
             }
