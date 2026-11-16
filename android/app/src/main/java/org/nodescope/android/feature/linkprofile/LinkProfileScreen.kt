@@ -325,7 +325,7 @@ private fun LinkDetails(model: LinkProfileViewModel, state: LinkProfileViewModel
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         // Read state so Save enables as soon as both points are placed.
         org.nodescope.android.feature.candidatesites.SavedStudyActions(
-            snapshot = { state.fields.let { model.savedSnapshot() } }, didSave = { model.savedStudy = it }, onOpen = onOpenSaved,
+            snapshot = { state.fields.let { model.savedSnapshot() } }, didSave = { model.savedStudy = it; model.markClean() }, onOpen = onOpenSaved,
             suggestedPlanID = model.suggestedPlanID)
         listOf("A", "B").forEach { endpoint -> PointCard(model, state, endpoint, distanceUnit, onMove, onCoverage) }
         Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {

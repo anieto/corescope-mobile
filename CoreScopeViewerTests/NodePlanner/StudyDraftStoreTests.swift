@@ -72,6 +72,25 @@ struct StudyDraftStoreTests {
         #expect(FileManager.default.fileExists(atPath: stray.path))
     }
 
+    @MainActor @Test func unsavedLinkProfileWorkIsKeptAsADraftUntilSaved() throws {
+        let model = LinkProfileModel()
+        model.markClean()
+        let session = StudyDraftSession(kind: .linkProfile, store: store)
+        // Nothing placed yet: nothing to keep.
+        session.flush(model.draftContent(), host: "analyzer.example", region: "AUS")
+        #expect(store.list().isEmpty)
+        model.latitudeA = 40
+        model.longitudeA = -90
+        model.nameA = "Hill"
+        session.flush(model.draftContent(), host: "analyzer.example", region: "AUS")
+        let draft = try #require(store.list().first)
+        #expect(draft.title == "Hill" && draft.editor["latitudeA"] == "40.0" && draft.host == "analyzer.example")
+        // Saved: the draft goes.
+        model.markClean()
+        session.flush(model.draftContent(), host: "analyzer.example", region: "AUS")
+        #expect(store.list().isEmpty)
+    }
+
     @Test func aFullStoreRefusesNewDraftsButNeverEvicts() throws {
         let drafts = try (1...StudyDraftStore.maximumDrafts).map { try store.save(draft("Draft \($0)", updated: Int64($0)), result: nil) }
         #expect(throws: StudyDraftStoreError.full) { try store.save(draft("One more"), result: nil) }

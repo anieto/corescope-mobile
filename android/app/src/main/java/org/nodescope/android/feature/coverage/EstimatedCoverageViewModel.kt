@@ -39,7 +39,7 @@ internal class EstimatedCoverageViewModel(
     val heightInFeet: Boolean,
     /** Where the last calculation report is kept (app files, not the cache); null keeps no report. */
     private val diagnosticsFile: File? = null,
-) : ViewModel() {
+) : ViewModel(), org.nodescope.android.feature.candidatesites.StudyDraftSource {
     /** The last transmitter placement, offered back for a few seconds. */
     data class Undo(val id: Long, val message: String, val latitude: String, val longitude: String, val name: String?)
 
@@ -118,6 +118,40 @@ internal class EstimatedCoverageViewModel(
             snapshotFlow { activeResult?.executionID }.distinctUntilChanged().collectLatest { renderOverlay() }
         }
         viewModelScope.launch { readReport() }
+    }
+
+    // MARK: Recovery drafts (deliverable C)
+
+    override val draftKind get() = org.nodescope.android.feature.candidatesites.SavedStudy.Kind.COVERAGE
+    /** The editor as last opened or saved; differences from it are unsaved work. */
+    private var cleanEditor: Map<String, String>? = null
+    private var encodedResult: Pair<CoverageStudyResult, ByteArray?>? = null
+
+    /** Everything the setup holds, as text, including incomplete numbers. */
+    fun draftEditor(): Map<String, String> = fields + mapOf("radiusMeters" to radiusMeters.toString(),
+        "spacingMeters" to spacingMeters.toString(), "transmitterName" to (transmitterName ?: ""),
+        "usesSavedCatalog" to usesSavedCatalog.toString())
+
+    /** What's open now counts as saved: on opening, and after a successful Save. */
+    fun markClean() { cleanEditor = draftEditor() }
+
+    override fun draftContent(): org.nodescope.android.feature.candidatesites.DraftContent? {
+        val editor = draftEditor()
+        if (editor == cleanEditor || (savedStudy == null && coordinate == null)) return null
+        val result = activeResult
+        val payload = result?.let { current ->
+            encodedResult?.takeIf { it.first === current }?.second ?: runCatching { PortableCoverageResult.encode(current) }.getOrNull()
+                .also { encodedResult = current to it }
+        }
+        // The captured catalog stays with the draft until an explicit refresh.
+        val catalog = when {
+            usesSavedCatalog -> savedCatalog
+            result != null -> calculatedCatalog
+            else -> null
+        }
+        val title = savedStudy?.name ?: transmitterName ?: coordinate?.let { "%.4f, %.4f".format(it.latitude, it.longitude) } ?: "Estimated Coverage"
+        return org.nodescope.android.feature.candidatesites.DraftContent(title, editor, suggestedPlanID, savedStudy?.id, savedStudy?.revision, catalog,
+            savedCatalogComplete, payload)
     }
 
     // MARK: Derived state

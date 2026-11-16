@@ -23,6 +23,7 @@ struct EstimatedCoverageScreen: View {
     @Environment(\.isHingedDevice) private var isHingedDevice
     @Environment(\.scenePhase) private var scenePhase
     @State private var model = EstimatedCoverageModel()
+    @State private var draftSession = StudyDraftSession(kind: .coverage)
     @State private var catalog = FieldToolsViewModel(reference: nil)
     @State private var isWideLayout = false
     @State private var showsNodes = false
@@ -33,6 +34,8 @@ struct EstimatedCoverageScreen: View {
         let model = EstimatedCoverageModel()
         model.suggestedPlanID = seed?.planID ?? planID
         if let savedStudy { model.restore(savedStudy) }
+        // Opened empty or from a saved study: that's the clean state. A seeded study is unsaved work.
+        if seed == nil { model.markClean() }
         if let seed {
             model.latitude = seed.point.latitude
             model.longitude = seed.point.longitude
@@ -108,6 +111,7 @@ struct EstimatedCoverageScreen: View {
         // editor pane carries the heading.
         .navigationTitle(usesSystemBar ? "" : "Estimated Coverage")
         .navigationBarTitleDisplayMode(.inline)
+        .studyDraftAutosave(draftSession, source: model, host: settings.host, region: regionFilter.selectedRegion)
         .toolbar(usesSystemBar ? .visible : .hidden, for: .navigationBar)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
@@ -206,6 +210,9 @@ final class EstimatedCoverageModel {
     var opensSetup = false
     var savedStudy: SavedStudy?
     var suggestedPlanID: String?
+    /// The setup as last opened or saved (recovery drafts); differences from it are unsaved work.
+    @ObservationIgnored var cleanDraftEditor: [String: String]?
+    @ObservationIgnored var encodedDraftResult: (UUID, Data?)?
     var usesSavedCatalog = false
     private var savedCatalog: [SavedCoverageNode] = []
     private var calculatedCatalog: [SavedCoverageNode] = []
@@ -1244,7 +1251,10 @@ private struct CoverageDetails: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SavedStudyActions(kind: .coverage, suggestedPlanID: model.suggestedPlanID, snapshot: model.savedSnapshot) { model.savedStudy = $0 }
+            SavedStudyActions(kind: .coverage, suggestedPlanID: model.suggestedPlanID, snapshot: model.savedSnapshot) {
+                model.savedStudy = $0
+                model.markClean()
+            }
             if model.usesSavedCatalog {
                 Text(model.savedStudy?.coverage?.calculatedResult == nil
                     ? "Saved node locations · Inputs-only save" : "Saved node locations · Saved coverage results").font(.caption).foregroundStyle(.secondary)
@@ -2004,5 +2014,47 @@ private struct CoverageKnownNodesSheet: View {
             .navigationTitle("Known nodes")
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
+    }
+}
+
+// MARK: - Recovery drafts (deliverable C)
+
+extension EstimatedCoverageModel: StudyDraftSource {
+    var draftKind: SavedStudy.Kind { .coverage }
+
+    /// Everything the setup holds, as text.
+    func draftEditor() -> [String: String] {
+        func text(_ value: Double?) -> String { value.map { "\($0)" } ?? "" }
+        return ["latitude": text(latitude), "longitude": text(longitude), "transmitterName": transmitterName ?? "",
+                "transmitHeightMeters": text(transmitHeightMeters), "transmitGainDbi": text(transmitGainDbi),
+                "transmitLossDb": text(transmitLossDb), "receiveHeightMeters": text(receiveHeightMeters),
+                "receiveGainDbi": text(receiveGainDbi), "receiveLossDb": text(receiveLossDb), "frequencyMHz": text(frequencyMHz),
+                "transmitPowerDbm": text(transmitPowerDbm), "sensitivityDbm": text(sensitivityDbm), "reserveDb": text(reserveDb),
+                "radiusMeters": String(radiusMeters), "spacingMeters": String(spacingMeters),
+                "radioPresetID": radioPresetID ?? "", "usesSavedCatalog": String(usesSavedCatalog)]
+    }
+
+    /// What's open now counts as saved: on opening, and after a successful Save.
+    func markClean() { cleanDraftEditor = draftEditor() }
+
+    func draftContent() -> DraftContent? {
+        let editor = draftEditor()
+        guard editor != cleanDraftEditor, savedStudy != nil || latitude != nil else { return nil }
+        let result = activeResult
+        var payload: Data?
+        if let result {
+            if let cached = encodedDraftResult, cached.0 == result.executionID { payload = cached.1 }
+            else {
+                payload = try? PortableCoverageResult.encode(result)
+                encodedDraftResult = (result.executionID, payload)
+            }
+        }
+        // The captured catalog stays with the draft until an explicit refresh.
+        let catalog: [SavedCoverageNode]? = usesSavedCatalog ? savedCatalog : result != nil ? calculatedCatalog : nil
+        let place = latitude.flatMap { lat in longitude.map { String(format: "%.4f, %.4f", lat, $0) } }
+        return DraftContent(title: savedStudy?.name ?? transmitterName ?? place ?? String(localized: "Estimated Coverage"),
+                            editor: editor, planID: suggestedPlanID, savedStudyID: savedStudy?.id,
+                            savedRevision: savedStudy?.revision, catalog: catalog, catalogComplete: savedCatalogComplete,
+                            result: payload)
     }
 }

@@ -15,7 +15,7 @@ import kotlin.coroutines.coroutineContext
 
 /** [distanceUnit] picks the default antenna height: 20 ft in imperial, 6 m in metric. */
 class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private val saved: SavedStateHandle,
-    distanceUnit: DistanceUnit = DistanceUnit.METRIC) : ViewModel() {
+    distanceUnit: DistanceUnit = DistanceUnit.METRIC) : ViewModel(), org.nodescope.android.feature.candidatesites.StudyDraftSource {
     companion object {
         val defaults = linkedMapOf(
             "Latitude A" to "", "Longitude A" to "", "Height A (m)" to "10",
@@ -58,6 +58,33 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
     var savedStudy: org.nodescope.android.feature.candidatesites.SavedStudy? = null
     /** The plan this tool was opened from: the suggested place to save a new study. */
     var suggestedPlanID: String? = null
+
+    // MARK: Recovery drafts (deliverable C)
+
+    override val draftKind get() = org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE
+    /** The editor as last opened or saved; differences from it are unsaved work. */
+    private var cleanEditor: Map<String, String>? = null
+    private var encodedResult: Pair<LinkAnalysis, ByteArray?>? = null
+
+    /** Everything the editor holds, as text: fields (including incomplete numbers), endpoint names and preset. */
+    fun draftEditor(): Map<String, String> = mutable.value.let { state ->
+        state.fields + state.names.mapKeys { "Name ${it.key}" } + ("preset" to state.preset)
+    }
+
+    /** What's open now counts as saved: on opening, and after a successful Save. */
+    fun markClean() { cleanEditor = draftEditor() }
+
+    override fun draftContent(): org.nodescope.android.feature.candidatesites.DraftContent? {
+        val editor = draftEditor()
+        if (editor == cleanEditor || (savedStudy == null && coordinate("A") == null && coordinate("B") == null)) return null
+        val result = mutable.value.result?.let { analysis ->
+            encodedResult?.takeIf { it.first === analysis }?.second ?: savedSnapshot()?.linkProfileResult
+                ?.let(java.util.Base64.getDecoder()::decode).also { encodedResult = analysis to it }
+        }
+        val names = mutable.value.names
+        val title = savedStudy?.name ?: listOfNotNull(names["A"], names["B"]).joinToString(" → ").ifEmpty { "Link Profile" }
+        return org.nodescope.android.feature.candidatesites.DraftContent(title, editor, suggestedPlanID, savedStudy?.id, savedStudy?.revision, result = result)
+    }
     private var job: Job? = null
     private val elevationJobs = mutableMapOf<String, Job>()
 

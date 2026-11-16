@@ -8,6 +8,7 @@ struct LinkProfileScreen: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var model = LinkProfileModel()
+    @State private var draftSession = StudyDraftSession(kind: .linkProfile)
     @State private var catalog = FieldToolsViewModel(reference: nil)
     /// A point being chosen anew from its card or pin; otherwise a touch & hold places the first
     /// missing point, so a new profile needs no arming.
@@ -22,6 +23,7 @@ struct LinkProfileScreen: View {
         let model = LinkProfileModel()
         model.suggestedPlanID = planID
         if let savedStudy { model.restore(savedStudy) }
+        model.markClean()
         _model = State(initialValue: model)
     }
 
@@ -108,6 +110,7 @@ struct LinkProfileScreen: View {
             if let seed = model.coverageSeed { EstimatedCoverageScreen(seed: seed) }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .studyDraftAutosave(draftSession, source: model, host: settings.host, region: regionFilter.selectedRegion)
         .toolbar(usesSystemBar ? .visible : .hidden, for: .navigationBar)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
@@ -829,6 +832,9 @@ enum LinkProfileRadioPreset: String, CaseIterable, Identifiable {
 final class LinkProfileModel {
     var savedStudy: SavedStudy?
     var suggestedPlanID: String?
+    /// The editor as last opened or saved (recovery drafts); differences from it are unsaved work.
+    @ObservationIgnored var cleanDraftEditor: [String: String]?
+    @ObservationIgnored var encodedDraftResult: (NodePlannerLinkAnalysis, Data?)?
     /// Why a reopened study's saved result isn't shown; nil when there's none or it's shown.
     var savedResultNote: LocalizedStringResource?
     var awaitsExplicitCalculation = false
@@ -1391,7 +1397,10 @@ private struct LinkProfileDetails: View {
         VStack(alignment: .leading, spacing: 12) {
             LinkProfilePointCard(model: model, endpoint: .pointA) { activeEndpoint = .pointA }
             LinkProfilePointCard(model: model, endpoint: .pointB) { activeEndpoint = .pointB }
-            SavedStudyActions(kind: .linkProfile, suggestedPlanID: model.suggestedPlanID, snapshot: model.savedSnapshot) { model.savedStudy = $0 }
+            SavedStudyActions(kind: .linkProfile, suggestedPlanID: model.suggestedPlanID, snapshot: model.savedSnapshot) {
+                model.savedStudy = $0
+                model.markClean()
+            }
             LinkProfileRadioSettings(model: model)
             if let result = model.result {
                 LinkProfileResultCard(result: result)
@@ -2216,5 +2225,42 @@ private struct LinkProfileMetricRow: View {
             Text(value)
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
+    }
+}
+
+// MARK: - Recovery drafts (deliverable C)
+
+extension LinkProfileModel: StudyDraftSource {
+    var draftKind: SavedStudy.Kind { .linkProfile }
+
+    /// Everything the editor holds, as text.
+    func draftEditor() -> [String: String] {
+        func text(_ value: Double?) -> String { value.map { "\($0)" } ?? "" }
+        return ["latitudeA": text(latitudeA), "longitudeA": text(longitudeA), "latitudeB": text(latitudeB),
+                "longitudeB": text(longitudeB), "nameA": nameA ?? "", "nameB": nameB ?? "",
+                "heightA": text(heightA), "heightB": text(heightB), "gainA": text(gainADB), "gainB": text(gainBDB),
+                "lossA": text(lossADB), "lossB": text(lossBDB), "frequencyMHz": text(frequencyMHz),
+                "transmitPowerDbm": text(transmitPowerDBm), "sensitivityDbm": text(receiverSensitivityDBm),
+                "refractionK": text(refractionK), "sampleCount": sampleCount.map(String.init) ?? "",
+                "radioPreset": String(describing: radioPreset)]
+    }
+
+    /// What's open now counts as saved: on opening, and after a successful Save.
+    func markClean() { cleanDraftEditor = draftEditor() }
+
+    func draftContent() -> DraftContent? {
+        let editor = draftEditor()
+        guard editor != cleanDraftEditor, savedStudy != nil || latitudeA != nil || latitudeB != nil else { return nil }
+        var payload: Data?
+        if let result {
+            if let cached = encodedDraftResult, cached.0 == result { payload = cached.1 }
+            else {
+                payload = savedSnapshot()?.linkProfileResult
+                encodedDraftResult = (result, payload)
+            }
+        }
+        let title = savedStudy?.name ?? [nameA, nameB].compactMap { $0 }.joined(separator: " → ")
+        return DraftContent(title: title.isEmpty ? String(localized: "Link Profile") : title, editor: editor,
+                            planID: suggestedPlanID, savedStudyID: savedStudy?.id, savedRevision: savedStudy?.revision, result: payload)
     }
 }

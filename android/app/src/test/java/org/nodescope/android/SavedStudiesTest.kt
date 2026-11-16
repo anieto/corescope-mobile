@@ -124,6 +124,58 @@ class SavedStudiesTest {
         assertEquals("1", metric.fields["txLoss"])
     }
 
+    @Test fun unsavedLinkProfileWorkIsKeptAsADraftUntilSaved() = withMain { root ->
+        val terrain = LinkTerrainProviding { TerrainProfile(it.mapIndexed { index, _ -> ElevationPoint(index * 100.0, 100.0) }, 1000, "cache", it) }
+        val model = LinkProfileViewModel(terrain, SavedStateHandle()).apply { markClean() }
+        val store = StudyDraftStore(root)
+        val session = StudyDraftSession(store, java.util.UUID.randomUUID().toString(), SavedStudy.Kind.LINK_PROFILE)
+        // Nothing placed yet: nothing to keep.
+        session.flush(model.draftContent(), "analyzer.example", "AUS")
+        assertTrue(store.list().isEmpty())
+        model.place("A", ProfileCoordinate(40.0, -90.0), "Hill")
+        model.edit("Height A (m)", "12.")
+        session.flush(model.draftContent(), "analyzer.example", "AUS")
+        val draft = store.list().single()
+        assertEquals("Hill", draft.title)
+        assertEquals("12.", draft.editor["Height A (m)"])
+        assertEquals("analyzer.example" to "AUS", draft.host to draft.region)
+        // Saved: the draft goes.
+        model.markClean()
+        session.flush(model.draftContent(), "analyzer.example", "AUS")
+        assertTrue(store.list().isEmpty())
+        // A result is kept with the draft once calculated.
+        model.place("B", ProfileCoordinate(40.1, -90.1), null)
+        advanceUntilIdle()
+        session.flush(model.draftContent(), "analyzer.example", "AUS")
+        val calculated = store.list().single()
+        assertNotNull(store.result(calculated))
+    }
+
+    @Test fun unsavedCoverageWorkKeepsItsCatalogAndResult() = withMain { root ->
+        val model = coverageModel(root).apply { markClean() }
+        assertNull(model.draftContent())
+        model.setRadius(5000)
+        model.setSpacing(1000)
+        model.offerCatalog(nodes, "source-a")
+        model.place(Coordinate(10.0, 20.0), "Ridge")
+        val content = requireNotNull(model.draftContent())
+        assertEquals("Ridge", content.title)
+        assertEquals("5000", content.editor["radiusMeters"])
+        assertNull(content.result)
+        // A saved study reopened with its result keeps its captured nodes and the result in the draft.
+        val placed = placedModel(root)
+        val inputsOnly = requireNotNull(placed.savedSnapshot())
+        val payload = requireNotNull(PortableCoverageResult.encode(result(placed)))
+        val study = inputsOnly.copy(coverage = inputsOnly.coverage!!.copy(calculatedResult = java.util.Base64.getEncoder().encodeToString(payload)))
+        val reopened = coverageModel(root).apply { restore(study); markClean() }
+        assertNull(reopened.draftContent())
+        assertNotNull(reopened.activeResult)
+        reopened.setRadius(10_000)
+        val edited = requireNotNull(reopened.draftContent())
+        assertEquals(study.coverage!!.nodes, edited.catalog)
+        assertEquals(study.id, edited.savedStudyID)
+    }
+
     @Test fun aCalculatedLinkProfileSavesItsResultAndReopensItWithoutTerrain() = withMain { root ->
         val calls = mutableListOf<List<ProfileCoordinate>>()
         val terrain = LinkTerrainProviding { calls += it; TerrainProfile(it.mapIndexed { index, _ -> ElevationPoint(index * 100.0, 100.0 + index) }, 1000, "network", it) }

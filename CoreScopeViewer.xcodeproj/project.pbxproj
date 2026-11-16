@@ -53,6 +53,7 @@
 		31152DE03069FCCF00146B37 /* AdaptiveListDetailNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31152DDF3069FCCF00146B37 /* AdaptiveListDetailNavigation.swift */; };
 		311598FB30A5606300C0B35D /* SavedStudy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311598FA30A5606300C0B35D /* SavedStudy.swift */; };
 		311598FD30A560A900C0B35D /* SavedPlansScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311598FC30A560A900C0B35D /* SavedPlansScreen.swift */; };
+		AC37D71E4C9943229A34B498 /* StudyDraftAutosave.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88A174E7580447ED8548FA06 /* StudyDraftAutosave.swift */; };
 		311598FF30A5612A00C0B35D /* SavedStudyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311598FE30A5612A00C0B35D /* SavedStudyTests.swift */; };
 		3115990130A561A000C0B35D /* SavedStudyRestorationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3115990030A561A000C0B35D /* SavedStudyRestorationTests.swift */; };
 		3115990330A56A3800C0B35D /* CoverageMarginLegend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3115990230A56A3800C0B35D /* CoverageMarginLegend.swift */; };
@@ -327,6 +328,7 @@
 		31152DDF3069FCCF00146B37 /* AdaptiveListDetailNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveListDetailNavigation.swift; sourceTree = "<group>"; };
 		311598FA30A5606300C0B35D /* SavedStudy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedStudy.swift; sourceTree = "<group>"; };
 		311598FC30A560A900C0B35D /* SavedPlansScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedPlansScreen.swift; sourceTree = "<group>"; };
+		88A174E7580447ED8548FA06 /* StudyDraftAutosave.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyDraftAutosave.swift; sourceTree = "<group>"; };
 		311598FE30A5612A00C0B35D /* SavedStudyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedStudyTests.swift; sourceTree = "<group>"; };
 		3115990030A561A000C0B35D /* SavedStudyRestorationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedStudyRestorationTests.swift; sourceTree = "<group>"; };
 		3115990230A56A3800C0B35D /* CoverageMarginLegend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageMarginLegend.swift; sourceTree = "<group>"; };
@@ -725,6 +727,7 @@
 				31399AB8309E214A000519FF /* CoverageMapHost.swift */,
 				31399AC630A0046F000519FF /* CoverageResultsView.swift */,
 				311598FC30A560A900C0B35D /* SavedPlansScreen.swift */,
+				88A174E7580447ED8548FA06 /* StudyDraftAutosave.swift */,
 				3115990230A56A3800C0B35D /* CoverageMarginLegend.swift */,
 				3115990630A56AF800C0B35D /* CoverageDiagnosticsView.swift */,
 			);
@@ -1286,6 +1289,7 @@
 				316FE001305C6EA300FBA3B4 /* AppNavigationStore.swift in Sources */,
 				D86C8FE8DEB5CE51B1FFC834 /* CoreScopeViewerApp.swift in Sources */,
 				311598FD30A560A900C0B35D /* SavedPlansScreen.swift in Sources */,
+				AC37D71E4C9943229A34B498 /* StudyDraftAutosave.swift in Sources */,
 				D10FFE35F47798056E28EB1C /* DataLoadStatusView.swift in Sources */,
 				9599A7997960A45E6E506D71 /* LiveFeedMessage.swift in Sources */,
 				ACBA05674E6F7E851685EB56 /* LiveFeedService.swift in Sources */,

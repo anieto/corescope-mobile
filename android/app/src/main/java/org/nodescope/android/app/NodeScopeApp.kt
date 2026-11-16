@@ -709,13 +709,18 @@ internal fun AppShell(
                                     .also { model ->
                                         library.studies.firstOrNull { it.id == studyId }?.let(model::restore)
                                         model.suggestedPlanID = backStack.toRoute<EstimatedCoverageRoute>().planId
-                                        backStack.toRoute<EstimatedCoverageRoute>().linkSeed?.let { encoded ->
+                                        val linkSeed = backStack.toRoute<EstimatedCoverageRoute>().linkSeed
+                                        // Opened empty or from a saved study: that's the clean state. A seeded study is unsaved work.
+                                        if (linkSeed == null) model.markClean()
+                                        linkSeed?.let { encoded ->
                                             val seed = kotlinx.serialization.json.Json.decodeFromString<org.nodescope.android.feature.coverage.LinkCoverageSeed>(encoded)
                                             model.applyLinkSeed(seed)
                                             model.suggestedPlanID = seed.planID
                                         }
                                     }
                             }
+                            org.nodescope.android.feature.candidatesites.StudyDraftAutosave(rememberDraftSession(backStack, org.nodescope.android.feature.candidatesites.SavedStudy.Kind.COVERAGE),
+                                coverageModel, preferences.host, preferences.region)
                             org.nodescope.android.feature.coverage.EstimatedCoverageScreen(coverageModel, state.snapshot?.nodes.orEmpty(),
                                 preferences.host, state.snapshot, preferences.region, sourceViewport,
                                 onOpenSaved = { nav.navigate(SavedPlansRoute(org.nodescope.android.feature.candidatesites.SavedStudy.Kind.COVERAGE.name)) })
@@ -741,8 +746,11 @@ internal fun AppShell(
                                     .also { model ->
                                         library.studies.firstOrNull { it.id == studyId }?.let(model::restore)
                                         model.suggestedPlanID = backStack.toRoute<LinkProfileRoute>().planId
+                                        model.markClean()
                                     }
                             }
+                            org.nodescope.android.feature.candidatesites.StudyDraftAutosave(rememberDraftSession(backStack, org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE),
+                                profileModel, preferences.host, preferences.region)
                             org.nodescope.android.feature.linkprofile.LinkProfileScreen(profileModel, preferences.distanceUnit, state.snapshot?.nodes.orEmpty(),
                                 state.snapshot, preferences.region, sourceViewport,
                                 onOpenSaved = { nav.navigate(SavedPlansRoute(org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE.name)) },
@@ -943,5 +951,18 @@ private fun UnavailableScreen(title: Int, description: Int) {
     Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.Start) {
         Text(stringResource(title), style = MaterialTheme.typography.headlineMedium)
         Text(stringResource(description))
+    }
+}
+
+/** The recovery draft session for a tool's back-stack entry; its ID survives process death with the entry. */
+@Composable
+private fun rememberDraftSession(entry: androidx.navigation.NavBackStackEntry,
+                                 kind: org.nodescope.android.feature.candidatesites.SavedStudy.Kind): org.nodescope.android.feature.candidatesites.StudyDraftSession {
+    val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
+    return remember(entry.id) {
+        val handle = entry.savedStateHandle
+        val id = handle.get<String>("draftID") ?: java.util.UUID.randomUUID().toString().also { handle["draftID"] = it }
+        org.nodescope.android.feature.candidatesites.StudyDraftSession(
+            org.nodescope.android.feature.candidatesites.StudyDraftStore.application(context.filesDir), id, kind)
     }
 }
