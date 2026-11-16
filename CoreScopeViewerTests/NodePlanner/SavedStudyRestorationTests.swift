@@ -126,7 +126,8 @@ struct SavedStudyRestorationTests {
         #expect(reopened.knownNodes.first?.name == "Old name")
         #expect(reopened.nodeSnapshots.first?.sourceID == "original-source")
         #expect(reopened.activeResult == nil && !reopened.isBusy)
-        #expect(!reopened.acceptsScenario)
+        // Acceptance is remembered app-wide; restoring a study neither grants nor clears it.
+        #expect(reopened.acceptsScenario == original.acceptsScenario)
         reopened.latitude = 50.6
         reopened.refreshKnownNodes()
         #expect(reopened.nodeSnapshots == original.nodeSnapshots)

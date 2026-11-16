@@ -3,6 +3,7 @@ import Testing
 import CoreGraphics
 import ImageIO
 import MapKit
+import Compression
 @testable import CoreScopeViewer
 
 struct CoverageRasterTests {
@@ -256,17 +257,7 @@ struct CoverageRasterTests {
         let raster = try raster()
         let rgba = try raster.tile(zoom: 14, x: 8192, y: 8192)
         let png = try raster.pngTile(zoom: 14, x: 8192, y: 8192)
-        let source = try #require(CGImageSourceCreateWithData(png as CFData, nil))
-        let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
-        #expect(image.width == 256)
-        #expect(image.height == 256)
-        #expect(image.alphaInfo == .last)
-        let provider = try #require(image.dataProvider)
-        let decoded = try #require(provider.data) as Data
-        for row in 0..<256 {
-            let start = row * image.bytesPerRow
-            #expect(decoded[start..<start + 1024] == rgba[row * 1024..<(row + 1) * 1024])
-        }
+        #expect(try PNGPixels.rgba(png) == rgba)
         #expect(throws: CoverageRasterFailure.invalidTile) { try raster.pngTile(zoom: 23, x: 0, y: 0) }
         #expect(throws: CoverageRasterFailure.cancelled) {
             try raster.pngTile(zoom: 14, x: 8192, y: 8192, cancelled: { true })
@@ -307,20 +298,8 @@ struct CoverageTilePNGTests {
             }
         }
         let encoded = try CoverageTilePNG.encode(rgba)
-        let source = try #require(CGImageSourceCreateWithData(encoded as CFData, nil))
-        let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
-        #expect(image.width == 256)
-        #expect(image.height == 256)
-        #expect(image.bitsPerComponent == 8)
-        #expect(image.bitsPerPixel == 32)
-        #expect(image.alphaInfo == .last)
-        let provider = try #require(image.dataProvider)
-        let decoded = try #require(provider.data) as Data
-        // Compare rows directly to avoid CGContext premultiplication and color conversion.
-        for row in 0..<256 {
-            let start = row * image.bytesPerRow
-            #expect(decoded[start..<start + 1024] == rgba[row * 1024..<(row + 1) * 1024])
-        }
+        // Read the file's own pixels: ImageIO may hand them back premultiplied, which isn't what's stored.
+        #expect(try PNGPixels.rgba(encoded) == rgba)
     }
 
     @Test func rejectsWrongDimensionsAndCancellation() throws {
@@ -341,5 +320,61 @@ struct CoverageTilePNGTests {
             }
         }
         #expect(checks == 2)
+    }
+}
+
+/// Minimal reader for the stored pixels of an 8-bit, non-interlaced RGBA PNG (colour type 6), so tests
+/// check straight alpha in the file itself rather than a platform decoder's premultiplied output.
+private enum PNGPixels {
+    struct Unsupported: Error {}
+
+    static func rgba(_ png: Data) throws -> Data {
+        let bytes = [UInt8](png)
+        guard bytes.count > 8, bytes[0..<8] == [137, 80, 78, 71, 13, 10, 26, 10] else { throw Unsupported() }
+        func u32(_ i: Int) -> Int { bytes[i..<i + 4].reduce(0) { $0 << 8 | Int($1) } }
+        var width = 0, height = 0, compressed = [UInt8](), offset = 8
+        while offset + 12 <= bytes.count {
+            let length = u32(offset), type = String(decoding: bytes[offset + 4..<offset + 8], as: UTF8.self)
+            let body = bytes[offset + 8..<offset + 8 + length]
+            switch type {
+            case "IHDR":
+                width = u32(offset + 8); height = u32(offset + 12)
+                // Bit depth 8, colour type 6 (RGBA), compression 0, filter 0, no interlace.
+                guard Array(body[body.startIndex + 8..<body.startIndex + 13]) == [8, 6, 0, 0, 0] else { throw Unsupported() }
+            case "IDAT": compressed += body
+            default: break
+            }
+            offset += 12 + length
+        }
+        // zlib stream: skip the 2-byte header; the raw deflate decoder ignores the Adler-32 trailer.
+        guard width > 0, height > 0, compressed.count > 6 else { throw Unsupported() }
+        let stride = width * 4, filtered = height * (stride + 1)
+        var raw = [UInt8](repeating: 0, count: filtered)
+        let count = compressed.withUnsafeBufferPointer { source in
+            compression_decode_buffer(&raw, filtered, source.baseAddress! + 2, source.count - 2, nil, COMPRESSION_ZLIB)
+        }
+        guard count == filtered else { throw Unsupported() }
+        var out = [UInt8](repeating: 0, count: height * stride)
+        for y in 0..<height {
+            let filter = raw[y * (stride + 1)], line = y * (stride + 1) + 1
+            for x in 0..<stride {
+                let a = x >= 4 ? Int(out[y * stride + x - 4]) : 0
+                let b = y > 0 ? Int(out[(y - 1) * stride + x]) : 0
+                let c = x >= 4 && y > 0 ? Int(out[(y - 1) * stride + x - 4]) : 0
+                let predictor: Int
+                switch filter {
+                case 0: predictor = 0
+                case 1: predictor = a
+                case 2: predictor = b
+                case 3: predictor = (a + b) / 2
+                case 4:
+                    let p = a + b - c, pa = abs(p - a), pb = abs(p - b), pc = abs(p - c)
+                    predictor = pa <= pb && pa <= pc ? a : (pb <= pc ? b : c)
+                default: throw Unsupported()
+                }
+                out[y * stride + x] = UInt8((Int(raw[line + x]) + predictor) & 0xff)
+            }
+        }
+        return Data(out)
     }
 }
