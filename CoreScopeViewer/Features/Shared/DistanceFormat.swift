@@ -33,7 +33,7 @@ enum DistanceUnit: String, CaseIterable, Identifiable {
         switch self {
         case .imperial: String(localized: "US (mi, ft)")
         case .uk: String(localized: "UK (mi, m)")
-        case .metric: String(localized: "Metric (km, m)")
+        case .metric: String(localized: "Metric")
         }
     }
 

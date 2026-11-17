@@ -1664,7 +1664,7 @@
     <string name="settings_map">Map</string>
     <string name="settings_map_data">Map data</string>
     <string name="settings_map_tiles">Map tiles</string>
-    <string name="settings_units_metric">Metric (km, m)</string>
+    <string name="settings_units_metric">Metric</string>
     <string name="settings_monaspace">Monaspace</string>
     <string name="settings_network_at_a_glance_saved_nodes_recently_viewed">Network at a glance, saved nodes, recently viewed items, and the live packet feed.</string>
     <string name="settings_nodescope">NodeScope</string>
