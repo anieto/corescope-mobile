@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="node_check_rule_unnamed_observer">Observador sin nombre</string>
-    <string name="node_check_rule_flood_reached">El último advert flood llegó a %1$s</string>
-    <string name="node_check_rule_flood_reached_regions">El último advert flood llegó a %1$s en %2$s (%3$s)</string>
+    <string name="node_check_rule_flood_reached">El último anuncio flood llegó a %1$s</string>
+    <string name="node_check_rule_flood_reached_regions">El último anuncio flood llegó a %1$s en %2$s (%3$s)</string>
     <string name="node_check_rule_advert_sent">Enviado %1$s.</string>
     <string name="node_check_rule_strongest_with_snr">El más fuerte es %1$s con SNR de %2$s.</string>
     <string name="node_check_rule_strongest">El más fuerte es %1$s.</string>
@@ -25,22 +25,22 @@
     <string name="node_check_rule_offset_behind">%1$s por detrás</string>
     <string name="node_check_rule_offset_ahead">%1$s por delante</string>
     <string name="node_check_rule_regularly">Los observadores escuchan este nodo con regularidad.</string>
-    <string name="node_check_rule_room_advert_cadence">Un room server que funciona suele enviar un advert al menos dos veces al día.</string>
-    <string name="node_check_rule_repeater_advert_cadence">Un repetidor que funciona suele aparecer al menos una vez al día, por sus propios adverts o por el tráfico que retransmite.</string>
+    <string name="node_check_rule_room_advert_cadence">Un servidor de sala que funciona suele enviar un anuncio al menos dos veces al día.</string>
+    <string name="node_check_rule_repeater_advert_cadence">Un repetidor que funciona suele aparecer al menos una vez al día, por sus propios anuncios o por el tráfico que retransmite.</string>
     <string name="node_check_rule_fix_quiet">Comprueba que todavía tenga alimentación y que la antena esté conectada. Si funciona con energía solar, revisa la batería.</string>
     <string name="node_check_rule_no_recent_traffic">No hay tráfico reciente</string>
     <string name="node_check_rule_room_silent">Nada de este nodo ha llegado a un observador en los últimos tres días.</string>
     <string name="node_check_rule_repeater_silent">Nada de este nodo ha llegado a un observador en los últimos dos días.</string>
-    <string name="node_check_rule_fix_silent">Revisa la alimentación, la antena y la configuración de radio, y luego envía un advert flood.</string>
-    <string name="node_check_rule_companion_quiet">Los companions solo se escuchan cuando envían algo, así que un periodo de silencio es normal.</string>
-    <string name="node_check_rule_fix_companion_quiet">Envía un advert flood para comprobar que todavía llega a la red mesh.</string>
+    <string name="node_check_rule_fix_silent">Revisa la alimentación, la antena y la configuración de radio, y luego envía un anuncio flood.</string>
+    <string name="node_check_rule_companion_quiet">Los acompañantes solo se escuchan cuando envían algo, así que un periodo de silencio es normal.</string>
+    <string name="node_check_rule_fix_companion_quiet">Envía un anuncio flood para comprobar que todavía llega a la red mesh.</string>
     <string name="node_check_rule_advert_time_unknown">No se sabe cuándo se envió.</string>
     <string name="node_check_rule_few_observers">Solo lo escucharon unos pocos observadores. Puede significar simplemente que hay pocos observadores cerca de ti, o que necesita otro repetidor al alcance para llegar más lejos.</string>
-    <string name="node_check_rule_no_recent_flood">No hay advert flood reciente</string>
-    <string name="node_check_rule_zero_hop_reach">Sus adverts recientes fueron zero-hop, que solo llegan a radios en alcance directo, así que no muestran hasta dónde llega.</string>
-    <string name="node_check_rule_fix_send_flood">Envía un advert flood para ver hasta dónde llega.</string>
-    <string name="node_check_rule_no_recent_adverts">No hay adverts recientes</string>
-    <string name="node_check_rule_analyzer_has_no_recent_adverts">El analizador no tiene adverts recientes de este nodo.</string>
+    <string name="node_check_rule_no_recent_flood">No hay anuncio flood reciente</string>
+    <string name="node_check_rule_zero_hop_reach">Sus anuncios recientes fueron zero-hop, que solo llegan a radios en alcance directo, así que no muestran hasta dónde llega.</string>
+    <string name="node_check_rule_fix_send_flood">Envía un anuncio flood para ver hasta dónde llega.</string>
+    <string name="node_check_rule_no_recent_adverts">No hay anuncios recientes</string>
+    <string name="node_check_rule_analyzer_has_no_recent_adverts">El analizador no tiene anuncios recientes de este nodo.</string>
     <string name="node_check_rule_repeater_path">Ningún observador escucha este nodo directamente, así que llega a la red mesh a través de repetidores. Es normal, a menos que esperaras que lo escuchara un observador cercano.</string>
     <string name="node_check_rule_not_relaying">No se ha visto retransmitiendo</string>
     <string name="node_check_rule_not_relaying_detail">Los observadores escuchan este repetidor, pero no lo han visto retransmitir el tráfico de nadie más.</string>
@@ -49,7 +49,7 @@
     <string name="node_check_rule_fix_check_repeating">Comprueba que la repetición siga activada y que nada haya cambiado en su configuración.</string>
     <string name="node_check_rule_relaying">Retransmitiendo tráfico</string>
     <string name="node_check_rule_fix_clock">Sincroniza el reloj desde la app de MeshCore o ejecutando “clock sync” en el nodo.</string>
-    <string name="node_check_rule_adverts_treated_as_old">Los adverts de nodos con la hora incorrecta pueden tratarse como antiguos.</string>
+    <string name="node_check_rule_adverts_treated_as_old">Los anuncios de nodos con la hora incorrecta pueden tratarse como antiguos.</string>
     <string name="node_check_rule_clock_jumps">El reloj sigue saltando</string>
     <string name="node_check_rule_clock_jumps_detail">Su reloj a veces marca bien y a veces muy desfasado, lo que suele significar que pierde la hora al reiniciarse.</string>
     <string name="node_check_rule_clock_not_set">El reloj no está configurado</string>
@@ -64,8 +64,8 @@
     <string name="node_check_rule_headline_good">Este nodo está saliendo</string>
     <string name="node_check_rule_headline_info">Se escuchó antes, pero no hay nada reciente</string>
     <string name="node_check_rule_not_found">No hemos escuchado este nodo</string>
-    <string name="node_check_rule_not_found_without_key">Ningún observador de este analizador lo ha captado. Para probar un nodo nuevo, ingresa su clave pública completa; luego podrás hacer una prueba en vivo y esperar su primer advert.</string>
-    <string name="node_check_rule_not_found_with_key">Ningún observador de este analizador lo ha captado todavía. Haz una prueba en vivo, envía un advert flood y espera el primero. Si no llega nada, comprueba que la radio use la misma configuración que otros nodos de tu zona y que haya un repetidor al alcance.</string>
+    <string name="node_check_rule_not_found_without_key">Ningún observador de este analizador lo ha captado. Para probar un nodo nuevo, ingresa su clave pública completa; luego podrás hacer una prueba en vivo y esperar su primer anuncio.</string>
+    <string name="node_check_rule_not_found_with_key">Ningún observador de este analizador lo ha captado todavía. Haz una prueba en vivo, envía un anuncio flood y espera el primero. Si no llega nada, comprueba que la radio use la misma configuración que otros nodos de tu zona y que haya un repetidor al alcance.</string>
     <string name="node_check_rule_needs_attention">Requiere atención</string>
     <string name="node_check_rule_looking_good">Todo se ve bien</string>
     <string name="node_check_rule_good_to_know">Conviene saber</string>

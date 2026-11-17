@@ -2493,7 +2493,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un repetidor que funciona suele aparecer al menos una vez al día, por sus propios adverts o por el tráfico que retransmite."
+            "value" : "Un repetidor que funciona suele aparecer al menos una vez al día, por sus propios anuncios o por el tráfico que retransmite."
           }
         }
       }
@@ -2503,7 +2503,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un room server que funciona suele enviar un advert al menos dos veces al día."
+            "value" : "Un servidor de sala que funciona suele enviar un anuncio al menos dos veces al día."
           }
         }
       }
@@ -3023,7 +3023,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Advert"
+            "value" : "Anuncio"
           }
         }
       }
@@ -3033,7 +3033,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adverts"
+            "value" : "Anuncios"
           }
         }
       }
@@ -3741,7 +3741,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Beacon agrega nodos a medida que escucha sus adverts. Algunos repetidores solo envían adverts cada 12–47 horas, así que una región tranquila puede tardar en llenarse."
+            "value" : "Beacon agrega nodos a medida que escucha sus anuncios. Algunos repetidores solo envían anuncios cada 12–47 horas, así que una región tranquila puede tardar en llenarse."
           }
         }
       }
@@ -4403,7 +4403,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Revisa la alimentación, la antena y la configuración de radio, y luego envía un advert flood."
+            "value" : "Revisa la alimentación, la antena y la configuración de radio, y luego envía un anuncio flood."
           }
         }
       }
@@ -4993,7 +4993,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Companion"
+            "value" : "Acompañante"
           }
         }
       }
@@ -5003,7 +5003,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Los companions solo se escuchan cuando envían algo, así que un periodo de silencio es normal."
+            "value" : "Los acompañantes solo se escuchan cuando envían algo, así que un periodo de silencio es normal."
           }
         }
       }
@@ -6384,7 +6384,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ingresa su clave pública completa. Si el analizador aún no lo ha escuchado, puedes hacer una prueba en vivo, enviar un advert flood y esperar el primero."
+            "value" : "Ingresa su clave pública completa. Si el analizador aún no lo ha escuchado, puedes hacer una prueba en vivo, enviar un anuncio flood y esperar el primero."
           }
         }
       }
@@ -6844,7 +6844,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hallazgos y una prueba de advert en vivo"
+            "value" : "Hallazgos y una prueba de anuncio en vivo"
           }
         }
       }
@@ -7918,7 +7918,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En la app de MeshCore, la clave pública de un companion está en su configuración. En un repetidor o room server, aparece al iniciar sesión para administrarlo. También puedes compartir el nodo como contacto y pegar el enlace aquí. Bastan los primeros 8 caracteres o más de la clave; los nombres también sirven, pero varios nodos pueden tener el mismo nombre."
+            "value" : "En la app de MeshCore, la clave pública de un acompañante está en su configuración. En un repetidor o servidor de sala, aparece al iniciar sesión para administrarlo. También puedes compartir el nodo como contacto y pegar el enlace aquí. Bastan los primeros 8 caracteres o más de la clave; los nombres también sirven, pero varios nodos pueden tener el mismo nombre."
           }
         }
       }
@@ -8078,7 +8078,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "¿Está saliendo? Hallazgos y una prueba de advert en vivo"
+            "value" : "¿Está saliendo? Hallazgos y una prueba de anuncio en vivo"
           }
         }
       }
@@ -8088,7 +8088,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "¿Tu nodo está saliendo? Revisa cualquier nodo, o espera el primer advert de uno nuevo"
+            "value" : "¿Tu nodo está saliendo? Revisa cualquier nodo, o espera el primer anuncio de uno nuevo"
           }
         }
       }
@@ -8204,7 +8204,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sus adverts recientes fueron zero-hop, que solo llegan a radios en alcance directo, así que no muestran hasta dónde llega."
+            "value" : "Sus anuncios recientes fueron zero-hop, que solo llegan a radios en alcance directo, así que no muestran hasta dónde llega."
           }
         }
       }
@@ -8370,7 +8370,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El último advert flood llegó a %1$@%2$@"
+            "value" : "El último anuncio flood llegó a %1$@%2$@"
           }
         }
       }
@@ -8666,7 +8666,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esperando tu advert…"
+            "value" : "Esperando tu anuncio…"
           }
         }
       }
@@ -10437,7 +10437,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ningún observador de este analizador lo ha captado todavía. Haz una prueba en vivo, envía un advert flood y espera el primero. Si no llega nada, comprueba que la radio use la misma configuración que otros nodos de tu zona y que haya un repetidor al alcance."
+            "value" : "Ningún observador de este analizador lo ha captado todavía. Haz una prueba en vivo, envía un anuncio flood y espera el primero. Si no llega nada, comprueba que la radio use la misma configuración que otros nodos de tu zona y que haya un repetidor al alcance."
           }
         }
       }
@@ -10447,7 +10447,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ningún observador de este analizador lo ha captado. Para probar un nodo nuevo, ingresa su clave pública completa; luego podrás hacer una prueba en vivo y esperar su primer advert."
+            "value" : "Ningún observador de este analizador lo ha captado. Para probar un nodo nuevo, ingresa su clave pública completa; luego podrás hacer una prueba en vivo y esperar su primer anuncio."
           }
         }
       }
@@ -10457,7 +10457,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ningún observador informó un advert de este nodo. Comprueba que haya sido un advert flood, que la radio use la misma configuración que otros nodos de tu zona y que haya un repetidor al alcance."
+            "value" : "Ningún observador informó un anuncio de este nodo. Comprueba que haya sido un anuncio flood, que la radio use la misma configuración que otros nodos de tu zona y que haya un repetidor al alcance."
           }
         }
       }
@@ -10497,7 +10497,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No hay advert reciente"
+            "value" : "No hay anuncio reciente"
           }
         }
       }
@@ -10507,7 +10507,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No hay adverts recientes"
+            "value" : "No hay anuncios recientes"
           }
         }
       }
@@ -10517,7 +10517,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No hay advert flood reciente"
+            "value" : "No hay anuncio flood reciente"
           }
         }
       }
@@ -10857,7 +10857,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Los adverts de nodos con la hora incorrecta pueden tratarse como antiguos."
+            "value" : "Los anuncios de nodos con la hora incorrecta pueden tratarse como antiguos."
           }
         }
       }
@@ -10877,7 +10877,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Piso de ruido"
+            "value" : "Ruido de fondo"
           }
         }
       }
@@ -10887,7 +10887,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Historial del piso de ruido"
+            "value" : "Historial del ruido de fondo"
           }
         }
       }
@@ -10897,7 +10897,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Piso de ruido"
+            "value" : "Ruido de fondo"
           }
         }
       }
@@ -11397,7 +11397,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Piso de ruido del observador en el tiempo"
+            "value" : "Ruido de fondo del observador en el tiempo"
           }
         }
       }
@@ -13741,7 +13741,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Room"
+            "value" : "Sala"
           }
         }
       }
@@ -13751,7 +13751,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Room server"
+            "value" : "Servidor de sala"
           }
         }
       }
@@ -14642,7 +14642,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Envía un advert flood desde %@ y mira qué observadores lo informan, en tiempo real."
+            "value" : "Envía un anuncio flood desde %@ y mira qué observadores lo informan, en tiempo real."
           }
         }
       }
@@ -14652,7 +14652,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Envía un advert flood ahora: en la app de MeshCore, envía un advert y elige Flood; en un repetidor o room server, ejecuta advert. Los reportes suelen llegar en pocos segundos."
+            "value" : "Envía un anuncio flood ahora: en la app de MeshCore, envía un anuncio y elige Flood; en un repetidor o servidor de sala, ejecuta advert. Los reportes suelen llegar en pocos segundos."
           }
         }
       }
@@ -14662,7 +14662,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Envía un advert flood para comprobar que todavía llega a la red mesh."
+            "value" : "Envía un anuncio flood para comprobar que todavía llega a la red mesh."
           }
         }
       }
@@ -14672,7 +14672,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Envía un advert flood para ver hasta dónde llega."
+            "value" : "Envía un anuncio flood para ver hasta dónde llega."
           }
         }
       }
@@ -14682,7 +14682,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Envía un advert flood. En la app de MeshCore, envía un advert y elige Flood. En un repetidor o room server, ejecuta el comando advert."
+            "value" : "Envía un anuncio flood. En la app de MeshCore, envía un anuncio y elige Flood. En un repetidor o servidor de sala, ejecuta el comando advert."
           }
         }
       }
@@ -16258,7 +16258,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fue un advert zero-hop, así que solo lo reciben las radios en alcance directo. Envía un advert flood para ver hasta dónde llega realmente."
+            "value" : "Fue un anuncio zero-hop, así que solo lo reciben las radios en alcance directo. Envía un anuncio flood para ver hasta dónde llega realmente."
           }
         }
       }
@@ -16328,7 +16328,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El analizador no tiene adverts recientes de este nodo."
+            "value" : "El analizador no tiene anuncios recientes de este nodo."
           }
         }
       }
@@ -18385,7 +18385,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quién escuchó su último advert"
+            "value" : "Quién escuchó su último anuncio"
           }
         }
       }
@@ -18395,7 +18395,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quién escuchó su último advert flood"
+            "value" : "Quién escuchó su último anuncio flood"
           }
         }
       }
@@ -18665,7 +18665,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "observador, último advert"
+            "value" : "observador, último anuncio"
           }
         }
       }
@@ -18675,7 +18675,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "observadores, último advert"
+            "value" : "observadores, último anuncio"
           }
         }
       }

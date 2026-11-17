@@ -12,13 +12,13 @@
   "entries": {
     "node": {
       "term": "Nodo",
-      "summary": "Cualquier radio MeshCore en la red mesh: un companion, repetidor, room server o sensor. Cada uno se identifica por su clave pública, no por su nombre.",
+      "summary": "Cualquier radio MeshCore en la red mesh: un acompañante, repetidor, servidor de sala o sensor. Cada uno se identifica por su clave pública, no por su nombre.",
       "detail": "Los nombres pueden cambiar o repetirse entre varios nodos, por eso NodeScope identifica los nodos por su clave."
     },
     "companion": {
-      "term": "Companion",
-      "summary": "Una radio emparejada con una app en el teléfono o la computadora, que se usa para enviar y recibir mensajes. Los companions no retransmiten el tráfico de otras personas.",
-      "detail": "El primer nodo de la mayoría de las personas es un companion. Para que la red mesh llegue más lejos, agrega un repetidor."
+      "term": "Acompañante",
+      "summary": "Una radio emparejada con una app en el teléfono o la computadora, que se usa para enviar y recibir mensajes. Los acompañantes no retransmiten el tráfico de otras personas.",
+      "detail": "El primer nodo de la mayoría de las personas es un acompañante. Para que la red mesh llegue más lejos, agrega un repetidor."
     },
     "repeater": {
       "term": "Repetidor",
@@ -26,7 +26,7 @@
       "detail": "La altura de un repetidor y lo que lo rodea importan más que su potencia. Perfil de enlace te ayuda a revisar un sitio antes de instalar uno."
     },
     "room-server": {
-      "term": "Room server",
+      "term": "Servidor de sala",
       "summary": "Un nodo que aloja un tablero de mensajes compartido. Las personas inician sesión en él, y guarda los mensajes para quien estaba fuera de alcance."
     },
     "sensor": {
@@ -39,9 +39,9 @@
       "detail": "Un paquete que ningún observador escuchó no aparece en NodeScope, aunque haya llegado a otras personas en la red mesh. Más observadores dan una imagen más completa."
     },
     "advert": {
-      "term": "Advert",
-      "summary": "Un anuncio breve que un nodo transmite de vez en cuando con su nombre, su tipo y, si lo comparte, su ubicación. Los adverts son la forma en que los nodos aparecen en el mapa.",
-      "detail": "Un nodo que no ha enviado un advert recientemente puede estar funcionando; puede que simplemente esté callado."
+      "term": "Anuncio",
+      "summary": "Un anuncio breve que un nodo transmite de vez en cuando con su nombre, su tipo y, si lo comparte, su ubicación. Los anuncios son la forma en que los nodos aparecen en el mapa.",
+      "detail": "Un nodo que no ha enviado un anuncio recientemente puede estar funcionando; puede que simplemente esté callado."
     },
     "analyzer": {
       "term": "Analizador",
