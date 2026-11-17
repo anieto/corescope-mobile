@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.linkprofile
 
+import org.nodescope.android.R
+import org.nodescope.android.core.design.UiText
 import androidx.lifecycle.SavedStateHandle
 import org.nodescope.android.core.storage.DistanceUnit
 import androidx.lifecycle.ViewModel
@@ -29,7 +31,7 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
     }
     data class EndpointElevation(val meters: Double? = null, val loading: Boolean = false)
     data class State(val fields: Map<String, String>, val preset: String = "US/Canada Narrow", val loading: Boolean = false,
-        val result: LinkAnalysis? = null, val error: String? = null,
+        val result: LinkAnalysis? = null, val error: UiText? = null,
         val elevations: Map<String, EndpointElevation> = emptyMap(),
         /** The known node each endpoint was placed on, by endpoint; absent for a dropped pin or typed coordinates. */
         val names: Map<String, String> = emptyMap(),
@@ -38,10 +40,10 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         /** Reopened from Saved Plans: nothing is fetched or analyzed until Calculate, as on iOS. */
         val awaitingCalculation: Boolean = false,
         /** Why a reopened study's saved result isn't shown; null when there's none or it's shown. */
-        val savedResultNote: String? = null)
+        val savedResultNote: UiText? = null)
     /** Both endpoints' coordinate fields and node names, as they were before a change. */
     data class Placement(val fields: Map<String, String>, val names: Map<String, String>)
-    data class Undo(val message: String, val before: Placement, val id: Long = System.nanoTime())
+    data class Undo(val message: UiText, val before: Placement, val id: Long = System.nanoTime())
     private val defaultHeight = if (distanceUnit == DistanceUnit.IMPERIAL) "6.096" else "6"
     private val mutable = MutableStateFlow(State((defaults + mapOf("Height A (m)" to defaultHeight, "Height B (m)" to defaultHeight))
         .mapValues { (key, value) -> saved.get<String>(key) ?: value }, saved["preset"] ?: "US/Canada Narrow",
@@ -221,18 +223,18 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         val before = placement()
         val moved = coordinate(endpoint) != null
         setPoint(endpoint, point.latitude.toString(), point.longitude.toString(), name)
-        offerUndo(if (moved) "Point $endpoint moved" else "Point $endpoint placed", before)
+        offerUndo(if (moved) UiText.Resource(R.string.link_profile_point_moved, endpoint) else UiText.Resource(R.string.link_profile_point_placed, endpoint), before)
     }
     fun remove(endpoint: String) {
         val before = placement()
         setPoint(endpoint, "", "", null)
-        offerUndo("Point $endpoint removed", before)
+        offerUndo(UiText.Resource(R.string.link_profile_point_removed, endpoint), before)
     }
     /** Start over: both endpoints and the result are cleared; heights and radio settings are kept. */
     fun startOver() {
         val before = placement()
         listOf("A", "B").forEach { endpoint -> setPoint(endpoint, "", "", null) }
-        offerUndo("Points cleared", before)
+        offerUndo(UiText.Resource(R.string.link_profile_points_cleared), before)
     }
     /** Puts both endpoints back as they were before the last placement, removal or reset. */
     fun undo() {
@@ -250,7 +252,7 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
     private fun placement() = mutable.value.let { state ->
         Placement(state.fields.filterKeys { it.startsWith("Latitude ") || it.startsWith("Longitude ") }, state.names)
     }
-    private fun offerUndo(message: String, before: Placement) {
+    private fun offerUndo(message: UiText, before: Placement) {
         mutable.value = mutable.value.copy(undo = Undo(message, before))
     }
     private fun setPoint(endpoint: String, latitude: String, longitude: String, name: String?) {
@@ -307,7 +309,7 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (error: Exception) {
             coroutineContext.ensureActive()
-            mutable.value = mutable.value.copy(loading = false, error = if (error is IllegalArgumentException) error.message else "Unable to load terrain. Check your connection and try again.")
+            mutable.value = mutable.value.copy(loading = false, error = if (error is IllegalArgumentException) error.message?.let(UiText::Raw) else UiText.Resource(R.string.link_profile_unable_to_load_terrain_check_your_connection_and))
         }
     }
 
@@ -377,10 +379,10 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
             mapOf("A" to EndpointElevation(it.first().elevationMeters), "B" to EndpointElevation(it.last().elevationMeters))
         } ?: emptyMap()
         val note = if (restored != null) null else when (study.resultStatus) {
-            org.nodescope.android.feature.candidatesites.SavedResultStatus.MISSING -> "Saved result not on this device"
+            org.nodescope.android.feature.candidatesites.SavedResultStatus.MISSING -> UiText.Resource(R.string.link_profile_saved_result_not_on_this_device)
             org.nodescope.android.feature.candidatesites.SavedResultStatus.UNVERIFIED,
-            org.nodescope.android.feature.candidatesites.SavedResultStatus.AVAILABLE -> "Saved result could not be verified"
-            org.nodescope.android.feature.candidatesites.SavedResultStatus.UNSUPPORTED -> "Saved result needs another version of NodeScope"
+            org.nodescope.android.feature.candidatesites.SavedResultStatus.AVAILABLE -> UiText.Resource(R.string.link_profile_saved_result_could_not_be_verified)
+            org.nodescope.android.feature.candidatesites.SavedResultStatus.UNSUPPORTED -> UiText.Resource(R.string.link_profile_saved_result_needs_another_version_of_nodescope)
             org.nodescope.android.feature.candidatesites.SavedResultStatus.NONE -> null
         }
         mutable.value = mutable.value.copy(fields = mutable.value.fields + values, names = names, preset = preset, loading = false,

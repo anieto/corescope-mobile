@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.linkprofile
 
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -17,18 +19,18 @@ import org.nodescope.android.feature.settings.NavigationRow
 @Composable
 fun NodePlannerScreen(onLinkProfile: () -> Unit, onSavedPlans: () -> Unit, onEstimatedCoverage: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("Plan before you deploy", style = MaterialTheme.typography.headlineSmall)
-        Text("Evaluate proposed locations, terrain paths, and radio assumptions before installing a node.")
+        Text(stringResource(R.string.link_profile_plan_before_you_deploy), style = MaterialTheme.typography.headlineSmall)
+        Text(stringResource(R.string.link_profile_evaluate_proposed_locations_terrain_paths_and_radio_assumptions))
         Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                NavigationRow("Link Profile", "Estimate terrain clearance and modeled path loss between two locations.", Icons.Outlined.Route, onLinkProfile)
+                NavigationRow(stringResource(R.string.link_profile_link_profile), stringResource(R.string.link_profile_estimate_terrain_clearance_and_modeled_path_loss_between), Icons.Outlined.Route, onLinkProfile)
                 HorizontalDivider()
-                NavigationRow("Estimated Coverage", "Set up an area study and review known nodes around a proposed transmitter.", Icons.Outlined.AddLocationAlt, onEstimatedCoverage,
-                    badge = "Beta")
+                NavigationRow(stringResource(R.string.link_profile_estimated_coverage), stringResource(R.string.link_profile_set_up_an_area_study_and_review_known), Icons.Outlined.AddLocationAlt, onEstimatedCoverage,
+                    badge = stringResource(R.string.link_profile_beta))
                 HorizontalDivider()
-                NavigationRow("Saved Plans", "Reopen saved link profiles, coverage studies and candidate sites.", Icons.Outlined.AddLocationAlt, onSavedPlans)
+                NavigationRow(stringResource(R.string.link_profile_saved_plans), stringResource(R.string.link_profile_reopen_saved_link_profiles_coverage_studies_and_candidate), Icons.Outlined.AddLocationAlt, onSavedPlans)
             }
         }
-        Text("Planner results are estimates based on terrain data and the assumptions you enter. Buildings, vegetation, interference, hardware variation, and weather can change real-world performance.", style = MaterialTheme.typography.bodySmall)
+        Text(stringResource(R.string.link_profile_planner_results_are_estimates_based_on_terrain_data), style = MaterialTheme.typography.bodySmall)
     }
 }

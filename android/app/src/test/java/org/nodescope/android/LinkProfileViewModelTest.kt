@@ -1,5 +1,7 @@
 package org.nodescope.android
 
+import org.nodescope.android.core.design.UiText
+
 import androidx.lifecycle.SavedStateHandle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -192,11 +194,17 @@ class LinkProfileViewModelTest {
         try {
             val model = LinkProfileViewModel(LinkTerrainProviding { profile(it, 100.0) }, SavedStateHandle())
             fun point(endpoint: String) = model.state.value.fields.let { it["Latitude $endpoint"] to it["Longitude $endpoint"] }
+            fun assertUndoText(id: Int, vararg args: Any) {
+                val message = model.state.value.undo?.message as UiText.Resource
+                assertEquals(id, message.id)
+                assertEquals(args.toList(), message.args.toList())
+            }
+
             model.place("A", ProfileCoordinate(40.0, -90.0), "Hilltop")
-            assertEquals("Point A placed", model.state.value.undo?.message)
+            assertUndoText(R.string.link_profile_point_placed, "A")
             model.place("B", ProfileCoordinate(40.1, -90.0), null)
             model.place("A", ProfileCoordinate(40.2, -90.2), null)
-            assertEquals("Point A moved", model.state.value.undo?.message)
+            assertUndoText(R.string.link_profile_point_moved, "A")
             assertTrue("A" !in model.state.value.names)
             // Undo puts A back on its node, name and all.
             model.undo()
@@ -204,12 +212,12 @@ class LinkProfileViewModelTest {
             assertEquals("40.0" to "-90.0", point("A"))
             assertEquals(mapOf("A" to "Hilltop"), model.state.value.names)
             model.remove("B")
-            assertEquals("Point B removed", model.state.value.undo?.message)
+            assertUndoText(R.string.link_profile_point_removed, "B")
             assertEquals("" to "", point("B"))
             model.undo()
             assertEquals("40.1" to "-90.0", point("B"))
             model.startOver()
-            assertEquals("Points cleared", model.state.value.undo?.message)
+            assertUndoText(R.string.link_profile_points_cleared)
             model.undo()
             assertEquals("40.0" to "-90.0", point("A"))
             assertEquals("40.1" to "-90.0", point("B"))
