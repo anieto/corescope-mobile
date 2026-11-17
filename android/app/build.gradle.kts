@@ -42,6 +42,7 @@ android {
         }
     }
     buildTypes {
+        debug { isPseudoLocalesEnabled = true }
         release {
             signingConfigs.findByName("release")?.let { signingConfig = it }
             // R8: shrink, optimize and obfuscate (Play flags unoptimized DEX); the mapping file

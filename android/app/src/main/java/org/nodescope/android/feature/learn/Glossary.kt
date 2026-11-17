@@ -1,5 +1,8 @@
 package org.nodescope.android.feature.learn
 
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
+import org.nodescope.android.core.design.withDescription
 import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -117,7 +120,7 @@ fun LearnButton(term: GlossaryTerm, modifier: Modifier = Modifier) {
                     TextButton(onClick = {
                         tooltip.dismiss()
                         showsGlossary = true
-                    }) { Text("More in Glossary") }
+                    }) { Text(stringResource(R.string.learn_more_in_glossary)) }
                 },
             ) { Text(entry.summary) }
         },
@@ -130,7 +133,7 @@ fun LearnButton(term: GlossaryTerm, modifier: Modifier = Modifier) {
             Icons.Outlined.Info, contentDescription = null,
             Modifier.clip(CircleShape)
                 .clickable(role = Role.Button) { scope.launch { tooltip.show() } }
-                .semantics { contentDescription = "About ${entry.term}" }
+                .withDescription(stringResource(R.string.learn_about, entry.term)) { description -> contentDescription = description }
                 .padding(4.dp)
                 .size(16.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -167,7 +170,7 @@ private fun GlossaryList(focus: GlossaryTerm?, modifier: Modifier = Modifier) {
     }
     LazyColumn(modifier, state = state, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
-            Text("Short explanations of the words NodeScope uses. Tap ⓘ beside a term anywhere in the app to see its entry.",
+            Text(stringResource(R.string.learn_short_explanations_of_the_words_nodescope_uses_tap),
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         sections.forEach { section ->

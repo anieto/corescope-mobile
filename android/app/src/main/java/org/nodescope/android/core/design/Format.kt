@@ -1,5 +1,8 @@
 package org.nodescope.android.core.design
 
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -8,14 +11,18 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import kotlin.math.roundToLong
 import org.nodescope.android.core.storage.DistanceUnit
 
-fun relativeTime(instant: Instant?, now: Long = System.currentTimeMillis()): String {
-    instant ?: return "Unknown"
+@Composable
+fun relativeTime(instant: Instant?, now: Long = System.currentTimeMillis()): String =
+    relativeTimeText(instant, now).asString()
+
+internal fun relativeTimeText(instant: Instant?, now: Long): UiText.Resource {
+    instant ?: return UiText.Resource(R.string.common_relative_time_unknown)
     val seconds = (now - instant.toEpochMilli()) / 1000
     return when {
-        seconds < 45 -> "just now"
-        seconds < 3_600 -> "${(seconds + 30) / 60}m ago"
-        seconds < 86_400 -> "${seconds / 3_600}h ago"
-        else -> "${seconds / 86_400}d ago"
+        seconds < 45 -> UiText.Resource(R.string.common_relative_time_now)
+        seconds < 3_600 -> UiText.Resource(R.string.common_relative_time_minutes, (seconds + 30) / 60)
+        seconds < 86_400 -> UiText.Resource(R.string.common_relative_time_hours, seconds / 3_600)
+        else -> UiText.Resource(R.string.common_relative_time_days, seconds / 86_400)
     }
 }
 
@@ -39,9 +46,10 @@ fun formatDuration(seconds: Long): String {
     }
 }
 
+@Composable
 fun shortDateTime(instant: Instant?): String = instant?.let {
     DateTimeFormatter.ofPattern("MMM d, HH:mm").withZone(ZoneId.systemDefault()).format(it)
-} ?: "Unknown time"
+} ?: stringResource(R.string.common_unknown_time)
 
 /** The distance unit chosen in Settings, available to every screen. */
 val LocalDistanceUnit = staticCompositionLocalOf { DistanceUnit.IMPERIAL }
