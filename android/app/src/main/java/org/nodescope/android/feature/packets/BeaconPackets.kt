@@ -1,5 +1,8 @@
 package org.nodescope.android.feature.packets
 
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.animation.animateContentSize
@@ -67,8 +70,8 @@ fun BeaconPacketScreen(feed: LiveFeedState, host: String, regionControl: @Compos
     val now = rememberNow()
     val live = feed.connection == LiveConnection.LIVE
 
-    if (showFilters) FilterSheet("Live packet filters", regionControl, listOf(
-        FilterGroup("Packet type", listOf(null) + packetTypeNames, filterType, { it ?: "All packet types" }) { filterType = it },
+    if (showFilters) FilterSheet(stringResource(R.string.packets_live_packet_filters), regionControl, listOf(
+        FilterGroup(stringResource(R.string.packets_packet_type), listOf(null) + packetTypeNames, filterType, { it ?: stringResource(R.string.packets_all_packet_types) }) { filterType = it },
     ), onReset = { filterType = null; onClearRegion() }) { showFilters = false }
     val filterCount = listOf(region != null, filterType != null).count { it }
 
@@ -79,21 +82,21 @@ fun BeaconPacketScreen(feed: LiveFeedState, host: String, regionControl: @Compos
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                             Box(Modifier.size(8.dp).background(statusAccent(live && !paused), CircleShape))
-                            Text(if (paused) "Live feed paused" else connectionLabel(feed.connection, "Listening for live traffic"),
+                            Text(if (paused) stringResource(R.string.packets_live_feed_paused) else connectionLabel(feed.connection, stringResource(R.string.packets_listening_for_live_traffic)),
                                 style = MaterialTheme.typography.titleSmall)
                         }
-                        Text(listOf(region ?: "Entire network", "${rows.size} transmissions", "${rows.sumOf { it.observationCount }} observations")
+                        Text(listOf(region ?: stringResource(R.string.packets_entire_network), pluralStringResource(R.plurals.packets_transmission_count, rows.size, rows.size), pluralStringResource(R.plurals.packets_observation_count, rows.sumOf { it.observationCount }, rows.sumOf { it.observationCount }))
                             .joinToString(" · "), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     IconButton(onClick = {
                         val pause = org.nodescope.android.feature.map.LiveTrafficPause
                         if (pause.isPaused) { pause.resume(); onResumeLive() } else pause.pause()
                     }) {
-                        if (paused) Icon(Icons.Outlined.PlayArrow, "Resume live traffic") else Icon(Icons.Outlined.Pause, "Pause live traffic")
+                        if (paused) Icon(Icons.Outlined.PlayArrow, stringResource(R.string.packets_resume_live_traffic)) else Icon(Icons.Outlined.Pause, stringResource(R.string.packets_pause_live_traffic))
                     }
                     IconButton(onClick = { showFilters = true }) {
                         BadgedBox(badge = { if (filterCount > 0) Badge { Text(filterCount.toString()) } }) {
-                            Icon(Icons.Outlined.FilterList, "Filter live packets, $filterCount active")
+                            Icon(Icons.Outlined.FilterList, stringResource(R.string.packets_filter_live_packets_active, filterCount))
                         }
                     }
                 }
@@ -104,23 +107,23 @@ fun BeaconPacketScreen(feed: LiveFeedState, host: String, regionControl: @Compos
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Icon(Icons.Outlined.WarningAmber, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
-                        Text("History refresh failed", style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.packets_history_refresh_failed), style = MaterialTheme.typography.bodyMedium)
                     }
                     Text(error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
         if (snapshot?.possiblyIncomplete == true) item {
-            Text("Recent history may be incomplete.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.packets_recent_history_may_be_incomplete), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (rows.isNotEmpty()) item { SectionLabel("Recent packets") }
+        if (rows.isNotEmpty()) item { SectionLabel(stringResource(R.string.packets_recent_packets)) }
         items(rows, key = { it.hash }) { row ->
             BeaconPacketRow(row, now, row.hash == selectedHash, selectedActions.takeIf { row.hash == selectedHash }) { onPacket(row.hash) }
         }
         if (rows.isEmpty()) item {
-            EmptyState(Icons.Outlined.SettingsInputAntenna, if (live) "Waiting for packets" else "Not connected",
-                if (live) "New mesh traffic will appear here as the analyzer receives it. Beacon retains up to seven days of packet history, and quiet regions may have no recent traffic."
-                else "NodeScope will resume the live feed when the analyzer reconnects.")
+            EmptyState(Icons.Outlined.SettingsInputAntenna, if (live) stringResource(R.string.packets_waiting_for_packets) else stringResource(R.string.packets_not_connected),
+                if (live) stringResource(R.string.packets_new_mesh_traffic_will_appear_here_as_the)
+                else stringResource(R.string.packets_nodescope_will_resume_the_live_feed_when_the))
         }
     }
 }
@@ -166,7 +169,8 @@ fun BeaconPacketDetailScreen(feed: LiveFeedState, browse: BrowseRepository?, hos
     var retry by remember { mutableIntStateOf(0) }
     // Every route by default, as replays start (iOS); the picker narrows it to one.
     var selectedRoute by rememberSaveable(hash) { mutableIntStateOf(org.nodescope.android.feature.map.ALL_ROUTES) }
-    LaunchedEffect(hash, retry) {
+    val loadError = stringResource(R.string.packets_beacon_load_error)
+    LaunchedEffect(hash, retry, loadError) {
         val repository = browse ?: return@LaunchedEffect
         loading = true
         error = null
@@ -176,7 +180,7 @@ fun BeaconPacketDetailScreen(feed: LiveFeedState, browse: BrowseRepository?, hos
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            error = e.message ?: "Couldn't load this packet."
+            error = e.message ?: loadError
         } finally {
             loading = false
         }
@@ -198,48 +202,48 @@ fun BeaconPacketDetailScreen(feed: LiveFeedState, browse: BrowseRepository?, hos
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(message, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    TextButton(onClick = { retry++ }) { Text("Retry") }
+                    TextButton(onClick = { retry++ }) { Text(stringResource(R.string.retry)) }
                 }
             }
         }
         item {
-            DetailSection("Packet") {
-                DetailRow("Type", typeName)
-                DetailRow("Hash", hash, monospace = true)
-                DetailRow("Observations", maxOf(current?.observationCount ?: 0, row?.observationCount ?: 0).toString(), learn = GlossaryTerm.OBSERVATION)
+            DetailSection(stringResource(R.string.packets_packet)) {
+                DetailRow(stringResource(R.string.packets_type), typeName)
+                DetailRow(stringResource(R.string.packets_hash), hash, monospace = true)
+                DetailRow(stringResource(R.string.packets_observations), maxOf(current?.observationCount ?: 0, row?.observationCount ?: 0).toString(), learn = GlossaryTerm.OBSERVATION)
             }
         }
         current?.decryptedMessage?.let { message ->
             item {
-                DetailSection("Message") {
-                    message.sender?.takeIf(String::isNotBlank)?.let { DetailRow("Sender", it) }
+                DetailSection(stringResource(R.string.packets_message)) {
+                    message.sender?.takeIf(String::isNotBlank)?.let { DetailRow(stringResource(R.string.packets_sender), it) }
                     androidx.compose.foundation.text.selection.SelectionContainer {
                         Text(message.content, style = MaterialTheme.typography.bodyLarge)
                     }
-                    message.sentAt?.let { DetailRow("Sent", dates.format(Instant.ofEpochMilli(it))) }
+                    message.sentAt?.let { DetailRow(stringResource(R.string.packets_sent), dates.format(Instant.ofEpochMilli(it))) }
                 }
             }
         } ?: run {
             if (current != null && (row?.payloadType ?: current.packet.payloadType) == 5) item {
-                DetailSection("Message") {
-                    Text("This server doesn’t have this channel’s key, so the message can’t be shown.",
+                DetailSection(stringResource(R.string.packets_message)) {
+                    Text(stringResource(R.string.packets_this_server_doesn_t_have_this_channel_s),
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
         item {
-            DetailSection("Heard") {
-                DetailRow("First seen", row?.firstSeen?.let { dates.format(Instant.ofEpochMilli(it)) } ?: "Unknown")
-                DetailRow("Last heard", lastHeard?.let { dates.format(Instant.ofEpochMilli(it)) } ?: "Unknown", learn = GlossaryTerm.LAST_HEARD)
+            DetailSection(stringResource(R.string.packets_heard)) {
+                DetailRow(stringResource(R.string.packets_first_seen), row?.firstSeen?.let { dates.format(Instant.ofEpochMilli(it)) } ?: stringResource(R.string.packets_unknown))
+                DetailRow(stringResource(R.string.packets_last_heard), lastHeard?.let { dates.format(Instant.ofEpochMilli(it)) } ?: stringResource(R.string.packets_unknown), learn = GlossaryTerm.LAST_HEARD)
             }
         }
         if (current != null) {
             item {
-                DetailSection("Observations") {
+                DetailSection(stringResource(R.string.packets_observations)) {
                     current.observations.forEachIndexed { index, observation ->
                         if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Text(observation.observerName ?: "Unknown observer", style = MaterialTheme.typography.titleSmall)
+                            Text(observation.observerName ?: stringResource(R.string.packets_unknown_observer), style = MaterialTheme.typography.titleSmall)
                             Text(listOfNotNull(observation.observerIata,
                                 parseInstant(observation.timestamp)?.let(dates::format),
                                 observation.snr?.let { "%.1f dB".format(it) }, observation.rssi?.let { "%.1f dBm".format(it) },
@@ -249,9 +253,9 @@ fun BeaconPacketDetailScreen(feed: LiveFeedState, browse: BrowseRepository?, hos
                 }
             }
             item {
-                DetailSection("Route", GlossaryTerm.ROUTE) {
+                DetailSection(stringResource(R.string.packets_route), GlossaryTerm.ROUTE) {
                     if (routes.isEmpty()) {
-                        Text("No fully resolved route is available. Uncertain hops are not replayed.",
+                        Text(stringResource(R.string.packets_no_fully_resolved_route_is_available_uncertain_hops),
                             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
                         val index = singleRoute(selectedRoute, routes.size)
@@ -260,11 +264,11 @@ fun BeaconPacketDetailScreen(feed: LiveFeedState, browse: BrowseRepository?, hos
                         else {
                             RouteHearers(routes[index])
                             routes[index].keys.forEachIndexed { hop, key ->
-                                DetailRow("Hop ${hop + 1}", nodesByKey[key.lowercase()]?.displayName?.let { "$it · $key" } ?: key, monospace = true)
+                                DetailRow(stringResource(R.string.packets_hop, hop + 1), nodesByKey[key.lowercase()]?.displayName?.let { "$it · $key" } ?: key, monospace = true)
                             }
                         }
                         Button(onClick = { onReplay(routes, index ?: org.nodescope.android.feature.map.ALL_ROUTES, current) }, Modifier.fillMaxWidth()) {
-                            Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text("Replay on map")
+                            Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.packets_replay_on_map))
                         }
                     }
                 }

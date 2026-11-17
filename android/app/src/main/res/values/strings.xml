@@ -517,6 +517,23 @@
     <string name="packets_value_2">"  +%1$s"</string>
     <string name="packets_waiting_for_packets">Waiting for packets</string>
 
+    <!-- Beacon packet strings -->
+    <string name="packets_beacon_load_error">Couldn\'t load this packet.</string>
+    <string name="packets_first_seen">First seen</string>
+    <string name="packets_heard">Heard</string>
+    <string name="packets_history_refresh_failed">History refresh failed</string>
+    <string name="packets_last_heard">Last heard</string>
+    <string name="packets_live_feed_paused">Live feed paused</string>
+    <string name="packets_new_mesh_traffic_will_appear_here_as_the">New mesh traffic will appear here as the analyzer receives it. Beacon retains up to seven days of packet history, and quiet regions may have no recent traffic.</string>
+    <string name="packets_no_fully_resolved_route_is_available_uncertain_hops">No fully resolved route is available. Uncertain hops are not replayed.</string>
+    <string name="packets_recent_history_may_be_incomplete">Recent history may be incomplete.</string>
+    <string name="packets_recent_packets">Recent packets</string>
+    <string name="packets_sender">Sender</string>
+    <string name="packets_sent">Sent</string>
+    <string name="packets_this_server_doesn_t_have_this_channel_s">This server doesn’t have this channel’s key, so the message can’t be shown.</string>
+    <string name="packets_type">Type</string>
+    <string name="packets_unknown">Unknown</string>
+
     <style name="Theme.NodeScope" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
     </style>
