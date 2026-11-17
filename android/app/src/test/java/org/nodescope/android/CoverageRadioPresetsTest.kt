@@ -1,5 +1,6 @@
 package org.nodescope.android
 
+import java.util.Locale
 import org.junit.Assert.*
 import org.junit.Test
 import org.nodescope.android.feature.coverage.*
@@ -35,7 +36,8 @@ class CoverageRadioPresetsTest {
         val standard = CoverageRadioPreset.standard
         assertEquals(standard, CoverageRadioPreset.matching(910.525, 22.0, -127.5))
         assertNull(CoverageRadioPreset.matching(910.525, 30.0, -127.5))
-        assertEquals("SF7 · 62.5 kHz", standard.modemSummary)
-        assertEquals("SF11 · 250 kHz", CoverageRadioPreset.all.last().modemSummary)
+        assertEquals("SF7 · 62.5 kHz", standard.modemSummary(Locale.US))
+        assertEquals("SF7 · 62,5 kHz", standard.modemSummary(Locale.forLanguageTag("pt-BR")))
+        assertEquals("SF11 · 250 kHz", CoverageRadioPreset.all.last().modemSummary(Locale.US))
     }
 }

@@ -95,7 +95,11 @@ fun SettingsScreen(
                     }
                     CaptionedChoice(stringResource(R.string.settings_units)) {
                         AdaptiveChoiceRow(DistanceUnit.entries, preferences.distanceUnit, label = { unit ->
-                            when (unit) { DistanceUnit.IMPERIAL -> stringResource(R.string.settings_imperial_mi); DistanceUnit.METRIC -> stringResource(R.string.settings_metric_km) }
+                            stringResource(when (unit) {
+                                DistanceUnit.IMPERIAL -> R.string.settings_units_us
+                                DistanceUnit.UK -> R.string.settings_units_uk
+                                DistanceUnit.METRIC -> R.string.settings_units_metric
+                            })
                         }, onSelect = onDistanceUnit)
                     }
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.coverage
 
+import java.util.Locale
+import org.nodescope.android.core.design.formatDisplayDecimal
 import org.nodescope.android.R
 import org.nodescope.android.core.design.UiText
 
@@ -20,8 +22,8 @@ data class CoverageRadioPreset(
     val sensitivityDbm: Double get() = sensitivity(spreadingFactor, bandwidthKHz)
 
     /** "SF7 · 62.5 kHz", the modem settings behind the sensitivity. */
-    val modemSummary: String get() {
-        val bandwidth = if (bandwidthKHz % 1.0 == 0.0) bandwidthKHz.toLong().toString() else bandwidthKHz.toString()
+    fun modemSummary(locale: Locale = Locale.getDefault(Locale.Category.FORMAT)): String {
+        val bandwidth = formatDisplayDecimal(bandwidthKHz, 3, locale)
         return "SF$spreadingFactor · $bandwidth kHz"
     }
 

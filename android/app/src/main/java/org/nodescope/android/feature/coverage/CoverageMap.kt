@@ -14,7 +14,6 @@ import androidx.compose.ui.text.withStyle
 import org.nodescope.android.core.design.LocalDistanceUnit
 import org.nodescope.android.core.design.MonaspaceNeon
 import org.nodescope.android.core.design.formatDistance
-import java.util.Locale
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material3.*
@@ -216,10 +215,10 @@ internal fun CoverageMap(model: EstimatedCoverageViewModel, modifier: Modifier, 
                     }
                     selected.status?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
                     selected.receiveDbm?.let {
-                        CoverageInspectionValue(stringResource(R.string.coverage_predicted_rx), String.format(Locale.US, "%.1f dBm", it))
+                        CoverageInspectionValue(stringResource(R.string.coverage_predicted_rx), String.format("%.1f dBm", it))
                     }
                     selected.marginDb?.let {
-                        CoverageInspectionValue(stringResource(R.string.coverage_margin_after_reserve), String.format(Locale.US, "%.1f dB", it))
+                        CoverageInspectionValue(stringResource(R.string.coverage_margin_after_reserve), String.format("%.1f dB", it))
                     }
                     selected.spacingMeters?.let {
                         CoverageInspectionValue(stringResource(R.string.coverage_grid_spacing), formatDistance(it / 1000.0, unit))

@@ -13,23 +13,44 @@ the existing wire and persistent identifiers when introducing resource labels fo
 enum values or fields. Some English count labels intentionally use the same text in
 `one` and `other` because the original UI did so.
 
-Phase 3 formatting review (existing number and date formatting behavior retained):
+Phase 3 uses Android ICU's measurement system for the device locale when the distance
+setting is absent. The US system uses miles and feet, the UK system uses miles and metres,
+and the metric system uses kilometres and metres. DataStore stores an enum name only when
+the user chooses a unit.
 
-| Area | Display-format sites |
+| Unit call site | Behavior |
 | --- | --- |
-| Shared | `Format.kt`: US compact counts, short date/time, duration and distances. |
-| Explore | `ExploreModel.kt`: US summary SNR; `MyNodesScreen.kt` and `FavoriteChangesScreen.kt`: activity and review dates. |
-| Nodes | `NodeAnalyticsLogic.kt`: US duration and chart dates; `NodeAnalyticsScreen.kt`: US percentages, daily rates and signal data, padded UTC hours; `NodeDetailScreen.kt`: SNR, RSSI, average hops and first/last-seen dates; `NodeBrowser.kt`: last-heard dates. |
-| Live map | `MapSheets.kt` and `RouteDetails.kt`: US route SNR/RSSI; `GoogleMapEngine.kt`: cluster count abbreviation. |
-| Channels and packets | `ChannelDetailScreen.kt`, `BeaconPackets.kt`, `MessagePacketScreen.kt`, `PacketDetailScreen.kt`, `PacketGroups.kt` and `RoutePicker.kt`: RF figures, received/sent times and history dates. |
-| Observers | `ObserverDetailScreen.kt`: US voltage and noise floor, recent-packet RF figures; `BeaconObserverAnalyticsReader.kt`: timeline dates. |
-| Coverage | `EstimatedCoverageScreen.kt`: grouped work counts, countdown, US coordinates, radius, height and RF results; `CoverageMap.kt`: US inspection RF figures; `EstimatedCoverageViewModel.kt`: coordinate fallback title and height editor decimal text. Validate the editor parsing contract before changing its display. |
-| Link Profile | `LinkProfileScreen.kt` and `LinkProfileUnits.kt`: margin, dB, height, axis distances and calculated time. |
-| Saved plans | `SavedPlansScreen.kt` and `SavedPlansImport.kt`: display dates for drafts, updates and exported packages. |
-| Beacon / Node Check | `BeaconApi.kt`: retry time; `NodeCheckScreen.kt`: last-heard date and live test timer; `NodeCheck.kt`: fixed RF and relative time that appear in reports. |
+| `Preferences.kt`, `MainActivity.kt`, `Format.kt` | Absent choices resolve from the current region. Settings names the three enum values explicitly. |
+| `Format.kt` | `usesMiles` chooses the long-distance threshold and unit. `usesFeet` chooses the unit for short distances. |
+| `EstimatedCoverageViewModel.kt`, `EstimatedCoverageScreen.kt` | `usesMiles` controls the initial radius and spacing, radius slider, and spacing choices and labels. `usesFeet` sets the height editor unit for the study. |
+| `NodeScopeApp.kt`, `CandidateSitesScreen.kt` | Coverage receives the distance unit. Candidate site height editing and conversion use `usesFeet`. |
+| `LinkProfileUnits.kt`, `LinkProfileViewModel.kt` | `usesFeet` controls height conversions, slider bounds, and the 20 ft or 6 m initial mast. |
+| `LinkProfileScreen.kt` | The distance axis uses `usesMiles`. Elevation axis labels and height controls use `usesFeet`. Link distances use `formatDistance`. |
+| `CoverageMap.kt`, `NodeDetailScreen.kt` | Map grid spacing and neighbour distances use `formatDistance`. |
 
-Machine-facing uses remain fixed: public key normalization, hex fingerprints, map color
-encoding, terrain tile and cache identifiers, and the saved-plans export filename.
+The current formatting locale now supplies decimals for the following display calls.
+
+| File | Changed display formats |
+| --- | --- |
+| `Format.kt` | Long distances and scaled compact counts. |
+| `RouteDetails.kt`, `MapSheets.kt` | Route SNR and RSSI. |
+| `ObserverDetailScreen.kt` | Battery voltage and noise floor in charts and telemetry rows. |
+| `NodeAnalyticsScreen.kt`, `NodeAnalyticsLogic.kt` | Percentages, daily rates, SNR typical ranges and limits, median RSSI, signal axis labels, and duration abbreviations. |
+| `LinkProfileScreen.kt`, `LinkProfileUnits.kt` | Link margin, RF measurements, antenna height, and distance axis decimals. |
+| `EstimatedCoverageScreen.kt`, `CoverageMap.kt`, `CoverageRadioPresets.kt` | Display coordinates, radius, antenna and modem preset numbers, radio summaries, predicted receive levels, and margins. |
+| `ExploreModel.kt`, `ExploreScreen.kt` | The average SNR tile formats the same value separately from exports. |
+| `GoogleMapEngine.kt` | Cluster badges trim an optional decimal using the current locale. |
+
+Existing default-locale RF formatting in channel and packet views, node details, and Node
+Check uses the locale already. The decimal editors in Coverage, Link Profile, and Candidate
+Sites accept commas and dots. Existing date patterns are unchanged.
+
+Fixed locale uses include the US decimal in Explore CSV and JSON and the US date in the
+saved-plans filename. Coverage draft coordinate titles and programmatic height editor values
+remain fixed because they may be stored or exported. The Skadi terrain filename, map color
+hex, packet hop hex, certificate fingerprints, channel keys, terrain digests, portable input
+fingerprints, deployment revisions, and response cache digests use a fixed locale. Public key
+normalization, API and URL parameters, and structured JSON values also remain locale-neutral.
 
 Phase 4 defers Node Check rule findings and verdicts, the English glossary and What's
 New JSON, and community source subtitles from the registry. Store listing copy is

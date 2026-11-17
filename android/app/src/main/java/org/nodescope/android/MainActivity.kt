@@ -66,7 +66,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 // Settings → Units, read by every screen that shows a distance.
-                CompositionLocalProvider(LocalDistanceUnit provides (preferences?.distanceUnit ?: DistanceUnit.IMPERIAL),
+                CompositionLocalProvider(LocalDistanceUnit provides (preferences?.distanceUnit ?: DistanceUnit.defaultUnit()),
                     LocalUriHandler provides remember { InAppUriHandler(this@MainActivity) }) {
                     Surface(Modifier.fillMaxSize()) {
                         preferences?.let { NodeScopeApp(model, it) } ?: Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

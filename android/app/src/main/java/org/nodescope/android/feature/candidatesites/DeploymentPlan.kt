@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.candidatesites
 
+import org.nodescope.android.core.design.parseDecimalInput
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
@@ -78,15 +79,12 @@ data class CandidateSiteAssumptions(
 enum class DeploymentPlanFailure { UNSUPPORTED_VERSION, INVALID_DATA, TOO_LARGE }
 /** Decimal input only; a blank optional value must remain unknown, never zero. */
 object CandidateSiteInput {
-    private val decimal = Regex("""^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$""")
     fun make(id: String, name: String, values: List<String>, heightInFeet: Boolean = false): CandidateSite {
         valid(values.size == 8)
         val parsed = values.map { text ->
-            val value = text.trim().replace(',', '.')
-            if (value.isEmpty()) null else {
-                valid(decimal.matches(value))
-                val number = value.toDoubleOrNull()
-                valid(number != null && number.isFinite())
+            if (text.isBlank()) null else {
+                val number = text.parseDecimalInput()
+                valid(number != null)
                 number
             }
         }

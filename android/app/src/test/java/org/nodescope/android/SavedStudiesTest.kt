@@ -1,5 +1,6 @@
 package org.nodescope.android
 
+import org.nodescope.android.core.storage.DistanceUnit
 import androidx.lifecycle.SavedStateHandle
 import java.io.File
 import java.nio.file.Files
@@ -26,7 +27,7 @@ class SavedStudiesTest {
     }
 
     private fun coverageModel(root: File) =
-        EstimatedCoverageViewModel(File(root, "terrain"), CoverageMemoryPreferences(), heightInFeet = false)
+        EstimatedCoverageViewModel(File(root, "terrain"), CoverageMemoryPreferences(), DistanceUnit.METRIC)
 
     /** A completed result for the model's current setup: every sample 120 dB of loss, every node predicted. */
     private fun result(model: EstimatedCoverageViewModel): CoverageStudyResult {
@@ -147,7 +148,7 @@ class SavedStudiesTest {
 
     @Test fun linkProfileHandoffFillsCoverageLikeAReopenedStudy() = withMain { root ->
         val seed = LinkCoverageSeed(SavedEndpoint("Site B", 41.0, -91.0, SavedAntenna(10.0, 9.0, 2.0)), 910.525, 22.0, -128.0)
-        val imperial = EstimatedCoverageViewModel(File(root, "terrain"), CoverageMemoryPreferences(), heightInFeet = true)
+        val imperial = EstimatedCoverageViewModel(File(root, "terrain"), CoverageMemoryPreferences(), DistanceUnit.IMPERIAL)
         imperial.applyLinkSeed(seed)
         assertEquals("32.81", imperial.fields["txHeight"])
         assertEquals("22", imperial.fields["power"])

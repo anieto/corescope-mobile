@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.candidatesites
 
+import org.nodescope.android.core.design.parseDecimalInput
 import androidx.annotation.StringRes
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
@@ -14,7 +15,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.nodescope.android.core.design.LocalDistanceUnit
-import org.nodescope.android.core.storage.DistanceUnit
 import org.nodescope.android.feature.map.LOCATION_PERMISSIONS
 import org.nodescope.android.feature.map.LocationResult
 import org.nodescope.android.feature.map.currentLocation
@@ -183,7 +183,7 @@ private fun CandidateSiteEditor(site: CandidateSite?, close: () -> Unit, apply: 
     val resources = LocalResources.current
     val preference = LocalDistanceUnit.current
     // Keep this draft's unit stable across recomposition and activity recreation.
-    val heightInFeet = rememberSaveable { preference == DistanceUnit.IMPERIAL }
+    val heightInFeet = rememberSaveable { preference.usesFeet }
     val original = remember(site, heightInFeet) { listOf(site?.latitude, site?.longitude,
         site?.assumptions?.antennaHeightMeters?.let { if (heightInFeet) it / 0.3048 else it },
         site?.assumptions?.frequencyMHz, site?.assumptions?.transmitPowerDBm, site?.assumptions?.antennaGainDBi,
@@ -279,8 +279,8 @@ private fun CandidateSiteEditor(site: CandidateSite?, close: () -> Unit, apply: 
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
     }
     if (discard) ConfirmDiscard(stringResource(R.string.planner_discard_site_changes), stringResource(R.string.planner_discard_changes), { discard = false }, close)
-    if (showsMap) CandidateSiteMapPicker(values[0].trim().replace(',', '.').toDoubleOrNull(),
-        values[1].trim().replace(',', '.').toDoubleOrNull(), { showsMap = false }) { latitude, longitude ->
+    if (showsMap) CandidateSiteMapPicker(values[0].parseDecimalInput(),
+        values[1].parseDecimalInput(), { showsMap = false }) { latitude, longitude ->
         values = values.toMutableList().also { it[0] = latitude.toString(); it[1] = longitude.toString() }
         showsMap = false
     }

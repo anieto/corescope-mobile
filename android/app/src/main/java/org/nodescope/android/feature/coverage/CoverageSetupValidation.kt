@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.coverage
 
+import org.nodescope.android.core.design.parseDecimalInput
 enum class CoverageSetupIssue { required, number, latitude, longitude, frequency, height, nonnegative, unknownField }
 
 /** Basic editor validation; passing does not establish terrain availability or RF model suitability. */
@@ -7,8 +8,7 @@ object CoverageSetupValidation {
     fun supportsCoordinate(latitude: Double, longitude: Double): Boolean =
         latitude.isFinite() && longitude.isFinite() && latitude in -85.0..85.0 && longitude in -180.0..180.0
 
-    private val numeric = Regex("""[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?""")
-    fun number(text: String): Double? = text.trim().takeIf { numeric.matches(it) }?.toDoubleOrNull()?.takeIf { it.isFinite() }
+    fun number(text: String): Double? = text.parseDecimalInput()
     fun issue(field: String, text: String, heightInFeet: Boolean = false): CoverageSetupIssue? {
         if (field !in listOf("latitude", "longitude", "frequency", "power", "txHeight", "txGain", "txLoss",
                 "rxHeight", "rxGain", "rxLoss", "sensitivity", "reserve")) return CoverageSetupIssue.unknownField

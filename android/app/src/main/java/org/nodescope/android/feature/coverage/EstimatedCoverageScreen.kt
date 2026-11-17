@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.coverage
 
+import org.nodescope.android.core.design.formatDisplayDecimal
 import androidx.compose.ui.res.stringResource
 import org.nodescope.android.R
 import org.nodescope.android.core.design.withDescription
@@ -325,7 +326,7 @@ internal fun CoverageStudyResult.sampleCounts(): Triple<Int, Int, Int> {
 private fun setupSummary(model: EstimatedCoverageViewModel, unit: DistanceUnit): String {
     val radio = model.radioPreset?.title?.asString() ?: stringResource(R.string.coverage_custom_radio_2)
     val power = model.number("power")?.let { stringResource(R.string.coverage_dbm, it.editorText()) } ?: "— dBm"
-    val antenna = stringResource(R.string.coverage_antenna_2, model.values["txHeight"].orEmpty(), if (model.heightInFeet) "ft" else "m")
+    val antenna = stringResource(R.string.coverage_antenna_2, model.displayNumber("txHeight"), if (model.heightInFeet) "ft" else "m")
     val area = "${formatDistance(model.radiusMeters / 1000.0, unit)} / ${spacingLabel(model.spacingMeters, unit)}"
     return listOf(radio, power, antenna, area).joinToString(" · ")
 }
@@ -428,8 +429,8 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
     var showsCoordinates by rememberSaveable { mutableStateOf(false) }
     val point = model.coordinate
     val title = if (point == null) stringResource(R.string.coverage_transmitter_not_placed) else model.transmitterName ?: stringResource(R.string.coverage_dropped_pin)
-    val antenna = stringResource(R.string.coverage_antenna_dbi, model.values["txHeight"].orEmpty(), model.heightUnit, model.values["txGain"].orEmpty())
-    val place = point?.let { String.format(Locale.US, "%.4f, %.4f", it.latitude, it.longitude) }
+    val antenna = stringResource(R.string.coverage_antenna_dbi, model.displayNumber("txHeight"), model.heightUnit, model.displayNumber("txGain"))
+    val place = point?.let { String.format("%.4f, %.4f", it.latitude, it.longitude) }
     CoverageDisclosure(stringResource(R.string.coverage_transmitter_settings), listOfNotNull(title, listOfNotNull(place, antenna).joinToString(" · ")),
         model.transmitterExpanded, { model.transmitterExpanded = !model.transmitterExpanded }) {
         CoverageHeightSetting(model, "txHeight", CoverageHeightPreset.transmitter)
@@ -453,9 +454,9 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
     var expanded by rememberSaveable { mutableStateOf(false) }
     var customizing by rememberSaveable { mutableStateOf(false) }
     val preset = model.radioPreset
-    val summary = listOfNotNull("${model.values["frequency"].orEmpty()} MHz", preset?.modemSummary,
-        "${model.values["power"].orEmpty()} dBm", stringResource(R.string.coverage_radio_sensitivity_summary, model.values["sensitivity"].orEmpty())).joinToString(" · ")
-    CoverageDisclosure(stringResource(R.string.coverage_radio_settings), listOf(summary, stringResource(R.string.coverage_radio_reserve_summary, model.values["reserve"].orEmpty())), expanded, { expanded = !expanded }) {
+    val summary = listOfNotNull("${model.displayNumber("frequency")} MHz", preset?.modemSummary(),
+        "${model.displayNumber("power")} dBm", stringResource(R.string.coverage_radio_sensitivity_summary, model.displayNumber("sensitivity"))).joinToString(" · ")
+    CoverageDisclosure(stringResource(R.string.coverage_radio_settings), listOf(summary, stringResource(R.string.coverage_radio_reserve_summary, model.displayNumber("reserve"))), expanded, { expanded = !expanded }) {
         CoverageRadioPresetMenu(preset, model::applyRadioPreset)
         TextButton(onClick = { customizing = !customizing }, contentPadding = PaddingValues(0.dp)) {
             Text(if (customizing) stringResource(R.string.coverage_hide_radio_values) else if (preset == null) stringResource(R.string.coverage_customize_radio_edited) else stringResource(R.string.coverage_customize_radio))
@@ -478,7 +479,7 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
 @Composable private fun CoverageReceiverCard(model: EstimatedCoverageViewModel) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     CoverageDisclosure(stringResource(R.string.coverage_receiver_assumptions),
-        listOf(stringResource(R.string.coverage_antenna_dbi_loss_db, model.values["rxHeight"].orEmpty(), model.heightUnit, model.values["rxGain"].orEmpty(), model.values["rxLoss"].orEmpty())),
+        listOf(stringResource(R.string.coverage_antenna_dbi_loss_db, model.displayNumber("rxHeight"), model.heightUnit, model.displayNumber("rxGain"), model.displayNumber("rxLoss"))),
         expanded, { expanded = !expanded }) {
         Text(stringResource(R.string.coverage_one_assumed_receiver_for_the_coverage_map_and),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -491,10 +492,10 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
 /** Study radius in whole miles or kilometres, then the sample spacing and the work check. */
 @Composable private fun CoverageStudyAreaCard(model: EstimatedCoverageViewModel) {
     val unit = LocalDistanceUnit.current
-    val imperial = unit == DistanceUnit.IMPERIAL
-    val step = if (imperial) 2.0 else 5.0
-    val maximum = if (imperial) 50.0 else 80.0
-    val metersPerUnit = if (imperial) 1609.344 else 1000.0
+    val usesMiles = unit.usesMiles
+    val step = if (usesMiles) 2.0 else 5.0
+    val maximum = if (usesMiles) 50.0 else 80.0
+    val metersPerUnit = if (usesMiles) 1609.344 else 1000.0
     var draft by remember { mutableStateOf<Float?>(null) }
     val shown = draft?.toDouble() ?: model.radiusMeters / metersPerUnit
     fun setRadius(value: Double) = model.setRadius((value.coerceIn(step, maximum) * metersPerUnit).let { kotlin.math.round(it).toInt() })
@@ -504,7 +505,7 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
         val next = if (increasing) kotlin.math.floor(steps + 0.0005) + 1 else kotlin.math.ceil(steps - 0.0005) - 1
         setRadius(next * step)
     }
-    val label = stringResource(R.string.coverage_value, shown.let { if (it % 1.0 == 0.0) it.toLong().toString() else String.format(Locale.US, "%.3f", it).trimEnd('0') }, if (imperial) "mi" else "km")
+    val label = stringResource(R.string.coverage_value, formatDisplayDecimal(shown, 3), if (usesMiles) "mi" else "km")
     CoverageCard {
         Text(stringResource(R.string.coverage_study_area), style = MaterialTheme.typography.titleMedium)
         LearnLabel(stringResource(R.string.coverage_study_radius), GlossaryTerm.STUDY_RADIUS)
@@ -520,7 +521,7 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
         Text(stringResource(R.string.coverage_doubling_the_radius_roughly_quadruples_the_map_samples),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         LearnLabel(stringResource(R.string.coverage_sample_spacing), GlossaryTerm.COVERAGE_DETAIL)
-        val choices = (if (imperial) EstimatedCoverageViewModel.imperialSpacings else EstimatedCoverageViewModel.metricSpacings).let {
+        val choices = (if (usesMiles) EstimatedCoverageViewModel.imperialSpacings else EstimatedCoverageViewModel.metricSpacings).let {
             if (model.spacingMeters in it) it else (it + model.spacingMeters).sorted()
         }
         CoverageSpacingMenu(model.spacingMeters, choices, unit, model::setSpacing)
@@ -575,9 +576,10 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
     LearnLabel(stringResource(R.string.coverage_antenna_height), GlossaryTerm.ANTENNA_HEIGHT)
     CoveragePresetRow(presets.map { preset ->
         // Imperial chips advertise whole feet; apply that exact displayed height.
-        val text = if (feet) String.format(Locale.US, "%.0f", preset.meters / 0.3048) else preset.meters.editorText()
+        val editorValue = if (feet) String.format(Locale.ROOT, "%.0f", preset.meters / 0.3048) else preset.meters.editorText()
+        val text = editorValue.replace('.', java.text.DecimalFormatSymbols.getInstance().decimalSeparator)
         Triple("${preset.title.asString()} · $text ${model.heightUnit}", meters != null && CoverageHeightPreset.matching(meters, presets) == preset) {
-            model.set(field, text)
+            model.set(field, editorValue)
         }
     })
     CoverageNumberField(model, field, stringResource(R.string.coverage_field_above_ground), model.heightUnit, null)
@@ -598,7 +600,7 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
         OutlinedButton(onClick = { open = true }, Modifier.fillMaxWidth()) { Text(match?.title?.asString() ?: stringResource(R.string.coverage_custom), Modifier.weight(1f)); Icon(Icons.Filled.ExpandMore, null) }
         DropdownMenu(open, { open = false }) {
             CoverageAntennaPreset.all.forEach { preset ->
-                DropdownMenuItem(text = { Text(stringResource(R.string.coverage_dbi, preset.title.asString(), preset.gainDbi.editorText())) },
+                DropdownMenuItem(text = { Text(stringResource(R.string.coverage_dbi, preset.title.asString(), formatDisplayDecimal(preset.gainDbi, 2))) },
                     trailingIcon = if (preset == match) ({ Text(stringResource(R.string.coverage_value_3)) }) else null,
                     onClick = { choose(preset.gainDbi); open = false })
             }
@@ -612,7 +614,7 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
         OutlinedButton(onClick = { open = true }, Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
                 Text(current?.let { "${it.family.title} · ${it.title.asString()}" } ?: stringResource(R.string.coverage_custom_radio))
-                current?.let { Text(it.modemSummary, style = MaterialTheme.typography.bodySmall) }
+                current?.let { Text(it.modemSummary(), style = MaterialTheme.typography.bodySmall) }
             }
             Icon(Icons.Filled.ExpandMore, null)
         }
@@ -622,7 +624,7 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
                     color = MaterialTheme.colorScheme.primary)
                 CoverageRadioPreset.presets(family).forEach { preset ->
                     DropdownMenuItem(text = {
-                        Column { Text(preset.title.asString()); Text(stringResource(R.string.coverage_mhz, preset.modemSummary, preset.frequencyMHz.editorText()), style = MaterialTheme.typography.bodySmall) }
+                        Column { Text(preset.title.asString()); Text(stringResource(R.string.coverage_mhz, preset.modemSummary(), formatDisplayDecimal(preset.frequencyMHz, 3)), style = MaterialTheme.typography.bodySmall) }
                     }, trailingIcon = if (preset == current) ({ Text(stringResource(R.string.coverage_value_3)) }) else null, onClick = { choose(preset); open = false })
                 }
             }
@@ -719,9 +721,9 @@ private val EstimatedCoverageViewModel.heightUnit: String get() = if (heightInFe
 
 /** Spacing in the preferred unit: fractions of a mile, or metres and kilometres. */
 private fun spacingLabel(meters: Int, unit: DistanceUnit): String {
-    if (unit == DistanceUnit.IMPERIAL) {
+    if (unit.usesMiles) {
         mapOf(201 to "⅛ mi", 402 to "¼ mi", 805 to "½ mi", 1609 to "1 mi", 2414 to "1½ mi", 3219 to "2 mi", 8047 to "5 mi")[meters]?.let { return it }
-        return "$meters m"
+        return formatDistance(meters / 1000.0, unit)
     }
     return if (meters >= 1000 && meters % 1000 == 0) "${meters / 1000} km" else "$meters m"
 }
@@ -804,9 +806,9 @@ private fun spacingLabel(meters: Int, unit: DistanceUnit): String {
                     Text(node.displayName, fontFamily = MonaspaceNeon, style = MaterialTheme.typography.titleSmall)
                     Text(status?.coverageLabel()?.asString() ?: stringResource(R.string.coverage_not_evaluated), style = MaterialTheme.typography.bodySmall)
                     status?.adjustedMarginDb?.let { margin ->
-                        Text(stringResource(R.string.coverage_inspection_margin, String.format(Locale.US, "%.1f", margin)), fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelMedium)
+                        Text(stringResource(R.string.coverage_inspection_margin, String.format("%.1f", margin)), fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelMedium)
                         result?.let {
-                            Text(stringResource(R.string.coverage_inspection_receive_level, String.format(Locale.US, "%.1f", margin + it.budget.sensitivityDbm + it.budget.reserveDb)),
+                            Text(stringResource(R.string.coverage_inspection_receive_level, String.format("%.1f", margin + it.budget.sensitivityDbm + it.budget.reserveDb)),
                                 fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelMedium)
                         }
                     }
@@ -859,3 +861,6 @@ private fun spacingLabel(meters: Int, unit: DistanceUnit): String {
 }
 
 private const val COVERAGE_PREFERENCES = "estimated-coverage"
+
+private fun EstimatedCoverageViewModel.displayNumber(field: String): String =
+    number(field)?.let { formatDisplayDecimal(it, 12) } ?: values[field].orEmpty()
