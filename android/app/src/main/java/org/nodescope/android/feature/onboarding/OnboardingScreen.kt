@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.onboarding
 
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.clip
@@ -40,6 +41,7 @@ fun OnboardingScreen(
     sources: List<AnalyzerSource>, initialHost: String, saving: Boolean, error: String?,
     onFinish: (String) -> Unit, icons: SourceIcons? = null,
 ) {
+    val resources = LocalResources.current
     var step by rememberSaveable { mutableStateOf(OnboardingStep.SOURCE) }
     var host by rememberSaveable { mutableStateOf(initialHost) }
     var picking by rememberSaveable { mutableStateOf(false) }
@@ -49,13 +51,13 @@ fun OnboardingScreen(
     }
     if (picking) {
         Column(Modifier.fillMaxSize()) {
-            TopAppBar(title = { Text("Analyzer source") }, colors = org.nodescope.android.core.design.meshTopAppBarColors(), windowInsets = WindowInsets(0, 0, 0, 0), navigationIcon = {
-                IconButton(onClick = { picking = false }) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") }
+            TopAppBar(title = { Text(stringResource(R.string.onboarding_analyzer_source)) }, colors = org.nodescope.android.core.design.meshTopAppBarColors(), windowInsets = WindowInsets(0, 0, 0, 0), navigationIcon = {
+                IconButton(onClick = { picking = false }) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back)) }
             })
             SourceScreen(sources, host, saving = false, error = pickError, onSave = { chosen ->
                 runCatching { normalizeHost(chosen) }
                     .onSuccess { host = it; pickError = null; picking = false }
-                    .onFailure { pickError = it.message ?: "Enter a valid analyzer hostname." }
+                    .onFailure { pickError = it.message ?: resources.getString(R.string.onboarding_enter_a_valid_analyzer_hostname) }
             }, icons = icons)
         }
         return
@@ -64,7 +66,7 @@ fun OnboardingScreen(
     when (step) {
         OnboardingStep.SOURCE -> OnboardingPage(
             icon = null, title = stringResource(R.string.welcome),
-            description = "Choose a community analyzer to explore its live nodes, routes, channels, and observers.",
+            description = stringResource(R.string.onboarding_choose_a_community_analyzer_to_explore_its_live),
             primary = stringResource(R.string.continue_label), primaryEnabled = host.isNotBlank(),
             onPrimary = { step = OnboardingStep.OVERVIEW },
         ) {
@@ -73,31 +75,31 @@ fun OnboardingScreen(
                     if (source != null) SourceLogo(source, icons)
                     else Icon(Icons.Outlined.SettingsInputAntenna, null, Modifier.size(40.dp).padding(8.dp), tint = MaterialTheme.colorScheme.primary)
                     Column(Modifier.weight(1f)) {
-                        Text(source?.name ?: "Custom analyzer", style = MaterialTheme.typography.titleMedium)
-                        Text(host.ifBlank { "Choose an analyzer" }, style = MaterialTheme.typography.bodySmall,
+                        Text(source?.name ?: stringResource(R.string.onboarding_custom_analyzer_2), style = MaterialTheme.typography.titleMedium)
+                        Text(host.ifBlank { stringResource(R.string.onboarding_choose_an_analyzer) }, style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Icon(Icons.Outlined.ChevronRight, "Choose analyzer", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Icons.Outlined.ChevronRight, stringResource(R.string.onboarding_choose_analyzer), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            Text("You can change sources anytime in Settings, or add a custom analyzer.", textAlign = TextAlign.Center,
+            Text(stringResource(R.string.onboarding_you_can_change_sources_anytime_in_settings_or), textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         OnboardingStep.OVERVIEW -> OnboardingPage(
-            icon = Icons.Outlined.Map, title = "Follow the mesh",
-            description = "NodeScope makes live activity easier to understand at a glance.",
+            icon = Icons.Outlined.Map, title = stringResource(R.string.onboarding_follow_the_mesh),
+            description = stringResource(R.string.onboarding_nodescope_makes_live_activity_easier_to_understand_at),
             primary = stringResource(if (saving) R.string.saving else R.string.start_exploring), primaryEnabled = !saving,
             onPrimary = { onFinish(host) }, onBack = { step = OnboardingStep.SOURCE },
         ) {
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    FeatureRow(Icons.Outlined.Hub, "Explore nodes", "Tap a node for its details. Clusters zoom in to reveal nearby nodes.")
-                    FeatureRow(Icons.Outlined.Route, "Watch packet routes",
-                        "Live routes animate hop by hop. Open a channel message to replay its path.")
-                    FeatureRow(Icons.Outlined.FilterList, "Focus your view", "Choose a region on the map to narrow traffic and center the view.")
+                    FeatureRow(Icons.Outlined.Hub, stringResource(R.string.onboarding_explore_nodes), stringResource(R.string.onboarding_tap_a_node_for_its_details_clusters_zoom))
+                    FeatureRow(Icons.Outlined.Route, stringResource(R.string.onboarding_watch_packet_routes),
+                        stringResource(R.string.onboarding_live_routes_animate_hop_by_hop_open_a))
+                    FeatureRow(Icons.Outlined.FilterList, stringResource(R.string.onboarding_focus_your_view), stringResource(R.string.onboarding_choose_a_region_on_the_map_to_narrow))
                 }
             }
-            Text("Location is optional and is only used when you choose to center the map on yourself.", textAlign = TextAlign.Center,
+            Text(stringResource(R.string.onboarding_location_is_optional_and_is_only_used_when), textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (error != null) Text(error, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
         }
@@ -115,7 +117,7 @@ private fun OnboardingPage(
 ) {
     Column(Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxWidth().height(56.dp)) {
-            onBack?.let { back -> TextButton(onClick = back, Modifier.align(Alignment.CenterStart).padding(start = 8.dp)) { Text("Back") } }
+            onBack?.let { back -> TextButton(onClick = back, Modifier.align(Alignment.CenterStart).padding(start = 8.dp)) { Text(stringResource(R.string.back)) } }
         }
         // Centered when it fits; scrolls (e.g. at large text sizes) when it doesn't.
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {

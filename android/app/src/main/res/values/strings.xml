@@ -1722,6 +1722,36 @@
     <string name="settings_what_this_is">What this is</string>
     <string name="settings_you_can_review_these_anytime_in_settings_help">You can review these anytime in Settings → Help &amp; support → What\'s new.</string>
 
+    <!-- onboarding and source strings -->
+    <string name="onboarding_analyzer_source">Analyzer source</string>
+    <string name="onboarding_beacon_beta">Beacon · Beta</string>
+    <string name="onboarding_choose_a_community_analyzer_to_explore_its_live">Choose a community analyzer to explore its live nodes, routes, channels, and observers.</string>
+    <string name="onboarding_choose_a_region_on_the_map_to_narrow">Choose a region on the map to narrow traffic and center the view.</string>
+    <string name="onboarding_choose_an_analyzer">Choose an analyzer</string>
+    <string name="onboarding_choose_analyzer">Choose analyzer</string>
+    <string name="onboarding_community_sources_are_fetched_from_nodescope_s_source">Community sources are fetched from NodeScope\'s source registry when available.</string>
+    <string name="onboarding_corescope">CoreScope</string>
+    <string name="onboarding_custom_analyzer">Custom analyzer</string>
+    <string name="onboarding_custom_analyzer_2">Custom analyzer</string>
+    <string name="onboarding_enter_a_valid_analyzer_hostname">Enter a valid analyzer hostname.</string>
+    <string name="onboarding_explore_nodes">Explore nodes</string>
+    <string name="onboarding_focus_your_view">Focus your view</string>
+    <string name="onboarding_follow_the_mesh">Follow the mesh</string>
+    <string name="onboarding_live_routes_animate_hop_by_hop_open_a">Live routes animate hop by hop. Open a channel message to replay its path.</string>
+    <string name="onboarding_location_is_optional_and_is_only_used_when">Location is optional and is only used when you choose to center the map on yourself.</string>
+    <string name="onboarding_no_email_app">No email app is set up. Write to %1$s.</string>
+    <string name="onboarding_nodescope_makes_live_activity_easier_to_understand_at">NodeScope makes live activity easier to understand at a glance.</string>
+    <string name="onboarding_request_a_community_source">Request a community source</string>
+    <string name="onboarding_selected">Selected</string>
+    <string name="onboarding_source_request_body">Hello NodeScope team,\n\nI\'d like to request that the following community source be added.\n\nSOURCE DETAILS\nSource name:\nAnalyzer hostname or URL:\nRegion or community:\nOwner or operator contact:\n\nPERMISSION\nDo you have permission from the source owner or operator for this source to be listed and used in NodeScope?\nAnswer: Yes / No / Not yet\n\nADDITIONAL DETAILS\n\nThank you.</string>
+    <string name="onboarding_source_request_subject">NodeScope community source request</string>
+    <string name="onboarding_suggest_a_public_analyzer_for_the_community_list">Suggest a public analyzer for the community list. Please confirm that its owner or operator permits it to be listed and used in NodeScope.</string>
+    <string name="onboarding_tap_a_node_for_its_details_clusters_zoom">Tap a node for its details. Clusters zoom in to reveal nearby nodes.</string>
+    <string name="onboarding_us_community_sources">US community sources</string>
+    <string name="onboarding_use_custom_analyzer">Use custom analyzer</string>
+    <string name="onboarding_watch_packet_routes">Watch packet routes</string>
+    <string name="onboarding_you_can_change_sources_anytime_in_settings_or">You can change sources anytime in Settings, or add a custom analyzer.</string>
+
     <style name="Theme.NodeScope" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
     </style>
