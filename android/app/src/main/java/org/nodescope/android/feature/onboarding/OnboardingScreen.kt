@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.onboarding
 
+import org.nodescope.android.core.network.analyzerErrorText
+
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.shadow
@@ -57,7 +59,7 @@ fun OnboardingScreen(
             SourceScreen(sources, host, saving = false, error = pickError, onSave = { chosen ->
                 runCatching { normalizeHost(chosen) }
                     .onSuccess { host = it; pickError = null; picking = false }
-                    .onFailure { pickError = it.message ?: resources.getString(R.string.onboarding_enter_a_valid_analyzer_hostname) }
+                    .onFailure { pickError = it.analyzerErrorText(R.string.onboarding_enter_a_valid_analyzer_hostname).resolve(resources) }
             }, icons = icons)
         }
         return

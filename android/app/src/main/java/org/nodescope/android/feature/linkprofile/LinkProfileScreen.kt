@@ -423,21 +423,7 @@ private fun PointCard(model: LinkProfileViewModel, state: LinkProfileViewModel.S
 
 @Composable
 private fun ProfileField(key: String, value: String, edit: (String) -> Unit) {
-    val label = when (key) {
-        "Frequency (MHz)" -> stringResource(R.string.link_profile_field_frequency)
-        "Transmit power (dBm)" -> stringResource(R.string.link_profile_field_power)
-        "Sensitivity (dBm)" -> stringResource(R.string.link_profile_field_sensitivity)
-        else -> {
-            val field = key.substringBefore(' ')
-            val endpoint = key.substringAfter(' ').substringBefore(' ')
-            stringResource(when (field) {
-                "Gain" -> R.string.link_profile_field_gain
-                "Loss" -> R.string.link_profile_field_loss
-                "Latitude" -> R.string.link_profile_field_latitude
-                else -> R.string.link_profile_field_longitude
-            }, endpoint)
-        }
-    }
+    val label = profileFieldLabel(key).asString()
     OutlinedTextField(value, edit, label = { Text(label) }, singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text), modifier = Modifier.fillMaxWidth())
 }
@@ -641,7 +627,7 @@ internal fun ProfileHeightControl(endpoint: String, meters: Double, unit: Distan
                         profileHeightMeters(profileDisplayHeight(preset.meters, unit).roundToInt().toDouble(), unit)
                     else preset.meters
                     onMetersChanged(value)
-                }, label = { Text(stringResource(R.string.link_profile_value, preset.title, formatProfileHeight(preset.meters, unit))) })
+                }, label = { Text(stringResource(R.string.link_profile_value, preset.title.asString(), formatProfileHeight(preset.meters, unit))) })
         }
     }
     val maximum = profileHeightMaximum(unit)

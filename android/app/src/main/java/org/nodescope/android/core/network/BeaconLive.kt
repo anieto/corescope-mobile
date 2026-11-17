@@ -1,5 +1,8 @@
 package org.nodescope.android.core.network
 
+import org.nodescope.android.R
+import org.nodescope.android.core.design.UiText
+
 import java.io.IOException
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -35,7 +38,7 @@ sealed interface BeaconLiveEvent {
     data class ObserverRecoveryFailed(val message: String) : BeaconLiveEvent
     data object ObserverCatalogInvalidated : BeaconLiveEvent
     data class BrowseRemoved(val filter: LiveBrowseFilter) : BeaconLiveEvent
-    data class RecoveryFailed(val filter: LiveBrowseFilter, val message: String) : BeaconLiveEvent
+    data class RecoveryFailed(val filter: LiveBrowseFilter, val message: UiText) : BeaconLiveEvent
     data class RecoveryCompleted(val filter: LiveBrowseFilter) : BeaconLiveEvent
     data object Connected : BeaconLiveEvent
     data class Disconnected(val message: String?) : BeaconLiveEvent
@@ -622,7 +625,7 @@ class BeaconLiveFeed(
                 return@launch
             } catch (e: Exception) {
                 if (ended || !client.sourceSession.isCurrent || projections[filter] !== projection) return@launch
-                events.trySend(BeaconLiveEvent.RecoveryFailed(filter, e.message ?: "Couldn't recover packets."))
+                events.trySend(BeaconLiveEvent.RecoveryFailed(filter, e.analyzerErrorText(R.string.packets_beacon_recovery_failed)))
             } finally {
                 if (projections[filter] === projection) recoveryJobs.remove(filter)
             }
@@ -637,7 +640,7 @@ class BeaconLiveFeed(
 /** What the app keeps from a Beacon live feed (the Beacon half of iOS `LiveFeedService`). */
 data class BeaconLiveState(
     val browseSnapshots: Map<LiveBrowseFilter, LiveBrowseSnapshot> = emptyMap(),
-    val recoveryErrors: Map<LiveBrowseFilter, String> = emptyMap(),
+    val recoveryErrors: Map<LiveBrowseFilter, UiText> = emptyMap(),
     /** Insertion order is recency; at most [MAX_METADATA_ENTRIES]. */
     val nodes: Map<String, BeaconLiveProtocol.NodeState> = emptyMap(),
     val observers: Map<String, BeaconLiveProtocol.ObserverStatus> = emptyMap(),

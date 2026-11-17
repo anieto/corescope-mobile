@@ -1,5 +1,8 @@
 package org.nodescope.android.core.network
 
+import org.nodescope.android.core.design.UiText
+import org.nodescope.android.R
+
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -10,7 +13,7 @@ data class SessionState(
     val selection: AnalyzerSelection? = null,
     val snapshot: AnalyzerSnapshot? = null,
     val loading: Boolean = false,
-    val error: String? = null,
+    val error: UiText? = null,
 )
 
 /** Switching source/region cancels old work; new state never contains old-source data. */
@@ -46,7 +49,7 @@ class AnalyzerSession(
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        emit(SessionState(selection, lastSnapshot, error = e.message ?: "Unable to connect to analyzer."))
+                        emit(SessionState(selection, lastSnapshot, error = e.analyzerErrorText(R.string.analyzer_error_connect)))
                     }
                 }
             }

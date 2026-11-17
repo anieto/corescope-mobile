@@ -90,14 +90,14 @@ class AnalyzerDiagnostics(
                 reported = beaconFamilyChecks(backend, checks)
                 DiagnosticLevel.SUCCESS to UiText.Resource(R.string.settings_diagnostics_beacon_version_and_bounded_browse_family_checks_completed)
             } catch (e: BeaconApiException) {
-                DiagnosticLevel.FAILURE to (e.message?.let(UiText::Raw) ?: UiText.Resource(R.string.settings_diagnostics_this_beacon_version_is_not_supported))
+                DiagnosticLevel.FAILURE to (e.analyzerErrorText(R.string.settings_diagnostics_this_beacon_version_is_not_supported))
             }
             DiagnosticReport(host, clock(), DiagnosticLevel.SUCCESS, UiText.Resource(R.string.settings_diagnostics_beacon_responded_over_https), compatibility, detail,
                 reported, "Beacon", info.serverVersion)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            DiagnosticReport(host, clock(), DiagnosticLevel.WARNING, e.message?.let(UiText::Raw) ?: networkMessage(e), DiagnosticLevel.WARNING,
+            DiagnosticReport(host, clock(), DiagnosticLevel.WARNING, networkMessage(e), DiagnosticLevel.WARNING,
                 UiText.Resource(R.string.settings_diagnostics_beacon_could_not_be_rechecked_the_selected_server), checks, "Beacon",
                 backend.serverInfo.serverVersion)
         }
@@ -181,7 +181,7 @@ class AnalyzerDiagnostics(
             is SocketTimeoutException -> UiText.Resource(R.string.settings_diagnostics_the_analyzer_did_not_respond_before_the_request)
             is SSLException -> UiText.Resource(R.string.settings_diagnostics_a_secure_connection_to_the_analyzer_could_not)
             is ConnectException, is NoRouteToHostException -> UiText.Resource(R.string.settings_diagnostics_a_connection_to_the_analyzer_could_not_be)
-            else -> error.message?.let(UiText::Raw) ?: UiText.Resource(R.string.settings_diagnostics_the_analyzer_could_not_be_reached)
+            else -> error.analyzerErrorText(R.string.settings_diagnostics_the_analyzer_could_not_be_reached)
         }
 
         /** Mirrors the iOS classification of connection, compatibility and each capability. */

@@ -1,5 +1,10 @@
 package org.nodescope.android.app
 
+import org.nodescope.android.core.network.analyzerErrorText
+
+import org.nodescope.android.core.design.UiText
+import org.nodescope.android.R
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -71,7 +76,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     private val savingState = MutableStateFlow(false)
     val saving = savingState.asStateFlow()
-    private val writeErrorState = MutableStateFlow<String?>(null)
+    private val writeErrorState = MutableStateFlow<UiText?>(null)
     val writeError = writeErrorState.asStateFlow()
 
     init {
@@ -142,7 +147,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
                 sourceChangeState.value = System.currentTimeMillis()
                 onSaved()
             } catch (e: CancellationException) { throw e } catch (e: Exception) {
-                writeErrorState.value = e.message ?: "Unable to save analyzer."
+                writeErrorState.value = e.analyzerErrorText(R.string.app_unable_to_save_analyzer)
             } finally { savingState.value = false }
         }
     }
@@ -156,7 +161,7 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch {
             try { block(); writeErrorState.value = null }
             catch (e: CancellationException) { throw e }
-            catch (_: Exception) { writeErrorState.value = "Unable to save settings. Please try again." }
+            catch (_: Exception) { writeErrorState.value = UiText.Resource(R.string.app_unable_to_save_settings) }
         }
     }
     companion object {

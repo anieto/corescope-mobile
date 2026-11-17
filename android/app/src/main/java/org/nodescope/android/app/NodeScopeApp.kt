@@ -1,5 +1,7 @@
 package org.nodescope.android.app
 
+import org.nodescope.android.core.design.UiText
+
 import org.nodescope.android.feature.learn.*
 import androidx.lifecycle.createSavedStateHandle
 
@@ -160,7 +162,7 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
     if (!preferences.onboarded) {
         Surface(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize().meshPageBackground().safeDrawingPadding()) {
-                OnboardingScreen(sources, preferences.host, saving, error, { model.selectSource(it) }, model.sourceIcons)
+                OnboardingScreen(sources, preferences.host, saving, error?.asString(), { model.selectSource(it) }, model.sourceIcons)
             }
         }
     } else {
@@ -206,7 +208,7 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
                     })
             }
             AppShell(preferences, state, model::setRegion, { model.refresh(); model.reconnectLive() }, model::setAppearance, model::selectDestination,
-                sourceScreen = { onDone -> SourceScreen(sources, preferences.host, saving, error, { host -> model.selectSource(host, onDone) }, model.sourceIcons) },
+                sourceScreen = { onDone -> SourceScreen(sources, preferences.host, saving, error?.asString(), { host -> model.selectSource(host, onDone) }, model.sourceIcons) },
                 feed = live, onReconnect = model::reconnectLive, browse = model.browse, monitoredChannels = { model.monitoredChannels },
                 onLiveFeedDemand = model::setLiveFeedDemand,
                 diagnostics = model.diagnostics, cacheStorage = model.cacheStorage, myNodesRepositories = model::myNodesRepositories, myNodesSnapshots = model.myNodesSnapshots, sourceChangedAt = sourceChangedAt,
@@ -223,7 +225,7 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
 
 /** Shown until the selected analyzer is identified as CoreScope or Beacon (iOS app root). */
 @Composable
-private fun SourceCheck(error: String?, onRetry: () -> Unit, onChooseAnother: () -> Unit) {
+private fun SourceCheck(error: UiText?, onRetry: () -> Unit, onChooseAnother: () -> Unit) {
     Surface(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().meshPageBackground().safeDrawingPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally) {
@@ -233,7 +235,7 @@ private fun SourceCheck(error: String?, onRetry: () -> Unit, onChooseAnother: ()
             } else {
                 Icon(Icons.Outlined.CloudOff, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(stringResource(R.string.app_couldn_t_identify_this_server), style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
-                Text(error, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                Text(error.asString(), color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                 Button(onClick = onRetry) { Text(stringResource(R.string.retry)) }
                 TextButton(onClick = onChooseAnother) { Text(stringResource(R.string.app_choose_another_source)) }
             }
@@ -613,7 +615,7 @@ internal fun AppShell(
                     if (isRoot && currentTab in listOf(Destination.MAP.name, Destination.EXPLORE.name)) {
                         if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                         state.error?.let {
-                            Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
+                            Text(it.asString(), color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
                             if (state.snapshot != null) Text(stringResource(R.string.retained_data), modifier = Modifier.padding(horizontal = 16.dp))
                         }
                         if (state.snapshot?.configurationIncomplete == true) {

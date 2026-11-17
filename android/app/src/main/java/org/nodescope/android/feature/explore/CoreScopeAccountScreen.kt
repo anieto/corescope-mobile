@@ -213,7 +213,7 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
                 user = null; selection = null; resetDocument = null
             }
             message = when (error) {
-                is AccountException -> error.message?.let(UiText::Raw)
+                is AccountException -> error.displayText
                 is BeaconApiException.RateLimited -> UiText.Resource(R.string.explore_this_server_is_limiting_requests_try_again_later)
                 else -> UiText.Resource(R.string.explore_the_account_request_could_not_be_completed_try)
             }

@@ -1,5 +1,8 @@
 package org.nodescope.android.core.storage
 
+import org.nodescope.android.core.design.UiText
+import org.nodescope.android.R
+
 import android.content.Context
 import androidx.core.content.edit
 import android.security.keystore.KeyGenParameterSpec
@@ -48,7 +51,7 @@ class KeystoreSecretBox(private val alias: String = "nodescope-monitored-channel
     }
 }
 
-class ChannelMonitorException(message: String) : Exception(message)
+class ChannelMonitorException(message: String, val displayText: UiText) : Exception(message)
 
 /**
  * Device-wide monitored channels, as on iOS. The record list is only ever persisted sealed;
@@ -76,13 +79,13 @@ class MonitoredChannelStore(
     }
 
     fun monitorHashtag(value: String): MonitoredChannel {
-        val name = ChannelCrypto.normalizedHashtag(value) ?: throw ChannelMonitorException("Enter a channel name.")
+        val name = ChannelCrypto.normalizedHashtag(value) ?: throw ChannelMonitorException("Enter a channel name.", UiText.Resource(R.string.channels_error_1))
         return add(MonitoredChannel(name, ChannelCrypto.keyHexFor(name), createdAt = clock()))
     }
 
     fun monitorKey(keyHex: String, displayName: String?): MonitoredChannel {
         val key = keyHex.trim().lowercase()
-        if (!ChannelCrypto.isValidKey(key)) throw ChannelMonitorException("Enter a 32-character hexadecimal key.")
+        if (!ChannelCrypto.isValidKey(key)) throw ChannelMonitorException("Enter a 32-character hexadecimal key.", UiText.Resource(R.string.channels_error_2))
         return add(MonitoredChannel("psk:${key.take(8)}", key, displayName?.trim()?.takeIf(String::isNotEmpty), clock()))
     }
 
@@ -105,7 +108,7 @@ class MonitoredChannelStore(
         val sealed = try {
             Base64.getEncoder().encodeToString(box.seal(json.encodeToString(next).toByteArray()))
         } catch (_: Exception) {
-            throw ChannelMonitorException("Couldn't save the channel securely on this device.")
+            throw ChannelMonitorException("Couldn't save the channel securely on this device.", UiText.Resource(R.string.channels_error_3))
         }
         writeSealed(sealed)
         mutable.value = next

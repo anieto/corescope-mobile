@@ -323,7 +323,7 @@ internal fun CoverageStudyResult.sampleCounts(): Triple<Int, Int, Int> {
 /** The transmitter and area in a line: "USA/Canada · 22 dBm · Antenna 20 ft · 10 mi / 1 mi". */
 @Composable
 private fun setupSummary(model: EstimatedCoverageViewModel, unit: DistanceUnit): String {
-    val radio = model.radioPreset?.title ?: stringResource(R.string.coverage_custom_radio_2)
+    val radio = model.radioPreset?.title?.asString() ?: stringResource(R.string.coverage_custom_radio_2)
     val power = model.number("power")?.let { stringResource(R.string.coverage_dbm, it.editorText()) } ?: "— dBm"
     val antenna = stringResource(R.string.coverage_antenna_2, model.values["txHeight"].orEmpty(), if (model.heightInFeet) "ft" else "m")
     val area = "${formatDistance(model.radiusMeters / 1000.0, unit)} / ${spacingLabel(model.spacingMeters, unit)}"
@@ -576,7 +576,7 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
     CoveragePresetRow(presets.map { preset ->
         // Imperial chips advertise whole feet; apply that exact displayed height.
         val text = if (feet) String.format(Locale.US, "%.0f", preset.meters / 0.3048) else preset.meters.editorText()
-        Triple("${preset.title} · $text ${model.heightUnit}", meters != null && CoverageHeightPreset.matching(meters, presets) == preset) {
+        Triple("${preset.title.asString()} · $text ${model.heightUnit}", meters != null && CoverageHeightPreset.matching(meters, presets) == preset) {
             model.set(field, text)
         }
     })
@@ -595,10 +595,10 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
     var open by remember { mutableStateOf(false) }
     LearnLabel(stringResource(R.string.coverage_antenna), GlossaryTerm.ANTENNA_GAIN)
     Box {
-        OutlinedButton(onClick = { open = true }, Modifier.fillMaxWidth()) { Text(match?.title ?: stringResource(R.string.coverage_custom), Modifier.weight(1f)); Icon(Icons.Filled.ExpandMore, null) }
+        OutlinedButton(onClick = { open = true }, Modifier.fillMaxWidth()) { Text(match?.title?.asString() ?: stringResource(R.string.coverage_custom), Modifier.weight(1f)); Icon(Icons.Filled.ExpandMore, null) }
         DropdownMenu(open, { open = false }) {
             CoverageAntennaPreset.all.forEach { preset ->
-                DropdownMenuItem(text = { Text(stringResource(R.string.coverage_dbi, preset.title, preset.gainDbi.editorText())) },
+                DropdownMenuItem(text = { Text(stringResource(R.string.coverage_dbi, preset.title.asString(), preset.gainDbi.editorText())) },
                     trailingIcon = if (preset == match) ({ Text(stringResource(R.string.coverage_value_3)) }) else null,
                     onClick = { choose(preset.gainDbi); open = false })
             }
@@ -611,7 +611,7 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
     Box {
         OutlinedButton(onClick = { open = true }, Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
-                Text(current?.let { "${it.family.title} · ${it.title}" } ?: stringResource(R.string.coverage_custom_radio))
+                Text(current?.let { "${it.family.title} · ${it.title.asString()}" } ?: stringResource(R.string.coverage_custom_radio))
                 current?.let { Text(it.modemSummary, style = MaterialTheme.typography.bodySmall) }
             }
             Icon(Icons.Filled.ExpandMore, null)
@@ -622,7 +622,7 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
                     color = MaterialTheme.colorScheme.primary)
                 CoverageRadioPreset.presets(family).forEach { preset ->
                     DropdownMenuItem(text = {
-                        Column { Text(preset.title); Text(stringResource(R.string.coverage_mhz, preset.modemSummary, preset.frequencyMHz.editorText()), style = MaterialTheme.typography.bodySmall) }
+                        Column { Text(preset.title.asString()); Text(stringResource(R.string.coverage_mhz, preset.modemSummary, preset.frequencyMHz.editorText()), style = MaterialTheme.typography.bodySmall) }
                     }, trailingIcon = if (preset == current) ({ Text(stringResource(R.string.coverage_value_3)) }) else null, onClick = { choose(preset); open = false })
                 }
             }

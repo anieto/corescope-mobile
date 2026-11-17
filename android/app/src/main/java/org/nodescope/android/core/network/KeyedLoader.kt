@@ -1,5 +1,8 @@
 package org.nodescope.android.core.network
 
+import org.nodescope.android.core.design.UiText
+import org.nodescope.android.R
+
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -16,6 +19,7 @@ data class Loaded<K, T>(
     val loading: Boolean = false,
     val error: String? = null,
     val updatedAt: Long? = null,
+    val displayError: UiText? = null,
 )
 
 /**
@@ -44,7 +48,7 @@ class KeyedLoader<K, T>(
         if (force && sameKey && current.loading) return
         job?.cancel()
         var retained = if (sameKey) current else Loaded(key)
-        mutable.value = retained.copy(loading = true, error = null)
+        mutable.value = retained.copy(loading = true, error = null, displayError = null)
         job = scope.launch {
             if (retained.value == null) restore?.invoke(key)?.let { saved ->
                 currentCoroutineContext().ensureActive()
@@ -61,7 +65,8 @@ class KeyedLoader<K, T>(
                 throw e
             } catch (e: Exception) {
                 currentCoroutineContext().ensureActive()
-                mutable.value = retained.copy(loading = false, error = e.message ?: "Unable to reach the analyzer.")
+                mutable.value = retained.copy(loading = false, error = e.message ?: "Unable to reach the analyzer.",
+                    displayError = e.analyzerErrorText(R.string.analyzer_error_load))
             }
         }
     }

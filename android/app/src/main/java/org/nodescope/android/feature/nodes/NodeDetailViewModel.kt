@@ -45,6 +45,7 @@ fun combinedStatus(sections: List<Loaded<*, *>>): Loaded<Unit, Unit> {
         value = if (anyValue) Unit else null,
         loading = sections.any { it.loading },
         error = if (!anyValue && sections.none { it.loading }) sections.firstNotNullOfOrNull { it.error } else null,
+        displayError = if (!anyValue && sections.none { it.loading }) sections.firstOrNull { it.error != null }?.displayError else null,
         updatedAt = sections.mapNotNull { it.updatedAt }.minOrNull(),
     )
 }

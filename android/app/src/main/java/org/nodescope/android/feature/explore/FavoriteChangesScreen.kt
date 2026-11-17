@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.explore
 
+import org.nodescope.android.core.design.UiText
+
 import androidx.compose.ui.res.stringResource
 import org.nodescope.android.R
 import org.nodescope.android.core.design.meshCardColors
@@ -52,7 +54,7 @@ internal class FavoriteChangesModel {
         private set
     var loading by mutableStateOf(false)
         private set
-    var error by mutableStateOf<String?>(null)
+    var error by mutableStateOf<UiText?>(null)
         private set
     private val visits = Mutex()
     private var session: MyNodesVisitSession? = null
@@ -67,7 +69,7 @@ internal class FavoriteChangesModel {
         try {
             visit.reviewed(row.entity, metric, true, System.currentTimeMillis())
         } catch (cancelled: CancellationException) { throw cancelled }
-        catch (_: Exception) { error = "Review history could not be saved. Refresh to try again." }
+        catch (_: Exception) { error = UiText.Resource(R.string.explore_changes_error_review_history_could_not_be_saved_refresh_to_try_again) }
     }
 
     suspend fun run(store: MyNodesSnapshotStore, acquire: () -> MyNodesRepositories, items: List<SavedItem>) =
@@ -140,23 +142,23 @@ internal class FavoriteChangesModel {
                         }
                     }
                 } catch (cancelled: CancellationException) { throw cancelled }
-                catch (_: Exception) { error = "Changes could not be updated. Refresh to try again." }
+                catch (_: Exception) { error = UiText.Resource(R.string.explore_changes_error_changes_could_not_be_updated_refresh_to_try_again) }
                 finally { loading = false }
             }
         } catch (cancelled: CancellationException) { throw cancelled }
-        catch (_: Exception) { error = "Changes could not be opened. Try again." }
+        catch (_: Exception) { error = UiText.Resource(R.string.explore_changes_error_changes_could_not_be_opened_try_again) }
         finally {
             registration?.let { owned?.lifetime?.removeCancellation(it) }
             if (owned?.lifetime?.isCurrent == false) {
                 rows = emptyList()
-                error = "Comparison data was cleared or the source changed. Reopen Changes to continue."
+                error = UiText.Resource(R.string.explore_changes_error_comparison_data_was_cleared_or_the_source_changed_reopen_changes_to_continue)
             }
             session = null
             commands = null
             requests.close()
             loading = false
             try { opened?.finish() }
-            catch (_: Exception) { error = "Review history could not be saved." }
+            catch (_: Exception) { error = UiText.Resource(R.string.explore_changes_error_review_history_could_not_be_saved) }
         }
     }
 
@@ -203,7 +205,7 @@ fun FavoriteChangesScreen(host: String, sourceName: String?, library: NodeLibrar
                     Text(stringResource(R.string.explore_fresh_comparisons_you_view_become_the_baseline_for),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (model.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-                    model.error?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                    model.error?.let { Text(it.asString(), style = MaterialTheme.typography.bodySmall) }
                 }
             }
         }

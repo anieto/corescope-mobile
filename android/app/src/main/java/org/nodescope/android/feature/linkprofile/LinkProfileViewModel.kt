@@ -288,11 +288,11 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         mutable.value = mutable.value.copy(loading = true, result = null, error = null)
         try {
             fun number(key: String) = input.fields.getValue(key).trim().toDoubleOrNull()?.takeIf(Double::isFinite)
-                ?: throw IllegalArgumentException("Enter a valid number for $key.")
+                ?: throw InvalidProfileNumber(key)
             val a = ProfileCoordinate(number("Latitude A"), number("Longitude A"))
             val b = ProfileCoordinate(number("Latitude B"), number("Longitude B"))
             val distance = LinkGeometry.distance(a, b)
-            require(distance > 0.001) { "Choose two different locations." }
+            if (!(distance > 0.001)) throw ProfileValidationError(R.string.link_profile_error_same_location, "Choose two different locations.")
             val request = PathRequest(listOf(ElevationPoint(0.0, 0.0), ElevationPoint(distance, 0.0)),
                 number("Height A (m)"), number("Height B (m)"), number("Frequency (MHz)"), linkBudget = LinkBudget(
                     number("Transmit power (dBm)"), number("Gain A (dBi)"), number("Gain B (dBi)"),
@@ -309,7 +309,11 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (error: Exception) {
             coroutineContext.ensureActive()
-            mutable.value = mutable.value.copy(loading = false, error = if (error is IllegalArgumentException) error.message?.let(UiText::Raw) else UiText.Resource(R.string.link_profile_unable_to_load_terrain_check_your_connection_and))
+            mutable.value = mutable.value.copy(loading = false, error = when (error) {
+                is InvalidProfileNumber -> UiText.Resource(R.string.link_profile_invalid_number, profileFieldLabel(error.field))
+                is ProfileValidationError -> UiText.Resource(error.resource)
+                else -> UiText.Resource(R.string.link_profile_unable_to_load_terrain_check_your_connection_and)
+            })
         }
     }
 
@@ -389,3 +393,27 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
             result = restored, error = null, elevations = elevations, undo = null, awaitingCalculation = true, savedResultNote = note)
     }
 }
+
+private class InvalidProfileNumber(val field: String) : IllegalArgumentException("Enter a valid number for $field.")
+
+internal fun profileFieldLabel(key: String): UiText {
+    return when (key) {
+        "Frequency (MHz)" -> UiText.Resource(R.string.link_profile_field_frequency)
+        "Transmit power (dBm)" -> UiText.Resource(R.string.link_profile_field_power)
+        "Sensitivity (dBm)" -> UiText.Resource(R.string.link_profile_field_sensitivity)
+        else -> {
+            val field = key.substringBefore(' ')
+            val endpoint = key.substringAfter(' ').substringBefore(' ')
+            UiText.Resource(when (field) {
+                "Gain" -> R.string.link_profile_field_gain
+                "Loss" -> R.string.link_profile_field_loss
+                "Latitude" -> R.string.link_profile_field_latitude
+                "Longitude" -> R.string.link_profile_field_longitude
+                "Height" -> R.string.link_profile_field_height
+                else -> return UiText.Raw(key)
+            }, endpoint)
+        }
+    }
+}
+
+internal class ProfileValidationError(val resource: Int, message: String) : IllegalArgumentException(message)

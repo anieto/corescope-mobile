@@ -1,5 +1,7 @@
 package org.nodescope.android.core.network
 
+import org.nodescope.android.R
+
 import java.io.IOException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -18,14 +20,16 @@ import kotlin.coroutines.resumeWithException
 
 val protocolJson = Json { ignoreUnknownKeys = true }
 
+internal class InvalidAnalyzerHost(val messageRes: Int, message: String) : IllegalArgumentException(message)
+
 fun normalizeHost(input: String): String {
     val text = input.trim()
-    require(text.isNotEmpty()) { "Enter an analyzer hostname." }
+    if (text.isEmpty()) throw InvalidAnalyzerHost(R.string.analyzer_error_hostname_required, "Enter an analyzer hostname.")
     val url = (if ("://" in text) text else "https://$text").toHttpUrlOrNull()
-        ?: throw IllegalArgumentException("Enter a valid analyzer hostname.")
-    require(url.scheme == "https" && url.username.isEmpty() && url.password.isEmpty() &&
-        url.encodedPath == "/" && url.query == null && url.fragment == null) {
-        "Use an HTTPS hostname without a path, login, or query."
+        ?: throw InvalidAnalyzerHost(R.string.onboarding_enter_a_valid_analyzer_hostname, "Enter a valid analyzer hostname.")
+    if (url.scheme != "https" || url.username.isNotEmpty() || url.password.isNotEmpty() ||
+        url.encodedPath != "/" || url.query != null || url.fragment != null) {
+        throw InvalidAnalyzerHost(R.string.analyzer_error_hostname_only, "Use an HTTPS hostname without a path, login, or query.")
     }
     return url.toString().removePrefix("https://").removeSuffix("/")
 }

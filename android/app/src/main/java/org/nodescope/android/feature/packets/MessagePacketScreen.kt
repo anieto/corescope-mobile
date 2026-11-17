@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.packets
 
+import org.nodescope.android.core.design.UiText
+
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -71,7 +73,7 @@ fun MessagePacketScreen(model: PacketDetailViewModel, host: String, hash: String
         item {
             // Shared links carry no analyzer, so a missing packet usually belongs to another one.
             val shown = (state.takeIf { it.key == key } ?: org.nodescope.android.core.network.Loaded<Pair<String, String>, PacketDetail>(loading = true))
-                .let { if (it.error?.contains("HTTP 404") == true) it.copy(error = "This packet isn't on $host. It may have come from another analyzer or aged out.") else it }
+                .let { if (it.error?.contains("HTTP 404") == true) it.copy(displayError = UiText.Resource(R.string.packets_missing_on_analyzer, host)) else it }
             LoadStatus(shown, detail != null, now) { model.detail.load(key, force = true) }
         }
         if (text.isNotBlank()) item {

@@ -1,5 +1,8 @@
 package org.nodescope.android.feature.packets
 
+import org.nodescope.android.core.design.UiText
+import org.nodescope.android.core.network.analyzerErrorText
+
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import org.nodescope.android.R
@@ -109,7 +112,7 @@ fun BeaconPacketScreen(feed: LiveFeedState, host: String, regionControl: @Compos
                         Icon(Icons.Outlined.WarningAmber, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
                         Text(stringResource(R.string.packets_history_refresh_failed), style = MaterialTheme.typography.bodyMedium)
                     }
-                    Text(error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(error.asString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -165,12 +168,11 @@ fun BeaconPacketDetailScreen(feed: LiveFeedState, browse: BrowseRepository?, hos
     val row = feed.beaconRow(hash)
     var detail by remember(hash) { mutableStateOf<PacketDetail?>(null) }
     var loading by remember(hash) { mutableStateOf(false) }
-    var error by remember(hash) { mutableStateOf<String?>(null) }
+    var error by remember(hash) { mutableStateOf<UiText?>(null) }
     var retry by remember { mutableIntStateOf(0) }
     // Every route by default, as replays start (iOS); the picker narrows it to one.
     var selectedRoute by rememberSaveable(hash) { mutableIntStateOf(org.nodescope.android.feature.map.ALL_ROUTES) }
-    val loadError = stringResource(R.string.packets_beacon_load_error)
-    LaunchedEffect(hash, retry, loadError) {
+    LaunchedEffect(hash, retry) {
         val repository = browse ?: return@LaunchedEffect
         loading = true
         error = null
@@ -180,7 +182,7 @@ fun BeaconPacketDetailScreen(feed: LiveFeedState, browse: BrowseRepository?, hos
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            error = e.message ?: loadError
+            error = e.analyzerErrorText(R.string.packets_beacon_load_error)
         } finally {
             loading = false
         }
@@ -201,7 +203,7 @@ fun BeaconPacketDetailScreen(feed: LiveFeedState, browse: BrowseRepository?, hos
         error?.let { message ->
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(message, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(message.asString(), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     TextButton(onClick = { retry++ }) { Text(stringResource(R.string.retry)) }
                 }
             }

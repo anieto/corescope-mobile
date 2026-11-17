@@ -1,5 +1,8 @@
 package org.nodescope.android.core.network
 
+import org.nodescope.android.core.design.UiText
+import org.nodescope.android.R
+
 import android.content.Context
 import java.util.Base64
 import java.util.concurrent.TimeUnit
@@ -31,6 +34,17 @@ class AccountException(val kind: Kind) : Exception(when (kind) {
     Kind.STORAGE -> "The account session could not be saved securely."
     Kind.RESPONSE -> "The account response could not be read. No favorites were changed."
 }) {
+    val displayText: UiText get() = when (kind) {
+        Kind.RESET -> UiText.Resource(R.string.account_error_reset)
+        Kind.THROTTLED -> UiText.Resource(R.string.account_error_throttled)
+        Kind.UNSUPPORTED -> UiText.Resource(R.string.account_error_unsupported)
+        Kind.SIGNED_OUT -> UiText.Resource(R.string.account_error_signed_out)
+        Kind.REJECTED -> UiText.Resource(R.string.account_error_rejected)
+        Kind.CONFLICT -> UiText.Resource(R.string.account_error_conflict)
+        Kind.STORAGE -> UiText.Resource(R.string.account_error_storage)
+        Kind.RESPONSE -> UiText.Resource(R.string.account_error_response)
+    }
+
     enum class Kind { UNSUPPORTED, SIGNED_OUT, REJECTED, CONFLICT, RESPONSE, STORAGE, RESET, THROTTLED }
 }
 

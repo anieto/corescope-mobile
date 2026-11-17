@@ -40,6 +40,7 @@ private enum class AddMode(@param:StringRes val labelRes: Int, @param:StringRes 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddChannelScreen(store: MonitoredChannelStore, onDone: () -> Unit) {
+    val resources = LocalResources.current
     var mode by rememberSaveable { mutableStateOf(AddMode.HASHTAG) }
     var hashtag by rememberSaveable { mutableStateOf("") }
     // Key material is deliberately not saved into instance state.
@@ -60,7 +61,7 @@ fun AddChannelScreen(store: MonitoredChannelStore, onDone: () -> Unit) {
                 AddMode.PRIVATE -> { store.monitorKey(keyHex, label); keyHex = ""; onDone() }
                 AddMode.GENERATE -> generated = store.generate(label)
             }
-        } catch (e: ChannelMonitorException) { error = e.message }
+        } catch (e: ChannelMonitorException) { error = e.displayText.resolve(resources) }
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {

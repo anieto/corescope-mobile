@@ -35,10 +35,12 @@ Phase 4 defers Node Check rule findings and verdicts, the English glossary and W
 New JSON, and community source subtitles from the registry. Store listing copy is
 outside this Android source change.
 
-Residual text audit: the direct check is clean. It does not establish completeness for
-text constructed before composition. In particular, some Explore metric details are
-also embedded in CSV/JSON exports, planner and Coverage preset designations come from
-the preset models, and some legacy exception paths pass through their original
-messages. Review those paths before treating the English catalog as translation-complete.
-Technical examples, fixed unit abbreviations, chart notation, and persisted draft
-names and field keys retain their existing spelling.
+Explore exports preserve English metric details and their existing CSV columns and JSON keys.
+Preset IDs and raw compass abbreviations remain stable. UI code can resolve each compass point
+through its display resource. The Android app currently has no screen that renders these points.
+
+Known app-authored errors resolve through Android resources. Unclassified analyzer exceptions
+use a localized fallback for the operation. Raw map SDK diagnostics remain visible when they
+help with support, and log-only messages retain their original wording. Technical examples,
+fixed unit abbreviations, chart notation, and persisted draft names and field keys retain
+their existing spelling.

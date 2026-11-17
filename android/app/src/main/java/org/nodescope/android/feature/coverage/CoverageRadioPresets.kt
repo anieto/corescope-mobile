@@ -1,5 +1,8 @@
 package org.nodescope.android.feature.coverage
 
+import org.nodescope.android.R
+import org.nodescope.android.core.design.UiText
+
 import kotlin.math.abs
 import kotlin.math.log10
 
@@ -9,7 +12,7 @@ import kotlin.math.log10
  * those. Values are starting points for planning, not a radio's reported configuration. Matches iOS.
  */
 data class CoverageRadioPreset(
-    val id: String, val family: Family, val title: String, val frequencyMHz: Double,
+    val id: String, val family: Family, val title: UiText, val frequencyMHz: Double,
     val spreadingFactor: Int, val bandwidthKHz: Double, val transmitPowerDbm: Double,
 ) {
     enum class Family(val title: String) { MESHCORE("MeshCore"), MESHTASTIC("Meshtastic") }
@@ -39,13 +42,13 @@ data class CoverageRadioPreset(
         private fun Double.roundHalfUp(): Double = (this + 0.5).let { kotlin.math.floor(it) }
 
         val all = listOf(
-            CoverageRadioPreset("meshcore-us-ca", Family.MESHCORE, "USA/Canada", 910.525, 7, 62.5, 22.0),
-            CoverageRadioPreset("meshcore-eu-uk-narrow", Family.MESHCORE, "EU/UK (Narrow)", 869.618, 8, 62.5, 14.0),
-            CoverageRadioPreset("meshcore-eu-433-narrow", Family.MESHCORE, "EU 433 MHz (Narrow)", 433.65, 8, 62.5, 10.0),
-            CoverageRadioPreset("meshcore-au-narrow", Family.MESHCORE, "Australia (Narrow)", 916.575, 7, 62.5, 22.0),
-            CoverageRadioPreset("meshcore-nz-narrow", Family.MESHCORE, "New Zealand (Narrow)", 917.375, 7, 62.5, 22.0),
-            CoverageRadioPreset("meshtastic-us-long-fast", Family.MESHTASTIC, "US Long Fast", 906.875, 11, 250.0, 22.0),
-            CoverageRadioPreset("meshtastic-eu-868-long-fast", Family.MESHTASTIC, "EU 868 Long Fast", 869.525, 11, 250.0, 27.0),
+            CoverageRadioPreset("meshcore-us-ca", Family.MESHCORE, UiText.Resource(R.string.coverage_radio_preset_meshcore_us_ca), 910.525, 7, 62.5, 22.0),
+            CoverageRadioPreset("meshcore-eu-uk-narrow", Family.MESHCORE, UiText.Resource(R.string.coverage_radio_preset_meshcore_eu_uk_narrow), 869.618, 8, 62.5, 14.0),
+            CoverageRadioPreset("meshcore-eu-433-narrow", Family.MESHCORE, UiText.Resource(R.string.coverage_radio_preset_meshcore_eu_433_narrow), 433.65, 8, 62.5, 10.0),
+            CoverageRadioPreset("meshcore-au-narrow", Family.MESHCORE, UiText.Resource(R.string.coverage_radio_preset_meshcore_au_narrow), 916.575, 7, 62.5, 22.0),
+            CoverageRadioPreset("meshcore-nz-narrow", Family.MESHCORE, UiText.Resource(R.string.coverage_radio_preset_meshcore_nz_narrow), 917.375, 7, 62.5, 22.0),
+            CoverageRadioPreset("meshtastic-us-long-fast", Family.MESHTASTIC, UiText.Resource(R.string.coverage_radio_preset_meshtastic_us_long_fast), 906.875, 11, 250.0, 22.0),
+            CoverageRadioPreset("meshtastic-eu-868-long-fast", Family.MESHTASTIC, UiText.Resource(R.string.coverage_radio_preset_meshtastic_eu_868_long_fast), 869.525, 11, 250.0, 27.0),
         )
 
         /** The opening preset, matching Link Profile's. */
@@ -62,16 +65,16 @@ data class CoverageRadioPreset(
 }
 
 /** Common antenna types and their nominal gains, as offered on meshpeaks.com. */
-data class CoverageAntennaPreset(val id: String, val title: String, val gainDbi: Double) {
+data class CoverageAntennaPreset(val id: String, val title: UiText, val gainDbi: Double) {
     companion object {
         val all = listOf(
-            CoverageAntennaPreset("quarter-wave", "1/4-wave ground plane", 1.5),
-            CoverageAntennaPreset("half-wave-dipole", "1/2-wave dipole", 2.15),
-            CoverageAntennaPreset("omni-3", "3 dBi omni", 3.0),
-            CoverageAntennaPreset("omni-5", "5 dBi omni", 5.0),
-            CoverageAntennaPreset("omni-6", "6 dBi omni", 6.0),
-            CoverageAntennaPreset("yagi-small", "Small Yagi", 4.5),
-            CoverageAntennaPreset("yagi-high", "High-gain Yagi", 9.0),
+            CoverageAntennaPreset("quarter-wave", UiText.Resource(R.string.coverage_antenna_preset_quarter_wave), 1.5),
+            CoverageAntennaPreset("half-wave-dipole", UiText.Resource(R.string.coverage_antenna_preset_half_wave_dipole), 2.15),
+            CoverageAntennaPreset("omni-3", UiText.Resource(R.string.coverage_antenna_preset_omni_3), 3.0),
+            CoverageAntennaPreset("omni-5", UiText.Resource(R.string.coverage_antenna_preset_omni_5), 5.0),
+            CoverageAntennaPreset("omni-6", UiText.Resource(R.string.coverage_antenna_preset_omni_6), 6.0),
+            CoverageAntennaPreset("yagi-small", UiText.Resource(R.string.coverage_antenna_preset_yagi_small), 4.5),
+            CoverageAntennaPreset("yagi-high", UiText.Resource(R.string.coverage_antenna_preset_yagi_high), 9.0),
         )
 
         /** The preset with this gain, if one matches to within a hundredth of a dB. */
@@ -80,13 +83,13 @@ data class CoverageAntennaPreset(val id: String, val title: String, val gainDbi:
 }
 
 /** Typical antenna heights above ground. Stored in meters; shown in the preferred unit. */
-data class CoverageHeightPreset(val id: String, val title: String, val meters: Double) {
+data class CoverageHeightPreset(val id: String, val title: UiText, val meters: Double) {
     companion object {
-        val HANDHELD = CoverageHeightPreset("handheld", "Handheld", 1.5)
-        val VEHICLE = CoverageHeightPreset("vehicle", "Vehicle", 2.0)
-        val ROOFTOP = CoverageHeightPreset("rooftop", "Rooftop", 6.0)
-        val MAST = CoverageHeightPreset("mast", "Mast", 10.0)
-        val TOWER = CoverageHeightPreset("tower", "Tower", 30.0)
+        val HANDHELD = CoverageHeightPreset("handheld", UiText.Resource(R.string.coverage_height_preset_handheld), 1.5)
+        val VEHICLE = CoverageHeightPreset("vehicle", UiText.Resource(R.string.coverage_height_preset_vehicle), 2.0)
+        val ROOFTOP = CoverageHeightPreset("rooftop", UiText.Resource(R.string.coverage_height_preset_rooftop), 6.0)
+        val MAST = CoverageHeightPreset("mast", UiText.Resource(R.string.coverage_height_preset_mast), 10.0)
+        val TOWER = CoverageHeightPreset("tower", UiText.Resource(R.string.coverage_height_preset_tower), 30.0)
 
         val transmitter = listOf(HANDHELD, ROOFTOP, MAST, TOWER)
         val receiver = listOf(HANDHELD, VEHICLE, ROOFTOP)
