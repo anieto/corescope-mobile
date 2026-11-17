@@ -1,5 +1,8 @@
 package org.nodescope.android.core.model
 
+import androidx.annotation.StringRes
+import org.nodescope.android.R
+
 import kotlin.math.asin
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -22,23 +25,23 @@ data class FieldCoordinate private constructor(
     }
 }
 
-enum class FieldCardinalDirection(val label: String) {
-    NORTH("N"),
-    NORTH_NORTHEAST("NNE"),
-    NORTHEAST("NE"),
-    EAST_NORTHEAST("ENE"),
-    EAST("E"),
-    EAST_SOUTHEAST("ESE"),
-    SOUTHEAST("SE"),
-    SOUTH_SOUTHEAST("SSE"),
-    SOUTH("S"),
-    SOUTH_SOUTHWEST("SSW"),
-    SOUTHWEST("SW"),
-    WEST_SOUTHWEST("WSW"),
-    WEST("W"),
-    WEST_NORTHWEST("WNW"),
-    NORTHWEST("NW"),
-    NORTH_NORTHWEST("NNW"),
+enum class FieldCardinalDirection(val label: String, @param:StringRes val displayLabel: Int) {
+    NORTH("N", R.string.field_direction_n),
+    NORTH_NORTHEAST("NNE", R.string.field_direction_nne),
+    NORTHEAST("NE", R.string.field_direction_ne),
+    EAST_NORTHEAST("ENE", R.string.field_direction_ene),
+    EAST("E", R.string.field_direction_e),
+    EAST_SOUTHEAST("ESE", R.string.field_direction_ese),
+    SOUTHEAST("SE", R.string.field_direction_se),
+    SOUTH_SOUTHEAST("SSE", R.string.field_direction_sse),
+    SOUTH("S", R.string.field_direction_s),
+    SOUTH_SOUTHWEST("SSW", R.string.field_direction_ssw),
+    SOUTHWEST("SW", R.string.field_direction_sw),
+    WEST_SOUTHWEST("WSW", R.string.field_direction_wsw),
+    WEST("W", R.string.field_direction_w),
+    WEST_NORTHWEST("WNW", R.string.field_direction_wnw),
+    NORTHWEST("NW", R.string.field_direction_nw),
+    NORTH_NORTHWEST("NNW", R.string.field_direction_nnw),
 }
 
 data class FieldGeometryResult(

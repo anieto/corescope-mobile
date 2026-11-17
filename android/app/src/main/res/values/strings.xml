@@ -1782,4 +1782,21 @@
     <style name="Theme.NodeScope" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
     </style>
+    <!-- Compass point abbreviations vary by language. Brazilian Portuguese uses L for east and O for west. -->
+    <string name="field_direction_n">N</string>
+    <string name="field_direction_nne">NNE</string>
+    <string name="field_direction_ne">NE</string>
+    <string name="field_direction_ene">ENE</string>
+    <string name="field_direction_e">E</string>
+    <string name="field_direction_ese">ESE</string>
+    <string name="field_direction_se">SE</string>
+    <string name="field_direction_sse">SSE</string>
+    <string name="field_direction_s">S</string>
+    <string name="field_direction_ssw">SSW</string>
+    <string name="field_direction_sw">SW</string>
+    <string name="field_direction_wsw">WSW</string>
+    <string name="field_direction_w">W</string>
+    <string name="field_direction_wnw">WNW</string>
+    <string name="field_direction_nw">NW</string>
+    <string name="field_direction_nnw">NNW</string>
 </resources>
