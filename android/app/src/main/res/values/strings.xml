@@ -1752,6 +1752,32 @@
     <string name="onboarding_watch_packet_routes">Watch packet routes</string>
     <string name="onboarding_you_can_change_sources_anytime_in_settings_or">You can change sources anytime in Settings, or add a custom analyzer.</string>
 
+    <!-- navigation and app shell strings -->
+    <string name="app_activity">Activity</string>
+    <string name="app_candidate_sites">Candidate Sites</string>
+    <string name="app_checking_analyzer_source">Checking analyzer source…</string>
+    <string name="app_choose_another_source">Choose Another Source</string>
+    <string name="app_corescope_account">CoreScope account</string>
+    <string name="app_couldn_t_identify_this_server">Couldn\'t identify this server</string>
+    <string name="app_estimated_coverage">Estimated Coverage</string>
+    <string name="app_favorites">Favorites</string>
+    <string name="app_link_profile">Link Profile</string>
+    <string name="app_live_map">Live Map</string>
+    <string name="app_navigate">Navigate: %1$s</string>
+    <string name="app_node_check">Node Check</string>
+    <string name="app_node_planner">Node Planner</string>
+    <string name="app_observer_details">Observer details</string>
+    <string name="app_plan">Plan</string>
+    <string name="app_region_groups">Region groups</string>
+    <string name="app_regions">Regions</string>
+    <string name="app_saved_plans">Saved Plans</string>
+    <string name="app_selected">Selected</string>
+    <string name="app_switch_without_saving">Switch without saving</string>
+    <string name="app_unfinished_studies">Unfinished studies</string>
+    <string name="app_unsaved_studies_switch_message">These unfinished studies couldn\'t be saved on this device: %1$s. Switching analyzer now loses their latest changes. Saved plans aren\'t affected.</string>
+    <string name="app_unsaved_work_couldn_t_be_kept">Unsaved work couldn\'t be kept</string>
+    <string name="app_value">%1$s (%2$s)</string>
+
     <style name="Theme.NodeScope" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
     </style>
