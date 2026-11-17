@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -183,29 +184,59 @@ fun connectionLabel(connection: LiveConnection, liveLabel: String = stringResour
     LiveConnection.PAUSED -> stringResource(R.string.common_connection_paused)
 }
 
-/** Full-width radio rows preserve readable labels when segmented controls become cramped. */
+/**
+ * Segmented buttons that turn into full-width radio rows when any label wouldn't fit on one line, as with
+ * longer translations or larger text sizes. Labels are measured against their segment on every layout, so
+ * the same screen can show segments in one language and rows in another. iOS `AdaptiveChoicePicker`
+ * follows the same rule.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun <T> AdaptiveChoiceRow(options: List<T>, selected: T, label: @Composable (T) -> String, onSelect: (T) -> Unit) {
-    if (LocalDensity.current.fontScale >= 1.5f) {
-        Column(Modifier.fillMaxWidth().selectableGroup()) {
+fun <T> AdaptiveChoiceRow(
+    options: List<T>,
+    selected: T,
+    label: @Composable (T) -> String,
+    onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    icon: ((T) -> ImageVector)? = null,
+) {
+    val labels = options.map { label(it) }
+    val style = MaterialTheme.typography.labelLarge
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        // Each segment gets an equal share; its label shares it with the padding and the selected checkmark.
+        val available = with(density) { (maxWidth / options.size.coerceAtLeast(1) - SegmentChrome).toPx() }
+        val fits = remember(labels, style, available) {
+            available > 0 && labels.all { measurer.measure(it, style, maxLines = 1, softWrap = false).size.width <= available }
+        }
+        if (fits) {
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                options.forEachIndexed { index, option ->
+                    SegmentedButton(selected = option == selected, onClick = { onSelect(option) },
+                        shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                        icon = { SegmentedButtonDefaults.Icon(option == selected) { icon?.let { Icon(it(option), null, Modifier.size(18.dp)) } } }) {
+                        Text(labels[index], maxLines = 1)
+                    }
+                }
+            }
+        } else Column(Modifier.fillMaxWidth().selectableGroup()) {
             options.forEach { option ->
                 Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
                     .selectable(selected = option == selected, role = Role.RadioButton, onClick = { onSelect(option) })
                     .padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     RadioButton(selected = option == selected, onClick = null)
-                    Text(label(option), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                    icon?.let { Icon(it(option), null, Modifier.size(20.dp)) }
+                    Text(labels[options.indexOf(option)], Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                 }
             }
         }
-    } else SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-        options.forEachIndexed { index, option ->
-            SegmentedButton(selected = option == selected, onClick = { onSelect(option) },
-                shape = SegmentedButtonDefaults.itemShape(index, options.size)) { Text(label(option)) }
-        }
     }
 }
+
+/** Material segmented button padding (12 dp each side) plus the 18 dp icon and its 8 dp gap. */
+private val SegmentChrome = 12.dp * 2 + 18.dp + 8.dp
 
 /** True while the selected analyzer is a Beacon server; screens use it to show [BeaconFeatureNotice]. */
 val LocalBeaconSource = staticCompositionLocalOf { false }

@@ -28,6 +28,7 @@ import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.launch
 import org.nodescope.android.core.design.meshCardColors
+import org.nodescope.android.core.design.AdaptiveChoiceRow
 import org.nodescope.android.core.design.meshPageBackground
 
 /** Type filter for studies, as iOS's StudyFilter. */
@@ -259,13 +260,7 @@ fun StudyPlanScreen(planId: String, initialFilter: StudyFilter, onOpen: (SavedSt
 }
 
 @Composable private fun StudyFilterRow(filter: StudyFilter, select: (StudyFilter) -> Unit) {
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-        StudyFilter.entries.forEachIndexed { index, option ->
-            SegmentedButton(filter == option, { select(option) }, SegmentedButtonDefaults.itemShape(index, StudyFilter.entries.size)) {
-                Text(stringResource(option.titleRes), maxLines = 1)
-            }
-        }
-    }
+    AdaptiveChoiceRow(StudyFilter.entries, filter, label = { stringResource(it.titleRes) }, onSelect = select)
 }
 
 @Composable private fun LibraryStatus(library: SavedPlansLibrary) {
@@ -552,16 +547,13 @@ fun SavedStudyActions(snapshot: () -> SavedStudy?, didSave: (SavedStudy) -> Unit
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(if (existing == null) stringResource(R.string.planner_save_study) else stringResource(R.string.planner_save_changes), style = MaterialTheme.typography.titleLarge)
             if (existing != null) {
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    SegmentedButton(!asNew, {
-                        if (asNew && name == library.uniqueName(SavedPlansLibrary.copyName(existing.name))) name = existing.name
-                        asNew = false
-                    }, SegmentedButtonDefaults.itemShape(0, 2)) { Text(stringResource(R.string.planner_update_existing)) }
-                    SegmentedButton(asNew, {
-                        if (!asNew && name == existing.name) name = library.uniqueName(SavedPlansLibrary.copyName(existing.name))
-                        asNew = true
-                    }, SegmentedButtonDefaults.itemShape(1, 2)) { Text(stringResource(R.string.planner_save_as_new)) }
-                }
+                AdaptiveChoiceRow(listOf(false, true), asNew,
+                    label = { stringResource(if (it) R.string.planner_save_as_new else R.string.planner_update_existing) },
+                    onSelect = { saveAsNew ->
+                        if (saveAsNew && !asNew && name == existing.name) name = library.uniqueName(SavedPlansLibrary.copyName(existing.name))
+                        if (!saveAsNew && asNew && name == library.uniqueName(SavedPlansLibrary.copyName(existing.name))) name = existing.name
+                        asNew = saveAsNew
+                    })
                 Text(if (asNew) stringResource(R.string.planner_keeps_as_it_is_and_saves_a_separate, existing.name)
                     else stringResource(R.string.planner_replaces_the_saved_with_what_s_open_now, existing.name),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

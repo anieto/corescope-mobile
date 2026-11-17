@@ -275,10 +275,7 @@ private struct StudyFilterPicker: View {
     @Binding var filter: StudyFilter
 
     var body: some View {
-        Picker("Show", selection: $filter) {
-            ForEach(StudyFilter.allCases, id: \.self) { Text($0.title).tag($0) }
-        }
-        .pickerStyle(.segmented)
+        AdaptiveChoicePicker("Show", selection: $filter, options: StudyFilter.allCases) { Text($0.title) }
     }
 }
 
@@ -715,11 +712,10 @@ private struct SaveStudySheet: View {
             Form {
                 if let existing {
                     Section {
-                        Picker("Save", selection: $mode) {
-                            Text("Update existing").tag(CandidatePlansModel.SaveMode.update)
-                            Text("Save as new").tag(CandidatePlansModel.SaveMode.saveAsNew)
+                        AdaptiveChoicePicker("Save", selection: $mode,
+                                             options: [CandidatePlansModel.SaveMode.update, .saveAsNew]) { mode in
+                            mode == .update ? Text("Update existing") : Text("Save as new")
                         }
-                        .pickerStyle(.segmented)
                     } footer: {
                         Text(mode == .update
                             ? String(localized: "Replaces the saved “\(existing.name)” with what's open now.")

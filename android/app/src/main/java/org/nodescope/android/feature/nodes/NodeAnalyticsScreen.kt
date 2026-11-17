@@ -138,12 +138,7 @@ internal fun AnalyticsLayout(range: AnalyticsRange, onRange: (AnalyticsRange) ->
             Surface(color = MaterialTheme.colorScheme.background) {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(stringResource(R.string.node_detail_time_range), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                        AnalyticsRange.entries.forEachIndexed { index, option ->
-                            SegmentedButton(selected = range == option, onClick = { onRange(option) },
-                                shape = SegmentedButtonDefaults.itemShape(index, AnalyticsRange.entries.size)) { Text(option.title) }
-                        }
-                    }
+                    AdaptiveChoiceRow(AnalyticsRange.entries, range, label = { it.title }, onSelect = onRange)
                 }
             }
             LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(16.dp),

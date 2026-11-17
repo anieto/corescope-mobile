@@ -55,6 +55,7 @@
 		311510BE30869BF200199D51 /* CoreScopeAccountClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311510BD30869BF200199D51 /* CoreScopeAccountClient.swift */; };
 		311510C030869C2A00199D51 /* CoreScopeAccountScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311510BF30869C2A00199D51 /* CoreScopeAccountScreen.swift */; };
 		311510C230869D9600199D51 /* CoreScopeAccountSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311510C130869D9600199D51 /* CoreScopeAccountSyncTests.swift */; };
+		A1C0DE5A01000000000000D2 /* AdaptiveChoicePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DE5A01000000000000D1 /* AdaptiveChoicePicker.swift */; };
 		31152DE03069FCCF00146B37 /* AdaptiveListDetailNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31152DDF3069FCCF00146B37 /* AdaptiveListDetailNavigation.swift */; };
 		311598FB30A5606300C0B35D /* SavedStudy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311598FA30A5606300C0B35D /* SavedStudy.swift */; };
 		311598FD30A560A900C0B35D /* SavedPlansScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311598FC30A560A900C0B35D /* SavedPlansScreen.swift */; };
@@ -342,6 +343,7 @@
 		311510BD30869BF200199D51 /* CoreScopeAccountClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreScopeAccountClient.swift; sourceTree = "<group>"; };
 		311510BF30869C2A00199D51 /* CoreScopeAccountScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreScopeAccountScreen.swift; sourceTree = "<group>"; };
 		311510C130869D9600199D51 /* CoreScopeAccountSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreScopeAccountSyncTests.swift; sourceTree = "<group>"; };
+		A1C0DE5A01000000000000D1 /* AdaptiveChoicePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveChoicePicker.swift; sourceTree = "<group>"; };
 		31152DDF3069FCCF00146B37 /* AdaptiveListDetailNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveListDetailNavigation.swift; sourceTree = "<group>"; };
 		311598FA30A5606300C0B35D /* SavedStudy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedStudy.swift; sourceTree = "<group>"; };
 		311598FC30A560A900C0B35D /* SavedPlansScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedPlansScreen.swift; sourceTree = "<group>"; };
@@ -915,6 +917,7 @@
 				E583994A85C1799754185206 /* AppFont.swift */,
 				FF13FD215F4B08F58FE9D5B0 /* LearnButton.swift */,
 				316FE009305E18ED00FBA3B4 /* LiquidGlassStyle.swift */,
+				A1C0DE5A01000000000000D1 /* AdaptiveChoicePicker.swift */,
 				31152DDF3069FCCF00146B37 /* AdaptiveListDetailNavigation.swift */,
 				31CCA84C306D984400D01155 /* DuoLayoutContext.swift */,
 				31DFA7FF308EA9C600B8C681 /* TabBarContextActionStore.swift */,
@@ -1339,6 +1342,7 @@
 				9599A7997960A45E6E506D71 /* LiveFeedMessage.swift in Sources */,
 				ACBA05674E6F7E851685EB56 /* LiveFeedService.swift in Sources */,
 				315E3A03309AA14800BAEC98 /* CoverageTerrainCatalog.swift in Sources */,
+				A1C0DE5A01000000000000D2 /* AdaptiveChoicePicker.swift in Sources */,
 				31152DE03069FCCF00146B37 /* AdaptiveListDetailNavigation.swift in Sources */,
 				31084973307FC947007F4778 /* BeaconChannelReader.swift in Sources */,
 				317433B43083000B0060A385 /* MyNodesAnalyticsRepository.swift in Sources */,

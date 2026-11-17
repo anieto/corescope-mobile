@@ -6,6 +6,7 @@ import androidx.compose.ui.res.stringResource
 import org.nodescope.android.R
 import org.nodescope.android.core.design.MonaspaceNeon
 import org.nodescope.android.core.design.meshCardColors
+import org.nodescope.android.core.design.AdaptiveChoiceRow
 import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -74,13 +75,8 @@ fun AddChannelScreen(store: MonitoredChannelStore, onDone: () -> Unit) {
                 Text(stringResource(R.string.channels_keys_are_processed_and_stored_on_this_device), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-            AddMode.entries.forEachIndexed { index, option ->
-                SegmentedButton(selected = mode == option, onClick = { mode = option; error = null; generated = null },
-                    shape = SegmentedButtonDefaults.itemShape(index, AddMode.entries.size),
-                    icon = { SegmentedButtonDefaults.Icon(mode == option) { Icon(option.icon, null, Modifier.size(18.dp)) } }) { Text(stringResource(option.labelRes)) }
-            }
-        }
+        AdaptiveChoiceRow(AddMode.entries, mode, label = { stringResource(it.labelRes) },
+            onSelect = { mode = it; error = null; generated = null }, icon = { it.icon })
         Card(colors = meshCardColors()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(stringResource(mode.titleRes), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)

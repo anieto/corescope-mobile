@@ -37,22 +37,12 @@ struct SettingsScreen: View {
 
                     SettingsPanel(title: "Display", symbol: "circle.lefthalf.filled") {
                         SettingsPickerCaption("Appearance")
-                        Picker("Appearance", selection: $appearanceSettings.mode) {
-                            ForEach(AppearanceSettings.Mode.allCases) { mode in
-                                Text(mode.label).tag(mode)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
+                        AdaptiveChoicePicker("Appearance", selection: $appearanceSettings.mode,
+                                             options: AppearanceSettings.Mode.allCases) { Text($0.label) }
 
                         SettingsPickerCaption("Units")
-                        Picker("Units", selection: $distanceUnit) {
-                            ForEach(DistanceUnit.allCases) { unit in
-                                Text(unit.label).tag(unit)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
+                        AdaptiveChoicePicker("Units", selection: $distanceUnit,
+                                             options: DistanceUnit.allCases) { Text($0.label) }
 
                         Divider()
 
