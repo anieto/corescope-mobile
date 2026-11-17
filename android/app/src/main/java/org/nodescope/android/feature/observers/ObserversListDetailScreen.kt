@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.observers
 
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Sensors
 import androidx.compose.runtime.*
@@ -25,8 +27,8 @@ fun ObserversListDetailScreen(
         if (onExit != null) onExit() else selectedId = null
     }
     AdaptiveListDetail(
-        selectedId = selectedId, detailTitle = "Observer details",
-        emptyTitle = "Select an observer", emptyDescription = "Choose an observer to see its activity and signal data here.",
+        selectedId = selectedId, detailTitle = stringResource(R.string.observers_observer_details),
+        emptyTitle = stringResource(R.string.observers_select_an_observer), emptyDescription = stringResource(R.string.observers_choose_an_observer_to_see_its_activity_and),
         emptyIcon = Icons.Outlined.Sensors, onCloseDetail = ::closeDetails,
         listPane = { showSelection ->
             ObserversScreen(model, selection, feed, regionControl, onClearRegion,
