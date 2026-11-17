@@ -1324,6 +1324,15 @@ private struct NodeObserverCoverageCard: View {
         observers.sorted { $0.packetCount > $1.packetCount }
     }
 
+    private func accessibilityValue(for observer: NodeObserverCoverage) -> String {
+        let lastHeard = RelativeTime.string(from: observer.lastSeen)
+        guard let snr = observer.avgSnr else {
+            return String(localized: "\(observer.packetCount) packets, no SNR, last heard \(lastHeard)")
+        }
+        let average = String(format: "%.1f", snr)
+        return String(localized: "\(observer.packetCount) packets, \(average) dB average SNR, last heard \(lastHeard)")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 4) {
@@ -1358,7 +1367,7 @@ private struct NodeObserverCoverageCard: View {
                     VStack(alignment: .trailing, spacing: 3) {
                         Text(observer.packetCount.formatted())
                             .font(.subheadline.weight(.semibold))
-                        Text(observer.avgSnr.map { String(format: "%.1f dB", $0) } ?? "No SNR")
+                        Text(observer.avgSnr.map { String(format: "%.1f dB", $0) } ?? String(localized: "No SNR"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -1366,11 +1375,7 @@ private struct NodeObserverCoverageCard: View {
                 .padding(.vertical, 10)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(observer.observerName ?? observer.observerID)
-                .accessibilityValue(
-                    "\(observer.packetCount.formatted()) packets, "
-                        + (observer.avgSnr.map { String(format: "%.1f dB average SNR", $0) } ?? "no SNR")
-                        + ", last heard \(RelativeTime.string(from: observer.lastSeen))"
-                )
+                .accessibilityValue(accessibilityValue(for: observer))
             }
         }
         .padding(16)

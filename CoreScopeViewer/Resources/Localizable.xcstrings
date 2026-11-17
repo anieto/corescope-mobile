@@ -679,6 +679,70 @@
         }
       }
     },
+    "%lld packets, %@ dB average SNR, last heard %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@packets@, %2$@ dB average SNR, last heard %3$@"
+          },
+          "substitutions" : {
+            "packets" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg packet"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg packets"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld packets, no SNR, last heard %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@packets@, no SNR, last heard %2$@"
+          },
+          "substitutions" : {
+            "packets" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg packet"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg packets"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld pkts" : {
 
     },
@@ -3215,9 +3279,6 @@
     "Margin after planning reserve" : {
 
     },
-    "Margin after reserve" : {
-
-    },
     "Margin after reserve: %.1f dB" : {
 
     },
@@ -3453,6 +3514,9 @@
 
     },
     "No Nodes Reported Yet" : {
+
+    },
+    "No SNR" : {
 
     },
     "No activity change" : {
@@ -4113,8 +4177,15 @@
     "Precise locations" : {
 
     },
-    "Predicted RX" : {
-
+    "Predicted RX %@ dBm · Margin after reserve %@ dB" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Predicted RX %1$@ dBm · Margin after reserve %2$@ dB"
+          }
+        }
+      }
     },
     "Predicted above threshold — greater headroom" : {
 

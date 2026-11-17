@@ -139,8 +139,9 @@ struct CoverageMapHost: UIViewRepresentable {
             pin.nodeState = sample.marginDb.map { $0 >= 0 ? .inCoverage : .belowThreshold } ?? .unknown
             if let loss = sample.lossDb, let budget = layer.budget,
                let reception = try? budget.reception(pathLossDb: loss) {
-                pin.subtitle = String(localized: "Predicted RX") + String(format: " %.1f dBm · ", reception.receiveLevelDbm)
-                    + String(localized: "Margin after reserve") + String(format: " %.1f dB", reception.adjustedMarginDb)
+                let receive = String(format: "%.1f", reception.receiveLevelDbm)
+                let margin = String(format: "%.1f", reception.adjustedMarginDb)
+                pin.subtitle = String(localized: "Predicted RX \(receive) dBm · Margin after reserve \(margin) dB")
             } else {
                 pin.subtitle = String(localized: "No usable prediction")
             }
