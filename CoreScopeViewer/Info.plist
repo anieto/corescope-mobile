@@ -2,21 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleIconName</key>
-	<string>AppIcon</string>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
-			<key>CFBundleURLName</key>
-			<string>com.nodescope.deeplink</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>nodescope</string>
-			</array>
-		</dict>
-	</array>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -32,8 +17,27 @@
 			</array>
 		</dict>
 	</array>
-	<key>LSSupportsOpeningDocumentsInPlace</key>
-	<false/>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLName</key>
+			<string>com.nodescope.deeplink</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>nodescope</string>
+			</array>
+		</dict>
+	</array>
+	<key>UIAppFonts</key>
+	<array>
+		<string>MonaspaceNeon-Regular.otf</string>
+		<string>MonaspaceNeon-SemiBold.otf</string>
+		<string>MonaspaceNeon-Bold.otf</string>
+	</array>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>
@@ -57,12 +61,6 @@
 				</array>
 			</dict>
 		</dict>
-	</array>
-	<key>UIAppFonts</key>
-	<array>
-		<string>MonaspaceNeon-Regular.otf</string>
-		<string>MonaspaceNeon-SemiBold.otf</string>
-		<string>MonaspaceNeon-Bold.otf</string>
 	</array>
 </dict>
 </plist>
