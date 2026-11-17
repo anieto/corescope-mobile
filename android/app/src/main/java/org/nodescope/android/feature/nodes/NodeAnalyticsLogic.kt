@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 import org.nodescope.android.core.model.MeshObserver
 import org.nodescope.android.core.model.NodeAnalytics
 import org.nodescope.android.core.model.SignalPoint
@@ -54,10 +53,10 @@ fun heatmapGrid(cells: List<UptimeCell>): Array<LongArray> {
 fun formatSilence(milliseconds: Double): String {
     val seconds = maxOf(0.0, milliseconds / 1_000)
     return when {
-        seconds >= 86_400 -> String.format(Locale.US, "%.1fd", seconds / 86_400)
-        seconds >= 3_600 -> String.format(Locale.US, "%.1fh", seconds / 3_600)
-        seconds >= 60 -> String.format(Locale.US, "%.0fm", seconds / 60)
-        else -> String.format(Locale.US, "%.0fs", seconds)
+        seconds >= 86_400 -> String.format("%.1fd", seconds / 86_400)
+        seconds >= 3_600 -> String.format("%.1fh", seconds / 3_600)
+        seconds >= 60 -> String.format("%.0fm", seconds / 60)
+        else -> String.format("%.0fs", seconds)
     }
 }
 

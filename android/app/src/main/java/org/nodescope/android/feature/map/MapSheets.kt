@@ -36,7 +36,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import java.time.Instant
-import java.util.Locale
 import org.nodescope.android.core.design.BrowseSearchField
 import org.nodescope.android.core.design.SectionLabel
 import org.nodescope.android.core.design.relativeTime
@@ -330,8 +329,8 @@ internal fun RouteDetailsSheet(details: RouteDetails, onNode: (String) -> Unit, 
                 SummaryRow(stringResource(R.string.live_map_hops), details.hopCount.toString(), GlossaryTerm.HOP)
                 age?.let { SummaryRow(stringResource(R.string.live_map_age), it) }
                 packet.observerName?.takeIf(String::isNotBlank)?.let { SummaryRow(stringResource(R.string.live_map_observer), it, GlossaryTerm.OBSERVER) }
-                packet.snr?.let { SummaryRow("SNR", String.format(Locale.US, "%.1f dB", it), GlossaryTerm.SNR) }
-                packet.rssi?.let { SummaryRow("RSSI", String.format(Locale.US, "%.0f dBm", it), GlossaryTerm.RSSI) }
+                packet.snr?.let { SummaryRow("SNR", String.format("%.1f dB", it), GlossaryTerm.SNR) }
+                packet.rssi?.let { SummaryRow("RSSI", String.format("%.0f dBm", it), GlossaryTerm.RSSI) }
                 packet.hash.takeIf(String::isNotBlank)?.let { SummaryRow(stringResource(R.string.live_map_packet), it.take(12).uppercase()) }
                 packet.payloadText?.trim()?.takeIf(String::isNotEmpty)?.let { message ->
                     SectionLabel(stringResource(R.string.live_map_message))

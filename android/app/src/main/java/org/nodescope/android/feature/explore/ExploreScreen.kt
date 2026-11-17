@@ -373,7 +373,7 @@ private fun MetricTile(label: String, value: GlanceValue, tone: GlanceTone, modi
     Column(modifier.clip(shape)
         .let { if (onClick != null) it.clickable(onClickLabel = stringResource(R.string.explore_open, label), onClick = onClick) else it }
         .padding(horizontal = 8.dp, vertical = 6.dp).semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Text(value.value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = color, maxLines = 1)
+        Text(value.displayValue(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = color, maxLines = 1)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
             if (onClick != null) Icon(Icons.Outlined.ChevronRight, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)

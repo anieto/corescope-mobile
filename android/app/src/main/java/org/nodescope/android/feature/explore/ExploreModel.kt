@@ -38,7 +38,10 @@ const val PACKET_SAMPLE = 1_000
 
 enum class GlanceMetric(@param:StringRes val titleRes: Int) { ACTIVE_NODES(R.string.explore_active_nodes), OBSERVERS_ONLINE(R.string.explore_observers_online), PACKETS(R.string.explore_packets_2), AVERAGE_SNR(R.string.explore_average_snr) }
 
-data class GlanceValue(val value: String, val exportDetail: String, val displayDetail: UiText = UiText.Raw(exportDetail))
+data class GlanceValue(val value: String, val exportDetail: String, val displayDetail: UiText = UiText.Raw(exportDetail), val averageSnr: Double? = null) {
+    fun displayValue(locale: Locale = Locale.getDefault(Locale.Category.FORMAT)): String =
+        averageSnr?.let { String.format(locale, "%.1f", it) } ?: value
+}
 
 /** The iOS dashboard definitions: active within 15 minutes; packets and SNR over the last hour. */
 fun glanceValue(metric: GlanceMetric, nodes: List<MeshNode>, observers: List<MeshObserver>, packets: List<LivePacket>, now: Long): GlanceValue {
@@ -50,7 +53,7 @@ fun glanceValue(metric: GlanceMetric, nodes: List<MeshNode>, observers: List<Mes
         // The sample is the analyzer's latest 1,000 packets; saying "1000+" avoids undercounting.
         GlanceMetric.PACKETS -> GlanceValue(if (recent.size == packets.size && packets.size >= PACKET_SAMPLE) "${recent.size}+" else recent.size.toString(), "in the last hour", UiText.Resource(R.string.explore_metric_detail_packets))
         GlanceMetric.AVERAGE_SNR -> recent.mapNotNull { it.snr }.takeIf { it.isNotEmpty() }?.average()
-            ?.let { GlanceValue(String.format(Locale.US, "%.1f", it), "dB in the last hour", UiText.Resource(R.string.explore_metric_detail_snr)) } ?: GlanceValue("—", "no recent samples", UiText.Resource(R.string.explore_metric_detail_no_samples))
+            ?.let { GlanceValue(String.format(Locale.US, "%.1f", it), "dB in the last hour", UiText.Resource(R.string.explore_metric_detail_snr), averageSnr = it) } ?: GlanceValue("—", "no recent samples", UiText.Resource(R.string.explore_metric_detail_no_samples))
     }
 }
 

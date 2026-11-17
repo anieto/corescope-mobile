@@ -1,6 +1,5 @@
 package org.nodescope.android.feature.map
 
-import java.util.Locale
 import org.nodescope.android.core.model.LivePacket
 import org.nodescope.android.core.model.MeshNode
 
@@ -18,8 +17,8 @@ data class RouteDetails(val packet: LivePacket, val observedAt: Long?, val stops
         add("Hops: $hopCount")
         relative?.let { add("Observed: $it") }
         packet.observerName?.takeIf(String::isNotBlank)?.let { add("Observer: $it") }
-        packet.snr?.let { add("SNR: ${String.format(Locale.US, "%.1f", it)} dB") }
-        packet.rssi?.let { add("RSSI: ${String.format(Locale.US, "%.0f", it)} dBm") }
+        packet.snr?.let { add("SNR: ${String.format("%.1f", it)} dB") }
+        packet.rssi?.let { add("RSSI: ${String.format("%.0f", it)} dBm") }
         packet.hash.takeIf(String::isNotBlank)?.let { add("Packet: ${it.uppercase()}") }
         packet.payloadText?.trim()?.takeIf(String::isNotEmpty)?.let {
             add(""); add(sender?.takeIf(String::isNotBlank)?.let { name -> "Message from $name:" } ?: "Message:"); add(it)
