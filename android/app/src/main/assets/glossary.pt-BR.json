@@ -1,0 +1,177 @@
+{
+  "version": 1,
+  "language": "pt-BR",
+  "sections": {
+    "The mesh": "A rede mesh",
+    "Routes": "Rotas",
+    "Signal": "Sinal",
+    "Channels and regions": "Canais e regiões",
+    "Link Profile": "Perfil de enlace",
+    "Candidate Sites": "Locais candidatos"
+  },
+  "entries": {
+    "node": {
+      "term": "Nó",
+      "summary": "Qualquer rádio MeshCore na rede mesh: um companheiro, repetidor, servidor de sala ou sensor. Cada um é identificado pela chave pública, não pelo nome.",
+      "detail": "Os nomes podem mudar ou ser usados por mais de um nó, por isso o NodeScope acompanha os nós pela chave."
+    },
+    "companion": {
+      "term": "Companheiro",
+      "summary": "Um rádio pareado com um app no celular ou no computador, usado para enviar e receber mensagens. Os companheiros não retransmitem o tráfego de outras pessoas.",
+      "detail": "O primeiro nó da maioria das pessoas é um companheiro. Para a rede mesh chegar mais longe, adicione um repetidor."
+    },
+    "repeater": {
+      "term": "Repetidor",
+      "summary": "Um rádio fixo que retransmite pacotes para que cheguem mais longe. Repetidores em telhados, torres e morros são a espinha dorsal da rede mesh.",
+      "detail": "A altura de um repetidor e o que há ao redor importam mais do que a potência. O Perfil de enlace ajuda a avaliar um local antes da instalação."
+    },
+    "room-server": {
+      "term": "Servidor de sala",
+      "summary": "Um nó que hospeda um mural de mensagens compartilhado. As pessoas fazem login nele, e ele guarda as mensagens para quem estava fora de alcance."
+    },
+    "sensor": {
+      "term": "Sensor",
+      "summary": "Um nó que informa leituras, como temperatura ou nível de bateria, pela rede mesh."
+    },
+    "observer": {
+      "term": "Observador",
+      "summary": "Um rádio conectado à internet que informa tudo o que ouve a um analisador. Tudo o que o NodeScope mostra vem dos observadores.",
+      "detail": "Um pacote que nenhum observador ouviu não aparece no NodeScope, mesmo que tenha chegado a outras pessoas na rede mesh. Mais observadores dão uma visão mais completa."
+    },
+    "advert": {
+      "term": "Anúncio",
+      "summary": "Um aviso curto que um nó transmite de tempos em tempos com o nome, o tipo e, se compartilhada, a localização. É pelos anúncios que os nós aparecem no mapa.",
+      "detail": "Um nó que não enviou um anúncio recentemente pode estar funcionando; talvez só esteja quieto."
+    },
+    "analyzer": {
+      "term": "Analisador",
+      "summary": "O servidor que reúne os relatos dos observadores, como o CoreScope ou o Beacon. O NodeScope lê os dados do analisador que você escolher em Ajustes."
+    },
+    "hop": {
+      "term": "Salto",
+      "summary": "Cada repetidor que passou um pacote adiante. Zero saltos significa que o observador ouviu o remetente diretamente.",
+      "detail": "Mais saltos chegam mais longe, mas cada salto acrescenta atraso e mais uma chance de o pacote se perder."
+    },
+    "route": {
+      "term": "Rota",
+      "summary": "A cadeia de repetidores pela qual um pacote passou até chegar a um observador. Observadores diferentes podem ouvir o mesmo pacote por rotas diferentes.",
+      "detail": "O NodeScope dá a cada rota o nome do observador que a ouviu."
+    },
+    "unresolved-hop": {
+      "term": "Salto desconhecido",
+      "summary": "Um repetidor de uma rota que não pode ser identificado. As rotas carregam só uma parte curta da chave de cada repetidor, e às vezes nenhum nó conhecido corresponde, ou mais de um corresponde."
+    },
+    "flood": {
+      "term": "Flood e direto",
+      "summary": "Um pacote flood é repetido por todo repetidor que o ouve, para encontrar o caminho. Um pacote direto segue uma rota já conhecida, por repetidores específicos.",
+      "detail": "As mensagens costumam começar como flood. Depois que uma rota é aprendida, as próximas mensagens para o mesmo nó podem ir direto, o que gera menos tráfego na rede mesh."
+    },
+    "observation": {
+      "term": "Observação",
+      "summary": "Um observador ouvindo um pacote. Um pacote ouvido por cinco observadores tem cinco observações."
+    },
+    "heard-by": {
+      "term": "Ouvido por",
+      "summary": "Os observadores que receberam exatamente esta rota, com o sinal com que a ouviram."
+    },
+    "along-the-way": {
+      "term": "Ouvido no caminho",
+      "summary": "Observadores que ouviram o mesmo pacote em um ponto anterior da rota, antes de ele completar todos os saltos."
+    },
+    "snr": {
+      "term": "SNR",
+      "summary": "Relação sinal-ruído, em dB: o quanto o sinal ficou acima do ruído de fundo. Quanto maior, melhor, e o LoRa ainda consegue decodificar sinais um pouco abaixo de zero.",
+      "detail": "Em linhas gerais: acima de 5 dB é sólido, por volta de 0 dB é utilizável, e bem abaixo de zero está no limite do que o rádio consegue decodificar."
+    },
+    "rssi": {
+      "term": "RSSI",
+      "summary": "Intensidade do sinal recebido, em dBm. Quanto mais perto de zero, mais forte: −60 dBm é forte, −120 dBm é muito fraco.",
+      "detail": "O RSSI conta tanto o ruído quanto o sinal, então um RSSI forte com um SNR ruim costuma indicar um lugar com muito ruído."
+    },
+    "channel": {
+      "term": "Canal",
+      "summary": "Um chat em grupo na rede mesh. As mensagens são criptografadas com a chave do canal, então só quem tem a chave consegue lê-las.",
+      "detail": "O canal Public usa uma chave que todos conhecem, então qualquer pessoa pode lê-lo. Nunca compartilhe nada privado nele."
+    },
+    "region": {
+      "term": "Região",
+      "summary": "Um código de área, muitas vezes um código de aeroporto como AUS, usado para marcar os observadores. Escolher uma região mostra só o tráfego ouvido naquela área.",
+      "detail": "Os grupos de regiões juntam várias regiões próximas em uma única opção."
+    },
+    "last-heard": {
+      "term": "Ouvido pela última vez",
+      "summary": "Quando algum observador recebeu algo deste nó pela última vez. Não diz se o nó está ligado agora.",
+      "detail": "Um nó fora do alcance de todos os observadores pode estar funcionando bem e ainda assim parecer quieto."
+    },
+    "line-of-sight": {
+      "term": "Linha de visada",
+      "summary": "Se uma linha reta entre as duas antenas passa acima do terreno no meio do caminho. É necessária para um bom enlace, mas não basta sozinha."
+    },
+    "fresnel-zone": {
+      "term": "Zona de Fresnel",
+      "summary": "O espaço em forma oval ao redor da linha de visada que o sinal de rádio ocupa. Morros que invadem esse espaço enfraquecem o enlace mesmo com a linha de visada livre.",
+      "detail": "Uma regra prática comum é manter pelo menos 60% da zona livre. O Perfil de enlace sombreia a zona no gráfico do terreno."
+    },
+    "clearance": {
+      "term": "Folga",
+      "summary": "Quanto da zona de Fresnel fica livre do terreno ao longo do trajeto. No mapa e no gráfico, verde é livre, laranja é marginal e vermelho é obstruído."
+    },
+    "link-margin": {
+      "term": "Margem do enlace",
+      "summary": "Quantos dB o sinal previsto excede o que o receptor precisa. Positivo significa que, na teoria, o enlace deve funcionar; 10 dB ou mais deixa espaço para o desvanecimento.",
+      "detail": "É uma estimativa baseada só no terreno. Prédios, árvores e interferência não são considerados, então trate uma margem pequena com cautela."
+    },
+    "deployment-plan": {
+      "term": "Plano de implantação",
+      "summary": "Uma coleção, salva no dispositivo, de locais propostos e das premissas de instalação que você insere. Salvar um plano não executa uma análise de cobertura."
+    },
+    "candidate-site": {
+      "term": "Local candidato",
+      "summary": "Um lugar proposto para instalar um rádio. É um registro de planejamento, não um nó ao vivo nem uma prova de que um enlace vai funcionar."
+    },
+    "planning-coordinates": {
+      "term": "Coordenadas de planejamento",
+      "summary": "A latitude e a longitude localizam um local em graus decimais. Latitude negativa significa sul; longitude negativa significa oeste. Essas coordenadas não são a altura da antena."
+    },
+    "antenna-height": {
+      "term": "Altura da antena",
+      "summary": "A altura da antena acima do solo no local proposto. Não é a elevação acima do nível do mar."
+    },
+    "radio-frequency": {
+      "term": "Frequência de rádio",
+      "summary": "A frequência de operação em megahertz (MHz). Insira a frequência que você pretende usar; um valor salvo não garante a compatibilidade do canal nem a permissão para transmitir."
+    },
+    "transmit-power": {
+      "term": "Potência de transmissão",
+      "summary": "A potência na saída do rádio, antes do ganho da antena e das perdas no cabo, expressa em dBm. O dBm é uma unidade logarítmica de potência referida a um miliwatt; 20 dBm são 100 miliwatts."
+    },
+    "antenna-gain": {
+      "term": "Ganho da antena",
+      "summary": "Como uma antena concentra energia em uma direção, comparada a uma antena ideal que irradia igualmente em todas as direções. O dBi mede essa comparação. O ganho não acrescenta potência ao transmissor nem melhora todas as direções igualmente."
+    },
+    "cable-loss": {
+      "term": "Perda no cabo",
+      "summary": "O sinal perdido entre o rádio e a antena no cabo de alimentação e nos conectores, em decibéis (dB). Insira uma perda positiva; não a inclua de novo na perda adicional."
+    },
+    "additional-loss": {
+      "term": "Perda adicional",
+      "summary": "Outras perdas da instalação que ainda não entraram na perda no cabo, em decibéis (dB). Insira um valor positivo ou deixe sem especificar. Este campo não é uma previsão de bloqueio pelo terreno."
+    },
+    "receiver-sensitivity": {
+      "term": "Sensibilidade do receptor",
+      "summary": "O sinal mais fraco que se presume que um receptor consiga decodificar, em dBm. Um valor mais negativo significa que um sinal mais fraco pode ser recebido. Use um valor adequado ao rádio e às configurações do modem."
+    },
+    "planning-reserve": {
+      "term": "Reserva de planejamento",
+      "summary": "A margem de sinal extra que você exige além da sensibilidade do receptor, em dB. Isso deixa um plano mais conservador, mas não garante a recepção."
+    },
+    "coverage-detail": {
+      "term": "Detalhe da cobertura",
+      "summary": "A distância entre as amostras calculadas do mapa. Um espaçamento menor mostra mais detalhes e exige mais trabalho. Não melhora os dados de terreno de base nem garante precisão."
+    },
+    "study-radius": {
+      "term": "Raio do estudo",
+      "summary": "A distância máxima a partir do transmissor proposto incluída no cálculo. É um limite do estudo, não uma previsão de cobertura circular."
+    }
+  }
+}

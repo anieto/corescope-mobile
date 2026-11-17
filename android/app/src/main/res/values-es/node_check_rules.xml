@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="node_check_rule_unnamed_observer">Observador sin nombre</string>
     <string name="node_check_rule_flood_reached">El último anuncio flood llegó a %1$s</string>
     <string name="node_check_rule_flood_reached_regions">El último anuncio flood llegó a %1$s en %2$s (%3$s)</string>

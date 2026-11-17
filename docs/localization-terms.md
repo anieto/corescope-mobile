@@ -6,45 +6,47 @@ in "NodeScope terms".
 
 ## NodeScope terms
 
-Spanish (`es`) — neutral Latin American Spanish, informal *tú*, sentence case like the English.
+Spanish (`es`): neutral Latin American Spanish, informal *tú*. Brazilian Portuguese (`pt-BR`): informal
+*você*, following meshcore-open's `pt`. Both use sentence case like the English. Compass points follow
+each language: west is O in both, and east is L in pt-BR.
 
-| English | es | Note |
-|---|---|---|
-| node | nodo | |
-| repeater | repetidor | |
-| companion | acompañante | as MeshCore One |
-| room server | servidor de sala | role label "Room" is "Sala" |
-| sensor | sensor | |
-| observer | observador | |
-| advert | anuncio | the CLI command stays `advert` |
-| flood | flood | kept in English: "anuncio flood", "ruta flood" |
-| zero-hop | zero-hop | kept in English |
-| hop | salto | |
-| path / route | ruta | |
-| channel | canal | |
-| region | región | |
-| analyzer | analizador | |
-| packet | paquete | |
-| mesh | red mesh | |
-| heard (by) | escuchado (por) | |
-| last heard | última vez escuchado | |
-| signal | señal | |
-| noise floor | ruido de fondo | as MeshCore One |
-| link margin | margen del enlace | |
-| line of sight | línea de vista | |
-| Fresnel zone | zona de Fresnel | |
-| Settings | Ajustes | |
-| Live Map / Explore | Mapa en vivo / Explorar | |
-| My Nodes / Favorites | Mis nodos / Favoritos | |
-| Node Planner | Planificador de nodos | |
-| Link Profile | Perfil de enlace | |
-| Estimated Coverage | Cobertura estimada | |
-| Saved Plans / Candidate Sites | Planes guardados / Sitios candidatos | |
-| Field Tools | Herramientas de campo | |
-| Node Check | Revisión de nodo | |
-| What's New / Glossary | Novedades / Glosario | |
-| NodeScope, CoreScope, MeshCore, Beacon | unchanged | product names |
-| SNR, RSSI, dB, dBm, dBi, MHz | unchanged | |
+| English | es | pt-BR | Note |
+|---|---|---|---|
+| node | nodo | nó | |
+| repeater | repetidor | repetidor | |
+| companion | acompañante | companheiro | es as MeshCore One; pt-BR as meshcore-open |
+| room server | servidor de sala | servidor de sala | role label "Room" is "Sala" in both |
+| sensor | sensor | sensor | |
+| observer | observador | observador | |
+| advert | anuncio | anúncio | the CLI command stays `advert` |
+| flood | flood | flood | kept in English: "anuncio flood", "anúncio flood" |
+| zero-hop | zero-hop | zero-hop | kept in English |
+| hop | salto | salto | |
+| path / route | ruta | rota | |
+| channel | canal | canal | |
+| region | región | região | |
+| analyzer | analizador | analisador | |
+| packet | paquete | pacote | |
+| mesh | red mesh | rede mesh | |
+| heard (by) | escuchado (por) | ouvido (por) | |
+| last heard | última vez escuchado | ouvido pela última vez | |
+| signal | señal | sinal | |
+| noise floor | ruido de fondo | nível de ruído | es as MeshCore One; pt-BR as meshcore-open |
+| link margin | margen del enlace | margem do enlace | |
+| line of sight | línea de vista | linha de visada | |
+| Fresnel zone | zona de Fresnel | zona de Fresnel | |
+| Settings | Ajustes | Ajustes | Apple's term in both; shorter than Configuración / Configurações in the tab bar |
+| Live Map / Explore | Mapa en vivo / Explorar | Mapa ao vivo / Explorar | |
+| My Nodes / Favorites | Mis nodos / Favoritos | Meus nós / Favoritos | |
+| Node Planner | Planificador de nodos | Planejador de nós | |
+| Link Profile | Perfil de enlace | Perfil de enlace | |
+| Estimated Coverage | Cobertura estimada | Cobertura estimada | |
+| Saved Plans / Candidate Sites | Planes guardados / Sitios candidatos | Planos salvos / Locais candidatos | |
+| Field Tools | Herramientas de campo | Ferramentas de campo | |
+| Node Check | Revisión de nodo | Verificação de nó | |
+| What's New / Glossary | Novedades / Glosario | Novidades / Glossário | |
+| NodeScope, CoreScope, MeshCore, Beacon | unchanged | unchanged | product names |
+| SNR, RSSI, dB, dBm, dBi, MHz | unchanged | unchanged | |
 
 ## Reference: other MeshCore apps
 

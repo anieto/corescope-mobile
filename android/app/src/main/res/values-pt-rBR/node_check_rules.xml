@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="node_check_rule_unnamed_observer">Observador sem nome</string>
+    <string name="node_check_rule_flood_reached">O último anúncio flood chegou a %1$s</string>
+    <string name="node_check_rule_flood_reached_regions">O último anúncio flood chegou a %1$s em %2$s (%3$s)</string>
+    <string name="node_check_rule_advert_sent">Enviado %1$s.</string>
+    <string name="node_check_rule_strongest_with_snr">O mais forte é %1$s com SNR de %2$s.</string>
+    <string name="node_check_rule_strongest">O mais forte é %1$s.</string>
+    <string name="node_check_rule_heard">Ouvido %1$s</string>
+    <string name="node_check_rule_quiet">Silencioso: ouvido %1$s</string>
+    <string name="node_check_rule_not_heard_for">Não ouvido há %1$s</string>
+    <string name="node_check_rule_last_heard">Ouvido %1$s</string>
+    <string name="node_check_rule_last_relayed">Retransmitiu pela última vez %1$s</string>
+    <string name="node_check_rule_relaying_detail">Pacotes de outros nós estão passando por ele. Ele retransmitiu um pela última vez %1$s.</string>
+    <string name="node_check_rule_clock_off">O relógio está %1$s fora</string>
+    <string name="node_check_rule_nearest_observer">O observador mais próximo está a %1$s</string>
+    <string name="node_check_rule_ago_now">agora mesmo</string>
+    <string name="node_check_rule_ago_an_hour">há uma hora</string>
+    <string name="node_check_rule_ago_a_day">há um dia</string>
+    <string name="node_check_rule_duration_a_day">um dia</string>
+    <string name="node_check_rule_positive_decibels">+%1$s dB</string>
+    <string name="node_check_rule_decibels">%1$s dB</string>
+    <string name="node_check_rule_direct">Direto</string>
+    <string name="node_check_rule_offset_unknown">algum tempo</string>
+    <string name="node_check_rule_offset_behind">%1$s atrás</string>
+    <string name="node_check_rule_offset_ahead">%1$s à frente</string>
+    <string name="node_check_rule_regularly">Os observadores estão ouvindo este nó com regularidade.</string>
+    <string name="node_check_rule_room_advert_cadence">Um servidor de sala funcionando costuma enviar um anúncio pelo menos duas vezes por dia.</string>
+    <string name="node_check_rule_repeater_advert_cadence">Um repetidor funcionando costuma aparecer pelo menos uma vez por dia, pelos próprios anúncios ou pelo tráfego que retransmite.</string>
+    <string name="node_check_rule_fix_quiet">Verifique se ainda tem alimentação e se a antena está conectada. Se funciona com energia solar, verifique a bateria.</string>
+    <string name="node_check_rule_no_recent_traffic">Nenhum tráfego recente</string>
+    <string name="node_check_rule_room_silent">Nada deste nó chegou a um observador nos últimos três dias.</string>
+    <string name="node_check_rule_repeater_silent">Nada deste nó chegou a um observador nos últimos dois dias.</string>
+    <string name="node_check_rule_fix_silent">Verifique a alimentação, a antena e as configurações de rádio, e depois envie um anúncio flood.</string>
+    <string name="node_check_rule_companion_quiet">Os companheiros só são ouvidos quando enviam algo, então um período de silêncio é normal.</string>
+    <string name="node_check_rule_fix_companion_quiet">Envie um anúncio flood para verificar se ele ainda chega à rede mesh.</string>
+    <string name="node_check_rule_advert_time_unknown">Não se sabe quando foi enviado.</string>
+    <string name="node_check_rule_few_observers">Só alguns observadores o ouviram. Isso pode simplesmente significar que há poucos observadores perto de você, ou que ele precisa de outro repetidor ao alcance para ir mais longe.</string>
+    <string name="node_check_rule_no_recent_flood">Nenhum anúncio flood recente</string>
+    <string name="node_check_rule_zero_hop_reach">Os anúncios recentes dele foram zero-hop, que só alcançam rádios ao alcance direto, então não mostram até onde ele chega.</string>
+    <string name="node_check_rule_fix_send_flood">Envie um anúncio flood para ver até onde ele vai.</string>
+    <string name="node_check_rule_no_recent_adverts">Nenhum anúncio recente</string>
+    <string name="node_check_rule_analyzer_has_no_recent_adverts">O analisador não tem anúncios recentes deste nó.</string>
+    <string name="node_check_rule_repeater_path">Nenhum observador ouve este nó diretamente, então ele chega à rede mesh por meio de repetidores. Isso é normal, a menos que você esperasse que um observador próximo o ouvisse.</string>
+    <string name="node_check_rule_not_relaying">Não visto retransmitindo</string>
+    <string name="node_check_rule_not_relaying_detail">Os observadores ouvem este repetidor, mas não o viram retransmitir o tráfego de mais ninguém.</string>
+    <string name="node_check_rule_fix_enable_repeating">Verifique se a repetição está ativada. Se estiver, talvez simplesmente ainda não haja tráfego por perto.</string>
+    <string name="node_check_rule_hasnt_relayed">Ainda é ouvido, mas não retransmite tráfego há algum tempo.</string>
+    <string name="node_check_rule_fix_check_repeating">Verifique se a repetição continua ativada e se nada mudou nas configurações.</string>
+    <string name="node_check_rule_relaying">Retransmitindo tráfego</string>
+    <string name="node_check_rule_fix_clock">Sincronize o relógio pelo app MeshCore ou executando “clock sync” no nó.</string>
+    <string name="node_check_rule_adverts_treated_as_old">Os anúncios de nós com o horário errado podem ser tratados como antigos.</string>
+    <string name="node_check_rule_clock_jumps">O relógio fica pulando</string>
+    <string name="node_check_rule_clock_jumps_detail">O relógio dele às vezes marca certo e às vezes muito fora, o que costuma indicar que perde a hora ao reiniciar.</string>
+    <string name="node_check_rule_clock_not_set">O relógio não está configurado</string>
+    <string name="node_check_rule_clock_not_set_detail">O relógio dele está muito longe do horário real, como se nunca tivesse sido configurado.</string>
+    <string name="node_check_rule_clock_right">O relógio está certo</string>
+    <string name="node_check_rule_clock_right_detail">O relógio dele está a poucos minutos do horário real.</string>
+    <string name="node_check_rule_no_location">Sem localização</string>
+    <string name="node_check_rule_no_location_detail">Não vai aparecer no mapa ao vivo nem no mapa do analisador.</string>
+    <string name="node_check_rule_fix_location">Defina uma localização nas configurações do nó se você estiver confortável em compartilhá-la.</string>
+    <string name="node_check_rule_headline_bad">Este nó ficou em silêncio</string>
+    <string name="node_check_rule_headline_warn">Ouvido, com algo para verificar</string>
+    <string name="node_check_rule_headline_good">Este nó está saindo</string>
+    <string name="node_check_rule_headline_info">Já foi ouvido, mas não há nada recente</string>
+    <string name="node_check_rule_not_found">Não ouvimos este nó</string>
+    <string name="node_check_rule_not_found_without_key">Nenhum observador deste analisador o captou. Para testar um nó novo, insira a chave pública completa; depois você poderá fazer um teste ao vivo e esperar o primeiro anúncio.</string>
+    <string name="node_check_rule_not_found_with_key">Nenhum observador deste analisador o captou ainda. Faça um teste ao vivo, envie um anúncio flood e espere o primeiro. Se nada chegar, verifique se o rádio usa as mesmas configurações dos outros nós da sua área e se há um repetidor ao alcance.</string>
+    <string name="node_check_rule_needs_attention">Precisa de atenção</string>
+    <string name="node_check_rule_looking_good">Tudo certo</string>
+    <string name="node_check_rule_good_to_know">Bom saber</string>
+    <string name="node_check_rule_observer_order">Os mais próximos primeiro; Direto significa que não há repetidor no meio.</string>
+    <string name="node_check_rule_observer_order_with_time">Enviado %1$s. Os mais próximos primeiro; Direto significa que não há repetidor no meio.</string>
+    <string name="node_check_rule_fix_label">O que fazer:</string>
+    <string name="node_check_rule_picker_last_heard">ouvido %1$s</string>
+    <string name="node_check_rule_observer_packets">%1$d pct.</string>
+    <plurals name="node_check_rule_direct_observers">
+        <item quantity="one">%1$d observador o ouve diretamente</item>
+        <item quantity="many">%1$d observadores o ouvem diretamente</item>
+        <item quantity="other">%1$d observadores o ouvem diretamente</item>
+    </plurals>
+    <plurals name="node_check_rule_ago_minutes">
+        <item quantity="one">há %1$d minuto</item>
+        <item quantity="many">há %1$d minutos</item>
+        <item quantity="other">há %1$d minutos</item>
+    </plurals>
+    <plurals name="node_check_rule_ago_hours">
+        <item quantity="one">há %1$d hora</item>
+        <item quantity="many">há %1$d horas</item>
+        <item quantity="other">há %1$d horas</item>
+    </plurals>
+    <plurals name="node_check_rule_ago_days">
+        <item quantity="one">há %1$d dia</item>
+        <item quantity="many">há %1$d dias</item>
+        <item quantity="other">há %1$d dias</item>
+    </plurals>
+    <plurals name="node_check_rule_hops">
+        <item quantity="one">%1$d salto</item>
+        <item quantity="many">%1$d saltos</item>
+        <item quantity="other">%1$d saltos</item>
+    </plurals>
+    <plurals name="node_check_rule_minutes">
+        <item quantity="one">%1$d minuto</item>
+        <item quantity="many">%1$d minutos</item>
+        <item quantity="other">%1$d minutos</item>
+    </plurals>
+    <plurals name="node_check_rule_hours">
+        <item quantity="one">%1$d hora</item>
+        <item quantity="many">%1$d horas</item>
+        <item quantity="other">%1$d horas</item>
+    </plurals>
+    <plurals name="node_check_rule_days">
+        <item quantity="one">%1$d dia</item>
+        <item quantity="many">%1$d dias</item>
+        <item quantity="other">%1$d dias</item>
+    </plurals>
+</resources>
