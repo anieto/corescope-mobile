@@ -43,7 +43,7 @@ fun NodeBrowser(nodes: List<MeshNode>, total: Int, onNode: (String) -> Unit) {
         TextField(query, { query = it }, colors = TextFieldDefaults.colors(focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer, unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer), leadingIcon = { Icon(Icons.Outlined.Search, null) }, shape = MaterialTheme.shapes.large, placeholder = { Text(stringResource(R.string.search_nodes)) },
             singleLine = true, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = roles.isEmpty(), onClick = { roles = emptyList() }, label = { Text("All") })
+            FilterChip(selected = roles.isEmpty(), onClick = { roles = emptyList() }, label = { Text(stringResource(R.string.explore_all)) })
             MAP_ROLES.forEach { role ->
                 FilterChip(selected = role in roles, onClick = { roles = if (role in roles) roles - role else roles + role },
                     label = { Text(role.replaceFirstChar { it.uppercase() }) },

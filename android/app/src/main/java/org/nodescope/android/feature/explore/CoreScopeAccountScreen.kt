@@ -1,5 +1,9 @@
 package org.nodescope.android.feature.explore
 
+import org.nodescope.android.core.design.UiText
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
+import org.nodescope.android.core.design.withDescription
 import org.nodescope.android.core.design.MonaspaceNeon
 import org.nodescope.android.core.design.meshCardColors
 import android.content.Context
@@ -55,7 +59,7 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
         private set
     var busy by mutableStateOf(false)
         private set
-    var message by mutableStateOf<String?>(null)
+    var message by mutableStateOf<UiText?>(null)
         private set
     var selection by mutableStateOf<CoreScopeAccountSelectionState?>(null)
         private set
@@ -134,8 +138,8 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
             }
         }
         message = if (upload && selection?.hasPendingEdits == true)
-            "Earlier changes synced. Newer edits are saved on this device; sync again after one minute."
-        else if (upload) "Account favorites synced." else "Account favorites refreshed. Device favorites are unchanged."
+            UiText.Resource(R.string.explore_earlier_changes_synced_newer_edits_are_saved_on)
+        else if (upload) UiText.Resource(R.string.explore_account_favorites_synced) else UiText.Resource(R.string.explore_account_favorites_refreshed_device_favorites_are_unchanged)
     }
 
     suspend fun importDeviceFavorites(library: NodeLibrary) = action {
@@ -144,14 +148,14 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
         val keys = library.nodeKeys()
         if (!keys.all(CoreScopeFavoriteMerge::validKey)) throw AccountException(AccountException.Kind.RESPONSE)
         persist(state.copy(favorites = state.favorites + keys))
-        message = "Account edits saved on this device. Choose Sync now to upload them."
+        message = UiText.Resource(R.string.explore_account_edits_saved_on_this_device_choose_sync)
     }
 
     suspend fun removeFavorite(key: String) = action {
         if (resetDocument != null) throw AccountException(AccountException.Kind.RESET)
         val state = load() ?: throw AccountException(AccountException.Kind.RESPONSE)
         persist(state.copy(favorites = state.favorites - key))
-        message = "Account edits saved on this device. Choose Sync now to upload them."
+        message = UiText.Resource(R.string.explore_account_edits_saved_on_this_device_choose_sync)
     }
 
     suspend fun resolveReset(restore: Boolean) = action {
@@ -159,14 +163,14 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
         val state = load() ?: return@action
         persist(if (restore) state.restore(remote) else CoreScopeAccountSelectionState.from(remote))
         resetDocument = null
-        message = if (restore) "Selections restored locally. Choose Sync now to upload them." else "Using the server’s selections."
+        message = if (restore) UiText.Resource(R.string.explore_selections_restored_locally_choose_sync_now_to_upload) else UiText.Resource(R.string.explore_using_the_server_s_selections)
     }
 
     private fun copy(library: NodeLibrary) {
         val state = load() ?: return
         val claimed = CoreScopeFavoriteMerge.selection(state.baseline).claimed
         library.applyAccountNodes(library.nodeKeys() + state.favorites + claimed.keys, claimed)
-        message = "Account selections copied to device favorites."
+        message = UiText.Resource(R.string.explore_account_selections_copied_to_device_favorites)
     }
 
     suspend fun copyToDevice(library: NodeLibrary) = action { copy(library) }
@@ -186,8 +190,8 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
         user = null
         selection = null
         resetDocument = null
-        message = if (failed) "Signed out on this device. Server revocation was not confirmed; the session may remain active until revoked on CoreScope or expired."
-            else "Signed out. Device favorites are unchanged."
+        message = if (failed) UiText.Resource(R.string.explore_signed_out_on_this_device_server_revocation_was)
+            else UiText.Resource(R.string.explore_signed_out_device_favorites_are_unchanged)
     }
 
     private suspend fun action(block: suspend () -> Unit) {
@@ -195,10 +199,10 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
         val activeOrigin = origin
         if (epoch != epochs[origin]) {
             user = null; selection = null; resetDocument = null; supported = false
-            message = "The account session changed in another window. Reopen this page to continue."
+            message = UiText.Resource(R.string.explore_the_account_session_changed_in_another_window_reopen)
             return
         }
-        if (!activeOrigins.add(activeOrigin)) { message = "An account operation is already running. Try again shortly."; return }
+        if (!activeOrigins.add(activeOrigin)) { message = UiText.Resource(R.string.explore_an_account_operation_is_already_running_try_again); return }
         busy = true
         message = null
         try { block() }
@@ -209,9 +213,9 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
                 user = null; selection = null; resetDocument = null
             }
             message = when (error) {
-                is AccountException -> error.message
-                is BeaconApiException.RateLimited -> "This server is limiting requests. Try again later; your edits are saved."
-                else -> "The account request could not be completed. Try again."
+                is AccountException -> error.message?.let(UiText::Raw)
+                is BeaconApiException.RateLimited -> UiText.Resource(R.string.explore_this_server_is_limiting_requests_try_again_later)
+                else -> UiText.Resource(R.string.explore_the_account_request_could_not_be_completed_try)
             }
         } finally { busy = false; activeOrigins.remove(activeOrigin) }
     }
@@ -264,74 +268,74 @@ fun CoreScopeAccountScreen(host: String, sourceName: String?, library: NodeLibra
         onDispose { lifecycle.removeObserver(observer); scope.coroutineContext.cancelChildren(); password = "" }
     }
     if (showsImport) AlertDialog(onDismissRequest = { showsImport = false },
-        title = { Text("Import device favorites?") },
-        text = { Text("Add device node favorites to this account’s pending selections. Choose Sync now to upload them. Observer and channel favorites stay local.") },
-        confirmButton = { TextButton(onClick = { showsImport = false; scope.launch { model.importDeviceFavorites(library) } }) { Text("Import") } },
-        dismissButton = { TextButton(onClick = { showsImport = false }) { Text("Cancel") } })
+        title = { Text(stringResource(R.string.explore_import_device_favorites)) },
+        text = { Text(stringResource(R.string.explore_add_device_node_favorites_to_this_account_s)) },
+        confirmButton = { TextButton(onClick = { showsImport = false; scope.launch { model.importDeviceFavorites(library) } }) { Text(stringResource(R.string.explore_import)) } },
+        dismissButton = { TextButton(onClick = { showsImport = false }) { Text(stringResource(R.string.common_cancel)) } })
     if (showsSignOut) AlertDialog(onDismissRequest = { showsSignOut = false },
-        title = { Text("Sign out of CoreScope?") },
-        text = { Text("Downloaded account selections and pending account edits will be removed from this device. Existing device favorites are preserved.") },
+        title = { Text(stringResource(R.string.explore_sign_out_of_corescope)) },
+        text = { Text(stringResource(R.string.explore_downloaded_account_selections_and_pending_account_edits_will)) },
         confirmButton = { Column {
-            TextButton(onClick = { showsSignOut = false; scope.launch { model.logout() } }) { Text("Sign out", color = MaterialTheme.colorScheme.error) }
-            TextButton(onClick = { showsSignOut = false; scope.launch { model.logout(library) } }) { Text("Copy selections and sign out") }
+            TextButton(onClick = { showsSignOut = false; scope.launch { model.logout() } }) { Text(stringResource(R.string.explore_sign_out), color = MaterialTheme.colorScheme.error) }
+            TextButton(onClick = { showsSignOut = false; scope.launch { model.logout(library) } }) { Text(stringResource(R.string.explore_copy_selections_and_sign_out)) }
         } },
-        dismissButton = { TextButton(onClick = { showsSignOut = false }) { Text("Cancel") } })
+        dismissButton = { TextButton(onClick = { showsSignOut = false }) { Text(stringResource(R.string.common_cancel)) } })
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            AccountCard("Account connection", Icons.Outlined.AccountCircle) {
+            AccountCard(stringResource(R.string.explore_account_connection), Icons.Outlined.AccountCircle) {
                 FavoriteSourceIdentity(host, sourceName)
-                Text("Manage account node selections separately from favorites saved on this device.",
+                Text(stringResource(R.string.explore_manage_account_node_selections_separately_from_favorites_saved),
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         if (model.busy || model.message != null) item {
             AccountCard(null, null) {
                 if (model.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-                model.message?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+                model.message?.let { Text(it.asString(), style = MaterialTheme.typography.bodyMedium) }
             }
         }
         val user = model.user
         val paused = model.resetDocument != null
         if (user != null) {
             item {
-                AccountCard("Signed in", Icons.Outlined.CheckCircle) {
+                AccountCard(stringResource(R.string.explore_signed_in), Icons.Outlined.CheckCircle) {
                     Text(user.displayName.ifBlank { user.email }, style = MaterialTheme.typography.titleMedium)
                     if (user.displayName.isNotBlank() && user.displayName != user.email) Text(user.email,
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             if (paused) item {
-                AccountCard("Account settings were reset", Icons.Outlined.WarningAmber) {
-                    Text("Sync is paused. Use the server’s selections or restore your saved account favorites. Device favorites are unaffected.",
+                AccountCard(stringResource(R.string.explore_account_settings_were_reset), Icons.Outlined.WarningAmber) {
+                    Text(stringResource(R.string.explore_sync_is_paused_use_the_server_s_selections),
                         style = MaterialTheme.typography.bodyMedium)
-                    Button(onClick = { scope.launch { model.resolveReset(false) } }, enabled = !model.busy, modifier = Modifier.fillMaxWidth()) { Text("Use server selections") }
-                    OutlinedButton(onClick = { scope.launch { model.resolveReset(true) } }, enabled = !model.busy, modifier = Modifier.fillMaxWidth()) { Text("Restore saved account favorites") }
+                    Button(onClick = { scope.launch { model.resolveReset(false) } }, enabled = !model.busy, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.explore_use_server_selections)) }
+                    OutlinedButton(onClick = { scope.launch { model.resolveReset(true) } }, enabled = !model.busy, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.explore_restore_saved_account_favorites)) }
                 }
             }
             item {
-                AccountCard("Sync & device favorites", Icons.Outlined.Sync) {
-                    Text("Sync uploads only account edits. Device favorites stay local unless you import them.",
+                AccountCard(stringResource(R.string.explore_sync_device_favorites), Icons.Outlined.Sync) {
+                    Text(stringResource(R.string.explore_sync_uploads_only_account_edits_device_favorites_stay),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Button(onClick = { scope.launch { model.sync(true) } }, enabled = !model.busy && !paused, modifier = Modifier.fillMaxWidth()) { Text("Sync now") }
-                    OutlinedButton(onClick = { scope.launch { model.sync(false) } }, enabled = !model.busy, modifier = Modifier.fillMaxWidth()) { Text("Refresh from account") }
-                    TextButton(onClick = { showsImport = true }, enabled = !model.busy && !paused) { Text("Import device node favorites") }
-                    TextButton(onClick = { scope.launch { model.copyToDevice(library) } }, enabled = !model.busy) { Text("Copy account selections to device") }
+                    Button(onClick = { scope.launch { model.sync(true) } }, enabled = !model.busy && !paused, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.explore_sync_now)) }
+                    OutlinedButton(onClick = { scope.launch { model.sync(false) } }, enabled = !model.busy, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.explore_refresh_from_account)) }
+                    TextButton(onClick = { showsImport = true }, enabled = !model.busy && !paused) { Text(stringResource(R.string.explore_import_device_node_favorites)) }
+                    TextButton(onClick = { scope.launch { model.copyToDevice(library) } }, enabled = !model.busy) { Text(stringResource(R.string.explore_copy_account_selections_to_device)) }
                 }
             }
             item {
-                AccountCard("Account nodes", Icons.Outlined.StarBorder) {
-                    Text("${model.selection?.favorites?.size ?: 0} favorites · ${model.claimed.size} claimed nodes",
+                AccountCard(stringResource(R.string.explore_account_nodes), Icons.Outlined.StarBorder) {
+                    Text(stringResource(R.string.explore_favorites_claimed_nodes, model.selection?.favorites?.size ?: 0, model.claimed.size),
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     model.selection?.favorites?.sorted()?.forEach { key ->
                         val name = resolvedNames[key] ?: library.node(key)?.name?.takeIf { it.isNotBlank() }
                         AccountNodeRow(name, key) {
                             TextButton(onClick = { scope.launch { model.removeFavorite(key) } }, enabled = !model.busy && !paused,
                                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                                modifier = Modifier.semantics { contentDescription = "Remove account favorite ${name ?: key}" }) { Text("Remove") }
+                                modifier = Modifier.withDescription(stringResource(R.string.explore_remove_account_favorite, name ?: key)) { description -> contentDescription = description }) { Text(stringResource(R.string.explore_remove)) }
                         }
                     }
                     if (model.claimed.isNotEmpty()) {
-                        Text("Claimed nodes are managed on CoreScope. Removing an account favorite does not unclaim a node.",
+                        Text(stringResource(R.string.explore_claimed_nodes_are_managed_on_corescope_removing_an),
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         model.claimed.toSortedMap().forEach { (key, name) ->
                             AccountNodeRow(name.ifBlank { resolvedNames[key] ?: library.node(key)?.name ?: "" }.takeIf { it.isNotBlank() }, key) {}
@@ -341,15 +345,15 @@ fun CoreScopeAccountScreen(host: String, sourceName: String?, library: NodeLibra
             }
             item {
                 OutlinedButton(onClick = { showsSignOut = true }, enabled = !model.busy,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Sign out") }
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.explore_sign_out)) }
             }
         } else if (model.supported) item {
-            AccountCard("Sign in", Icons.AutoMirrored.Outlined.Login) {
-                OutlinedTextField(email, { email = it }, label = { Text("Email") },
+            AccountCard(stringResource(R.string.explore_sign_in), Icons.AutoMirrored.Outlined.Login) {
+                OutlinedTextField(email, { email = it }, label = { Text(stringResource(R.string.explore_email)) },
                     modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.Username },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrectEnabled = false, imeAction = ImeAction.Next),
                     enabled = !model.busy, singleLine = true)
-                OutlinedTextField(password, { password = it }, label = { Text("Password") },
+                OutlinedTextField(password, { password = it }, label = { Text(stringResource(R.string.explore_password)) },
                     modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.Password },
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false, imeAction = ImeAction.Done),
@@ -358,20 +362,20 @@ fun CoreScopeAccountScreen(host: String, sourceName: String?, library: NodeLibra
                     val secret = password
                     password = ""
                     scope.launch { model.login(email, secret, library) }
-                }, enabled = !model.busy && email.isNotBlank() && password.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text("Sign in") }
-                Text("Use an existing account on this source. Your password is not saved.",
+                }, enabled = !model.busy && email.isNotBlank() && password.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.explore_sign_in)) }
+                Text(stringResource(R.string.explore_use_an_existing_account_on_this_source_your),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 TextButton(onClick = { uri.openUri("https://${normalizeHost(host)}") }) {
-                    Text("Open CoreScope")
+                    Text(stringResource(R.string.explore_open_corescope))
                     Spacer(Modifier.width(6.dp))
-                    Icon(Icons.AutoMirrored.Outlined.OpenInNew, "Opens in your browser", Modifier.size(18.dp))
+                    Icon(Icons.AutoMirrored.Outlined.OpenInNew, stringResource(R.string.explore_opens_in_your_browser), Modifier.size(18.dp))
                 }
             }
         } else if (!model.busy) item {
             OutlinedButton(onClick = { scope.launch { model.open(library) } }) {
                 Icon(Icons.Outlined.Refresh, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Try again")
+                Text(stringResource(R.string.explore_try_again))
             }
         }
     }
@@ -396,11 +400,11 @@ private fun AccountCard(title: String?, icon: ImageVector?, content: @Composable
 private fun AccountNodeRow(name: String?, key: String, trailing: @Composable RowScope.() -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(name ?: "Name unavailable", style = MaterialTheme.typography.titleSmall,
+            Text(name ?: stringResource(R.string.explore_name_unavailable), style = MaterialTheme.typography.titleSmall,
                 color = if (name == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
-            Text("${key.take(12)}…${key.takeLast(6)}", style = MaterialTheme.typography.bodySmall,
+            Text(stringResource(R.string.explore_value, key.take(12), key.takeLast(6)), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, fontFamily = MonaspaceNeon,
-                modifier = Modifier.semantics { contentDescription = "Public key $key" })
+                modifier = Modifier.withDescription(stringResource(R.string.explore_public_key, key)) { description -> contentDescription = description })
         }
         trailing()
     }

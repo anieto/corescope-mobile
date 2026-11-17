@@ -1,5 +1,8 @@
 package org.nodescope.android.feature.explore
 
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Refresh
@@ -33,6 +36,7 @@ import java.util.Date
 @Composable
 fun MyNodesScreen(host: String, library: NodeLibrary, acquire: () -> MyNodesRepositories,
                   onNode: (String) -> Unit, onObserver: (String, String) -> Unit, sourceName: String? = null) {
+    val resources = LocalResources.current
     val nodes = library.favorites.filter { it.kind == SavedKind.NODE }
     val observers = library.favorites.filter { it.kind == SavedKind.OBSERVER }
     var rows by remember(host) { mutableStateOf<Map<String, MyNodesBaseRow>>(emptyMap()) }
@@ -85,12 +89,12 @@ fun MyNodesScreen(host: String, library: NodeLibrary, acquire: () -> MyNodesRepo
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                error = "Activity could not be updated. Refresh to try again."
+                error = resources.getString(R.string.explore_activity_could_not_be_updated_refresh_to_try)
             } finally {
                 registration?.let { owned?.lifetime?.removeCancellation(it) }
                 if (owned?.lifetime?.isCurrent == false) {
                     rows = emptyMap(); catalog = null
-                    error = "Activity data was cleared or the source changed. Refresh to continue."
+                    error = resources.getString(R.string.explore_activity_data_was_cleared_or_the_source_changed)
                 }
                 loading = false
             }
@@ -98,9 +102,9 @@ fun MyNodesScreen(host: String, library: NodeLibrary, acquire: () -> MyNodesRepo
     }
     if (showsHelp) AlertDialog(
         onDismissRequest = { showsHelp = false },
-        title = { Text("About activity") },
-        text = { Text("Recently heard means the source recorded activity within 15 minutes. Silence does not mean a node is offline.\n\nLast heard is the latest reported activity. Checked is when the app retrieved that information. Saved data keeps its original check time.\n\nMissing observers have unknown activity. Some sources return an incomplete observer list.") },
-        confirmButton = { TextButton(onClick = { showsHelp = false }) { Text("Done") } }
+        title = { Text(stringResource(R.string.explore_about_activity)) },
+        text = { Text(stringResource(R.string.explore_recently_heard_means_the_source_recorded_activity_within)) },
+        confirmButton = { TextButton(onClick = { showsHelp = false }) { Text(stringResource(R.string.common_done)) } }
     )
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
@@ -108,25 +112,25 @@ fun MyNodesScreen(host: String, library: NodeLibrary, acquire: () -> MyNodesRepo
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) { FavoriteSourceIdentity(host, sourceName) }
-                        IconButton(onClick = { showsHelp = true }) { Icon(Icons.Outlined.Info, "About activity") }
+                        IconButton(onClick = { showsHelp = true }) { Icon(Icons.Outlined.Info, stringResource(R.string.explore_about_activity_2)) }
                         IconButton(onClick = { force = true; revision++ }, enabled = !loading) {
-                            Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
+                            Icon(Icons.Outlined.Refresh, contentDescription = stringResource(R.string.refresh))
                         }
                     }
                     if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                     error?.let {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(it, Modifier.weight(1f), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                            TextButton(onClick = { force = true; revision++ }, enabled = !loading) { Text("Retry") }
+                            TextButton(onClick = { force = true; revision++ }, enabled = !loading) { Text(stringResource(R.string.retry)) }
                         }
                     }
                 }
             }
         }
         if (nodes.isEmpty() && observers.isEmpty()) item {
-            EmptyState(Icons.Outlined.StarBorder, "No favorites yet", "Add nodes in Favorites or save observers from their detail pages to follow them here.")
+            EmptyState(Icons.Outlined.StarBorder, stringResource(R.string.explore_no_favorites_yet), stringResource(R.string.explore_add_nodes_in_favorites_or_save_observers_from))
         }
-        if (nodes.isNotEmpty()) item { SectionLabel("Nodes") }
+        if (nodes.isNotEmpty()) item { SectionLabel(stringResource(R.string.explore_nodes)) }
         items(nodes, key = { it.key }) { item ->
             val row = rows[item.entityId.lowercase()]
             val snapshot = row?.snapshot
@@ -139,32 +143,32 @@ fun MyNodesScreen(host: String, library: NodeLibrary, acquire: () -> MyNodesRepo
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     ActivityItemHeading(snapshot?.node?.name ?: item.title) { KindIcon(SavedKind.NODE, snapshot?.node ?: item.node) }
                     Text(when (activity?.state) {
-                        MyNodesActivityState.RECENTLY_HEARD -> "Recently heard"
-                        MyNodesActivityState.NOT_RECENTLY_HEARD -> "Not recently heard"
-                        else -> "Activity unknown"
+                        MyNodesActivityState.RECENTLY_HEARD -> stringResource(R.string.explore_recently_heard)
+                        MyNodesActivityState.NOT_RECENTLY_HEARD -> stringResource(R.string.explore_not_recently_heard)
+                        else -> stringResource(R.string.explore_activity_unknown_2)
                     }, style = MaterialTheme.typography.bodyMedium,
                         color = if (activity?.state == MyNodesActivityState.RECENTLY_HEARD) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-                    activity?.activityAt?.let { Text("Last heard ${relativeActivityDate(it, now)}", style = MaterialTheme.typography.bodyMedium) }
+                    activity?.activityAt?.let { Text(stringResource(R.string.explore_last_heard, relativeActivityDate(it, now)), style = MaterialTheme.typography.bodyMedium) }
                     snapshot?.let {
-                        Text("${if (row.state == MyNodesBaseState.CACHED) "Saved data · checked" else "Checked"} ${relativeActivityDate(it.fetchedAt, now)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        if (!it.isReusable(now)) Text("Cached · refresh needed", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.explore_value_2, if (row.state == MyNodesBaseState.CACHED) stringResource(R.string.explore_saved_data_checked) else stringResource(R.string.explore_checked_3), relativeActivityDate(it.fetchedAt, now)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (!it.isReusable(now)) Text(stringResource(R.string.explore_cached_refresh_needed), style = MaterialTheme.typography.bodySmall)
                     }
                     if (row?.state !in listOf(MyNodesBaseState.FETCHED, MyNodesBaseState.CACHED)) Text(when (row?.state) {
-                        MyNodesBaseState.FETCHED -> "Updated"
-                        MyNodesBaseState.CACHED -> "Cached"
-                        MyNodesBaseState.UNAVAILABLE -> "Unavailable on this source"
-                        MyNodesBaseState.DEFERRED -> "Not checked yet · use Load more"
-                        MyNodesBaseState.FAILED -> "Update failed · retry with Refresh"
-                        MyNodesBaseState.RATE_LIMITED -> "Server rate limit · try later"
-                        null -> "Not checked yet"
+                        MyNodesBaseState.FETCHED -> stringResource(R.string.explore_updated)
+                        MyNodesBaseState.CACHED -> stringResource(R.string.explore_cached)
+                        MyNodesBaseState.UNAVAILABLE -> stringResource(R.string.explore_unavailable_on_this_source)
+                        MyNodesBaseState.DEFERRED -> stringResource(R.string.explore_not_checked_yet_use_load_more)
+                        MyNodesBaseState.FAILED -> stringResource(R.string.explore_update_failed_retry_with_refresh)
+                        MyNodesBaseState.RATE_LIMITED -> stringResource(R.string.explore_server_rate_limit_try_later)
+                        null -> stringResource(R.string.explore_not_checked_yet)
                     }, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
         if (!loading && nodes.any { rows[it.entityId.lowercase()]?.state in listOf(null, MyNodesBaseState.DEFERRED) }) item {
-            OutlinedButton(onClick = { force = false; revision++ }, enabled = !loading) { Text("Load more") }
+            OutlinedButton(onClick = { force = false; revision++ }, enabled = !loading) { Text(stringResource(R.string.explore_load_more_2)) }
         }
-        if (observers.isNotEmpty()) item { SectionLabel("Favorite observers") }
+        if (observers.isNotEmpty()) item { SectionLabel(stringResource(R.string.explore_favorite_observers)) }
         items(observers, key = { it.key }) { item ->
             val record = catalog?.snapshot?.observers?.firstOrNull { it.id == item.entityId }
             Card(onClick = { onObserver(item.entityId, record?.name ?: item.title) }, modifier = Modifier.fillMaxWidth(),
@@ -172,14 +176,14 @@ fun MyNodesScreen(host: String, library: NodeLibrary, acquire: () -> MyNodesRepo
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     ActivityItemHeading(record?.name ?: item.title) { KindIcon(SavedKind.OBSERVER, null) }
                     val seen = record?.lastSeen?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
-                    Text(seen?.let { "Last heard ${relativeActivityDate(it, now)}" } ?: "Activity unknown", style = MaterialTheme.typography.bodyMedium)
-                    catalog?.snapshot?.let { Text("Checked ${relativeActivityDate(it.fetchedAt, now)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    Text(seen?.let { stringResource(R.string.explore_last_heard_2, relativeActivityDate(it, now)) } ?: stringResource(R.string.explore_activity_unknown), style = MaterialTheme.typography.bodyMedium)
+                    catalog?.snapshot?.let { Text(stringResource(R.string.explore_checked_2, relativeActivityDate(it.fetchedAt, now)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     if (catalog?.state != MyNodesBaseState.FETCHED) Text(when (catalog?.state) {
-                        MyNodesBaseState.FETCHED -> "Updated catalog"
-                        MyNodesBaseState.CACHED -> "Cached catalog"
-                        else -> "Catalog update unavailable"
+                        MyNodesBaseState.FETCHED -> stringResource(R.string.explore_updated_catalog)
+                        MyNodesBaseState.CACHED -> stringResource(R.string.explore_cached_catalog)
+                        else -> stringResource(R.string.explore_catalog_update_unavailable)
                     }, style = MaterialTheme.typography.bodySmall)
-                    if (catalog?.snapshot?.completeness != MyNodesCatalogCompleteness.COMPLETE) Text("Observer list may be incomplete", style = MaterialTheme.typography.bodySmall)
+                    if (catalog?.snapshot?.completeness != MyNodesCatalogCompleteness.COMPLETE) Text(stringResource(R.string.explore_observer_list_may_be_incomplete), style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
