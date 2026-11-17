@@ -347,10 +347,10 @@ final class EstimatedCoverageModel {
     // Study area.
     var radiusMeters: Int
 
-    init(distanceUnit: DistanceUnit = DistanceUnit(rawValue: UserDefaults.standard.string(forKey: DistanceUnit.defaultsKey) ?? "") ?? .imperial) {
-        radiusMeters = distanceUnit == .imperial ? 16_093 : 20_000
-        spacingMeters = distanceUnit == .imperial ? 1609 : 1000
-        if distanceUnit == .imperial {
+    init(distanceUnit: DistanceUnit = .current) {
+        radiusMeters = distanceUnit.usesMiles ? 16_093 : 20_000
+        spacingMeters = distanceUnit.usesMiles ? 1609 : 1000
+        if distanceUnit.usesFeet {
             transmitHeightMeters = distanceUnit.meters(fromDisplayedHeight: 20)
             receiveHeightMeters = distanceUnit.meters(fromDisplayedHeight: 5)
         }
@@ -1065,7 +1065,7 @@ private struct CoverageLegendSwatch: View {
 /// Calculate and Reset sit beside it, so a study never needs the panel opened once it is set up.
 private struct CoverageHeader: View {
     let model: EstimatedCoverageModel
-    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
+    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .localeDefault
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -1337,7 +1337,7 @@ private struct CoverageSetupGuide: View {
 private struct CoverageTransmitterCard: View {
     @Bindable var model: EstimatedCoverageModel
     @State private var showsCoordinates = false
-    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
+    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .localeDefault
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1545,7 +1545,7 @@ private struct CoverageRadioCard: View {
 private struct CoverageReceiverCard: View {
     @Bindable var model: EstimatedCoverageModel
     @State private var isExpanded = false
-    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
+    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .localeDefault
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1575,13 +1575,13 @@ private struct CoverageReceiverCard: View {
 private struct CoverageStudyAreaCard: View {
     @State private var draftRadius: Double?
     @State private var isDraggingRadius = false
-    private var radiusStep: Double { distanceUnit == .imperial ? 2 : 5 }
-    private var radiusMaximum: Double { distanceUnit == .imperial ? 50 : 80 }
-    private var metersPerRadiusUnit: Double { distanceUnit == .imperial ? 1609.344 : 1000 }
+    private var radiusStep: Double { distanceUnit.usesMiles ? 2 : 5 }
+    private var radiusMaximum: Double { distanceUnit.usesMiles ? 50 : 80 }
+    private var metersPerRadiusUnit: Double { distanceUnit.usesMiles ? 1609.344 : 1000 }
     private var displayedRadius: Double { draftRadius ?? Double(model.radiusMeters) / metersPerRadiusUnit }
     private var radiusLabel: String {
         let value = displayedRadius.formatted(.number.precision(.fractionLength(0...3)))
-        return "\(value) \(distanceUnit == .imperial ? "mi" : "km")"
+        return "\(value) \(distanceUnit.usesMiles ? "mi" : "km")"
     }
 
     private func setRadius(_ value: Double) {
@@ -1597,13 +1597,13 @@ private struct CoverageStudyAreaCard: View {
     }
 
     private var spacingChoices: [Int] {
-        let choices = distanceUnit == .imperial
+        let choices = distanceUnit.usesMiles
             ? EstimatedCoverageModel.imperialSpacingChoices : EstimatedCoverageModel.spacingChoices
         return choices.contains(model.spacingMeters) ? choices : (choices + [model.spacingMeters]).sorted()
     }
 
     private func spacingLabel(_ meters: Int) -> String {
-        if distanceUnit == .imperial {
+        if distanceUnit.usesMiles {
             let presets = [201: "⅛ mi", 402: "¼ mi", 805: "½ mi",
                            1609: "1 mi", 2414: "1½ mi", 3219: "2 mi", 8047: "5 mi"]
             if let label = presets[meters] { return label }
@@ -1614,7 +1614,7 @@ private struct CoverageStudyAreaCard: View {
     }
 
     @Bindable var model: EstimatedCoverageModel
-    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
+    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .localeDefault
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1755,7 +1755,7 @@ struct CoverageHeightSetting: View {
     @Binding var meters: Double
     let presets: [CoverageHeightPreset]
     let issue: CoverageSetupIssue?
-    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
+    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .localeDefault
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -1766,7 +1766,7 @@ struct CoverageHeightSetting: View {
             ) { index in
                 let presetMeters = presets[index].meters
                 // Imperial chips advertise whole feet; apply that exact displayed height.
-                meters = distanceUnit == .imperial
+                meters = distanceUnit.usesFeet
                     ? distanceUnit.meters(fromDisplayedHeight: distanceUnit.displayHeight(meters: presetMeters).rounded())
                     : presetMeters
             }

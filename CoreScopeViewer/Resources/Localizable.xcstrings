@@ -2786,9 +2786,6 @@
     "If NodeScope has been useful, you can leave an optional tip to support its continued development." : {
 
     },
-    "Imperial (mi)" : {
-
-    },
     "Import" : {
 
     },
@@ -3336,7 +3333,7 @@
     "Message:" : {
 
     },
-    "Metric (km)" : {
+    "Metric (km, m)" : {
 
     },
     "Min / max" : {
@@ -5782,6 +5779,12 @@
 
     },
     "Typical range" : {
+
+    },
+    "UK (mi, m)" : {
+
+    },
+    "US (mi, ft)" : {
 
     },
     "US Community Sources" : {

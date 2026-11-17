@@ -1021,8 +1021,8 @@ final class LinkProfileModel {
         self.elevationProvider = elevationProvider
         analyzer = NodePlannerLinkAnalyzer(elevationProvider: elevationProvider)
         // A typical rooftop mast: 20 ft in imperial, 6 m in metric.
-        let unit = UserDefaults.standard.string(forKey: DistanceUnit.defaultsKey).flatMap(DistanceUnit.init(rawValue:)) ?? .imperial
-        heightA = unit == .imperial ? 6.096 : 6
+        let unit = DistanceUnit.current
+        heightA = unit.usesFeet ? 6.096 : 6
         heightB = heightA
         defaultAntennaHeight = heightA
     }
@@ -1281,7 +1281,7 @@ private struct LinkProfileHeader: View {
 
     @Bindable var model: LinkProfileModel
     @Binding var activeEndpoint: LinkProfileEndpoint?
-    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
+    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .localeDefault
     @AppStorage(placedPointKey) private var hasPlacedPoint = false
 
     var body: some View {
@@ -1442,7 +1442,7 @@ private struct LinkProfilePointCard: View {
     let choose: () -> Void
     @State private var isExpanded = false
     @State private var showsCoordinates = false
-    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
+    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .localeDefault
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1701,7 +1701,7 @@ private struct LinkProfileNumericSetting: View {
 
 private struct LinkProfileResultCard: View {
     let result: NodePlannerLinkAnalysis
-    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
+    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .localeDefault
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1784,7 +1784,7 @@ private struct LinkProfileResultCard: View {
 // styling, accessibility, endpoint-only workflow, and adaptive layouts.
 private struct LinkProfileTerrainCanvas: View {
     let analysis: NodePlannerLinkAnalysis
-    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
+    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .localeDefault
 
     private struct Sample {
         let distanceMeters: Double
@@ -1918,8 +1918,8 @@ private struct LinkProfileTerrainCanvas: View {
         for index in 0...4 {
             let fraction = Double(index) / 4
             let x = xRange.upperBound * fraction
-            let displayDistance = distanceUnit == .imperial ? x / 1_609.344 : x / 1_000
-            let unit = distanceUnit == .imperial ? "mi" : "km"
+            let displayDistance = distanceUnit.usesMiles ? x / 1_609.344 : x / 1_000
+            let unit = distanceUnit.usesMiles ? "mi" : "km"
             let label = displayDistance.formatted(.number.precision(.fractionLength(xRange.upperBound < 10_000 ? 1 : 0)))
             context.draw(
                 Text(index == 4 ? "\(label) \(unit)" : label).font(.system(size: 9)).foregroundStyle(.secondary),

@@ -373,7 +373,7 @@ private struct ChatBubbleRow: View {
                         )
                         if let snr = message.snr {
                             MessageMetricChip(
-                                text: String(format: "%.1f dB", snr),
+                                text: "\(snr.formatted(.number.precision(.fractionLength(1)))) dB",
                                 symbol: "waveform",
                                 color: .secondary
                             )

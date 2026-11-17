@@ -224,7 +224,7 @@ private struct PacketIdentityCard: View {
                 PacketMetricTile(value: observationCount?.formatted() ?? "—", label: "Observations", symbol: "ear.fill", learn: .observation)
                 PacketMetricTile(value: hops?.formatted() ?? "—", label: "Hops", symbol: "point.3.connected.trianglepath.dotted", learn: .hop)
                 PacketMetricTile(
-                    value: snr.map { String(format: "%.1f", $0) } ?? "—",
+                    value: snr.map { $0.formatted(.number.precision(.fractionLength(1))) } ?? "—",
                     label: "SNR dB",
                     symbol: "waveform",
                     learn: .snr

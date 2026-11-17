@@ -9,7 +9,7 @@ struct SettingsScreen: View {
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(ObserverRegionLookup.self) private var observerRegionLookup
     @Environment(AppearanceSettings.self) private var appearanceSettings
-    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
+    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .localeDefault
     @AppStorage(AppearanceSettings.backgroundTextureDefaultsKey) private var backgroundTextureEnabled = true
     @AppStorage(Glossary.showsExplanationsDefaultsKey) private var showsTermExplanations = true
     @AppStorage(LiveMapPreferences.realisticPropagationKey) private var realisticPropagation = false

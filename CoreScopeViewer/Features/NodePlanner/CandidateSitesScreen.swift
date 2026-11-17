@@ -16,8 +16,7 @@ struct CandidateSitesScreen: View {
                 if model.isLoaded && !model.plans.isEmpty {
                     Button("Move to Saved Plans", systemImage: "folder.badge.plus") {
                         model.error = nil
-                        moving = model.candidateConversion(unit: DistanceUnit(
-                            rawValue: UserDefaults.standard.string(forKey: DistanceUnit.defaultsKey) ?? "") ?? .imperial)
+                        moving = model.candidateConversion(unit: DistanceUnit.current)
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(model.isBusy)
@@ -239,9 +238,9 @@ private struct CandidateSiteEditor: View {
         self.site = site
         self.apply = apply
         // Freeze the display unit for this draft so typed numbers never change meaning.
-        let unit = UserDefaults.standard.string(forKey: DistanceUnit.defaultsKey).flatMap(DistanceUnit.init(rawValue:)) ?? .imperial
-        _heightInFeet = State(initialValue: unit == .imperial)
-        let displayedHeight = site?.assumptions.antennaHeightMeters.map { unit == .imperial ? $0 / 0.3048 : $0 }
+        let unit = DistanceUnit.current
+        _heightInFeet = State(initialValue: unit.usesFeet)
+        let displayedHeight = site?.assumptions.antennaHeightMeters.map { unit.usesFeet ? $0 / 0.3048 : $0 }
         let fields = [site?.latitude, site?.longitude, displayedHeight,
                       site?.assumptions.frequencyMHz, site?.assumptions.transmitPowerDBm,
                       site?.assumptions.antennaGainDBi, site?.assumptions.cableLossDB, site?.assumptions.additionalLossDB]

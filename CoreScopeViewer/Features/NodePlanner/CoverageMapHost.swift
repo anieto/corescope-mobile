@@ -139,13 +139,13 @@ struct CoverageMapHost: UIViewRepresentable {
             pin.nodeState = sample.marginDb.map { $0 >= 0 ? .inCoverage : .belowThreshold } ?? .unknown
             if let loss = sample.lossDb, let budget = layer.budget,
                let reception = try? budget.reception(pathLossDb: loss) {
-                let receive = String(format: "%.1f", reception.receiveLevelDbm)
-                let margin = String(format: "%.1f", reception.adjustedMarginDb)
+                let receive = reception.receiveLevelDbm.formatted(.number.precision(.fractionLength(1)))
+                let margin = reception.adjustedMarginDb.formatted(.number.precision(.fractionLength(1)))
                 pin.subtitle = String(localized: "Predicted RX \(receive) dBm · Margin after reserve \(margin) dB")
             } else {
                 pin.subtitle = String(localized: "No usable prediction")
             }
-            let unit = DistanceUnit(rawValue: UserDefaults.standard.string(forKey: DistanceUnit.defaultsKey) ?? "") ?? .imperial
+            let unit = DistanceUnit.current
             pin.subtitle = (pin.subtitle ?? "") + " · " + String(localized: "Grid spacing")
                 + " " + unit.format(kilometers: Double(layer.raster.grid.spacingMeters) / 1000)
             inspectionPin = pin
@@ -181,9 +181,9 @@ struct CoverageMapHost: UIViewRepresentable {
                     pin.marginDb = status.adjustedMarginDb
                     pin.subtitle = status.coverageLabel
                     if let margin = status.adjustedMarginDb {
-                        pin.subtitle = status.coverageLabel + String(format: " · %.1f dB", margin)
+                        pin.subtitle = status.coverageLabel + " · \(margin.formatted(.number.precision(.fractionLength(1)))) dB"
                         if let budget = layer?.budget {
-                            pin.subtitle = (pin.subtitle ?? "") + String(format: " · RX %.1f dBm", margin + budget.sensitivityDbm + budget.reserveDb)
+                            pin.subtitle = (pin.subtitle ?? "") + " · RX \((margin + budget.sensitivityDbm + budget.reserveDb).formatted(.number.precision(.fractionLength(1)))) dBm"
                         }
                     }
                 }

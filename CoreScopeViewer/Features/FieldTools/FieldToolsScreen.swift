@@ -1547,8 +1547,11 @@ private struct FieldCoordinateEntrySheet: View {
     }
 
     private var coordinate: FieldCoordinate? {
-        guard let latitude = Double(latitude.trimmingCharacters(in: .whitespacesAndNewlines)),
-              let longitude = Double(longitude.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+        // Accept a decimal comma too, for keyboards in comma-decimal regions.
+        func parse(_ text: String) -> Double? {
+            Double(text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: "."))
+        }
+        guard let latitude = parse(latitude), let longitude = parse(longitude) else {
             return nil
         }
         return FieldCoordinate(latitude: latitude, longitude: longitude)

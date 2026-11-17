@@ -1329,7 +1329,7 @@ private struct NodeObserverCoverageCard: View {
         guard let snr = observer.avgSnr else {
             return String(localized: "\(observer.packetCount) packets, no SNR, last heard \(lastHeard)")
         }
-        let average = String(format: "%.1f", snr)
+        let average = snr.formatted(.number.precision(.fractionLength(1)))
         return String(localized: "\(observer.packetCount) packets, \(average) dB average SNR, last heard \(lastHeard)")
     }
 
@@ -1367,7 +1367,7 @@ private struct NodeObserverCoverageCard: View {
                     VStack(alignment: .trailing, spacing: 3) {
                         Text(observer.packetCount.formatted())
                             .font(.subheadline.weight(.semibold))
-                        Text(observer.avgSnr.map { String(format: "%.1f dB", $0) } ?? String(localized: "No SNR"))
+                        Text(observer.avgSnr.map { "\($0.formatted(.number.precision(.fractionLength(1)))) dB" } ?? String(localized: "No SNR"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }

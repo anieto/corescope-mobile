@@ -399,7 +399,7 @@ private struct NodeHealthCard: View {
                 NodeMetricTile(value: stats.totalTransmissions.formatted(), label: "Transmissions")
                 NodeMetricTile(value: stats.packetsToday.formatted(), label: "Today")
                 NodeMetricTile(
-                    value: stats.avgSnr.map { String(format: "%.1f", $0) } ?? "—",
+                    value: stats.avgSnr.map { $0.formatted(.number.precision(.fractionLength(1))) } ?? "—",
                     label: "Avg SNR",
                     learn: .snr
                 )
@@ -452,7 +452,7 @@ private struct BeaconNodeHealthCard: View {
                 NodeMetricTile(value: health.observationsDay?.formatted() ?? "—", label: "24 h")
                 NodeMetricTile(value: health.observationsWeek?.formatted() ?? "—", label: "7 days")
                 NodeMetricTile(
-                    value: health.avgSnr.map { String(format: "%.1f", $0) } ?? "—",
+                    value: health.avgSnr.map { $0.formatted(.number.precision(.fractionLength(1))) } ?? "—",
                     label: "Avg SNR",
                     learn: .snr
                 )
@@ -779,7 +779,7 @@ private struct NodeLinksCard: View {
 }
 
 private struct NodeLinkRow: View {
-    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .imperial
+    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .localeDefault
     let link: ReachLink
     let showsDisclosure: Bool
 
