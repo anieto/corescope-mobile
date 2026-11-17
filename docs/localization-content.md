@@ -73,6 +73,9 @@ Update all three copies together: `CommunitySources/sources-v2.json` (served to 
 
 ## Adding a language
 
+Start with the term choices in [localization-terms.md](localization-terms.md), which also lists
+how other MeshCore apps translate the same words.
+
 1. Translate the String Catalog and add `values-<lang>/strings.xml`, including `content_language`.
 2. Add `glossary.<lang>.json` and `whats-new.<lang>.json` to both apps. On iOS, add each file to the
    app target's Resources in `project.pbxproj` by hand (don't run XcodeGen).
