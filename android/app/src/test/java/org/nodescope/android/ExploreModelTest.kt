@@ -17,11 +17,11 @@ class ExploreModelTest {
 
     @Test fun dashboardMatchesIosWindows() {
         val packets = listOf(packet(1, 10, 4.0), packet(2, 50, 6.0), packet(3, 70, 100.0))
-        assertEquals(GlanceValue("1", "of 2 seen"), glanceValue(GlanceMetric.ACTIVE_NODES, nodes, observers, packets, now))
-        assertEquals(GlanceValue("1", "of 2 known"), glanceValue(GlanceMetric.OBSERVERS_ONLINE, nodes, observers, packets, now))
-        assertEquals(GlanceValue("2", "in the last hour"), glanceValue(GlanceMetric.PACKETS, nodes, observers, packets, now))
-        assertEquals(GlanceValue("5.0", "dB in the last hour"), glanceValue(GlanceMetric.AVERAGE_SNR, nodes, observers, packets, now))
-        assertEquals(GlanceValue("—", "no recent samples"), glanceValue(GlanceMetric.AVERAGE_SNR, nodes, observers, emptyList(), now))
+        assertGlance("1", "of 2 seen", glanceValue(GlanceMetric.ACTIVE_NODES, nodes, observers, packets, now))
+        assertGlance("1", "of 2 known", glanceValue(GlanceMetric.OBSERVERS_ONLINE, nodes, observers, packets, now))
+        assertGlance("2", "in the last hour", glanceValue(GlanceMetric.PACKETS, nodes, observers, packets, now))
+        assertGlance("5.0", "dB in the last hour", glanceValue(GlanceMetric.AVERAGE_SNR, nodes, observers, packets, now))
+        assertGlance("—", "no recent samples", glanceValue(GlanceMetric.AVERAGE_SNR, nodes, observers, emptyList(), now))
         val saturated = (1..1_000L).map { packet(it, 1, null) }
         assertEquals("1000+", glanceValue(GlanceMetric.PACKETS, nodes, observers, saturated, now).value)
     }
@@ -63,4 +63,9 @@ class ExploreModelTest {
         assertTrue(json.contains("\"id\": \"averageSNR\""))
         assertTrue(json.contains("\"favoriteCount\": 4"))
     }
+}
+
+private fun assertGlance(value: String, exportDetail: String, glance: GlanceValue) {
+    assertEquals(value, glance.value)
+    assertEquals(exportDetail, glance.exportDetail)
 }

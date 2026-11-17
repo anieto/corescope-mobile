@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.explore
 
+import org.nodescope.android.core.design.UiText
+
 import androidx.annotation.StringRes
 import org.nodescope.android.R
 import android.content.Context
@@ -36,19 +38,19 @@ const val PACKET_SAMPLE = 1_000
 
 enum class GlanceMetric(@param:StringRes val titleRes: Int) { ACTIVE_NODES(R.string.explore_active_nodes), OBSERVERS_ONLINE(R.string.explore_observers_online), PACKETS(R.string.explore_packets_2), AVERAGE_SNR(R.string.explore_average_snr) }
 
-data class GlanceValue(val value: String, val detail: String)
+data class GlanceValue(val value: String, val exportDetail: String, val displayDetail: UiText = UiText.Raw(exportDetail))
 
 /** The iOS dashboard definitions: active within 15 minutes; packets and SNR over the last hour. */
 fun glanceValue(metric: GlanceMetric, nodes: List<MeshNode>, observers: List<MeshObserver>, packets: List<LivePacket>, now: Long): GlanceValue {
     fun active(at: String?) = parseInstant(at)?.let { now - it.toEpochMilli() < ACTIVE_WINDOW } == true
     val recent = packets.filter { now - packetEpoch(it) < PACKET_WINDOW }
     return when (metric) {
-        GlanceMetric.ACTIVE_NODES -> GlanceValue(nodes.count { active(it.lastSeen) }.toString(), "of ${nodes.size} seen")
-        GlanceMetric.OBSERVERS_ONLINE -> GlanceValue(observers.count { active(it.lastSeen) }.toString(), "of ${observers.size} known")
+        GlanceMetric.ACTIVE_NODES -> GlanceValue(nodes.count { active(it.lastSeen) }.toString(), "of ${nodes.size} seen", UiText.Resource(R.string.explore_metric_detail_seen, nodes.size))
+        GlanceMetric.OBSERVERS_ONLINE -> GlanceValue(observers.count { active(it.lastSeen) }.toString(), "of ${observers.size} known", UiText.Resource(R.string.explore_metric_detail_known, observers.size))
         // The sample is the analyzer's latest 1,000 packets; saying "1000+" avoids undercounting.
-        GlanceMetric.PACKETS -> GlanceValue(if (recent.size == packets.size && packets.size >= PACKET_SAMPLE) "${recent.size}+" else recent.size.toString(), "in the last hour")
+        GlanceMetric.PACKETS -> GlanceValue(if (recent.size == packets.size && packets.size >= PACKET_SAMPLE) "${recent.size}+" else recent.size.toString(), "in the last hour", UiText.Resource(R.string.explore_metric_detail_packets))
         GlanceMetric.AVERAGE_SNR -> recent.mapNotNull { it.snr }.takeIf { it.isNotEmpty() }?.average()
-            ?.let { GlanceValue(String.format(Locale.US, "%.1f", it), "dB in the last hour") } ?: GlanceValue("—", "no recent samples")
+            ?.let { GlanceValue(String.format(Locale.US, "%.1f", it), "dB in the last hour", UiText.Resource(R.string.explore_metric_detail_snr)) } ?: GlanceValue("—", "no recent samples", UiText.Resource(R.string.explore_metric_detail_no_samples))
     }
 }
 
@@ -101,7 +103,7 @@ private fun csvField(value: String) = if (value.any { it == ',' || it == '"' || 
 
 fun glanceCsv(metrics: List<Pair<GlanceMetric, GlanceValue>>, activeFavorites: Int, breakdown: String): String =
     (listOf(listOf("metric", "value", "detail")) + metrics.map { (metric, value) ->
-        listOf(metricIds.getValue(metric), value.value.takeUnless { it == "—" }.orEmpty(), value.detail)
+        listOf(metricIds.getValue(metric), value.value.takeUnless { it == "—" }.orEmpty(), value.exportDetail)
     } + listOf(listOf("favorites", activeFavorites.toString(), breakdown))).joinToString("\r\n", postfix = "\r\n") { row -> row.joinToString(",", transform = ::csvField) }
 
 @Serializable private data class MetricExport(val id: String, val value: String, val detail: String)
@@ -110,7 +112,7 @@ fun glanceCsv(metrics: List<Pair<GlanceMetric, GlanceValue>>, activeFavorites: I
 
 fun glanceJson(host: String, now: Long, metrics: List<Pair<GlanceMetric, GlanceValue>>, activeFavorites: Int, favoriteCount: Int): String =
     Json { prettyPrint = true }.encodeToString(GlanceExport(host, Instant.ofEpochMilli(now).toString(), "entire_network",
-        metrics.map { (metric, value) -> MetricExport(metricIds.getValue(metric), value.value.takeUnless { it == "—" }.orEmpty(), value.detail) },
+        metrics.map { (metric, value) -> MetricExport(metricIds.getValue(metric), value.value.takeUnless { it == "—" }.orEmpty(), value.exportDetail) },
         activeFavorites, favoriteCount))
 
 // endregion

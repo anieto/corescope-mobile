@@ -1818,4 +1818,9 @@
     <string name="coverage_height_preset_rooftop">Rooftop</string>
     <string name="coverage_height_preset_mast">Mast</string>
     <string name="coverage_height_preset_tower">Tower</string>
+    <string name="explore_metric_detail_seen">of %1$s seen</string>
+    <string name="explore_metric_detail_known">of %1$s known</string>
+    <string name="explore_metric_detail_packets">in the last hour</string>
+    <string name="explore_metric_detail_snr">dB in the last hour</string>
+    <string name="explore_metric_detail_no_samples">no recent samples</string>
 </resources>
