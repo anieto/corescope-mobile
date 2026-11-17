@@ -1246,7 +1246,7 @@ private struct FavoriteNodeFinder: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         FavoriteRoleFilterChip(
-                            title: "All",
+                            title: String(localized: "All"),
                             symbol: "circle.grid.2x2.fill",
                             color: NodeScopeStyle.signal,
                             isSelected: selectedRoles.isEmpty,
@@ -1266,7 +1266,7 @@ private struct FavoriteNodeFinder: View {
                 }
 
                 if isLoading && nodes.isEmpty {
-                    LoadingIndicator(title: "Loading nodes…")
+                    LoadingIndicator(title: String(localized: "Loading nodes…"))
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 16)
                 } else if let errorMessage, nodes.isEmpty {
@@ -1446,7 +1446,7 @@ private struct GlobalSearchSheet: View {
                 if normalizedQuery.isEmpty {
                     recentSearches
                 } else if !hasResults && isLoading {
-                    LoadingIndicator(title: "Indexing network…")
+                    LoadingIndicator(title: String(localized: "Indexing network…"))
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 16)
                 } else if !hasResults {

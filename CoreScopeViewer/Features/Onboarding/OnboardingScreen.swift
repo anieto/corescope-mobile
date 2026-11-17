@@ -161,18 +161,18 @@ struct OnboardingScreen: View {
             VStack(alignment: .leading, spacing: 16) {
                 OnboardingFeatureRow(
                     icon: "circle.fill",
-                    title: "Explore nodes",
-                    detail: "Tap a node for its details. Clusters zoom in to reveal nearby nodes."
+                    title: String(localized: "Explore nodes"),
+                    detail: String(localized: "Tap a node for its details. Clusters zoom in to reveal nearby nodes.")
                 )
                 OnboardingFeatureRow(
                     icon: "point.topleft.down.curvedto.point.bottomright.up",
-                    title: "Watch packet routes",
-                    detail: "Live routes animate hop by hop. Open a channel message to replay its path."
+                    title: String(localized: "Watch packet routes"),
+                    detail: String(localized: "Live routes animate hop by hop. Open a channel message to replay its path.")
                 )
                 OnboardingFeatureRow(
                     icon: "line.3.horizontal.decrease.circle",
-                    title: "Focus your view",
-                    detail: "Choose a region on the map to narrow traffic and center the view."
+                    title: String(localized: "Focus your view"),
+                    detail: String(localized: "Choose a region on the map to narrow traffic and center the view.")
                 )
             }
             .padding(18)

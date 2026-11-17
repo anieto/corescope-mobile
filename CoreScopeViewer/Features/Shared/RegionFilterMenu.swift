@@ -94,7 +94,7 @@ struct RegionFilterSelectionScreen: View {
             Button {
                 regionFilter.selectedRegion = nil
             } label: {
-                selectionLabel(title: "Entire Network", isSelected: regionFilter.selectedRegion == nil)
+                selectionLabel(title: String(localized: "Entire Network"), isSelected: regionFilter.selectedRegion == nil)
             }
             .instrumentListRows()
 

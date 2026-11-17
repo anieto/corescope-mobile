@@ -54,7 +54,7 @@ struct ObserversListScreen: View {
                 }
 
                 if viewModel.isLoading {
-                    LoadingIndicator(title: "Polling observer network")
+                    LoadingIndicator(title: String(localized: "Polling observer network"))
                         .instrumentListRow(top: 0, bottom: 8)
                 }
 

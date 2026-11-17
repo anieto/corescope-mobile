@@ -1063,7 +1063,7 @@ struct PacketFeedScreen: View {
             .packetFeedListRow(top: 14, bottom: 10)
 
             if regionFilter.selectedRegion != nil && !observerRegionLookup.isLoaded {
-                LoadingIndicator(title: "Loading region…")
+                LoadingIndicator(title: String(localized: "Loading region…"))
                     .packetFeedListRow(top: 0, bottom: 8)
             }
 
@@ -1490,7 +1490,7 @@ private struct LivePacketFiltersSheet: View {
             Form {
                 if regionFilter.availablePicks.isEmpty {
                     Section("Region") {
-                        regionButton(code: nil, title: "Entire Network")
+                        regionButton(code: nil, title: String(localized: "Entire Network"))
                         ForEach(regionFilter.options, id: \.self) { code in
                             regionButton(code: code, title: regionFilter.label(for: code))
                         }
@@ -1498,7 +1498,7 @@ private struct LivePacketFiltersSheet: View {
                     .instrumentListRows()
                 } else {
                     Section("Region") {
-                        regionButton(code: nil, title: "Entire Network")
+                        regionButton(code: nil, title: String(localized: "Entire Network"))
                     }
                     .instrumentListRows()
                     Section("Region groups") {
@@ -1518,7 +1518,7 @@ private struct LivePacketFiltersSheet: View {
                 }
 
                 Section("Packet Type") {
-                    packetTypeButton(type: nil, title: "All Packet Types")
+                    packetTypeButton(type: nil, title: String(localized: "All Packet Types"))
                     ForEach(PayloadType.allCases, id: \.rawValue) { type in
                         packetTypeButton(type: type.rawValue, title: type.name)
                     }
@@ -1612,7 +1612,7 @@ private struct LivePacketDetailScreen: View {
                                     .font(.monaspace(.body).weight(.semibold))
                                 Spacer(minLength: 8)
                                 if let index = RouteOptions.index(for: observation.resolvedPath ?? [], in: replayRoutes) {
-                                    RouteTag(isShown: index == selectedRouteIndex, shownText: "Shown below") {
+                                    RouteTag(isShown: index == selectedRouteIndex, shownText: String(localized: "Shown below")) {
                                         selectedRouteIndex = index
                                         withAnimation(.easeInOut(duration: 0.3)) {
                                             scroller.scrollTo(routeSectionID, anchor: .top)

@@ -126,7 +126,7 @@ struct ChannelDetailScreen: View {
         }
         .overlay(alignment: .top) {
             if viewModel.isLoading {
-                LoadingIndicator(title: "Loading messages…")
+                LoadingIndicator(title: String(localized: "Loading messages…"))
                     .padding(.top, 8)
             }
         }

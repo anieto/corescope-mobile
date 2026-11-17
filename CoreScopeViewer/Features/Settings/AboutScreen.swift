@@ -54,23 +54,23 @@ struct AboutScreen: View {
             Section("How to Use") {
                 HowToRow(
                     icon: "map",
-                    title: "Map",
-                    detail: "Every known node, color-coded by role. Live packet traffic animates as it hops between nodes. Tap a node for its details."
+                    title: String(localized: "Map"),
+                    detail: String(localized: "Every known node, color-coded by role. Live packet traffic animates as it hops between nodes. Tap a node for its details.")
                 )
                 HowToRow(
                     icon: "number",
-                    title: "Channels",
-                    detail: "Group channel traffic as a chat feed. Tap a message to replay how it reached you on the map."
+                    title: String(localized: "Channels"),
+                    detail: String(localized: "Group channel traffic as a chat feed. Tap a message to replay how it reached you on the map.")
                 )
                 HowToRow(
                     icon: "antenna.radiowaves.left.and.right",
-                    title: "Observers",
-                    detail: "The physical devices feeding this analyzer — hardware, firmware, and recent signal stats."
+                    title: String(localized: "Observers"),
+                    detail: String(localized: "The physical devices feeding this analyzer — hardware, firmware, and recent signal stats.")
                 )
                 HowToRow(
                     icon: "line.3.horizontal.decrease.circle",
-                    title: "Region Filter",
-                    detail: "Available on Map, Channels, and Observers. Narrows everything to one region and zooms the map there automatically."
+                    title: String(localized: "Region Filter"),
+                    detail: String(localized: "Available on Map, Channels, and Observers. Narrows everything to one region and zooms the map there automatically.")
                 )
             }
             .instrumentListRows()
@@ -78,12 +78,12 @@ struct AboutScreen: View {
             Section("Project Links") {
                 if let coreScopeURL = URL(string: "https://github.com/Kpa-clawbot/CoreScope") {
                     Link(destination: coreScopeURL) {
-                        ProjectLinkRow(icon: "shippingbox.fill", title: "CoreScope Project")
+                        ProjectLinkRow(icon: "shippingbox.fill", title: String(localized: "CoreScope Project"))
                     }
                 }
                 if let nodeScopeURL = URL(string: "https://github.com/anieto/corescope-mobile") {
                     Link(destination: nodeScopeURL) {
-                        ProjectLinkRow(icon: "chevron.left.forwardslash.chevron.right", title: "NodeScope on GitHub")
+                        ProjectLinkRow(icon: "chevron.left.forwardslash.chevron.right", title: String(localized: "NodeScope on GitHub"))
                     }
                 }
             }
@@ -103,7 +103,7 @@ struct AboutScreen: View {
 
                 if let licenseURL = URL(string: "https://www.gnu.org/licenses/gpl-3.0.html") {
                     Link(destination: licenseURL) {
-                        ProjectLinkRow(icon: "doc.text.fill", title: "View GPLv3 License")
+                        ProjectLinkRow(icon: "doc.text.fill", title: String(localized: "View GPLv3 License"))
                     }
                 }
             }
@@ -112,17 +112,17 @@ struct AboutScreen: View {
             Section("Acknowledgements") {
                 if let meshCoreOneURL = URL(string: "https://github.com/Avi0n/MeshCoreOne") {
                     Link(destination: meshCoreOneURL) {
-                        ProjectLinkRow(icon: "antenna.radiowaves.left.and.right", title: "MeshCore One by Avi0n")
+                        ProjectLinkRow(icon: "antenna.radiowaves.left.and.right", title: String(localized: "MeshCore One by Avi0n"))
                     }
                 }
                 if let openMeteoURL = URL(string: "https://open-meteo.com/en/docs/elevation-api") {
                     Link(destination: openMeteoURL) {
-                        ProjectLinkRow(icon: "mountain.2.fill", title: "Open-Meteo & Copernicus Elevation Data")
+                        ProjectLinkRow(icon: "mountain.2.fill", title: String(localized: "Open-Meteo & Copernicus Elevation Data"))
                     }
                 }
                 if let monaspaceURL = URL(string: "https://github.com/githubnext/monaspace") {
                     Link(destination: monaspaceURL) {
-                        ProjectLinkRow(icon: "textformat", title: "Monaspace Neon by GitHub")
+                        ProjectLinkRow(icon: "textformat", title: String(localized: "Monaspace Neon by GitHub"))
                     }
                 }
                 Text("Line-of-sight calculations include modified GPLv3 work from MeshCore One. Terrain data uses Copernicus DEM 2021 GLO-90 through Open-Meteo. Monaspace Neon is used under the SIL Open Font License 1.1.")

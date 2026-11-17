@@ -4601,7 +4601,7 @@ private struct MapObserverPickerSheet: View {
             .meshPageBackground()
             .navigationTitle("Route Observer")
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $query, prompt: "Name, ID, or region")
+            .searchable(text: $query, prompt: String(localized: "Name, ID, or region"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Cancel") { dismiss() }
@@ -4656,7 +4656,7 @@ private struct MapNodeSearchSheet: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         MapRoleFilterChip(
-                            title: "All",
+                            title: String(localized: "All"),
                             symbol: "circle.grid.2x2.fill",
                             color: NodeScopeStyle.signal,
                             isSelected: selectedRoles.isEmpty,

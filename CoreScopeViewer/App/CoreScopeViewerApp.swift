@@ -39,7 +39,7 @@ struct NodeScopeApp: App {
                         }
                         .padding()
                     } else {
-                        LoadingIndicator(title: "Checking analyzer source…")
+                        LoadingIndicator(title: String(localized: "Checking analyzer source…"))
                     }
                 } else {
                     OnboardingScreen {

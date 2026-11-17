@@ -173,7 +173,7 @@ struct RouteTag: View {
 
     var body: some View {
         Button(action: action) {
-            Text(isShown ? shownText : "Show route")
+            Text(isShown ? shownText : String(localized: "Show route"))
                 .font(.caption2.weight(.bold))
                 .foregroundStyle(isShown ? Color.secondary : NodeScopeStyle.signal)
                 .padding(.horizontal, 8)

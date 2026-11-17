@@ -25,7 +25,7 @@ struct NodeDetailScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 if viewModel.isLoading {
-                    LoadingIndicator(title: "Loading node data…")
+                    LoadingIndicator(title: String(localized: "Loading node data…"))
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 

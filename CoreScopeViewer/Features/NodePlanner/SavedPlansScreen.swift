@@ -115,7 +115,7 @@ struct SavedPlansScreen: View {
         .meshPageBackground()
         .navigationTitle("Saved Plans")
         .navigationBarTitleDisplayMode(.inline)
-        .searchable(text: $query, prompt: "Plans, notes and studies")
+        .searchable(text: $query, prompt: String(localized: "Plans, notes and studies"))
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button("New plan", systemImage: "plus") { creatingPlan = true }
@@ -493,7 +493,7 @@ private struct MoveStudySheet: View {
         NavigationStack {
             List {
                 Section {
-                    destination(nil, title: "Standalone", icon: "doc")
+                    destination(nil, title: String(localized: "Standalone"), icon: "doc")
                     ForEach(CandidatePlansModel.sorted(model.studyPlans, updated: \.updatedAtMilliseconds)) { plan in
                         destination(plan.id, title: plan.name, icon: "folder")
                     }

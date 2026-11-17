@@ -150,7 +150,7 @@ struct FieldTargetEvidence: Equatable {
                 observer.noiseFloor.map {
                     Fact(
                         kind: .noiseFloor,
-                        value: "\($0.formatted(.number.precision(.fractionLength(0)))) dB"
+                        value: String(localized: "\($0.formatted(.number.precision(.fractionLength(0)))) dB")
                     )
                 }
             ].compactMap { $0 }
@@ -655,7 +655,7 @@ struct FieldToolsScreen: View {
             if model.isLoading && model.visibleItems.isEmpty {
                 HStack {
                     Spacer()
-                    LoadingIndicator(title: "Loading nearby equipment")
+                    LoadingIndicator(title: String(localized: "Loading nearby equipment"))
                     Spacer()
                 }
                 .listRowBackground(Color.clear)

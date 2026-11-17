@@ -52,7 +52,7 @@ struct ChannelsListScreen: View {
                 }
 
                 if viewModel.isLoading {
-                    LoadingIndicator(title: "Syncing mesh traffic")
+                    LoadingIndicator(title: String(localized: "Syncing mesh traffic"))
                         .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 8, trailing: 20))
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)

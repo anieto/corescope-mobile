@@ -39,7 +39,7 @@ struct PacketDetailScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 if viewModel.isLoading {
-                    LoadingIndicator(title: "Loading packet…")
+                    LoadingIndicator(title: String(localized: "Loading packet…"))
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
@@ -373,7 +373,7 @@ private struct PacketObserversCard: View {
                                     .foregroundStyle(NodeScopeStyle.signal)
                             }
                             if let index = routeIndex(observation) {
-                                RouteTag(isShown: index == selectedRouteIndex, shownText: "Shown above") {
+                                RouteTag(isShown: index == selectedRouteIndex, shownText: String(localized: "Shown above")) {
                                     showRoute(index)
                                 }
                             }

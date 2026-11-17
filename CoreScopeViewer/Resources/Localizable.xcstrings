@@ -1232,6 +1232,9 @@
     "All Observers" : {
 
     },
+    "All Packet Types" : {
+
+    },
     "All Packets" : {
 
     },
@@ -1383,6 +1386,9 @@
 
     },
     "Availability" : {
+
+    },
+    "Available on Map, Channels, and Observers. Narrows everything to one region and zooms the map there automatically." : {
 
     },
     "Available · %lld ms" : {
@@ -1660,6 +1666,9 @@
     "Checked: %@" : {
 
     },
+    "Checking analyzer source…" : {
+
+    },
     "Checking analyzer…" : {
 
     },
@@ -1703,6 +1712,9 @@
 
     },
     "Choose a new transmitter location" : {
+
+    },
+    "Choose a region on the map to narrow traffic and center the view." : {
 
     },
     "Choose a transmitter between 85°S and 85°N." : {
@@ -1895,6 +1907,9 @@
 
     },
     "CoreScope" : {
+
+    },
+    "CoreScope Project" : {
 
     },
     "CoreScope account" : {
@@ -2247,6 +2262,9 @@
     "Enter zero or a positive value." : {
 
     },
+    "Entire Network" : {
+
+    },
     "Entire network" : {
 
     },
@@ -2271,6 +2289,9 @@
     "Evaluate proposed sites and point-to-point terrain paths" : {
 
     },
+    "Every known node, color-coded by role. Live packet traffic animates as it hops between nodes. Tap a node for its details." : {
+
+    },
     "Every saved study is already in this plan." : {
 
     },
@@ -2290,6 +2311,9 @@
 
     },
     "Explore Your Mesh" : {
+
+    },
+    "Explore nodes" : {
 
     },
     "Export CSV" : {
@@ -2379,6 +2403,9 @@
     "First visit · starting comparison history" : {
 
     },
+    "Focus your view" : {
+
+    },
     "Follow the Mesh" : {
 
     },
@@ -2464,6 +2491,9 @@
 
     },
     "Group Nearby Nodes" : {
+
+    },
+    "Group channel traffic as a chat feed. Tap a message to replay how it reached you on the map." : {
 
     },
     "Group related studies into a plan, such as one for each site you're considering. Link Profile and Estimated Coverage can also save standalone studies." : {
@@ -2731,6 +2761,9 @@
     "Increase study radius" : {
 
     },
+    "Indexing network…" : {
+
+    },
     "Initial bearing" : {
 
     },
@@ -2983,6 +3016,12 @@
     "Live mesh traffic" : {
 
     },
+    "Live packet stream" : {
+
+    },
+    "Live routes animate hop by hop. Open a channel message to replay its path." : {
+
+    },
     "Live test: did anyone hear me?" : {
 
     },
@@ -3013,6 +3052,21 @@
     "Loading mesh reach" : {
 
     },
+    "Loading messages…" : {
+
+    },
+    "Loading nearby equipment" : {
+
+    },
+    "Loading node analytics…" : {
+
+    },
+    "Loading node data…" : {
+
+    },
+    "Loading nodes…" : {
+
+    },
     "Loading observed signal and receiver evidence…" : {
 
     },
@@ -3023,6 +3077,9 @@
 
     },
     "Loading packet…" : {
+
+    },
+    "Loading region…" : {
 
     },
     "Loading route locations…" : {
@@ -3182,6 +3239,9 @@
     "MeshCore" : {
 
     },
+    "MeshCore One by Avi0n" : {
+
+    },
     "Meshtastic" : {
 
     },
@@ -3219,6 +3279,9 @@
 
     },
     "Mon" : {
+
+    },
+    "Monaspace Neon by GitHub" : {
 
     },
     "Monday" : {
@@ -3542,6 +3605,9 @@
     "NodeScope makes live activity easier to understand at a glance." : {
 
     },
+    "NodeScope on GitHub" : {
+
+    },
     "NodeScope reached its request limit before Beacon history was exhausted." : {
 
     },
@@ -3797,6 +3863,9 @@
     "Open the transmitter, radio and receiver sections. Set antenna heights above ground and choose the radio preset used by your mesh." : {
 
     },
+    "Open-Meteo & Copernicus Elevation Data" : {
+
+    },
     "Opens %@" : {
 
     },
@@ -4026,6 +4095,9 @@
     "Points cleared" : {
 
     },
+    "Polling observer network" : {
+
+    },
     "Precise locations" : {
 
     },
@@ -4230,6 +4302,9 @@
 
     },
     "Region" : {
+
+    },
+    "Region Filter" : {
 
     },
     "Region filtering" : {
@@ -4900,6 +4975,9 @@
     "Show raw packet" : {
 
     },
+    "Show route" : {
+
+    },
     "Show route nodes only" : {
 
     },
@@ -4918,7 +4996,13 @@
     "Showing saved data" : {
 
     },
+    "Shown above" : {
+
+    },
     "Shown apart so each can be tapped. The lines lead to where they are." : {
+
+    },
+    "Shown below" : {
 
     },
     "Shows details" : {
@@ -5117,6 +5201,9 @@
     "Sync uploads only account edits. Device favorites stay local unless you import them." : {
 
     },
+    "Syncing mesh traffic" : {
+
+    },
     "System" : {
 
     },
@@ -5135,6 +5222,9 @@
           }
         }
       }
+    },
+    "Tap a node for its details. Clusters zoom in to reveal nearby nodes." : {
+
     },
     "Tap for color bands" : {
 
@@ -5269,6 +5359,9 @@
 
     },
     "The page size must be greater than zero." : {
+
+    },
+    "The physical devices feeding this analyzer — hardware, firmware, and recent signal stats." : {
 
     },
     "The plan could not be saved. Your draft is still open and the previous save is unchanged." : {
@@ -5791,6 +5884,9 @@
     "View %lld Nearby" : {
 
     },
+    "View GPLv3 License" : {
+
+    },
     "View Packet" : {
 
     },
@@ -5801,6 +5897,9 @@
 
     },
     "Watch for up to two minutes as observers report it." : {
+
+    },
+    "Watch packet routes" : {
 
     },
     "We haven’t heard this node" : {

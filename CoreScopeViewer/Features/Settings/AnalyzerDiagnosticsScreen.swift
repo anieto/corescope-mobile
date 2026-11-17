@@ -120,7 +120,7 @@ private struct AnalyzerLiveUpdatesSection: View {
     var body: some View {
         Section {
             AnalyzerDiagnosticRow(
-                title: "Live packet stream",
+                title: String(localized: "Live packet stream"),
                 detail: detail,
                 systemImage: "wave.3.right",
                 level: isConnected ? .success : .warning

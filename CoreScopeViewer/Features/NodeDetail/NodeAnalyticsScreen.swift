@@ -25,7 +25,7 @@ struct NodeAnalyticsScreen: View {
                 )
 
                 if viewModel.isLoading {
-                    LoadingIndicator(title: "Loading node analytics…")
+                    LoadingIndicator(title: String(localized: "Loading node analytics…"))
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
