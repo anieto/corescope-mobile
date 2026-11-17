@@ -1,5 +1,8 @@
 package org.nodescope.android.feature.packets
 
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.semantics.selected
@@ -37,12 +40,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun ConnectionBadge(connection: LiveConnection, modifier: Modifier = Modifier) {
     val connected = connection == LiveConnection.LIVE
-    val label = when (connection) {
-        LiveConnection.LIVE -> "Connected"
-        LiveConnection.CONNECTING -> "Connecting"
-        LiveConnection.RECONNECTING -> "Reconnecting"
-        LiveConnection.PAUSED -> "Paused"
-    }
+    val label = connectionLabel(connection, stringResource(R.string.packets_connection_connected))
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         Box(Modifier.size(7.dp).background(statusAccent(connected), CircleShape))
         Text(label, style = MaterialTheme.typography.labelMedium)
@@ -109,8 +107,8 @@ fun PacketScreen(feed: LiveFeedState, onReconnect: () -> Unit, regionControl: @C
     LaunchedEffect(groups.firstOrNull()?.id, scroll.firstVisibleItemIndex) {
         if (scroll.firstVisibleItemIndex == 0) shownNewest = groups.firstOrNull()?.id
     }
-    if (showFilters) FilterSheet("Live packet filters", regionControl, listOf(
-        FilterGroup("Packet type", listOf(null) + packetTypeNames, filter, { it ?: "All packet types" }) { filter = it },
+    if (showFilters) FilterSheet(stringResource(R.string.packets_live_packet_filters), regionControl, listOf(
+        FilterGroup(stringResource(R.string.packets_packet_type), listOf(null) + packetTypeNames, filter, { it ?: stringResource(R.string.packets_all_packet_types) }) { filter = it },
     ), onReset = { filter = null; onClearRegion() }) { showFilters = false }
     val filterCount = listOf(feed.selection?.region != null, filter != null).count { it }
 
@@ -121,14 +119,14 @@ fun PacketScreen(feed: LiveFeedState, onReconnect: () -> Unit, regionControl: @C
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                             Box(Modifier.size(8.dp).background(statusAccent(feed.connection == LiveConnection.LIVE && !pausedByHand), CircleShape))
-                            Text(if (pausedByHand) (if (waiting > 0) "Live feed paused · $waiting new" else "Live feed paused")
-                                else connectionLabel(feed.connection, "Listening for live traffic"),
+                            Text(if (pausedByHand) (if (waiting > 0) stringResource(R.string.packets_live_feed_paused_new, waiting) else stringResource(R.string.packets_live_feed_paused_2))
+                                else connectionLabel(feed.connection, stringResource(R.string.packets_listening_for_live_traffic)),
                                 style = MaterialTheme.typography.titleSmall)
                         }
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            SummaryLabel(Icons.Outlined.Public, feed.selection?.region ?: "Entire network")
-                            SummaryLabel(Icons.Outlined.MonitorHeart, "${groups.size} transmissions")
-                            SummaryLabel(Icons.Outlined.Visibility, "${groups.sumOf { it.observationCount }} observations")
+                            SummaryLabel(Icons.Outlined.Public, feed.selection?.region ?: stringResource(R.string.packets_entire_network))
+                            SummaryLabel(Icons.Outlined.MonitorHeart, pluralStringResource(R.plurals.packets_transmission_count, groups.size, groups.size))
+                            SummaryLabel(Icons.Outlined.Visibility, pluralStringResource(R.plurals.packets_observation_count, groups.sumOf { it.observationCount }, groups.sumOf { it.observationCount }))
                         }
                     }
                     // Holds the list and the map's traffic where they are, without picking a packet.
@@ -136,45 +134,45 @@ fun PacketScreen(feed: LiveFeedState, onReconnect: () -> Unit, regionControl: @C
                         val pause = org.nodescope.android.feature.map.LiveTrafficPause
                         if (pause.isPaused) { pause.resume(); onResumeLive(); showNew++; scope.launch { scroll.animateScrollToItem(0) } } else pause.pause()
                     }) {
-                        if (pausedByHand) Icon(Icons.Outlined.PlayArrow, "Resume live traffic")
-                        else Icon(Icons.Outlined.Pause, "Pause live traffic")
+                        if (pausedByHand) Icon(Icons.Outlined.PlayArrow, stringResource(R.string.packets_resume_live_traffic))
+                        else Icon(Icons.Outlined.Pause, stringResource(R.string.packets_pause_live_traffic))
                     }
                     IconButton(onClick = { showFilters = true }) {
                         BadgedBox(badge = { if (filterCount > 0) Badge(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) { Text(filterCount.toString()) } }) {
-                            Icon(Icons.Outlined.FilterList, "Filter live packets, $filterCount active")
+                            Icon(Icons.Outlined.FilterList, stringResource(R.string.packets_filter_live_packets_active, filterCount))
                         }
                     }
                 }
             }
         }
         if (feed.selection?.region != null && !feed.observersLoaded) item {
-            Text("Observer regions unavailable; only explicitly matching packets are shown.", style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.packets_observer_regions_unavailable_only_explicitly_matching_packets_are), style = MaterialTheme.typography.bodySmall)
         }
         if (feed.historyError) item {
-            Text("Recent history unavailable. Live packets will still appear when connected.", style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.packets_recent_history_unavailable_live_packets_will_still_appear), style = MaterialTheme.typography.bodySmall)
         }
         if (newPackets) item {
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                FilledTonalButton(onClick = { scope.launch { scroll.animateScrollToItem(0) } }) { Text("New packets · back to latest") }
+                FilledTonalButton(onClick = { scope.launch { scroll.animateScrollToItem(0) } }) { Text(stringResource(R.string.packets_new_packets_back_to_latest)) }
             }
         }
         if (waiting > 0 && !pausedByHand) item {
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 FilledTonalButton(onClick = { showNew++; scope.launch { scroll.animateScrollToItem(0) } }) {
-                    Text("Show $waiting new ${if (waiting == 1) "packet" else "packets"}")
+                    Text(pluralStringResource(R.plurals.packets_show_new, waiting, waiting))
                 }
             }
         }
-        if (groups.isNotEmpty()) item { SectionLabel(if (paused) "Incoming traffic · paused" else "Incoming traffic") }
+        if (groups.isNotEmpty()) item { SectionLabel(if (paused) stringResource(R.string.packets_incoming_traffic_paused) else stringResource(R.string.packets_incoming_traffic)) }
         items(groups, key = { it.id }) { group ->
             TransmissionRow(group, now, selected = group.id == selectedId, actions = selectedActions.takeIf { group.id == selectedId }) { currentOnGroup(group.id) }
         }
         if (groups.isEmpty()) item {
-            EmptyState(Icons.Outlined.SettingsInputAntenna, if (feed.connection == LiveConnection.LIVE) "Waiting for packets" else "Not connected",
-                if (filter != null) "No traffic matches this filter yet."
-                else if (feed.connection == LiveConnection.LIVE) "New mesh traffic will appear here as the analyzer receives it."
-                else "NodeScope will resume the live feed when the analyzer reconnects.") {
-                if (feed.connection != LiveConnection.LIVE) TextButton(onClick = onReconnect) { Text("Reconnect") }
+            EmptyState(Icons.Outlined.SettingsInputAntenna, if (feed.connection == LiveConnection.LIVE) stringResource(R.string.packets_waiting_for_packets) else stringResource(R.string.packets_not_connected),
+                if (filter != null) stringResource(R.string.packets_no_traffic_matches_this_filter_yet)
+                else if (feed.connection == LiveConnection.LIVE) stringResource(R.string.packets_new_mesh_traffic_will_appear_here_as_the_2)
+                else stringResource(R.string.packets_nodescope_will_resume_the_live_feed_when_the)) {
+                if (feed.connection != LiveConnection.LIVE) TextButton(onClick = onReconnect) { Text(stringResource(R.string.packets_reconnect)) }
             }
         }
     }
@@ -206,15 +204,15 @@ private fun TransmissionRow(group: TransmissionGroup, now: Long, selected: Boole
                         itemVerticalAlignment = Alignment.CenterVertically) {
                         Text(group.typeName, style = MaterialTheme.typography.titleSmall, color = tone)
                         if (group.hopCount > 0) CountBadge(group.hopCount.toString(), Icons.AutoMirrored.Outlined.ArrowForward, MaterialTheme.colorScheme.primary,
-                            "${group.hopCount} hops")
+                            pluralStringResource(R.plurals.packets_hops_4, group.hopCount, group.hopCount))
                         if (group.observationCount > 1) CountBadge(group.observationCount.toString(), Icons.Outlined.Visibility, Color(0xFF8E6BE0),
-                            "heard ${group.observationCount} times")
+                            pluralStringResource(R.plurals.packets_heard_times, group.observationCount, group.observationCount))
                         group.region?.let { region ->
                             Surface(color = Color(0xFF4B5BC7), shape = MaterialTheme.shapes.extraSmall) {
                                 Text(region, Modifier.padding(horizontal = 6.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall, color = Color.White)
                             }
                         }
-                        if (!group.isLive) Text("Recent", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (!group.isLive) Text(stringResource(R.string.packets_recent), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(group.preview, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,

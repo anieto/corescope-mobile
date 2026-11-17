@@ -1,5 +1,10 @@
 package org.nodescope.android.feature.packets
 
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
+import org.nodescope.android.core.design.withDescription
 import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.meshCardColors
 import android.content.Intent
@@ -48,6 +53,7 @@ class PacketDetailViewModel(repository: BrowseRepository) : ViewModel() {
 @Composable
 fun MessagePacketScreen(model: PacketDetailViewModel, host: String, hash: String, sender: String, text: String,
     nodes: List<MeshNode>, onReplay: (routes: List<RouteOption>, selected: Int) -> Unit) {
+    val resources = LocalResources.current
     val state by model.detail.state.collectAsStateWithLifecycle()
     val key = host to hash
     LaunchedEffect(key) { model.detail.load(key) }
@@ -69,7 +75,7 @@ fun MessagePacketScreen(model: PacketDetailViewModel, host: String, hash: String
             LoadStatus(shown, detail != null, now) { model.detail.load(key, force = true) }
         }
         if (text.isNotBlank()) item {
-            PacketCard("Message", Icons.Outlined.ChatBubbleOutline) {
+            PacketCard(stringResource(R.string.packets_message), Icons.Outlined.ChatBubbleOutline) {
                 Surface(color = senderBubbleFill(sender), contentColor = MaterialTheme.colorScheme.onSurface,
                     border = BorderStroke(1.dp, senderBubbleStroke(sender)),
                     shape = MaterialTheme.shapes.medium, modifier = Modifier.fillMaxWidth()) {
@@ -90,37 +96,37 @@ fun MessagePacketScreen(model: PacketDetailViewModel, host: String, hash: String
                         }
                         Column(Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(type ?: "Loading packet", style = MaterialTheme.typography.titleLarge)
+                                Text(type ?: stringResource(R.string.packets_loading_packet), style = MaterialTheme.typography.titleLarge)
                                 if (type == "ADVERT") LearnButton(GlossaryTerm.ADVERT)
                             }
                             SelectionContainer { Text(hash.uppercase(), fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                         }
-                        PacketActions(onCopy = { copy("Packet hash", hash, false) }, onShare = {
+                        PacketActions(onCopy = { copy(resources.getString(R.string.packets_packet_hash), hash, false) }, onShare = {
                             // Same link format as iOS (`nodescope://packet/<hash>`).
                             context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
-                                .putExtra(Intent.EXTRA_TEXT, NodeScopeLink.packet(hash).url), "Share packet link"))
+                                .putExtra(Intent.EXTRA_TEXT, NodeScopeLink.packet(hash).url), resources.getString(R.string.packets_share_packet_link_2)))
                         })
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        MetricTile((detail?.observationCount ?: detail?.observations?.size)?.toString() ?: "—", "Observations", Icons.Outlined.Hearing, Modifier.weight(1f), GlossaryTerm.OBSERVATION)
-                        MetricTile(detail?.path?.size?.toString() ?: "—", "Hops", Icons.Outlined.Route, Modifier.weight(1f), GlossaryTerm.HOP)
-                        MetricTile(detail?.packet?.snr?.let { "%.1f".format(it) } ?: "—", "SNR dB", Icons.Outlined.GraphicEq, Modifier.weight(1f), GlossaryTerm.SNR)
+                        MetricTile((detail?.observationCount ?: detail?.observations?.size)?.toString() ?: "—", stringResource(R.string.packets_observations_2), Icons.Outlined.Hearing, Modifier.weight(1f), GlossaryTerm.OBSERVATION)
+                        MetricTile(detail?.path?.size?.toString() ?: "—", stringResource(R.string.packets_hops_3), Icons.Outlined.Route, Modifier.weight(1f), GlossaryTerm.HOP)
+                        MetricTile(detail?.packet?.snr?.let { "%.1f".format(it) } ?: "—", stringResource(R.string.packets_snr_db), Icons.Outlined.GraphicEq, Modifier.weight(1f), GlossaryTerm.SNR)
                     }
                 }
             }
         }
         if (detail != null) {
             item {
-                PacketCard("Route", Icons.Outlined.Route, GlossaryTerm.ROUTE) {
-                    if (routes.isEmpty()) Text("No mappable route was recorded for this packet.", style = MaterialTheme.typography.bodyMedium,
+                PacketCard(stringResource(R.string.packets_route), Icons.Outlined.Route, GlossaryTerm.ROUTE) {
+                    if (routes.isEmpty()) Text(stringResource(R.string.packets_no_mappable_route_was_recorded_for_this_packet), style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     else {
                         val index = singleRoute(selectedRoute, routes.size)
                         if (routes.size > 1) RoutePicker(routes, selectedRoute, { selectedRoute = it }, allowsAll = true)
                         else Row {
-                            Text("Resolved path", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                            Text("${routes[0].hops} hops", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.packets_resolved_path), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                            Text(pluralStringResource(R.plurals.packets_hops, routes[0].hops, routes[0].hops), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         val lookup = remember(nodes) { nodes.associateBy { it.publicKey.lowercase() } }
                         if (index == null) AllRoutesNote(routes.size)
@@ -130,11 +136,11 @@ fun MessagePacketScreen(model: PacketDetailViewModel, host: String, hash: String
                             RouteHearers(routes[index])
                         }
                         val playable = (index?.let { listOf(routes[it]) } ?: routes).any { route -> routeSubchains(route.keys, nodes).any { it.size > 1 } }
-                        if (!playable) Text("This route's nodes aren't on the current map region, so it can't be replayed.",
+                        if (!playable) Text(stringResource(R.string.packets_this_route_s_nodes_aren_t_on_the),
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Button(onClick = { onReplay(routes, index ?: org.nodescope.android.feature.map.ALL_ROUTES) }, Modifier.fillMaxWidth(), enabled = playable,
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)) {
-                            Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text("Replay on map")
+                            Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.packets_replay_on_map))
                         }
                     }
                 }
@@ -149,10 +155,10 @@ fun MessagePacketScreen(model: PacketDetailViewModel, host: String, hash: String
 private fun PacketActions(onCopy: () -> Unit, onShare: () -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { open = true }) { Icon(Icons.Outlined.MoreVert, "Packet actions") }
+        IconButton(onClick = { open = true }) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.packets_packet_actions)) }
         DropdownMenu(open, { open = false }) {
-            DropdownMenuItem(text = { Text("Copy packet hash") }, leadingIcon = { Icon(Icons.Outlined.ContentCopy, null) }, onClick = { open = false; onCopy() })
-            DropdownMenuItem(text = { Text("Share packet link") }, leadingIcon = { Icon(Icons.Outlined.Share, null) }, onClick = { open = false; onShare() })
+            DropdownMenuItem(text = { Text(stringResource(R.string.packets_copy_packet_hash)) }, leadingIcon = { Icon(Icons.Outlined.ContentCopy, null) }, onClick = { open = false; onCopy() })
+            DropdownMenuItem(text = { Text(stringResource(R.string.packets_share_packet_link)) }, leadingIcon = { Icon(Icons.Outlined.Share, null) }, onClick = { open = false; onShare() })
         }
     }
 }
@@ -160,7 +166,7 @@ private fun PacketActions(onCopy: () -> Unit, onShare: () -> Unit) {
 @Composable
 private fun ObserversCard(observations: List<PacketObservation>) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    PacketCard("Observers", Icons.Outlined.Sensors, GlossaryTerm.OBSERVER) {
+    PacketCard(stringResource(R.string.packets_observers), Icons.Outlined.Sensors, GlossaryTerm.OBSERVER) {
         Column {
             observations.take(if (expanded) observations.size else 3).forEachIndexed { index, observation ->
                 if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
@@ -170,16 +176,16 @@ private fun ObserversCard(observations: List<PacketObservation>) {
                         Icon(Icons.Outlined.Sensors, null, Modifier.size(16.dp), tint = HealthyGreen)
                     }
                     Column(Modifier.weight(1f)) {
-                        Text(observation.observerName ?: "Unknown observer", style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(listOfNotNull(observation.observerIata ?: "Unknown region", observation.rssi?.let { "%.0f RSSI".format(it) }).joinToString(" · "),
+                        Text(observation.observerName ?: stringResource(R.string.packets_unknown_observer), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(listOfNotNull(observation.observerIata ?: stringResource(R.string.packets_unknown_region), observation.rssi?.let { "%.0f RSSI".format(it) }).joinToString(" · "),
                             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    observation.snr?.let { Text("%.1f dB".format(it), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
+                    observation.snr?.let { Text(stringResource(R.string.packets_1f_db).format(it), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
                 }
             }
         }
         if (observations.size > 3) FilledTonalButton(onClick = { expanded = !expanded }, Modifier.fillMaxWidth()) {
-            Text(if (expanded) "Show less" else "Show all ${observations.size} observations", Modifier.weight(1f))
+            Text(if (expanded) stringResource(R.string.packets_show_less) else pluralStringResource(R.plurals.packets_show_all_observations, observations.size, observations.size), Modifier.weight(1f))
             Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null)
         }
     }
@@ -188,9 +194,9 @@ private fun ObserversCard(observations: List<PacketObservation>) {
 @Composable
 private fun TechnicalCard(packet: PacketRecord) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    PacketCard("Technical data", Icons.Outlined.Code) {
+    PacketCard(stringResource(R.string.packets_technical_data), Icons.Outlined.Code) {
         TextButton(onClick = { expanded = !expanded }) {
-            Text(if (expanded) "Hide raw packet" else "Show raw packet", Modifier.weight(1f))
+            Text(if (expanded) stringResource(R.string.packets_hide_raw_packet) else stringResource(R.string.packets_show_raw_packet), Modifier.weight(1f))
             Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null)
         }
         if (expanded) {
@@ -204,7 +210,7 @@ private fun TechnicalCard(packet: PacketRecord) {
 @Composable
 private fun MetricTile(value: String, label: String, icon: ImageVector, modifier: Modifier, learn: GlossaryTerm? = null) {
     // Merged for TalkBack, except when it carries an ⓘ, which has to stay focusable on its own.
-    Surface(if (learn == null) modifier.semantics(mergeDescendants = true) { contentDescription = "$label: $value" } else modifier,
+    Surface(if (learn == null) modifier.withDescription(stringResource(R.string.packets_value, label, value), mergeDescendants = true) { description -> contentDescription = description } else modifier,
         color = SignalBlue.copy(alpha = 0.08f), shape = MaterialTheme.shapes.small) {
         Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

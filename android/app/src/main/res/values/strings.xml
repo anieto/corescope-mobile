@@ -393,6 +393,130 @@
     <string name="node_detail_value_2">%1$s %2$s</string>
     <string name="node_detail_weak">Weak</string>
 
+    <!-- packet and route strings -->
+    <string name="packets_1f_db">%1$.1f dB</string>
+    <string name="packets_all_packet_types">All packet types</string>
+    <plurals name="packets_all_routes">
+        <item quantity="one">All %1$d routes</item>
+        <item quantity="other">All %1$d routes</item>
+    </plurals>
+    <string name="packets_all_routes_2">All routes</string>
+    <plurals name="packets_all_routes_replay_together_choose_one_to_see">
+        <item quantity="one">All %1$d routes replay together. Choose one to see its hops and who heard it.</item>
+        <item quantity="other">All %1$d routes replay together. Choose one to see its hops and who heard it.</item>
+    </plurals>
+    <string name="packets_connection_connected">Connected</string>
+    <string name="packets_copy_packet_hash">Copy packet hash</string>
+    <string name="packets_entire_network">Entire network</string>
+    <string name="packets_filter_live_packets_active">Filter live packets, %1$s active</string>
+    <string name="packets_hash">Hash</string>
+    <string name="packets_heard_along_the_way_by">Also heard along the way by %1$s</string>
+    <string name="packets_heard_by">Heard by</string>
+    <plurals name="packets_heard_times">
+        <item quantity="one">heard %1$d times</item>
+        <item quantity="other">heard %1$d times</item>
+    </plurals>
+    <string name="packets_hide_raw_packet">Hide raw packet</string>
+    <string name="packets_hop">Hop %1$s</string>
+    <plurals name="packets_hops">
+        <item quantity="one">%1$d hops</item>
+        <item quantity="other">%1$d hops</item>
+    </plurals>
+    <plurals name="packets_hops_2">
+        <item quantity="one">" · %1$d hops"</item>
+        <item quantity="other">" · %1$d hops"</item>
+    </plurals>
+    <string name="packets_hops_3">Hops</string>
+    <plurals name="packets_hops_4">
+        <item quantity="one">%1$d hops</item>
+        <item quantity="other">%1$d hops</item>
+    </plurals>
+    <string name="packets_incoming_traffic">Incoming traffic</string>
+    <string name="packets_incoming_traffic_paused">Incoming traffic · paused</string>
+    <string name="packets_listening_for_live_traffic">Listening for live traffic</string>
+    <string name="packets_live_feed_paused_2">Live feed paused</string>
+    <string name="packets_live_feed_paused_new">Live feed paused · %1$s new</string>
+    <string name="packets_live_packet_filters">Live packet filters</string>
+    <string name="packets_loading_packet">Loading packet</string>
+    <string name="packets_message">Message</string>
+    <string name="packets_new_mesh_traffic_will_appear_here_as_the_2">New mesh traffic will appear here as the analyzer receives it.</string>
+    <string name="packets_new_packets_back_to_latest">New packets · back to latest</string>
+    <string name="packets_no_mappable_route_was_recorded_for_this_packet">No mappable route was recorded for this packet.</string>
+    <string name="packets_no_signal_data">No signal data</string>
+    <string name="packets_no_traffic_matches_this_filter_yet">No traffic matches this filter yet.</string>
+    <string name="packets_nodescope_will_resume_the_live_feed_when_the">NodeScope will resume the live feed when the analyzer reconnects.</string>
+    <string name="packets_not_connected">Not connected</string>
+    <plurals name="packets_observation_count">
+        <item quantity="one">%1$d observations</item>
+        <item quantity="other">%1$d observations</item>
+    </plurals>
+    <string name="packets_observations">Observations</string>
+    <string name="packets_observations_2">Observations</string>
+    <string name="packets_observer_regions_unavailable_only_explicitly_matching_packets_are">Observer regions unavailable; only explicitly matching packets are shown.</string>
+    <string name="packets_observer_with_hop_count">%1$s (%2$s)</string>
+    <string name="packets_observers">Observers</string>
+    <string name="packets_packet">Packet</string>
+    <string name="packets_packet_actions">Packet actions</string>
+    <string name="packets_packet_hash">Packet hash</string>
+    <string name="packets_packet_type">Packet type</string>
+    <string name="packets_pause_live_traffic">Pause live traffic</string>
+    <string name="packets_payload">Payload</string>
+    <string name="packets_payload_version">Payload version</string>
+    <plurals name="packets_picker_all_description">
+        <item quantity="one">Route: all %1$d routes. Change route</item>
+        <item quantity="other">Route: all %1$d routes. Change route</item>
+    </plurals>
+    <string name="packets_picker_and_more">%1$s and %2$d more</string>
+    <string name="packets_picker_description">Route: %1$s. Change route</string>
+    <string name="packets_picker_spoken_label">%1$s, %2$s</string>
+    <string name="packets_raw_packet">Raw packet</string>
+    <string name="packets_received">Received</string>
+    <string name="packets_received_in_history">%1$s (recent history)</string>
+    <string name="packets_recent">Recent</string>
+    <string name="packets_recent_history_unavailable_live_packets_will_still_appear">Recent history unavailable. Live packets will still appear when connected.</string>
+    <string name="packets_reconnect">Reconnect</string>
+    <string name="packets_region">Region</string>
+    <string name="packets_replay_on_map">Replay on map</string>
+    <string name="packets_resolved_path">Resolved path</string>
+    <string name="packets_resume_live_traffic">Resume live traffic</string>
+    <string name="packets_route">Route</string>
+    <string name="packets_route_2">Route %1$s</string>
+    <plurals name="packets_routes_together">
+        <item quantity="one">%1$d routes together</item>
+        <item quantity="other">%1$d routes together</item>
+    </plurals>
+    <string name="packets_selected">Selected</string>
+    <string name="packets_share_packet_link">Share packet link</string>
+    <string name="packets_share_packet_link_2">Share packet link</string>
+    <plurals name="packets_show_all_observations">
+        <item quantity="one">Show all %1$d observations</item>
+        <item quantity="other">Show all %1$d observations</item>
+    </plurals>
+    <string name="packets_show_less">Show less</string>
+    <plurals name="packets_show_new">
+        <item quantity="one">Show %1$d new packet</item>
+        <item quantity="other">Show %1$d new packets</item>
+    </plurals>
+    <string name="packets_show_raw_packet">Show raw packet</string>
+    <string name="packets_show_route">Show route</string>
+    <string name="packets_show_this_observer_s_route">Show this observer\'s route</string>
+    <string name="packets_shown_below">Shown below</string>
+    <string name="packets_snr_db">SNR dB</string>
+    <string name="packets_technical_data">Technical data</string>
+    <string name="packets_this_packet_is_no_longer_in_the_recent">This packet is no longer in the recent feed.</string>
+    <string name="packets_this_route_s_nodes_aren_t_on_the">This route\'s nodes aren\'t on the current map region, so it can\'t be replayed.</string>
+    <plurals name="packets_transmission_count">
+        <item quantity="one">%1$d transmissions</item>
+        <item quantity="other">%1$d transmissions</item>
+    </plurals>
+    <string name="packets_unavailable">Unavailable</string>
+    <string name="packets_unknown_node">Unknown node</string>
+    <string name="packets_unknown_observer">Unknown observer</string>
+    <string name="packets_unknown_region">Unknown region</string>
+    <string name="packets_value">%1$s: %2$s</string>
+    <string name="packets_value_2">"  +%1$s"</string>
+    <string name="packets_waiting_for_packets">Waiting for packets</string>
+
     <style name="Theme.NodeScope" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
     </style>

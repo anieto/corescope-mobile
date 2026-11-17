@@ -1,5 +1,8 @@
 package org.nodescope.android.feature.packets
 
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import org.nodescope.android.feature.learn.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -28,14 +31,14 @@ fun RoutePicker(options: List<RouteOption>, selected: Int, onSelect: (Int) -> Un
     val showsAll = allowsAll && selected == all
     val index = selected.coerceIn(options.indices)
     val current = options[index]
+    val routeDescription = if (showsAll) pluralStringResource(R.plurals.packets_picker_all_description, options.size, options.size)
+        else stringResource(R.string.packets_picker_description, current.spokenLabel(index))
     Box(modifier) {
-        OutlinedButton(onClick = { open = true }, Modifier.semantics {
-            contentDescription = if (showsAll) "Route: all ${options.size} routes. Change route" else "Route: ${current.spokenLabel(index)}. Change route"
-        }) {
-            if (showsAll) Text("All ${options.size} routes", Modifier.weight(1f, fill = false), maxLines = 1)
+        OutlinedButton(onClick = { open = true }, Modifier.semantics { contentDescription = routeDescription }) {
+            if (showsAll) Text(pluralStringResource(R.plurals.packets_all_routes, options.size, options.size), Modifier.weight(1f, fill = false), maxLines = 1)
             else {
                 RouteName(current, index, Modifier.weight(1f, fill = false))
-                Text(" · ${current.hops} hops", maxLines = 1)
+                Text(pluralStringResource(R.plurals.packets_hops_2, current.hops, current.hops), maxLines = 1)
             }
             Icon(Icons.Outlined.ArrowDropDown, null)
         }
@@ -43,24 +46,25 @@ fun RoutePicker(options: List<RouteOption>, selected: Int, onSelect: (Int) -> Un
             if (allowsAll) DropdownMenuItem(
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text("All routes")
-                        Text("${options.size} routes together", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.packets_all_routes_2))
+                        Text(pluralStringResource(R.plurals.packets_routes_together, options.size, options.size), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 },
                 onClick = { onSelect(all); open = false },
-                trailingIcon = { if (showsAll) Icon(Icons.Outlined.Check, "Selected", Modifier.size(18.dp)) },
+                trailingIcon = { if (showsAll) Icon(Icons.Outlined.Check, stringResource(R.string.packets_selected), Modifier.size(18.dp)) },
             )
             options.forEachIndexed { i, option ->
+                val spoken = option.spokenLabel(i)
                 DropdownMenuItem(
                     text = {
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             RouteName(option, i)
-                            Text(option.summary(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(option.summary(pluralStringResource(R.plurals.packets_hops, option.hops, option.hops)), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     },
                     onClick = { onSelect(i); open = false },
-                    trailingIcon = { if (i == index && !showsAll) Icon(Icons.Outlined.Check, "Selected", Modifier.size(18.dp)) },
-                    modifier = Modifier.semantics { contentDescription = option.spokenLabel(i) },
+                    trailingIcon = { if (i == index && !showsAll) Icon(Icons.Outlined.Check, stringResource(R.string.packets_selected), Modifier.size(18.dp)) },
+                    modifier = Modifier.semantics { contentDescription = spoken },
                 )
             }
         }
@@ -72,14 +76,17 @@ fun RoutePicker(options: List<RouteOption>, selected: Int, onSelect: (Int) -> Un
 private fun RouteName(option: RouteOption, index: Int, modifier: Modifier = Modifier) {
     val first = option.heardBy.firstOrNull()
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        Text(first?.observer ?: "Route ${index + 1}", Modifier.weight(1f, fill = false), maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (option.heardBy.size > 1) Text("  +${option.heardBy.size - 1}", maxLines = 1, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(first?.observer ?: stringResource(R.string.packets_route_2, index + 1), Modifier.weight(1f, fill = false), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (option.heardBy.size > 1) Text(stringResource(R.string.packets_value_2, option.heardBy.size - 1), maxLines = 1, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
+@Composable
 private fun RouteOption.spokenLabel(index: Int): String {
-    val who = heardBy.firstOrNull()?.observer?.let { name -> if (heardBy.size > 1) "$name and ${heardBy.size - 1} more" else name } ?: "Route ${index + 1}"
-    return "$who, ${summary()}"
+    val who = heardBy.firstOrNull()?.observer?.let { name ->
+        if (heardBy.size > 1) stringResource(R.string.packets_picker_and_more, name, heardBy.size - 1) else name
+    } ?: stringResource(R.string.packets_route_2, index + 1)
+    return stringResource(R.string.packets_picker_spoken_label, who, summary(pluralStringResource(R.plurals.packets_hops, hops, hops)))
 }
 
 /**
@@ -91,7 +98,7 @@ fun RouteHearers(option: RouteOption) {
     if (option.heardBy.isEmpty() && option.alongTheWay.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         if (option.heardBy.isNotEmpty()) {
-            LearnLabel("Heard by", GlossaryTerm.HEARD_BY, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            LearnLabel(stringResource(R.string.packets_heard_by), GlossaryTerm.HEARD_BY, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             option.heardBy.forEach { hearing ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(hearing.observer, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -101,7 +108,10 @@ fun RouteHearers(option: RouteOption) {
             }
         }
         if (option.alongTheWay.isNotEmpty()) Row(verticalAlignment = Alignment.Top) {
-            Text("Also heard along the way by " + option.alongTheWay.joinToString(", ") { "${it.observer} (${it.hops} hops)" },
+            Text(stringResource(R.string.packets_heard_along_the_way_by, option.alongTheWay.map {
+                stringResource(R.string.packets_observer_with_hop_count, it.observer,
+                    pluralStringResource(R.plurals.packets_hops, it.hops, it.hops))
+            }.joinToString(", ")),
                 Modifier.weight(1f, fill = false), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             LearnButton(GlossaryTerm.ALONG_THE_WAY)
         }
@@ -121,6 +131,6 @@ fun singleRoute(selection: Int, count: Int): Int? = when {
 /** Shown in place of one route's details while All Routes is chosen (iOS `AllRoutesNote`). */
 @Composable
 fun AllRoutesNote(count: Int) {
-    Text("All $count routes replay together. Choose one to see its hops and who heard it.",
+    Text(pluralStringResource(R.plurals.packets_all_routes_replay_together_choose_one_to_see, count, count),
         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
