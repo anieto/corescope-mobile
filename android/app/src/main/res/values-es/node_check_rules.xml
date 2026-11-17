@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="node_check_rule_unnamed_observer">Observador sin nombre</string>
+    <string name="node_check_rule_flood_reached">El último advert flood llegó a %1$s</string>
+    <string name="node_check_rule_flood_reached_regions">El último advert flood llegó a %1$s en %2$s (%3$s)</string>
+    <string name="node_check_rule_advert_sent">Enviado %1$s.</string>
+    <string name="node_check_rule_strongest_with_snr">El más fuerte es %1$s con SNR de %2$s.</string>
+    <string name="node_check_rule_strongest">El más fuerte es %1$s.</string>
+    <string name="node_check_rule_heard">Escuchado %1$s</string>
+    <string name="node_check_rule_quiet">Tranquilo: escuchado %1$s</string>
+    <string name="node_check_rule_not_heard_for">No se escucha desde hace %1$s</string>
+    <string name="node_check_rule_last_heard">Escuchado %1$s</string>
+    <string name="node_check_rule_last_relayed">Retransmitió por última vez %1$s</string>
+    <string name="node_check_rule_relaying_detail">Los paquetes de otros nodos pasan por él. Retransmitió uno por última vez %1$s.</string>
+    <string name="node_check_rule_clock_off">El reloj tiene un desfase de %1$s</string>
+    <string name="node_check_rule_nearest_observer">El observador más cercano está a %1$s</string>
+    <string name="node_check_rule_ago_now">justo ahora</string>
+    <string name="node_check_rule_ago_an_hour">hace una hora</string>
+    <string name="node_check_rule_ago_a_day">hace un día</string>
+    <string name="node_check_rule_duration_a_day">un día</string>
+    <string name="node_check_rule_positive_decibels">+%1$s dB</string>
+    <string name="node_check_rule_decibels">%1$s dB</string>
+    <string name="node_check_rule_direct">Directo</string>
+    <string name="node_check_rule_offset_unknown">un tiempo</string>
+    <string name="node_check_rule_offset_behind">%1$s por detrás</string>
+    <string name="node_check_rule_offset_ahead">%1$s por delante</string>
+    <string name="node_check_rule_regularly">Los observadores escuchan este nodo con regularidad.</string>
+    <string name="node_check_rule_room_advert_cadence">Un room server que funciona suele enviar un advert al menos dos veces al día.</string>
+    <string name="node_check_rule_repeater_advert_cadence">Un repetidor que funciona suele aparecer al menos una vez al día, por sus propios adverts o por el tráfico que retransmite.</string>
+    <string name="node_check_rule_fix_quiet">Comprueba que todavía tenga alimentación y que la antena esté conectada. Si funciona con energía solar, revisa la batería.</string>
+    <string name="node_check_rule_no_recent_traffic">No hay tráfico reciente</string>
+    <string name="node_check_rule_room_silent">Nada de este nodo ha llegado a un observador en los últimos tres días.</string>
+    <string name="node_check_rule_repeater_silent">Nada de este nodo ha llegado a un observador en los últimos dos días.</string>
+    <string name="node_check_rule_fix_silent">Revisa la alimentación, la antena y la configuración de radio, y luego envía un advert flood.</string>
+    <string name="node_check_rule_companion_quiet">Los companions solo se escuchan cuando envían algo, así que un periodo de silencio es normal.</string>
+    <string name="node_check_rule_fix_companion_quiet">Envía un advert flood para comprobar que todavía llega a la red mesh.</string>
+    <string name="node_check_rule_advert_time_unknown">No se sabe cuándo se envió.</string>
+    <string name="node_check_rule_few_observers">Solo lo escucharon unos pocos observadores. Puede significar simplemente que hay pocos observadores cerca de ti, o que necesita otro repetidor al alcance para llegar más lejos.</string>
+    <string name="node_check_rule_no_recent_flood">No hay advert flood reciente</string>
+    <string name="node_check_rule_zero_hop_reach">Sus adverts recientes fueron zero-hop, que solo llegan a radios en alcance directo, así que no muestran hasta dónde llega.</string>
+    <string name="node_check_rule_fix_send_flood">Envía un advert flood para ver hasta dónde llega.</string>
+    <string name="node_check_rule_no_recent_adverts">No hay adverts recientes</string>
+    <string name="node_check_rule_analyzer_has_no_recent_adverts">El analizador no tiene adverts recientes de este nodo.</string>
+    <string name="node_check_rule_repeater_path">Ningún observador escucha este nodo directamente, así que llega a la red mesh a través de repetidores. Es normal, a menos que esperaras que lo escuchara un observador cercano.</string>
+    <string name="node_check_rule_not_relaying">No se ha visto retransmitiendo</string>
+    <string name="node_check_rule_not_relaying_detail">Los observadores escuchan este repetidor, pero no lo han visto retransmitir el tráfico de nadie más.</string>
+    <string name="node_check_rule_fix_enable_repeating">Comprueba que la repetición esté activada. Si lo está, puede que simplemente aún no haya tráfico cerca.</string>
+    <string name="node_check_rule_hasnt_relayed">Todavía se escucha, pero hace un tiempo que no retransmite tráfico.</string>
+    <string name="node_check_rule_fix_check_repeating">Comprueba que la repetición siga activada y que nada haya cambiado en su configuración.</string>
+    <string name="node_check_rule_relaying">Retransmitiendo tráfico</string>
+    <string name="node_check_rule_fix_clock">Sincroniza el reloj desde la app de MeshCore o ejecutando “clock sync” en el nodo.</string>
+    <string name="node_check_rule_adverts_treated_as_old">Los adverts de nodos con la hora incorrecta pueden tratarse como antiguos.</string>
+    <string name="node_check_rule_clock_jumps">El reloj sigue saltando</string>
+    <string name="node_check_rule_clock_jumps_detail">Su reloj a veces marca bien y a veces muy desfasado, lo que suele significar que pierde la hora al reiniciarse.</string>
+    <string name="node_check_rule_clock_not_set">El reloj no está configurado</string>
+    <string name="node_check_rule_clock_not_set_detail">Su reloj está muy lejos de la hora real, como si nunca se hubiera configurado.</string>
+    <string name="node_check_rule_clock_right">El reloj está bien</string>
+    <string name="node_check_rule_clock_right_detail">Su reloj está a pocos minutos de la hora real.</string>
+    <string name="node_check_rule_no_location">Sin ubicación</string>
+    <string name="node_check_rule_no_location_detail">No aparecerá en el mapa en vivo ni en el mapa del analizador.</string>
+    <string name="node_check_rule_fix_location">Define una ubicación en la configuración del nodo si te parece bien compartirla.</string>
+    <string name="node_check_rule_headline_bad">Este nodo se quedó en silencio</string>
+    <string name="node_check_rule_headline_warn">Escuchado, con algo por revisar</string>
+    <string name="node_check_rule_headline_good">Este nodo está saliendo</string>
+    <string name="node_check_rule_headline_info">Se escuchó antes, pero no hay nada reciente</string>
+    <string name="node_check_rule_not_found">No hemos escuchado este nodo</string>
+    <string name="node_check_rule_not_found_without_key">Ningún observador de este analizador lo ha captado. Para probar un nodo nuevo, ingresa su clave pública completa; luego podrás hacer una prueba en vivo y esperar su primer advert.</string>
+    <string name="node_check_rule_not_found_with_key">Ningún observador de este analizador lo ha captado todavía. Haz una prueba en vivo, envía un advert flood y espera el primero. Si no llega nada, comprueba que la radio use la misma configuración que otros nodos de tu zona y que haya un repetidor al alcance.</string>
+    <string name="node_check_rule_needs_attention">Requiere atención</string>
+    <string name="node_check_rule_looking_good">Todo se ve bien</string>
+    <string name="node_check_rule_good_to_know">Conviene saber</string>
+    <string name="node_check_rule_observer_order">Los más cercanos primero; Directo significa que no hay ningún repetidor en medio.</string>
+    <string name="node_check_rule_observer_order_with_time">Enviado %1$s. Los más cercanos primero; Directo significa que no hay ningún repetidor en medio.</string>
+    <string name="node_check_rule_fix_label">Qué hacer:</string>
+    <string name="node_check_rule_picker_last_heard">escuchado %1$s</string>
+    <string name="node_check_rule_observer_packets">%1$d paq.</string>
+    <plurals name="node_check_rule_direct_observers">
+        <item quantity="one">%1$d observador lo escucha directamente</item>
+        <item quantity="many">%1$d observadores lo escuchan directamente</item>
+        <item quantity="other">%1$d observadores lo escuchan directamente</item>
+    </plurals>
+    <plurals name="node_check_rule_ago_minutes">
+        <item quantity="one">hace %1$d minuto</item>
+        <item quantity="many">hace %1$d minutos</item>
+        <item quantity="other">hace %1$d minutos</item>
+    </plurals>
+    <plurals name="node_check_rule_ago_hours">
+        <item quantity="one">hace %1$d hora</item>
+        <item quantity="many">hace %1$d horas</item>
+        <item quantity="other">hace %1$d horas</item>
+    </plurals>
+    <plurals name="node_check_rule_ago_days">
+        <item quantity="one">hace %1$d día</item>
+        <item quantity="many">hace %1$d días</item>
+        <item quantity="other">hace %1$d días</item>
+    </plurals>
+    <plurals name="node_check_rule_hops">
+        <item quantity="one">%1$d salto</item>
+        <item quantity="many">%1$d saltos</item>
+        <item quantity="other">%1$d saltos</item>
+    </plurals>
+    <plurals name="node_check_rule_minutes">
+        <item quantity="one">%1$d minuto</item>
+        <item quantity="many">%1$d minutos</item>
+        <item quantity="other">%1$d minutos</item>
+    </plurals>
+    <plurals name="node_check_rule_hours">
+        <item quantity="one">%1$d hora</item>
+        <item quantity="many">%1$d horas</item>
+        <item quantity="other">%1$d horas</item>
+    </plurals>
+    <plurals name="node_check_rule_days">
+        <item quantity="one">%1$d día</item>
+        <item quantity="many">%1$d días</item>
+        <item quantity="other">%1$d días</item>
+    </plurals>
+</resources>

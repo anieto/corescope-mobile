@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "language": "es",
+  "items": {
+    "saved-plans": {
+      "title": "Planes guardados",
+      "detail": "Agrupa perfiles de enlace y estudios de cobertura en planes con nombre y notas. Los resultados se guardan con ellos y se abren igual en iPhone, iPad y Android, sin volver a calcular.",
+      "location": "Explorar → Planificador de nodos → Planes guardados"
+    },
+    "share-plans": {
+      "title": "Comparte y respalda tus planes",
+      "detail": "Exporta un estudio, un plan o toda tu biblioteca como archivo para enviarlo o guardarlo. Abre un archivo de NodeScope para importar una copia; no se reemplaza nada de tu biblioteca.",
+      "location": "Planes guardados → menú de un estudio o plan, o Respaldar biblioteca"
+    },
+    "unfinished-studies": {
+      "title": "El trabajo sin guardar se conserva",
+      "detail": "Los cambios que no has guardado se conservan aunque cambies de analizador o NodeScope se cierre. Retómalos desde Planes guardados.",
+      "location": "Planes guardados → Continuar estudio sin terminar"
+    },
+    "estimated-coverage": {
+      "title": "Cobertura estimada (beta)",
+      "detail": "Coloca un transmisor en cualquier lugar y mira dónde es probable que se escuche, según el terreno y tu configuración de radio. Toca el mapa para revisar cualquier punto.",
+      "location": "Explorar → Planificador de nodos → Cobertura estimada"
+    },
+    "link-profile": {
+      "title": "Perfil de enlace",
+      "detail": "Comprueba si dos ubicaciones pueden escucharse: mira el terreno entre ellas, cuánto despeje tiene la señal y el margen esperado.",
+      "location": "Explorar → Planificador de nodos → Perfil de enlace"
+    },
+    "ipad-mac": {
+      "title": "Mejor en iPad y Mac",
+      "detail": "Barras laterales más limpias en iPad y atajos de teclado: ⌘1–⌘5 cambian de pestaña, ⌘F busca y ⌘R actualiza."
+    }
+  }
+}
