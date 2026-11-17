@@ -312,7 +312,8 @@ internal fun AppShell(
         }
     }
     // What's New: once per update with highlights, recorded as soon as it is shown so it never repeats.
-    val whatsNewReleases = remember { org.nodescope.android.feature.settings.WhatsNew.load(context) }
+    val contentLanguage = stringResource(R.string.content_language)
+    val whatsNewReleases = remember(contentLanguage) { org.nodescope.android.feature.settings.WhatsNew.load(context, contentLanguage) }
     var whatsNew by rememberSaveable { mutableStateOf<List<String>?>(null) }
     var whatsNewFromSettings by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) {

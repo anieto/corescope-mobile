@@ -15,6 +15,19 @@ class GlossaryTest {
         assertArrayEquals(File("../../CoreScopeViewer/Resources/glossary.json").readBytes(), android.readBytes())
     }
 
+    @Test fun contentOverlaysMatchAcrossPlatforms() {
+        fun overlays(folder: File) = folder.listFiles().orEmpty()
+            .filter { it.isFile && OVERLAY.matches(it.name) }
+            .associateBy { it.name }
+
+        val ios = overlays(File("../../CoreScopeViewer/Resources"))
+        val assets = overlays(android.parentFile!!)
+        assertEquals("overlay filenames", ios.keys, assets.keys)
+        for ((name, file) in ios) {
+            assertArrayEquals(name, file.readBytes(), assets.getValue(name).readBytes())
+        }
+    }
+
     @Test fun everyTermHasOneEntry() {
         val ids = Glossary.parse(android.readText()).flatMap { section -> section.entries.map { it.id } }
         assertEquals("duplicate ids", ids.size, ids.toSet().size)
@@ -28,3 +41,5 @@ class GlossaryTest {
         assertEquals(null, GlossaryTerm.forRole("unknown"))
     }
 }
+
+private val OVERLAY = Regex("""(?:glossary|whats-new)\..+\.json""")
