@@ -68,7 +68,7 @@ fun SourceScreen(
                             Text(source.name, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.titleMedium)
                             SourceTypeLabel(source.backendType)
                         }
-                        Text(source.subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(source.displaySubtitle(stringResource(R.string.content_language)), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(source.host, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     if (current) Icon(Icons.Outlined.CheckCircle, stringResource(R.string.onboarding_selected), tint = MaterialTheme.colorScheme.primary)
