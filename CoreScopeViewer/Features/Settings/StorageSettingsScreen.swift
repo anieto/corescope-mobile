@@ -48,7 +48,7 @@ struct StorageSettingsScreen: View {
             await loadUsage()
         }
         .confirmationDialog(
-            "Clear Cached Data?",
+            String(localized: "Clear Cached Data?"),
             isPresented: $showsClearConfirmation,
             titleVisibility: .visible
         ) {

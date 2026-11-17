@@ -360,7 +360,7 @@ final class ChannelsViewModel {
     ) -> ChannelMessage? {
         if payload.type == "CHAN", payload.channel == channel.channelName {
             return ChannelMessage(
-                sender: payload.sender ?? "Unknown",
+                sender: payload.sender ?? String(localized: "Unknown"),
                 text: payload.text ?? "",
                 timestamp: packet.firstSeen,
                 senderTimestamp: payload.senderTimestamp,

@@ -130,7 +130,7 @@ struct ObserversListScreen: View {
                     .id(selectedObserver.id)
             } else {
                 ContentUnavailableView(
-                    "Select an Observer",
+                    String(localized: "Select an Observer"),
                     systemImage: "antenna.radiowaves.left.and.right",
                     description: Text("Choose an observer to see its activity and signal data.")
                 )

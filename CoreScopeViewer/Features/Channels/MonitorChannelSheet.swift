@@ -51,7 +51,7 @@ struct MonitorChannelSheet: View {
                 }
             }
             .alert(
-                "Couldn't Add Channel",
+                String(localized: "Couldn't Add Channel"),
                 isPresented: Binding(
                     get: { errorMessage != nil },
                     set: { if !$0 { errorMessage = nil } }

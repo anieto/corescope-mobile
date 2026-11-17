@@ -127,7 +127,7 @@ struct SupportDevelopmentScreen: View {
             await store.loadProducts()
         }
         .alert(
-            "Thank You!",
+            String(localized: "Thank You!"),
             isPresented: Binding(
                 get: { store.thankYouMessage != nil },
                 set: { isPresented in

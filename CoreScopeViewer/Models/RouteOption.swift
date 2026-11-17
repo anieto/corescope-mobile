@@ -14,7 +14,7 @@ struct RouteHearing: Hashable, Sendable {
 
     /// Signal for display: RSSI when reported, else SNR.
     var signalText: String? {
-        if let rssi { return String(format: "%.0f dBm", rssi) }
+        if let rssi { return String(format: String(localized: "%.0f dBm"), rssi) }
         if let snr { return String(format: "%.1f dB", snr) }
         return nil
     }

@@ -329,7 +329,7 @@ struct ExploreScreen: View {
 
     private func deepLinkMessage(for packet: Packet) -> ChannelMessage {
         ChannelMessage(
-            sender: packet.observerName ?? "Unknown",
+            sender: packet.observerName ?? String(localized: "Unknown"),
             text: "",
             timestamp: packet.firstSeen,
             senderTimestamp: nil,
@@ -1271,13 +1271,13 @@ private struct FavoriteNodeFinder: View {
                         .padding(.horizontal, 16)
                 } else if let errorMessage, nodes.isEmpty {
                     ContentUnavailableView(
-                        "Couldn't Load Nodes",
+                        String(localized: "Couldn't Load Nodes"),
                         systemImage: "wifi.exclamationmark",
                         description: Text(errorMessage)
                     )
                 } else if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedRoles.isEmpty {
                     ContentUnavailableView(
-                        "Find a Node",
+                        String(localized: "Find a Node"),
                         systemImage: "magnifyingglass",
                         description: Text("Search by node name, public key, or role.")
                     )
@@ -1478,7 +1478,7 @@ private struct GlobalSearchSheet: View {
         let items = searchHistoryStore.items.filter { $0.source == favoriteSource }
         if items.isEmpty {
             ContentUnavailableView(
-                "Search the Network",
+                String(localized: "Search the Network"),
                 systemImage: "magnifyingglass",
                 description: Text("Find nodes, observers, channels, public keys, and packet hashes.")
             )
@@ -1536,7 +1536,7 @@ private struct GlobalSearchSheet: View {
                 Section("Nodes") {
                     ForEach(nodeResults) { node in
                         searchResultRow(
-                            title: node.name ?? "Unnamed Node",
+                            title: node.name ?? String(localized: "Unnamed Node"),
                             subtitle: "\(node.role.capitalized) · \(node.publicKey.prefix(12).uppercased())",
                             symbol: NodeRoleStyle.symbolName(for: node.role),
                             color: NodeRoleStyle.color(for: node.role),
@@ -1680,7 +1680,7 @@ private struct GlobalSearchSheet: View {
 
     private func message(for packet: Packet) -> ChannelMessage {
         ChannelMessage(
-            sender: packet.observerName ?? "Unknown",
+            sender: packet.observerName ?? String(localized: "Unknown"),
             text: "",
             timestamp: packet.firstSeen,
             senderTimestamp: nil,

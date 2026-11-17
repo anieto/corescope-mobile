@@ -201,7 +201,7 @@ struct OnboardingScreen: View {
     private var selectedSourceName: String {
         sourceRegistry.sources.first {
             $0.host.caseInsensitiveCompare(selectedHost) == .orderedSame
-        }?.name ?? "Custom Analyzer"
+        }?.name ?? String(localized: "Custom Analyzer")
     }
 }
 

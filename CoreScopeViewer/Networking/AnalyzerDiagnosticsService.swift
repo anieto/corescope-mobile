@@ -18,8 +18,8 @@ enum AnalyzerCapability: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .mapConfiguration: String(localized: "Map configuration")
         case .nodes: String(localized: "Nodes and routes")
-        case .channels: "Channels"
-        case .observers: "Observers"
+        case .channels: String(localized: "Channels")
+        case .observers: String(localized: "Observers")
         case .regions: String(localized: "Region filtering")
         case .neighbors: String(localized: "Node neighbors")
         case .nodeAnalytics: String(localized: "Node analytics")

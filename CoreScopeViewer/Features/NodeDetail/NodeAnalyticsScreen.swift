@@ -43,7 +43,7 @@ struct NodeAnalyticsScreen: View {
                         BeaconFeatureNotice(capability: .nodeAnalytics)
                     } else {
                         ContentUnavailableView(
-                            "Analytics Unavailable",
+                            String(localized: "Analytics Unavailable"),
                             systemImage: "chart.xyaxis.line",
                             description: Text("This analyzer does not currently provide node analytics.")
                         )
@@ -197,7 +197,7 @@ struct NodeAnalyticsScreen: View {
 private struct NodeAnalyticsEmptyHistoryCard: View {
     var body: some View {
         ContentUnavailableView(
-            "No Activity in This Range",
+            String(localized: "No Activity in This Range"),
             systemImage: "chart.xyaxis.line",
             description: Text("No node observations were recorded during the selected time range.")
         )

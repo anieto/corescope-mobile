@@ -94,7 +94,7 @@ struct AboutScreen: View {
                     Text("NodeScope · Copyright © 2026 BetweenThieves Development")
                         .font(.subheadline.weight(.semibold))
                     Text(
-                        "Free and open-source software licensed under GNU GPL version 3 with an application-store distribution exception. You may share and modify it under those terms. NodeScope comes with absolutely no warranty."
+                        String(localized: "Free and open-source software licensed under GNU GPL version 3 with an application-store distribution exception. You may share and modify it under those terms. NodeScope comes with absolutely no warranty.")
                     )
                     .font(.caption)
                     .foregroundStyle(.secondary)

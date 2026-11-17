@@ -37,7 +37,7 @@ struct ObserverDetailScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 if viewModel.isLoading {
-                    LoadingIndicator(title: usesBeaconDetail ? "Loading observer details…" : "Loading observer analytics…")
+                    LoadingIndicator(title: usesBeaconDetail ? String(localized: "Loading observer details…") : String(localized: "Loading observer analytics…"))
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
@@ -318,7 +318,7 @@ private struct ObserverIdentityCard: View {
                         ObserverDetailMetric(label: "Battery", value: "\(batteryMv) mV")
                         ObserverDetailMetric(
                             label: "Noise Floor",
-                            value: observer.noiseFloor.map { String(format: "%.0f dB", $0) } ?? "Unknown"
+                            value: observer.noiseFloor.map { String(format: String(localized: "%.0f dB"), $0) } ?? String(localized: "Unknown")
                         )
                     }
                 }
@@ -380,8 +380,8 @@ private struct PacketsTimelineCard: View {
             .frame(height: verticalSizeClass == .compact ? 140 : 190)
             .accessibilityLabel(
                 countUnit == .observations
-                    ? "Observations received over time"
-                    : "Packets received over time"
+                    ? String(localized: "Observations received over time")
+                    : String(localized: "Packets received over time")
             )
         }
     }
@@ -423,8 +423,8 @@ private struct PacketTypesCard: View {
             .frame(height: verticalSizeClass == .compact ? 210 : 270)
             .accessibilityLabel(
                 countUnit == .observations
-                    ? "Observation type distribution"
-                    : "Packet type distribution"
+                    ? String(localized: "Observation type distribution")
+                    : String(localized: "Packet type distribution")
             )
         }
     }
@@ -584,7 +584,7 @@ private struct BeaconAnalyticsNotice: View {
 private struct ObserverAnalyticsEmptyHistoryCard: View {
     var body: some View {
         ContentUnavailableView(
-            "No Activity in This Range",
+            String(localized: "No Activity in This Range"),
             systemImage: "waveform.path.ecg",
             description: Text("No observer activity or telemetry was recorded during the selected time range.")
         )

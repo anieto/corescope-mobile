@@ -329,7 +329,7 @@ struct ImportPackageSheet: View {
                     Text("Results that can't be imported")
                 } footer: {
                     Text(inputsOnly ? "Their inputs are imported; calculate to see results."
-                         : "These studies are left out unless you import their inputs only.")
+                         : String(localized: "These studies are left out unless you import their inputs only."))
                 }
             }
             if !preview.omitted.isEmpty {

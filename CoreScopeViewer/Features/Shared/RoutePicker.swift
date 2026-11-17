@@ -84,8 +84,8 @@ private struct RouteMenu: View, Equatable {
             }
         }
         .accessibilityLabel(showsAll
-            ? "Route: all \(options.count) routes. Change route"
-            : "Route: \(options[selected].spokenLabel(index: selected)). Change route")
+            ? String(localized: "Route: all \(options.count) routes. Change route")
+            : String(localized: "Route: \(options[selected].spokenLabel(index: selected)). Change route"))
     }
 }
 

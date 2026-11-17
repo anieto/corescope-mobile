@@ -119,7 +119,7 @@ struct ChannelDetailScreen: View {
         .overlay {
             if orderedMessages.isEmpty && !viewModel.hasOlderMessages && !viewModel.isLoading && viewModel.errorMessage == nil {
                 ContentUnavailableView(
-                    regionFilter.selectedRegion == nil ? "No messages yet" : "No messages from this region",
+                    regionFilter.selectedRegion == nil ? String(localized: "No messages yet") : String(localized: "No messages from this region"),
                     systemImage: "message"
                 )
             }

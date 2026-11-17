@@ -273,7 +273,7 @@ enum ChannelCrypto {
                 sender = String(parts[0])
                 text = String(parts[1]).trimmingCharacters(in: .whitespaces)
             } else {
-                sender = "Unknown"
+                sender = String(localized: "Unknown")
                 text = message
             }
             senderTimestamp = Double(timestamp)

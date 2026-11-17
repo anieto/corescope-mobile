@@ -31,7 +31,7 @@ struct CandidateSiteMapPicker: View {
                 MapReader { proxy in
                     Map(position: $position) {
                         if let selected {
-                            Annotation("Proposed site", coordinate: selected) {
+                            Annotation(String(localized: "Proposed site"), coordinate: selected) {
                                 VStack(spacing: 3) {
                                     Text("Proposed site").font(.monaspace(.caption))
                                         .padding(4).background(.regularMaterial, in: Capsule())

@@ -43,7 +43,7 @@ final class RecentItemsStore {
                 source: source,
                 kind: .node,
                 entityID: node.publicKey,
-                title: node.name ?? "Unnamed Node",
+                title: node.name ?? String(localized: "Unnamed Node"),
                 subtitle: node.role.capitalized,
                 viewedAt: .now,
                 node: node,

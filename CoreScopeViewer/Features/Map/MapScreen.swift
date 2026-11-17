@@ -582,8 +582,8 @@ struct MapScreen: View {
                             VStack(spacing: 8) {
                                 if !isReplayMode {
                                     Text(isChangingRegion || viewModel.isLoading
-                                         ? "Loading route locations…"
-                                         : "Not enough known locations to replay this route")
+                                         ? String(localized: "Loading route locations…")
+                                         : String(localized: "Not enough known locations to replay this route"))
                                         .font(.caption)
                                         .multilineTextAlignment(.center)
                                         .padding(8)
@@ -634,16 +634,16 @@ struct MapScreen: View {
                 .overlay {
                     if let errorMessage = viewModel.errorMessage, viewModel.nodes.isEmpty {
                         ContentUnavailableView(
-                            "Couldn't load nodes",
+                            String(localized: "Couldn't load nodes"),
                             systemImage: "wifi.slash",
                             description: Text(errorMessage)
                         )
                     } else if liveFeed.usesBrowseSnapshots, !viewModel.isLoading, viewModel.nodes.isEmpty {
                         ContentUnavailableView(
-                            "No Nodes Reported Yet",
+                            String(localized: "No Nodes Reported Yet"),
                             systemImage: "antenna.radiowaves.left.and.right.slash",
                             description: Text(
-                                "Beacon adds nodes as it hears their advertisements. Some repeaters advertise only every 12–47 hours, so a quiet region can take time to fill in."
+                                String(localized: "Beacon adds nodes as it hears their advertisements. Some repeaters advertise only every 12–47 hours, so a quiet region can take time to fill in.")
                             )
                         )
                         .frame(maxWidth: 360)
@@ -1186,7 +1186,7 @@ struct MapScreen: View {
                 // may place a node above the annotation's anchor point, so the
                 // marker itself stays entirely outside a co-located node.
                 if let userLocation {
-                    Annotation("Your location", coordinate: userLocation, anchor: .bottom) {
+                    Annotation(String(localized: "Your location"), coordinate: userLocation, anchor: .bottom) {
                         VStack(spacing: 4) {
                             Text("You")
                                 .font(.caption2.weight(.bold))
@@ -1659,7 +1659,7 @@ struct MapScreen: View {
                 }
             } label: {
                 Label(
-                    !isReplayMode ? "Retry Replay" : isReplayPlaying ? "Replay" : "Play Again",
+                    !isReplayMode ? String(localized: "Retry Replay") : isReplayPlaying ? String(localized: "Replay") : String(localized: "Play Again"),
                     systemImage: isReplayPlaying ? "play.fill" : "arrow.counterclockwise"
                 )
                 .font(.caption.weight(.semibold))
@@ -3716,7 +3716,7 @@ private struct MapRouteDetails: Identifiable {
 
     var shareText: String {
         var lines = [
-            "NodeScope Route",
+            String(localized: "NodeScope Route"),
             "Hops: \(hops.count)",
             String(localized: "Observed: \(observedAt.formatted(.relative(presentation: .named)))")
         ]
@@ -3777,7 +3777,7 @@ private struct MapRegionScopeControl: View {
 
     private var title: String {
         guard let selectedRegion = regionFilter.selectedRegion else {
-            return "All Regions"
+            return String(localized: "All Regions")
         }
         if let pick = regionFilter.activePick { return pick.name }
         if selectedRegion.contains(",") { return regionFilter.label(for: selectedRegion) }
@@ -4677,7 +4677,7 @@ private struct MapNodeSearchSheet: View {
 
                 if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedRoles.isEmpty {
                     ContentUnavailableView(
-                        "Find a Node",
+                        String(localized: "Find a Node"),
                         systemImage: "magnifyingglass",
                         description: Text("Search by node name, public key, or role.")
                     )
@@ -4690,7 +4690,7 @@ private struct MapNodeSearchSheet: View {
                             selectNode(node)
                         } label: {
                             MapNodeSearchRow(
-                                name: node.name ?? "Unnamed Node",
+                                name: node.name ?? String(localized: "Unnamed Node"),
                                 role: node.role,
                                 publicKey: node.publicKey,
                                 lastSeen: node.latestActivity

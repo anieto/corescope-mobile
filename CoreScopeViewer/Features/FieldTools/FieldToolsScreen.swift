@@ -1006,14 +1006,14 @@ private struct FieldGettingStartedCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label(
-                hasStartingPoint ? "Choose Nearby Equipment" : "Choose Your Starting Point",
+                hasStartingPoint ? String(localized: "Choose Nearby Equipment") : String(localized: "Choose Your Starting Point"),
                 systemImage: hasStartingPoint ? "dot.radiowaves.left.and.right" : "location.circle"
             )
             .font(.monaspace(.headline))
 
             Text(hasStartingPoint
-                ? "Select a node or observer to see its distance and direction."
-                : "Use your location, tap anywhere on the map, or enter coordinates.")
+                ? String(localized: "Select a node or observer to see its distance and direction.")
+                : String(localized: "Use your location, tap anywhere on the map, or enter coordinates."))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 

@@ -675,7 +675,7 @@ private struct NodeNeighborsEmptyCard: View {
     var body: some View {
         NodeDetailCard(title: "Links", symbol: "link") {
             ContentUnavailableView(
-                "No Neighbors Reported",
+                String(localized: "No Neighbors Reported"),
                 systemImage: "point.3.connected.trianglepath.dotted",
                 description: Text("Beacon has not recorded any neighboring nodes for this node yet.")
             )
@@ -1010,10 +1010,10 @@ private struct MeshCoreContactSheet: View {
 
     private var typeLabel: String {
         switch contact.type {
-        case 1: "Companion"
-        case 2: "Repeater"
+        case 1: String(localized: "Companion")
+        case 2: String(localized: "Repeater")
         case 3: String(localized: "Room Server")
-        default: "Sensor"
+        default: String(localized: "Sensor")
         }
     }
 

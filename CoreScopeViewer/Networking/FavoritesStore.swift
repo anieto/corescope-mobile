@@ -99,7 +99,7 @@ final class FavoritesStore {
             kind: .node,
             entityID: node.publicKey,
             source: source,
-            title: node.name ?? "Unnamed Node",
+            title: node.name ?? String(localized: "Unnamed Node"),
             subtitle: node.publicKey,
             node: node
         )
@@ -177,7 +177,7 @@ final class FavoritesStore {
                 source: item.source,
                 kind: item.kind,
                 entityID: item.entityID,
-                title: node.name ?? "Unnamed Node",
+                title: node.name ?? String(localized: "Unnamed Node"),
                 subtitle: node.publicKey,
                 favoritedAt: item.favoritedAt,
                 node: node,

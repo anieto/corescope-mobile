@@ -23,6 +23,9 @@
     "%.0f dB" : {
 
     },
+    "%.0f dBm" : {
+
+    },
     "%.0f dBm avg RSSI" : {
 
     },
@@ -41,6 +44,9 @@
           }
         }
       }
+    },
+    "%@ MHz" : {
+
     },
     "%@ ahead" : {
 
@@ -3073,6 +3079,12 @@
     "Loading observer" : {
 
     },
+    "Loading observer analytics…" : {
+
+    },
+    "Loading observer details…" : {
+
+    },
     "Loading older messages…" : {
 
     },
@@ -4253,16 +4265,10 @@
     "Recently Viewed" : {
 
     },
-    "Recently heard" : {
-
-    },
     "Recently heard again" : {
 
     },
     "Recently heard means the source recorded activity within 15 minutes. Silence does not mean a node is offline." : {
-
-    },
-    "Recently seen" : {
 
     },
     "Reconnecting" : {
@@ -5435,9 +5441,6 @@
 
     },
     "The time it was sent is unknown." : {
-
-    },
-    "Their inputs are imported; calculate to see results." : {
 
     },
     "There isn't room for these results. Choose fewer items, or import inputs only." : {

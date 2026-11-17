@@ -873,7 +873,7 @@ final class LinkProfileModel {
             sensitivityDbm: receiverSensitivityDBm, refractionK: refractionK, sampleCount: sampleCount)
         let now = Int64(Date().timeIntervalSince1970 * 1000)
         let study = SavedStudy(id: savedStudy?.id ?? UUID().uuidString.lowercased(),
-            name: savedStudy?.name ?? "Link Profile", createdAtMilliseconds: savedStudy?.createdAtMilliseconds ?? now,
+            name: savedStudy?.name ?? String(localized: "Link Profile"), createdAtMilliseconds: savedStudy?.createdAtMilliseconds ?? now,
             updatedAtMilliseconds: now, kind: .linkProfile, linkProfile: inputs, revision: savedStudy?.revision,
             origin: origin(inputs),
             // The calculated result, when it's for exactly these inputs.
@@ -1358,8 +1358,8 @@ private struct LinkProfileHeader: View {
                         .foregroundStyle(.secondary)
                 }
                 Text(model.usesDefaultEquipment
-                    ? "Using default antenna and radio settings."
-                    : "Using your antenna and radio settings.")
+                    ? String(localized: "Using default antenna and radio settings.")
+                    : String(localized: "Using your antenna and radio settings."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {

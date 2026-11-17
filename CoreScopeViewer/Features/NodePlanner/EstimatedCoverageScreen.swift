@@ -243,7 +243,7 @@ final class EstimatedCoverageModel {
             calculatedResult: activeResult.flatMap { try? PortableCoverageResult.encode($0) })
         let now = Int64(Date().timeIntervalSince1970 * 1000)
         let study = SavedStudy(id: savedStudy?.id ?? UUID().uuidString.lowercased(),
-            name: savedStudy?.name ?? "Estimated Coverage", createdAtMilliseconds: savedStudy?.createdAtMilliseconds ?? now,
+            name: savedStudy?.name ?? String(localized: "Estimated Coverage"), createdAtMilliseconds: savedStudy?.createdAtMilliseconds ?? now,
             updatedAtMilliseconds: now, kind: .coverage, coverage: coverage, revision: savedStudy?.revision, origin: catalogOrigin)
         return (try? study.validate()) != nil ? study : nil
     }
@@ -1164,8 +1164,8 @@ private struct CoverageHeader: View {
                 } else if result.area.workLimited || result.nodes.run.nodesToEvaluate.contains(where: { result.nodes.run.status(for: $0).reason == .pathWorkLimit }) {
                     Text(result.area.chargedSamples >= Int64(result.limits.areaSamples)
                         || result.area.chargedGeometry >= Int64(result.limits.areaGeometry)
-                        ? "The study exhausted its work budget. Some samples were not calculated. Try a smaller radius or wider sample spacing."
-                        : "Some individual paths exceeded their work limits. Wider grid spacing may not fix these paths; try a smaller radius.")
+                        ? String(localized: "The study exhausted its work budget. Some samples were not calculated. Try a smaller radius or wider sample spacing.")
+                        : String(localized: "Some individual paths exceeded their work limits. Wider grid spacing may not fix these paths; try a smaller radius."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Text("Hatched areas have no prediction.")
@@ -1231,7 +1231,7 @@ private struct CoverageHeader: View {
     /// The transmitter and area in a line: "USA/Canada · 22 dBm · Antenna 20 ft · 12.4 mi / 0.6 mi".
     private var summary: String {
         let radio = model.radioPreset?.title ?? String(localized: "Custom radio")
-        let power = "\(model.transmitPowerDbm.formatted(.number.precision(.fractionLength(0...1)))) dBm"
+        let power = String(localized: "\(model.transmitPowerDbm.formatted(.number.precision(.fractionLength(0...1)))) dBm")
         let antenna = String(localized: "Antenna \(distanceUnit.formatHeight(meters: model.transmitHeightMeters))")
         let area = "\(distanceUnit.format(kilometers: Double(model.radiusMeters) / 1000)) / \(distanceUnit.format(kilometers: Double(model.spacingMeters) / 1000))"
         return [radio, power, antenna, area].joined(separator: " · ")
@@ -1528,9 +1528,9 @@ private struct CoverageRadioCard: View {
 
     /// "910.525 MHz · SF7 · 62.5 kHz · 22 dBm · −127.5 dBm"
     private var summary: String {
-        var parts = ["\(model.frequencyMHz.formatted(.number.precision(.fractionLength(0...3)))) MHz"]
+        var parts = [String(localized: "\(model.frequencyMHz.formatted(.number.precision(.fractionLength(0...3)))) MHz")]
         if let preset = model.radioPreset { parts.append(preset.modemSummary) }
-        parts.append("\(model.transmitPowerDbm.formatted(.number.precision(.fractionLength(0...1)))) dBm")
+        parts.append(String(localized: "\(model.transmitPowerDbm.formatted(.number.precision(.fractionLength(0...1)))) dBm"))
         parts.append(String(localized: "sensitivity \(model.sensitivityDbm.formatted(.number.precision(.fractionLength(0...1)))) dBm"))
         return parts.joined(separator: " · ")
     }

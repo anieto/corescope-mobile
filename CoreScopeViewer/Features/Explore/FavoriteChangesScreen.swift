@@ -234,12 +234,12 @@ private struct FavoriteChangeCard: View {
             Text(row.message).font(.subheadline.weight(.semibold))
             if let activity = row.metric?.activity {
                 Text(activity.state == .recentlyHeard ? "Recently heard" :
-                        activity.state == .notRecentlyHeard ? "Not recently heard" : "Activity unknown")
+                        activity.state == .notRecentlyHeard ? String(localized: "Not recently heard") : String(localized: "Activity unknown"))
                     .font(.subheadline)
             }
             if let observer = row.metric?.observer {
                 Text(observer.state == .active ? "Recently seen" :
-                        observer.state == .inactive ? "Not recently seen" : "Observer activity unknown")
+                        observer.state == .inactive ? String(localized: "Not recently seen") : String(localized: "Observer activity unknown"))
                     .font(.subheadline)
             }
             if let at = row.previousAt { Text("Last reviewed: \(at, format: .dateTime)").font(.caption).foregroundStyle(.secondary) }

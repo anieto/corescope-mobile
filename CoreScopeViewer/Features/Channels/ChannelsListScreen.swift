@@ -119,7 +119,7 @@ struct ChannelsListScreen: View {
             .overlay {
                 if visibleServerChannels.isEmpty && visibleMonitoredChannels.isEmpty && !viewModel.isLoading && viewModel.errorMessage == nil {
                     ContentUnavailableView(
-                        searchText.isEmpty ? "No channels yet" : "No matching channels",
+                        searchText.isEmpty ? String(localized: "No channels yet") : String(localized: "No matching channels"),
                         systemImage: searchText.isEmpty ? "number" : "magnifyingglass"
                     )
                 }
@@ -130,7 +130,7 @@ struct ChannelsListScreen: View {
                     .id(selectedChannel.id)
             } else {
                 ContentUnavailableView(
-                    "Select a Channel",
+                    String(localized: "Select a Channel"),
                     systemImage: "bubble.left.and.bubble.right",
                     description: Text("Choose a channel to read its messages.")
                 )

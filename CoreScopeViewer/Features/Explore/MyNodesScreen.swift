@@ -272,7 +272,7 @@ private struct ActivityItemContent: View {
                     successfulRecord: state == .fetched || state == .cached)
                 VStack(alignment: .leading, spacing: 8) {
                     Label(activity.state == .recentlyHeard ? "Recently heard" :
-                            activity.state == .notRecentlyHeard ? "Not recently heard" : "Activity unknown",
+                            activity.state == .notRecentlyHeard ? String(localized: "Not recently heard") : String(localized: "Activity unknown"),
                           systemImage: activity.state == .recentlyHeard ? "waveform.path" : "clock")
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(activity.state == .recentlyHeard ? Color.accentColor : Color.secondary)

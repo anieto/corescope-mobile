@@ -84,7 +84,7 @@ enum SavedPlansExport {
         let base: String
         switch package.scope {
         case .study: base = package.studies.first?.name ?? String(localized: "Study")
-        case .plan: base = package.studyPlans.first?.name ?? "Plan"
+        case .plan: base = package.studyPlans.first?.name ?? String(localized: "Plan")
         case .library: base = String(localized: "NodeScope saved plans \(exportedAt.formatted(.iso8601.year().month().day()))")
         }
         let safe = base.map { "/\\:?%*|\"<>".contains($0) || $0.isNewline ? "-" : $0 }
@@ -195,8 +195,8 @@ struct ExportPackageSheet: View {
                     if hasNotes { Toggle("Include plan notes", isOn: $includesNotes) }
                 } footer: {
                     Text(includesResults
-                         ? "Results open on another device without calculating again."
-                         : "Inputs only: the recipient calculates again to see results.")
+                         ? String(localized: "Results open on another device without calculating again.")
+                         : String(localized: "Inputs only: the recipient calculates again to see results."))
                 }
                 Section {
                     LabeledContent("Studies", value: "\(preview.studies)")

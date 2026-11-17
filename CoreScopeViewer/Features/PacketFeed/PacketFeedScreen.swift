@@ -362,12 +362,12 @@ private struct BeaconPacketSidebar: View {
                         }
                         .packetFeedListRow()
                         .accessibilityHint(selectedHash == row.hash
-                            ? "Returns to live traffic"
-                            : "Pauses the feed and reveals replay and packet detail actions")
+                            ? String(localized: "Returns to live traffic")
+                            : String(localized: "Pauses the feed and reveals replay and packet detail actions"))
                     }
                 } else {
                     ContentUnavailableView(
-                        liveFeed.isConnected ? "Waiting for Packets" : "Not Connected",
+                        liveFeed.isConnected ? String(localized: "Waiting for Packets") : String(localized: "Not Connected"),
                         systemImage: "dot.radiowaves.left.and.right"
                     )
                 }
@@ -928,7 +928,7 @@ private struct CoreScopeMapLivePacketSidebar: View {
         .overlay {
             if !isFeedPaused && feedModel.groups.isEmpty && (regionFilter.selectedRegion == nil || observerRegionLookup.isLoaded) {
                 ContentUnavailableView(
-                    liveFeed.isConnected ? "Waiting for Packets" : "Not Connected",
+                    liveFeed.isConnected ? String(localized: "Waiting for Packets") : String(localized: "Not Connected"),
                     systemImage: "dot.radiowaves.left.and.right"
                 )
             }
@@ -1109,7 +1109,7 @@ struct PacketFeedScreen: View {
             if feedModel.groups.isEmpty && (regionFilter.selectedRegion == nil || observerRegionLookup.isLoaded) {
                 ContentUnavailableView {
                     Label(
-                        liveFeed.isConnected ? "Waiting for Packets" : "Not Connected",
+                        liveFeed.isConnected ? String(localized: "Waiting for Packets") : String(localized: "Not Connected"),
                         systemImage: "dot.radiowaves.left.and.right"
                     )
                 } description: {
@@ -1283,8 +1283,8 @@ private struct LivePacketFeedHeader: View {
                     .fill(isPaused ? NodeScopeStyle.activity : isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
                     .frame(width: 8, height: 8)
                 Text(isPaused
-                    ? newCount > 0 ? "Live feed paused · \(newCount) new" : "Live feed paused"
-                    : isConnected ? "Listening for live traffic" : "Reconnecting to analyzer")
+                    ? newCount > 0 ? String(localized: "Live feed paused · \(newCount) new") : String(localized: "Live feed paused")
+                    : isConnected ? String(localized: "Listening for live traffic") : String(localized: "Reconnecting to analyzer"))
                     .font(.subheadline.weight(.semibold))
             }
             if isCompact {

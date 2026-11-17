@@ -104,7 +104,7 @@ struct SavedPlansScreen: View {
                 Section {
                     // Superseded by plans of studies: shown only to people who already saved candidate sites.
                     if !model.plans.isEmpty {
-                        NavigationLink("Candidate sites") { CandidateSitesScreen() }
+                        NavigationLink(String(localized: "Candidate sites")) { CandidateSitesScreen() }
                     }
                 } footer: {
                     Text("Stored on this device. Backup details are in Settings › Cache & Storage.")
@@ -264,7 +264,7 @@ enum StudyFilter: Hashable, CaseIterable {
 
     var title: String {
         switch self {
-        case .all: "All"
+        case .all: String(localized: "All")
         case .linkProfile: String(localized: "Link Profiles")
         case .coverage: String(localized: "Coverage")
         }
@@ -698,7 +698,7 @@ private struct SaveStudySheet: View {
 
     /// Where the study is now, and what choosing somewhere else does.
     private var saveInFooter: String {
-        let current = existing.map { model.plan($0.planID)?.name ?? "Standalone" }
+        let current = existing.map { model.plan($0.planID)?.name ?? String(localized: "Standalone") }
         if let current, mode == .update {
             return String(localized: "Now in \(current). Choose another plan to move it there, or Standalone to keep it outside any plan.")
         }
@@ -706,7 +706,7 @@ private struct SaveStudySheet: View {
     }
 
     private var confirmTitle: String {
-        if existing == nil { return "Save study" }
+        if existing == nil { return String(localized: "Save study") }
         return mode == .update ? String(localized: "Update") : String(localized: "Save as new")
     }
 
@@ -722,8 +722,8 @@ private struct SaveStudySheet: View {
                         .pickerStyle(.segmented)
                     } footer: {
                         Text(mode == .update
-                            ? "Replaces the saved “\(existing.name)” with what's open now."
-                            : "Keeps “\(existing.name)” as it is and saves a separate study.")
+                            ? String(localized: "Replaces the saved “\(existing.name)” with what's open now.")
+                            : String(localized: "Keeps “\(existing.name)” as it is and saves a separate study."))
                     }.instrumentListRows()
                     if needsInputsOnly {
                         Section {

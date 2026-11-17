@@ -31,7 +31,7 @@ struct AnalyzerDiagnosticsScreen: View {
                     Task { await runDiagnostics() }
                 } label: {
                     Label(
-                        isRunning ? "Running Diagnostics…" : "Run Diagnostics Again",
+                        isRunning ? String(localized: "Running Diagnostics…") : String(localized: "Run Diagnostics Again"),
                         systemImage: "arrow.clockwise"
                     )
                 }
@@ -135,7 +135,7 @@ private struct AnalyzerLiveUpdatesSection: View {
 
     private var detail: String {
         if isConnected {
-            return "Connected"
+            return String(localized: "Connected")
         }
         if let error, !error.isEmpty {
             return String(localized: "Disconnected · \(error)")
@@ -172,7 +172,7 @@ private struct AnalyzerCapabilitiesSection: View {
                 }
             } else {
                 ContentUnavailableView(
-                    "No Diagnostic Results",
+                    String(localized: "No Diagnostic Results"),
                     systemImage: "stethoscope",
                     description: Text("Run diagnostics to check this analyzer.")
                 )
