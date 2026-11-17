@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.explore
 
+import org.nodescope.android.core.design.nodeRoleLabel
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import org.nodescope.android.R
@@ -404,7 +405,7 @@ private fun SavedRow(item: SavedItem, now: Long?, current: MeshNode?, onOpen: ()
             Column(Modifier.weight(1f)) {
                 Text(current?.displayName?.takeIf { current.name != null } ?: item.title, style = MaterialTheme.typography.titleSmall)
                 // Without a time this is the favorites list, whose subtitle is a key, observer code or sender: data, in Neon.
-                Text(listOfNotNull(item.subtitle, now?.let { relativeTime(java.time.Instant.ofEpochMilli(item.at), it) }).joinToString(" · "),
+                Text(listOfNotNull(item.subtitleText?.asString(), now?.let { relativeTime(java.time.Instant.ofEpochMilli(item.at), it) }).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = if (now == null) MonaspaceNeon else null)
                 detail?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -493,7 +494,7 @@ private fun GlobalSearchSheet(nodes: List<MeshNode>, observers: List<MeshObserve
                         if (results.nodes.isNotEmpty()) {
                             item { SectionLabel(stringResource(R.string.explore_nodes)) }
                             items(results.nodes, key = { "n-${it.publicKey}" }) { node ->
-                                ResultRow(SavedKind.NODE, node, node.name ?: stringResource(R.string.explore_unnamed_node), "${node.role.replaceFirstChar { it.uppercase() }} · ${node.publicKey.take(12).uppercase()}",
+                                ResultRow(SavedKind.NODE, node, node.name ?: stringResource(R.string.explore_unnamed_node), "${nodeRoleLabel(node.role)} · ${node.publicKey.take(12).uppercase()}",
                                     library.isFavorite(SavedKind.NODE, node.publicKey), { library.toggle(node) }) { choose { actions.onNode(node.publicKey) } }
                             }
                         }

@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.nodes
 
+import org.nodescope.android.core.design.nodeRoleLabel
 import org.nodescope.android.core.design.withDescription
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -64,7 +65,7 @@ fun NodeAnalyticsScreen(model: NodeAnalyticsViewModel, host: String, publicKey: 
                     }
                     Column(Modifier.weight(1f)) {
                         Text(node?.name?.takeIf(String::isNotBlank) ?: stringResource(R.string.node_detail_unnamed_node), style = MaterialTheme.typography.titleMedium)
-                        Text(stringResource(R.string.node_detail_value, node?.role?.replaceFirstChar { it.uppercase() } ?: stringResource(R.string.node_detail_unknown_role), publicKey.take(8).uppercase(), publicKey.takeLast(4).uppercase()),
+                        Text(stringResource(R.string.node_detail_value, node?.role?.let { nodeRoleLabel(it) } ?: stringResource(R.string.node_detail_unknown_role), publicKey.take(8).uppercase(), publicKey.takeLast(4).uppercase()),
                             style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                     }
                 }

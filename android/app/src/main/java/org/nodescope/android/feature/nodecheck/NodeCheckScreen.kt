@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.nodecheck
 
+import org.nodescope.android.core.design.nodeRoleLabel
 import org.nodescope.android.core.design.UiText
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -268,7 +269,7 @@ private fun SummaryCard(report: NodeCheckReport, onLiveTest: () -> Unit, onNodeP
                 Column(Modifier.weight(1f)) {
                     Text(node.name ?: stringResource(R.string.node_check_unnamed_node), style = MaterialTheme.typography.titleLarge)
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(node.role.replaceFirstChar(Char::uppercase), style = MaterialTheme.typography.labelMedium,
+                        Text(nodeRoleLabel(node.role), style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold, color = roleColor(node.role))
                         Text(node.publicKey.take(16).uppercase() + "…", style = MaterialTheme.typography.labelMedium,
                             fontFamily = MonaspaceNeon, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -628,7 +629,7 @@ private fun ChooseCard(state: NodeCheckState.Choose, onPick: (MeshNode) -> Unit)
                         Text(node.displayName, style = MaterialTheme.typography.bodyLarge, fontFamily = MonaspaceNeon, fontWeight = FontWeight.SemiBold,
                             maxLines = 1, overflow = TextOverflow.Ellipsis)
                         val heard = runCatching { Instant.parse(node.lastSeen).toEpochMilli() }.getOrNull()
-                        Text(listOfNotNull(node.role.replaceFirstChar(Char::uppercase), node.publicKey.take(8).uppercase(),
+                        Text(listOfNotNull(nodeRoleLabel(node.role), node.publicKey.take(8).uppercase(),
                             heard?.let { "heard ${NodeCheckRules.ago(it)}" }).joinToString(" · "),
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }

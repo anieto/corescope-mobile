@@ -1,5 +1,8 @@
 package org.nodescope.android.core.model
 
+import org.nodescope.android.R
+import org.nodescope.android.core.design.UiText
+import org.nodescope.android.core.design.nodeRoleText
 import java.net.URLEncoder
 
 /**
@@ -14,11 +17,11 @@ data class MeshCoreContactLink(val name: String, val publicKey: String, val type
         "meshcore://contact/add?name=${URLEncoder.encode(name, "UTF-8").replace("+", "%20").replace("*", "%2A")}" +
             "&public_key=$publicKey&type=$type"
 
-    val typeLabel: String get() = when (type) {
-        1 -> "Companion"
-        2 -> "Repeater"
-        3 -> "Room Server"
-        else -> "Sensor"
+    val typeLabel: UiText get() = when (type) {
+        1 -> nodeRoleText("companion")
+        2 -> nodeRoleText("repeater")
+        3 -> UiText.Resource(R.string.node_detail_contact_room_server)
+        else -> nodeRoleText("sensor")
     }
 
     companion object {

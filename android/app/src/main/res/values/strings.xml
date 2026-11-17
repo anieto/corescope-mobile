@@ -222,6 +222,7 @@
 
     <!-- node details and analytics strings -->
     <string name="common_share">Share</string>
+    <string name="node_detail_contact_room_server">Room Server</string>
     <string name="node_detail_02d">%1$02d</string>
     <string name="node_detail_1_0f_dbm_avg_rssi">%1$.0f dBm avg RSSI</string>
     <string name="node_detail_1_1f_avg_hops">%1$.1f avg hops</string>

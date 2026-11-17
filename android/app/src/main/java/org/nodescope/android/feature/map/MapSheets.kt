@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.map
 
+import org.nodescope.android.core.design.nodeRoleLabel
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import org.nodescope.android.R
@@ -77,7 +78,7 @@ internal fun MapFiltersSheet(filters: MapFilters, observers: List<MeshObserver>,
                 }
                 MAP_ROLES.forEach { role ->
                     val shown = filters.roles.isEmpty() || role in filters.roles
-                    RoleRow(role.replaceFirstChar { it.uppercase() }, roleColors.getValue(role), shown) {
+                    RoleRow(nodeRoleLabel(role), roleColors.getValue(role), shown) {
                         onChange(filters.copy(roles = toggledRoles(filters.roles, role)))
                     }
                 }
@@ -398,7 +399,7 @@ internal fun MapNodeSelectionSheet(node: org.nodescope.android.core.model.MeshNo
                 }
                 Column(Modifier.weight(1f)) {
                     Text(node.displayName, style = MaterialTheme.typography.titleLarge)
-                    Text(node.role.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodyMedium,
+                    Text(nodeRoleLabel(node.role), style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onClick = onDismiss) { Icon(Icons.Outlined.Close, stringResource(R.string.live_map_dismiss_node_selection)) }

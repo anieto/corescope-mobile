@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.nodes
 
+import org.nodescope.android.core.design.nodeRoleLabel
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -155,9 +156,9 @@ private fun IdentityCard(node: MeshNode, publicKey: String, favorite: Boolean, n
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(node.name?.takeIf(String::isNotBlank) ?: stringResource(R.string.node_detail_unnamed_node), style = MaterialTheme.typography.titleLarge)
                 val roleTerm = GlossaryTerm.forRole(node.role)
-                if (roleTerm != null) LearnLabel(node.role.replaceFirstChar { it.uppercase() }, roleTerm, style = MaterialTheme.typography.labelMedium,
+                if (roleTerm != null) LearnLabel(nodeRoleLabel(node.role), roleTerm, style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                else Text(node.role.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.labelMedium,
+                else Text(nodeRoleLabel(node.role), style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 // Beacon may not know when a node was last seen; never show "Seen Unknown".
                 parseInstant(node.lastSeen)?.let { seen ->
@@ -491,7 +492,7 @@ private fun MeshCoreContactSheet(contact: MeshCoreContactLink, onDismiss: () -> 
                     .withDescription(stringResource(R.string.node_detail_qr_code_for_adding_as_a_meshcore_contact, contact.name)) { description -> contentDescription = description })
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(contact.name, style = MaterialTheme.typography.titleMedium)
-                Text(contact.typeLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(contact.typeLabel.asString(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Button(onClick = {
                 // A new task keeps MeshCore in its own recents entry; without it, MeshCore stacks
