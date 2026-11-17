@@ -1,17 +1,44 @@
 package org.nodescope.android.core.storage
 
 import android.content.Context
+import android.icu.util.LocaleData
+import android.icu.util.ULocale
+import android.os.Build
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import java.io.IOException
+import java.util.Locale
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import org.nodescope.android.core.model.DEFAULT_HOST
 
 enum class Appearance { SYSTEM, LIGHT, DARK }
-/** How distances are shown. Imperial is the default (the app's communities are in the US). */
-enum class DistanceUnit { IMPERIAL, METRIC }
+/** Until the user chooses a unit, distances follow the device region. */
+enum class DistanceUnit {
+    IMPERIAL, UK, METRIC;
+
+    val usesMiles: Boolean get() = this != METRIC
+    val usesFeet: Boolean get() = this == IMPERIAL
+
+    companion object {
+        fun defaultUnit(locale: Locale = Locale.getDefault()): DistanceUnit {
+            if (Build.VERSION.SDK_INT >= 24) {
+                return when (LocaleData.getMeasurementSystem(ULocale.forLocale(locale))) {
+                    LocaleData.MeasurementSystem.US -> IMPERIAL
+                    LocaleData.MeasurementSystem.UK -> UK
+                    else -> METRIC
+                }
+            }
+            // The host JVM has no Android ICU. Keep region mapping available to local unit tests.
+            return when (locale.country) {
+                "US", "LR" -> IMPERIAL
+                "GB", "MM" -> UK
+                else -> METRIC
+            }
+        }
+    }
+}
 data class AppPreferences(
     val host: String = DEFAULT_HOST,
     val onboarded: Boolean = false,
@@ -19,9 +46,11 @@ data class AppPreferences(
     val region: String? = null,
     val destination: String = "MAP",
     val registry: String? = null,
-    val distanceUnit: DistanceUnit = DistanceUnit.IMPERIAL,
+    val storedDistanceUnit: DistanceUnit? = null,
     val backgroundTexture: Boolean = true,
-)
+) {
+    val distanceUnit: DistanceUnit get() = storedDistanceUnit ?: DistanceUnit.defaultUnit()
+}
 interface PreferencesStore {
     val values: Flow<AppPreferences>
     suspend fun selectSource(host: String)
@@ -54,7 +83,7 @@ class AndroidPreferences(context: Context, private val appVersion: String = "") 
         AppPreferences(it[host] ?: DEFAULT_HOST, it[onboarded] ?: false,
             Appearance.entries.firstOrNull { mode -> mode.name == it[appearance] } ?: Appearance.SYSTEM,
             it[region], it[destination] ?: "MAP", it[registry],
-            DistanceUnit.entries.firstOrNull { unit -> unit.name == it[distanceUnit] } ?: DistanceUnit.IMPERIAL,
+            DistanceUnit.entries.firstOrNull { unit -> unit.name == it[distanceUnit] },
             it[backgroundTexture] ?: true)
     }
     override suspend fun selectSource(host: String) {

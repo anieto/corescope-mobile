@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.coverage
 
+import org.nodescope.android.core.storage.DistanceUnit
 import org.nodescope.android.R
 import org.nodescope.android.core.design.UiText
 import android.content.SharedPreferences
@@ -37,8 +38,7 @@ sealed interface CoverageSetupProblem {
 internal class EstimatedCoverageViewModel(
     private val cacheRoot: File,
     private val preferences: SharedPreferences,
-    /** Heights are entered in feet for this setup when the app uses imperial units, as before. */
-    val heightInFeet: Boolean,
+    distanceUnit: DistanceUnit,
     /** Where the last calculation report is kept (app files, not the cache); null keeps no report. */
     private val diagnosticsFile: File? = null,
 ) : ViewModel(), org.nodescope.android.feature.candidatesites.StudyDraftSource {
@@ -58,10 +58,12 @@ internal class EstimatedCoverageViewModel(
     var undo by mutableStateOf<Undo?>(null); private set
     private var undoCounter = 0L
 
+    val heightInFeet = distanceUnit.usesFeet
+
     /** Radio, antenna and reserve fields, keyed as [CoverageSetupValidation] expects. */
     var values by mutableStateOf(defaultValues(heightInFeet)); private set
-    var radiusMeters by mutableIntStateOf(if (heightInFeet) 16_093 else 20_000); private set
-    var spacingMeters by mutableIntStateOf(if (heightInFeet) 1609 else 1000); private set
+    var radiusMeters by mutableIntStateOf(if (distanceUnit.usesMiles) 16_093 else 20_000); private set
+    var spacingMeters by mutableIntStateOf(if (distanceUnit.usesMiles) 1609 else 1000); private set
     var acceptsScenario by mutableStateOf(preferences.getBoolean(ASSUMPTIONS_KEY, false)); private set
 
     // Execution.
@@ -193,7 +195,7 @@ internal class EstimatedCoverageViewModel(
             result != null -> calculatedCatalog
             else -> null
         }
-        val title = savedStudy?.name ?: transmitterName ?: coordinate?.let { "%.4f, %.4f".format(it.latitude, it.longitude) } ?: "Estimated Coverage"
+        val title = savedStudy?.name ?: transmitterName ?: coordinate?.let { "%.4f, %.4f".format(java.util.Locale.ROOT, it.latitude, it.longitude) } ?: "Estimated Coverage"
         return org.nodescope.android.feature.candidatesites.DraftContent(title, editor, suggestedPlanID, savedStudy?.id, savedStudy?.revision, catalog,
             savedCatalogComplete, payload)
     }

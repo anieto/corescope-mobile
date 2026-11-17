@@ -1,5 +1,6 @@
 package org.nodescope.android
 
+import org.nodescope.android.core.storage.DistanceUnit
 import android.content.SharedPreferences
 import java.io.File
 import java.nio.file.Files
@@ -18,10 +19,10 @@ import org.nodescope.android.feature.coverage.*
 /** Mirrors the model half of iOS `CoverageRadioPresetsTests`. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class EstimatedCoverageViewModelTest {
-    private fun model(imperial: Boolean = false, test: (EstimatedCoverageViewModel) -> Unit) = runTest {
+    private fun model(unit: DistanceUnit = DistanceUnit.METRIC, test: (EstimatedCoverageViewModel) -> Unit) = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val root = Files.createTempDirectory("coverage").toFile()
-        try { test(EstimatedCoverageViewModel(File(root, "terrain"), CoverageMemoryPreferences(), imperial)) }
+        try { test(EstimatedCoverageViewModel(File(root, "terrain"), CoverageMemoryPreferences(), unit)) }
         finally { root.deleteRecursively(); Dispatchers.resetMain() }
     }
 
@@ -39,7 +40,7 @@ class EstimatedCoverageViewModelTest {
         assertEquals(1000, inputs.grid.spacingMeters)
     }
 
-    @Test fun imperialDefaultUsesTenMilesAndWholeFeet() = model(imperial = true) { model ->
+    @Test fun imperialDefaultUsesTenMilesAndWholeFeet() = model(DistanceUnit.IMPERIAL) { model ->
         model.place(Coordinate(50.5, -115.5), null)
         val inputs = requireNotNull(model.inputs())
         assertEquals(16_093, inputs.grid.radiusMeters)
@@ -47,6 +48,15 @@ class EstimatedCoverageViewModelTest {
         assertEquals(model.grid?.columns, inputs.grid.columns)
         assertEquals(6.096, inputs.transmitHeightMeters, 1e-9)
         assertEquals(1.524, inputs.receiveHeightMeters, 1e-9)
+    }
+
+    @Test fun ukDefaultsUseMilesAndMeterHeights() = model(DistanceUnit.UK) { model ->
+        model.place(Coordinate(50.5, -115.5), null)
+        val inputs = requireNotNull(model.inputs())
+        assertEquals(16_093, inputs.grid.radiusMeters)
+        assertEquals(1609, inputs.grid.spacingMeters)
+        assertEquals(6.0, inputs.transmitHeightMeters, 0.0)
+        assertEquals(1.5, inputs.receiveHeightMeters, 0.0)
     }
 
     @Test fun editingAPresetValueMakesTheRadioCustomAndUndoRestoresPlacement() = model { model ->
@@ -119,8 +129,8 @@ class EstimatedCoverageViewModelTest {
         val root = Files.createTempDirectory("coverage").toFile()
         try {
             val preferences = CoverageMemoryPreferences()
-            EstimatedCoverageViewModel(File(root, "terrain"), preferences, false).updateAcceptsScenario(true)
-            assertTrue(EstimatedCoverageViewModel(File(root, "terrain"), preferences, false).acceptsScenario)
+            EstimatedCoverageViewModel(File(root, "terrain"), preferences, DistanceUnit.METRIC).updateAcceptsScenario(true)
+            assertTrue(EstimatedCoverageViewModel(File(root, "terrain"), preferences, DistanceUnit.METRIC).acceptsScenario)
         } finally { root.deleteRecursively(); Dispatchers.resetMain() }
     }
 }

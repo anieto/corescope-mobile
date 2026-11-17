@@ -87,8 +87,9 @@ class CoverageSetupValidationTest {
             val item = row.jsonObject
             val field = item.getValue("field").jsonPrimitive.content
             val text = item.getValue("text").jsonPrimitive.content
-            assertEquals("$field: $text", item.getValue("issue").jsonPrimitive.contentOrNull,
-                CoverageSetupValidation.issue(field, text)?.name)
+            // The shared fixture predates comma support in the Android editor.
+            val expected = if (field == "power" && text == "1,5") null else item.getValue("issue").jsonPrimitive.contentOrNull
+            assertEquals("$field: $text", expected, CoverageSetupValidation.issue(field, text)?.name)
         }
     }
     @Test fun editorChoicesCanExceedWorkBeforeGridSize() {
@@ -100,5 +101,12 @@ class CoverageSetupValidationTest {
             }.state)
         val ordinary = CoverageGrid(20_000, 1000, -20_000, 20_000, -20_000, 20_000)
         assertTrue(CoverageGridPreflight.estimate(ordinary, 150_000_000, 150_000_000).eligiblePoints > 0)
+    }
+
+    @Test fun decimalInputAcceptsDotsAndCommasWithoutGrouping() {
+        assertEquals(1.5, CoverageSetupValidation.number("1.5")!!, 0.0)
+        assertEquals(1.5, CoverageSetupValidation.number("1,5")!!, 0.0)
+        assertNull(CoverageSetupValidation.number("1,000.5"))
+        assertNull(CoverageSetupValidation.number("1,2,3"))
     }
 }

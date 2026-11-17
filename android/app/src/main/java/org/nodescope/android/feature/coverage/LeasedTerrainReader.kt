@@ -67,7 +67,7 @@ class LeasedTerrainReader private constructor(
                     hash.update(buffer, 0, count)
                     remaining -= count
                 }
-                val digest = hash.digest().joinToString("") { "%02x".format(it.toInt() and 255) }
+                val digest = hash.digest().joinToString("") { "%02x".format(java.util.Locale.ROOT, it.toInt() and 255) }
                 if (digest != decodedSHA256 || handle.length() != size) throw TerrainReadFailure(TerrainReadState.CORRUPT)
                 if (cancelled()) throw TerrainReadFailure(TerrainReadState.CANCELLED)
                 val result = LeasedTerrainReader(handle, side, release, mappingEnabled)

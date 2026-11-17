@@ -3,6 +3,7 @@ package org.nodescope.android.core.design
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import org.nodescope.android.R
+import java.text.NumberFormat
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -32,8 +33,18 @@ fun compactCount(value: Long): String = when {
     value < 1_000_000_000 -> scaled(value / 1_000_000.0, "M")
     else -> scaled(value / 1_000_000_000.0, "B")
 }
-private fun scaled(value: Double, suffix: String) =
-    (if (value < 10) String.format(Locale.US, "%.1f", value).removeSuffix(".0") else String.format(Locale.US, "%.0f", value)) + suffix
+private fun scaled(value: Double, suffix: String): String =
+    formatDisplayDecimal(value, if (value < 10) 1 else 0) + suffix
+
+/** Optional fractional digits for compact labels that do not group thousands. */
+internal fun formatDisplayDecimal(
+    value: Double,
+    maximumDecimals: Int,
+    locale: Locale = Locale.getDefault(Locale.Category.FORMAT),
+): String = NumberFormat.getNumberInstance(locale).apply {
+    isGroupingUsed = false
+    maximumFractionDigits = maximumDecimals
+}.format(value)
 
 fun formatDuration(seconds: Long): String {
     val days = seconds / 86_400
@@ -52,16 +63,24 @@ fun shortDateTime(instant: Instant?): String = instant?.let {
 } ?: stringResource(R.string.common_unknown_time)
 
 /** The distance unit chosen in Settings, available to every screen. */
-val LocalDistanceUnit = staticCompositionLocalOf { DistanceUnit.IMPERIAL }
+val LocalDistanceUnit = staticCompositionLocalOf { DistanceUnit.defaultUnit() }
 
 /**
  * Same rule as iOS `DistanceFormat`: miles or kilometers to one decimal place, and short
  * distances in feet (under 0.1 mi) or meters (under 1 km), rounded to 10.
  */
-fun formatDistance(km: Double, unit: DistanceUnit): String = when (unit) {
-    DistanceUnit.IMPERIAL -> {
+fun formatDistance(km: Double, unit: DistanceUnit, locale: Locale = Locale.getDefault(Locale.Category.FORMAT)): String {
+    fun oneDecimal(value: Double): String = NumberFormat.getNumberInstance(locale).apply {
+        minimumFractionDigits = 1
+        maximumFractionDigits = 1
+    }.format(value)
+
+    if (unit.usesMiles) {
         val miles = km * 0.621371
-        if (miles < 0.1) "${(km * 3280.84 / 10).roundToLong() * 10} ft" else String.format(Locale.US, "%.1f mi", miles)
+        if (miles >= 0.1) return "${oneDecimal(miles)} mi"
+    } else if (km >= 1) {
+        return "${oneDecimal(km)} km"
     }
-    DistanceUnit.METRIC -> if (km < 1) "${(km * 100).roundToLong() * 10} m" else String.format(Locale.US, "%.1f km", km)
+    return if (unit.usesFeet) "${(km * 3280.84 / 10).roundToLong() * 10} ft"
+        else "${(km * 100).roundToLong() * 10} m"
 }

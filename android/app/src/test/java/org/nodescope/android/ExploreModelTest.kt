@@ -1,6 +1,10 @@
 package org.nodescope.android
 
 import java.time.Instant
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.*
 import org.junit.Test
 import org.nodescope.android.core.model.*
@@ -14,6 +18,16 @@ class ExploreModelTest {
     private val observers = listOf(MeshObserver("O1", "North", iata = "DFW", lastSeen = ago(1), model = "RAK"), MeshObserver("O2", "South", lastSeen = ago(90)))
     private fun packet(id: Long, minutes: Long, snr: Double?, hash: String = "h$id") =
         LivePacket(id, hash, 4, "ADVERT", "O1", "North", null, snr, null, emptyList(), emptyList(), ago(minutes), now, false)
+
+    @Test fun displayedSnrUsesTheLocaleWhileExportsKeepTheDecimalPoint() {
+        val metric = GlanceMetric.AVERAGE_SNR
+        val value = GlanceValue("5.0", "dB in the last hour", averageSnr = 5.0)
+        assertEquals("5,0", value.displayValue(java.util.Locale.forLanguageTag("pt-BR")))
+        val metrics = listOf(metric to value)
+        assertTrue(glanceCsv(metrics, 0, "").contains(",5.0,"))
+        val exported = Json.parseToJsonElement(glanceJson("example.org", 0L, metrics, 0, 0)).jsonObject
+        assertEquals("5.0", exported.getValue("metrics").jsonArray.single().jsonObject.getValue("value").jsonPrimitive.content)
+    }
 
     @Test fun dashboardMatchesIosWindows() {
         val packets = listOf(packet(1, 10, 4.0), packet(2, 50, 6.0), packet(3, 70, 100.0))

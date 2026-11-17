@@ -77,7 +77,7 @@ object ChannelCrypto {
 
     private fun sha256(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes)
     private fun Char.isHexDigitChar() = this in '0'..'9' || this in 'a'..'f' || this in 'A'..'F'
-    private fun ByteArray.toHex() = joinToString("") { "%02x".format(it) }
+    private fun ByteArray.toHex() = joinToString("") { "%02x".format(java.util.Locale.ROOT, it) }
     private fun hexBytes(hex: String): ByteArray? {
         if (hex.length % 2 != 0 || !hex.all { it.isHexDigitChar() }) return null
         return ByteArray(hex.length / 2) { hex.substring(it * 2, it * 2 + 2).toInt(16).toByte() }

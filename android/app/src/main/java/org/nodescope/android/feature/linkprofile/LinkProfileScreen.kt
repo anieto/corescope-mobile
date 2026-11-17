@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.linkprofile
 
+import org.nodescope.android.core.design.parseDecimalInput
 import androidx.compose.ui.res.stringResource
 import org.nodescope.android.R
 import org.nodescope.android.core.design.withDescription
@@ -70,7 +71,6 @@ import androidx.core.content.edit
 import org.nodescope.android.BuildConfig
 import java.text.DateFormat
 import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,7 +83,9 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
     // missing point, so a new profile needs no arming at all.
     var selecting by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
     fun coordinate(endpoint: String): ProfileCoordinate? = runCatching {
-        ProfileCoordinate(state.fields.getValue("Latitude $endpoint").toDouble(), state.fields.getValue("Longitude $endpoint").toDouble())
+        val latitude = state.fields.getValue("Latitude $endpoint").parseDecimalInput() ?: return@runCatching null
+        val longitude = state.fields.getValue("Longitude $endpoint").parseDecimalInput() ?: return@runCatching null
+        ProfileCoordinate(latitude, longitude)
     }.getOrNull()
     val placing = selecting ?: listOf("A", "B").firstOrNull { coordinate(it) == null }?.takeIf { BuildConfig.MAPS_CONFIGURED }
     // The Open-Meteo notice stays in the prompt until the first point is ever placed.
@@ -283,7 +285,7 @@ private fun LinkHeader(state: LinkProfileViewModel.State, selecting: String?, pl
                 }
                 val distance = formatDistance(result.result.distanceMeters / 1000, distanceUnit)
                 val summary = result.result.linkMarginDB?.let {
-                    stringResource(R.string.link_profile_margin_and_distance, String.format(Locale.getDefault(), "%.1f", it), distance)
+                    stringResource(R.string.link_profile_margin_and_distance, String.format("%.1f", it), distance)
                 } ?: distance
                 Text(summary, color = secondary)
                 // Still waiting for Calculate, so this is the result saved with the study.
@@ -370,7 +372,7 @@ private fun PointCard(model: LinkProfileViewModel, state: LinkProfileViewModel.S
     // Without a map, typing is the only way to place a point.
     var coordinatesShown by androidx.compose.runtime.saveable.rememberSaveable(endpoint) { mutableStateOf(!BuildConfig.MAPS_CONFIGURED) }
     val placed = state.fields.getValue("Latitude $endpoint").isNotBlank() && state.fields.getValue("Longitude $endpoint").isNotBlank()
-    val meters = state.fields.getValue("Height $endpoint (m)").toDoubleOrNull() ?: 0.0
+    val meters = state.fields.getValue("Height $endpoint (m)").parseDecimalInput() ?: 0.0
     val elevation = state.elevations[endpoint]
     val secondary = MaterialTheme.colorScheme.onSurfaceVariant
     Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
@@ -401,10 +403,10 @@ private fun PointCard(model: LinkProfileViewModel, state: LinkProfileViewModel.S
             }
             if (expanded) {
                 ProfileHeightControl(endpoint, meters, distanceUnit) { model.edit("Height $endpoint (m)", it.toString()) }
-                val height = state.fields.getValue("Height $endpoint (m)").toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }
+                val height = state.fields.getValue("Height $endpoint (m)").parseDecimalInput()?.takeIf { it.isFinite() && it >= 0 }
                 val total = elevation?.meters?.let { ground -> height?.let { ground + it } }
                 Text(stringResource(R.string.link_profile_total_height, total?.let { formatProfileHeight(it, distanceUnit) } ?: "—"), style = MaterialTheme.typography.bodyMedium)
-                AntennaPresetMenu(state.fields.getValue("Gain $endpoint (dBi)").toDoubleOrNull()) {
+                AntennaPresetMenu(state.fields.getValue("Gain $endpoint (dBi)").parseDecimalInput()) {
                     model.edit("Gain $endpoint (dBi)", it.toString())
                 }
                 listOf("Gain $endpoint (dBi)", "Loss $endpoint (dB)").forEach { key -> ProfileField(key, state.fields.getValue(key)) { model.edit(key, it) } }
@@ -432,7 +434,7 @@ private fun ProfileField(key: String, value: String, edit: (String) -> Unit) {
 @Composable
 private fun ProfileResult(analysis: LinkAnalysis, distanceUnit: DistanceUnit) {
     val result = analysis.result
-    fun dB(value: Double, digits: Int = 1) = String.format(Locale.getDefault(), "%.${digits}f", value)
+    fun dB(value: Double, digits: Int = 1) = String.format("%.${digits}f", value)
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = meshCardColor().copy(alpha = 1f))) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             TerrainChart(analysis, distanceUnit)
@@ -545,15 +547,15 @@ private fun TerrainChart(analysis: LinkAnalysis, distanceUnit: DistanceUnit) {
                 drawLine(secondary.copy(alpha = 0.22f), point(0.0, y), point(xMax, y), 0.5.dp.toPx(),
                     pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx())))
                 val height = profileDisplayHeight(y, distanceUnit).toInt()
-                val label = measurer.measure(if (index == 4) "$height ${if (distanceUnit == DistanceUnit.IMPERIAL) "ft" else "m"}" else "$height", axisStyle)
+                val label = measurer.measure(if (index == 4) "$height ${if (distanceUnit.usesFeet) "ft" else "m"}" else "$height", axisStyle)
                 val at = point(0.0, y)
                 drawText(label, topLeft = Offset(at.x - label.size.width - 3.dp.toPx(), at.y - label.size.height / 2f))
             }
             for (index in 0..4) {
                 val x = xMax * index / 4
-                val distance = if (distanceUnit == DistanceUnit.IMPERIAL) x / 1_609.344 else x / 1_000
-                val number = String.format(Locale.getDefault(), "%.${if (xMax < 10_000) 1 else 0}f", distance)
-                val label = measurer.measure(if (index == 4) "$number ${if (distanceUnit == DistanceUnit.IMPERIAL) "mi" else "km"}" else number, axisStyle)
+                val distance = if (distanceUnit.usesMiles) x / 1_609.344 else x / 1_000
+                val number = String.format("%.${if (xMax < 10_000) 1 else 0}f", distance)
+                val label = measurer.measure(if (index == 4) "$number ${if (distanceUnit.usesMiles) "mi" else "km"}" else number, axisStyle)
                 val at = point(x, low)
                 val textLeft = (at.x - label.size.width / 2f).coerceIn(0f, size.width - label.size.width)
                 drawText(label, topLeft = Offset(textLeft, at.y + 2.dp.toPx()))
@@ -623,7 +625,7 @@ internal fun ProfileHeightControl(endpoint: String, meters: Double, unit: Distan
         presets.forEach { preset ->
             FilterChip(selected = CoverageHeightPreset.matching(meters, presets) == preset,
                 onClick = {
-                    val value = if (unit == DistanceUnit.IMPERIAL)
+                    val value = if (unit.usesFeet)
                         profileHeightMeters(profileDisplayHeight(preset.meters, unit).roundToInt().toDouble(), unit)
                     else preset.meters
                     onMetersChanged(value)
@@ -650,10 +652,10 @@ internal fun ProfileHeightControl(endpoint: String, meters: Double, unit: Distan
     }
     OutlinedTextField(value = exact, onValueChange = { text ->
         exact = text
-        text.toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }?.let {
+        text.parseDecimalInput()?.takeIf { it.isFinite() && it >= 0 }?.let {
             onMetersChanged(profileHeightMeters(it, unit))
         }
-    }, label = { Text(stringResource(R.string.link_profile_above_ground, if (unit == DistanceUnit.IMPERIAL) "ft" else "m")) },
+    }, label = { Text(stringResource(R.string.link_profile_above_ground, if (unit.usesFeet) "ft" else "m")) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         textStyle = TextStyle(fontFamily = MonaspaceNeon), modifier = Modifier.fillMaxWidth()
             .onFocusChanged { editingExact = it.isFocused })

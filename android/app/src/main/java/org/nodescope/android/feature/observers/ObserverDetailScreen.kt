@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.nodescope.android.core.design.*
 import org.nodescope.android.core.model.*
-import java.util.Locale
 import org.nodescope.android.core.network.LiveFeedState
 
 @Composable
@@ -105,11 +104,11 @@ fun ObserverDetailScreen(model: ObserversViewModel, host: String, observerId: St
                 item { TelemetrySummaryCard(points, now) }
                 points.filter { it.batteryMillivolts != null }.takeIf { it.isNotEmpty() }?.let { battery -> item {
                     TelemetryHistoryCard(stringResource(R.string.observers_battery_history), Icons.Outlined.BatteryFull, stringResource(R.string.observers_observer_battery_voltage_over_time), HealthyGreen,
-                        battery.map { it.timestamp to it.batteryMillivolts!! / 1_000.0 }) { String.format(Locale.US, "%.2f V", it) }
+                        battery.map { it.timestamp to it.batteryMillivolts!! / 1_000.0 }) { String.format("%.2f V", it) }
                 } }
                 points.filter { it.noiseFloorDecibels != null }.takeIf { it.isNotEmpty() }?.let { noise -> item {
                     TelemetryHistoryCard(stringResource(R.string.observers_noise_floor_history), Icons.Outlined.GraphicEq, stringResource(R.string.observers_observer_noise_floor_over_time), ActivityAmber,
-                        noise.map { it.timestamp to it.noiseFloorDecibels!! }) { String.format(Locale.US, "%.0f dB", it) }
+                        noise.map { it.timestamp to it.noiseFloorDecibels!! }) { String.format("%.0f dB", it) }
                 } }
             }
         }
@@ -205,8 +204,8 @@ private fun TelemetrySummaryCard(points: List<ObserverTelemetryPoint>, now: Long
     }
     AnalyticsCard(stringResource(R.string.observers_observer_telemetry), Icons.Outlined.Sensors) {
         MetricGrid(listOf(
-            stringResource(R.string.observers_telemetry_battery) to (latest.batteryMillivolts?.let { String.format(Locale.US, "%.2f V", it / 1_000.0) } ?: stringResource(R.string.observers_telemetry_unknown)),
-            stringResource(R.string.observers_telemetry_noise_floor) to (latest.noiseFloorDecibels?.let { String.format(Locale.US, "%.0f dB", it) } ?: stringResource(R.string.observers_telemetry_unknown)),
+            stringResource(R.string.observers_telemetry_battery) to (latest.batteryMillivolts?.let { String.format("%.2f V", it / 1_000.0) } ?: stringResource(R.string.observers_telemetry_unknown)),
+            stringResource(R.string.observers_telemetry_noise_floor) to (latest.noiseFloorDecibels?.let { String.format("%.0f dB", it) } ?: stringResource(R.string.observers_telemetry_unknown)),
             "TX airtime" to (duration(latest.transmitAirtimeSeconds) ?: stringResource(R.string.observers_unknown_2)),
             "RX airtime" to (duration(latest.receiveAirtimeSeconds) ?: stringResource(R.string.observers_unknown_2)),
             stringResource(R.string.observers_uptime) to (duration(latest.uptimeSeconds) ?: stringResource(R.string.observers_unknown_2)),

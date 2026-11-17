@@ -19,4 +19,10 @@ class LinkProfileUnitsTest {
         assertEquals(30f, profileHeightMaximum(DistanceUnit.METRIC), 0f)
         assertEquals(100f, profileHeightMaximum(DistanceUnit.IMPERIAL), 0f)
     }
+
+    @Test fun ukUsesMetricHeightsAndSliderRange() {
+        assertEquals(6.0, profileDisplayHeight(6.0, DistanceUnit.UK), 0.0)
+        assertEquals(6.0, profileHeightMeters(6.0, DistanceUnit.UK), 0.0)
+        assertEquals(30f, profileHeightMaximum(DistanceUnit.UK), 0f)
+    }
 }

@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.linkprofile
 
+import org.nodescope.android.core.design.parseDecimalInput
 import org.nodescope.android.R
 import org.nodescope.android.core.design.UiText
 import androidx.lifecycle.SavedStateHandle
@@ -17,7 +18,7 @@ import kotlin.coroutines.coroutineContext
 
 /** [distanceUnit] picks the default antenna height: 20 ft in imperial, 6 m in metric. */
 class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private val saved: SavedStateHandle,
-    distanceUnit: DistanceUnit = DistanceUnit.METRIC) : ViewModel(), org.nodescope.android.feature.candidatesites.StudyDraftSource {
+    distanceUnit: DistanceUnit = DistanceUnit.defaultUnit()) : ViewModel(), org.nodescope.android.feature.candidatesites.StudyDraftSource {
     companion object {
         val defaults = linkedMapOf(
             "Latitude A" to "", "Longitude A" to "", "Height A (m)" to "10",
@@ -44,7 +45,7 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
     /** Both endpoints' coordinate fields and node names, as they were before a change. */
     data class Placement(val fields: Map<String, String>, val names: Map<String, String>)
     data class Undo(val message: UiText, val before: Placement, val id: Long = System.nanoTime())
-    private val defaultHeight = if (distanceUnit == DistanceUnit.IMPERIAL) "6.096" else "6"
+    private val defaultHeight = if (distanceUnit.usesFeet) "6.096" else "6"
     private val mutable = MutableStateFlow(State((defaults + mapOf("Height A (m)" to defaultHeight, "Height B (m)" to defaultHeight))
         .mapValues { (key, value) -> saved.get<String>(key) ?: value }, saved["preset"] ?: "US/Canada Narrow",
         names = listOf("A", "B").mapNotNull { endpoint -> saved.get<String>("Name $endpoint")?.let { endpoint to it } }.toMap()))
@@ -53,7 +54,7 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         val equipment = defaults.filterKeys { !it.startsWith("Latitude") && !it.startsWith("Longitude") } +
             mapOf("Height A (m)" to defaultHeight, "Height B (m)" to defaultHeight)
         return equipment.all { (key, value) ->
-            mutable.value.fields[key]?.toDoubleOrNull()?.let { kotlin.math.abs(it - value.toDouble()) < 0.0001 } == true
+            mutable.value.fields[key]?.parseDecimalInput()?.let { kotlin.math.abs(it - value.toDouble()) < 0.0001 } == true
         }
     }
     /** The saved study this profile came from, so Save replaces it rather than adding another. */
@@ -151,8 +152,8 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
 
     private fun coordinate(endpoint: String): ProfileCoordinate? {
         val fields = mutable.value.fields
-        val latitude = fields.getValue("Latitude $endpoint").trim().toDoubleOrNull() ?: return null
-        val longitude = fields.getValue("Longitude $endpoint").trim().toDoubleOrNull() ?: return null
+        val latitude = fields.getValue("Latitude $endpoint").parseDecimalInput() ?: return null
+        val longitude = fields.getValue("Longitude $endpoint").parseDecimalInput() ?: return null
         return runCatching { ProfileCoordinate(latitude, longitude) }.getOrNull()
     }
 
@@ -184,7 +185,7 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
     /** A typed coordinate replaces whatever Undo would have restored. */
     fun coverageSeed(endpoint: String): org.nodescope.android.feature.coverage.LinkCoverageSeed? {
         val fields = state.value.fields
-        fun number(key: String) = fields[key]?.toDoubleOrNull()?.takeIf { it.isFinite() }
+        fun number(key: String) = fields[key]?.parseDecimalInput()?.takeIf { it.isFinite() }
         val point = org.nodescope.android.feature.candidatesites.SavedEndpoint(
             state.value.names[endpoint] ?: "Point $endpoint",
             number("Latitude $endpoint") ?: return null, number("Longitude $endpoint") ?: return null,
@@ -287,7 +288,7 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         val input = mutable.value
         mutable.value = mutable.value.copy(loading = true, result = null, error = null)
         try {
-            fun number(key: String) = input.fields.getValue(key).trim().toDoubleOrNull()?.takeIf(Double::isFinite)
+            fun number(key: String) = input.fields.getValue(key).parseDecimalInput()?.takeIf(Double::isFinite)
                 ?: throw InvalidProfileNumber(key)
             val a = ProfileCoordinate(number("Latitude A"), number("Longitude A"))
             val b = ProfileCoordinate(number("Latitude B"), number("Longitude B"))
@@ -320,7 +321,7 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
     /** The current inputs as a study to save; null until both points are placed. Matches iOS. */
     fun savedSnapshot(): org.nodescope.android.feature.candidatesites.SavedStudy? {
         val fields = mutable.value.fields
-        fun number(key: String) = fields.getValue(key).trim().toDoubleOrNull()?.takeIf(Double::isFinite)
+        fun number(key: String) = fields.getValue(key).parseDecimalInput()?.takeIf(Double::isFinite)
         val a = coordinate("A") ?: return null
         val b = coordinate("B") ?: return null
         fun endpoint(letter: String, point: ProfileCoordinate): org.nodescope.android.feature.candidatesites.SavedEndpoint? {

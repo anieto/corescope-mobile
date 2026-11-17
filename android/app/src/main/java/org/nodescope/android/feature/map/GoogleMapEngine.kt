@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.map
 
+import org.nodescope.android.core.design.formatDisplayDecimal
 import android.content.Context
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.toColorInt
@@ -412,7 +413,7 @@ internal class GoogleOverlays(private val context: Context, private val map: Goo
 
     /** A group: a dark circle with its node count, as on the CARTO map. */
     private fun groupIcon(count: Int): BitmapDescriptor {
-        val text = if (count < 1000) "$count" else "%.1fk".format(count / 1000.0).replace(".0k", "k")
+        val text = if (count < 1000) "$count" else formatDisplayDecimal(count / 1000.0, 1) + "k"
         return icons.getOrPut("group:$text") {
             val radius = 12 * screenDensity
             val size = kotlin.math.ceil((radius + screenDensity) * 2).toInt()

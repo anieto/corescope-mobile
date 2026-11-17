@@ -83,7 +83,7 @@ object CoverageTerrainDecoder {
                 }
             }
             check()
-            val result = DecodedCoverageTerrain(directory, decodedHash.digest().joinToString("") { "%02x".format(it.toInt() and 255) })
+            val result = DecodedCoverageTerrain(directory, decodedHash.digest().joinToString("") { "%02x".format(java.util.Locale.ROOT, it.toInt() and 255) })
             transferred = true
             return result
         } finally {

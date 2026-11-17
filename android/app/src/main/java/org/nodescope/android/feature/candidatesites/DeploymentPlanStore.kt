@@ -241,7 +241,7 @@ class DeploymentPlanStore(
         internal fun sameInputs(a: SavedStudy, b: SavedStudy) =
             a.kind == b.kind && a.linkProfile == b.linkProfile && a.coverage?.copy(calculatedResult = null) == b.coverage?.copy(calculatedResult = null)
         internal fun sha256(data: ByteArray): String =
-            MessageDigest.getInstance("SHA-256").digest(data).joinToString("") { "%02x".format(it) }
+            MessageDigest.getInstance("SHA-256").digest(data).joinToString("") { "%02x".format(java.util.Locale.ROOT, it) }
     }
 }
 

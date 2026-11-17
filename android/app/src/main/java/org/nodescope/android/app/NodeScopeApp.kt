@@ -734,7 +734,7 @@ internal fun AppShell(
                                 org.nodescope.android.feature.coverage.EstimatedCoverageViewModel(
                                     java.io.File(context.cacheDir, "estimated-coverage-terrain-v1"),
                                     context.getSharedPreferences("estimated-coverage", android.content.Context.MODE_PRIVATE),
-                                    heightInFeet = preferences.distanceUnit == org.nodescope.android.core.storage.DistanceUnit.IMPERIAL,
+                                    distanceUnit = preferences.distanceUnit,
                                     diagnosticsFile = java.io.File(context.filesDir, "CoverageDiagnostics/latest.json"))
                                     .also { model ->
                                         library.studies.firstOrNull { it.id == studyId }?.let(model::restore)
@@ -768,7 +768,7 @@ internal fun AppShell(
                                     org.nodescope.android.feature.candidatesites.SavedPlansLibrary.shared(context))
                             }
                             org.nodescope.android.feature.candidatesites.CandidateSitesScreen(model,
-                                heightInFeet = preferences.distanceUnit == org.nodescope.android.core.storage.DistanceUnit.IMPERIAL,
+                                heightInFeet = preferences.distanceUnit.usesFeet,
                                 onMoved = { nav.popBackStack() })
                         }
                         screen<LinkProfileRoute> { backStack ->

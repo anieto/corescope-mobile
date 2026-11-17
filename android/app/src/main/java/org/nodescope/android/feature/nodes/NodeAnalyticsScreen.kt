@@ -31,7 +31,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import java.util.Locale
 import org.nodescope.android.core.design.*
 import org.nodescope.android.core.model.*
 
@@ -192,11 +191,11 @@ private fun BeaconSignalCard(points: List<SignalPoint>) {
 @Composable
 private fun SummaryCard(stats: ComputedStats, observations: Boolean) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    fun percent(value: Double?) = value?.let { String.format(Locale.US, "%.0f%%", it) } ?: "—"
+    fun percent(value: Double?) = value?.let { String.format("%.0f%%", it) } ?: "—"
     val metrics = listOf(
         Triple(percent(stats.availabilityPct), stringResource(R.string.node_detail_availability), HealthyGreen),
         Triple(stats.signalGrade ?: "—", stringResource(R.string.node_detail_signal_grade), SignalBlue),
-        Triple(stats.avgPacketsPerDay?.let { String.format(Locale.US, "%.0f", it) } ?: "—", stringResource(if (observations) R.string.node_detail_observations_per_day else R.string.node_detail_packets_per_day), SignalBlue),
+        Triple(stats.avgPacketsPerDay?.let { String.format("%.0f", it) } ?: "—", stringResource(if (observations) R.string.node_detail_observations_per_day else R.string.node_detail_packets_per_day), SignalBlue),
         Triple(percent(stats.relayPct), stringResource(R.string.node_detail_relayed), ActivityAmber),
         Triple(stats.uniqueObservers?.toString() ?: "—", stringResource(R.string.node_detail_observers_2), Color(0xFF5C8DFF)),
         Triple(stats.longestSilenceMs?.let(::formatSilence) ?: "—", stringResource(R.string.node_detail_longest_silence), MaterialTheme.colorScheme.onSurfaceVariant),
@@ -272,7 +271,7 @@ private fun qualityColor(quality: SignalQuality?): Color = when (quality) {
     SignalQuality.NEAR_LIMIT -> Color(0xFFE5484D)
     null -> Color(0xFF8A99A8)
 }
-private fun db(value: Double) = String.format(Locale.US, "%.1f dB", value)
+private fun db(value: Double) = String.format("%.1f dB", value)
 
 /**
  * Plain-language link quality first, with the measured numbers always beside it and full
@@ -339,7 +338,7 @@ private fun ObserverSignalRow(signal: ObserverSignal, scaleLow: Double, scaleHig
             db(signal.median), db(signal.low), db(signal.high), signal.count), mergeDescendants = true) { desc -> contentDescription = desc }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Column(Modifier.weight(1f)) {
                 Text(signal.observer, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(pluralStringResource(R.plurals.node_detail_typical_reading, signal.count, String.format(Locale.US, "%.1f to %.1f dB", signal.low, signal.high), signal.count) +
+                Text(pluralStringResource(R.plurals.node_detail_typical_reading, signal.count, String.format("%.1f to %.1f dB", signal.low, signal.high), signal.count) +
                     if (signal.fewReadings) stringResource(R.string.node_detail_few_readings) else "", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             signal.quality?.let { quality ->
@@ -361,10 +360,10 @@ private fun ObserverSignalRow(signal: ObserverSignal, scaleLow: Double, scaleHig
         if (expanded) {
             val stats = listOfNotNull(
                 stringResource(R.string.node_detail_median_snr) to db(signal.median),
-                stringResource(R.string.node_detail_typical_range) to String.format(Locale.US, "%.1f to %.1f dB", signal.low, signal.high),
-                stringResource(R.string.node_detail_min_max) to String.format(Locale.US, "%.1f / %.1f dB", signal.min, signal.max),
+                stringResource(R.string.node_detail_typical_range) to String.format("%.1f to %.1f dB", signal.low, signal.high),
+                stringResource(R.string.node_detail_min_max) to String.format("%.1f / %.1f dB", signal.min, signal.max),
                 signal.margin?.let { stringResource(R.string.node_detail_above_decode_limit) to stringResource(R.string.node_detail_decode_limit_value, db(it), signal.spreadingFactor.toString(), db(signal.floor!!)) },
-                signal.medianRssi?.let { stringResource(R.string.node_detail_median_rssi) to String.format(Locale.US, "%.0f dBm", it) },
+                signal.medianRssi?.let { stringResource(R.string.node_detail_median_rssi) to String.format("%.0f dBm", it) },
                 stringResource(R.string.node_detail_readings) to signal.count.toString(),
                 signal.lastHeard?.let { stringResource(R.string.node_detail_last_heard_3) to relativeTime(java.time.Instant.ofEpochMilli(it), now) },
             )
@@ -407,8 +406,8 @@ private fun ReadingsChart(signal: ObserverSignal, readings: List<Pair<Long, Doub
     Column(Modifier.semantics(mergeDescendants = true) { contentDescription = description }) {
         Row(Modifier.fillMaxWidth().height(130.dp)) {
             Column(Modifier.fillMaxHeight().padding(end = 6.dp), verticalArrangement = Arrangement.SpaceBetween, horizontalAlignment = Alignment.End) {
-                Text(String.format(Locale.US, "%.0f dB", scaleHigh), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(String.format(Locale.US, "%.0f dB", scaleLow), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(String.format("%.0f dB", scaleHigh), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(String.format("%.0f dB", scaleLow), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Canvas(Modifier.weight(1f).fillMaxHeight()) {
                 fun y(v: Double) = size.height - size.height * ((v - scaleLow) / (scaleHigh - scaleLow)).toFloat().coerceIn(0f, 1f)

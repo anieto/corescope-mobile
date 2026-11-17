@@ -940,7 +940,7 @@
     <string name="coverage_downloads_terrain_on_demand_up_to_500_mb">Downloads terrain on demand (up to 500 MB per run; 1 GB cache). Start with a small area.</string>
     <string name="coverage_dropped_pin">Dropped pin</string>
     <string name="coverage_elapsed">Elapsed</string>
-    <string name="coverage_enter_a_finite_number_using_a_decimal_point">Enter a finite number using a decimal point.</string>
+    <string name="coverage_enter_a_finite_number_using_a_decimal_point">Enter a finite number using a decimal point or comma.</string>
     <string name="coverage_enter_a_value">Enter a value.</string>
     <string name="coverage_enter_coordinates">Enter coordinates</string>
     <string name="coverage_enter_zero_or_a_positive_value">Enter zero or a positive value.</string>
@@ -1652,7 +1652,8 @@
     <string name="settings_how_to_use">How to use</string>
     <string name="settings_https_connection">HTTPS connection</string>
     <string name="settings_if_the_map_won_t_load_send_these">If the map won\'t load, send these to the developer. Tap to copy.</string>
-    <string name="settings_imperial_mi">Imperial (mi)</string>
+    <string name="settings_units_us">US (mi, ft)</string>
+    <string name="settings_units_uk">UK (mi, m)</string>
     <string name="settings_kept_in_memory_while_the_app_is_open">Kept in memory while the app is open and refreshed when you clear</string>
     <string name="settings_last_checked">Last checked</string>
     <string name="settings_license">License</string>
@@ -1663,7 +1664,7 @@
     <string name="settings_map">Map</string>
     <string name="settings_map_data">Map data</string>
     <string name="settings_map_tiles">Map tiles</string>
-    <string name="settings_metric_km">Metric (km)</string>
+    <string name="settings_units_metric">Metric (km, m)</string>
     <string name="settings_monaspace">Monaspace</string>
     <string name="settings_network_at_a_glance_saved_nodes_recently_viewed">Network at a glance, saved nodes, recently viewed items, and the live packet feed.</string>
     <string name="settings_nodescope">NodeScope</string>
