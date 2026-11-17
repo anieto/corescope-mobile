@@ -12,8 +12,8 @@ enum DistanceUnit: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .imperial: "Imperial (mi)"
-        case .metric: "Metric (km)"
+        case .imperial: String(localized: "Imperial (mi)")
+        case .metric: String(localized: "Metric (km)")
         }
     }
 

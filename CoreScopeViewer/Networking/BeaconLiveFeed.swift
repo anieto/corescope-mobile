@@ -61,7 +61,7 @@ final class BeaconLiveFeed: AnalyzerLiveFeed, LivePacketDetailProvider, LiveObse
             for type in types { filters.insert(LiveBrowseFilter(region: region, payloadType: type)) }
         }
         guard filters.count <= 20 else {
-            continuation.yield(.decodingFailed("Too many live filters; reduce the number of active views."))
+            continuation.yield(.decodingFailed(String(localized: "Too many live filters; reduce the number of active views.")))
             return
         }
         self.subscriptions = subscriptions
@@ -182,7 +182,7 @@ final class BeaconLiveFeed: AnalyzerLiveFeed, LivePacketDetailProvider, LiveObse
                     )
                 } catch {
                     guard !ended, client.sourceSession.isCurrent else { return }
-                    continuation.yield(.decodingFailed("Invalid observer identity in live event."))
+                    continuation.yield(.decodingFailed(String(localized: "Invalid observer identity in live event.")))
                 }
             }
         case .node(let update):

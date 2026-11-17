@@ -1553,7 +1553,7 @@ private struct GlobalSearchSheet: View {
                 Section("Observers") {
                     ForEach(observerResults) { observer in
                         searchResultRow(
-                            title: observer.name ?? "Unnamed Observer",
+                            title: observer.name ?? String(localized: "Unnamed Observer"),
                             subtitle: [observer.iata, observer.model, observer.id].compactMap { $0 }.joined(separator: " · "),
                             symbol: "antenna.radiowaves.left.and.right",
                             color: NodeScopeStyle.healthy,
@@ -1623,7 +1623,7 @@ private struct GlobalSearchSheet: View {
             MeshChannel(
                 hash: "user:\(monitoredChannel.channelName)",
                 name: monitoredChannel.title,
-                lastMessage: monitoredChannel.lastMessage ?? "Monitored locally",
+                lastMessage: monitoredChannel.lastMessage ?? String(localized: "Monitored locally"),
                 lastSender: nil,
                 messageCount: monitoredChannel.messageCount ?? 0,
                 lastActivity: monitoredChannel.lastActivity ?? .distantPast

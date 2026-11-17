@@ -1586,7 +1586,7 @@ private struct LivePacketDetailScreen: View {
         List {
             Section("Packet") {
                 detailRow("Type", value: data.decoded?.header?.payloadTypeName ?? "Unknown")
-                detailRow("Hash", value: data.hash ?? "Unavailable", monospaced: true)
+                detailRow("Hash", value: data.hash ?? String(localized: "Unavailable"), monospaced: true)
                 if let version = data.decoded?.header?.payloadVersion {
                     detailRow("Payload Version", value: "\(version)")
                 }

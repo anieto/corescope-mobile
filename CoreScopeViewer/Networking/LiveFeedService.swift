@@ -168,7 +168,7 @@ final class LiveFeedService {
                     self.isConnected = false
                     self.lastError = message
                 case .decodingFailed(let message):
-                    self.lastError = "Decode error: \(message)"
+                    self.lastError = String(localized: "Decode error: \(message)")
                 }
             }
         }

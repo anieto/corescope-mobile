@@ -167,6 +167,22 @@
         }
       }
     },
+    "%@: %@ is outside what Coverage accepts; the default is used." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@ is outside what Coverage accepts; the default is used."
+          }
+        }
+      }
+    },
+    "%@: its values can't be used for Coverage, so it isn't moved." : {
+
+    },
+    "%@: too close to a pole for Coverage, so it isn't moved." : {
+
+    },
     "%@…%@" : {
       "localizations" : {
         "en" : {
@@ -373,26 +389,6 @@
             "value" : "%#@favorites@ · %#@claimed@"
           },
           "substitutions" : {
-            "favorites" : {
-              "argNum" : 1,
-              "formatSpecifier" : "lld",
-              "variations" : {
-                "plural" : {
-                  "one" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg favorite"
-                    }
-                  },
-                  "other" : {
-                    "stringUnit" : {
-                      "state" : "translated",
-                      "value" : "%arg favorites"
-                    }
-                  }
-                }
-              }
-            },
             "claimed" : {
               "argNum" : 2,
               "formatSpecifier" : "lld",
@@ -408,6 +404,26 @@
                     "stringUnit" : {
                       "state" : "translated",
                       "value" : "%arg claimed nodes"
+                    }
+                  }
+                }
+              }
+            },
+            "favorites" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg favorite"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg favorites"
                     }
                   }
                 }
@@ -1021,6 +1037,9 @@
     "A packet's path, played hop by hop." : {
 
     },
+    "A plan groups related studies, such as every study for one site. Standalone keeps this study outside any plan. You can move it later." : {
+
+    },
     "A value is out of range. Open the setup to fix it." : {
 
     },
@@ -1054,10 +1073,34 @@
     "Accept the model assumptions in the setup to calculate." : {
 
     },
+    "Account" : {
+
+    },
+    "Account edits saved on this device. Choose Sync now to upload them." : {
+
+    },
+    "Account favorites changed during sync. Try Sync now again." : {
+
+    },
+    "Account favorites refreshed. Device favorites are unchanged." : {
+
+    },
+    "Account favorites synced." : {
+
+    },
     "Account nodes" : {
 
     },
+    "Account selections copied to device favorites." : {
+
+    },
     "Account settings were reset" : {
+
+    },
+    "Account settings were reset on the server. Choose how to continue before syncing." : {
+
+    },
+    "Account writes are limited to once a minute. Your changes are saved; try Sync now later." : {
 
     },
     "Acknowledgements" : {
@@ -1159,6 +1202,9 @@
     "Adjust antennas & radio" : {
 
     },
+    "Advert" : {
+
+    },
     "Advertisements" : {
 
     },
@@ -1183,6 +1229,9 @@
     "All Models" : {
 
     },
+    "All Observers" : {
+
+    },
     "All Packets" : {
 
     },
@@ -1202,6 +1251,9 @@
 
     },
     "Amber · 0–10 dB: limited predicted headroom" : {
+
+    },
+    "An account operation is already running. Try again shortly." : {
 
     },
     "An unfinished study" : {
@@ -1250,6 +1302,9 @@
     "Analyzer offline" : {
 
     },
+    "Analyzer responded over HTTPS." : {
+
+    },
     "Analyzer responses" : {
 
     },
@@ -1257,6 +1312,9 @@
 
     },
     "Analyzing link…" : {
+
+    },
+    "Anon Req" : {
 
     },
     "Antenna" : {
@@ -1321,7 +1379,13 @@
     "Australia (Narrow)" : {
 
     },
+    "Authentication required · HTTP %lld" : {
+
+    },
     "Availability" : {
+
+    },
+    "Available · %lld ms" : {
 
     },
     "Average SNR" : {
@@ -1336,6 +1400,9 @@
     "Back" : {
 
     },
+    "Back up library" : {
+
+    },
     "Back up library…" : {
 
     },
@@ -1348,13 +1415,25 @@
     "Battery History" : {
 
     },
+    "Battery, airtime, and radio telemetry are supported; endpoint not probed." : {
+
+    },
     "Beacon" : {
+
+    },
+    "Beacon %@ is not supported. Version 2.0.3 or newer is required." : {
 
     },
     "Beacon Support" : {
 
     },
     "Beacon adds nodes as it hears their advertisements. Some repeaters advertise only every 12–47 hours, so a quiet region can take time to fill in." : {
+
+    },
+    "Beacon could not be rechecked. The selected server type is unchanged." : {
+
+    },
+    "Beacon does not provide map defaults; NodeScope uses region coordinates." : {
 
     },
     "Beacon has not recorded any neighboring nodes for this node yet." : {
@@ -1372,10 +1451,22 @@
     "Beacon reports observer activity as observations. Unique-node history, recent packet rows, and a true SNR distribution aren’t available from this endpoint." : {
 
     },
+    "Beacon responded over HTTPS." : {
+
+    },
     "Beacon retains up to seven days of observation history." : {
 
     },
+    "Beacon returned an incomplete pagination response." : {
+
+    },
+    "Beacon returned status %lld." : {
+
+    },
     "Beacon servers don’t provide map defaults. NodeScope uses region coordinates to frame the map instead." : {
+
+    },
+    "Beacon version and bounded browse-family checks completed." : {
 
     },
     "Beacon · Beta" : {
@@ -1515,10 +1606,16 @@
     "Channel Filters" : {
 
     },
+    "Channel Msg" : {
+
+    },
     "Channel actions" : {
 
     },
     "Channel keys stay in this device's Keychain and are never sent to an analyzer. NodeScope monitors traffic but cannot transmit over RF." : {
+
+    },
+    "Channel messages" : {
 
     },
     "Channel messages from Beacon servers aren’t supported in this version of NodeScope. Support for server-decrypted channels is planned for a future update." : {
@@ -1534,6 +1631,9 @@
 
     },
     "Check Node" : {
+
+    },
+    "Check connection and features" : {
 
     },
     "Check power, the antenna and the radio settings, then send a flood advert." : {
@@ -1621,6 +1721,9 @@
 
     },
     "Choose where you're starting from to see distance and direction." : {
+
+    },
+    "Claimed" : {
 
     },
     "Claimed node" : {
@@ -1719,13 +1822,28 @@
     "Comparison unavailable" : {
 
     },
+    "Compatibility could not be checked while the analyzer is unreachable." : {
+
+    },
+    "Compatibility has not been checked." : {
+
+    },
     "Connected" : {
+
+    },
+    "Connecting or temporarily unavailable" : {
 
     },
     "Connecting…" : {
 
     },
     "Connection" : {
+
+    },
+    "Connection has not been checked." : {
+
+    },
+    "Connection lost." : {
 
     },
     "Contents" : {
@@ -1738,6 +1856,9 @@
 
     },
     "Continue unfinished study" : {
+
+    },
+    "Control" : {
 
     },
     "Coordinates are required. Leave unknown equipment values blank. Coordinates use decimal degrees; a minus sign means south or west." : {
@@ -1770,16 +1891,31 @@
     "Copy selections and sign out" : {
 
     },
+    "Core NodeScope features are supported." : {
+
+    },
     "CoreScope" : {
 
     },
     "CoreScope account" : {
 
     },
+    "Could not be checked" : {
+
+    },
     "Couldn't Add Channel" : {
 
     },
     "Couldn't Load Nodes" : {
+
+    },
+    "Couldn't connect to %@." : {
+
+    },
+    "Couldn't connect: %@" : {
+
+    },
+    "Couldn't generate a secure channel key." : {
 
     },
     "Couldn't get your location. Check location permission and services in Settings, or choose a point on the map." : {
@@ -1791,7 +1927,13 @@
     "Couldn't load nodes" : {
 
     },
+    "Couldn't save the channel securely on this device." : {
+
+    },
     "Couldn’t check this node" : {
+
+    },
+    "Coverage" : {
 
     },
     "Coverage calculations support latitude from −85° to 85°." : {
@@ -1888,10 +2030,16 @@
     "Customize radio · edited" : {
 
     },
+    "Dark" : {
+
+    },
     "Dashboard Metrics" : {
 
     },
     "Decibels" : {
+
+    },
+    "Decode error: %@" : {
 
     },
     "Decode limit" : {
@@ -1930,6 +2078,9 @@
     "Details & Analytics" : {
 
     },
+    "Device" : {
+
+    },
     "Device favorites and account nodes on this source. Account removals are uploaded with Sync now." : {
 
     },
@@ -1943,6 +2094,9 @@
 
     },
     "Direct" : {
+
+    },
+    "Direct Msg" : {
 
     },
     "Discard" : {
@@ -1963,6 +2117,9 @@
     "Disconnected" : {
 
     },
+    "Disconnected · %@" : {
+
+    },
     "Display" : {
 
     },
@@ -1971,6 +2128,16 @@
     },
     "Distance" : {
 
+    },
+    "Distance %@. Worst Fresnel clearance %@ percent." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Distance %1$@. Worst Fresnel clearance %2$@ percent."
+          }
+        }
+      }
     },
     "Done" : {
 
@@ -2020,6 +2187,9 @@
     "Each packet has its own color, on every path it took." : {
 
     },
+    "Earlier changes synced. Newer edits are saved on this device; sync again after one minute." : {
+
+    },
     "Edit" : {
 
     },
@@ -2051,6 +2221,12 @@
 
     },
     "Enter Coordinates" : {
+
+    },
+    "Enter a 32-character hexadecimal PSK." : {
+
+    },
+    "Enter a channel name." : {
 
     },
     "Enter a finite number." : {
@@ -2101,6 +2277,9 @@
     "Every screen uses the selected analyzer’s supported features and regions." : {
 
     },
+    "Everything selected is already in your library." : {
+
+    },
     "Expanded" : {
 
     },
@@ -2122,7 +2301,13 @@
     "Export node analytics" : {
 
     },
+    "Export plan" : {
+
+    },
     "Export plan…" : {
+
+    },
+    "Export study" : {
 
     },
     "Exported" : {
@@ -2323,6 +2508,9 @@
     "Heard %@" : {
 
     },
+    "Heard %lld×" : {
+
+    },
     "Heard By" : {
 
     },
@@ -2443,6 +2631,9 @@
     "High-gain Yagi" : {
 
     },
+    "Highlights in version %@" : {
+
+    },
     "History refresh failed" : {
 
     },
@@ -2468,6 +2659,9 @@
     "Hops" : {
 
     },
+    "Hosts a shared message board." : {
+
+    },
     "How do I check a brand-new node?" : {
 
     },
@@ -2480,7 +2674,19 @@
     "How well observers hear this node (SNR)" : {
 
     },
+    "Hybrid" : {
+
+    },
     "If NodeScope has been useful, you can leave an optional tip to support its continued development." : {
+
+    },
+    "Imperial (mi)" : {
+
+    },
+    "Import" : {
+
+    },
+    "Import copy" : {
 
     },
     "Import device favorites into this account?" : {
@@ -2538,6 +2744,15 @@
 
     },
     "Inputs or catalog changed. Calculate again to update the result." : {
+
+    },
+    "Invalid URL" : {
+
+    },
+    "Invalid observer identity in live event." : {
+
+    },
+    "Invalid response from server" : {
 
     },
     "Is it getting out? Findings and a live advert test" : {
@@ -2689,6 +2904,9 @@
     "Leave a Tip" : {
 
     },
+    "Leave an optional one-time tip" : {
+
+    },
     "Left out when exported" : {
 
     },
@@ -2698,10 +2916,16 @@
     "License" : {
 
     },
+    "Light" : {
+
+    },
     "Line-of-sight calculations include modified GPLv3 work from MeshCore One. Terrain data uses Copernicus DEM 2021 GLO-90 through Open-Meteo. Monaspace Neon is used under the SIL Open Font License 1.1." : {
 
     },
     "Link Profile" : {
+
+    },
+    "Link Profiles" : {
 
     },
     "Link margin" : {
@@ -2771,6 +2995,12 @@
     "Load older messages" : {
 
     },
+    "Loading %@…" : {
+
+    },
+    "Loading all regions…" : {
+
+    },
     "Loading channel" : {
 
     },
@@ -2799,6 +3029,9 @@
 
     },
     "Loading tips…" : {
+
+    },
+    "Locating you…" : {
 
     },
     "Location access is denied. Use a manual reference instead." : {
@@ -2856,6 +3089,9 @@
 
     },
     "Map cells use the nearest calculated sample. Known nodes are calculated at their exact coordinates and can differ from the surrounding cell." : {
+
+    },
+    "Map configuration" : {
 
     },
     "Map data may be outdated." : {
@@ -2955,6 +3191,15 @@
     "Message Count" : {
 
     },
+    "Message from %@:" : {
+
+    },
+    "Message:" : {
+
+    },
+    "Metric (km)" : {
+
+    },
     "Min / max" : {
 
     },
@@ -2983,6 +3228,9 @@
 
     },
     "Monitor Hashtag" : {
+
+    },
+    "Monitored locally" : {
 
     },
     "Monitored on This Device" : {
@@ -3258,6 +3506,9 @@
     "Node actions" : {
 
     },
+    "Node analytics" : {
+
+    },
     "Node analytics for Beacon servers aren’t supported in this version of NodeScope. Support is planned for a future update." : {
 
     },
@@ -3265,6 +3516,9 @@
 
     },
     "Node names and IDs" : {
+
+    },
+    "Node neighbors" : {
 
     },
     "NodeScope" : {
@@ -3279,10 +3533,19 @@
     "NodeScope derives the public hashtag key and decrypts matching traffic locally." : {
 
     },
+    "NodeScope field guide" : {
+
+    },
+    "NodeScope is an unofficial, read-only companion app for CoreScope, the mesh network analyzer used by MeshTexas and other MeshCore communities. It talks directly to a CoreScope server's public API to show the same live nodes, packet traffic, channel messages, and observer data you'd see on the CoreScope web dashboard — just in a native app." : {
+
+    },
     "NodeScope makes live activity easier to understand at a glance." : {
 
     },
     "NodeScope reached its request limit before Beacon history was exhausted." : {
+
+    },
+    "NodeScope saved plans %@" : {
 
     },
     "NodeScope will resume the live feed when the analyzer reconnects." : {
@@ -3295,6 +3558,9 @@
 
     },
     "Nodes Shown" : {
+
+    },
+    "Nodes and routes" : {
 
     },
     "Nodes with the wrong time can have their adverts treated as old." : {
@@ -3360,6 +3626,9 @@
     "Not seen relaying" : {
 
     },
+    "Not supported" : {
+
+    },
     "Notes" : {
 
     },
@@ -3376,6 +3645,9 @@
 
     },
     "Now in %@." : {
+
+    },
+    "Now in %@. Choose another plan to move it there, or Standalone to keep it outside any plan." : {
 
     },
     "OK" : {
@@ -3411,6 +3683,9 @@
     "Observed over the last 24 hours" : {
 
     },
+    "Observed: %@" : {
+
+    },
     "Observer" : {
 
     },
@@ -3432,6 +3707,9 @@
     "Observer actions" : {
 
     },
+    "Observer activity" : {
+
+    },
     "Observer activity unknown" : {
 
     },
@@ -3451,6 +3729,9 @@
 
     },
     "Observer status may be outdated." : {
+
+    },
+    "Observer telemetry" : {
 
     },
     "Observers" : {
@@ -3567,6 +3848,9 @@
     "Packet" : {
 
     },
+    "Packet %@" : {
+
+    },
     "Packet Details" : {
 
     },
@@ -3595,6 +3879,9 @@
 
     },
     "Packet types and hops use the observations NodeScope downloaded before reaching its request limit." : {
+
+    },
+    "Packet: %@" : {
 
     },
     "Packets" : {
@@ -3713,6 +4000,9 @@
 
     },
     "Play replay again" : {
+
+    },
+    "Point %@" : {
 
     },
     "Point %@ moved" : {
@@ -3912,6 +4202,9 @@
     "Red · Below 0 dB: predicted below threshold" : {
 
     },
+    "Reference" : {
+
+    },
     "Reference Coordinate" : {
 
     },
@@ -3939,6 +4232,9 @@
     "Region" : {
 
     },
+    "Region filtering" : {
+
+    },
     "Region groups" : {
 
     },
@@ -3952,6 +4248,9 @@
 
     },
     "Relaying traffic" : {
+
+    },
+    "Relays packets so they travel further." : {
 
     },
     "Reload library" : {
@@ -4032,6 +4331,12 @@
     "Reported SNR over time; Beacon does not identify the observer" : {
 
     },
+    "Reports readings over the mesh." : {
+
+    },
+    "Request" : {
+
+    },
     "Request a Community Source" : {
 
     },
@@ -4053,7 +4358,25 @@
     "Resolved Path" : {
 
     },
+    "Response" : {
+
+    },
+    "Response format not recognized" : {
+
+    },
     "Restore saved account favorites" : {
+
+    },
+    "Result can't be converted on this device" : {
+
+    },
+    "Result could not be verified" : {
+
+    },
+    "Result needs a newer version of NodeScope" : {
+
+    },
+    "Result not on this device" : {
 
     },
     "Results" : {
@@ -4104,6 +4427,9 @@
     "Review history could not be saved. Refresh to try again." : {
 
     },
+    "Review or clear downloaded data" : {
+
+    },
     "Review the highlighted inputs and choose a smaller area or wider spacing." : {
 
     },
@@ -4116,7 +4442,13 @@
     "Room" : {
 
     },
+    "Room Server" : {
+
+    },
     "Route" : {
+
+    },
+    "Route %lld" : {
 
     },
     "Route Details" : {
@@ -4207,6 +4539,9 @@
     "Sat" : {
 
     },
+    "Satellite" : {
+
+    },
     "Saturday" : {
 
     },
@@ -4235,6 +4570,9 @@
 
     },
     "Saved Plans" : {
+
+    },
+    "Saved Plans can hold 100 %@. Choose fewer items to import, or remove some first." : {
 
     },
     "Saved comparisons reset when you clear cached data" : {
@@ -4354,7 +4692,13 @@
     "Selected" : {
 
     },
+    "Selected Observer" : {
+
+    },
     "Selected site" : {
+
+    },
+    "Selections restored locally. Choose Sync now to upload them." : {
 
     },
     "Send a flood advert from %@ and watch which observers report it, as it happens." : {
@@ -4393,13 +4737,22 @@
     "Server Monitored Channels" : {
 
     },
+    "Server closed the connection (code %lld)." : {
+
+    },
     "Server rate limit · try later" : {
+
+    },
+    "Server returned status %lld" : {
 
     },
     "Server type" : {
 
     },
     "Server version (last reported)" : {
+
+    },
+    "Server-decrypted keyed channels are supported; endpoint not probed." : {
 
     },
     "Set a location in the node’s settings if you’re comfortable sharing it." : {
@@ -4550,6 +4903,9 @@
     "Show route nodes only" : {
 
     },
+    "Show routes received by any observer" : {
+
+    },
     "Show selected packet details" : {
 
     },
@@ -4577,6 +4933,9 @@
     "Sign in" : {
 
     },
+    "Sign in again to access this account." : {
+
+    },
     "Sign out" : {
 
     },
@@ -4601,6 +4960,12 @@
     "Signed in" : {
 
     },
+    "Signed out on this device. Server revocation was not confirmed; the session may remain active until revoked on CoreScope or expired." : {
+
+    },
+    "Signed out. Device favorites are unchanged." : {
+
+    },
     "Site name" : {
 
     },
@@ -4614,6 +4979,9 @@
 
     },
     "Some samples may remain unresolved. Difficult terrain takes longer." : {
+
+    },
+    "Someone's radio, paired with an app." : {
 
     },
     "Sort By" : {
@@ -4638,6 +5006,9 @@
 
     },
     "Standalone studies" : {
+
+    },
+    "Standard" : {
 
     },
     "Start Exploring" : {
@@ -4692,6 +5063,9 @@
     "Studies (%lld)" : {
 
     },
+    "Study" : {
+
+    },
     "Study area" : {
 
     },
@@ -4716,6 +5090,15 @@
     "Support Development" : {
 
     },
+    "Supported by the Beacon adapter; endpoint not probed." : {
+
+    },
+    "Supported with Beacon observation counts; endpoint not probed." : {
+
+    },
+    "Supported with Beacon’s seven-day observation-history limit; endpoint not probed." : {
+
+    },
     "Switch without saving" : {
 
     },
@@ -4732,6 +5115,9 @@
 
     },
     "Sync uploads only account edits. Device favorites stay local unless you import them." : {
+
+    },
+    "System" : {
 
     },
     "System loss" : {
@@ -4825,13 +5211,40 @@
     "That was a zero-hop advert, so only radios in direct range pass it on. Send a flood advert to see how far it really travels." : {
 
     },
+    "The account response could not be read. No favorites were changed." : {
+
+    },
+    "The account session changed in another window. Reopen this page to continue." : {
+
+    },
+    "The account session could not be saved securely." : {
+
+    },
+    "The analyzer address is invalid." : {
+
+    },
+    "The analyzer could not be reached." : {
+
+    },
+    "The analyzer did not respond before the request timed out." : {
+
+    },
     "The analyzer has no recent adverts from this node." : {
+
+    },
+    "The analyzer host could not be found." : {
 
     },
     "The analyzer is rate limiting requests until %@. Showing saved target evidence." : {
 
     },
     "The analyzer is rate limiting requests. Showing saved target evidence." : {
+
+    },
+    "The analyzer or an upstream proxy requires authentication." : {
+
+    },
+    "The bounded Beacon family check did not succeed." : {
 
     },
     "The combined radio values exceed calculation limits." : {
@@ -4855,6 +5268,9 @@
     "The next calculation will reuse matching samples from the smaller study and calculate the added area." : {
 
     },
+    "The page size must be greater than zero." : {
+
+    },
     "The plan could not be saved. Your draft is still open and the previous save is unchanged." : {
 
     },
@@ -4868,6 +5284,12 @@
 
     },
     "The purchase is pending approval." : {
+
+    },
+    "The request was rejected. Check your credentials or try again later." : {
+
+    },
+    "The requested history exceeds the page budget. Try a smaller window." : {
 
     },
     "The result could not be drawn. Calculate again." : {
@@ -4889,6 +5311,18 @@
 
     },
     "The server changed. Return to the packet list." : {
+
+    },
+    "The server did not report a recognized Beacon version." : {
+
+    },
+    "The server repeated a page cursor. Refresh to try again." : {
+
+    },
+    "The server responded, but its API is not CoreScope-compatible." : {
+
+    },
+    "The server returned an invalid response." : {
 
     },
     "The strongest is %@%@." : {
@@ -4913,6 +5347,9 @@
     "Their inputs are imported; calculate to see results." : {
 
     },
+    "There isn't room for these results. Choose fewer items, or import inputs only." : {
+
+    },
     "There isn’t enough storage to save this result. Your previous save is unchanged. Remove an older study, or save inputs only." : {
 
     },
@@ -4929,6 +5366,12 @@
 
     },
     "This analyzer has no nodes or observers with usable reported coordinates." : {
+
+    },
+    "This analyzer is rate limiting target evidence. Try again later." : {
+
+    },
+    "This app has no backend of its own. Everything shown here comes from whatever analyzer host is configured in Settings, and it's not affiliated with the CoreScope or MeshCore projects." : {
 
     },
     "This area needs more calculation work than the current limit allows. Choose wider spacing or a smaller radius." : {
@@ -4949,13 +5392,22 @@
     "This channel feature is not available on this server." : {
 
     },
+    "This device is not connected to the internet." : {
+
+    },
     "This field is not supported." : {
+
+    },
+    "This file needs a newer version of NodeScope. Nothing was imported." : {
 
     },
     "This file shows" : {
 
     },
     "This is a sampled estimate, not measured reception or a guarantee. Gaps and work-limited areas remain unknown. The nearest 200 available nodes use the same assumed receiver; the catalog is incomplete." : {
+
+    },
+    "This isn't a NodeScope saved-plans file, or it's damaged or too large. Nothing was imported." : {
 
     },
     "This list shows the nearest 200 located nodes available in the current catalog. Predictions use your receiver assumptions, not reported node equipment. It is not a complete inventory of nearby radios." : {
@@ -4967,7 +5419,13 @@
     "This node is getting out" : {
 
     },
+    "This node is not available on this server." : {
+
+    },
     "This observer's route is %@" : {
+
+    },
+    "This page belongs to a different request. Refresh to continue." : {
 
     },
     "This plan is empty." : {
@@ -4986,6 +5444,12 @@
 
     },
     "This server doesn’t have this channel’s key, so the message can’t be shown." : {
+
+    },
+    "This server is rate limiting requests. Try again after %@." : {
+
+    },
+    "This source does not support compatible CoreScope accounts." : {
 
     },
     "This study exceeds the download or calculation budget. Choose a smaller radius or wider sample spacing." : {
@@ -5027,6 +5491,9 @@
     "Toggle live packets" : {
 
     },
+    "Too many live filters; reduce the number of active views." : {
+
+    },
     "Total Packets" : {
 
     },
@@ -5055,6 +5522,9 @@
 
     },
     "Tower" : {
+
+    },
+    "Trace" : {
 
     },
     "Traffic reported by payload" : {
@@ -5108,6 +5578,9 @@
     "Type" : {
 
     },
+    "Type %lld" : {
+
+    },
     "Typical range" : {
 
     },
@@ -5126,10 +5599,16 @@
     "Unable to update" : {
 
     },
+    "Unavailable" : {
+
+    },
     "Unavailable from Beacon" : {
 
     },
     "Unavailable on this source" : {
+
+    },
+    "Unavailable · HTTP %lld" : {
 
     },
     "Undo" : {
@@ -5153,10 +5632,16 @@
     "Unknown Node" : {
 
     },
+    "Unknown node" : {
+
+    },
     "Unknown observer" : {
 
     },
     "Unknown role" : {
+
+    },
+    "Unknown source (%lld)" : {
 
     },
     "Unknown — individual path work limit" : {
@@ -5177,6 +5662,9 @@
     "Unnamed Node" : {
 
     },
+    "Unnamed Observer" : {
+
+    },
     "Unnamed node" : {
 
     },
@@ -5184,6 +5672,9 @@
 
     },
     "Unsaved work couldn't be kept" : {
+
+    },
+    "Update" : {
 
     },
     "Update existing" : {
@@ -5272,6 +5763,9 @@
     "Using default antenna and radio settings." : {
 
     },
+    "Using the server’s selections." : {
+
+    },
     "Using your antenna and radio settings." : {
 
     },
@@ -5331,6 +5825,9 @@
 
     },
     "What the markers, lines and colors on the map mean." : {
+
+    },
+    "What the terms in NodeScope mean" : {
 
     },
     "What this means" : {

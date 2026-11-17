@@ -83,9 +83,9 @@ enum SavedPlansExport {
     static func fileName(_ package: SavedPlansPackage, exportedAt: Date) -> String {
         let base: String
         switch package.scope {
-        case .study: base = package.studies.first?.name ?? "Study"
+        case .study: base = package.studies.first?.name ?? String(localized: "Study")
         case .plan: base = package.studyPlans.first?.name ?? "Plan"
-        case .library: base = "NodeScope saved plans \(exportedAt.formatted(.iso8601.year().month().day()))"
+        case .library: base = String(localized: "NodeScope saved plans \(exportedAt.formatted(.iso8601.year().month().day()))")
         }
         let safe = base.map { "/\\:?%*|\"<>".contains($0) || $0.isNewline ? "-" : $0 }
         return String(String(safe).prefix(100)).trimmingCharacters(in: .whitespaces) + ".\(SavedPlansPackage.fileExtension)"
@@ -147,10 +147,10 @@ enum SavedPlansExport {
 
     static func describe(_ reason: SavedPlansPackage.OmissionReason) -> String {
         switch reason {
-        case .notOnDevice: "Result not on this device"
-        case .couldNotBeVerified: "Result could not be verified"
-        case .needsNewerVersion: "Result needs a newer version of NodeScope"
-        case .notReadableHere: "Result can't be converted on this device"
+        case .notOnDevice: String(localized: "Result not on this device")
+        case .couldNotBeVerified: String(localized: "Result could not be verified")
+        case .needsNewerVersion: String(localized: "Result needs a newer version of NodeScope")
+        case .notReadableHere: String(localized: "Result can't be converted on this device")
         }
     }
 }
@@ -172,9 +172,9 @@ struct ExportPackageSheet: View {
 
     private var title: String {
         switch contents {
-        case .study: "Export study"
-        case .plan: "Export plan"
-        case .library: "Back up library"
+        case .study: String(localized: "Export study")
+        case .plan: String(localized: "Export plan")
+        case .library: String(localized: "Back up library")
         }
     }
 
@@ -261,7 +261,7 @@ struct ExportPackageSheet: View {
 
     private var analyzerSummary: String {
         var parts = preview.analyzers
-        if preview.unknownSource > 0 { parts.append("Unknown source (\(preview.unknownSource))") }
+        if preview.unknownSource > 0 { parts.append(String(localized: "Unknown source (\(preview.unknownSource))")) }
         return parts.joined(separator: "\n")
     }
 

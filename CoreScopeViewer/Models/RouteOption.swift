@@ -38,7 +38,7 @@ struct RouteOption: Hashable, Sendable {
 
     /// The observer that heard this route, or "Route N" when none is known.
     func name(index: Int) -> String {
-        heardBy.first?.observer ?? "Route \(index + 1)"
+        heardBy.first?.observer ?? String(localized: "Route \(index + 1)")
     }
 
     /// "+N" when more than one observer heard this exact route.
@@ -58,7 +58,7 @@ struct RouteOption: Hashable, Sendable {
         if let first = heardBy.first {
             who = heardBy.count > 1 ? "\(first.observer) and \(heardBy.count - 1) more" : first.observer
         } else {
-            who = "Route \(index + 1)"
+            who = String(localized: "Route \(index + 1)")
         }
         return "\(who), \(summary)"
     }

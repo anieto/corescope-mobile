@@ -34,19 +34,19 @@ struct AboutScreen: View {
             .instrumentListRows()
 
             Section("What This Is") {
-                Text(
-                    "NodeScope is an unofficial, read-only companion app for " +
-                    "CoreScope, the mesh network analyzer used by MeshTexas and other " +
-                    "MeshCore communities. It talks directly to a CoreScope server's " +
-                    "public API to show the same live nodes, packet traffic, channel " +
-                    "messages, and observer data you'd see on the CoreScope web " +
-                    "dashboard — just in a native app."
-                )
-                Text(
-                    "This app has no backend of its own. Everything shown here comes " +
-                    "from whatever analyzer host is configured in Settings, and it's " +
-                    "not affiliated with the CoreScope or MeshCore projects."
-                )
+                Text("""
+                    NodeScope is an unofficial, read-only companion app for \
+                    CoreScope, the mesh network analyzer used by MeshTexas and other \
+                    MeshCore communities. It talks directly to a CoreScope server's \
+                    public API to show the same live nodes, packet traffic, channel \
+                    messages, and observer data you'd see on the CoreScope web \
+                    dashboard — just in a native app.
+                    """)
+                Text("""
+                    This app has no backend of its own. Everything shown here comes \
+                    from whatever analyzer host is configured in Settings, and it's \
+                    not affiliated with the CoreScope or MeshCore projects.
+                    """)
                 .foregroundStyle(.secondary)
             }
             .instrumentListRows()

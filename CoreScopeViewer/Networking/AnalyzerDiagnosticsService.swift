@@ -16,16 +16,16 @@ enum AnalyzerCapability: String, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .mapConfiguration: "Map configuration"
-        case .nodes: "Nodes and routes"
+        case .mapConfiguration: String(localized: "Map configuration")
+        case .nodes: String(localized: "Nodes and routes")
         case .channels: "Channels"
         case .observers: "Observers"
-        case .regions: "Region filtering"
-        case .neighbors: "Node neighbors"
-        case .nodeAnalytics: "Node analytics"
-        case .observerActivity: "Observer activity"
-        case .observerTelemetry: "Observer telemetry"
-        case .channelMessages: "Channel messages"
+        case .regions: String(localized: "Region filtering")
+        case .neighbors: String(localized: "Node neighbors")
+        case .nodeAnalytics: String(localized: "Node analytics")
+        case .observerActivity: String(localized: "Observer activity")
+        case .observerTelemetry: String(localized: "Observer telemetry")
+        case .channelMessages: String(localized: "Channel messages")
         }
     }
 
@@ -170,29 +170,29 @@ struct AnalyzerDiagnosticsService: Sendable {
         let connectionDetail: String
         if receivedHTTPResponse {
             connectionLevel = .success
-            connectionDetail = "Analyzer responded over HTTPS."
+            connectionDetail = String(localized: "Analyzer responded over HTTPS.")
         } else {
             connectionLevel = .failure
             connectionDetail = orderedResults.compactMap {
                 if case .networkFailure(let message) = $0.outcome { return message }
                 return nil
-            }.first ?? "The analyzer could not be reached."
+            }.first ?? String(localized: "The analyzer could not be reached.")
         }
 
         let compatibilityLevel: AnalyzerDiagnosticLevel
         let compatibilityDetail: String
         if !authenticationFailures.isEmpty {
             compatibilityLevel = .failure
-            compatibilityDetail = "The analyzer or an upstream proxy requires authentication."
+            compatibilityDetail = String(localized: "The analyzer or an upstream proxy requires authentication.")
         } else if requiredAvailable {
             compatibilityLevel = .success
-            compatibilityDetail = "Core NodeScope features are supported."
+            compatibilityDetail = String(localized: "Core NodeScope features are supported.")
         } else if receivedHTTPResponse {
             compatibilityLevel = .failure
-            compatibilityDetail = "The server responded, but its API is not CoreScope-compatible."
+            compatibilityDetail = String(localized: "The server responded, but its API is not CoreScope-compatible.")
         } else {
             compatibilityLevel = .failure
-            compatibilityDetail = "Compatibility could not be checked while the analyzer is unreachable."
+            compatibilityDetail = String(localized: "Compatibility could not be checked while the analyzer is unreachable.")
         }
 
         return AnalyzerDiagnosticReport(
@@ -209,15 +209,15 @@ struct AnalyzerDiagnosticsService: Sendable {
     private func runBeacon(_ backend: BeaconBackend) async -> AnalyzerDiagnosticReport {
         var report = AnalyzerDiagnosticReport(
             host: baseURL.host(percentEncoded: false) ?? baseURL.absoluteString, checkedAt: .now,
-            connectionLevel: .warning, connectionDetail: "Connection has not been checked.",
-            compatibilityLevel: .warning, compatibilityDetail: "Compatibility has not been checked.",
+            connectionLevel: .warning, connectionDetail: String(localized: "Connection has not been checked."),
+            compatibilityLevel: .warning, compatibilityDetail: String(localized: "Compatibility has not been checked."),
             capabilities: [], backendType: "Beacon", serverVersion: backend.serverInfo.serverVersion
         )
         let checks = AnalyzerCapability.allCases.map { capability in
             if capability == .mapConfiguration {
                 return AnalyzerCapabilityCheck(
                     capability: capability, level: .warning,
-                    detail: "Beacon does not provide map defaults; NodeScope uses region coordinates."
+                    detail: String(localized: "Beacon does not provide map defaults; NodeScope uses region coordinates.")
                 )
             }
             let backendCapability: BackendCapability? = switch capability {
@@ -235,15 +235,15 @@ struct AnalyzerDiagnosticsService: Sendable {
             }
             let detail: String = switch capability {
             case .nodeAnalytics:
-                "Supported with Beacon’s seven-day observation-history limit; endpoint not probed."
+                String(localized: "Supported with Beacon’s seven-day observation-history limit; endpoint not probed.")
             case .observerActivity:
-                "Supported with Beacon observation counts; endpoint not probed."
+                String(localized: "Supported with Beacon observation counts; endpoint not probed.")
             case .observerTelemetry:
-                "Battery, airtime, and radio telemetry are supported; endpoint not probed."
+                String(localized: "Battery, airtime, and radio telemetry are supported; endpoint not probed.")
             case .channels, .channelMessages:
-                "Server-decrypted keyed channels are supported; endpoint not probed."
+                String(localized: "Server-decrypted keyed channels are supported; endpoint not probed.")
             default:
-                "Supported by the Beacon adapter; endpoint not probed."
+                String(localized: "Supported by the Beacon adapter; endpoint not probed.")
             }
             return AnalyzerCapabilityCheck(
                 capability: capability, level: .success,
@@ -259,14 +259,14 @@ struct AnalyzerDiagnosticsService: Sendable {
                 try info.requireSupported()
                 compatibility = .success
                 reportedChecks = await beaconCapabilityChecks(backend: backend, defaults: checks)
-                detail = "Beacon version and bounded browse-family checks completed."
+                detail = String(localized: "Beacon version and bounded browse-family checks completed.")
             } catch {
                 compatibility = .failure
                 detail = error.localizedDescription
             }
             report = AnalyzerDiagnosticReport(
                 host: report.host, checkedAt: .now, connectionLevel: .success,
-                connectionDetail: "Beacon responded over HTTPS.", compatibilityLevel: compatibility,
+                connectionDetail: String(localized: "Beacon responded over HTTPS."), compatibilityLevel: compatibility,
                 compatibilityDetail: detail, capabilities: reportedChecks, backendType: "Beacon",
                 serverVersion: info.serverVersion
             )
@@ -274,7 +274,7 @@ struct AnalyzerDiagnosticsService: Sendable {
             report = AnalyzerDiagnosticReport(
                 host: report.host, checkedAt: .now, connectionLevel: .warning,
                 connectionDetail: error.localizedDescription, compatibilityLevel: .warning,
-                compatibilityDetail: "Beacon could not be rechecked. The selected server type is unchanged.",
+                compatibilityDetail: String(localized: "Beacon could not be rechecked. The selected server type is unchanged."),
                 capabilities: checks, backendType: "Beacon", serverVersion: backend.serverInfo.serverVersion
             )
         }
@@ -317,7 +317,7 @@ struct AnalyzerDiagnosticsService: Sendable {
                 return AnalyzerCapabilityCheck(
                     capability: check.capability,
                     level: .warning,
-                    detail: "The bounded Beacon family check did not succeed."
+                    detail: String(localized: "The bounded Beacon family check did not succeed.")
                 )
             }
             return AnalyzerCapabilityCheck(
@@ -335,7 +335,7 @@ struct AnalyzerDiagnosticsService: Sendable {
               let url = URL(string: path, relativeTo: baseURL) else {
             return ProbeResult(
                 capability: capability,
-                outcome: .networkFailure("The analyzer address is invalid.")
+                outcome: .networkFailure(String(localized: "The analyzer address is invalid."))
             )
         }
 
@@ -346,7 +346,7 @@ struct AnalyzerDiagnosticsService: Sendable {
         do {
             let (data, response) = try await session.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse else {
-                return ProbeResult(capability: capability, outcome: .networkFailure("The server returned an invalid response."))
+                return ProbeResult(capability: capability, outcome: .networkFailure(String(localized: "The server returned an invalid response.")))
             }
 
             switch httpResponse.statusCode {
@@ -381,31 +381,31 @@ struct AnalyzerDiagnosticsService: Sendable {
             AnalyzerCapabilityCheck(
                 capability: result.capability,
                 level: .success,
-                detail: "Available · \(milliseconds) ms"
+                detail: String(localized: "Available · \(milliseconds) ms")
             )
         case .authenticationRequired(let statusCode):
             AnalyzerCapabilityCheck(
                 capability: result.capability,
                 level: .failure,
-                detail: "Authentication required · HTTP \(statusCode)"
+                detail: String(localized: "Authentication required · HTTP \(statusCode)")
             )
         case .unavailable(let statusCode):
             AnalyzerCapabilityCheck(
                 capability: result.capability,
                 level: result.capability.isRequired ? .failure : .warning,
-                detail: statusCode == 404 ? "Not supported" : "Unavailable · HTTP \(statusCode)"
+                detail: statusCode == 404 ? String(localized: "Not supported") : String(localized: "Unavailable · HTTP \(statusCode)")
             )
         case .invalidJSON:
             AnalyzerCapabilityCheck(
                 capability: result.capability,
                 level: result.capability.isRequired ? .failure : .warning,
-                detail: "Response format not recognized"
+                detail: String(localized: "Response format not recognized")
             )
         case .networkFailure:
             AnalyzerCapabilityCheck(
                 capability: result.capability,
                 level: .failure,
-                detail: "Could not be checked"
+                detail: String(localized: "Could not be checked")
             )
         }
     }
@@ -417,13 +417,13 @@ struct AnalyzerDiagnosticsService: Sendable {
 
         switch urlError.code {
         case .notConnectedToInternet:
-            return "This device is not connected to the internet."
+            return String(localized: "This device is not connected to the internet.")
         case .cannotFindHost, .dnsLookupFailed:
-            return "The analyzer host could not be found."
+            return String(localized: "The analyzer host could not be found.")
         case .cannotConnectToHost, .networkConnectionLost:
             return "A connection to the analyzer could not be established."
         case .timedOut:
-            return "The analyzer did not respond before the request timed out."
+            return String(localized: "The analyzer did not respond before the request timed out.")
         case .serverCertificateUntrusted, .serverCertificateHasBadDate,
              .serverCertificateHasUnknownRoot, .secureConnectionFailed:
             return "A secure connection to the analyzer could not be established."

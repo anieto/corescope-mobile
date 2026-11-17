@@ -12,14 +12,14 @@ enum CoreScopeAccountError: Error, LocalizedError {
     case unsupported, signedOut, rejected, conflict, storage, response, reset, throttled
     var errorDescription: String? {
         switch self {
-        case .reset: "Account settings were reset on the server. Choose how to continue before syncing."
-        case .throttled: "Account writes are limited to once a minute. Your changes are saved; try Sync now later."
-        case .unsupported: "This source does not support compatible CoreScope accounts."
-        case .signedOut: "Sign in again to access this account."
-        case .rejected: "The request was rejected. Check your credentials or try again later."
-        case .conflict: "Account favorites changed during sync. Try Sync now again."
-        case .storage: "The account session could not be saved securely."
-        case .response: "The account response could not be read. No favorites were changed."
+        case .reset: String(localized: "Account settings were reset on the server. Choose how to continue before syncing.")
+        case .throttled: String(localized: "Account writes are limited to once a minute. Your changes are saved; try Sync now later.")
+        case .unsupported: String(localized: "This source does not support compatible CoreScope accounts.")
+        case .signedOut: String(localized: "Sign in again to access this account.")
+        case .rejected: String(localized: "The request was rejected. Check your credentials or try again later.")
+        case .conflict: String(localized: "Account favorites changed during sync. Try Sync now again.")
+        case .storage: String(localized: "The account session could not be saved securely.")
+        case .response: String(localized: "The account response could not be read. No favorites were changed.")
         }
     }
 }

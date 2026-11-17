@@ -1607,12 +1607,12 @@ struct MapScreen: View {
 
     private var mapLoadingTitle: String {
         if isLocatingUser {
-            return "Locating you…"
+            return String(localized: "Locating you…")
         }
         if let selection = regionFilter.selectionTitle {
-            return "Loading \(selection)…"
+            return String(localized: "Loading \(selection)…")
         }
-        return "Loading all regions…"
+        return String(localized: "Loading all regions…")
     }
 
     private var activePings: [ActivePing] {
@@ -1995,8 +1995,8 @@ struct MapScreen: View {
         let hops = coordinates.enumerated().map { index, coordinate in
             let node = node(at: coordinate)
             let fallbackTitle = index == coordinates.count - 1
-                ? (firstSegment.observerName ?? "Unknown node")
-                : "Unknown node"
+                ? (firstSegment.observerName ?? String(localized: "Unknown node"))
+                : String(localized: "Unknown node")
             return MapRouteHop(
                 id: "\(firstSegment.routeID ?? firstSegment.id.uuidString)-\(index)",
                 position: index + 1,
@@ -3718,7 +3718,7 @@ private struct MapRouteDetails: Identifiable {
         var lines = [
             "NodeScope Route",
             "Hops: \(hops.count)",
-            "Observed: \(observedAt.formatted(.relative(presentation: .named)))"
+            String(localized: "Observed: \(observedAt.formatted(.relative(presentation: .named)))")
         ]
         if let observerName, !observerName.isEmpty {
             lines.append("Observer: \(observerName)")
@@ -3727,15 +3727,15 @@ private struct MapRouteDetails: Identifiable {
             lines.append("SNR: \(snr.formatted(.number.precision(.fractionLength(1)))) dB")
         }
         if let rssi {
-            lines.append("RSSI: \(rssi.formatted(.number.precision(.fractionLength(0)))) dBm")
+            lines.append(String(localized: "RSSI: \(rssi.formatted(.number.precision(.fractionLength(0)))) dBm"))
         }
         if let packetHash, !packetHash.isEmpty {
-            lines.append("Packet: \(packetHash.uppercased())")
+            lines.append(String(localized: "Packet: \(packetHash.uppercased())"))
         }
         if let messageText = messageText?.trimmingCharacters(in: .whitespacesAndNewlines),
            !messageText.isEmpty {
             lines.append("")
-            lines.append(sender.map { "Message from \($0):" } ?? "Message:")
+            lines.append(sender.map { String(localized: "Message from \($0):") } ?? String(localized: "Message:"))
             lines.append(messageText)
         }
         lines.append("")
@@ -4167,10 +4167,10 @@ private struct MapKeyScreen: View {
     @Environment(\.colorScheme) private var colorScheme
 
     private static let roles: [(role: String, title: String, summary: String, term: GlossaryTerm)] = [
-        ("repeater", "Repeater", "Relays packets so they travel further.", .repeater),
-        ("room", "Room", "Hosts a shared message board.", .roomServer),
-        ("companion", "Companion", "Someone's radio, paired with an app.", .companion),
-        ("sensor", "Sensor", "Reports readings over the mesh.", .sensor)
+        ("repeater", String(localized: "Repeater"), String(localized: "Relays packets so they travel further."), .repeater),
+        ("room", String(localized: "Room"), String(localized: "Hosts a shared message board."), .roomServer),
+        ("companion", String(localized: "Companion"), String(localized: "Someone's radio, paired with an app."), .companion),
+        ("sensor", String(localized: "Sensor"), String(localized: "Reports readings over the mesh."), .sensor)
     ]
 
     var body: some View {
@@ -4317,9 +4317,9 @@ private struct MapNodeFilterSheet: View {
 
     private var selectedObserverTitle: String {
         guard let selectedObserverID = filters.selectedObserverID else {
-            return "All Observers"
+            return String(localized: "All Observers")
         }
-        return observers.first(where: { $0.id == selectedObserverID })?.title ?? "Selected Observer"
+        return observers.first(where: { $0.id == selectedObserverID })?.title ?? String(localized: "Selected Observer")
     }
 
     var body: some View {
@@ -4578,8 +4578,8 @@ private struct MapObserverPickerSheet: View {
                     select(nil)
                 } label: {
                     observerRow(
-                        title: "All Observers",
-                        subtitle: "Show routes received by any observer",
+                        title: String(localized: "All Observers"),
+                        subtitle: String(localized: "Show routes received by any observer"),
                         isSelected: selectedObserverID == nil
                     )
                 }
@@ -5051,9 +5051,9 @@ enum MapDisplayStyle: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .standard: "Standard"
-        case .imagery: "Satellite"
-        case .hybrid: "Hybrid"
+        case .standard: String(localized: "Standard")
+        case .imagery: String(localized: "Satellite")
+        case .hybrid: String(localized: "Hybrid")
         }
     }
 

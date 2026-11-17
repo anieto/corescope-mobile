@@ -138,9 +138,9 @@ private struct AnalyzerLiveUpdatesSection: View {
             return "Connected"
         }
         if let error, !error.isEmpty {
-            return "Disconnected · \(error)"
+            return String(localized: "Disconnected · \(error)")
         }
-        return "Connecting or temporarily unavailable"
+        return String(localized: "Connecting or temporarily unavailable")
     }
 }
 

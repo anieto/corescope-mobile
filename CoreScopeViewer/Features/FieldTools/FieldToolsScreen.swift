@@ -726,7 +726,7 @@ struct FieldToolsScreen: View {
             MapReader { proxy in
                 Map(position: $position) {
                     if let reference = model.reference {
-                        Annotation("Reference", coordinate: reference.clLocationCoordinate) {
+                        Annotation(String(localized: "Reference"), coordinate: reference.clLocationCoordinate) {
                             FieldMapMarker(symbol: "scope", color: NodeScopeStyle.activity)
                         }
                     }

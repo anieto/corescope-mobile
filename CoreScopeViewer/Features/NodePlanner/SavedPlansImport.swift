@@ -198,9 +198,9 @@ enum SavedPlansImport {
 
     static func describe(_ refusal: Refusal) -> String {
         switch refusal {
-        case .nothingSelected: "Everything selected is already in your library."
-        case .tooMany(let what): "Saved Plans can hold 100 \(what). Choose fewer items to import, or remove some first."
-        case .tooLarge: "There isn't room for these results. Choose fewer items, or import inputs only."
+        case .nothingSelected: String(localized: "Everything selected is already in your library.")
+        case .tooMany(let what): String(localized: "Saved Plans can hold 100 \(what). Choose fewer items to import, or remove some first.")
+        case .tooLarge: String(localized: "There isn't room for these results. Choose fewer items, or import inputs only.")
         }
     }
 }
@@ -289,7 +289,7 @@ struct ImportPackageSheet: View {
     }
 
     private func importLabel(_ preview: SavedPlansImport.Preview) -> String {
-        preview.copiesMatches && preview.items.allSatisfy({ $0.status == .alreadyHere }) ? "Import copy" : "Import"
+        preview.copiesMatches && preview.items.allSatisfy({ $0.status == .alreadyHere }) ? String(localized: "Import copy") : String(localized: "Import")
     }
 
     @ViewBuilder private func form(_ preview: SavedPlansImport.Preview) -> some View {
@@ -384,9 +384,9 @@ struct ImportPackageSheet: View {
             selected = preview.defaultSelection
             state = .ready(preview)
         case .failure(.needsNewerVersion):
-            state = .failed("This file needs a newer version of NodeScope. Nothing was imported.")
+            state = .failed(String(localized: "This file needs a newer version of NodeScope. Nothing was imported."))
         case .failure:
-            state = .failed("This isn't a NodeScope saved-plans file, or it's damaged or too large. Nothing was imported.")
+            state = .failed(String(localized: "This isn't a NodeScope saved-plans file, or it's damaged or too large. Nothing was imported."))
         }
     }
 

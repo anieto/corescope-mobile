@@ -161,7 +161,7 @@ enum BeaconBackendError: Error, LocalizedError {
             case "Map defaults": BackendCapability.mapDefaults.beaconExplanation
             default: String(localized: "\(feature) isn’t supported for Beacon servers in this version of NodeScope.")
             }
-        case .nodeUnavailable: "This node is not available on this server."
+        case .nodeUnavailable: String(localized: "This node is not available on this server.")
         }
     }
 }

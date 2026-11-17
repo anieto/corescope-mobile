@@ -61,10 +61,10 @@ enum AnalyzerPagingError: Error, LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidCursor: "This page belongs to a different request. Refresh to continue."
-        case .invalidPageSize: "The page size must be greater than zero."
-        case .repeatedCursor: "The server repeated a page cursor. Refresh to try again."
-        case .pageBudgetExceeded: "The requested history exceeds the page budget. Try a smaller window."
+        case .invalidCursor: String(localized: "This page belongs to a different request. Refresh to continue.")
+        case .invalidPageSize: String(localized: "The page size must be greater than zero.")
+        case .repeatedCursor: String(localized: "The server repeated a page cursor. Refresh to try again.")
+        case .pageBudgetExceeded: String(localized: "The requested history exceeds the page budget. Try a smaller window.")
         }
     }
 }

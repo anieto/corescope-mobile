@@ -172,7 +172,7 @@ enum FieldEvidenceError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unsupported(let capability): capability.beaconExplanation
-        case .rateLimited: "This analyzer is rate limiting target evidence. Try again later."
+        case .rateLimited: String(localized: "This analyzer is rate limiting target evidence. Try again later.")
         }
     }
 }

@@ -112,9 +112,9 @@ final class CoreScopeAccountModel {
             }
         }
         if upload && selection?.hasPendingEdits == true {
-            message = "Earlier changes synced. Newer edits are saved on this device; sync again after one minute."
+            message = String(localized: "Earlier changes synced. Newer edits are saved on this device; sync again after one minute.")
         } else {
-            message = upload ? "Account favorites synced." : "Account favorites refreshed. Device favorites are unchanged."
+            message = upload ? String(localized: "Account favorites synced.") : String(localized: "Account favorites refreshed. Device favorites are unchanged.")
         }
     }
 
@@ -142,7 +142,7 @@ final class CoreScopeAccountModel {
                   var state = try store.load(origin: origin, userID: user.id) else { throw CoreScopeAccountError.reset }
             try update(&state)
             try persist(state)
-            message = "Account edits saved on this device. Choose Sync now to upload them."
+            message = String(localized: "Account edits saved on this device. Choose Sync now to upload them.")
         }
     }
 
@@ -154,7 +154,7 @@ final class CoreScopeAccountModel {
             else { state = try CoreScopeAccountSelectionState(remote: remote) }
             try persist(state)
             resetDocument = nil
-            message = restore ? "Selections restored locally. Choose Sync now to upload them." : "Using the server’s selections."
+            message = restore ? String(localized: "Selections restored locally. Choose Sync now to upload them.") : String(localized: "Using the server’s selections.")
         }
     }
 
@@ -167,7 +167,7 @@ final class CoreScopeAccountModel {
         let claimed = try CoreScopeFavoriteMerge.selection(state.baseline).claimed
         favorites.applyAccountNodes(favorites.nodeKeys(source: source).union(state.favorites).union(claimed.keys),
             names: claimed, source: source)
-        message = "Account selections copied to device favorites."
+        message = String(localized: "Account selections copied to device favorites.")
     }
 
     func logout(copyTo favorites: FavoritesStore? = nil) async {
@@ -186,8 +186,8 @@ final class CoreScopeAccountModel {
             resetDocument = nil
             self.user = nil
             message = revocationFailed
-                ? "Signed out on this device. Server revocation was not confirmed; the session may remain active until revoked on CoreScope or expired."
-                : "Signed out. Device favorites are unchanged."
+                ? String(localized: "Signed out on this device. Server revocation was not confirmed; the session may remain active until revoked on CoreScope or expired.")
+                : String(localized: "Signed out. Device favorites are unchanged.")
         }
     }
 
@@ -195,11 +195,11 @@ final class CoreScopeAccountModel {
         guard !busy else { return }
         guard epoch == Self.epochs[origin] else {
             user = nil; selection = nil; resetDocument = nil; supported = false
-            message = "The account session changed in another window. Reopen this page to continue."
+            message = String(localized: "The account session changed in another window. Reopen this page to continue.")
             return
         }
         guard Self.activeOrigins.insert(origin).inserted else {
-            message = "An account operation is already running. Try again shortly."
+            message = String(localized: "An account operation is already running. Try again shortly.")
             return
         }
         let activeOrigin = origin

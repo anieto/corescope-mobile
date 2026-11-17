@@ -439,17 +439,17 @@ struct PacketTypeDatum: Identifiable {
 
     var name: String {
         switch PayloadType(rawValue: code) {
-        case .req: "Request"
-        case .response: "Response"
-        case .txtMsg: "Direct Msg"
+        case .req: String(localized: "Request")
+        case .response: String(localized: "Response")
+        case .txtMsg: String(localized: "Direct Msg")
         case .ack: "ACK"
-        case .advert: "Advert"
-        case .grpTxt: "Channel Msg"
-        case .anonReq: "Anon Req"
+        case .advert: String(localized: "Advert")
+        case .grpTxt: String(localized: "Channel Msg")
+        case .anonReq: String(localized: "Anon Req")
         case .path: "Path"
-        case .trace: "Trace"
-        case .control: "Control"
-        case nil: "Type \(code)"
+        case .trace: String(localized: "Trace")
+        case .control: String(localized: "Control")
+        case nil: String(localized: "Type \(code)")
         }
     }
 }

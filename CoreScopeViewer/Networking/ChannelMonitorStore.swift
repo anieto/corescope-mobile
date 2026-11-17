@@ -177,13 +177,13 @@ enum ChannelMonitorError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidHashtag:
-            "Enter a channel name."
+            String(localized: "Enter a channel name.")
         case .invalidKey:
-            "Enter a 32-character hexadecimal PSK."
+            String(localized: "Enter a 32-character hexadecimal PSK.")
         case .keyGenerationFailed:
-            "Couldn't generate a secure channel key."
+            String(localized: "Couldn't generate a secure channel key.")
         case .keychain:
-            "Couldn't save the channel securely on this device."
+            String(localized: "Couldn't save the channel securely on this device.")
         }
     }
 }

@@ -1012,7 +1012,7 @@ private struct MeshCoreContactSheet: View {
         switch contact.type {
         case 1: "Companion"
         case 2: "Repeater"
-        case 3: "Room Server"
+        case 3: String(localized: "Room Server")
         default: "Sensor"
         }
     }

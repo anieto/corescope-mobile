@@ -265,8 +265,8 @@ enum StudyFilter: Hashable, CaseIterable {
     var title: String {
         switch self {
         case .all: "All"
-        case .linkProfile: "Link Profiles"
-        case .coverage: "Coverage"
+        case .linkProfile: String(localized: "Link Profiles")
+        case .coverage: String(localized: "Coverage")
         }
     }
 }
@@ -700,14 +700,14 @@ private struct SaveStudySheet: View {
     private var saveInFooter: String {
         let current = existing.map { model.plan($0.planID)?.name ?? "Standalone" }
         if let current, mode == .update {
-            return "Now in \(current). Choose another plan to move it there, or Standalone to keep it outside any plan."
+            return String(localized: "Now in \(current). Choose another plan to move it there, or Standalone to keep it outside any plan.")
         }
-        return "A plan groups related studies, such as every study for one site. Standalone keeps this study outside any plan. You can move it later."
+        return String(localized: "A plan groups related studies, such as every study for one site. Standalone keeps this study outside any plan. You can move it later.")
     }
 
     private var confirmTitle: String {
         if existing == nil { return "Save study" }
-        return mode == .update ? "Update" : "Save as new"
+        return mode == .update ? String(localized: "Update") : String(localized: "Save as new")
     }
 
     var body: some View {

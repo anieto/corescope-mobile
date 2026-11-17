@@ -361,7 +361,7 @@ private struct ChatBubbleRow: View {
                     HStack(spacing: 6) {
                         if message.repeats > 1 {
                             MessageMetricChip(
-                                text: "Heard \(message.repeats)×",
+                                text: String(localized: "Heard \(message.repeats)×"),
                                 symbol: "ear.fill",
                                 color: NodeScopeStyle.signal
                             )

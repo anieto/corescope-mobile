@@ -138,14 +138,14 @@ final class CandidatePlansModel {
             for (siteIndex, site) in plan.sites.enumerated() {
                 let label = "\(plan.name) › \(site.name)"
                 guard (-85...85).contains(site.latitude) else {
-                    conversion.notes.append("\(label): too close to a pole for Coverage, so it isn't moved.")
+                    conversion.notes.append(String(localized: "\(label): too close to a pole for Coverage, so it isn't moved."))
                     continue
                 }
                 let assumptions = site.assumptions
                 func value(_ saved: Double?, _ fallback: Double, _ range: ClosedRange<Double>, _ what: String) -> Double {
                     guard let saved else { return fallback }
                     if range.contains(saved) { return saved }
-                    conversion.notes.append("\(label): \(what) is outside what Coverage accepts; the default is used.")
+                    conversion.notes.append(String(localized: "\(label): \(what) is outside what Coverage accepts; the default is used."))
                     return fallback
                 }
                 let loss: Double = assumptions.cableLossDB == nil && assumptions.additionalLossDB == nil
@@ -167,7 +167,7 @@ final class CandidatePlansModel {
                 let study = SavedStudy(id: Self.newID(), name: site.name, createdAtMilliseconds: time,
                                        updatedAtMilliseconds: time, kind: .coverage, coverage: coverage, planID: container.id)
                 guard (try? study.validate()) != nil else {
-                    conversion.notes.append("\(label): its values can't be used for Coverage, so it isn't moved.")
+                    conversion.notes.append(String(localized: "\(label): its values can't be used for Coverage, so it isn't moved."))
                     continue
                 }
                 conversion.studies.append(study)

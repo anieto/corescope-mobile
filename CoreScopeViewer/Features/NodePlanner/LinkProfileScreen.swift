@@ -942,7 +942,7 @@ final class LinkProfileModel {
         guard let coordinate = coordinate(for: endpoint) else { return }
         let isA = endpoint == .pointA
         coverageSeed = LinkCoverageSeed(
-            point: SavedEndpoint(name: name(for: endpoint) ?? "Point \(endpoint.letter)",
+            point: SavedEndpoint(name: name(for: endpoint) ?? String(localized: "Point \(endpoint.letter)"),
                 latitude: coordinate.latitude, longitude: coordinate.longitude,
                 antenna: SavedAntenna(heightMeters: isA ? heightA : heightB,
                     gainDbi: isA ? gainADB : gainBDB, lossDb: isA ? lossADB : lossBDB)),
@@ -2023,7 +2023,7 @@ private struct LinkProfileTerrainCanvas: View {
     private var accessibilitySummary: String {
         let distance = distanceUnit.format(kilometers: analysis.result.distanceMeters / 1_000)
         let clearance = analysis.result.worstClearancePercent.formatted(.number.precision(.fractionLength(0)))
-        return "Distance \(distance). Worst Fresnel clearance \(clearance) percent."
+        return String(localized: "Distance \(distance). Worst Fresnel clearance \(clearance) percent.")
     }
 }
 

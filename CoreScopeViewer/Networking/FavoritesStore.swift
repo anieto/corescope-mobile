@@ -75,11 +75,11 @@ final class FavoritesStore {
 
     func membershipLabel(_ item: FavoriteItem) -> String {
         var labels: [String] = []
-        if isDeviceFavorite(item) { labels.append("Device") }
-        if isAccountFavorite(item) { labels.append("Account") }
+        if isDeviceFavorite(item) { labels.append(String(localized: "Device")) }
+        if isAccountFavorite(item) { labels.append(String(localized: "Account")) }
         if let state = accountStore.visibleState(source: item.source),
            let remote = try? CoreScopeFavoriteMerge.selection(state.baseline), remote.claimed[item.entityID.lowercased()] != nil {
-            labels.append("Claimed")
+            labels.append(String(localized: "Claimed"))
         }
         return labels.joined(separator: " · ")
     }
@@ -110,7 +110,7 @@ final class FavoritesStore {
             kind: .observer,
             entityID: observer.id,
             source: source,
-            title: observer.name ?? "Unnamed Observer",
+            title: observer.name ?? String(localized: "Unnamed Observer"),
             subtitle: observer.iata ?? observer.id,
             observer: observer
         )

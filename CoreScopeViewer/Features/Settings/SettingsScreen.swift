@@ -118,7 +118,7 @@ struct SettingsScreen: View {
                         } label: {
                             SettingsNavigationRow(
                                 title: "Analyzer Diagnostics",
-                                value: "Check connection and features",
+                                value: String(localized: "Check connection and features"),
                                 symbol: "stethoscope"
                             )
                         }
@@ -131,7 +131,7 @@ struct SettingsScreen: View {
                         } label: {
                             SettingsNavigationRow(
                                 title: "Cache & Storage",
-                                value: "Review or clear downloaded data",
+                                value: String(localized: "Review or clear downloaded data"),
                                 symbol: "internaldrive.fill"
                             )
                         }
@@ -143,7 +143,7 @@ struct SettingsScreen: View {
                             Button { showsWhatsNew = true } label: {
                                 SettingsNavigationRow(
                                     title: "What's New",
-                                    value: "Highlights in version \(latest.version)",
+                                    value: String(localized: "Highlights in version \(latest.version)"),
                                     symbol: "sparkles"
                                 )
                             }
@@ -158,7 +158,7 @@ struct SettingsScreen: View {
                         } label: {
                             SettingsNavigationRow(
                                 title: "About & How to Use",
-                                value: "NodeScope field guide",
+                                value: String(localized: "NodeScope field guide"),
                                 symbol: "info.circle.fill"
                             )
                         }
@@ -171,7 +171,7 @@ struct SettingsScreen: View {
                         } label: {
                             SettingsNavigationRow(
                                 title: "Glossary",
-                                value: "What the terms in NodeScope mean",
+                                value: String(localized: "What the terms in NodeScope mean"),
                                 symbol: "book.closed.fill"
                             )
                         }
@@ -184,7 +184,7 @@ struct SettingsScreen: View {
                         } label: {
                             SettingsNavigationRow(
                                 title: "Support Development",
-                                value: "Leave an optional one-time tip",
+                                value: String(localized: "Leave an optional one-time tip"),
                                 symbol: "heart.fill"
                             )
                         }
@@ -251,7 +251,7 @@ struct SettingsScreen: View {
                 guard !Task.isCancelled, sourceSaveID == saveID else { return }
 
                 if let error = liveFeed.lastError {
-                    sourceSaveStatus = .failed("Couldn't connect: \(error)")
+                    sourceSaveStatus = .failed(String(localized: "Couldn't connect: \(error)"))
                     try? await Task.sleep(for: .seconds(4))
                     guard sourceSaveID == saveID else { return }
                     sourceSaveStatus = nil
@@ -268,7 +268,7 @@ struct SettingsScreen: View {
             }
 
             guard sourceSaveID == saveID else { return }
-            sourceSaveStatus = .failed("Couldn't connect to \(settings.host).")
+            sourceSaveStatus = .failed(String(localized: "Couldn't connect to \(settings.host)."))
             try? await Task.sleep(for: .seconds(4))
             guard sourceSaveID == saveID else { return }
             sourceSaveStatus = nil

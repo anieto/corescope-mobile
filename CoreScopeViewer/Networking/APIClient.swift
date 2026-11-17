@@ -140,9 +140,9 @@ enum APIError: Error, LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidURL: "Invalid URL"
-        case .invalidResponse: "Invalid response from server"
-        case .http(let code): "Server returned status \(code)"
+        case .invalidURL: String(localized: "Invalid URL")
+        case .invalidResponse: String(localized: "Invalid response from server")
+        case .http(let code): String(localized: "Server returned status \(code)")
         case .decoding(let error): "Failed to decode response: \(error.localizedDescription)"
         }
     }

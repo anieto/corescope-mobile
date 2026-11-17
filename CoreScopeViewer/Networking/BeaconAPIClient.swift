@@ -47,15 +47,15 @@ enum BeaconAPIError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unrecognizedVersion:
-            "The server did not report a recognized Beacon version."
+            String(localized: "The server did not report a recognized Beacon version.")
         case .unsupportedVersion(let version):
-            "Beacon \(version) is not supported. Version 2.0.3 or newer is required."
+            String(localized: "Beacon \(version) is not supported. Version 2.0.3 or newer is required.")
         case .rateLimited(let until):
-            "This server is rate limiting requests. Try again after \(until.formatted(date: .omitted, time: .standard))."
+            String(localized: "This server is rate limiting requests. Try again after \(until.formatted(date: .omitted, time: .standard)).")
         case .server(let status, _):
-            "Beacon returned status \(status)."
+            String(localized: "Beacon returned status \(status).")
         case .malformedPage:
-            "Beacon returned an incomplete pagination response."
+            String(localized: "Beacon returned an incomplete pagination response.")
         }
     }
 }

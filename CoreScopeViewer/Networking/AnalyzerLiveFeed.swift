@@ -167,7 +167,7 @@ final class CoreScopeLiveFeed: NSObject, AnalyzerLiveFeed, URLSessionWebSocketDe
             guard error != nil else { return }
             Task { @MainActor [weak self] in
                 guard let self, self.socket === socket else { return }
-                self.connectionFailed(error?.localizedDescription ?? "Connection lost.")
+                self.connectionFailed(error?.localizedDescription ?? String(localized: "Connection lost."))
             }
         }
     }
@@ -230,7 +230,7 @@ final class CoreScopeLiveFeed: NSObject, AnalyzerLiveFeed, URLSessionWebSocketDe
         reason: Data?
     ) {
         let message = reason.flatMap { String(data: $0, encoding: .utf8) }
-            ?? "Server closed the connection (code \(closeCode.rawValue))."
+            ?? String(localized: "Server closed the connection (code \(closeCode.rawValue)).")
         Task { @MainActor [weak self] in
             guard let self, webSocketTask === self.socket else { return }
             self.connectionFailed(message)
