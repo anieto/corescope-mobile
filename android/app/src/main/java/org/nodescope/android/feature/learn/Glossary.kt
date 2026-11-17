@@ -1,5 +1,8 @@
 package org.nodescope.android.feature.learn
 
+import org.nodescope.android.core.model.ContentTranslation
+import org.nodescope.android.core.model.nonBlankTranslation
+import java.util.concurrent.ConcurrentHashMap
 import androidx.compose.ui.res.stringResource
 import org.nodescope.android.R
 import org.nodescope.android.core.design.withDescription
@@ -31,6 +34,29 @@ import org.nodescope.android.core.design.meshCardColors
 @Serializable data class GlossaryEntry(val id: String, val term: String, val summary: String, val detail: String? = null)
 @Serializable data class GlossarySection(val title: String, val entries: List<GlossaryEntry>)
 @Serializable private data class GlossaryDocument(val version: Int, val sections: List<GlossarySection>)
+
+@Serializable
+internal data class GlossaryTranslation(
+    val sections: Map<String, String>? = null,
+    val entries: Map<String, Entry>? = null,
+) {
+    @Serializable
+    data class Entry(val term: String? = null, val summary: String? = null, val detail: String? = null)
+
+    fun applyTo(english: List<GlossarySection>): List<GlossarySection> = english.map { section ->
+        section.copy(
+            title = sections?.get(section.title).nonBlankTranslation() ?: section.title,
+            entries = section.entries.map { entry ->
+                val translated = entries?.get(entry.id)
+                entry.copy(
+                    term = translated?.term.nonBlankTranslation() ?: entry.term,
+                    summary = translated?.summary.nonBlankTranslation() ?: entry.summary,
+                    detail = translated?.detail.nonBlankTranslation() ?: entry.detail,
+                )
+            },
+        )
+    }
+}
 
 /** A term NodeScope explains, named by its entry's id in glossary.json. */
 enum class GlossaryTerm(val id: String) {
@@ -65,16 +91,20 @@ enum class GlossaryTerm(val id: String) {
  */
 object Glossary {
     private val json = Json { ignoreUnknownKeys = true }
-    @Volatile private var cached: List<GlossarySection>? = null
+    private val cached = ConcurrentHashMap<String, List<GlossarySection>>()
 
     fun parse(text: String): List<GlossarySection> = json.decodeFromString<GlossaryDocument>(text).sections
 
-    fun sections(context: Context): List<GlossarySection> = cached ?: runCatching {
-        parse(context.assets.open("glossary.json").bufferedReader().use { it.readText() })
-    }.getOrDefault(emptyList()).also { cached = it }
+    fun sections(context: Context, language: String = ContentTranslation.language(context)): List<GlossarySection> =
+        cached.computeIfAbsent(language) {
+            val english = runCatching {
+                parse(context.assets.open("glossary.json").bufferedReader().use { it.readText() })
+            }.getOrDefault(emptyList())
+            ContentTranslation.load<GlossaryTranslation>(context, "glossary", language)?.applyTo(english) ?: english
+        }
 
-    fun entry(context: Context, term: GlossaryTerm): GlossaryEntry? =
-        sections(context).asSequence().flatMap { it.entries }.firstOrNull { it.id == term.id }
+    fun entry(context: Context, term: GlossaryTerm, language: String): GlossaryEntry? =
+        sections(context, language).asSequence().flatMap { it.entries }.firstOrNull { it.id == term.id }
 }
 
 /**
@@ -107,7 +137,8 @@ object LearnSettings {
 fun LearnButton(term: GlossaryTerm, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     if (!LearnSettings.showsExplanations(context)) return
-    val entry = remember(term) { Glossary.entry(context, term) } ?: return
+    val language = stringResource(R.string.content_language)
+    val entry = remember(term, language) { Glossary.entry(context, term, language) } ?: return
     val tooltip = rememberTooltipState(isPersistent = true)
     val scope = rememberCoroutineScope()
     var showsGlossary by rememberSaveable { mutableStateOf(false) }
@@ -155,7 +186,8 @@ fun GlossaryScreen() {
 @Composable
 private fun GlossaryList(focus: GlossaryTerm?, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val sections = remember { Glossary.sections(context) }
+    val language = stringResource(R.string.content_language)
+    val sections = remember(language) { Glossary.sections(context, language) }
     val state = rememberLazyListState()
     // Rows are the intro, then a header and its entries per section; open at the focused entry.
     LaunchedEffect(focus) {

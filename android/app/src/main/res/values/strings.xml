@@ -1,4 +1,6 @@
 <resources>
+    <!-- Translators: set this to your resource folder’s language tag, e.g. pt-BR in values-pt-rBR. -->
+    <string name="content_language" translatable="true">en</string>
     <string name="app_name">NodeScope</string>
     <string name="welcome">Welcome to NodeScope</string>
     <string name="source_privacy">NodeScope is an independent, read-only client. Requests go directly to your selected analyzer. NodeScope does not transmit radio traffic.</string>

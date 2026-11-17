@@ -19,7 +19,11 @@ data class AnalyzerSource(
     val icon: String? = null,
     /** `corescope` or `beacon`; registry v1 entries may omit it and are CoreScope. */
     val type: String? = null,
+    val subtitles: Map<String, String>? = null,
 ) {
+    fun displaySubtitle(language: String): String =
+        ContentTranslation.pick(subtitles, ContentTranslation.languages(language)) ?: subtitle
+
     val backendType: AnalyzerSourceType get() = AnalyzerSourceType.from(type) ?: AnalyzerSourceType.CORESCOPE
     val viewport: RegionCoordinate? get() = Coordinate.valid(mapCenter?.getOrNull(0), mapCenter?.getOrNull(1))
         ?.let { RegionCoordinate(it.latitude, it.longitude, mapRadiusKm ?: 250.0) }

@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.settings
 
+import org.nodescope.android.core.model.ContentTranslation
+import org.nodescope.android.core.model.nonBlankTranslation
 import androidx.compose.ui.res.stringResource
 import org.nodescope.android.R
 import org.nodescope.android.core.design.withDescription
@@ -42,6 +44,21 @@ enum class AppFeature { nodePlanner, estimatedCoverage, linkProfile, savedPlans,
 @Serializable data class WhatsNewRelease(val version: String, val items: List<WhatsNewItem>)
 @Serializable private data class WhatsNewDocument(val version: Int, val releases: List<WhatsNewRelease>)
 
+@Serializable
+internal data class WhatsNewTranslation(val items: Map<String, Item>? = null) {
+    @Serializable
+    data class Item(val title: String? = null, val detail: String? = null, val location: String? = null)
+
+    fun applyTo(english: WhatsNewItem): WhatsNewItem {
+        val item = items?.get(english.id) ?: return english
+        return english.copy(
+            title = item.title.nonBlankTranslation() ?: english.title,
+            detail = item.detail.nonBlankTranslation() ?: english.detail,
+            location = item.location.nonBlankTranslation() ?: english.location,
+        )
+    }
+}
+
 /**
  * A release's highlights, shown once after an update so people with automatic updates hear about
  * new features. The text is shared with iOS (Resources/whats-new.json); a test keeps the copies
@@ -55,8 +72,13 @@ object WhatsNew {
         .map { release -> release.copy(items = release.items.filter { it.platforms?.contains("android") ?: true }) }
         .filter { it.items.isNotEmpty() }
 
-    fun load(context: Context): List<WhatsNewRelease> =
-        runCatching { parse(context.assets.open("whats-new.json").bufferedReader().use { it.readText() }) }.getOrDefault(emptyList())
+    fun load(context: Context, language: String = ContentTranslation.language(context)): List<WhatsNewRelease> {
+        val english = runCatching {
+            parse(context.assets.open("whats-new.json").bufferedReader().use { it.readText() })
+        }.getOrDefault(emptyList())
+        val translation = ContentTranslation.load<WhatsNewTranslation>(context, "whats-new", language) ?: return english
+        return english.map { release -> release.copy(items = release.items.map(translation::applyTo)) }
+    }
 
     /** The newest highlights [appVersion] has, for Settings. */
     fun latest(releases: List<WhatsNewRelease>, appVersion: String): WhatsNewRelease? =

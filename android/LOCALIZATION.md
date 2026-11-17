@@ -52,9 +52,11 @@ hex, packet hop hex, certificate fingerprints, channel keys, terrain digests, po
 fingerprints, deployment revisions, and response cache digests use a fixed locale. Public key
 normalization, API and URL parameters, and structured JSON values also remain locale-neutral.
 
-Phase 4 defers Node Check rule findings and verdicts, the English glossary and What's
-New JSON, and community source subtitles from the registry. Store listing copy is
-outside this Android source change.
+Phase 4 resolves bundled glossary and What's New overlays from `content_language`.
+Regional tags are tried before base tags. Blank fields fall back to English, and source
+subtitles use the same language candidates. See `docs/localization-content.md` for the
+shared JSON format. Node Check report wording lives in `values/node_check_rules.xml`.
+Store listing copy remains outside the Android source catalog.
 
 Explore exports preserve English metric details and their existing CSV columns and JSON keys.
 Preset IDs and raw compass abbreviations remain stable. UI code can resolve each compass point
