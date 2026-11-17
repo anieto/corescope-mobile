@@ -341,6 +341,65 @@ replay. Its own small branch, separate from the live map options.
 - iPhone: a short sheet that can be pulled up to the full page. iPad and iPhone Duo: a popover
   anchored to the node. Android to match.
 
+### Localization (planned)
+
+Make NodeScope usable outside English-speaking communities, starting with Brazilian Portuguese
+(pt-BR). Requested 2026-11-17 alongside the Mesh Sorocaba community source request. Each phase
+ships on its own; the infrastructure phases change nothing a user can see.
+
+Audit (2026-11-17): iOS is mostly ready, Android is not.
+
+- **iOS:** about 950 SwiftUI literals (`Text`, `Button`, `Toggle`, `Label`, `Section`,
+  `navigationTitle`…) are already localizable keys, and 308 view-model strings already use
+  `String(localized:)`. Gaps: about 243 `Text(variable)` call sites, 88 interpolated `Text` strings
+  (plurals), 30 `String(format:)`. `knownRegions` is `Base, en` only; no String Catalog yet.
+- **Android:** `strings.xml` holds 63 strings and code calls `stringResource` in only 57 places,
+  while about 570 strings are hardcoded in Compose. 35 `Locale.US` and 40 `String.format` uses need review.
+- **Content outside the UI code:** `glossary.json`, `whats-new.json` (both platforms), Node Check
+  findings text (shared rules with meshtexas.org), community source subtitles, store listings.
+
+**Phase 1 — iOS string infrastructure (English only).**
+- Add `Localizable.xcstrings` and let Xcode extract existing keys. Add it to the pbxproj by hand
+  (never run xcodegen).
+- Audit `Text(variable)` sites. Strings built in code move to `String(localized:)` or
+  `LocalizedStringResource`; API data (node names, channel text) stays verbatim.
+- Convert count strings to catalog plural variants ("1 hop" / "3 hops"); replace
+  `String(format:)` with interpolation or `FormatStyle` where it shows text to the user.
+- Done when: an English build is visually unchanged and Xcode's pseudo-language run shows no
+  untranslated UI text.
+
+**Phase 2 — Android string extraction (English only).**
+- Move the hardcoded Compose strings into `res/values/strings.xml` (`plurals` for counts),
+  screen by screen, keeping one commit per feature area so review stays small.
+- Keep `Locale.US`/`Locale.ROOT` only for API parsing and machine formats. Anything a user sees
+  uses the device locale.
+- Done when: a lint check for hardcoded text passes and pseudo-locale (`en-XA`) builds show no raw
+  strings.
+
+**Phase 3 — Locale-aware formatting and units (both platforms).**
+- Dates, relative times, numbers and decimals follow the device locale.
+- Distance default follows the region (km outside the US/UK) unless the user has chosen a unit.
+- RF values (dBm, SNR, MHz) keep a fixed format; just localize the decimal separator.
+
+**Phase 4 — Bundled content.**
+- `glossary.json` and `whats-new.json` gain per-language entries with English fallback.
+- Node Check finding text moves to string resources; the rules stay identical across iOS, Android
+  and meshtexas.org.
+- Community source `subtitle` can carry an optional per-language map in `sources-v2.json`.
+
+**Phase 5 — First language: pt-BR.**
+- Machine-draft the catalog and `strings.xml`, then have a native speaker review it. Ask Mesh
+  Sorocaba / MeshCore Brasil to help.
+- Leave MeshCore terms (repeater, advert, flood, companion) in English where the community uses them,
+  and keep a short shared glossary of term choices for both platforms.
+- Verify layout with longer strings (Portuguese runs about 20–30% longer) on iPhone, Duo, iPad and
+  Android phone/tablet/foldable.
+- Translate App Store and Google Play listings and screenshots.
+
+**After pt-BR:** each further language needs only translation and review. Pick languages based on
+which community sources are listed. Every new feature from Phase 2 on must add strings through the
+catalog / `strings.xml`, never hardcoded.
+
 ## 1.0.0 — Investigation depth and product maturity
 
 Complete the core read-only investigation workflow and prepare NodeScope for a
@@ -358,7 +417,7 @@ stable long-term public release.
   unsupported endpoints.
 - Complete large-network, long-running live-feed, offline-cache, accessibility,
   and performance regression passes.
-- Establish localization infrastructure before translating the interface.
+- Localization infrastructure and first language: see [Localization](#localization-planned).
 - Finalize onboarding, privacy documentation, App Store materials, and the 1.0
   release checklist.
 
