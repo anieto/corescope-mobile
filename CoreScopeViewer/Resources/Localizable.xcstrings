@@ -2251,6 +2251,15 @@
     "Duplicate" : {
 
     },
+    "E" : {
+      "comment" : "Compass point abbreviation (east)"
+    },
+    "ENE" : {
+      "comment" : "Compass point abbreviation (eastNortheast)"
+    },
+    "ESE" : {
+      "comment" : "Compass point abbreviation (eastSoutheast)"
+    },
     "EU 433 MHz (Narrow)" : {
 
     },
@@ -3406,7 +3415,19 @@
 
     },
     "N" : {
-
+      "comment" : "Compass point abbreviation (north)"
+    },
+    "NE" : {
+      "comment" : "Compass point abbreviation (northeast)"
+    },
+    "NNE" : {
+      "comment" : "Compass point abbreviation (northNortheast)"
+    },
+    "NNW" : {
+      "comment" : "Compass point abbreviation (northNorthwest)"
+    },
+    "NW" : {
+      "comment" : "Compass point abbreviation (northwest)"
     },
     "Name" : {
 
@@ -4664,6 +4685,12 @@
     "Running Diagnostics…" : {
 
     },
+    "S" : {
+      "comment" : "Compass point abbreviation (south)"
+    },
+    "SE" : {
+      "comment" : "Compass point abbreviation (southeast)"
+    },
     "SNR" : {
 
     },
@@ -4681,6 +4708,15 @@
     },
     "SNR: %@ decibels" : {
 
+    },
+    "SSE" : {
+      "comment" : "Compass point abbreviation (southSoutheast)"
+    },
+    "SSW" : {
+      "comment" : "Compass point abbreviation (southSouthwest)"
+    },
+    "SW" : {
+      "comment" : "Compass point abbreviation (southwest)"
     },
     "Sample spacing" : {
 
@@ -5963,6 +5999,15 @@
     },
     "Volts" : {
 
+    },
+    "W" : {
+      "comment" : "Compass point abbreviation (west)"
+    },
+    "WNW" : {
+      "comment" : "Compass point abbreviation (westNorthwest)"
+    },
+    "WSW" : {
+      "comment" : "Compass point abbreviation (westSouthwest)"
     },
     "Waiting for Packets" : {
 

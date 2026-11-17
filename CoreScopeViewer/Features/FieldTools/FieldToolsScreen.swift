@@ -1166,7 +1166,7 @@ private struct FieldGuidancePanel: View {
         if let bearing = geometry.initialBearingDegrees {
             let degrees = bearing.formatted(.number.precision(.fractionLength(0)))
             if let direction = geometry.cardinalDirection {
-                parts.append("\(degrees)° \(direction.rawValue)")
+                parts.append("\(degrees)° \(direction.label)")
             } else {
                 parts.append("\(degrees)°")
             }
@@ -1622,7 +1622,7 @@ private struct FieldCatalogRow: View {
                          format: .measurement(width: .abbreviated, usage: .road))
                         .font(.subheadline.weight(.semibold))
                     if let direction = geometry.cardinalDirection {
-                        Text(direction.rawValue)
+                        Text(direction.label)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }

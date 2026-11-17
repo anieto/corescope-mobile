@@ -35,6 +35,28 @@ enum FieldCardinalDirection: String, Codable, CaseIterable, Sendable {
     case westNorthwest = "WNW"
     case northwest = "NW"
     case northNorthwest = "NNW"
+
+    /// Abbreviation for display. The raw value stays English because it's stored.
+    var label: String {
+        switch self {
+        case .north: String(localized: "N", comment: "Compass point abbreviation (north)")
+        case .northNortheast: String(localized: "NNE", comment: "Compass point abbreviation (northNortheast)")
+        case .northeast: String(localized: "NE", comment: "Compass point abbreviation (northeast)")
+        case .eastNortheast: String(localized: "ENE", comment: "Compass point abbreviation (eastNortheast)")
+        case .east: String(localized: "E", comment: "Compass point abbreviation (east)")
+        case .eastSoutheast: String(localized: "ESE", comment: "Compass point abbreviation (eastSoutheast)")
+        case .southeast: String(localized: "SE", comment: "Compass point abbreviation (southeast)")
+        case .southSoutheast: String(localized: "SSE", comment: "Compass point abbreviation (southSoutheast)")
+        case .south: String(localized: "S", comment: "Compass point abbreviation (south)")
+        case .southSouthwest: String(localized: "SSW", comment: "Compass point abbreviation (southSouthwest)")
+        case .southwest: String(localized: "SW", comment: "Compass point abbreviation (southwest)")
+        case .westSouthwest: String(localized: "WSW", comment: "Compass point abbreviation (westSouthwest)")
+        case .west: String(localized: "W", comment: "Compass point abbreviation (west)")
+        case .westNorthwest: String(localized: "WNW", comment: "Compass point abbreviation (westNorthwest)")
+        case .northwest: String(localized: "NW", comment: "Compass point abbreviation (northwest)")
+        case .northNorthwest: String(localized: "NNW", comment: "Compass point abbreviation (northNorthwest)")
+        }
+    }
 }
 
 struct FieldGeometryResult: Equatable, Sendable {
