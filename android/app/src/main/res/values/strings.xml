@@ -534,6 +534,107 @@
     <string name="packets_type">Type</string>
     <string name="packets_unknown">Unknown</string>
 
+    <!-- Node Check screen strings -->
+    <string name="node_check_1_observer">1 observer</string>
+    <plurals name="node_check_advert_observers">
+        <item quantity="one">observer, last advert</item>
+        <item quantity="other">observers, last advert</item>
+    </plurals>
+    <string name="node_check_average_signal_of_everything_they_ve_heard_straight">Average signal of everything they’ve heard straight from this node.</string>
+    <string name="node_check_check_node">Check node</string>
+    <string name="node_check_checking">Checking…</string>
+    <string name="node_check_checking_whether_observers_hear_it">Checking whether observers hear it…</string>
+    <string name="node_check_couldn_t_check_this_node">Couldn’t check this node</string>
+    <string name="node_check_couldn_t_reach_the_analyzer">Couldn’t reach the analyzer.</string>
+    <string name="node_check_d_02d">%1$d:%2$02d</string>
+    <string name="node_check_dbm">%1$s dBm</string>
+    <plurals name="node_check_direct_count">
+        <item quantity="one">%1$d hears it directly</item>
+        <item quantity="other">%1$d hear it directly</item>
+    </plurals>
+    <string name="node_check_enter_its_full_public_key_if_the_analyzer">Enter its full public key. If the analyzer hasn’t heard it yet, you can run a live test, send a flood advert, and watch for its first one.</string>
+    <string name="node_check_findings_and_live_test">Findings and a live advert test</string>
+    <string name="node_check_heard_in_regions">Heard by %1$s in %2$s</string>
+    <string name="node_check_heard_it">heard it</string>
+    <string name="node_check_heard_it_directly">Heard it directly</string>
+    <plurals name="node_check_heard_so_far">
+        <item quantity="one">Heard! %1$d observer so far</item>
+        <item quantity="other">Heard! %1$d observers so far</item>
+    </plurals>
+    <string name="node_check_help">Help</string>
+    <string name="node_check_how_do_i_check_a_brand_new_node">How do I check a brand-new node?</string>
+    <string name="node_check_in_the_meshcore_app_a_companion_s_public">In the MeshCore app, a companion’s public key is in its settings. For a repeater or room server, it’s shown when you log in to manage it. You can also share the node as a contact and paste the link here. The first 8 or more characters of the key are enough; names work too, but several nodes can share a name.</string>
+    <string name="node_check_is_it_getting_out_findings_and_a_live">Is it getting out? Findings and a live advert test</string>
+    <string name="node_check_is_your_node_getting_out_see_which_observers">Is your node getting out? See which observers hear it, and what to fix if something looks wrong.</string>
+    <plurals name="node_check_issues_count">
+        <item quantity="one">%1$d thing to check · Live test</item>
+        <item quantity="other">%1$d things to check · Live test</item>
+    </plurals>
+    <string name="node_check_last_heard">Last heard</string>
+    <string name="node_check_listening_for_your_advert">Listening for your advert…</string>
+    <string name="node_check_live_test_did_anyone_hear_me">Live test: did anyone hear me?</string>
+    <plurals name="node_check_map_of_observers_that_heard_this_node">
+        <item quantity="one">Map of %1$d observers that heard this node</item>
+        <item quantity="other">Map of %1$d observers that heard this node</item>
+    </plurals>
+    <string name="node_check_more_observers_may_still_report_it_so_keep">More observers may still report it, so keep watching until the timer runs out.</string>
+    <string name="node_check_more_than_one_node_matches_pick_yours_or">More than one node matches “%1$s”. Pick yours, or enter its public key.</string>
+    <string name="node_check_nearest">Nearest</string>
+    <string name="node_check_no_direct_observers">None hear it directly</string>
+    <string name="node_check_no_observer_reported_an_advert_from_this_node">No observer reported an advert from this node. Check that it was a flood advert, that the radio uses the same settings as other nodes in your area, and that a repeater is in range.</string>
+    <string name="node_check_no_recent_advert">No recent advert</string>
+    <string name="node_check_no_repeater_needed">no repeater needed</string>
+    <string name="node_check_node_check">Node Check</string>
+    <string name="node_check_node_name_public_key_or_contact_link">Node name, public key, or contact link</string>
+    <string name="node_check_none_yet">None yet</string>
+    <string name="node_check_not_available_on_this_source">Not available on this source</string>
+    <string name="node_check_not_heard">Not heard</string>
+    <string name="node_check_nothing_heard_in_two_minutes">Nothing heard in two minutes</string>
+    <plurals name="node_check_observer_count">
+        <item quantity="one">%1$d observer</item>
+        <item quantity="other">%1$d observers</item>
+    </plurals>
+    <string name="node_check_observers">Observers</string>
+    <plurals name="node_check_observers_2">
+        <item quantity="one">%1$d observers</item>
+        <item quantity="other">%1$d observers</item>
+    </plurals>
+    <string name="node_check_observers_that_hear_it_directly">Observers that hear it directly</string>
+    <string name="node_check_open_node_page">Open node page</string>
+    <string name="node_check_reached">Reached</string>
+    <plurals name="node_check_region_count">
+        <item quantity="one">%1$d region</item>
+        <item quantity="other">%1$d regions</item>
+    </plurals>
+    <string name="node_check_regions">Regions</string>
+    <string name="node_check_run_again">Run again</string>
+    <string name="node_check_run_live_test">Run live test</string>
+    <string name="node_check_send_a_flood_advert_from_and_watch_which">Send a flood advert from %1$s and watch which observers report it, as it happens.</string>
+    <string name="node_check_send_a_flood_advert_in_the_meshcore_app">Send a flood advert. In the MeshCore app, send an advert and choose Flood. On a repeater or room server, run the advert command.</string>
+    <string name="node_check_send_a_flood_advert_now_in_the_meshcore">Send a flood advert now: in the MeshCore app, send an advert and choose Flood; on a repeater or room server, run advert. Reports usually arrive within a few seconds.</string>
+    <string name="node_check_show_more_in">Show %1$s more in %2$s</string>
+    <string name="node_check_start_live_test">Start live test</string>
+    <string name="node_check_start_the_test_below">Start the test below.</string>
+    <string name="node_check_stop">Stop</string>
+    <string name="node_check_test_complete">Test complete.</string>
+    <string name="node_check_test_stopped">Test stopped</string>
+    <string name="node_check_test_stopped_2">Test stopped.</string>
+    <string name="node_check_that_was_a_zero_hop_advert_so_only">That was a zero-hop advert, so only radios in direct range pass it on. Send a flood advert to see how far it really travels.</string>
+    <string name="node_check_through_repeaters">through repeaters</string>
+    <string name="node_check_through_repeaters_2">Through repeaters</string>
+    <string name="node_check_try_again">Try again</string>
+    <string name="node_check_unknown">Unknown</string>
+    <string name="node_check_unnamed_node">Unnamed node</string>
+    <string name="node_check_value">%1$s.</string>
+    <string name="node_check_value_2">%1$s</string>
+    <string name="node_check_watch_for_up_to_two_minutes_as_observers">Watch for up to two minutes as observers report it.</string>
+    <string name="node_check_where_do_i_find_my_node_s_public">Where do I find my node’s public key?</string>
+    <string name="node_check_which_node_is_yours">Which node is yours?</string>
+    <string name="node_check_who_heard_its_last_advert">Who heard its last advert</string>
+    <string name="node_check_who_heard_its_last_flood_advert">Who heard its last flood advert</string>
+    <string name="node_check_your_node">your node</string>
+    <string name="node_check_your_nodes">Your nodes</string>
+
     <style name="Theme.NodeScope" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
     </style>
