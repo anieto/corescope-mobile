@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.map
 
+import androidx.annotation.StringRes
+import org.nodescope.android.R
 import android.content.Context
 import androidx.core.content.edit
 import kotlinx.serialization.Serializable
@@ -12,12 +14,12 @@ import org.nodescope.android.core.model.parseInstant
 
 /** iOS `MapNodeActivityFilter`: how recently a node must have been heard. */
 @Serializable
-enum class ActivityFilter(val title: String, val maxAgeMillis: Long?, /** As the Filters' "Last heard" choice (iOS). */ val lastHeardTitle: String) {
-    ALL("Any activity", null, "Any time"),
-    FIFTEEN_MINUTES("Last 15 minutes", 15 * 60_000L, "Within 15 minutes"),
-    ONE_HOUR("Last hour", 60 * 60_000L, "Within 1 hour"),
-    ONE_DAY("Last 24 hours", 24 * 60 * 60_000L, "Within 24 hours"),
-    ONE_WEEK("Last 7 days", 7 * 24 * 60 * 60_000L, "Within 7 days"),
+enum class ActivityFilter(val maxAgeMillis: Long?, @param:StringRes val lastHeardTitleRes: Int) {
+    ALL(null, R.string.live_map_any_time),
+    FIFTEEN_MINUTES(15 * 60_000L, R.string.live_map_within_15_minutes),
+    ONE_HOUR(60 * 60_000L, R.string.live_map_within_1_hour),
+    ONE_DAY(24 * 60 * 60_000L, R.string.live_map_within_24_hours),
+    ONE_WEEK(7 * 24 * 60 * 60_000L, R.string.live_map_within_7_days),
 }
 
 val MAP_ROLES = listOf("repeater", "room", "companion", "sensor")

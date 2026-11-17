@@ -1,5 +1,8 @@
 package org.nodescope.android.feature.map
 
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import org.nodescope.android.core.design.MonaspaceNeon
 import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.MeshModalBottomSheet
@@ -62,15 +65,15 @@ internal fun MapFiltersSheet(filters: MapFilters, observers: List<MeshObserver>,
             }
             FilterPage.KEY -> MapKeyContent(onBack = { page = FilterPage.FILTERS })
             FilterPage.FILTERS -> Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp)) {
-                Text("Map filters", style = MaterialTheme.typography.titleLarge)
+                Text(stringResource(R.string.live_map_map_filters), style = MaterialTheme.typography.titleLarge)
 
-                SectionLabel("Nodes shown")
+                SectionLabel(stringResource(R.string.live_map_nodes_shown))
                 LastHeardRow(filters.activity) { onChange(filters.copy(activity = it)) }
-                FilterFootnote("Hides nodes that haven't been heard from in this time. Live traffic and replays aren't affected.")
+                FilterFootnote(stringResource(R.string.live_map_hides_nodes_that_haven_t_been_heard_from))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    SectionLabel("Node roles", Modifier.weight(1f))
-                    if (filters.roles.isNotEmpty()) TextButton(onClick = { onChange(filters.copy(roles = emptySet())) }) { Text("Show all") }
+                    SectionLabel(stringResource(R.string.live_map_node_roles), Modifier.weight(1f))
+                    if (filters.roles.isNotEmpty()) TextButton(onClick = { onChange(filters.copy(roles = emptySet())) }) { Text(stringResource(R.string.live_map_show_all)) }
                 }
                 MAP_ROLES.forEach { role ->
                     val shown = filters.roles.isEmpty() || role in filters.roles
@@ -78,34 +81,34 @@ internal fun MapFiltersSheet(filters: MapFilters, observers: List<MeshObserver>,
                         onChange(filters.copy(roles = toggledRoles(filters.roles, role)))
                     }
                 }
-                FilterFootnote("Colors match the dots on the map.")
+                FilterFootnote(stringResource(R.string.live_map_colors_match_the_dots_on_the_map))
 
-                SectionLabel("Routes")
+                SectionLabel(stringResource(R.string.live_map_routes))
                 val selected = observers.firstOrNull { it.id.equals(filters.observerId, true) }
                 ListItem(modifier = Modifier.clickable { page = FilterPage.OBSERVERS },
                     leadingContent = { Icon(Icons.Outlined.SettingsInputAntenna, null) },
-                    headlineContent = { Text("Heard by") },
+                    headlineContent = { Text(stringResource(R.string.live_map_heard_by)) },
                     supportingContent = { Text(when {
-                        filters.observerId == null -> "All observers"
+                        filters.observerId == null -> stringResource(R.string.live_map_all_observers_2)
                         selected != null -> selected.name?.takeIf(String::isNotBlank) ?: selected.id
-                        else -> "Selected observer"
+                        else -> stringResource(R.string.live_map_selected_observer)
                     }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     trailingContent = { Icon(Icons.Outlined.ChevronRight, null) },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent))
-                FilterFootnote("Shows only packets received by the chosen observer. Node markers follow the filters above.")
+                FilterFootnote(stringResource(R.string.live_map_shows_only_packets_received_by_the_chosen_observer))
 
                 if (filters.isFiltering) {
                     Spacer(Modifier.height(12.dp))
                     OutlinedButton(onClick = { onChange(MapFilters()) }, Modifier.fillMaxWidth()) {
-                        Icon(Icons.Outlined.Restore, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Reset all filters")
+                        Icon(Icons.Outlined.Restore, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.live_map_reset_all_filters))
                     }
                 }
 
                 Spacer(Modifier.height(12.dp))
                 ListItem(modifier = Modifier.clickable { page = FilterPage.KEY },
                     leadingContent = { Icon(Icons.Outlined.Info, null) },
-                    headlineContent = { Text("Map key") },
-                    supportingContent = { Text("What the markers, lines and colors on the map mean.") },
+                    headlineContent = { Text(stringResource(R.string.live_map_map_key)) },
+                    supportingContent = { Text(stringResource(R.string.live_map_what_the_markers_lines_and_colors_on_the)) },
                     trailingContent = { Icon(Icons.Outlined.ChevronRight, null) },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent))
             }
@@ -135,18 +138,18 @@ private fun LastHeardRow(selected: ActivityFilter, onSelect: (ActivityFilter) ->
     Box {
         ListItem(modifier = Modifier.clickable { open = true },
             leadingContent = { Icon(Icons.Outlined.Schedule, null) },
-            headlineContent = { Text("Last heard") },
+            headlineContent = { Text(stringResource(R.string.live_map_last_heard)) },
             trailingContent = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(selected.lastHeardTitle, color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(selected.lastHeardTitleRes), color = MaterialTheme.colorScheme.primary)
                     Icon(Icons.Outlined.ArrowDropDown, null, tint = MaterialTheme.colorScheme.primary)
                 }
             },
             colors = ListItemDefaults.colors(containerColor = Color.Transparent))
         DropdownMenu(open, { open = false }, Modifier.align(Alignment.TopEnd)) {
             ActivityFilter.entries.forEach { option ->
-                DropdownMenuItem(text = { Text(option.lastHeardTitle) }, onClick = { onSelect(option); open = false },
-                    trailingIcon = { if (option == selected) Icon(Icons.Outlined.Check, "Selected") })
+                DropdownMenuItem(text = { Text(stringResource(option.lastHeardTitleRes)) }, onClick = { onSelect(option); open = false },
+                    trailingIcon = { if (option == selected) Icon(Icons.Outlined.Check, stringResource(R.string.live_map_selected)) })
             }
         }
     }
@@ -180,46 +183,46 @@ internal fun MapKeySheet(onDismiss: () -> Unit) {
 internal fun MapKeyContent(onBack: (() -> Unit)?) {
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
         Row(Modifier.padding(horizontal = if (onBack != null) 8.dp else 20.dp), verticalAlignment = Alignment.CenterVertically) {
-            onBack?.let { IconButton(onClick = it) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back to filters") } }
-            Text("Map key", style = MaterialTheme.typography.titleLarge)
+            onBack?.let { IconButton(onClick = it) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.live_map_back_to_filters)) } }
+            Text(stringResource(R.string.live_map_map_key), style = MaterialTheme.typography.titleLarge)
         }
         Column(Modifier.padding(horizontal = 20.dp)) {
-            SectionLabel("Node roles")
+            SectionLabel(stringResource(R.string.live_map_node_roles))
             listOf(
-                Triple("repeater", "Repeater", "Relays packets so they travel further.") to GlossaryTerm.REPEATER,
-                Triple("room", "Room", "Hosts a shared message board.") to GlossaryTerm.ROOM_SERVER,
-                Triple("companion", "Companion", "Someone's radio, paired with an app.") to GlossaryTerm.COMPANION,
-                Triple("sensor", "Sensor", "Reports readings over the mesh.") to GlossaryTerm.SENSOR,
+                Triple("repeater", stringResource(R.string.live_map_repeater), stringResource(R.string.live_map_relays_packets_so_they_travel_further)) to GlossaryTerm.REPEATER,
+                Triple("room", stringResource(R.string.live_map_room), stringResource(R.string.live_map_hosts_a_shared_message_board)) to GlossaryTerm.ROOM_SERVER,
+                Triple("companion", stringResource(R.string.live_map_companion), stringResource(R.string.live_map_someone_s_radio_paired_with_an_app)) to GlossaryTerm.COMPANION,
+                Triple("sensor", stringResource(R.string.live_map_sensor), stringResource(R.string.live_map_reports_readings_over_the_mesh)) to GlossaryTerm.SENSOR,
             ).forEach { (item, term) ->
                 val (role, title, summary) = item
                 MapKeyRow(title, summary, term) { MapKeyDot(roleColors.getValue(role)) }
             }
-            SectionLabel("On the map")
+            SectionLabel(stringResource(R.string.live_map_on_the_map))
             val density = androidx.compose.ui.platform.LocalDensity.current.density
             val observer = remember(density) {
                 observerMarkerBitmap(MARKER_ROLE_COLORS["repeater"], density).asImageBitmap()
             }
-            MapKeyRow("Observer", "Heard the packet in a replay. A ring shows the node it's on.", GlossaryTerm.OBSERVER) {
+            MapKeyRow(stringResource(R.string.live_map_observer_2), stringResource(R.string.live_map_heard_the_packet_in_a_replay_a_ring), GlossaryTerm.OBSERVER) {
                 androidx.compose.foundation.Image(observer, null)
             }
-            MapKeyRow("Grouped nodes", "Nearby nodes when zoomed out. Tap to zoom in.") {
+            MapKeyRow(stringResource(R.string.live_map_grouped_nodes), stringResource(R.string.live_map_nearby_nodes_when_zoomed_out_tap_to_zoom)) {
                 Box(Modifier.size(24.dp).background(Color(0xFF21465E), CircleShape)
                     .border(1.dp, Color(0xFF6994AF), CircleShape), contentAlignment = Alignment.Center) {
                     Text("12", color = Color.White, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
             }
-            MapKeyRow("Spread-out nodes", "Nodes at the same spot, shown apart so each can be tapped.") {
+            MapKeyRow(stringResource(R.string.live_map_spread_out_nodes), stringResource(R.string.live_map_nodes_at_the_same_spot_shown_apart_so)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     MapKeyDot(roleColors.getValue("repeater")); MapKeyDot(roleColors.getValue("room"))
                 }
             }
-            MapKeyRow("Live packets", "Each packet has its own color, on every path it took.") {
+            MapKeyRow(stringResource(R.string.live_map_live_packets_2), stringResource(R.string.live_map_each_packet_has_its_own_color_on_every)) {
                 MapKeyLines(listOf(Color(0xFF66B9FF), Color(0xFFFFC27A)), curved = false)
             }
-            MapKeyRow("Replayed route", "A packet's path, played hop by hop.", GlossaryTerm.ROUTE) {
+            MapKeyRow(stringResource(R.string.live_map_replayed_route), stringResource(R.string.live_map_a_packet_s_path_played_hop_by_hop), GlossaryTerm.ROUTE) {
                 MapKeyLines(listOf(Color(0xFFFFA833)), curved = true)
             }
-            MapKeyRow("You", "Your location, when you share it.") {
+            MapKeyRow(stringResource(R.string.live_map_you), stringResource(R.string.live_map_your_location_when_you_share_it)) {
                 Box(Modifier.size(26.dp).background(Color(0x2E1A73E8), CircleShape), contentAlignment = Alignment.Center) {
                     Box(Modifier.size(14.dp).background(Color.White, CircleShape), contentAlignment = Alignment.Center) {
                         Box(Modifier.size(10.dp).background(Color(0xFF1A73E8), CircleShape))
@@ -280,13 +283,13 @@ private fun ObserverPicker(selectedId: String?, observers: List<MeshObserver>, o
     }
     Column(Modifier.fillMaxWidth().fillMaxHeight(0.85f)) {
         Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back to filters") }
-            Text("Route observer", style = MaterialTheme.typography.titleLarge)
+            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.live_map_back_to_filters)) }
+            Text(stringResource(R.string.live_map_route_observer), style = MaterialTheme.typography.titleLarge)
         }
-        Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { BrowseSearchField(query, { query = it }, "Name, ID or region") }
+        Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { BrowseSearchField(query, { query = it }, stringResource(R.string.live_map_name_id_or_region)) }
         LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
             item {
-                PickerRow("All observers", "Show routes received by any observer", selectedId == null) { onSelect(null) }
+                PickerRow(stringResource(R.string.live_map_all_observers), stringResource(R.string.live_map_show_routes_received_by_any_observer), selectedId == null) { onSelect(null) }
             }
             items(matches, key = { it.id }) { observer ->
                 PickerRow(observer.name?.takeIf(String::isNotBlank) ?: observer.id, observer.iata, observer.id.equals(selectedId, true)) { onSelect(observer.id) }
@@ -300,13 +303,14 @@ private fun PickerRow(title: String, subtitle: String?, selected: Boolean, onCli
     ListItem(modifier = Modifier.selectable(selected, role = Role.RadioButton, onClick = onClick),
         headlineContent = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         supportingContent = subtitle?.takeIf(String::isNotBlank)?.let { { Text(it) } },
-        trailingContent = { if (selected) Icon(Icons.Outlined.Check, "Selected") })
+        trailingContent = { if (selected) Icon(Icons.Outlined.Check, stringResource(R.string.live_map_selected)) })
 }
 
 /** iOS `MapRouteDetailsSheet`: summary, message and each stop; known nodes open their details. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun RouteDetailsSheet(details: RouteDetails, onNode: (String) -> Unit, onDismiss: () -> Unit) {
+    val resources = LocalResources.current
     val context = LocalContext.current
     val now = rememberNow()
     val packet = details.packet
@@ -315,21 +319,21 @@ internal fun RouteDetailsSheet(details: RouteDetails, onNode: (String) -> Unit, 
         LazyColumn(Modifier.fillMaxWidth(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp)) {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Route details", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(R.string.live_map_route_details), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
                     IconButton(onClick = {
                         context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
-                            .putExtra(Intent.EXTRA_SUBJECT, "NodeScope Route").putExtra(Intent.EXTRA_TEXT, details.shareText(age)), "Share route"))
-                    }) { Icon(Icons.Outlined.Share, "Share route") }
+                            .putExtra(Intent.EXTRA_SUBJECT, resources.getString(R.string.live_map_nodescope_route)).putExtra(Intent.EXTRA_TEXT, details.shareText(age)), resources.getString(R.string.live_map_share_route_2)))
+                    }) { Icon(Icons.Outlined.Share, stringResource(R.string.live_map_share_route)) }
                 }
-                SectionLabel("Summary")
-                SummaryRow("Hops", details.hopCount.toString(), GlossaryTerm.HOP)
-                age?.let { SummaryRow("Age", it) }
-                packet.observerName?.takeIf(String::isNotBlank)?.let { SummaryRow("Observer", it, GlossaryTerm.OBSERVER) }
+                SectionLabel(stringResource(R.string.live_map_summary))
+                SummaryRow(stringResource(R.string.live_map_hops), details.hopCount.toString(), GlossaryTerm.HOP)
+                age?.let { SummaryRow(stringResource(R.string.live_map_age), it) }
+                packet.observerName?.takeIf(String::isNotBlank)?.let { SummaryRow(stringResource(R.string.live_map_observer), it, GlossaryTerm.OBSERVER) }
                 packet.snr?.let { SummaryRow("SNR", String.format(Locale.US, "%.1f dB", it), GlossaryTerm.SNR) }
                 packet.rssi?.let { SummaryRow("RSSI", String.format(Locale.US, "%.0f dBm", it), GlossaryTerm.RSSI) }
-                packet.hash.takeIf(String::isNotBlank)?.let { SummaryRow("Packet", it.take(12).uppercase()) }
+                packet.hash.takeIf(String::isNotBlank)?.let { SummaryRow(stringResource(R.string.live_map_packet), it.take(12).uppercase()) }
                 packet.payloadText?.trim()?.takeIf(String::isNotEmpty)?.let { message ->
-                    SectionLabel("Message")
+                    SectionLabel(stringResource(R.string.live_map_message))
                     var expanded by remember { mutableStateOf(false) }
                     packet.payloadChannel?.takeIf(String::isNotBlank)?.let {
                         Text(it, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
@@ -339,11 +343,11 @@ internal fun RouteDetailsSheet(details: RouteDetails, onNode: (String) -> Unit, 
                     }
                     Text(message, maxLines = if (expanded) Int.MAX_VALUE else 4, overflow = TextOverflow.Ellipsis)
                     if (message.length > 180) TextButton(onClick = { expanded = !expanded }, contentPadding = PaddingValues(0.dp)) {
-                        Text(if (expanded) "Show less" else "Show more")
+                        Text(if (expanded) stringResource(R.string.live_map_show_less) else stringResource(R.string.live_map_show_more))
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    SectionLabel("Route")
+                    SectionLabel(stringResource(R.string.live_map_route))
                     LearnButton(GlossaryTerm.ROUTE, Modifier.padding(top = 8.dp))
                 }
             }
@@ -353,13 +357,13 @@ internal fun RouteDetailsSheet(details: RouteDetails, onNode: (String) -> Unit, 
                     leadingContent = {
                         Box(Modifier.size(28.dp).background(if (stop.receiver) MaterialTheme.colorScheme.secondaryContainer
                             else MaterialTheme.colorScheme.primaryContainer, CircleShape), contentAlignment = Alignment.Center) {
-                            if (stop.receiver) Icon(Icons.Outlined.SettingsInputAntenna, "Receiving observer", Modifier.size(16.dp))
-                            else Text("${stop.position}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                            if (stop.receiver) Icon(Icons.Outlined.SettingsInputAntenna, stringResource(R.string.live_map_receiving_observer), Modifier.size(16.dp))
+                            else Text(stringResource(R.string.live_map_value, stop.position), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                         }
                     },
                     headlineContent = { Text(stop.title) },
                     supportingContent = when {
-                        stop.receiver -> ({ Text("Received by") })
+                        stop.receiver -> ({ Text(stringResource(R.string.live_map_received_by)) })
                         key != null -> ({ Text(key, fontFamily = MonaspaceNeon, maxLines = 1, overflow = TextOverflow.Ellipsis) })
                         else -> null
                     },
@@ -397,12 +401,12 @@ internal fun MapNodeSelectionSheet(node: org.nodescope.android.core.model.MeshNo
                     Text(node.role.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                IconButton(onClick = onDismiss) { Icon(Icons.Outlined.Close, "Dismiss node selection") }
+                IconButton(onClick = onDismiss) { Icon(Icons.Outlined.Close, stringResource(R.string.live_map_dismiss_node_selection)) }
             }
-            Text("Last heard ${relativeTime(org.nodescope.android.core.model.parseInstant(node.lastSeen), now)}",
+            Text(stringResource(R.string.live_map_last_heard_2, relativeTime(org.nodescope.android.core.model.parseInstant(node.lastSeen), now)),
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Button(onClick = onDetails, modifier = Modifier.fillMaxWidth()) {
-                Text("View node details"); Spacer(Modifier.width(8.dp)); Icon(Icons.Outlined.ChevronRight, null)
+                Text(stringResource(R.string.live_map_view_node_details)); Spacer(Modifier.width(8.dp)); Icon(Icons.Outlined.ChevronRight, null)
             }
         }
     }

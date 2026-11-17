@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.map
 
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import org.nodescope.android.core.design.meshPageBackground
 import androidx.compose.ui.draw.clipToBounds
 import android.content.Context
@@ -87,12 +89,12 @@ fun MapPacketsLayout(
             Column(Modifier.width(atFold?.minus(PaneGap / 2) ?: PANEL_WIDTH).fillMaxHeight().paneCard().meshPageBackground()) {
                 Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Live packets", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleLarge)
-                        Text("Tap a packet to see its route", style = MaterialTheme.typography.bodySmall,
+                        Text(stringResource(R.string.live_map_live_packets), Modifier.semantics { heading() }, style = MaterialTheme.typography.titleLarge)
+                        Text(stringResource(R.string.live_map_tap_a_packet_to_see_its_route), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     // Closes into the map header's "Show live packets" button.
-                    IconButton(onClick = { setOpen(false) }) { Icon(Icons.Outlined.Close, "Hide live packets") }
+                    IconButton(onClick = { setOpen(false) }) { Icon(Icons.Outlined.Close, stringResource(R.string.live_map_hide_live_packets)) }
                 }
                 Box(Modifier.weight(1f).fillMaxWidth()) {
                     LivePacketsList(feed, onReconnect, selectedId, onSelect, onDetails, replayingId, lookingUpId, selectedMessage)
@@ -174,8 +176,8 @@ private fun PacketsSheetLayout(
             // Laid out from the sheet itself, so the pattern rides along as it is dragged.
             Column(Modifier.fillMaxWidth().height(height * 0.85f).meshPageBackground(anchored = false)) {
                 Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Live packets", Modifier.weight(1f).semantics { heading() }, style = MaterialTheme.typography.titleLarge)
-                    IconButton(onClick = ::hide) { Icon(Icons.Outlined.Close, "Close live packets") }
+                    Text(stringResource(R.string.live_map_live_packets), Modifier.weight(1f).semantics { heading() }, style = MaterialTheme.typography.titleLarge)
+                    IconButton(onClick = ::hide) { Icon(Icons.Outlined.Close, stringResource(R.string.live_map_close_live_packets)) }
                 }
                 Box(Modifier.weight(1f).fillMaxWidth()) {
                     // Composed only while open, so a hidden sheet doesn't hold a Beacon packet subscription.
@@ -202,9 +204,9 @@ private fun PacketsSheetLayout(
 @Composable
 private fun SelectedPacketActions(id: String, replaying: Boolean, lookingUp: Boolean, onDetails: (String) -> Unit) {
     Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(when { replaying -> "Route on the map"; lookingUp -> "Looking for routes…"; else -> "No route to show" }, Modifier.weight(1f),
+        Text(when { replaying -> stringResource(R.string.live_map_route_on_the_map); lookingUp -> stringResource(R.string.live_map_looking_for_routes); else -> stringResource(R.string.live_map_no_route_to_show) }, Modifier.weight(1f),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        TextButton(onClick = { onDetails(id) }) { Text("Details") }
+        TextButton(onClick = { onDetails(id) }) { Text(stringResource(R.string.live_map_details)) }
     }
 }
 

@@ -1,5 +1,8 @@
 package org.nodescope.android.feature.map
 
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
+import org.nodescope.android.core.design.withDescription
 import org.nodescope.android.core.design.MeshModalBottomSheet
 import org.nodescope.android.core.design.meshPageBackground
 import org.nodescope.android.core.design.meshTopAppBarColors
@@ -59,6 +62,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     /** Share of the map's height covered by the live packets sheet (iOS `bottomObscuredFraction`). */
     bottomObscuredFraction: Float = 0f, onLiveFeedDemand: (java.util.UUID, String, org.nodescope.android.core.network.LiveFeedDemand?) -> Unit = { _, _, _ -> },
     resetRequest: Int = 0) {
+    val resources = LocalResources.current
     if (!BuildConfig.MAPS_CONFIGURED) {
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.map_unavailable), style = MaterialTheme.typography.headlineSmall)
@@ -207,14 +211,14 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                     val box = regionBounds(RegionCoordinate(result.coordinate.latitude, result.coordinate.longitude, 10.0))
                     engine.camera?.animate(CameraMove.Fit(box, framingInsets), 600)
                 }
-                LocationResult.ServicesOff -> locationMessage = "Turn on location services to center the map on yourself."
-                LocationResult.Unavailable -> locationMessage = "Couldn't find your location. Try again in a moment."
+                LocationResult.ServicesOff -> locationMessage = resources.getString(R.string.live_map_turn_on_location_services_to_center_the_map)
+                LocationResult.Unavailable -> locationMessage = resources.getString(R.string.live_map_couldn_t_find_your_location_try_again_in)
             }
         }
     }
     val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
         if (grants.values.any { it }) centerOnUser()
-        else locationMessage = "Location permission is off. You can allow it in the app's settings."
+        else locationMessage = resources.getString(R.string.live_map_location_permission_is_off_you_can_allow_it)
     }
     LaunchedEffect(locationMessage) { if (locationMessage != null) { delay(5_000); locationMessage = null } }
     // Co-located markers fan out by a fixed screen distance; recompute when zoom settles.
@@ -476,7 +480,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     routeDetail?.let { details -> RouteDetailsSheet(details, onNode = { routeDetail = null; currentOnNode(it) }, onDismiss = { routeDetail = null }) }
     if (search) MeshModalBottomSheet(onDismissRequest = { search = false }) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.8f)) {
-            Text("Search nodes", Modifier.padding(horizontal = 20.dp), style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.live_map_search_nodes), Modifier.padding(horizontal = 20.dp), style = MaterialTheme.typography.titleLarge)
             NodeBrowser(snapshot?.nodes.orEmpty(), snapshot?.total ?: 0) { key ->
                 search = false
                 snapshot?.nodes?.firstOrNull { it.publicKey == key }?.coordinate?.let {
@@ -493,23 +497,23 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         // The map's own screen is opaque, so the bar carries the mesh that runs on above it.
         TopAppBar(modifier = Modifier.meshPageBackground(), colors = meshTopAppBarColors(), windowInsets = WindowInsets(0, 0, 0, 0), title = {
             Column {
-                Text("Live Map", style = MaterialTheme.typography.titleLarge)
+                Text(stringResource(R.string.live_map_live_map), style = MaterialTheme.typography.titleLarge)
                 // Paused by hand from the live packets panel: say so, and offer to resume (iOS).
                 if (LiveTrafficPause.isPaused) Row(Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button) { LiveTrafficPause.resume() }
-                    .semantics { contentDescription = "Live traffic paused. Resume" },
+                    .withDescription(stringResource(R.string.live_map_live_traffic_paused_resume)) { description -> contentDescription = description },
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Icon(Icons.Outlined.Pause, null, Modifier.size(14.dp), tint = org.nodescope.android.core.design.ActivityAmber)
-                    Text("Paused · Resume", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.live_map_paused_resume), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                 }
                 else ConnectionBadge(connection)
             }
         }, actions = {
             // Wide screens with the live packets panel hidden get it back from here.
-            onShowPackets?.let { IconButton(onClick = it) { Icon(Icons.Outlined.Sensors, "Show live packets") } }
-            IconButton(onClick = onRefresh) { Icon(Icons.Outlined.Refresh, "Refresh map data") }
-            IconButton(onClick = { search = true }) { Icon(Icons.Outlined.Search, "Search nodes") }
+            onShowPackets?.let { IconButton(onClick = it) { Icon(Icons.Outlined.Sensors, stringResource(R.string.live_map_show_live_packets)) } }
+            IconButton(onClick = onRefresh) { Icon(Icons.Outlined.Refresh, stringResource(R.string.live_map_refresh_map_data)) }
+            IconButton(onClick = { search = true }) { Icon(Icons.Outlined.Search, stringResource(R.string.live_map_search_nodes_2)) }
             Box {
-                IconButton(onClick = { layersOpen = true }) { Icon(Icons.Outlined.Layers, "Map layers") }
+                IconButton(onClick = { layersOpen = true }) { Icon(Icons.Outlined.Layers, stringResource(R.string.live_map_map_layers)) }
                 MapLayersMenu(layersOpen, { layersOpen = false }, providerChoice, darkTheme) { choose(it); layersOpen = false }
             }
         })
@@ -526,24 +530,25 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                 // The region gives way first on a narrow screen, so Filters and the key stay in reach.
                 Surface(Modifier.weight(1f, fill = false), shape = MaterialTheme.shapes.medium, shadowElevation = 1.dp) { regionControl() }
                 Surface(shape = MaterialTheme.shapes.medium, shadowElevation = 1.dp) {
+                    val filterState = if (filters.isFiltering) stringResource(R.string.live_map_filters_active, filters.activeCount) else stringResource(R.string.live_map_none)
                     TextButton(onClick = { filtersOpen = true }, modifier = Modifier.semantics {
-                        stateDescription = if (filters.isFiltering) "${filters.activeCount} active" else "None"
+                        stateDescription = filterState
                     }, colors = if (filters.isFiltering) ButtonDefaults.textButtonColors() else ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)) {
                         Icon(Icons.Outlined.FilterList, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text(if (filters.isFiltering) "${filters.activeCount} active" else "Filters")
+                        Text(if (filters.isFiltering) stringResource(R.string.live_map_active, filters.activeCount) else stringResource(R.string.live_map_filters))
                     }
                 }
                 // What the map's markers, lines and colours mean (iOS Map Key).
                 Surface(shape = MaterialTheme.shapes.medium, shadowElevation = 1.dp) {
-                    IconButton(onClick = { keyOpen = true }, Modifier.size(40.dp)) { Icon(Icons.Outlined.Info, "Map key") }
+                    IconButton(onClick = { keyOpen = true }, Modifier.size(40.dp)) { Icon(Icons.Outlined.Info, stringResource(R.string.live_map_map_key_2)) }
                 }
             }
             // A sparse Beacon server can genuinely have no nodes yet (iOS "No Nodes Reported Yet").
             if (beaconSource && snapshot != null && snapshot.nodes.isEmpty()) Surface(shape = MaterialTheme.shapes.medium, tonalElevation = 4.dp) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("No nodes reported yet", style = MaterialTheme.typography.titleSmall)
-                    Text("Beacon adds nodes as it hears their advertisements. Some repeaters advertise only every 12–47 hours, so a quiet region can take time to fill in.",
+                    Text(stringResource(R.string.live_map_no_nodes_reported_yet), style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.live_map_beacon_adds_nodes_as_it_hears_their_advertisements),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -551,7 +556,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             beaconMetadata?.let { (_, error) ->
                 Surface(shape = MaterialTheme.shapes.medium, tonalElevation = 4.dp) {
                     Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(if (error == null) "Map data may be outdated. Waiting for refresh…" else "Map data may be outdated.",
+                        Text(if (error == null) stringResource(R.string.live_map_map_data_may_be_outdated_waiting_for_refresh) else stringResource(R.string.live_map_map_data_may_be_outdated),
                             Modifier.weight(1f, fill = false).padding(vertical = 10.dp), style = MaterialTheme.typography.bodySmall)
                         if (error != null) TextButton(onClick = liveActions.retryMetadata) { Text(stringResource(R.string.retry)) }
                     }
@@ -561,7 +566,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                 Surface(shape = MaterialTheme.shapes.medium, tonalElevation = 4.dp) {
                     Row(Modifier.padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(message, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-                        IconButton(onClick = { locationMessage = null }) { Icon(Icons.Outlined.Close, "Dismiss") }
+                        IconButton(onClick = { locationMessage = null }) { Icon(Icons.Outlined.Close, stringResource(R.string.live_map_dismiss)) }
                     }
                 }
             }
@@ -590,13 +595,13 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             // Phones: opens the live packets sheet (the iPhone map's "Show live packets" button).
             onShowPacketsSheet?.let { show ->
                 Surface(shape = MaterialTheme.shapes.medium, shadowElevation = 2.dp) {
-                    IconButton(onClick = show) { Icon(Icons.Outlined.Sensors, "Show live packets") }
+                    IconButton(onClick = show) { Icon(Icons.Outlined.Sensors, stringResource(R.string.live_map_show_live_packets)) }
                 }
             }
             Surface(shape = MaterialTheme.shapes.medium, shadowElevation = 2.dp) {
                 IconButton(onClick = { if (hasLocationPermission(context)) centerOnUser() else locationPermission.launch(LOCATION_PERMISSIONS) }, enabled = !locating) {
                     if (locating) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    else Icon(Icons.Outlined.MyLocation, "Center on my location")
+                    else Icon(Icons.Outlined.MyLocation, stringResource(R.string.live_map_center_on_my_location))
                 }
             }
             Surface(shape = MaterialTheme.shapes.medium, shadowElevation = 2.dp) {
@@ -613,10 +618,10 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)) {
             Row {
                 TextButton(onClick = { uriHandler.openUri("https://www.openstreetmap.org/copyright") }, contentPadding = PaddingValues(horizontal = 8.dp)) {
-                    Text("© OpenStreetMap", style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.common_openstreetmap_attribution), style = MaterialTheme.typography.labelSmall)
                 }
                 TextButton(onClick = { uriHandler.openUri("https://carto.com/attributions") }, contentPadding = PaddingValues(horizontal = 8.dp)) {
-                    Text("© CARTO", style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.common_carto_attribution), style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
@@ -628,7 +633,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                 IntOffset((logo.centerX() - countSize.width / 2).coerceAtLeast(gap), logo.top - gap - countSize.height)
             } else Modifier.align(Alignment.BottomStart).offset { IntOffset(0, -controlsInset) }.padding(start = 8.dp, bottom = 34.dp)).onSizeChanged { countSize = it },
             shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)) {
-            Text("${mapNodes.size} nodes", Modifier.padding(horizontal = 14.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium)
+            Text(pluralStringResource(R.plurals.live_map_nodes, mapNodes.size, mapNodes.size), Modifier.padding(horizontal = 14.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium)
         }
         // Kept while sliding away, after the replay itself has been cleared.
         var lastReplay by remember { mutableStateOf(routeReplay) }
@@ -734,28 +739,28 @@ internal fun ReplayControls(playing: Boolean, routes: List<ReplayRoute>, selecte
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Route replay", style = MaterialTheme.typography.titleSmall)
-                    Text(if (playing) "Playing · live routes paused" else "Finished · live routes paused",
+                    Text(stringResource(R.string.live_map_route_replay), style = MaterialTheme.typography.titleSmall)
+                    Text(if (playing) stringResource(R.string.live_map_playing_live_routes_paused) else stringResource(R.string.live_map_finished_live_routes_paused),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                IconButton(onClick = onLive) { Icon(Icons.Outlined.Close, "Exit replay and return to live") }
+                IconButton(onClick = onLive) { Icon(Icons.Outlined.Close, stringResource(R.string.live_map_exit_replay_and_return_to_live)) }
             }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp),
                 itemVerticalAlignment = Alignment.CenterVertically) {
                 FilledTonalButton(onClick = onPlay) {
                     Icon(Icons.Outlined.Replay, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp)); Text(if (playing) "Restart" else "Play again")
+                    Spacer(Modifier.width(6.dp)); Text(if (playing) stringResource(R.string.live_map_restart) else stringResource(R.string.live_map_play_again))
                 }
                 // Routes are named by the observer that heard them, as in packet details.
                 val options = remember(routes) { routes.map { it.option ?: org.nodescope.android.feature.packets.RouteOption(emptyList(), hops = it.hops) } }
                 if (routes.size > 1) org.nodescope.android.feature.packets.RoutePicker(options, selected, onRoute, Modifier.widthIn(max = 320.dp), allowsAll = true)
                 else options.getOrNull(selected)?.let { option ->
-                    Text(listOfNotNull(option.heardBy.firstOrNull()?.observer, "${option.hops} hops").joinToString(" · "),
+                    Text(listOfNotNull(option.heardBy.firstOrNull()?.observer, pluralStringResource(R.plurals.live_map_route_hops, option.hops, option.hops)).joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                FilterChip(selected = routeOnly, onClick = onRouteOnly, label = { Text("Route nodes only") },
+                FilterChip(selected = routeOnly, onClick = onRouteOnly, label = { Text(stringResource(R.string.live_map_route_nodes_only)) },
                     leadingIcon = { Icon(if (routeOnly) Icons.Outlined.Check else Icons.Outlined.Hub, null, Modifier.size(18.dp)) })
-                TextButton(onClick = onLive) { Text("Return to live") }
+                TextButton(onClick = onLive) { Text(stringResource(R.string.live_map_return_to_live)) }
             }
         }
     }
