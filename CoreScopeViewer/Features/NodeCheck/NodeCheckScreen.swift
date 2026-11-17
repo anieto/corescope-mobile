@@ -315,7 +315,7 @@ struct NodeCheckScreen: View {
                                 .font(.monaspace(.subheadline).weight(.semibold))
                                 .foregroundStyle(.primary)
                             HStack(spacing: 6) {
-                                Text(node.role.capitalized)
+                                Text(NodeRoleStyle.label(for: node.role))
                                 Text(node.publicKey.prefix(8).uppercased()).font(.monaspace(.caption))
                                 if let heard = node.latestActivity {
                                     Text("heard \(NodeCheckRules.ago(heard))")
@@ -451,7 +451,7 @@ private struct NodeCheckSummaryCard: View {
                         .font(.monaspace(.title3).bold())
                         .wrapsFully()
                     HStack(spacing: 6) {
-                        Text(node.role.capitalized)
+                        Text(NodeRoleStyle.label(for: node.role))
                             .font(.caption.weight(.bold))
                             .foregroundStyle(NodeRoleStyle.color(for: node.role))
                         Text(node.publicKey.prefix(16).uppercased() + "…")

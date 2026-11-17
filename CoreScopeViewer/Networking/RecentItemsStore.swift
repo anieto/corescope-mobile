@@ -44,7 +44,7 @@ final class RecentItemsStore {
                 kind: .node,
                 entityID: node.publicKey,
                 title: node.name ?? String(localized: "Unnamed Node"),
-                subtitle: node.role.capitalized,
+                subtitle: NodeRoleStyle.label(for: node.role),
                 viewedAt: .now,
                 node: node,
                 observer: nil,

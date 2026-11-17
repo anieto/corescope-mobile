@@ -43,7 +43,7 @@ enum FieldCatalogItem: Identifiable, Hashable {
 
     var subtitle: String {
         switch self {
-        case .node(let node): node.role.capitalized
+        case .node(let node): NodeRoleStyle.label(for: node.role)
         case .observer: String(localized: "Observer")
         }
     }

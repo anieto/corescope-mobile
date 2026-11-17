@@ -1144,7 +1144,7 @@ struct MapScreen: View {
                             .accessibilityElement()
                             .accessibilityAddTraits(.isButton)
                             .accessibilityLabel(node.name ?? shortKey(node.publicKey))
-                            .accessibilityValue(node.role.capitalized)
+                            .accessibilityValue(NodeRoleStyle.label(for: node.role))
                             .accessibilityHint(isRouteHop ? "Opens details for this route hop" : "Opens node details")
                             .accessibilityAction { selectedNode = node }
                         }
@@ -4418,7 +4418,7 @@ private struct MapRoleFilterSection: View {
                 Button {
                     toggle(role)
                 } label: {
-                    MapRoleFilterRow(title: role.capitalized, role: role, isShown: isShown(role))
+                    MapRoleFilterRow(title: NodeRoleStyle.label(for: role), role: role, isShown: isShown(role))
                 }
                 .accessibilityAddTraits(isShown(role) ? .isSelected : [])
             }
@@ -4664,7 +4664,7 @@ private struct MapNodeSearchSheet: View {
                         )
                         ForEach(roles, id: \.self) { role in
                             MapRoleFilterChip(
-                                title: role.capitalized,
+                                title: NodeRoleStyle.label(for: role),
                                 symbol: NodeRoleStyle.symbolName(for: role),
                                 color: NodeRoleStyle.color(for: role),
                                 isSelected: selectedRoles.contains(role),
@@ -4796,7 +4796,7 @@ private struct MapNodeSearchRow: View {
                     .font(.monaspace(.headline))
                     .lineLimit(1)
                 HStack(spacing: 6) {
-                    Text(role.capitalized)
+                    Text(NodeRoleStyle.label(for: role))
                     Text("·")
                     Text(publicKey.prefix(10).uppercased())
                         .font(.monaspace(.caption))

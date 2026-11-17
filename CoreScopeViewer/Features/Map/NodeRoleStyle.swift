@@ -12,6 +12,18 @@ enum NodeRoleStyle {
         }
     }
 
+    /// Display name for an analyzer role string ("repeater", "room", ...). Unknown roles fall back
+    /// to the analyzer's own spelling, capitalized.
+    static func label(for role: String) -> String {
+        switch role.lowercased() {
+        case "repeater": String(localized: "Repeater")
+        case "room", "room_server", "roomserver": String(localized: "Room")
+        case "companion": String(localized: "Companion")
+        case "sensor": String(localized: "Sensor")
+        default: role.capitalized
+        }
+    }
+
     static func symbolName(for role: String) -> String {
         switch role {
         case "repeater": "antenna.radiowaves.left.and.right"

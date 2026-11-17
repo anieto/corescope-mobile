@@ -325,7 +325,7 @@ private struct NodeIdentityCard: View {
                     Text(node.name ?? "Unnamed Node")
                         .font(.monaspace(.title2).bold())
                     HStack(spacing: 6) {
-                        Text(node.role.capitalized)
+                        Text(NodeRoleStyle.label(for: node.role))
                             .font(.caption.weight(.bold))
                             .foregroundStyle(NodeRoleStyle.color(for: node.role))
                         if let roleTerm = GlossaryTerm(role: node.role) {

@@ -1254,7 +1254,7 @@ private struct FavoriteNodeFinder: View {
                         )
                         ForEach(roles, id: \.self) { role in
                             FavoriteRoleFilterChip(
-                                title: role.capitalized,
+                                title: NodeRoleStyle.label(for: role),
                                 symbol: NodeRoleStyle.symbolName(for: role),
                                 color: NodeRoleStyle.color(for: role),
                                 isSelected: selectedRoles.contains(role),
@@ -1389,7 +1389,7 @@ private struct FavoriteNodeSearchRow: View {
                     .font(.monaspace(.headline))
                     .lineLimit(1)
                 HStack(spacing: 6) {
-                    Text(node.role.capitalized)
+                    Text(NodeRoleStyle.label(for: node.role))
                     Text("·")
                     Text(node.publicKey.prefix(10).uppercased())
                         .font(.monaspace(.caption))
@@ -1537,7 +1537,7 @@ private struct GlobalSearchSheet: View {
                     ForEach(nodeResults) { node in
                         searchResultRow(
                             title: node.name ?? String(localized: "Unnamed Node"),
-                            subtitle: "\(node.role.capitalized) · \(node.publicKey.prefix(12).uppercased())",
+                            subtitle: "\(NodeRoleStyle.label(for: node.role)) · \(node.publicKey.prefix(12).uppercased())",
                             symbol: NodeRoleStyle.symbolName(for: node.role),
                             color: NodeRoleStyle.color(for: node.role),
                             isFavorite: isFavorite(kind: .node, id: node.publicKey),
