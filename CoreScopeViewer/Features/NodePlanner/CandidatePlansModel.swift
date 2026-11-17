@@ -249,11 +249,13 @@ final class CandidatePlansModel {
     func plan(_ id: String?) -> StudyPlan? { id.flatMap { id in studyPlans.first { $0.id == id } } }
 
     /// `base`, or `base 2`, `base 3`… if a study already has that name.
-    func uniqueName(_ base: String) -> String {
-        let names = Set(studies.map(\.name))
+    func uniqueName(_ base: String) -> String { Self.uniqueName(base, taken: Set(studies.map(\.name))) }
+
+    /// `base`, or `base 2`, `base 3`… if `taken` already has that name. Imports name their copies this way too.
+    nonisolated static func uniqueName(_ base: String, taken names: Set<String>) -> String {
         guard names.contains(base) else { return base }
         for number in 2... {
-            let candidate = Self.fit(base, suffix: " \(number)")
+            let candidate = fit(base, suffix: " \(number)")
             if !names.contains(candidate) { return candidate }
         }
         return base
@@ -300,7 +302,7 @@ final class CandidatePlansModel {
     }
 
     /// Appends `suffix`, shortening `base` by whole characters to stay within the 160-byte name limit.
-    private static func fit(_ base: String, suffix: String) -> String {
+    nonisolated private static func fit(_ base: String, suffix: String) -> String {
         var trimmed = base
         while (trimmed + suffix).utf8.count > 160, !trimmed.isEmpty { trimmed.removeLast() }
         return trimmed + suffix

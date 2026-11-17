@@ -71,24 +71,41 @@ struct SavedPlansImportTests {
         }
     }
 
-    @Test func aLibraryImportSkipsWhatIsAlreadyHere() async throws {
+    @Test func aBackupOfThisLibraryIsAlreadyHere() async throws {
+        // Export converted or left out some results, so their bytes differ; that alone isn't a difference.
         let package = try await referencePackage()
         let file = try library(reference: true)
         defer { try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }
         let target = await model(file)
         let preview = SavedPlansImport.preview(package, library: current(target))
+        #expect(preview.items.allSatisfy { $0.status == .alreadyHere })
+        #expect(preview.defaultSelection.isEmpty)
+        // Ticking everything anyway imports nothing.
+        #expect(throws: SavedPlansImport.Refusal.nothingSelected) {
+            try SavedPlansImport.records(preview, library: current(target), selected: Set(preview.items.map(\.id)), inputsOnly: false)
+        }
+    }
+
+    @Test func aFileThatBringsAMissingResultIsOffered() async throws {
+        let package = try await referencePackage()
+        let file = try library(reference: true)
+        defer { try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }
+        // This device lost study 1's result file (shared with its copy, study 6), as after a restore without results.
+        let results = file.deletingLastPathComponent().appendingPathComponent("results")
+        let sha = try #require(package.studies.first { $0.id == "40000000-0000-4000-8000-000000000001" }?.resultRef?.sha256)
+        try FileManager.default.removeItem(at: results.appendingPathComponent("\(sha).result"))
+        let target = await model(file)
+        let preview = SavedPlansImport.preview(package, library: current(target))
         let status = Dictionary(uniqueKeysWithValues: preview.items.map { ($0.name, $0.status) })
-        #expect(status["Ridge relay site"] == .alreadyHere)
-        #expect(status["West-side options"] == .alreadyHere)
-        // Results this device couldn't export make those copies differ, so they're offered.
-        #expect(status["Coverage saved on 0.10.6"] == .new)
+        #expect(status["Ridge relay site"] == .partlyHere(1))
+        #expect(status["Ridge relay coverage (copy)"] == .new)
         #expect(status["Inputs only"] == .alreadyHere)
         let records = try SavedPlansImport.records(preview, library: current(target), selected: preview.defaultSelection, inputsOnly: false)
-        #expect(records.studyPlans.isEmpty && records.plans.isEmpty)
-        #expect(Set(records.studies.map(\.name)) == ["Coverage saved on 0.10.6 2", "Restored without results 2"])
-        #expect(throws: SavedPlansImport.Refusal.nothingSelected) {
-            try SavedPlansImport.records(preview, library: current(target), selected: [], inputsOnly: false)
-        }
+        #expect(Set(records.studies.map(\.name)) == ["Ridge relay coverage 2", "Ridge relay coverage (copy) 2"])
+        #expect(records.studies.allSatisfy { $0.coverage?.calculatedResult != nil })
+        // The plan already here takes its new study; nothing is replaced.
+        #expect(records.studyPlans.isEmpty)
+        #expect(records.studies.first { $0.name == "Ridge relay coverage 2" }?.planID == "30000000-0000-4000-8000-000000000001")
     }
 
     @Test func aStudyImportedTwiceBecomesACopy() async throws {

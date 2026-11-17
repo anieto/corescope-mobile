@@ -23,7 +23,7 @@ class SavedPlansPackageTest {
     }
 
     @Test fun everySharedPackageCaseIsReadAsExpected() {
-        assertEquals(68, cases.size)
+        assertEquals(71, cases.size)
         for (case in cases) {
             val name = case.text("name")
             val (expect, read) = outcome(bytes(case))

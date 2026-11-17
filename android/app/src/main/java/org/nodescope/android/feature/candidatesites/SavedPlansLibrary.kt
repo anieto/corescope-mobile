@@ -231,11 +231,7 @@ class SavedPlansLibrary(private val store: DeploymentPlanStore) {
     fun plan(id: String?): StudyPlan? = id?.let { wanted -> studyPlans.firstOrNull { it.id == wanted } }
 
     /** [base], or `base 2`, `base 3`… if a study already has that name. */
-    fun uniqueName(base: String): String {
-        val names = studies.map { it.name }.toSet()
-        if (base !in names) return base
-        return generateSequence(2) { it + 1 }.map { fit(base, " $it") }.first { it !in names }
-    }
+    fun uniqueName(base: String): String = uniqueName(base, studies.map { it.name }.toSet())
 
     private suspend fun changeStudy(id: String, change: (SavedStudy) -> SavedStudy): Boolean {
         val before = studies.firstOrNull { it.id == id } ?: return missingStudy()
@@ -288,6 +284,12 @@ class SavedPlansLibrary(private val store: DeploymentPlanStore) {
         fun newStudyID(): String = UUID.randomUUID().toString()
 
         fun copyName(name: String): String = fit(name, " copy")
+
+        /** `base`, or `base 2`, `base 3`… if [names] already has that name. Imports name their copies this way too. */
+        fun uniqueName(base: String, names: Set<String>): String {
+            if (base !in names) return base
+            return generateSequence(2) { it + 1 }.map { fit(base, " $it") }.first { it !in names }
+        }
 
         /** Most recently updated first; the ID breaks ties so the order is stable. */
         fun <T> sorted(items: List<T>, id: (T) -> String, updated: (T) -> Long): List<T> =

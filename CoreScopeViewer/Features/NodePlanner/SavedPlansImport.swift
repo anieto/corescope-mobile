@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 
 extension UTType {
@@ -52,8 +53,6 @@ enum SavedPlansImport {
         var plans: [DeploymentPlan] = []
         var studyPlans: [StudyPlan] = []
         var studies: [SavedStudy] = []
-        /// Imported into plans already in the library: the plans to show afterwards.
-        var mergedInto: Set<String> = []
     }
 
     enum Refusal: Error, Equatable {
@@ -99,6 +98,8 @@ enum SavedPlansImport {
         let copies = preview.copiesMatches
         var records = Records()
         var studyNames = Set(library.studies.map(\.name)), planNames = Set(library.studyPlans.map(\.name))
+        // Result files by content, with their sizes: the package's verified references, so nothing is hashed again.
+        var held = Dictionary(library.studies.compactMap { $0.resultRef.map { ($0.sha256, $0.byteLength) } }, uniquingKeysWith: { first, _ in first })
 
         func copy(_ study: SavedStudy, into planID: String?) {
             let unusable = package.unusableResults.contains(study.id)
@@ -116,6 +117,7 @@ enum SavedPlansImport {
             // The bytes travel in memory; the store installs them as result files before the manifest.
             if let ref = study.resultRef, let data = package.results[ref.sha256] {
                 if next.kind == .coverage { next.coverage?.calculatedResult = data } else { next.linkProfileResult = data }
+                held[ref.sha256] = ref.byteLength
             }
             records.studies.append(next)
         }
@@ -132,7 +134,6 @@ enum SavedPlansImport {
             if !copies, let local = matchingPlan(plan, library) {
                 for study in members where !library.studies.contains(where: { $0.planID == local.id && same(study, $0, package) }) {
                     copy(study, into: local.id)
-                    records.mergedInto.insert(local.id)
                 }
                 continue
             }
@@ -155,11 +156,6 @@ enum SavedPlansImport {
         if library.studyPlans.count + records.studyPlans.count > 100 { throw Refusal.tooMany("plans") }
         if library.plans.count + records.plans.count > 100 { throw Refusal.tooMany("candidate site lists") }
         // Result files are shared by content, so only bytes the library doesn't hold yet count.
-        var held = Dictionary(library.studies.compactMap { $0.resultRef.map { ($0.sha256, $0.byteLength) } }, uniquingKeysWith: { first, _ in first })
-        for study in records.studies {
-            guard let data = study.coverage?.calculatedResult ?? study.linkProfileResult else { continue }
-            held[DeploymentPlanStore.sha256(data)] = data.count
-        }
         if held.values.reduce(0, +) > DeploymentPlanStore.maximumResultStorage { throw Refusal.tooLarge }
         return records
     }
@@ -174,14 +170,16 @@ enum SavedPlansImport {
         }
     }
 
-    /// Kind, name, inputs, historical dates, source and result (by content) all equal. Membership is checked by the caller.
+    /// Kind, name, inputs, historical dates and source all equal, and the file brings no result this copy lacks:
+    /// it has none, or the local study's result shows here. Result bytes aren't compared: export converts older
+    /// results, so a backup of this very library carries different bytes for them. Membership is checked by the caller.
     private static func same(_ imported: SavedStudy, _ local: SavedStudy, _ package: SavedPlansPackage) -> Bool {
         var a = imported.coverage, b = local.coverage
         a?.calculatedResult = nil
         b?.calculatedResult = nil
         return imported.kind == local.kind && imported.name == local.name && imported.linkProfile == local.linkProfile && a == b
             && imported.createdAtMilliseconds == local.createdAtMilliseconds && imported.updatedAtMilliseconds == local.updatedAtMilliseconds
-            && imported.origin == local.origin && imported.resultRef?.sha256 == local.resultRef?.sha256
+            && imported.origin == local.origin && (imported.resultRef == nil || local.resultStatus == .available)
     }
 
     private static func sameSites(_ a: DeploymentPlan, _ b: DeploymentPlan) -> Bool {
@@ -189,16 +187,9 @@ enum SavedPlansImport {
             && a.createdAtMilliseconds == b.createdAtMilliseconds && a.updatedAtMilliseconds == b.updatedAtMilliseconds
     }
 
-    /// `name`, or `name 2`, `name 3`… within the 160-byte limit, as the library names copies.
+    /// The library's own naming: `name`, or `name 2`, `name 3`… within the 160-byte limit.
     private static func unique(_ name: String, _ taken: inout Set<String>) -> String {
-        var candidate = name, number = 2
-        while taken.contains(candidate) {
-            let suffix = " \(number)"
-            var base = name
-            while (base + suffix).utf8.count > 160, !base.isEmpty { base.removeLast() }
-            candidate = base + suffix
-            number += 1
-        }
+        let candidate = CandidatePlansModel.uniqueName(name, taken: taken)
         taken.insert(candidate)
         return candidate
     }
@@ -229,10 +220,33 @@ extension CandidatePlansModel {
     }
 }
 
+/// Shows the import screen for a file opened from another app, over whatever is on screen, including another
+/// sheet (a SwiftUI sheet at the root can't appear while one is up, and the file would wait unseen).
+@MainActor
+enum PackageImportPresenter {
+    static func present(_ request: PackageImportRequest, attempts: Int = 10) {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let scene = scenes.first { $0.activationState == .foregroundActive } ?? scenes.first
+        guard var top = scene?.keyWindow?.rootViewController ?? scene?.windows.first?.rootViewController, top.view.window != nil else {
+            // Opened at launch: the window isn't up yet.
+            if attempts > 0 { DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { present(request, attempts: attempts - 1) } }
+            return
+        }
+        while let presented = top.presentedViewController, !presented.isBeingDismissed { top = presented }
+        weak var shown: UIViewController?
+        let controller = UIHostingController(rootView: ImportPackageSheet(request: request, onClose: { shown?.dismiss(animated: true) }))
+        shown = controller
+        top.present(controller, animated: true)
+    }
+}
+
 /// Reads the file completely, shows what it holds, and imports the chosen items as copies.
 struct ImportPackageSheet: View {
     let request: PackageImportRequest
-    @Environment(\.dismiss) private var dismiss
+    /// Set when presented by `PackageImportPresenter` rather than as a SwiftUI sheet.
+    var onClose: (() -> Void)? = nil
+    @Environment(\.dismiss) private var dismissSheet
+    private func dismiss() { if let onClose { onClose() } else { dismissSheet() } }
     @State private var model = CandidatePlansModel.shared
     @State private var state: LoadState = .loading
     @State private var selected: Set<String> = []

@@ -16,8 +16,6 @@ struct NodeScopeApp: App {
     @State private var searchHistoryStore = SearchHistoryStore()
     @State private var appNavigationStore = AppNavigationStore()
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
-    /// A `.nodescope` file opened from Files, Mail, AirDrop or the share sheet.
-    @State private var pendingImport: PackageImportRequest?
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -71,13 +69,12 @@ struct NodeScopeApp: App {
             .onOpenURL { url in
                 if url.isFileURL {
                     // Not opened in place: the system's copy in this app's Inbox is removed once read.
-                    pendingImport = PackageImportRequest(url: url, removesFile: url.pathComponents.contains { $0.hasSuffix("Inbox") })
+                    PackageImportPresenter.present(PackageImportRequest(url: url, removesFile: url.pathComponents.contains { $0.hasSuffix("Inbox") }))
                     return
                 }
                 guard let deepLink = NodeScopeDeepLink(url: url) else { return }
                 appNavigationStore.open(deepLink)
             }
-            .sheet(item: $pendingImport) { request in ImportPackageSheet(request: request) }
             .task {
                 await analyzerSourceRegistry.refresh()
             }

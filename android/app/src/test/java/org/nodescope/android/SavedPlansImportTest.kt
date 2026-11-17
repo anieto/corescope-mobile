@@ -62,22 +62,39 @@ class SavedPlansImportTest {
         }
     }
 
-    @Test fun aLibraryImportSkipsWhatIsAlreadyHere() = runTest {
+    @Test fun aBackupOfThisLibraryIsAlreadyHere() = runTest {
+        // Export converted or left out some results, so their bytes differ; that alone isn't a difference.
         val pack = referencePackage()
         val (target, _) = library(reference = true)
         val preview = SavedPlansImport.preview(pack, target.current())
+        assertTrue(preview.items.all { it.status == SavedPlansImport.Status.AlreadyHere })
+        assertTrue(preview.defaultSelection.isEmpty())
+        // Ticking everything anyway imports nothing.
+        assertThrows(SavedPlansImport.Refusal.NothingSelected::class.java) {
+            SavedPlansImport.records(preview, target.current(), preview.items.map { it.id }.toSet(), inputsOnly = false)
+        }
+    }
+
+    @Test fun aFileThatBringsAMissingResultIsOffered() = runTest {
+        val pack = referencePackage()
+        // This device lost study 1's result file (shared with its copy, study 6), as after a restore without results.
+        val root = Files.createTempDirectory("import").toFile().also { roots += it }
+        File(shared, "v3/reference/plans.json").copyTo(File(root, "plans.json"))
+        File(shared, "v3/reference/results").copyRecursively(File(root, "results"))
+        val sha = pack.studies.first { it.id == "40000000-0000-4000-8000-000000000001" }.resultRef!!.sha256
+        assertTrue(File(root, "results/$sha.result").delete())
+        val target = SavedPlansLibrary(DeploymentPlanStore(File(root, "plans.json"))).apply { load() }
+        val preview = SavedPlansImport.preview(pack, target.current())
         val status = preview.items.associate { it.name to it.status }
-        assertEquals(SavedPlansImport.Status.AlreadyHere, status["Ridge relay site"])
-        assertEquals(SavedPlansImport.Status.AlreadyHere, status["West-side options"])
-        // On Android the 0.10.6 result is its own and travels converted, so that copy differs by its result.
-        assertEquals(SavedPlansImport.Status.New, status["Coverage saved on 0.10.6"])
+        assertEquals(SavedPlansImport.Status.PartlyHere(1), status["Ridge relay site"])
+        assertEquals(SavedPlansImport.Status.New, status["Ridge relay coverage (copy)"])
         assertEquals(SavedPlansImport.Status.AlreadyHere, status["Inputs only"])
         val records = SavedPlansImport.records(preview, target.current(), preview.defaultSelection, inputsOnly = false)
-        assertTrue(records.studyPlans.isEmpty() && records.plans.isEmpty())
-        assertEquals(setOf("Coverage saved on 0.10.6 2", "Restored without results 2"), records.studies.map { it.name }.toSet())
-        assertThrows(SavedPlansImport.Refusal.NothingSelected::class.java) {
-            SavedPlansImport.records(preview, target.current(), emptySet(), inputsOnly = false)
-        }
+        assertEquals(setOf("Ridge relay coverage 2", "Ridge relay coverage (copy) 2"), records.studies.map { it.name }.toSet())
+        assertTrue(records.studies.all { it.coverage?.calculatedResult != null })
+        // The plan already here takes its new study; nothing is replaced.
+        assertTrue(records.studyPlans.isEmpty())
+        assertEquals("30000000-0000-4000-8000-000000000001", records.studies.first { it.name == "Ridge relay coverage 2" }.planID)
     }
 
     @Test fun aStudyImportedTwiceBecomesACopy() = runTest {

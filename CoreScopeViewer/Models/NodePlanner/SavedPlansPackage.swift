@@ -184,9 +184,10 @@ struct SavedPlansPackage: Equatable, Sendable {
                                                    catalogComplete: coverage.catalogComplete)) != nil
     }
 
-    /// A JSON integer (not a boolean, not a fraction).
+    /// A JSON integer: not a boolean, and written without a fraction or exponent (1.0 isn't one), as on Android.
     private static func integer(_ value: Any?) -> Int64? {
-        guard let number = value as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID() else { return nil }
+        guard let number = value as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID(),
+              !CFNumberIsFloatType(number) else { return nil }
         let double = number.doubleValue
         guard double.rounded() == double, abs(double) < 9.2e18 else { return nil }
         return number.int64Value
@@ -199,8 +200,8 @@ struct SavedPlansPackage: Equatable, Sendable {
 
     // MARK: Writing
 
-    /// The package file. Every referenced result must be in `results`; a package that wouldn't read back
-    /// exactly as written is refused.
+    /// The package file. Every referenced result must be in `results`. The records must already be valid
+    /// library records (they come from the library), and `exportedBy.appVersion` from `SavedPlansExport.appVersion()`.
     func encoded() throws -> Data {
         var studies = self.studies
         for index in studies.indices {

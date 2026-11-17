@@ -283,8 +283,10 @@ internal object PackageArchive {
 
         val boundaries = entries.map { it.local }.sorted() + directoryOffset
         return entries.associate { entry ->
+            // Compared as Long first: an offset past 2 GiB is outside any package and must not wrap around.
+            if (entry.local + 30 > directoryOffset) invalid("damaged local header")
             val local = entry.local.toInt()
-            if (local + 30 > directoryOffset || data.u32(local) != 0x04034b50L) invalid("damaged local header")
+            if (data.u32(local) != 0x04034b50L) invalid("damaged local header")
             val nameLength = data.u16(local + 26)
             val extraLength = data.u16(local + 28)
             if (data.u16(local + 6) != entry.flags || data.u16(local + 8) != entry.method || local + 30 + nameLength > directoryOffset ||
@@ -293,19 +295,20 @@ internal object PackageArchive {
             val start = local + 30 + nameLength + extraLength
             val following = boundaries[boundaries.indexOf(entry.local) + 1]
             if (start + entry.compressed > following) invalid("entries overlap")
-            val raw = data.copyOfRange(start, start + entry.compressed.toInt())
-            val content = if (entry.method == 0) raw else inflate(raw, entry.expanded.toInt())
+            // Deflated entries inflate straight from the package's bytes; only stored ones are copied out.
+            val content = if (entry.method == 0) data.copyOfRange(start, start + entry.compressed.toInt())
+                else inflate(data, start, entry.compressed.toInt(), entry.expanded.toInt())
             if (content.size.toLong() != entry.expanded) invalid("compressed data does not match its sizes")
             if (CRC32().apply { update(content) }.value != entry.crc) invalid("checksum mismatch")
             entry.name to content
         }
     }
 
-    /** Raw deflate that must end exactly at [expected] bytes and consume all of [input]; never expands further. */
-    private fun inflate(input: ByteArray, expected: Int): ByteArray {
+    /** Raw deflate that must end exactly at [expected] bytes and consume all of its [length] input bytes; never expands further. */
+    private fun inflate(input: ByteArray, offset: Int, length: Int, expected: Int): ByteArray {
         val inflater = Inflater(true)
         try {
-            inflater.setInput(input)
+            inflater.setInput(input, offset, length)
             val out = ByteArray(expected + 1)
             var produced = 0
             while (!inflater.finished() && produced < out.size) {

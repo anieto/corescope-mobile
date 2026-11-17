@@ -27,7 +27,7 @@ struct SavedPlansPackageTests {
     }
 
     @Test func everySharedPackageCaseIsReadAsExpected() throws {
-        #expect(cases.count == 68)
+        #expect(cases.count == 71)
         for test in cases {
             let name = test["name"] as! String
             let data = try #require(Data(base64Encoded: test["packageBase64"] as! String))

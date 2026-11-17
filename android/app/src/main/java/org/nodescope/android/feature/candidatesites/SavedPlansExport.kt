@@ -231,12 +231,13 @@ fun ExportPackageSheet(contents: SavedPlansExport.Contents, dismiss: () -> Unit)
         message = null
         val (plans, studyPlans, studies) = Triple(library.plans, library.studyPlans, library.studies)
         val version = SavedPlansExport.appVersion()
-        if (!decided) {
-            decided = true
-            // A library backup includes results; a study or plan only when every result can travel.
+        if (!decided && library.loaded) {
+            // A library backup includes results; a study or plan only when every result can travel. Decided once the
+            // library has loaded, and only marked decided after the check finishes, so a cancelled run checks again.
             val trial = if (contents == SavedPlansExport.Contents.Library) null else withContext(Dispatchers.Default) {
                 SavedPlansExport.packageFor(contents, plans, studyPlans, studies, true, true, exportedAt, version)
             }
+            decided = true
             if (trial != null && trial.omittedResults.isNotEmpty()) { includesResults = false; return@LaunchedEffect }
         }
         val built = withContext(Dispatchers.IO) {
@@ -260,7 +261,8 @@ fun ExportPackageSheet(contents: SavedPlansExport.Contents, dismiss: () -> Unit)
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
             val saved = withContext(Dispatchers.IO) {
-                runCatching { context.contentResolver.openOutputStream(uri, "w")!!.use { it.write(source.readBytes()) } }.isSuccess
+                // Streamed, so a large backup isn't held in memory.
+                runCatching { context.contentResolver.openOutputStream(uri, "w")!!.use { out -> source.inputStream().use { it.copyTo(out) } } }.isSuccess
             }
             message = if (saved) "Saved." else "The file couldn't be saved there. Nothing else was changed."
         }

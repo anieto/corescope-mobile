@@ -118,11 +118,15 @@ object SavedPlansImport {
         val plans = mutableListOf<DeploymentPlan>()
         val containers = mutableListOf<StudyPlan>()
         val studies = mutableListOf<SavedStudy>()
+        // Result files by content, with their sizes: the package's verified references, so nothing is hashed again.
+        val held = library.studies.mapNotNull { it.resultRef }.associate { it.sha256 to it.byteLength.toLong() }.toMutableMap()
 
         fun copy(study: SavedStudy, planID: String?) {
             if (study.id in pack.unusableResults && !inputsOnly) return
             // The bytes travel in memory (base64, as loaded); the store installs them as result files before the manifest.
-            val bytes = study.resultRef?.let { pack.results[it.sha256] }?.let(java.util.Base64.getEncoder()::encodeToString)
+            val ref = study.resultRef?.takeIf { it.sha256 in pack.results }
+            ref?.let { held[it.sha256] = it.byteLength.toLong() }
+            val bytes = ref?.let { java.util.Base64.getEncoder().encodeToString(pack.results.getValue(it.sha256)) }
             studies += study.copy(id = newID(), planID = planID, name = unique(study.name, studyNames), revision = null,
                 importOrigin = ImportOrigin(study.id, study.revision ?: 1), resultRef = null, resultStatus = SavedResultStatus.NONE,
                 coverage = study.coverage?.copy(calculatedResult = if (study.kind == SavedStudy.Kind.COVERAGE) bytes else null),
@@ -154,12 +158,6 @@ object SavedPlansImport {
         if (library.studyPlans.size + containers.size > 100) throw Refusal.TooMany("plans")
         if (library.plans.size + plans.size > 100) throw Refusal.TooMany("candidate site lists")
         // Result files are shared by content, so only bytes the library doesn't hold yet count.
-        val held = library.studies.mapNotNull { it.resultRef }.associate { it.sha256 to it.byteLength.toLong() }.toMutableMap()
-        for (study in studies) {
-            val encoded = study.coverage?.calculatedResult ?: study.linkProfileResult ?: continue
-            val data = java.util.Base64.getDecoder().decode(encoded)
-            held[DeploymentPlanStore.sha256(data)] = data.size.toLong()
-        }
         if (held.values.sum() > 512L * 1024 * 1024) throw Refusal.TooLarge
         return Records(plans, containers, studies)
     }
@@ -170,34 +168,43 @@ object SavedPlansImport {
             it.updatedAtMilliseconds == plan.updatedAtMilliseconds
     }
 
-    /** Kind, name, inputs, historical dates, source and result (by content) all equal. Membership is checked by the caller. */
+    /**
+     * Kind, name, inputs, historical dates and source all equal, and the file brings no result this copy lacks: it has
+     * none, or the local study's result shows here. Result bytes aren't compared: export converts older results, so a
+     * backup of this very library carries different bytes for them. Membership is checked by the caller. Matches iOS.
+     */
     private fun same(imported: SavedStudy, local: SavedStudy) = imported.kind == local.kind && imported.name == local.name &&
         imported.linkProfile == local.linkProfile && imported.coverage?.copy(calculatedResult = null) == local.coverage?.copy(calculatedResult = null) &&
         imported.createdAtMilliseconds == local.createdAtMilliseconds && imported.updatedAtMilliseconds == local.updatedAtMilliseconds &&
-        imported.origin == local.origin && imported.resultRef?.sha256 == local.resultRef?.sha256
+        imported.origin == local.origin && (imported.resultRef == null || local.resultStatus == SavedResultStatus.AVAILABLE)
 
     private fun sameSites(a: DeploymentPlan, b: DeploymentPlan) = a.name == b.name && a.sites == b.sites &&
         a.selectedSiteID == b.selectedSiteID && a.createdAtMilliseconds == b.createdAtMilliseconds && a.updatedAtMilliseconds == b.updatedAtMilliseconds
 
-    /** `name`, or `name 2`, `name 3`… within the 160-byte limit, as the library names copies. */
-    private fun unique(name: String, taken: MutableSet<String>): String {
-        var candidate = name
-        var number = 2
-        while (candidate in taken) {
-            val suffix = " $number"
-            var base = name
-            while ((base + suffix).toByteArray(Charsets.UTF_8).size > 160 && base.isNotEmpty()) base = base.dropLast(1)
-            candidate = base + suffix
-            number++
-        }
-        taken += candidate
-        return candidate
-    }
+    /** The library's own naming: `name`, or `name 2`, `name 3`… within the 160-byte limit. */
+    private fun unique(name: String, taken: MutableSet<String>): String =
+        SavedPlansLibrary.uniqueName(name, taken).also { taken += it }
 
     private fun newID() = UUID.randomUUID().toString()
 
-    /** Reads at most the package limit; null if the file can't be read or is larger. */
+    /**
+     * Reads at most the package limit; null if the file can't be read or is larger. When the provider reports
+     * the size, the bytes go straight into one array of that size instead of a growing buffer and a copy.
+     */
     fun readFile(context: android.content.Context, uri: Uri): ByteArray? = runCatching {
+        val size = runCatching { context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length } }.getOrNull() ?: -1L
+        if (size > SavedPlansPackage.MAXIMUM_PACKAGE_BYTES) return null
+        if (size >= 0) context.contentResolver.openInputStream(uri)?.use { input ->
+            val bytes = ByteArray(size.toInt())
+            var read = 0
+            while (read < bytes.size) {
+                val count = input.read(bytes, read, bytes.size - read)
+                if (count < 0) return null
+                read += count
+            }
+            if (input.read() >= 0) return null  // longer than the provider said
+            return bytes
+        }
         context.contentResolver.openInputStream(uri)?.use { input ->
             val out = ByteArrayOutputStream()
             val buffer = ByteArray(64 * 1024)

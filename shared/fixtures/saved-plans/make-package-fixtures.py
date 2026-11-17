@@ -432,6 +432,9 @@ def cases():
     bomb_data = bomb.compress(b'0' * MiB) + bomb.flush()
     add('compression bomb', _with_raw(base('library'), 'results/' + '0' * 64 + '.result', bomb_data, 1000),
         'invalid', 'compressed data does not match its sizes')
+    # An offset past 2 GiB: refused like any misplaced header, never read outside the file.
+    variant('local offset beyond 2 GiB', lambda m, f: None, reason='damaged local header',
+            entries_change=lambda e: e[1].update(local_offset=0x80000000))
     variant('manifest missing', lambda m, f: None, reason='manifest.json is missing',
             entries_change=lambda e: e.pop(0))
 
@@ -448,6 +451,12 @@ def cases():
     variant('other format', lambda m, f: m.update(format='nodescope.saved-plan'), reason='not a NodeScope saved-plans package')
     variant('future version', lambda m, f: m.update(version=2, newField=True), expect='future', reason='needs a newer version')
     variant('version zero', lambda m, f: m.update(version=0), reason='package version must be a positive integer')
+    # Integers are written as integers: 1.0 and 1e0 aren't, even where the value is whole.
+    raw_manifest('version written as 1.0', manifest_bytes(base('library')[0]).replace(b'"version":1,', b'"version":1.0,', 1),
+                 reason='package version must be a positive integer')
+    raw_manifest('exported time with an exponent', manifest_bytes(base('library')[0]).replace(
+        b'"exportedAtMilliseconds":1794790000000', b'"exportedAtMilliseconds":1.79479e12', 1),
+        reason='exportedAtMilliseconds must be epoch milliseconds')
     variant('unknown field', lambda m, f: m.update(extra=1), reason='manifest has unknown fields')
     variant('missing field', lambda m, f: m.pop('omittedResults'), reason='manifest is missing')
     variant('unknown scope', lambda m, f: m.update(scope='everything'), reason='unknown scope')

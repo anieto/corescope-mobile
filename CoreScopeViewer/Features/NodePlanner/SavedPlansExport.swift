@@ -91,8 +91,16 @@ enum SavedPlansExport {
         return String(String(safe).prefix(100)).trimmingCharacters(in: .whitespaces) + ".\(SavedPlansPackage.fileExtension)"
     }
 
+    /// This build's version, limited to what a package's `appVersion` allows (as Android does).
+    static func appVersion() -> String {
+        let raw = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        let allowed = String(raw.unicodeScalars.filter { $0.isASCII && (CharacterSet.alphanumerics.contains($0) || ".+-".unicodeScalars.contains($0)) }
+            .map(Character.init).prefix(32))
+        return allowed.isEmpty ? "0" : allowed
+    }
+
     /// What a package reveals, for the preview before sharing.
-    struct Preview: Equatable {
+    struct Preview {
         var studies = 0, plans = 0, candidateSitePlans = 0
         /// Precise places: study sites and endpoints, and candidate sites.
         var locations = 0
@@ -106,12 +114,6 @@ enum SavedPlansExport {
         var results = 0
         var resultBytes = 0
         var omitted: [(name: String, reason: SavedPlansPackage.OmissionReason)] = []
-
-        static func == (a: Preview, b: Preview) -> Bool {
-            a.studies == b.studies && a.plans == b.plans && a.locations == b.locations && a.nodes == b.nodes
-                && a.analyzers == b.analyzers && a.notedPlans == b.notedPlans && a.results == b.results
-                && a.omitted.map(\.name) == b.omitted.map(\.name)
-        }
 
         init() {}
 
@@ -271,7 +273,7 @@ struct ExportPackageSheet: View {
         failed = false
         if let previous { try? FileManager.default.removeItem(at: previous.deletingLastPathComponent()) }
         let milliseconds = Int64((exportedAt.timeIntervalSince1970 * 1000).rounded())
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+        let version = SavedPlansExport.appVersion()
         let (contents, plans, studyPlans, studies) = (self.contents, model.plans, model.studyPlans, model.studies)
         if !prepared {
             prepared = true
