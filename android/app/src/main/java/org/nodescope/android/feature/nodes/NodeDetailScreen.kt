@@ -1,5 +1,10 @@
 package org.nodescope.android.feature.nodes
 
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
+import org.nodescope.android.core.design.withDescription
 import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.meshCardColors
 import org.nodescope.android.core.design.MeshModalBottomSheet
@@ -111,7 +116,7 @@ fun NodeDetailScreen(
         item {
             if (node != null) IdentityCard(node, publicKey, favorite, now, onFavorite, onMap)
             else if (sections[0].loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-            else Text("This node is not in the loaded results for $host.", style = MaterialTheme.typography.bodyMedium)
+            else Text(stringResource(R.string.node_detail_this_node_is_not_in_the_loaded_results, host), style = MaterialTheme.typography.bodyMedium)
         }
         if (!beacon) onNodeCheck?.let { open ->
             item {
@@ -136,6 +141,7 @@ fun NodeDetailScreen(
 
 @Composable
 private fun IdentityCard(node: MeshNode, publicKey: String, favorite: Boolean, now: Long, onFavorite: (MeshNode) -> Unit, onMap: (MeshNode) -> Unit) {
+    val resources = LocalResources.current
     val copy = rememberCopyAction()
     val context = LocalContext.current
     var menuOpen by remember { mutableStateOf(false) }
@@ -147,7 +153,7 @@ private fun IdentityCard(node: MeshNode, publicKey: String, favorite: Boolean, n
                 Icon(roleIcon(node.role), null, tint = Color(0xFF14243A))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(node.name?.takeIf(String::isNotBlank) ?: "Unnamed node", style = MaterialTheme.typography.titleLarge)
+                Text(node.name?.takeIf(String::isNotBlank) ?: stringResource(R.string.node_detail_unnamed_node), style = MaterialTheme.typography.titleLarge)
                 val roleTerm = GlossaryTerm.forRole(node.role)
                 if (roleTerm != null) LearnLabel(node.role.replaceFirstChar { it.uppercase() }, roleTerm, style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -155,47 +161,47 @@ private fun IdentityCard(node: MeshNode, publicKey: String, favorite: Boolean, n
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 // Beacon may not know when a node was last seen; never show "Seen Unknown".
                 parseInstant(node.lastSeen)?.let { seen ->
-                    LearnLabel("Seen ${relativeTime(seen, now)}", GlossaryTerm.LAST_HEARD, style = MaterialTheme.typography.bodySmall,
+                    LearnLabel(stringResource(R.string.node_detail_seen, relativeTime(seen, now)), GlossaryTerm.LAST_HEARD, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             IconToggleButton(checked = favorite, onCheckedChange = { onFavorite(node) }) {
                 Icon(if (favorite) Icons.Outlined.Star else Icons.Outlined.StarBorder,
-                    if (favorite) "Remove favorite" else "Save node")
+                    if (favorite) stringResource(R.string.node_detail_remove_favorite) else stringResource(R.string.node_detail_save_node))
             }
             Box {
-                IconButton(onClick = { menuOpen = true }) { Icon(Icons.Outlined.MoreVert, "Node actions") }
+                IconButton(onClick = { menuOpen = true }) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.node_detail_node_actions)) }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(text = { Text("Copy key") }, leadingIcon = { Icon(Icons.Outlined.ContentCopy, null) },
-                        onClick = { menuOpen = false; copy("Public key", publicKey, false) })
+                    DropdownMenuItem(text = { Text(stringResource(R.string.node_detail_copy_key)) }, leadingIcon = { Icon(Icons.Outlined.ContentCopy, null) },
+                        onClick = { menuOpen = false; copy(resources.getString(R.string.node_detail_public_key_2), publicKey, false) })
                     MeshCoreContactLink.from(node.name, publicKey, node.role)?.let { contact ->
-                        DropdownMenuItem(text = { Text("Add to MeshCore") }, leadingIcon = { Icon(Icons.Outlined.QrCode2, null) },
+                        DropdownMenuItem(text = { Text(stringResource(R.string.node_detail_add_to_meshcore)) }, leadingIcon = { Icon(Icons.Outlined.QrCode2, null) },
                             onClick = { menuOpen = false; meshCoreContact = contact })
                     }
-                    DropdownMenuItem(text = { Text("Share") }, leadingIcon = { Icon(Icons.Outlined.Share, null) }, onClick = {
+                    DropdownMenuItem(text = { Text(stringResource(R.string.common_share)) }, leadingIcon = { Icon(Icons.Outlined.Share, null) }, onClick = {
                         menuOpen = false
                         context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
-                            .putExtra(Intent.EXTRA_TEXT, NodeScopeLink.node(publicKey).url), "Share node link"))
+                            .putExtra(Intent.EXTRA_TEXT, NodeScopeLink.node(publicKey).url), resources.getString(R.string.node_detail_share_node_link)))
                     })
                 }
             }
         }
         meshCoreContact?.let { MeshCoreContactSheet(it, onDismiss = { meshCoreContact = null }) }
         if (node.coordinate != null) Button(onClick = { onMap(node) }) {
-            Icon(Icons.Outlined.Map, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Show on map")
+            Icon(Icons.Outlined.Map, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.node_detail_show_on_map))
         }
         TextButton(onClick = { identityExpanded = !identityExpanded }) {
-            Text(if (identityExpanded) "Hide technical identity" else "Technical identity")
+            Text(if (identityExpanded) stringResource(R.string.node_detail_hide_technical_identity) else stringResource(R.string.node_detail_technical_identity))
             Spacer(Modifier.width(4.dp))
             Icon(if (identityExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null)
         }
         if (identityExpanded) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Text("Public key", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.node_detail_public_key), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             SelectionContainer { Text(publicKey.uppercase(), fontFamily = MonaspaceNeon, style = MaterialTheme.typography.bodySmall) }
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                DateMetric("First seen", node.firstSeen, Modifier.weight(1f))
-                DateMetric("Last seen", node.lastSeen, Modifier.weight(1f))
+                DateMetric(stringResource(R.string.node_detail_first_seen), node.firstSeen, Modifier.weight(1f))
+                DateMetric(stringResource(R.string.node_detail_last_seen), node.lastSeen, Modifier.weight(1f))
             }
         }
     }
@@ -209,8 +215,8 @@ private fun AnalyticsLinkCard(onClick: () -> Unit) {
                 Icon(Icons.Outlined.QueryStats, null, tint = MaterialTheme.colorScheme.primary)
             }
             Column(Modifier.weight(1f)) {
-                Text("Node analytics", style = MaterialTheme.typography.titleMedium)
-                Text("Activity, signal, coverage, and peer trends", style = MaterialTheme.typography.labelMedium,
+                Text(stringResource(R.string.node_detail_node_analytics), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.node_detail_activity_signal_coverage_and_peer_trends), style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -222,22 +228,22 @@ private fun AnalyticsLinkCard(onClick: () -> Unit) {
 private fun DateMetric(label: String, value: String?, modifier: Modifier) {
     Column(modifier.semantics(mergeDescendants = true) {}) {
         Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(parseInstant(value)?.let { DateTimeFormatter.ofPattern("MMM d, yyyy").withZone(ZoneId.systemDefault()).format(it) } ?: "Unknown",
+        Text(parseInstant(value)?.let { DateTimeFormatter.ofPattern("MMM d, yyyy").withZone(ZoneId.systemDefault()).format(it) } ?: stringResource(R.string.node_detail_unknown),
             style = MaterialTheme.typography.titleSmall)
     }
 }
 
 @Composable
 private fun ReachCard(reach: NodeReach) {
-    DetailCard("Mesh reach", Icons.Outlined.Hub) {
+    DetailCard(stringResource(R.string.node_detail_mesh_reach), Icons.Outlined.Hub) {
         reach.importance?.let { importance ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MetricTile(importance.neighborDegree.toString(), "Neighbors", Modifier.weight(1f))
-                MetricTile(importance.bidirectionalLinks.toString(), "Two-way links", Modifier.weight(1f))
-                MetricTile(importance.directObservers.toString(), "Observers", Modifier.weight(1f))
+                MetricTile(importance.neighborDegree.toString(), stringResource(R.string.node_detail_neighbors), Modifier.weight(1f))
+                MetricTile(importance.bidirectionalLinks.toString(), stringResource(R.string.node_detail_two_way_links), Modifier.weight(1f))
+                MetricTile(importance.directObservers.toString(), stringResource(R.string.node_detail_observers), Modifier.weight(1f))
             }
         }
-        reach.window?.let { Text("Measured across a ${it.days}-day network window", style = MaterialTheme.typography.bodySmall,
+        reach.window?.let { Text(stringResource(R.string.node_detail_measured_across_a_day_network_window, it.days), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
@@ -245,28 +251,28 @@ private fun ReachCard(reach: NodeReach) {
 /** Beacon fills the Mesh reach card with what it reports: a neighbor count, not direction or observers. */
 @Composable
 private fun BeaconReachCard(neighborCount: Int) {
-    DetailCard("Mesh reach", Icons.Outlined.Hub) {
+    DetailCard(stringResource(R.string.node_detail_mesh_reach), Icons.Outlined.Hub) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricTile(neighborCount.toString(), "Neighbors", Modifier.weight(1f))
-            MetricTile("—", "Two-way links", Modifier.weight(1f))
-            MetricTile("—", "Observers", Modifier.weight(1f))
+            MetricTile(neighborCount.toString(), stringResource(R.string.node_detail_neighbors), Modifier.weight(1f))
+            MetricTile("—", stringResource(R.string.node_detail_two_way_links), Modifier.weight(1f))
+            MetricTile("—", stringResource(R.string.node_detail_observers), Modifier.weight(1f))
         }
-        Text("Beacon reports nearby nodes, but not link direction or observer coverage.", style = MaterialTheme.typography.bodySmall,
+        Text(stringResource(R.string.node_detail_beacon_reports_nearby_nodes_but_not_link_direction), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @Composable
 private fun HealthCard(stats: NodeHealthStats) {
-    DetailCard("Health", Icons.Outlined.MonitorHeart) {
+    DetailCard(stringResource(R.string.node_detail_health), Icons.Outlined.MonitorHeart) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricTile(stats.totalTransmissions?.let(::compactCount) ?: "—", "Transmissions", Modifier.weight(1f))
-            MetricTile(stats.packetsToday?.let(::compactCount) ?: "—", "Today", Modifier.weight(1f))
-            MetricTile(stats.avgSnr?.let { "%.1f".format(it) } ?: "—", "Avg SNR", Modifier.weight(1f), GlossaryTerm.SNR)
+            MetricTile(stats.totalTransmissions?.let(::compactCount) ?: "—", stringResource(R.string.node_detail_transmissions), Modifier.weight(1f))
+            MetricTile(stats.packetsToday?.let(::compactCount) ?: "—", stringResource(R.string.node_detail_today), Modifier.weight(1f))
+            MetricTile(stats.avgSnr?.let { "%.1f".format(it) } ?: "—", stringResource(R.string.node_detail_avg_snr), Modifier.weight(1f), GlossaryTerm.SNR)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            stats.totalObservations?.let { MetricChip("${compactCount(it)} observations", Icons.Outlined.Hearing) }
-            stats.avgHops?.let { MetricChip("%.1f avg hops".format(it), Icons.Outlined.Route) }
+            stats.totalObservations?.let { MetricChip(stringResource(R.string.node_detail_observations, compactCount(it)), Icons.Outlined.Hearing) }
+            stats.avgHops?.let { MetricChip(stringResource(R.string.node_detail_1_1f_avg_hops).format(it), Icons.Outlined.Route) }
         }
     }
 }
@@ -274,18 +280,18 @@ private fun HealthCard(stats: NodeHealthStats) {
 /** Beacon's counterpart to the health card: observations from Beacon's hourly totals; averages cover the seven days. */
 @Composable
 private fun BeaconHealthCard(health: BeaconNodeHealth, now: Long) {
-    DetailCard("Health", Icons.Outlined.MonitorHeart, GlossaryTerm.OBSERVATION) {
+    DetailCard(stringResource(R.string.node_detail_health), Icons.Outlined.MonitorHeart, GlossaryTerm.OBSERVATION) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricTile(health.observationsDay?.let { compactCount(it.toLong()) } ?: "—", "24 h", Modifier.weight(1f))
-            MetricTile(health.observationsWeek?.let { compactCount(it.toLong()) } ?: "—", "7 days", Modifier.weight(1f))
-            MetricTile(health.avgSnr?.let { "%.1f".format(it) } ?: "—", "Avg SNR", Modifier.weight(1f), GlossaryTerm.SNR)
+            MetricTile(health.observationsDay?.let { compactCount(it.toLong()) } ?: "—", stringResource(R.string.node_detail_24_h), Modifier.weight(1f))
+            MetricTile(health.observationsWeek?.let { compactCount(it.toLong()) } ?: "—", stringResource(R.string.node_detail_7_days), Modifier.weight(1f))
+            MetricTile(health.avgSnr?.let { "%.1f".format(it) } ?: "—", stringResource(R.string.node_detail_avg_snr), Modifier.weight(1f), GlossaryTerm.SNR)
         }
         if (health.avgRssi != null || health.avgHops != null) Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            health.avgRssi?.let { MetricChip("%.0f dBm avg RSSI".format(it), Icons.Outlined.Sensors) }
-            health.avgHops?.let { MetricChip("%.1f avg hops".format(it), Icons.Outlined.Route) }
+            health.avgRssi?.let { MetricChip(stringResource(R.string.node_detail_1_0f_dbm_avg_rssi).format(it), Icons.Outlined.Sensors) }
+            health.avgHops?.let { MetricChip(stringResource(R.string.node_detail_1_1f_avg_hops).format(it), Icons.Outlined.Route) }
         }
         health.lastHeard?.let {
-            Text("Last heard ${relativeTime(java.time.Instant.ofEpochMilli(it), now)}", style = MaterialTheme.typography.bodySmall,
+            Text(stringResource(R.string.node_detail_last_heard, relativeTime(java.time.Instant.ofEpochMilli(it), now)), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
@@ -295,7 +301,7 @@ private fun BeaconHealthCard(health: BeaconNodeHealth, now: Long) {
 @Composable
 private fun HeardInCard(regions: List<BeaconNodeHealth.HeardIn>, now: Long) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    DetailCard("Heard in", Icons.Outlined.Map) {
+    DetailCard(stringResource(R.string.node_detail_heard_in), Icons.Outlined.Map) {
         Column {
             regions.take(if (expanded) regions.size else 3).forEachIndexed { index, region ->
                 if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
@@ -320,7 +326,7 @@ private fun HeardInCard(regions: List<BeaconNodeHealth.HeardIn>, now: Long) {
 @Composable
 private fun ObserversCard(observers: List<NodeObserverStat>, onObserver: (String, String) -> Unit) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    DetailCard("Heard by", Icons.Outlined.Sensors, GlossaryTerm.OBSERVER) {
+    DetailCard(stringResource(R.string.node_detail_heard_by), Icons.Outlined.Sensors, GlossaryTerm.OBSERVER) {
         Column {
             observers.take(if (expanded) observers.size else 3).forEachIndexed { index, observer ->
                 if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
@@ -335,7 +341,7 @@ private fun ObserversCard(observers: List<NodeObserverStat>, onObserver: (String
                         Text(listOfNotNull(observer.iata, observer.avgSnr?.let { "%.1f dB".format(it) }, observer.avgRssi?.let { "%.0f dBm".format(it) })
                             .joinToString(" · "), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Text("${compactCount(observer.packetCount)} pkts", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.node_detail_pkts, compactCount(observer.packetCount)), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                     Icon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -347,17 +353,17 @@ private fun ObserversCard(observers: List<NodeObserverStat>, onObserver: (String
 @Composable
 private fun LinksCard(links: List<ReachLink>, onNode: (String) -> Unit) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    DetailCard("Links", Icons.Outlined.Link) {
+    DetailCard(stringResource(R.string.node_detail_links), Icons.Outlined.Link) {
         Column {
             links.take(if (expanded) links.size else 3).forEachIndexed { index, link ->
                 if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 Row(Modifier.fillMaxWidth().clickable { onNode(link.pubkey) }.padding(vertical = 9.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Icon(if (link.bidir) Icons.Outlined.SyncAlt else Icons.AutoMirrored.Outlined.CallMade,
-                        if (link.bidir) "Two-way" else "One way", tint = statusAccent(link.bidir))
+                        if (link.bidir) stringResource(R.string.node_detail_two_way) else stringResource(R.string.node_detail_one_way), tint = statusAccent(link.bidir))
                     Column(Modifier.weight(1f)) {
                         Text(link.label, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text(if (link.bidir) "Bidirectional" else if (link.theyHear > 0) "Heard by this node's neighbor" else "Heard by this node",
+                        Text(if (link.bidir) stringResource(R.string.node_detail_bidirectional) else if (link.theyHear > 0) stringResource(R.string.node_detail_heard_by_this_node_s_neighbor) else stringResource(R.string.node_detail_heard_by_this_node),
                             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     link.distanceKm?.let { Text(org.nodescope.android.core.design.formatDistance(it, org.nodescope.android.core.design.LocalDistanceUnit.current), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -373,7 +379,7 @@ private fun LinksCard(links: List<ReachLink>, onNode: (String) -> Unit) {
 @Composable
 private fun NeighborsCard(neighbors: List<NeighborInsight>, onNode: (String) -> Unit) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    DetailCard("Links", Icons.Outlined.Link) {
+    DetailCard(stringResource(R.string.node_detail_links), Icons.Outlined.Link) {
         Column {
             neighbors.take(if (expanded) neighbors.size else 3).forEachIndexed { index, neighbor ->
                 if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
@@ -382,9 +388,9 @@ private fun NeighborsCard(neighbors: List<NeighborInsight>, onNode: (String) -> 
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Icon(Icons.AutoMirrored.Outlined.CallMade, null, tint = statusAccent(true))
                     Column(Modifier.weight(1f)) {
-                        Text(neighbor.name?.takeIf(String::isNotBlank) ?: neighbor.identity.displayPrefix ?: "Unknown node",
+                        Text(neighbor.name?.takeIf(String::isNotBlank) ?: neighbor.identity.displayPrefix ?: stringResource(R.string.node_detail_unknown_node),
                             style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text(neighbor.signal.snr?.let { "SNR %.1f dB".format(it) } ?: "Signal unavailable",
+                        Text(neighbor.signal.snr?.let { "SNR %.1f dB".format(it) } ?: stringResource(R.string.node_detail_signal_unavailable),
                             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     if (key != null) Icon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -397,16 +403,16 @@ private fun NeighborsCard(neighbors: List<NeighborInsight>, onNode: (String) -> 
 
 @Composable
 private fun NeighborsEmptyCard() {
-    DetailCard("Links", Icons.Outlined.Link) {
-        EmptyState(Icons.Outlined.Hub, "No neighbors reported", "Beacon has not recorded any neighboring nodes for this node yet.")
+    DetailCard(stringResource(R.string.node_detail_links), Icons.Outlined.Link) {
+        EmptyState(Icons.Outlined.Hub, stringResource(R.string.node_detail_no_neighbors_reported), stringResource(R.string.node_detail_beacon_has_not_recorded_any_neighboring_nodes_for))
     }
 }
 
 @Composable
 private fun PathsCard(value: NodePaths) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    DetailCard("Known paths", Icons.Outlined.Route) {
-        Text("${value.totalPaths} resolved route${if (value.totalPaths == 1) "" else "s"}", style = MaterialTheme.typography.bodySmall,
+    DetailCard(stringResource(R.string.node_detail_known_paths), Icons.Outlined.Route) {
+        Text(pluralStringResource(R.plurals.node_detail_resolved_route, value.totalPaths, value.totalPaths), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         Column {
             value.paths.take(if (expanded) value.paths.size else 3).forEachIndexed { index, path ->
@@ -414,8 +420,8 @@ private fun PathsCard(value: NodePaths) {
                 Column(Modifier.padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(path.hops.joinToString(" → ") { it.label }, style = MaterialTheme.typography.bodyMedium, fontFamily = MonaspaceNeon)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        MetricChip("${path.hops.size} hops", Icons.Outlined.Route, MaterialTheme.colorScheme.primary)
-                        MetricChip("Seen ${path.count}×", Icons.Outlined.Visibility, MaterialTheme.colorScheme.primary)
+                        MetricChip(pluralStringResource(R.plurals.node_detail_hops, path.hops.size, path.hops.size), Icons.Outlined.Route, MaterialTheme.colorScheme.primary)
+                        MetricChip(stringResource(R.string.node_detail_seen_2, path.count), Icons.Outlined.Visibility, MaterialTheme.colorScheme.primary)
                     }
                 }
             }
@@ -427,7 +433,7 @@ private fun PathsCard(value: NodePaths) {
 @Composable
 private fun ExpandButton(expanded: Boolean, total: Int, noun: String, onClick: () -> Unit) {
     FilledTonalButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Text(if (expanded) "Show less" else "Show all $total $noun", Modifier.weight(1f))
+        Text(if (expanded) stringResource(R.string.node_detail_show_less) else stringResource(R.string.node_detail_show_all_2, total, noun), Modifier.weight(1f))
         Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null)
     }
 }
@@ -467,6 +473,7 @@ private fun DetailCard(title: String? = null, icon: ImageVector? = null, learn: 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MeshCoreContactSheet(contact: MeshCoreContactLink, onDismiss: () -> Unit) {
+    val resources = LocalResources.current
     val copy = rememberCopyAction()
     val context = LocalContext.current
     val qr = remember(contact.url) { meshCoreQrBitmap(contact.url) }
@@ -477,11 +484,11 @@ private fun MeshCoreContactSheet(contact: MeshCoreContactLink, onDismiss: () -> 
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("Add to MeshCore", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.node_detail_add_to_meshcore), style = MaterialTheme.typography.titleLarge)
             Image(qr.asImageBitmap(), null, filterQuality = FilterQuality.None,
                 modifier = Modifier.widthIn(max = 280.dp).fillMaxWidth().aspectRatio(1f)
                     .background(Color.White, RoundedCornerShape(16.dp)).padding(14.dp)
-                    .semantics { contentDescription = "QR code for adding ${contact.name} as a MeshCore contact" })
+                    .withDescription(stringResource(R.string.node_detail_qr_code_for_adding_as_a_meshcore_contact, contact.name)) { description -> contentDescription = description })
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(contact.name, style = MaterialTheme.typography.titleMedium)
                 Text(contact.typeLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -494,21 +501,21 @@ private fun MeshCoreContactSheet(contact: MeshCoreContactLink, onDismiss: () -> 
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); false
                 } catch (_: ActivityNotFoundException) { true }
             }, Modifier.fillMaxWidth()) {
-                Icon(Icons.AutoMirrored.Outlined.OpenInNew, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Open in MeshCore")
+                Icon(Icons.AutoMirrored.Outlined.OpenInNew, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.node_detail_open_in_meshcore))
             }
-            OutlinedButton(onClick = { copy("MeshCore contact", contact.url, false); copied = true }, Modifier.fillMaxWidth()) {
+            OutlinedButton(onClick = { copy(resources.getString(R.string.node_detail_meshcore_contact), contact.url, false); copied = true }, Modifier.fillMaxWidth()) {
                 Icon(if (copied) Icons.Outlined.Check else Icons.Outlined.ContentCopy, null, Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp)); Text(if (copied) "Copied" else "Copy contact link")
+                Spacer(Modifier.width(8.dp)); Text(if (copied) stringResource(R.string.node_detail_copied) else stringResource(R.string.node_detail_copy_contact_link))
             }
             OutlinedButton(onClick = {
                 context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
-                    .putExtra(Intent.EXTRA_TEXT, contact.url), "Share MeshCore contact"))
+                    .putExtra(Intent.EXTRA_TEXT, contact.url), resources.getString(R.string.node_detail_share_meshcore_contact)))
             }, Modifier.fillMaxWidth()) {
-                Icon(Icons.Outlined.Share, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Share contact link")
+                Icon(Icons.Outlined.Share, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.node_detail_share_contact_link))
             }
-            if (openFailed) Text("No installed app opens MeshCore links. Scan the code from your MeshCore app, or copy the link and import it there.",
+            if (openFailed) Text(stringResource(R.string.node_detail_no_installed_app_opens_meshcore_links_scan_the),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
-            Text("Scan this code from your MeshCore app\u2019s add-contact screen on another phone, or open it directly on this one. Other MeshCore apps can import the copied link or the code.",
+            Text(stringResource(R.string.node_detail_scan_this_code_from_your_meshcore_appu2019s_add),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         }
     }
