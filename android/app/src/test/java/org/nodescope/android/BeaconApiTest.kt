@@ -1,5 +1,7 @@
 package org.nodescope.android
 
+import org.nodescope.android.core.design.UiText
+
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -657,7 +659,8 @@ class BeaconApiTest {
         val byCapability = report.capabilities.associateBy { it.capability }
         assertEquals(DiagnosticLevel.WARNING, byCapability.getValue(AnalyzerCapability.MAP_CONFIGURATION).level)
         assertEquals(AnalyzerCapability.entries.size - 1, report.capabilities.count { it.level == DiagnosticLevel.SUCCESS })
-        assertTrue(byCapability.getValue(AnalyzerCapability.NODE_ANALYTICS).detail.contains("family check passed"))
+        assertEquals(R.string.settings_diagnostics_supported_with_beacon_s_seven_day_observation_history_checked,
+            (byCapability.getValue(AnalyzerCapability.NODE_ANALYTICS).detail as UiText.Resource).id)
         assertEquals(setOf("info", "nodes?limit=1", "observers?limit=1", "channels?limit=1&keyKnown=true"), fake.requests.toSet())
         assertEquals(4, fake.requests.size)
     }

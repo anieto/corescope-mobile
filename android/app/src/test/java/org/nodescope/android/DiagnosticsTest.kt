@@ -1,5 +1,7 @@
 package org.nodescope.android
 
+import org.nodescope.android.core.design.UiText
+
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.Dispatcher
@@ -28,12 +30,14 @@ class DiagnosticsTest {
     )) { server ->
         val report = AnalyzerDiagnostics(OkHttpClient()).run(server.url("/"), "example.org")
         assertEquals(DiagnosticLevel.SUCCESS, report.connectionLevel)
-        assertEquals("Core NodeScope features are supported.", report.compatibilityDetail)
+        assertResource(R.string.settings_diagnostics_core_nodescope_features_are_supported, report.compatibilityDetail)
         val byCapability = report.capabilities.associateBy { it.capability }
         assertEquals(DiagnosticLevel.WARNING, byCapability.getValue(AnalyzerCapability.CHANNELS).level)
-        assertEquals("Response format not recognized", byCapability.getValue(AnalyzerCapability.CHANNELS).detail)
-        assertEquals("Not supported", byCapability.getValue(AnalyzerCapability.REGIONS).detail)
-        assertTrue(byCapability.getValue(AnalyzerCapability.NODES).detail.startsWith("Available · "))
+        assertResource(R.string.settings_diagnostics_response_format_not_recognized, byCapability.getValue(AnalyzerCapability.CHANNELS).detail)
+        assertResource(R.string.settings_diagnostics_not_supported, byCapability.getValue(AnalyzerCapability.REGIONS).detail)
+        val available = byCapability.getValue(AnalyzerCapability.NODES).detail as UiText.Resource
+        assertEquals(R.string.settings_diagnostics_available_ms, available.id)
+        assertTrue(available.args.single() is Long)
         // Stable order, and only the CoreScope probes: the Beacon-only rows are never requested here.
         assertEquals(AnalyzerCapability.coreScopeProbed, report.capabilities.map { it.capability })
         assertEquals(5, AnalyzerCapability.coreScopeProbed.size)
@@ -41,16 +45,22 @@ class DiagnosticsTest {
 
     @Test fun authenticationAndIncompatibleServersAreExplained() {
         val auth = AnalyzerDiagnostics.report("h", 0, AnalyzerCapability.entries.map { it to ProbeOutcome.AuthenticationRequired(401) })
-        assertEquals("The analyzer or an upstream proxy requires authentication.", auth.compatibilityDetail)
-        assertEquals("Authentication required · HTTP 401", auth.capabilities.first().detail)
+        assertResource(R.string.settings_diagnostics_the_analyzer_or_an_upstream_proxy_requires_authentication, auth.compatibilityDetail)
+        assertResource(R.string.settings_diagnostics_authentication_required_http, auth.capabilities.first().detail, 401)
         val wrongServer = AnalyzerDiagnostics.report("h", 0, AnalyzerCapability.entries.map { it to ProbeOutcome.Unavailable(500) })
         assertEquals(DiagnosticLevel.FAILURE, wrongServer.compatibilityLevel)
-        assertEquals("The server responded, but its API is not CoreScope-compatible.", wrongServer.compatibilityDetail)
+        assertResource(R.string.settings_diagnostics_the_server_responded_but_its_api_is_not, wrongServer.compatibilityDetail)
         assertEquals(DiagnosticLevel.FAILURE, wrongServer.capabilities.first { it.capability.isRequired }.level)
         assertEquals(DiagnosticLevel.WARNING, wrongServer.capabilities.first { !it.capability.isRequired }.level)
-        val offline = AnalyzerDiagnostics.report("h", 0, AnalyzerCapability.entries.map { it to ProbeOutcome.NetworkFailure("The analyzer host could not be found.") })
-        assertEquals("The analyzer host could not be found.", offline.connectionDetail)
-        assertEquals("Compatibility could not be checked while the analyzer is unreachable.", offline.compatibilityDetail)
-        assertEquals("The analyzer host could not be found.", AnalyzerDiagnostics.networkMessage(java.net.UnknownHostException("x")))
+        val offline = AnalyzerDiagnostics.report("h", 0, AnalyzerCapability.entries.map { it to ProbeOutcome.NetworkFailure(UiText.Resource(R.string.settings_diagnostics_the_analyzer_host_could_not_be_found)) })
+        assertResource(R.string.settings_diagnostics_the_analyzer_host_could_not_be_found, offline.connectionDetail)
+        assertResource(R.string.settings_diagnostics_compatibility_could_not_be_checked_while_the_analyzer, offline.compatibilityDetail)
+        assertResource(R.string.settings_diagnostics_the_analyzer_host_could_not_be_found, AnalyzerDiagnostics.networkMessage(java.net.UnknownHostException("x")))
     }
+}
+
+private fun assertResource(expected: Int, value: UiText, vararg args: Any) {
+    val text = value as UiText.Resource
+    assertEquals(expected, text.id)
+    assertEquals(args.toList(), text.args.toList())
 }
