@@ -222,6 +222,7 @@
 		748C3658362BEB182690BA21 /* us-sources.json in Resources */ = {isa = PBXBuildFile; fileRef = C779CBD001144856373F59F6 /* us-sources.json */; };
 		77BD1A356D2325BE48E7390A /* Glossary.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1D39F7A4A3E8AEBEC9285BD /* Glossary.swift */; };
 		78DCE8CBA4FAD67D00DCCD48 /* DistanceFormatTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 202646976494B608BAFA8995 /* DistanceFormatTests.swift */; };
+		A1C0DE5801000000000000B2 /* ContentTranslationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DE5801000000000000B1 /* ContentTranslationTests.swift */; };
 		7942643E7AEE0FF022315862 /* MonaspaceNeon-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 018110344B462D94B123F8F3 /* MonaspaceNeon-Bold.otf */; };
 		7A58A4866E9870D60395F551 /* iata-airports.csv in Resources */ = {isa = PBXBuildFile; fileRef = 56D774144710835E31B1A30E /* iata-airports.csv */; };
 		7E6F8BC13ADB4703B91A0F56 /* PortableLinkProfileResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 726236A1641E467E8678188B /* PortableLinkProfileResult.swift */; };
@@ -301,6 +302,7 @@
 		1B8EBAA696FEC61136DADD69 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		1CF94A884FDF2049837A826D /* SavedPlansExportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedPlansExportTests.swift; sourceTree = "<group>"; };
 		202646976494B608BAFA8995 /* DistanceFormatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DistanceFormatTests.swift; sourceTree = "<group>"; };
+		A1C0DE5801000000000000B1 /* ContentTranslationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentTranslationTests.swift; sourceTree = "<group>"; };
 		2267353D97D345808DF80E40 /* NodeHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeHealth.swift; sourceTree = "<group>"; };
 		22C9456FBE934BDCA0560C09 /* PortableLinkProfileResultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortableLinkProfileResultTests.swift; sourceTree = "<group>"; };
 		235873A5D91CB7811DDE491B /* DistanceFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DistanceFormat.swift; sourceTree = "<group>"; };
@@ -1029,6 +1031,7 @@
 				87221E748C0B435ADB9F016B /* AnalyzerSourceLogoTests.swift */,
 				B9E15F4B47442CF9835AEE3F /* AirportCoordinatesTests.swift */,
 				202646976494B608BAFA8995 /* DistanceFormatTests.swift */,
+				A1C0DE5801000000000000B1 /* ContentTranslationTests.swift */,
 				31A2B0053070000100FBA3B4 /* RouteOptionTests.swift */,
 				F4803E09AA9A3CD1D7EF773B /* SignalQualityTests.swift */,
 				312714C3307AE6C000829346 /* CoreScopeBackendTests.swift */,
@@ -1222,6 +1225,7 @@
 				31E0058A309A537C00178350 /* CoverageAreaTests.swift in Sources */,
 				311510AE3083E87C00199D51 /* MyNodesCacheOwnershipTests.swift in Sources */,
 				78DCE8CBA4FAD67D00DCCD48 /* DistanceFormatTests.swift in Sources */,
+				A1C0DE5801000000000000B2 /* ContentTranslationTests.swift in Sources */,
 				315E3A05309AA17500BAEC98 /* CoverageTerrainCatalogTests.swift in Sources */,
 				311510C230869D9600199D51 /* CoreScopeAccountSyncTests.swift in Sources */,
 				31A2B0063070000100FBA3B4 /* RouteOptionTests.swift in Sources */,

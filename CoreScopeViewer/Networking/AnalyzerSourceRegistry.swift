@@ -18,6 +18,11 @@ struct AnalyzerSource: Codable, Hashable, Identifiable {
     /// (`icons/<name>.png`), shared with Android.
     let icon: String?
     let type: AnalyzerSourceType?
+    /// Optional translated subtitles by language tag, such as `{"pt-BR": "…"}`.
+    var subtitles: [String: String]? = nil
+
+    /// The subtitle in the app's language when the registry has one, else the English `subtitle`.
+    var displaySubtitle: String { ContentTranslation.pick(subtitles) ?? subtitle }
 
     var backendType: AnalyzerSourceType { type ?? .coreScope }
 

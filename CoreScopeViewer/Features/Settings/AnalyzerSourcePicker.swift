@@ -32,7 +32,7 @@ struct AnalyzerSourcePickerScreen: View {
                                             .foregroundStyle(Color.primary)
                                         AnalyzerSourceTypeLabel(type: source.backendType, color: metadataColor)
                                     }
-                                    Text(source.subtitle)
+                                    Text(source.displaySubtitle)
                                         .font(.caption)
                                         .foregroundStyle(metadataColor)
                                     Text(source.host)
@@ -51,8 +51,8 @@ struct AnalyzerSourcePickerScreen: View {
                         }
                         .accessibilityLabel(
                             source.backendType == .beacon
-                                ? "Use \(source.name), Beacon beta server, \(source.subtitle)"
-                                : "Use \(source.name), CoreScope server, \(source.subtitle)"
+                                ? "Use \(source.name), Beacon beta server, \(source.displaySubtitle)"
+                                : "Use \(source.name), CoreScope server, \(source.displaySubtitle)"
                         )
                         .accessibilityValue(
                             source.host.caseInsensitiveCompare(selectedHost) == .orderedSame ? "Selected" : ""

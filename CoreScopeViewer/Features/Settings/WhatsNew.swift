@@ -43,6 +43,30 @@ struct WhatsNewItem: Decodable, Identifiable {
     }
 }
 
+/// A translation of whats-new.json, in `whats-new.<language>.json` beside it. Items are keyed by id;
+/// anything missing stays in English. Icons, destinations and platforms always come from the English file.
+struct WhatsNewTranslation: Decodable {
+    struct Item: Decodable {
+        let title: String?
+        let detail: String?
+        let location: String?
+    }
+
+    let items: [String: Item]?
+
+    func apply(to item: WhatsNewItem) -> WhatsNewItem {
+        guard let translated = items?[item.id] else { return item }
+        func text(_ value: String?) -> String? {
+            guard let value, !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+            return value
+        }
+        return WhatsNewItem(id: item.id, title: text(translated.title) ?? item.title,
+                            detail: text(translated.detail) ?? item.detail, icon: item.icon,
+                            destination: item.destination, location: text(translated.location) ?? item.location,
+                            platforms: item.platforms)
+    }
+}
+
 enum WhatsNew {
     static let lastSeenDefaultsKey = "whatsNewLastSeenVersion"
 
@@ -54,9 +78,10 @@ enum WhatsNew {
             assertionFailure("whats-new.json is missing or invalid")
             return []
         }
+        let translation = ContentTranslation.load(WhatsNewTranslation.self, named: "whats-new")
         return document.releases.map { release in
             WhatsNewRelease(version: release.version,
-                items: release.items.filter(\.appliesHere))
+                items: release.items.filter(\.appliesHere).map { translation?.apply(to: $0) ?? $0 })
         }.filter { !$0.items.isEmpty }
     }()
 
