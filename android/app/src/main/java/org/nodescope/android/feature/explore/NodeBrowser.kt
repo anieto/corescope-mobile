@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.explore
 
+import org.nodescope.android.core.design.nodeRoleLabel
 import org.nodescope.android.feature.map.roleColor
 import org.nodescope.android.feature.map.MAP_ROLES
 import androidx.compose.foundation.shape.CircleShape
@@ -43,10 +44,10 @@ fun NodeBrowser(nodes: List<MeshNode>, total: Int, onNode: (String) -> Unit) {
         TextField(query, { query = it }, colors = TextFieldDefaults.colors(focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer, unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer), leadingIcon = { Icon(Icons.Outlined.Search, null) }, shape = MaterialTheme.shapes.large, placeholder = { Text(stringResource(R.string.search_nodes)) },
             singleLine = true, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = roles.isEmpty(), onClick = { roles = emptyList() }, label = { Text("All") })
+            FilterChip(selected = roles.isEmpty(), onClick = { roles = emptyList() }, label = { Text(stringResource(R.string.explore_all)) })
             MAP_ROLES.forEach { role ->
                 FilterChip(selected = role in roles, onClick = { roles = if (role in roles) roles - role else roles + role },
-                    label = { Text(role.replaceFirstChar { it.uppercase() }) },
+                    label = { Text(nodeRoleLabel(role)) },
                     leadingIcon = { Box(Modifier.size(10.dp).background(roleColor(role), CircleShape)) })
             }
         }
@@ -61,7 +62,7 @@ fun NodeBrowser(nodes: List<MeshNode>, total: Int, onNode: (String) -> Unit) {
                         }
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                             Text(node.displayName, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(node.role.replaceFirstChar { it.uppercase() }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+                            Text(nodeRoleLabel(node.role), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
                             Text(stringResource(R.string.last_seen, readableTime(node.lastSeen)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))

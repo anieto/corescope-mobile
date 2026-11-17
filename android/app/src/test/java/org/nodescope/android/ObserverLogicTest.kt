@@ -1,5 +1,6 @@
 package org.nodescope.android
 
+import org.nodescope.android.core.design.relativeTimeText
 import java.time.Instant
 import org.junit.Assert.*
 import org.junit.Test
@@ -58,10 +59,12 @@ class ObserverLogicTest {
         assertEquals("1.2K", compactCount(1_200))
         assertEquals("250K", compactCount(250_000))
         assertEquals("3M", compactCount(3_000_000))
-        assertEquals("just now", relativeTime(Instant.ofEpochMilli(now - 10_000), now))
-        assertEquals("5m ago", relativeTime(Instant.ofEpochMilli(now - 300_000), now))
-        assertEquals("2h ago", relativeTime(Instant.ofEpochMilli(now - 7_200_000), now))
-        assertEquals("Unknown", relativeTime(null, now))
+        assertEquals(R.string.common_relative_time_now, relativeTimeText(Instant.ofEpochMilli(now - 10_000), now).id)
+        assertEquals(R.string.common_relative_time_minutes, relativeTimeText(Instant.ofEpochMilli(now - 300_000), now).id)
+        assertEquals(5L, relativeTimeText(Instant.ofEpochMilli(now - 300_000), now).args.single())
+        assertEquals(R.string.common_relative_time_hours, relativeTimeText(Instant.ofEpochMilli(now - 7_200_000), now).id)
+        assertEquals(2L, relativeTimeText(Instant.ofEpochMilli(now - 7_200_000), now).args.single())
+        assertEquals(R.string.common_relative_time_unknown, relativeTimeText(null, now).id)
         assertEquals("1d 1h", formatDuration(90_061))
     }
 

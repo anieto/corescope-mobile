@@ -1,5 +1,10 @@
 package org.nodescope.android.feature.candidatesites
 
+import androidx.annotation.StringRes
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
@@ -44,25 +49,25 @@ fun CandidateSitesScreen(model: CandidatePlansViewModel, heightInFeet: Boolean, 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
         Column(Modifier.widthIn(max = 760.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            TermTitle("Deployment plans", GlossaryTerm.DEPLOYMENT_PLAN)
-            Text("Candidate sites are moving into Saved Plans. Each list becomes a plan, and each site an Estimated Coverage study with its location and equipment, ready to calculate.")
+            TermTitle(stringResource(R.string.planner_deployment_plans), GlossaryTerm.DEPLOYMENT_PLAN)
+            Text(stringResource(R.string.planner_candidate_sites_are_moving_into_saved_plans_each))
             if (model.loaded && model.plans.isNotEmpty())
-                Button(onClick = { moving = model.conversion(heightInFeet) }, enabled = !model.busy) { Text("Move to Saved Plans") }
+                Button(onClick = { moving = model.conversion(heightInFeet) }, enabled = !model.busy) { Text(stringResource(R.string.planner_move_to_saved_plans)) }
             model.error?.let {
-                Text(it, color = MaterialTheme.colorScheme.error)
-                TextButton(onClick = model::reload, enabled = !model.busy) { Text("Reload plans") }
+                Text(it.asString(), color = MaterialTheme.colorScheme.error)
+                TextButton(onClick = model::reload, enabled = !model.busy) { Text(stringResource(R.string.planner_reload_plans)) }
             }
             if (model.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (model.loaded) {
-                if (model.plans.isEmpty()) Text("No candidate sites. Plan new sites in Saved Plans.")
+                if (model.plans.isEmpty()) Text(stringResource(R.string.planner_no_candidate_sites_plan_new_sites_in_saved))
                 model.plans.forEach { plan -> key(plan.id) {
                     Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(plan.name, style = MaterialTheme.typography.titleMedium)
-                            Text("${plan.sites.size} sites", fontFamily = MonaspaceNeon)
+                            Text(pluralStringResource(R.plurals.planner_sites, plan.sites.size, plan.sites.size), fontFamily = MonaspaceNeon)
                             Row {
-                                TextButton(onClick = { model.open(plan) }, enabled = !model.busy) { Text("Open") }
-                                TextButton(onClick = { deleting = plan.id }, enabled = !model.busy) { Text("Delete plan") }
+                                TextButton(onClick = { model.open(plan) }, enabled = !model.busy) { Text(stringResource(R.string.planner_open)) }
+                                TextButton(onClick = { deleting = plan.id }, enabled = !model.busy) { Text(stringResource(R.string.planner_delete_plan)) }
                             }
                         }
                     }
@@ -71,23 +76,25 @@ fun CandidateSitesScreen(model: CandidatePlansViewModel, heightInFeet: Boolean, 
         }
     }
     deleting?.let { id ->
-        ConfirmDiscard("Delete this plan and its saved sites?", "Delete plan", { deleting = null }) {
+        ConfirmDiscard(stringResource(R.string.planner_delete_this_plan_and_its_saved_sites), stringResource(R.string.planner_delete_plan), { deleting = null }) {
             model.plans.firstOrNull { it.id == id }?.let(model::delete)
             deleting = null
         }
     }
     moving?.let { conversion ->
-        AlertDialog(onDismissRequest = { moving = null }, title = { Text("Move to Saved Plans?") },
+        AlertDialog(onDismissRequest = { moving = null }, title = { Text(stringResource(R.string.planner_move_to_saved_plans_2)) },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     val plans = conversion.plans.size
                     val studies = conversion.studies.size
-                    Text("Creates $plans ${if (plans == 1) "plan" else "plans"} with $studies Coverage ${if (studies == 1) "study" else "studies"}, using Coverage's defaults for the receiver and study area. Nothing is calculated. Candidate Sites is then removed.")
+                    Text(stringResource(R.string.planner_create_coverage_studies_summary,
+                        pluralStringResource(R.plurals.planner_plan_count, plans, plans),
+                        pluralStringResource(R.plurals.planner_coverage_studies_count, studies, studies)))
                     conversion.notes.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
                 }
             },
-            confirmButton = { TextButton(onClick = { moving = null; model.move(conversion, onMoved) }) { Text("Move") } },
-            dismissButton = { TextButton(onClick = { moving = null }) { Text("Cancel") } })
+            confirmButton = { TextButton(onClick = { moving = null; model.move(conversion, onMoved) }) { Text(stringResource(R.string.planner_move)) } },
+            dismissButton = { TextButton(onClick = { moving = null }) { Text(stringResource(R.string.common_cancel)) } })
     }
     model.editing?.let { initial -> key(initial.id) { CandidatePlanEditor(initial, model) } }
 }
@@ -102,50 +109,50 @@ private fun CandidatePlanEditor(initial: DeploymentPlan, model: CandidatePlansVi
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
     var discard by rememberSaveable { mutableStateOf(false) }
     val close = { if (!model.busy) { if (draft != initial) discard = true else model.closeEditor() } }
-    CandidateEditorDialog("Edit plan", close, "Save plan", { model.save(draft) },
+    CandidateEditorDialog(stringResource(R.string.planner_edit_plan), close, stringResource(R.string.planner_save_plan), { model.save(draft) },
         !model.busy && runCatching { draft.validate() }.isSuccess, model.busy) {
         Card(colors = meshCardColors(), modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                TermTitle("Deployment plan", GlossaryTerm.DEPLOYMENT_PLAN)
+                TermTitle(stringResource(R.string.planner_deployment_plan), GlossaryTerm.DEPLOYMENT_PLAN)
                 OutlinedTextField(draft.name, { draft = draft.copy(name = it) }, Modifier.fillMaxWidth(),
-                    enabled = !model.busy, label = { Text("Plan name") }, singleLine = true,
+                    enabled = !model.busy, label = { Text(stringResource(R.string.planner_plan_name)) }, singleLine = true,
                     textStyle = LocalTextStyle.current.copy(fontFamily = MonaspaceNeon))
-                Text("Changes are saved only when you choose Save plan.", style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.planner_changes_are_saved_only_when_you_choose_save), style = MaterialTheme.typography.bodySmall)
             }
         }
-        TermTitle("Candidate sites", GlossaryTerm.CANDIDATE_SITE)
+        TermTitle(stringResource(R.string.planner_candidate_sites), GlossaryTerm.CANDIDATE_SITE)
         draft.sites.forEach { site -> key(site.id) {
             var menu by remember { mutableStateOf(false) }
             Card(colors = meshCardColors(), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(site.name, style = MaterialTheme.typography.titleMedium)
-                    if (draft.selectedSiteID == site.id) Text("Selected site", style = MaterialTheme.typography.bodySmall)
-                    Text("${site.latitude}, ${site.longitude}", fontFamily = MonaspaceNeon)
+                    if (draft.selectedSiteID == site.id) Text(stringResource(R.string.planner_selected_site), style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.planner_value_2, site.latitude, site.longitude), fontFamily = MonaspaceNeon)
                     Row {
-                        TextButton(onClick = { siteEditor = site.id }, enabled = !model.busy) { Text("Edit") }
+                        TextButton(onClick = { siteEditor = site.id }, enabled = !model.busy) { Text(stringResource(R.string.planner_edit)) }
                         TextButton(onClick = { draft = draft.copy(selectedSiteID = site.id) },
-                            enabled = !model.busy && draft.selectedSiteID != site.id) { Text("Select") }
+                            enabled = !model.busy && draft.selectedSiteID != site.id) { Text(stringResource(R.string.planner_select)) }
                         Box {
-                            TextButton(onClick = { menu = true }, enabled = !model.busy) { Text("More") }
+                            TextButton(onClick = { menu = true }, enabled = !model.busy) { Text(stringResource(R.string.planner_more)) }
                             DropdownMenu(menu, { menu = false }) {
-                                DropdownMenuItem(text = { Text("Duplicate") }, enabled = draft.sites.size < 100, onClick = {
+                                DropdownMenuItem(text = { Text(stringResource(R.string.planner_duplicate)) }, enabled = draft.sites.size < 100, onClick = {
                                     val copy = site.copy(id = UUID.randomUUID().toString())
                                     draft = draft.copy(sites = draft.sites + copy, selectedSiteID = copy.id)
                                     menu = false
                                 })
-                                DropdownMenuItem(text = { Text("Remove site") }, onClick = { deleting = site.id; menu = false })
+                                DropdownMenuItem(text = { Text(stringResource(R.string.planner_remove_site)) }, onClick = { deleting = site.id; menu = false })
                             }
                         }
                     }
                 }
             }
         } }
-        TextButton(onClick = { siteEditor = "new" }, enabled = !model.busy && draft.sites.size < 100) { Text("Add site") }
-        model.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        TextButton(onClick = { siteEditor = "new" }, enabled = !model.busy && draft.sites.size < 100) { Text(stringResource(R.string.planner_add_site)) }
+        model.error?.let { Text(it.asString(), color = MaterialTheme.colorScheme.error) }
     }
-    if (discard) ConfirmDiscard("Discard unsaved changes?", "Discard changes", { discard = false }, model::closeEditor)
+    if (discard) ConfirmDiscard(stringResource(R.string.planner_discard_unsaved_changes), stringResource(R.string.planner_discard_changes), { discard = false }, model::closeEditor)
     deleting?.let { id ->
-        ConfirmDiscard("Remove this site from the plan?", "Remove site", { deleting = null }) {
+        ConfirmDiscard(stringResource(R.string.planner_remove_this_site_from_the_plan), stringResource(R.string.planner_remove_site), { deleting = null }) {
             val remaining = draft.sites.filterNot { it.id == id }
             draft = draft.copy(sites = remaining, selectedSiteID = if (draft.selectedSiteID == id) remaining.firstOrNull()?.id else draft.selectedSiteID)
             deleting = null
@@ -160,19 +167,20 @@ private fun CandidatePlanEditor(initial: DeploymentPlan, model: CandidatePlansVi
     } }
 }
 
-private enum class CandidateInputField(val label: String, val term: GlossaryTerm) {
-    LATITUDE("Latitude (−90 to 90)", GlossaryTerm.PLANNING_COORDINATES),
-    LONGITUDE("Longitude (−180 to 180)", GlossaryTerm.PLANNING_COORDINATES),
-    HEIGHT("Antenna height (m, 0–10000)", GlossaryTerm.ANTENNA_HEIGHT),
-    FREQUENCY("Frequency (MHz, 0.001–100000)", GlossaryTerm.RADIO_FREQUENCY),
-    POWER("Transmit power (dBm, −200–100)", GlossaryTerm.TRANSMIT_POWER),
-    GAIN("Antenna gain (dBi, −100–100)", GlossaryTerm.ANTENNA_GAIN),
-    CABLE("Cable loss (dB, 0–200)", GlossaryTerm.CABLE_LOSS),
-    ADDITIONAL("Additional loss (dB, 0–200)", GlossaryTerm.ADDITIONAL_LOSS),
+private enum class CandidateInputField(@param:StringRes val labelRes: Int, val term: GlossaryTerm) {
+    LATITUDE(R.string.planner_latitude_90_to_90, GlossaryTerm.PLANNING_COORDINATES),
+    LONGITUDE(R.string.planner_longitude_180_to_180, GlossaryTerm.PLANNING_COORDINATES),
+    HEIGHT(R.string.planner_antenna_height_m_0_10000, GlossaryTerm.ANTENNA_HEIGHT),
+    FREQUENCY(R.string.planner_frequency_mhz_0_001_100000, GlossaryTerm.RADIO_FREQUENCY),
+    POWER(R.string.planner_transmit_power_dbm_200_100, GlossaryTerm.TRANSMIT_POWER),
+    GAIN(R.string.planner_antenna_gain_dbi_100_100, GlossaryTerm.ANTENNA_GAIN),
+    CABLE(R.string.planner_cable_loss_db_0_200, GlossaryTerm.CABLE_LOSS),
+    ADDITIONAL(R.string.planner_additional_loss_db_0_200, GlossaryTerm.ADDITIONAL_LOSS),
 }
 
 @Composable
 private fun CandidateSiteEditor(site: CandidateSite?, close: () -> Unit, apply: (CandidateSite) -> Unit) {
+    val resources = LocalResources.current
     val preference = LocalDistanceUnit.current
     // Keep this draft's unit stable across recomposition and activity recreation.
     val heightInFeet = rememberSaveable { preference == DistanceUnit.IMPERIAL }
@@ -199,15 +207,15 @@ private fun CandidateSiteEditor(site: CandidateSite?, close: () -> Unit, apply: 
                             it[0] = result.coordinate.latitude.toString()
                             it[1] = (if (result.coordinate.longitude == 180.0) -180.0 else result.coordinate.longitude).toString()
                         }
-                        locationMessage = "Location added to this draft. Check the pin on the map, especially when using approximate location."
+                        locationMessage = resources.getString(R.string.planner_location_added_to_this_draft_check_the_pin)
                     }
-                    LocationResult.ServicesOff -> locationMessage = "Turn on location services, or choose a point on the map."
-                    LocationResult.Unavailable -> locationMessage = "Couldn't find your location. Try again, or choose a point on the map."
+                    LocationResult.ServicesOff -> locationMessage = resources.getString(R.string.planner_turn_on_location_services_or_choose_a_point)
+                    LocationResult.Unavailable -> locationMessage = resources.getString(R.string.planner_couldn_t_find_your_location_try_again_or)
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                locationMessage = "Couldn't get your location. Check location permission and services in Settings, or choose a point on the map."
+                locationMessage = resources.getString(R.string.planner_couldn_t_get_your_location_check_location_permission)
             } finally {
                 locating = false
             }
@@ -218,7 +226,7 @@ private fun CandidateSiteEditor(site: CandidateSite?, close: () -> Unit, apply: 
             if (grants.values.any { it }) locate()
             else {
                 locating = false
-                locationMessage = "Location permission is off. Allow it in the app's settings, or choose a point on the map."
+                locationMessage = resources.getString(R.string.planner_location_permission_is_off_allow_it_in_the)
             }
         }
     }
@@ -228,38 +236,38 @@ private fun CandidateSiteEditor(site: CandidateSite?, close: () -> Unit, apply: 
         locating = false
         if (name != site?.name.orEmpty() || values != original) discard = true else close()
     }
-    CandidateEditorDialog(if (site == null) "Add site" else "Edit site", cancel, "Apply", {
+    CandidateEditorDialog(if (site == null) stringResource(R.string.planner_add_site_2) else stringResource(R.string.planner_edit_site), cancel, stringResource(R.string.planner_apply), {
         try {
             val result = CandidateSiteInput.make(site?.id ?: UUID.randomUUID().toString(), name, values, heightInFeet)
             // Preserve the exact stored height when the displayed field was not edited.
             apply(if (values[2] == original[2]) result.copy(assumptions = result.assumptions.copy(
                 antennaHeightMeters = site?.assumptions?.antennaHeightMeters)) else result)
         } catch (_: Exception) {
-            error = "Check the site name, coordinates, and displayed numeric ranges. Try a shorter name if needed. Optional fields may be blank."
+            error = resources.getString(R.string.planner_check_the_site_name_coordinates_and_displayed_numeric)
         }
     }, !locating, false) {
-        OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = { Text("Site name") }, singleLine = true,
+        OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.planner_site_name)) }, singleLine = true,
             textStyle = LocalTextStyle.current.copy(fontFamily = MonaspaceNeon))
-        Text("Coordinates are required. Leave unknown equipment values blank. Coordinates use decimal degrees; a minus sign means south or west.")
-        TextButton(onClick = { showsMap = true }, enabled = !locating) { Text("Choose on map") }
+        Text(stringResource(R.string.planner_coordinates_are_required_leave_unknown_equipment_values_blank))
+        TextButton(onClick = { showsMap = true }, enabled = !locating) { Text(stringResource(R.string.planner_choose_on_map)) }
         TextButton(onClick = {
             locating = true
             locationMessage = null
             if (hasLocationPermission(context)) locate() else locationPermission.launch(LOCATION_PERMISSIONS)
-        }, enabled = !locating) { Text("Use current location") }
+        }, enabled = !locating) { Text(stringResource(R.string.planner_use_current_location)) }
         if (locating) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
-            Text("Finding location…")
-            TextButton(onClick = { locationJob?.cancel(); locating = false }) { Text("Cancel location request") }
+            Text(stringResource(R.string.planner_finding_location))
+            TextButton(onClick = { locationJob?.cancel(); locating = false }) { Text(stringResource(R.string.planner_cancel_location_request)) }
         }
         locationMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         CandidateInputField.entries.forEach { field -> key(field) {
-            val label = if (field == CandidateInputField.HEIGHT && heightInFeet) "Antenna height (ft)" else field.label
+            val label = if (field == CandidateInputField.HEIGHT && heightInFeet) stringResource(R.string.planner_antenna_height_ft) else stringResource(field.labelRes)
             Card(colors = meshCardColors(), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) { Text(label, Modifier.weight(1f)); LearnButton(field.term) }
                     if (field == CandidateInputField.HEIGHT && heightInFeet) {
-                        Text("Range: 0 to 10,000 meters (about 32,808 feet).", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.planner_range_0_to_10_000_meters_about_32), style = MaterialTheme.typography.bodySmall)
                     }
                     OutlinedTextField(values[field.ordinal], { text -> values = values.toMutableList().also { it[field.ordinal] = text } },
                         Modifier.fillMaxWidth(), singleLine = true, enabled = !locating, label = { Text(label) },
@@ -270,7 +278,7 @@ private fun CandidateSiteEditor(site: CandidateSite?, close: () -> Unit, apply: 
         } }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
     }
-    if (discard) ConfirmDiscard("Discard site changes?", "Discard changes", { discard = false }, close)
+    if (discard) ConfirmDiscard(stringResource(R.string.planner_discard_site_changes), stringResource(R.string.planner_discard_changes), { discard = false }, close)
     if (showsMap) CandidateSiteMapPicker(values[0].trim().replace(',', '.').toDoubleOrNull(),
         values[1].trim().replace(',', '.').toDoubleOrNull(), { showsMap = false }) { latitude, longitude ->
         values = values.toMutableList().also { it[0] = latitude.toString(); it[1] = longitude.toString() }
@@ -293,7 +301,7 @@ private fun CandidateEditorDialog(title: String, close: () -> Unit, saveLabel: S
         Surface(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().meshPageBackground().safeDrawingPadding().imePadding()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = close, enabled = !busy) { Text("Close") }
+                    TextButton(onClick = close, enabled = !busy) { Text(stringResource(R.string.planner_close)) }
                     Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                     TextButton(onClick = save, enabled = saveEnabled) { Text(saveLabel) }
                 }
@@ -311,5 +319,5 @@ private fun CandidateEditorDialog(title: String, close: () -> Unit, saveLabel: S
 private fun ConfirmDiscard(title: String, action: String, cancel: () -> Unit, confirm: () -> Unit) {
     AlertDialog(onDismissRequest = cancel, title = { Text(title) },
         confirmButton = { TextButton(onClick = confirm) { Text(action) } },
-        dismissButton = { TextButton(onClick = cancel) { Text("Cancel") } })
+        dismissButton = { TextButton(onClick = cancel) { Text(stringResource(R.string.common_cancel)) } })
 }

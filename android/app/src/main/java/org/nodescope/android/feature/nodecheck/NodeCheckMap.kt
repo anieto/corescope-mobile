@@ -1,5 +1,9 @@
 package org.nodescope.android.feature.nodecheck
 
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
+import org.nodescope.android.core.design.withDescription
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -63,7 +67,7 @@ internal fun NodeCheckMap(heard: List<HeardObserver>, observers: Map<String, Mes
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Box(Modifier.fillMaxWidth().height(220.dp).clip(MaterialTheme.shapes.small)
-            .semantics { contentDescription = "Map of ${points.size} observers that heard this node" }) {
+            .withDescription(pluralStringResource(R.plurals.node_check_map_of_observers_that_heard_this_node, points.size, points.size)) { description -> contentDescription = description }) {
             when (engine) {
                 is MapLibreEngine -> MapLibreEngineHost(engine, choice.cartoStyle(dark), 0, 0, camera, { camera = it }, { false }, Modifier.fillMaxSize())
                 is GoogleMapEngine -> GoogleMapEngineHost(engine, choice.googleType, dark, 0, camera, { camera = it }, { false }, Modifier.fillMaxSize(),
@@ -77,17 +81,17 @@ internal fun NodeCheckMap(heard: List<HeardObserver>, observers: Map<String, Mes
                 Row(Modifier.align(Alignment.BottomEnd)) {
                     val style = MaterialTheme.typography.labelSmall
                     TextButton(onClick = { uri.openUri("https://carto.com/attributions") }, contentPadding = PaddingValues(horizontal = 6.dp)) {
-                        Text("© CARTO", style = style)
+                        Text(stringResource(R.string.common_carto_attribution), style = style)
                     }
                     TextButton(onClick = { uri.openUri("https://www.openstreetmap.org/copyright") }, contentPadding = PaddingValues(horizontal = 6.dp)) {
-                        Text("© OpenStreetMap", style = style)
+                        Text(stringResource(R.string.common_openstreetmap_attribution), style = style)
                     }
                 }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Legend(DirectGreen, "Heard it directly")
-            Legend(RelayedBlue, "Through repeaters")
+            Legend(DirectGreen, stringResource(R.string.node_check_heard_it_directly))
+            Legend(RelayedBlue, stringResource(R.string.node_check_through_repeaters_2))
         }
     }
 }

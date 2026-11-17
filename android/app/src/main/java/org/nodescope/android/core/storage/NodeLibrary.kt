@@ -1,5 +1,7 @@
 package org.nodescope.android.core.storage
 
+import org.nodescope.android.core.design.UiText
+import org.nodescope.android.core.design.nodeRoleText
 import android.content.Context
 import androidx.core.content.edit
 import androidx.compose.runtime.getValue
@@ -35,6 +37,10 @@ data class SavedItem(
     val channel: MeshChannel? = null,
     val message: SavedMessage? = null,
 ) {
+    // Older snapshots can contain an English subtitle. Prefer the raw role when available.
+    val subtitleText: UiText?
+        get() = node?.let { nodeRoleText(it.role) } ?: subtitle?.let(UiText::Raw)
+
     val key: String get() = "${kind.name}|$entityId"
 }
 
@@ -196,7 +202,7 @@ class NodeLibrary(document: String? = null, private val clock: () -> Long = Syst
         const val MAX_SEARCHES = 10
 
         fun nodeItem(node: MeshNode) = SavedItem(SavedKind.NODE, node.publicKey, node.name?.takeIf(String::isNotBlank) ?: "Unnamed node",
-            node.role.replaceFirstChar { it.uppercase() }, node = node)
+            node = node)
         fun observerItem(observer: MeshObserver) = SavedItem(SavedKind.OBSERVER, observer.id, observer.name?.takeIf(String::isNotBlank) ?: "Unnamed observer",
             observer.iata ?: observer.id.take(12), observer = observer)
         fun channelItem(channel: MeshChannel) = SavedItem(SavedKind.CHANNEL, channel.id, channel.name, channel.lastSender, channel = channel)

@@ -1,5 +1,9 @@
 package org.nodescope.android.feature.candidatesites
 
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -223,6 +227,7 @@ object SavedPlansImport {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportPackageSheet(uri: Uri, dismiss: () -> Unit) {
+    val resources = LocalResources.current
     val context = LocalContext.current
     val library = SavedPlansLibrary.shared(context)
     val scope = rememberCoroutineScope()
@@ -245,8 +250,8 @@ fun ImportPackageSheet(uri: Uri, dismiss: () -> Unit) {
             selected = ready.defaultSelection
             preview = ready
         }.onFailure { error ->
-            failure = if ((error as? SavedPlansPackage.Failure)?.newerVersion == true) "This file needs a newer version of NodeScope. Nothing was imported."
-                else "This isn't a NodeScope saved-plans file, or it's damaged or too large. Nothing was imported."
+            failure = if ((error as? SavedPlansPackage.Failure)?.newerVersion == true) resources.getString(R.string.planner_this_file_needs_a_newer_version_of_nodescope)
+                else resources.getString(R.string.planner_this_isn_t_a_nodescope_saved_plans_file)
         }
     }
 
@@ -254,18 +259,18 @@ fun ImportPackageSheet(uri: Uri, dismiss: () -> Unit) {
     ModalBottomSheet(onDismissRequest = { if (!importing) dismiss() }, sheetState = sheetState) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Import saved plans", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.planner_import_saved_plans), style = MaterialTheme.typography.titleLarge)
             val ready = preview
             when {
                 failure != null -> Text(failure!!, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 ready == null -> LinearProgressIndicator(Modifier.fillMaxWidth())
                 else -> {
                     val pack = ready.pack
-                    Fact("From", "${if (pack.exportedBy.platform == SavedPlansPackage.Platform.IOS) "iPhone or iPad" else "Android"} · NodeScope ${pack.exportedBy.appVersion}")
-                    Fact("Exported", DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(pack.exportedAtMilliseconds)))
-                    Fact("Results", if (pack.includesResults) "${ready.results} included" else "Inputs only")
+                    Fact(stringResource(R.string.planner_from), stringResource(R.string.planner_nodescope, if (pack.exportedBy.platform == SavedPlansPackage.Platform.IOS) stringResource(R.string.planner_iphone_or_ipad) else stringResource(R.string.planner_android), pack.exportedBy.appVersion))
+                    Fact(stringResource(R.string.planner_exported), DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(pack.exportedAtMilliseconds)))
+                    Fact(stringResource(R.string.planner_results), if (pack.includesResults) stringResource(R.string.planner_included, ready.results) else stringResource(R.string.planner_inputs_only))
                     HorizontalDivider()
-                    Text("Contents", style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.planner_contents), style = MaterialTheme.typography.titleSmall)
                     ready.items.forEach { item ->
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
@@ -278,31 +283,31 @@ fun ImportPackageSheet(uri: Uri, dismiss: () -> Unit) {
                         }
                     }
                     Text(if (ready.copiesMatches && ready.items.any { it.status != SavedPlansImport.Status.New })
-                            "Already in your library. Importing adds a separate copy; nothing here is replaced."
-                        else "Imported items are added as copies. Nothing in your library is replaced, and nothing is calculated.",
+                            stringResource(R.string.planner_already_in_your_library_importing_adds_a_separate)
+                        else stringResource(R.string.planner_imported_items_are_added_as_copies_nothing_in),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (ready.unusable.isNotEmpty()) {
                         HorizontalDivider()
-                        Text("Results that can't be imported", style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(R.string.planner_results_that_can_t_be_imported), style = MaterialTheme.typography.titleSmall)
                         ready.unusable.forEach { Text(it) }
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text("Import these as inputs only", Modifier.weight(1f))
+                            Text(stringResource(R.string.planner_import_these_as_inputs_only), Modifier.weight(1f))
                             Switch(inputsOnly, { inputsOnly = it })
                         }
-                        Text(if (inputsOnly) "Their inputs are imported; calculate to see results."
-                            else "These studies are left out unless you import their inputs only.",
+                        Text(if (inputsOnly) stringResource(R.string.planner_their_inputs_are_imported_calculate_to_see_results)
+                            else stringResource(R.string.planner_these_studies_are_left_out_unless_you_import),
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     if (ready.omitted.isNotEmpty()) {
                         HorizontalDivider()
-                        Text("Left out when exported", style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(R.string.planner_left_out_when_exported), style = MaterialTheme.typography.titleSmall)
                         ready.omitted.forEach { (name, reason) -> Fact(name, SavedPlansExport.describe(reason)) }
                     }
                     problem?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 }
             }
             Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End)) {
-                TextButton(onClick = dismiss, enabled = !importing) { Text(if (ready == null) "Close" else "Cancel") }
+                TextButton(onClick = dismiss, enabled = !importing) { Text(if (ready == null) stringResource(R.string.planner_close_2) else stringResource(R.string.common_cancel_2)) }
                 if (ready != null) Button(onClick = {
                     problem = null
                     val records = try {
@@ -312,23 +317,24 @@ fun ImportPackageSheet(uri: Uri, dismiss: () -> Unit) {
                     scope.launch {
                         val saved = library.addRecords(records.plans, records.studyPlans, records.studies)
                         importing = false
-                        if (saved) dismiss() else problem = library.error ?: "The import couldn't be saved. Your library hasn't changed."
+                        if (saved) dismiss() else problem = library.error?.resolve(resources) ?: resources.getString(R.string.planner_the_import_couldn_t_be_saved_your_library)
                     }
                 }, enabled = !importing && selected.isNotEmpty() && library.loaded) {
-                    Text(if (ready.copiesMatches && ready.items.all { it.status == SavedPlansImport.Status.AlreadyHere }) "Import copy" else "Import")
+                    Text(if (ready.copiesMatches && ready.items.all { it.status == SavedPlansImport.Status.AlreadyHere }) stringResource(R.string.planner_import_copy) else stringResource(R.string.planner_import_2))
                 }
             }
         }
     }
 }
 
-private fun detail(item: SavedPlansImport.Item): String {
-    val count = if (item.kind == SavedPlansImport.Kind.PLAN) "${item.studies} ${if (item.studies == 1) "study" else "studies"} · " else ""
-    return count + when (val status = item.status) {
-        SavedPlansImport.Status.New -> "New"
-        SavedPlansImport.Status.AlreadyHere -> "Already in your library"
-        is SavedPlansImport.Status.PartlyHere -> "${status.fresh} not in your library yet"
+@Composable private fun detail(item: SavedPlansImport.Item): String {
+    val detail = when (val status = item.status) {
+        SavedPlansImport.Status.New -> stringResource(R.string.planner_import_new)
+        SavedPlansImport.Status.AlreadyHere -> stringResource(R.string.planner_import_already_here)
+        is SavedPlansImport.Status.PartlyHere -> stringResource(R.string.planner_import_partly_here, status.fresh)
     }
+    return if (item.kind == SavedPlansImport.Kind.PLAN) stringResource(R.string.planner_import_item_with_count,
+        pluralStringResource(R.plurals.planner_study_count, item.studies, item.studies), detail) else detail
 }
 
 @Composable private fun Fact(label: String, value: String) {

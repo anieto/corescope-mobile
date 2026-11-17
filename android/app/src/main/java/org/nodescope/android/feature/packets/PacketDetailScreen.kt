@@ -1,5 +1,8 @@
 package org.nodescope.android.feature.packets
 
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.foundation.clickable
@@ -41,7 +44,7 @@ fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNod
     val current = remember(feed.visiblePackets, feed.observers) { groupTransmissions(feed.visiblePackets, null, feed.observers).firstOrNull { it.id == groupId } }
     if (current != null) group = current
     val shown = group ?: return Box(Modifier.fillMaxSize().padding(24.dp)) {
-        Text("This packet is no longer in the recent feed.", style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.packets_this_packet_is_no_longer_in_the_recent), style = MaterialTheme.typography.bodyMedium)
     }
     val latest = shown.latest
     var fullRoutes by remember { mutableStateOf<List<RouteOption>>(emptyList()) }
@@ -59,37 +62,38 @@ fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNod
 
     LazyColumn(Modifier.fillMaxSize(), listState, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            DetailSection("Packet") {
+            DetailSection(stringResource(R.string.packets_packet)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(packetIcon(shown.typeName), null, tint = tone)
                     Text(shown.typeName, style = MaterialTheme.typography.titleMedium, color = tone)
                     if (shown.typeName == "ADVERT") LearnButton(GlossaryTerm.ADVERT)
                 }
-                DetailRow("Hash", latest.hash.ifEmpty { "Unavailable" }, monospace = true)
-                latest.payloadVersion?.let { DetailRow("Payload version", it.toString()) }
-                DetailRow("Observations", shown.observationCount.toString(), learn = GlossaryTerm.OBSERVATION)
-                DetailRow("Received", DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(shown.latestAt)) +
-                    if (shown.isLive) "" else " (recent history)")
-                shown.region?.let { DetailRow("Region", it) }
+                DetailRow(stringResource(R.string.packets_hash), latest.hash.ifEmpty { stringResource(R.string.packets_unavailable) }, monospace = true)
+                latest.payloadVersion?.let { DetailRow(stringResource(R.string.packets_payload_version), it.toString()) }
+                DetailRow(stringResource(R.string.packets_observations), shown.observationCount.toString(), learn = GlossaryTerm.OBSERVATION)
+                val time = DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(shown.latestAt))
+                DetailRow(stringResource(R.string.packets_received),
+                    if (shown.isLive) time else stringResource(R.string.packets_received_in_history, time))
+                shown.region?.let { DetailRow(stringResource(R.string.packets_region), it) }
             }
         }
         (latest.payloadText ?: latest.payloadName)?.let { payload ->
-            item { DetailSection("Payload") { SelectionContainer { Text(payload, style = MaterialTheme.typography.bodyLarge) } } }
+            item { DetailSection(stringResource(R.string.packets_payload)) { SelectionContainer { Text(payload, style = MaterialTheme.typography.bodyLarge) } } }
         }
         item {
-            DetailSection("Observations") {
+            DetailSection(stringResource(R.string.packets_observations)) {
                 shown.observations.forEachIndexed { index, observation ->
                     if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                     // An observer whose path is one of the routes shows it below when tapped.
                     val routeIndex = routeIndexFor(observation.resolvedPath, routes)
                     val onRoute = routeIndex != null && routeIndex == singleRoute(selectedRoute, routes.size)
-                    Row(Modifier.fillMaxWidth().then(if (routeIndex == null) Modifier else Modifier.clickable(onClickLabel = "Show this observer's route") {
+                    Row(Modifier.fillMaxWidth().then(if (routeIndex == null) Modifier else Modifier.clickable(onClickLabel = stringResource(R.string.packets_show_this_observer_s_route)) {
                         selectedRoute = routeIndex; scope.launch { listState.animateScrollToItem(routeItem) }
                     }).semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f).padding(vertical = 2.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                             Text(observation.title, style = MaterialTheme.typography.titleSmall)
                             Text(listOfNotNull(observation.snr?.let { "%.1f dB".format(it) }, observation.rssi?.let { "%.0f dBm".format(it) },
-                                observation.hops.size.takeIf { it > 0 }?.let { "$it hops" }).joinToString(" · ").ifEmpty { "No signal data" },
+                                observation.hops.size.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.packets_hops, it, it) }).joinToString(" · ").ifEmpty { stringResource(R.string.packets_no_signal_data) },
                                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         if (routeIndex != null) RouteTag(onRoute)
@@ -98,7 +102,7 @@ fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNod
             }
         }
         if (shown.longestPath.isNotEmpty() || routes.isNotEmpty()) item {
-            DetailSection("Route", GlossaryTerm.ROUTE) {
+            DetailSection(stringResource(R.string.packets_route), GlossaryTerm.ROUTE) {
                 if (routes.size > 1) RoutePicker(routes, selectedRoute, { selectedRoute = it }, allowsAll = true)
                 val shownRoute = singleRoute(selectedRoute, routes.size)
                 if (shownRoute == null && routes.size > 1) AllRoutesNote(routes.size)
@@ -107,24 +111,24 @@ fun PacketDetailScreen(feed: LiveFeedState, groupId: String, nodes: List<MeshNod
                     ?: if (routes.isEmpty()) shown.longestPath.map { (it ?: "?") to null } else emptyList()
                 hops.forEachIndexed { index, (value, node) ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Hop ${index + 1}", Modifier.width(56.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(node?.displayName ?: "Unknown node", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontFamily = MonaspaceNeon, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(stringResource(R.string.packets_hop, index + 1), Modifier.width(56.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(node?.displayName ?: stringResource(R.string.packets_unknown_node), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontFamily = MonaspaceNeon, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(value.take(8).uppercase(), fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 shownRoute?.let { RouteHearers(routes[it]) }
                 val playable = (shownRoute?.let { listOf(routes[it]) } ?: routes).any { route -> routeSubchains(route.keys, nodes).any { it.size > 1 } }
-                if (routes.isNotEmpty() && !playable) Text("This route's nodes aren't on the current map region, so it can't be replayed.",
+                if (routes.isNotEmpty() && !playable) Text(stringResource(R.string.packets_this_route_s_nodes_aren_t_on_the),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (routes.isNotEmpty()) Button(onClick = { onReplay(routes, shownRoute ?: org.nodescope.android.feature.map.ALL_ROUTES) }, Modifier.fillMaxWidth(), enabled = playable,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)) {
-                    Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text("Replay on map")
+                    Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.packets_replay_on_map))
                 }
             }
         }
         latest.rawHex?.let { raw ->
-            item { DetailSection("Raw packet") { SelectionContainer { Text(raw, fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelMedium) } } }
+            item { DetailSection(stringResource(R.string.packets_raw_packet)) { SelectionContainer { Text(raw, fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelMedium) } } }
         }
     }
 }
@@ -161,7 +165,7 @@ private fun RouteTag(shown: Boolean) {
         Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Icon(if (shown) Icons.Outlined.Check else Icons.Outlined.Route, null, Modifier.size(14.dp),
                 tint = if (shown) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(if (shown) "Shown below" else "Show route", style = MaterialTheme.typography.labelSmall,
+            Text(if (shown) stringResource(R.string.packets_shown_below) else stringResource(R.string.packets_show_route), style = MaterialTheme.typography.labelSmall,
                 color = if (shown) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

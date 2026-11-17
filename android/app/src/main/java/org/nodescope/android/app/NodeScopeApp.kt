@@ -191,17 +191,16 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
             pendingImport?.let { uri -> org.nodescope.android.feature.candidatesites.ImportPackageSheet(uri, model::importHandled) }
             val pendingSwitch by model.pendingSourceSwitch.collectAsStateWithLifecycle()
             pendingSwitch?.let { pending ->
-                AlertDialog(onDismissRequest = model::cancelSourceSwitch, title = { Text("Unsaved work couldn't be kept") },
+                AlertDialog(onDismissRequest = model::cancelSourceSwitch, title = { Text(stringResource(R.string.app_unsaved_work_couldn_t_be_kept)) },
                     text = {
-                        Text("These unfinished studies couldn't be saved on this device: ${pending.affected.joinToString()}. " +
-                            "Switching analyzer now loses their latest changes. Saved plans aren't affected.")
+                        Text(stringResource(R.string.app_unsaved_studies_switch_message, pending.affected.joinToString()))
                     },
-                    confirmButton = { TextButton(onClick = { model.selectSource(pending.input, pending.onSaved) }) { Text("Retry") } },
+                    confirmButton = { TextButton(onClick = { model.selectSource(pending.input, pending.onSaved) }) { Text(stringResource(R.string.retry)) } },
                     dismissButton = {
                         Row {
-                            TextButton(onClick = model::cancelSourceSwitch) { Text("Cancel") }
+                            TextButton(onClick = model::cancelSourceSwitch) { Text(stringResource(R.string.common_cancel)) }
                             TextButton(onClick = { model.selectSource(pending.input, pending.onSaved, keepDrafts = false) }) {
-                                Text("Switch without saving", color = MaterialTheme.colorScheme.error)
+                                Text(stringResource(R.string.app_switch_without_saving), color = MaterialTheme.colorScheme.error)
                             }
                         }
                     })
@@ -230,13 +229,13 @@ private fun SourceCheck(error: String?, onRetry: () -> Unit, onChooseAnother: ()
             horizontalAlignment = Alignment.CenterHorizontally) {
             if (error == null) {
                 CircularProgressIndicator()
-                Text("Checking analyzer source…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.app_checking_analyzer_source), color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 Icon(Icons.Outlined.CloudOff, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Couldn't identify this server", style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+                Text(stringResource(R.string.app_couldn_t_identify_this_server), style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
                 Text(error, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-                Button(onClick = onRetry) { Text("Retry") }
-                TextButton(onClick = onChooseAnother) { Text("Choose Another Source") }
+                Button(onClick = onRetry) { Text(stringResource(R.string.retry)) }
+                TextButton(onClick = onChooseAnother) { Text(stringResource(R.string.app_choose_another_source)) }
             }
         }
     }
@@ -515,23 +514,23 @@ internal fun AppShell(
                     Column {
                         val destination = entry?.destination
                         Text(when {
-                            isRoot && currentTab == Destination.MAP.name -> "Live Map"
+                            isRoot && currentTab == Destination.MAP.name -> stringResource(R.string.app_live_map)
                             isRoot -> stringResource(Destination.valueOf(currentTab).title)
                             destination?.hasRoute<ChannelRoute>() == true -> entry!!.toRoute<ChannelRoute>().name
-                            destination?.hasRoute<ObserverRoute>() == true -> "Observer details"
-                            destination?.hasRoute<MyNodesRoute>() == true -> "Activity"
-                            destination?.hasRoute<CoreScopeAccountRoute>() == true -> "CoreScope account"
-                            destination?.hasRoute<FavoritesRoute>() == true -> "Favorites"
-                            destination?.hasRoute<NodePlannerRoute>() == true -> "Node Planner"
-                            destination?.hasRoute<EstimatedCoverageRoute>() == true -> "Estimated Coverage"
-                            destination?.hasRoute<CandidateSitesRoute>() == true -> "Candidate Sites"
-                            destination?.hasRoute<SavedPlansRoute>() == true -> "Saved Plans"
-                            destination?.hasRoute<UnfinishedStudiesRoute>() == true -> "Unfinished studies"
+                            destination?.hasRoute<ObserverRoute>() == true -> stringResource(R.string.app_observer_details)
+                            destination?.hasRoute<MyNodesRoute>() == true -> stringResource(R.string.app_activity)
+                            destination?.hasRoute<CoreScopeAccountRoute>() == true -> stringResource(R.string.app_corescope_account)
+                            destination?.hasRoute<FavoritesRoute>() == true -> stringResource(R.string.app_favorites)
+                            destination?.hasRoute<NodePlannerRoute>() == true -> stringResource(R.string.app_node_planner)
+                            destination?.hasRoute<EstimatedCoverageRoute>() == true -> stringResource(R.string.app_estimated_coverage)
+                            destination?.hasRoute<CandidateSitesRoute>() == true -> stringResource(R.string.app_candidate_sites)
+                            destination?.hasRoute<SavedPlansRoute>() == true -> stringResource(R.string.app_saved_plans)
+                            destination?.hasRoute<UnfinishedStudiesRoute>() == true -> stringResource(R.string.app_unfinished_studies)
                             destination?.hasRoute<StudyPlanRoute>() == true ->
                                 org.nodescope.android.feature.candidatesites.SavedPlansLibrary.shared(androidx.compose.ui.platform.LocalContext.current)
-                                    .plan(entry!!.toRoute<StudyPlanRoute>().planId)?.name ?: "Plan"
-                            destination?.hasRoute<NodeCheckRoute>() == true -> "Node Check"
-                            destination?.hasRoute<LinkProfileRoute>() == true -> "Link Profile"
+                                    .plan(entry!!.toRoute<StudyPlanRoute>().planId)?.name ?: stringResource(R.string.app_plan)
+                            destination?.hasRoute<NodeCheckRoute>() == true -> stringResource(R.string.app_node_check)
+                            destination?.hasRoute<LinkProfileRoute>() == true -> stringResource(R.string.app_link_profile)
                             else -> stringResource(when {
                                 destination?.hasRoute<SourceRoute>() == true -> R.string.analyzer
                                 destination?.hasRoute<MapLabRoute>() == true -> R.string.map_lab
@@ -575,14 +574,14 @@ internal fun AppShell(
                             FilledTonalButton(onClick = { navigationOpen = true }, modifier = Modifier.fillMaxWidth()) {
                                 Icon(Icons.Outlined.Menu, null)
                                 Spacer(Modifier.width(12.dp))
-                                Text("Navigate: ${stringResource(Destination.valueOf(currentTab).title)}", Modifier.weight(1f))
+                                Text(stringResource(R.string.app_navigate, stringResource(Destination.valueOf(currentTab).title)), Modifier.weight(1f))
                                 Icon(Icons.Outlined.ExpandMore, null)
                             }
                             DropdownMenu(expanded = navigationOpen, onDismissRequest = { navigationOpen = false }) {
                                 Destination.entries.forEach { destination ->
                                     DropdownMenuItem(text = { Text(stringResource(destination.title)) },
                                         leadingIcon = { Icon(destination.icon, null) },
-                                        trailingIcon = { if (currentTab == destination.name) Icon(Icons.Outlined.Check, "Selected") },
+                                        trailingIcon = { if (currentTab == destination.name) Icon(Icons.Outlined.Check, stringResource(R.string.app_selected)) },
                                         onClick = { navigationOpen = false; selectTab(destination) })
                                 }
                             }
@@ -957,15 +956,15 @@ private fun RegionMenu(preferences: AppPreferences, state: SessionState, onRegio
             DropdownMenuItem(text = { Text(stringResource(R.string.all_regions)) }, onClick = { onRegion(null); open = false })
             if (picks.isNotEmpty()) {
                 HorizontalDivider()
-                org.nodescope.android.feature.map.MenuSectionHeader("Region groups")
+                org.nodescope.android.feature.map.MenuSectionHeader(stringResource(R.string.app_region_groups))
                 picks.forEach { pick ->
                     DropdownMenuItem(text = { Text(pick.name) }, onClick = { onRegion(pick.selection); open = false })
                 }
                 HorizontalDivider()
-                org.nodescope.android.feature.map.MenuSectionHeader("Regions")
+                org.nodescope.android.feature.map.MenuSectionHeader(stringResource(R.string.app_regions))
             }
             regions.toSortedMap().forEach { (code, label) ->
-                DropdownMenuItem(text = { Text("$label ($code)") }, onClick = { onRegion(code); open = false })
+                DropdownMenuItem(text = { Text(stringResource(R.string.app_value, label, code)) }, onClick = { onRegion(code); open = false })
             }
         }
     }

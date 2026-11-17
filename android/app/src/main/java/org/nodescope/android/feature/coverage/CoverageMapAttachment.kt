@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.coverage
 
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import android.util.Log
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
@@ -29,6 +31,7 @@ internal fun CoverageMapAttachment(engine: MapEngineState, layer: CoverageMapLay
     val cacheRoot = File(LocalContext.current.applicationContext.cacheDir, "coverage-map-tiles-v1")
     // A new style/provider effect waits for cancelled preparation and cleanup from its predecessor.
     val ownership = remember { Mutex() }
+    val overlayError = stringResource(R.string.coverage_overlay_display_failed)
     val report by rememberUpdatedState(onFailure)
     val preparing by rememberUpdatedState(onPreparing)
     val google = (engine as? GoogleMapEngine)?.map
@@ -66,7 +69,7 @@ internal fun CoverageMapAttachment(engine: MapEngineState, layer: CoverageMapLay
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
-                report("Coverage overlay could not be displayed. Retry the calculation or reopen the study.")
+                report(overlayError)
                 Log.w("NodeScope", "Coverage overlay attachment failed", failure)
             } finally {
                 preparing(false)

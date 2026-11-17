@@ -1,5 +1,8 @@
 package org.nodescope.android.feature.linkprofile
 
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
+import org.nodescope.android.core.design.withDescription
 import org.nodescope.android.feature.learn.*
 import org.nodescope.android.feature.coverage.AntennaPresetMenu
 import org.nodescope.android.feature.coverage.CoverageHeightPreset
@@ -209,13 +212,13 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
                                 if (dragged > 30 * density.density) expanded = false
                             }) { _, amount -> dragged += amount }
                         }) {
-                        Box(Modifier.fillMaxWidth().clickable(onClickLabel = if (expanded) "Collapse" else "Expand") { expanded = !expanded }
-                            .semantics { contentDescription = if (expanded) "Collapse results" else "Expand results" },
+                        Box(Modifier.fillMaxWidth().clickable(onClickLabel = if (expanded) stringResource(R.string.link_profile_collapse) else stringResource(R.string.link_profile_expand)) { expanded = !expanded }
+                            .withDescription(stringResource(if (expanded) R.string.link_profile_result_collapse else R.string.link_profile_result_expand)) { desc -> contentDescription = desc },
                             contentAlignment = Alignment.Center) { BottomSheetDefaults.DragHandle() }
                         Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 14.dp)) {
                             header()
                             if (!expanded && selecting == null && state.result != null && !state.loading && state.error == null) {
-                                Button(onClick = { expanded = true }) { Text("Adjust antennas & radio") }
+                                Button(onClick = { expanded = true }) { Text(stringResource(R.string.link_profile_adjust_antennas_radio)) }
                             }
                         }
                     }
@@ -248,28 +251,28 @@ private fun LinkHeader(state: LinkProfileViewModel.State, selecting: String?, pl
         val result = state.result
         when {
             selecting != null && placed(selecting) -> {
-                Text("Choose new Point $selecting", style = MaterialTheme.typography.titleMedium)
-                Text("Touch & hold the map to place it.", color = secondary)
-                TextButton(onClick = onCancel) { Text("Cancel") }
+                Text(stringResource(R.string.link_profile_choose_new_point_2, selecting), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.link_profile_touch_hold_the_map_to_place_it), color = secondary)
+                TextButton(onClick = onCancel) { Text(stringResource(R.string.common_cancel)) }
             }
             !placed("A") || !placed("B") -> {
-                Text("Place your points to analyze the link.", style = MaterialTheme.typography.titleMedium)
-                if (placing != null) Text("Touch & hold the map to place Point $placing.", color = secondary)
-                if (placing != null && showsElevationNotice) Text("Placing a point sends its coordinates to Open-Meteo for elevation.",
+                Text(stringResource(R.string.link_profile_place_your_points_to_analyze_the_link), style = MaterialTheme.typography.titleMedium)
+                if (placing != null) Text(stringResource(R.string.link_profile_touch_hold_the_map_to_place_point, placing), color = secondary)
+                if (placing != null && showsElevationNotice) Text(stringResource(R.string.link_profile_placing_a_point_sends_its_coordinates_to_open),
                     style = MaterialTheme.typography.bodySmall, color = secondary)
             }
             // Reopened from Saved Plans: no elevation or analysis until asked for.
             state.awaitingCalculation && result == null -> {
-                Text(state.savedResultNote ?: "Saved inputs · No calculated result", style = MaterialTheme.typography.titleMedium)
-                Button(onClick = onRetry, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = ActivityAmber, contentColor = Color.White)) { Text("Calculate") }
+                Text(state.savedResultNote?.asString() ?: stringResource(R.string.link_profile_saved_inputs_no_calculated_result), style = MaterialTheme.typography.titleMedium)
+                Button(onClick = onRetry, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = ActivityAmber, contentColor = Color.White)) { Text(stringResource(R.string.link_profile_calculate)) }
             }
             state.loading -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                Text("Analyzing link…", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.link_profile_analyzing_link), style = MaterialTheme.typography.titleMedium)
             }
             state.error != null -> {
-                Text(state.error, color = MaterialTheme.colorScheme.error)
-                Button(onClick = onRetry, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = ActivityAmber, contentColor = Color.White)) { Text("Try Again") }
+                Text(state.error.asString(), color = MaterialTheme.colorScheme.error)
+                Button(onClick = onRetry, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = ActivityAmber, contentColor = Color.White)) { Text(stringResource(R.string.link_profile_try_again)) }
             }
             result != null -> {
                 val (title, icon) = verdict(result.result.clearanceStatus)
@@ -278,17 +281,20 @@ private fun LinkHeader(state: LinkProfileViewModel.State, selecting: String?, pl
                         MaterialTheme.colorScheme.background.luminance() < 0.3f)))
                     Text(title, style = MaterialTheme.typography.titleMedium)
                 }
-                val margin = result.result.linkMarginDB?.let { "Link margin ${String.format(Locale.getDefault(), "%.1f", it)} dB · " }.orEmpty()
-                Text(margin + formatDistance(result.result.distanceMeters / 1000, distanceUnit), color = secondary)
+                val distance = formatDistance(result.result.distanceMeters / 1000, distanceUnit)
+                val summary = result.result.linkMarginDB?.let {
+                    stringResource(R.string.link_profile_margin_and_distance, String.format(Locale.getDefault(), "%.1f", it), distance)
+                } ?: distance
+                Text(summary, color = secondary)
                 // Still waiting for Calculate, so this is the result saved with the study.
-                if (state.awaitingCalculation) Text("Saved result · calculated " + java.text.DateFormat.getDateTimeInstance(
-                    java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(java.util.Date(result.calculatedAt)),
+                if (state.awaitingCalculation) Text(stringResource(R.string.link_profile_saved_result_at, java.text.DateFormat.getDateTimeInstance(
+                    java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(java.util.Date(result.calculatedAt))),
                     style = MaterialTheme.typography.bodySmall, color = secondary)
-                Text(if (usesDefaultEquipment) "Using default antenna and radio settings."
-                    else "Using your antenna and radio settings.",
+                Text(if (usesDefaultEquipment) stringResource(R.string.link_profile_using_default_antenna_and_radio_settings)
+                    else stringResource(R.string.link_profile_using_your_antenna_and_radio_settings),
                     style = MaterialTheme.typography.bodySmall, color = secondary)
             }
-            else -> Text("Analyzing link…", style = MaterialTheme.typography.titleMedium)
+            else -> Text(stringResource(R.string.link_profile_analyzing_link), style = MaterialTheme.typography.titleMedium)
         }
     }
     if (selecting == null && anyPlaced) {
@@ -297,17 +303,18 @@ private fun LinkHeader(state: LinkProfileViewModel.State, selecting: String?, pl
             contentPadding = PaddingValues(horizontal = 12.dp)) {
             Icon(Icons.Filled.Refresh, contentDescription = null, Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
-            Text("Reset")
+            Text(stringResource(R.string.link_profile_reset))
         }
     }
     }
 }
 
-internal fun verdict(status: ClearanceStatus) = when (status) {
-    ClearanceStatus.CLEAR -> "Clear terrain path" to Icons.Filled.CheckCircle
-    ClearanceStatus.MARGINAL -> "Marginal clearance" to Icons.Filled.Error
-    ClearanceStatus.PARTIAL_OBSTRUCTION -> "Partially obstructed" to Icons.Filled.Contrast
-    ClearanceStatus.BLOCKED -> "Blocked by terrain" to Icons.Filled.Block
+@Composable
+private fun verdict(status: ClearanceStatus) = when (status) {
+    ClearanceStatus.CLEAR -> stringResource(R.string.link_profile_clear_terrain_path) to Icons.Filled.CheckCircle
+    ClearanceStatus.MARGINAL -> stringResource(R.string.link_profile_marginal_clearance) to Icons.Filled.Error
+    ClearanceStatus.PARTIAL_OBSTRUCTION -> stringResource(R.string.link_profile_partially_obstructed) to Icons.Filled.Contrast
+    ClearanceStatus.BLOCKED -> stringResource(R.string.link_profile_blocked_by_terrain) to Icons.Filled.Block
 }
 
 /** The verdict's colour, matching the path: both obstructed statuses read as obstructed. */
@@ -330,25 +337,25 @@ private fun LinkDetails(model: LinkProfileViewModel, state: LinkProfileViewModel
         listOf("A", "B").forEach { endpoint -> PointCard(model, state, endpoint, distanceUnit, onMove, onCoverage) }
         Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Radio settings", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.link_profile_radio_settings), style = MaterialTheme.typography.titleMedium)
                 // Editing a value below makes the radio custom; neither preset is then selected.
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("US/Canada Narrow", "EU/UK Narrow").forEach { name ->
-                        FilterChip(selected = state.preset == name, onClick = { model.preset(name) }, label = { Text(name) })
+                    listOf("US/Canada Narrow" to R.string.link_profile_preset_us, "EU/UK Narrow" to R.string.link_profile_preset_eu).forEach { (key, label) ->
+                        FilterChip(selected = state.preset == key, onClick = { model.preset(key) }, label = { Text(stringResource(label)) })
                     }
                 }
                 TextButton(onClick = { customizing = !customizing }) {
                     Text(when {
-                        customizing -> "Hide radio values"
-                        state.preset == "Custom" -> "Customize radio · edited"
-                        else -> "Customize radio"
+                        customizing -> stringResource(R.string.link_profile_hide_radio_values)
+                        state.preset == "Custom" -> stringResource(R.string.link_profile_customize_radio_edited)
+                        else -> stringResource(R.string.link_profile_customize_radio)
                     })
                 }
                 if (customizing) LinkProfileViewModel.presetKeys.forEach { key -> ProfileField(key, state.fields.getValue(key)) { model.edit(key, it) } }
             }
         }
         state.result?.let { ProfileResult(it, distanceUnit) }
-        Text("Planning estimates only: terrain does not account for buildings, foliage or interference. Placing points sends their coordinates to Open-Meteo for elevation; cached elevations are kept for 30 days.",
+        Text(stringResource(R.string.link_profile_planning_estimates_only_terrain_does_not_account_for),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -368,8 +375,9 @@ private fun PointCard(model: LinkProfileViewModel, state: LinkProfileViewModel.S
     val secondary = MaterialTheme.colorScheme.onSurfaceVariant
     Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val expansionState = stringResource(if (expanded) R.string.link_profile_expanded else R.string.link_profile_collapsed)
             Row(Modifier.fillMaxWidth().clickable { expanded = !expanded }.semantics(mergeDescendants = true) {
-                stateDescription = if (expanded) "Expanded" else "Collapsed"
+                stateDescription = expansionState
             }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box(Modifier.size(28.dp).background(if (endpoint == "A") PointABlue else PointBOrange, androidx.compose.foundation.shape.CircleShape),
                     contentAlignment = Alignment.Center) {
@@ -377,16 +385,16 @@ private fun PointCard(model: LinkProfileViewModel, state: LinkProfileViewModel.S
                 }
                 Column(Modifier.weight(1f)) {
                     Text(when {
-                        !placed -> "Point $endpoint not placed"
-                        else -> state.names[endpoint] ?: "Dropped pin"
+                        !placed -> stringResource(R.string.link_profile_point_not_placed, endpoint)
+                        else -> state.names[endpoint] ?: stringResource(R.string.link_profile_dropped_pin_2)
                     }, style = MaterialTheme.typography.titleMedium)
                     val ground = when {
-                        elevation?.loading == true -> "Ground elevation: Loading…"
-                        elevation?.meters != null -> "Ground elevation: ${formatProfileHeight(elevation.meters, distanceUnit)}"
-                        placed -> "Ground elevation: Unavailable"
+                        elevation?.loading == true -> stringResource(R.string.link_profile_ground_elevation_loading)
+                        elevation?.meters != null -> stringResource(R.string.link_profile_ground_elevation, formatProfileHeight(elevation.meters, distanceUnit))
+                        placed -> stringResource(R.string.link_profile_ground_elevation_unavailable)
                         else -> null
                     }
-                    Text(listOfNotNull(ground, "Antenna ${formatProfileHeight(meters, distanceUnit)}").joinToString(" · "),
+                    Text(listOfNotNull(ground, stringResource(R.string.link_profile_antenna, formatProfileHeight(meters, distanceUnit))).joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall, color = secondary)
                 }
                 Icon(if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null)
@@ -395,17 +403,17 @@ private fun PointCard(model: LinkProfileViewModel, state: LinkProfileViewModel.S
                 ProfileHeightControl(endpoint, meters, distanceUnit) { model.edit("Height $endpoint (m)", it.toString()) }
                 val height = state.fields.getValue("Height $endpoint (m)").toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }
                 val total = elevation?.meters?.let { ground -> height?.let { ground + it } }
-                Text("Total height: ${total?.let { formatProfileHeight(it, distanceUnit) } ?: "—"}", style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.link_profile_total_height, total?.let { formatProfileHeight(it, distanceUnit) } ?: "—"), style = MaterialTheme.typography.bodyMedium)
                 AntennaPresetMenu(state.fields.getValue("Gain $endpoint (dBi)").toDoubleOrNull()) {
                     model.edit("Gain $endpoint (dBi)", it.toString())
                 }
                 listOf("Gain $endpoint (dBi)", "Loss $endpoint (dB)").forEach { key -> ProfileField(key, state.fields.getValue(key)) { model.edit(key, it) } }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (BuildConfig.MAPS_CONFIGURED) Button(onClick = { onMove(endpoint) }) { Text(if (placed) "Choose new point" else "Choose on map") }
-                    Button(onClick = { coordinatesShown = !coordinatesShown }) { Text(if (coordinatesShown) "Hide coordinates" else "Enter coordinates") }
+                    if (BuildConfig.MAPS_CONFIGURED) Button(onClick = { onMove(endpoint) }) { Text(if (placed) stringResource(R.string.link_profile_choose_new_point_3) else stringResource(R.string.link_profile_choose_on_map)) }
+                    Button(onClick = { coordinatesShown = !coordinatesShown }) { Text(if (coordinatesShown) stringResource(R.string.link_profile_hide_coordinates) else stringResource(R.string.link_profile_enter_coordinates)) }
                 }
                 if (placed) Button(onClick = { onCoverage(endpoint) }, enabled = model.coverageSeed(endpoint) != null) {
-                    Text("Estimate coverage from here")
+                    Text(stringResource(R.string.link_profile_estimate_coverage_from_here))
                 }
                 if (coordinatesShown) listOf("Latitude $endpoint", "Longitude $endpoint").forEach { key -> ProfileField(key, state.fields.getValue(key)) { model.edit(key, it) } }
             }
@@ -414,7 +422,22 @@ private fun PointCard(model: LinkProfileViewModel, state: LinkProfileViewModel.S
 }
 
 @Composable
-private fun ProfileField(label: String, value: String, edit: (String) -> Unit) {
+private fun ProfileField(key: String, value: String, edit: (String) -> Unit) {
+    val label = when (key) {
+        "Frequency (MHz)" -> stringResource(R.string.link_profile_field_frequency)
+        "Transmit power (dBm)" -> stringResource(R.string.link_profile_field_power)
+        "Sensitivity (dBm)" -> stringResource(R.string.link_profile_field_sensitivity)
+        else -> {
+            val field = key.substringBefore(' ')
+            val endpoint = key.substringAfter(' ').substringBefore(' ')
+            stringResource(when (field) {
+                "Gain" -> R.string.link_profile_field_gain
+                "Loss" -> R.string.link_profile_field_loss
+                "Latitude" -> R.string.link_profile_field_latitude
+                else -> R.string.link_profile_field_longitude
+            }, endpoint)
+        }
+    }
     OutlinedTextField(value, edit, label = { Text(label) }, singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text), modifier = Modifier.fillMaxWidth())
 }
@@ -428,28 +451,27 @@ private fun ProfileResult(analysis: LinkAnalysis, distanceUnit: DistanceUnit) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             TerrainChart(analysis, distanceUnit)
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                MetricRow("Distance", formatDistance(result.distanceMeters / 1000, distanceUnit))
-                MetricRow("Initial bearing", "${dB(analysis.bearing, 0)}° true")
-                MetricRow("Free-space path loss", "${dB(result.freeSpacePathLossDB)} dB")
-                MetricRow("Diffraction loss", "${dB(result.peakDiffractionLossDB)} dB")
-                MetricRow("Total path loss", "${dB(result.totalPathLossDB)} dB")
-                result.receivePowerDBm?.let { MetricRow("Predicted receive level", "${dB(it)} dBm") }
-                result.linkMarginDB?.let { MetricRow("Link margin", "${dB(it)} dB", GlossaryTerm.LINK_MARGIN) }
-                MetricRow("Worst Fresnel clearance", "${dB(result.worstClearancePercent, 0)}%", GlossaryTerm.CLEARANCE)
-                MetricRow("Terrain source", "Copernicus GLO-90 · Open-Meteo")
-                MetricRow("Calculated", DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(analysis.calculatedAt)))
+                MetricRow(stringResource(R.string.link_profile_distance), formatDistance(result.distanceMeters / 1000, distanceUnit))
+                MetricRow(stringResource(R.string.link_profile_initial_bearing), stringResource(R.string.link_profile_true, dB(analysis.bearing, 0)))
+                MetricRow(stringResource(R.string.link_profile_free_space_path_loss), stringResource(R.string.link_profile_db, dB(result.freeSpacePathLossDB)))
+                MetricRow(stringResource(R.string.link_profile_diffraction_loss), stringResource(R.string.link_profile_db, dB(result.peakDiffractionLossDB)))
+                MetricRow(stringResource(R.string.link_profile_total_path_loss), stringResource(R.string.link_profile_db, dB(result.totalPathLossDB)))
+                result.receivePowerDBm?.let { MetricRow(stringResource(R.string.link_profile_predicted_receive_level), stringResource(R.string.link_profile_dbm, dB(it))) }
+                result.linkMarginDB?.let { MetricRow(stringResource(R.string.link_profile_link_margin), stringResource(R.string.link_profile_db, dB(it)), GlossaryTerm.LINK_MARGIN) }
+                MetricRow(stringResource(R.string.link_profile_worst_fresnel_clearance), stringResource(R.string.link_profile_value_2, dB(result.worstClearancePercent, 0)), GlossaryTerm.CLEARANCE)
+                MetricRow(stringResource(R.string.link_profile_terrain_source), stringResource(R.string.link_profile_copernicus_glo_90_open_meteo))
+                MetricRow(stringResource(R.string.link_profile_calculated), DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(analysis.calculatedAt)))
             }
             HorizontalDivider()
-            Text("Assumptions", style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.link_profile_assumptions), style = MaterialTheme.typography.titleSmall)
             val request = analysis.request
             Text(request.linkBudget?.let { budget ->
-                "TX power ${dB(budget.transmitPowerDBm)} dBm; antenna gains ${dB(budget.gainADB)}/${dB(budget.gainBDB)} dBi; " +
-                    "system losses ${dB(budget.lossADB)}/${dB(budget.lossBDB)} dB; receiver sensitivity ${dB(budget.receiverSensitivityDBm)} dBm; " +
-                    "standard atmospheric refraction (k = 4/3)."
-            } ?: "No complete link budget was supplied.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("Model: ${LinkProfileEngine.ENGINE_ID} v${LinkProfileEngine.ENGINE_VERSION}.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                stringResource(R.string.link_profile_budget_assumptions, dB(budget.transmitPowerDBm), dB(budget.gainADB),
+                    dB(budget.gainBDB), dB(budget.lossADB), dB(budget.lossBDB), dB(budget.receiverSensitivityDBm))
+            } ?: stringResource(R.string.link_profile_no_complete_link_budget_was_supplied), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.link_profile_model_v, LinkProfileEngine.ENGINE_ID, LinkProfileEngine.ENGINE_VERSION), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             val uri = androidx.compose.ui.platform.LocalUriHandler.current
-            TextButton(onClick = { uri.openUri("https://open-meteo.com/en/docs/elevation-api") }) { Text("Terrain data attribution") }
+            TextButton(onClick = { uri.openUri("https://open-meteo.com/en/docs/elevation-api") }) { Text(stringResource(R.string.link_profile_terrain_data_attribution)) }
         }
     }
 }
@@ -516,11 +538,9 @@ private fun TerrainChart(analysis: LinkAnalysis, distanceUnit: DistanceUnit) {
     val axisStyle = TextStyle(fontSize = 9.sp, color = secondary)
     val markerStyle = TextStyle(fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color.White)
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        LearnLabel("Terrain profile", GlossaryTerm.FRESNEL_ZONE, style = MaterialTheme.typography.titleSmall)
-        Canvas(Modifier.fillMaxWidth().height(240.dp).semantics {
-            contentDescription = "Terrain elevation, line of sight, first Fresnel zone, and obstructed regions. " +
-                "Distance ${formatDistance(length / 1000, distanceUnit)}. Worst Fresnel clearance ${analysis.result.worstClearancePercent.roundToInt()} percent."
-        }) {
+        LearnLabel(stringResource(R.string.link_profile_terrain_profile), GlossaryTerm.FRESNEL_ZONE, style = MaterialTheme.typography.titleSmall)
+        Canvas(Modifier.fillMaxWidth().height(240.dp).withDescription(stringResource(R.string.link_profile_chart_description,
+            formatDistance(length / 1000, distanceUnit), analysis.result.worstClearancePercent.roundToInt())) { desc -> contentDescription = desc }) {
             val left = 42.dp.toPx(); val right = 14.dp.toPx(); val top = 22.dp.toPx(); val bottom = 28.dp.toPx()
             val plotWidth = (size.width - left - right).coerceAtLeast(1f)
             val plotHeight = (size.height - top - bottom).coerceAtLeast(1f)
@@ -592,8 +612,8 @@ private fun TerrainChart(analysis: LinkAnalysis, distanceUnit: DistanceUnit) {
             }
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            ChartLegend(TerrainBrown, "Terrain")
-            ChartLegend(FresnelTeal.copy(alpha = 0.55f), "Fresnel zone")
+            ChartLegend(TerrainBrown, stringResource(R.string.link_profile_terrain))
+            ChartLegend(FresnelTeal.copy(alpha = 0.55f), stringResource(R.string.link_profile_fresnel_zone))
             // The line of sight's three clearances, matching the map.
             PathClearance.entries.forEach { ClearanceSwatch(Color(it.argb(dark)), it.title) }
         }
@@ -621,19 +641,19 @@ internal fun ProfileHeightControl(endpoint: String, meters: Double, unit: Distan
                         profileHeightMeters(profileDisplayHeight(preset.meters, unit).roundToInt().toDouble(), unit)
                     else preset.meters
                     onMetersChanged(value)
-                }, label = { Text("${preset.title} · ${formatProfileHeight(preset.meters, unit)}") })
+                }, label = { Text(stringResource(R.string.link_profile_value, preset.title, formatProfileHeight(preset.meters, unit))) })
         }
     }
     val maximum = profileHeightMaximum(unit)
     val displayed = profileDisplayHeight(meters, unit)
-    Text("Additional antenna height $endpoint: ${formatProfileHeight(meters, unit)}", style = MaterialTheme.typography.bodyMedium)
+    Text(stringResource(R.string.link_profile_additional_antenna_height, endpoint, formatProfileHeight(meters, unit)), style = MaterialTheme.typography.bodyMedium)
     Slider(
         value = displayed.toFloat().coerceIn(0f, maximum),
         onValueChange = { onMetersChanged(profileHeightMeters(it.roundToInt().toDouble(), unit)) },
         valueRange = 0f..maximum,
         steps = maximum.toInt() - 1,
-        modifier = Modifier.fillMaxWidth().semantics {
-            contentDescription = "Additional antenna height $endpoint"
+        modifier = Modifier.fillMaxWidth().withDescription(stringResource(R.string.link_profile_additional_antenna_height_2, endpoint)) { description ->
+            contentDescription = description
             stateDescription = formatProfileHeight(meters, unit)
         },
     )
@@ -647,7 +667,7 @@ internal fun ProfileHeightControl(endpoint: String, meters: Double, unit: Distan
         text.toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }?.let {
             onMetersChanged(profileHeightMeters(it, unit))
         }
-    }, label = { Text("Above ground (${if (unit == DistanceUnit.IMPERIAL) "ft" else "m"})") },
+    }, label = { Text(stringResource(R.string.link_profile_above_ground, if (unit == DistanceUnit.IMPERIAL) "ft" else "m")) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         textStyle = TextStyle(fontFamily = MonaspaceNeon), modifier = Modifier.fillMaxWidth()
             .onFocusChanged { editingExact = it.isFocused })

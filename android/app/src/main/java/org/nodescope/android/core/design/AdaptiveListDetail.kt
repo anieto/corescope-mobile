@@ -1,5 +1,7 @@
 package org.nodescope.android.core.design
 
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import androidx.compose.ui.draw.clip
 
 import androidx.compose.foundation.background
@@ -94,12 +96,12 @@ fun AdaptiveListDetail(
                                         maxLines = 2, overflow = TextOverflow.Ellipsis) },
                                     navigationIcon = {
                                         if (!twoPanes || detailBackLabel != null) IconButton(onClick = onCloseDetail) {
-                                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, detailBackLabel ?: "Back")
+                                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, detailBackLabel ?: stringResource(R.string.back))
                                         }
                                     },
                                     actions = {
                                         if (twoPanes && detailBackLabel == null) IconButton(onClick = onCloseDetail) {
-                                            Icon(Icons.Outlined.Close, "Close details")
+                                            Icon(Icons.Outlined.Close, stringResource(R.string.common_close_details))
                                         }
                                     },
                                 )

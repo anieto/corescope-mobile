@@ -58,7 +58,7 @@ class PacketGroupsTest {
         assertEquals(listOf("HAL9000"), options[0].alongTheWay.map { it.observer })
         assertEquals(2, options[0].alongTheWay.single().hops)
         assertEquals(4, options[0].heardBy.first().hops)
-        assertEquals("4 hops · AUS · -98 dBm", options[0].summary())
+        assertEquals("4 hops · AUS · -98 dBm", options[0].summary("4 hops"))
     }
 
     @Test fun fullRoutesAddTheirObserversWithoutRenumbering() {

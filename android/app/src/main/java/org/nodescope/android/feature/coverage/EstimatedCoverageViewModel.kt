@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.coverage
 
+import org.nodescope.android.R
+import org.nodescope.android.core.design.UiText
 import android.content.SharedPreferences
 import androidx.compose.runtime.*
 import androidx.core.content.edit
@@ -41,7 +43,7 @@ internal class EstimatedCoverageViewModel(
     private val diagnosticsFile: File? = null,
 ) : ViewModel(), org.nodescope.android.feature.candidatesites.StudyDraftSource {
     /** The last transmitter placement, offered back for a few seconds. */
-    data class Undo(val id: Long, val message: String, val latitude: String, val longitude: String, val name: String?)
+    data class Undo(val id: Long, val message: UiText, val latitude: String, val longitude: String, val name: String?)
 
     // Transmitter location, as text so typed coordinates keep their own validation.
     var latitudeText by mutableStateOf(""); private set
@@ -73,7 +75,7 @@ internal class EstimatedCoverageViewModel(
     private var calculationToken = 0L
     var layer by mutableStateOf<CoverageMapLayer?>(null); private set
     var overlayError by mutableStateOf(false); private set
-    var inputError by mutableStateOf<String?>(null); private set
+    var inputError by mutableStateOf<UiText?>(null); private set
     /** The grid size and spacing last checked against the work limit, and whether it fits. */
     private var workCheck by mutableStateOf<Triple<Int, Int, Boolean>?>(null)
     var minimumWorkSamples by mutableStateOf<Long?>(null); private set
@@ -305,12 +307,12 @@ internal class EstimatedCoverageViewModel(
     /** Places or moves the transmitter from the map or the location button, with Undo. */
     fun place(point: Coordinate, name: String?) {
         if (!CoverageSetupValidation.supportsCoordinate(point.latitude, point.longitude)) {
-            inputError = "Choose a transmitter between 85°S and 85°N."
+            inputError = UiText.Resource(R.string.coverage_choose_a_transmitter_between_85_s_and_85)
             return
         }
         inputError = null
         val moved = coordinate != null
-        offerUndo(if (moved) "Transmitter moved" else "Transmitter placed")
+        offerUndo(if (moved) UiText.Resource(R.string.coverage_transmitter_moved) else UiText.Resource(R.string.coverage_transmitter_placed))
         latitudeText = point.latitude.toString()
         longitudeText = point.longitude.toString()
         transmitterName = name
@@ -321,7 +323,7 @@ internal class EstimatedCoverageViewModel(
 
     /** Clears the transmitter and its result, with Undo; the radio and antennas are kept. */
     fun clearTransmitter() {
-        offerUndo("Transmitter removed")
+        offerUndo(UiText.Resource(R.string.coverage_transmitter_removed))
         latitudeText = ""
         longitudeText = ""
         transmitterName = null
@@ -347,7 +349,7 @@ internal class EstimatedCoverageViewModel(
         undo = null
     }
 
-    private fun offerUndo(message: String) {
+    private fun offerUndo(message: UiText) {
         undo = Undo(++undoCounter, message, latitudeText, longitudeText, transmitterName)
     }
 
@@ -426,7 +428,7 @@ internal class EstimatedCoverageViewModel(
     fun calculate(continuing: Boolean = false) {
         if (calculation != null || runner.isBusy) return
         val captured = inputs()
-        if (captured == null) { inputError = "Review the highlighted inputs and choose a smaller area or wider spacing."; return }
+        if (captured == null) { inputError = UiText.Resource(R.string.coverage_review_the_highlighted_inputs_and_choose_a_smaller); return }
         val previous = if (continuing) activeResult else reusableResult?.takeIf { it.inputs.canExpand(captured) }
         if (continuing && previous == null) return
         // The result stays on the map while it's being continued.
@@ -589,11 +591,11 @@ internal class EstimatedCoverageViewModel(
         // A referenced result this device can't show: the inputs open alone, with the reason.
         inputError = when (study.resultStatus) {
             org.nodescope.android.feature.candidatesites.SavedResultStatus.MISSING ->
-                "Saved result not on this device. Your inputs are available; calculate to see results."
+                UiText.Resource(R.string.coverage_saved_result_not_on_this_device_your_inputs)
             org.nodescope.android.feature.candidatesites.SavedResultStatus.UNVERIFIED ->
-                "The saved result could not be verified, so it isn't shown. Your inputs are available; calculate to see results."
+                UiText.Resource(R.string.coverage_the_saved_result_could_not_be_verified_so)
             org.nodescope.android.feature.candidatesites.SavedResultStatus.UNSUPPORTED ->
-                "This saved result needs another version of NodeScope. Your inputs are available; calculate to see results."
+                UiText.Resource(R.string.coverage_this_saved_result_needs_another_version_of_nodescope)
             else -> null
         }
         coverage.calculatedResult?.let { encoded ->
@@ -603,7 +605,7 @@ internal class EstimatedCoverageViewModel(
                 if (PortableCoverageResult.isPortable(bytes)) PortableCoverageResult.decode(bytes, requireNotNull(inputs), nodeSnapshots, catalogComplete)
                 else SavedCoverageCalculation.decode(encoded).restore(requireNotNull(inputs), nodeSnapshots, catalogComplete)
             } catch (_: Exception) {
-                inputError = "The saved calculation could not be restored. Your inputs are available; calculate again to replace the result."
+                inputError = UiText.Resource(R.string.coverage_the_saved_calculation_could_not_be_restored_your)
                 null
             }
         }

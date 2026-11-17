@@ -1,5 +1,9 @@
 package org.nodescope.android.feature.explore
 
+import org.nodescope.android.core.design.nodeRoleLabel
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import org.nodescope.android.core.design.meshCardColors
 import org.nodescope.android.core.design.meshCardColor
 import org.nodescope.android.core.design.MeshModalBottomSheet
@@ -138,11 +142,11 @@ fun ExploreScreen(model: ExploreViewModel?, host: String, snapshot: AnalyzerSnap
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Explore", style = MaterialTheme.typography.headlineLarge)
-                        Text("${favorites.size} saved item${if (favorites.size == 1) "" else "s"} on this analyzer", style = MaterialTheme.typography.bodySmall,
+                        Text(stringResource(R.string.explore_explore), style = MaterialTheme.typography.headlineLarge)
+                        Text(pluralStringResource(R.plurals.explore_saved_item_on_this_analyzer, favorites.size, favorites.size), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    IconButton(onClick = { searching = true }) { Icon(Icons.Outlined.Search, "Search the network") }
+                    IconButton(onClick = { searching = true }) { Icon(Icons.Outlined.Search, stringResource(R.string.explore_search_the_network_3)) }
                 }
             }
             item {
@@ -154,8 +158,8 @@ fun ExploreScreen(model: ExploreViewModel?, host: String, snapshot: AnalyzerSnap
             item {
                 Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
                     Column(Modifier.padding(16.dp)) {
-                        NavigationRow("Node Planner", "Evaluate proposed sites and point-to-point terrain paths", Icons.Outlined.GraphicEq, actions.onNodePlanner)
-                        NavigationRow("Node Check", "Is your node getting out? Check any node, or watch for a new one’s first advert", Icons.Outlined.Verified, actions.onNodeCheck)
+                        NavigationRow(stringResource(R.string.explore_node_planner), stringResource(R.string.explore_evaluate_proposed_sites_and_point_to_point_terrain), Icons.Outlined.GraphicEq, actions.onNodePlanner)
+                        NavigationRow(stringResource(R.string.explore_node_check), stringResource(R.string.explore_is_your_node_getting_out_check_any_node), Icons.Outlined.Verified, actions.onNodeCheck)
                     }
                 }
             }
@@ -170,8 +174,8 @@ fun ExploreScreen(model: ExploreViewModel?, host: String, snapshot: AnalyzerSnap
                         Icon(Icons.Outlined.Star, contentDescription = null, modifier = Modifier.size(24.dp),
                             tint = Color(0xFFE0A100))
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                            Text("Favorites", style = MaterialTheme.typography.titleMedium)
-                            Text("${favorites.size} saved items · View activity", style = MaterialTheme.typography.bodyMedium,
+                            Text(stringResource(R.string.explore_favorites), style = MaterialTheme.typography.titleMedium)
+                            Text(pluralStringResource(R.plurals.explore_saved_items_view_activity, favorites.size, favorites.size), style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Icon(Icons.Outlined.ChevronRight, contentDescription = null, modifier = Modifier.size(18.dp),
@@ -182,30 +186,30 @@ fun ExploreScreen(model: ExploreViewModel?, host: String, snapshot: AnalyzerSnap
             if (favorites.isEmpty() && recent.isEmpty()) item {
                 Column(Modifier.fillMaxWidth().padding(vertical = 20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Icon(Icons.Outlined.Explore, null, Modifier.size(40.dp), tint = MaterialTheme.colorScheme.primary)
-                    Text("Explore Your Mesh", style = MaterialTheme.typography.titleLarge)
-                    Text("Search for nodes, observers, and channels, then save the ones you want to follow.", style = MaterialTheme.typography.bodyMedium,
+                    Text(stringResource(R.string.explore_explore_your_mesh), style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(R.string.explore_search_for_nodes_observers_and_channels_then_save), style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                    Button(onClick = { searching = true }) { Text("Search the Network") }
-                    TextButton(onClick = actions.onMap) { Text("Open Map") }
-                    TextButton(onClick = actions.onChannels) { Text("Browse Channels") }
-                    TextButton(onClick = { actions.onObservers(false) }) { Text("Browse Observers") }
+                    Button(onClick = { searching = true }) { Text(stringResource(R.string.explore_search_the_network)) }
+                    TextButton(onClick = actions.onMap) { Text(stringResource(R.string.explore_open_map)) }
+                    TextButton(onClick = actions.onChannels) { Text(stringResource(R.string.explore_browse_channels)) }
+                    TextButton(onClick = { actions.onObservers(false) }) { Text(stringResource(R.string.explore_browse_observers)) }
                 }
             }
             if (recent.isNotEmpty()) {
                 item(key = "recent-header") {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Recently Viewed", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                        TextButton(onClick = library::clearRecent) { Text("Clear") }
+                        Text(stringResource(R.string.explore_recently_viewed), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                        TextButton(onClick = library::clearRecent) { Text(stringResource(R.string.explore_clear)) }
                     }
                 }
                 items(if (showsAllRecent) recent else recent.take(COLLAPSED_RECENT_COUNT), key = { "recent-${it.key}" }) { item ->
                     SavedRow(item, now = now, current = currentNode(item, nodes), onOpen = { open(item, actions) }) {
-                        IconButton(onClick = { library.removeRecent(item) }) { Icon(Icons.Outlined.Close, "Remove ${item.title} from recent") }
+                        IconButton(onClick = { library.removeRecent(item) }) { Icon(Icons.Outlined.Close, stringResource(R.string.explore_remove_from_recent, item.title)) }
                     }
                 }
                 if (recent.size > COLLAPSED_RECENT_COUNT) item(key = "recent-toggle") {
                     TextButton(onClick = { showsAllRecent = !showsAllRecent }) {
-                        Text(if (showsAllRecent) "Show less" else "Show all (${recent.size})")
+                        Text(if (showsAllRecent) stringResource(R.string.explore_show_less) else stringResource(R.string.explore_show_all, recent.size))
                         Icon(if (showsAllRecent) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null, Modifier.padding(start = 4.dp))
                     }
                 }
@@ -229,7 +233,7 @@ fun FavoritesScreen(model: ExploreViewModel?, host: String, snapshot: AnalyzerSn
     LaunchedEffect(nodes) { if (nodes.isNotEmpty()) library.refreshNodes(nodes) }
     if (adding) MeshModalBottomSheet(onDismissRequest = { adding = false }) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.85f)) {
-            Text("Add favorite node", Modifier.padding(horizontal = 20.dp), style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.explore_add_favorite_node), Modifier.padding(horizontal = 20.dp), style = MaterialTheme.typography.titleLarge)
             NodeBrowser(nodes, nodes.size) { key ->
                 nodes.firstOrNull { it.publicKey == key }?.let { if (!library.isFavorite(SavedKind.NODE, key)) library.toggle(it) }
                 adding = false
@@ -237,35 +241,36 @@ fun FavoritesScreen(model: ExploreViewModel?, host: String, snapshot: AnalyzerSn
         }
     }
 
+    val favoriteSections = listOf(SavedKind.CHANNEL to stringResource(R.string.explore_favorite_channels), SavedKind.NODE to stringResource(R.string.explore_favorite_nodes), SavedKind.OBSERVER to stringResource(R.string.explore_favorite_observers_2))
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) { FavoriteSourceIdentity(host, sourceName) }
-                FilledIconButton(onClick = { adding = true }) { Icon(Icons.Outlined.Add, "Add favorite node") }
+                FilledIconButton(onClick = { adding = true }) { Icon(Icons.Outlined.Add, stringResource(R.string.explore_add_favorite_node_2)) }
             }
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
                     Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
-                        NavigationRow("Activity", "Last heard and freshness for saved nodes and observers", Icons.Outlined.GraphicEq, actions.onActivity)
-                        if (!isBeacon) NavigationRow("CoreScope account", "Sync node favorites with your account on this source", Icons.Outlined.AccountCircle, actions.onAccount)
+                        NavigationRow(stringResource(R.string.explore_activity), stringResource(R.string.explore_last_heard_and_freshness_for_saved_nodes_and), Icons.Outlined.GraphicEq, actions.onActivity)
+                        if (!isBeacon) NavigationRow(stringResource(R.string.explore_corescope_account), stringResource(R.string.explore_sync_node_favorites_with_your_account_on_this), Icons.Outlined.AccountCircle, actions.onAccount)
                     }
                 }
-                Text("Device favorites and account nodes on this source. Account removals are uploaded with Sync now.",
+                Text(stringResource(R.string.explore_device_favorites_and_account_nodes_on_this_source),
                     Modifier.padding(horizontal = 4.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         if (favorites.isEmpty()) item {
-            EmptyState(Icons.Outlined.StarBorder, "No favorites yet", "Add a node here, or save observers and channels from their detail pages.")
+            EmptyState(Icons.Outlined.StarBorder, stringResource(R.string.explore_no_favorites_yet), stringResource(R.string.explore_add_a_node_here_or_save_observers_and))
         }
-        listOf(SavedKind.CHANNEL to "Favorite Channels", SavedKind.NODE to "Favorite Nodes", SavedKind.OBSERVER to "Favorite Observers").forEach { (kind, title) ->
+        favoriteSections.forEach { (kind, title) ->
             val items = favorites.filter { it.kind == kind }
             if (items.isNotEmpty()) {
                 item(key = "header-$kind") {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         SectionLabel(title, Modifier.weight(1f))
-                        if (items.count { library.isDeviceFavorite(it) } > 1) TextButton(onClick = { editing = !editing }) { Text(if (editing) "Done" else "Reorder") }
+                        if (items.count { library.isDeviceFavorite(it) } > 1) TextButton(onClick = { editing = !editing }) { Text(if (editing) stringResource(R.string.common_done_2) else stringResource(R.string.explore_reorder)) }
                     }
                 }
                 items(items, key = { "favorite-${it.key}" }) { item ->
@@ -277,8 +282,8 @@ fun FavoritesScreen(model: ExploreViewModel?, host: String, snapshot: AnalyzerSn
                             if (editing && device) {
                                 val deviceItems = items.filter { library.isDeviceFavorite(it) }
                                 val index = deviceItems.indexOf(item)
-                                IconButton(onClick = { library.moveFavorite(item, -1) }, enabled = index > 0) { Icon(Icons.Outlined.KeyboardArrowUp, "Move ${item.title} up") }
-                                IconButton(onClick = { library.moveFavorite(item, 1) }, enabled = index < deviceItems.lastIndex) { Icon(Icons.Outlined.KeyboardArrowDown, "Move ${item.title} down") }
+                                IconButton(onClick = { library.moveFavorite(item, -1) }, enabled = index > 0) { Icon(Icons.Outlined.KeyboardArrowUp, stringResource(R.string.explore_move_up, item.title)) }
+                                IconButton(onClick = { library.moveFavorite(item, 1) }, enabled = index < deviceItems.lastIndex) { Icon(Icons.Outlined.KeyboardArrowDown, stringResource(R.string.explore_move_down, item.title)) }
                             } else if (device || account) {
                                 // One membership removes directly, like the star elsewhere; both ask which to remove.
                                 var choosing by remember { mutableStateOf(false) }
@@ -291,14 +296,14 @@ fun FavoritesScreen(model: ExploreViewModel?, host: String, snapshot: AnalyzerSn
                                         }
                                     }) {
                                         Icon(Icons.Outlined.Star, when {
-                                            device && account -> "Remove favorite ${item.title} from device or account"
-                                            device -> "Remove favorite ${item.title}"
-                                            else -> "Remove account favorite ${item.title}"
+                                            device && account -> stringResource(R.string.explore_remove_favorite_from_device_or_account, item.title)
+                                            device -> stringResource(R.string.explore_remove_favorite, item.title)
+                                            else -> stringResource(R.string.explore_remove_account_favorite_2, item.title)
                                         }, tint = Color(0xFFE0A100))
                                     }
                                     DropdownMenu(expanded = choosing, onDismissRequest = { choosing = false }) {
-                                        DropdownMenuItem(text = { Text("Remove from device") }, onClick = { choosing = false; library.removeFavorite(item) })
-                                        DropdownMenuItem(text = { Text("Remove from account") }, onClick = { choosing = false; library.removeAccountFavorite(item) })
+                                        DropdownMenuItem(text = { Text(stringResource(R.string.explore_remove_from_device)) }, onClick = { choosing = false; library.removeFavorite(item) })
+                                        DropdownMenuItem(text = { Text(stringResource(R.string.explore_remove_from_account)) }, onClick = { choosing = false; library.removeAccountFavorite(item) })
                                     }
                                 }
                             }
@@ -325,20 +330,20 @@ private fun GlanceCard(metrics: List<Pair<GlanceMetric, GlanceValue>>, loading: 
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Network at a Glance", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.explore_network_at_a_glance), style = MaterialTheme.typography.titleMedium)
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Icon(Icons.Outlined.Public, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("Entire network", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.explore_entire_network), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 if (loading) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                 var open by remember { mutableStateOf(false) }
                 Box {
-                    IconButton(onClick = { open = true }) { Icon(Icons.Outlined.MoreVert, "Network summary actions") }
+                    IconButton(onClick = { open = true }) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.explore_network_summary_actions)) }
                     DropdownMenu(open, { open = false }) {
-                        DropdownMenuItem(text = { Text("Customize dashboard") }, leadingIcon = { Icon(Icons.Outlined.Tune, null) }, onClick = { open = false; onCustomize() })
-                        DropdownMenuItem(text = { Text("Export CSV") }, leadingIcon = { Icon(Icons.Outlined.TableChart, null) }, onClick = { open = false; onExportCsv() })
-                        DropdownMenuItem(text = { Text("Export JSON") }, leadingIcon = { Icon(Icons.Outlined.DataObject, null) }, onClick = { open = false; onExportJson() })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.explore_customize_dashboard)) }, leadingIcon = { Icon(Icons.Outlined.Tune, null) }, onClick = { open = false; onCustomize() })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.explore_export_csv)) }, leadingIcon = { Icon(Icons.Outlined.TableChart, null) }, onClick = { open = false; onExportCsv() })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.explore_export_json)) }, leadingIcon = { Icon(Icons.Outlined.DataObject, null) }, onClick = { open = false; onExportJson() })
                     }
                 }
             }
@@ -351,7 +356,7 @@ private fun GlanceCard(metrics: List<Pair<GlanceMetric, GlanceValue>>, loading: 
                             GlanceMetric.PACKETS -> actions.onPackets
                             GlanceMetric.AVERAGE_SNR -> null
                         }
-                        MetricTile(metric.title, value, metric.tone(), Modifier.weight(1f), action)
+                        MetricTile(stringResource(metric.titleRes), value, metric.tone(), Modifier.weight(1f), action)
                     }
                     if (row.size == 1) Spacer(Modifier.weight(1f))
                 }
@@ -366,7 +371,7 @@ private fun MetricTile(label: String, value: GlanceValue, tone: GlanceTone, modi
     val color = if (MaterialTheme.colorScheme.surface.luminance() < 0.3f) tone.dark else tone.light
     val shape = MaterialTheme.shapes.medium
     Column(modifier.clip(shape)
-        .let { if (onClick != null) it.clickable(onClickLabel = "Open $label", onClick = onClick) else it }
+        .let { if (onClick != null) it.clickable(onClickLabel = stringResource(R.string.explore_open, label), onClick = onClick) else it }
         .padding(horizontal = 8.dp, vertical = 6.dp).semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text(value.value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = color, maxLines = 1)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -400,7 +405,7 @@ private fun SavedRow(item: SavedItem, now: Long?, current: MeshNode?, onOpen: ()
             Column(Modifier.weight(1f)) {
                 Text(current?.displayName?.takeIf { current.name != null } ?: item.title, style = MaterialTheme.typography.titleSmall)
                 // Without a time this is the favorites list, whose subtitle is a key, observer code or sender: data, in Neon.
-                Text(listOfNotNull(item.subtitle, now?.let { relativeTime(java.time.Instant.ofEpochMilli(item.at), it) }).joinToString(" · "),
+                Text(listOfNotNull(item.subtitleText?.asString(), now?.let { relativeTime(java.time.Instant.ofEpochMilli(item.at), it) }).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = if (now == null) MonaspaceNeon else null)
                 detail?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -416,21 +421,21 @@ private fun CustomizeSheet(preferences: GlancePreferences, onChange: (GlancePref
     MeshModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Customize dashboard", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
-                TextButton(onClick = { onChange(GlancePreferences()) }) { Text("Reset") }
+                Text(stringResource(R.string.explore_customize_dashboard), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+                TextButton(onClick = { onChange(GlancePreferences()) }) { Text(stringResource(R.string.explore_reset)) }
             }
-            SectionLabel("Dashboard metrics")
+            SectionLabel(stringResource(R.string.explore_dashboard_metrics))
             val order = preferences.normalized().order
             val visibleCount = order.count { it !in preferences.hidden }
             order.forEachIndexed { index, metric ->
                 val shown = metric !in preferences.hidden
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(metric.title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                    Text(stringResource(metric.titleRes), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                     IconButton(onClick = { onChange(preferences.copy(order = order.toMutableList().apply { add(index - 1, removeAt(index)) })) }, enabled = index > 0) {
-                        Icon(Icons.Outlined.KeyboardArrowUp, "Move ${metric.title} up")
+                        Icon(Icons.Outlined.KeyboardArrowUp, stringResource(R.string.explore_move_up, stringResource(metric.titleRes)))
                     }
                     IconButton(onClick = { onChange(preferences.copy(order = order.toMutableList().apply { add(index + 1, removeAt(index)) })) }, enabled = index < order.lastIndex) {
-                        Icon(Icons.Outlined.KeyboardArrowDown, "Move ${metric.title} down")
+                        Icon(Icons.Outlined.KeyboardArrowDown, stringResource(R.string.explore_move_down, stringResource(metric.titleRes)))
                     }
                     // At least one metric always stays visible, as on iOS.
                     Switch(checked = shown, enabled = !shown || visibleCount > 1, onCheckedChange = { on ->
@@ -438,7 +443,7 @@ private fun CustomizeSheet(preferences: GlancePreferences, onChange: (GlancePref
                     })
                 }
             }
-            Text("Reorder metrics and hide the ones you don't need.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.explore_reorder_metrics_and_hide_the_ones_you_don), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -458,13 +463,13 @@ private fun GlobalSearchSheet(nodes: List<MeshNode>, observers: List<MeshObserve
             LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 when {
                     trimmed.isEmpty() && library.state.searches.isEmpty() -> item {
-                        EmptyState(Icons.Outlined.Search, "Search the Network", "Find nodes, observers, channels, public keys, and packet hashes.")
+                        EmptyState(Icons.Outlined.Search, stringResource(R.string.explore_search_the_network_4), stringResource(R.string.explore_find_nodes_observers_channels_public_keys_and_packet))
                     }
                     trimmed.isEmpty() -> {
                         item {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                SectionLabel("Recent searches", Modifier.weight(1f))
-                                TextButton(onClick = library::clearSearches) { Text("Clear") }
+                                SectionLabel(stringResource(R.string.explore_recent_searches), Modifier.weight(1f))
+                                TextButton(onClick = library::clearSearches) { Text(stringResource(R.string.explore_clear)) }
                             }
                         }
                         items(library.state.searches, key = { "search-$it" }) { past ->
@@ -472,36 +477,36 @@ private fun GlobalSearchSheet(nodes: List<MeshNode>, observers: List<MeshObserve
                                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Icon(Icons.Outlined.History, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(past, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                                IconButton(onClick = { library.removeSearch(past) }) { Icon(Icons.Outlined.Close, "Remove $past") }
+                                IconButton(onClick = { library.removeSearch(past) }) { Icon(Icons.Outlined.Close, stringResource(R.string.explore_remove_2, past)) }
                             }
                         }
                     }
-                    results.isEmpty && loading -> item { LinearProgressIndicator(Modifier.fillMaxWidth()); Text("Indexing network…", Modifier.padding(top = 8.dp)) }
-                    results.isEmpty -> item { EmptyState(Icons.Outlined.SearchOff, "No results for \"$trimmed\"", "Check the spelling or try a different search.") }
+                    results.isEmpty && loading -> item { LinearProgressIndicator(Modifier.fillMaxWidth()); Text(stringResource(R.string.explore_indexing_network), Modifier.padding(top = 8.dp)) }
+                    results.isEmpty -> item { EmptyState(Icons.Outlined.SearchOff, stringResource(R.string.explore_no_results_for, trimmed), stringResource(R.string.explore_check_the_spelling_or_try_a_different_search)) }
                     else -> {
                         if (results.channels.isNotEmpty()) {
-                            item { SectionLabel("Channels") }
+                            item { SectionLabel(stringResource(R.string.explore_channels)) }
                             items(results.channels, key = { "c-${it.hash}" }) { channel ->
                                 ResultRow(SavedKind.CHANNEL, null, channel.name, channel.lastSender ?: channel.lastMessage,
                                     library.isFavorite(SavedKind.CHANNEL, channel.id), { library.toggle(channel) }) { choose { actions.onChannel(channel.id, channel.name) } }
                             }
                         }
                         if (results.nodes.isNotEmpty()) {
-                            item { SectionLabel("Nodes") }
+                            item { SectionLabel(stringResource(R.string.explore_nodes)) }
                             items(results.nodes, key = { "n-${it.publicKey}" }) { node ->
-                                ResultRow(SavedKind.NODE, node, node.name ?: "Unnamed node", "${node.role.replaceFirstChar { it.uppercase() }} · ${node.publicKey.take(12).uppercase()}",
+                                ResultRow(SavedKind.NODE, node, node.name ?: stringResource(R.string.explore_unnamed_node), "${nodeRoleLabel(node.role)} · ${node.publicKey.take(12).uppercase()}",
                                     library.isFavorite(SavedKind.NODE, node.publicKey), { library.toggle(node) }) { choose { actions.onNode(node.publicKey) } }
                             }
                         }
                         if (results.observers.isNotEmpty()) {
-                            item { SectionLabel("Observers") }
+                            item { SectionLabel(stringResource(R.string.explore_observers)) }
                             items(results.observers, key = { "o-${it.id}" }) { observer ->
-                                ResultRow(SavedKind.OBSERVER, null, observer.name ?: "Unnamed observer", listOfNotNull(observer.iata, observer.model, observer.id.take(12)).joinToString(" · "),
+                                ResultRow(SavedKind.OBSERVER, null, observer.name ?: stringResource(R.string.explore_unnamed_observer), listOfNotNull(observer.iata, observer.model, observer.id.take(12)).joinToString(" · "),
                                     library.isFavorite(SavedKind.OBSERVER, observer.id), { library.toggle(observer) }) { choose { actions.onObserver(observer.id, observer.displayName) } }
                             }
                         }
                         if (results.packets.isNotEmpty()) {
-                            item { SectionLabel("Packets") }
+                            item { SectionLabel(stringResource(R.string.explore_packets)) }
                             items(results.packets, key = { "p-${it.hash}-${it.id}" }) { packet ->
                                 ResultRow(SavedKind.PACKET, null, packet.typeName, packet.hash, null, null) {
                                     choose { actions.onPacket(packet.hash, packet.payloadName ?: "", packet.payloadText ?: "") }
@@ -517,9 +522,9 @@ private fun GlobalSearchSheet(nodes: List<MeshNode>, observers: List<MeshObserve
 
 @Composable
 private fun BrowseSearchFieldWithSubmit(query: String, onQuery: (String) -> Unit, onSubmit: () -> Unit) {
-    TextField(query, onQuery, singleLine = true, shape = MaterialTheme.shapes.large, placeholder = { Text("Search the network") },
+    TextField(query, onQuery, singleLine = true, shape = MaterialTheme.shapes.large, placeholder = { Text(stringResource(R.string.explore_search_the_network_2)) },
         leadingIcon = { Icon(Icons.Outlined.Search, null) },
-        trailingIcon = { if (query.isNotEmpty()) IconButton(onClick = { onQuery("") }) { Icon(Icons.Outlined.Close, "Clear search") } },
+        trailingIcon = { if (query.isNotEmpty()) IconButton(onClick = { onQuery("") }) { Icon(Icons.Outlined.Close, stringResource(R.string.explore_clear_search)) } },
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search), keyboardActions = KeyboardActions(onSearch = { onSubmit() }),
         colors = TextFieldDefaults.colors(focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
             focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer, unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer),
@@ -536,7 +541,7 @@ private fun ResultRow(kind: SavedKind, node: MeshNode?, title: String, subtitle:
             subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
         if (favorite != null && onFavorite != null) IconButton(onClick = onFavorite) {
-            Icon(if (favorite) Icons.Outlined.Star else Icons.Outlined.StarBorder, if (favorite) "Remove $title from favorites" else "Add $title to favorites",
+            Icon(if (favorite) Icons.Outlined.Star else Icons.Outlined.StarBorder, if (favorite) stringResource(R.string.explore_remove_from_favorites, title) else stringResource(R.string.explore_add_to_favorites, title),
                 tint = if (favorite) Color(0xFFE0A100) else MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.explore
 
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -191,14 +193,14 @@ fun FavoriteChangesScreen(host: String, sourceName: String?, library: NodeLibrar
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     FavoriteSourceIdentity(host, sourceName)
                     Row {
-                        Text("Activity since your last review", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.explore_activity_since_your_last_review), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                         IconButton(onClick = { model.refresh(true) }, enabled = !model.loading) {
-                            Icon(Icons.Outlined.Refresh, "Refresh")
+                            Icon(Icons.Outlined.Refresh, stringResource(R.string.refresh))
                         }
                     }
-                    Text("Compares saved nodes and observers using the 15-minute recently-heard window. Silence does not mean offline.",
+                    Text(stringResource(R.string.explore_compares_saved_nodes_and_observers_using_the_15),
                         style = MaterialTheme.typography.bodyMedium)
-                    Text("Fresh comparisons you view become the baseline for your next visit. History expires after 7 days.",
+                    Text(stringResource(R.string.explore_fresh_comparisons_you_view_become_the_baseline_for),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (model.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                     model.error?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
@@ -206,7 +208,7 @@ fun FavoriteChangesScreen(host: String, sourceName: String?, library: NodeLibrar
             }
         }
         if (items.isEmpty()) item {
-            Text("No favorites to compare. Save nodes or observers in Favorites to follow changes here.")
+            Text(stringResource(R.string.explore_no_favorites_to_compare_save_nodes_or_observers))
         }
         items(model.rows, key = { it.id }) { row ->
             Card(colors = meshCardColors()) {
@@ -215,29 +217,29 @@ fun FavoriteChangesScreen(host: String, sourceName: String?, library: NodeLibrar
                     Text(row.message, style = MaterialTheme.typography.bodyMedium)
                     row.metric?.activity?.let {
                         Text(when (it.state) {
-                            MyNodesActivityState.RECENTLY_HEARD -> "Recently heard"
-                            MyNodesActivityState.NOT_RECENTLY_HEARD -> "Not recently heard"
-                            else -> "Activity unknown"
+                            MyNodesActivityState.RECENTLY_HEARD -> stringResource(R.string.explore_recently_heard)
+                            MyNodesActivityState.NOT_RECENTLY_HEARD -> stringResource(R.string.explore_not_recently_heard)
+                            else -> stringResource(R.string.explore_activity_unknown_2)
                         }, style = MaterialTheme.typography.bodyMedium)
                     }
                     row.metric?.observer?.let {
                         Text(when (it.state) {
-                            MyNodesObserverStatus.State.ACTIVE -> "Recently seen"
-                            MyNodesObserverStatus.State.INACTIVE -> "Not recently seen"
-                            else -> "Observer activity unknown"
+                            MyNodesObserverStatus.State.ACTIVE -> stringResource(R.string.explore_recently_seen)
+                            MyNodesObserverStatus.State.INACTIVE -> stringResource(R.string.explore_not_recently_seen)
+                            else -> stringResource(R.string.explore_observer_activity_unknown)
                         }, style = MaterialTheme.typography.bodyMedium)
                     }
-                    row.previousAt?.let { Text("Last reviewed: ${formatReviewDate(it)}", style = MaterialTheme.typography.bodySmall) }
-                    row.metric?.fetchedAt?.let { Text("Checked: ${formatReviewDate(it)}", style = MaterialTheme.typography.bodySmall) }
+                    row.previousAt?.let { Text(stringResource(R.string.explore_last_reviewed, formatReviewDate(it)), style = MaterialTheme.typography.bodySmall) }
+                    row.metric?.fetchedAt?.let { Text(stringResource(R.string.explore_checked, formatReviewDate(it)), style = MaterialTheme.typography.bodySmall) }
                     if (row.result.state == MyNodesReviewResult.State.UNAVAILABLE) {
-                        Text("A fresh successful check and comparable history are required. Missing or cached evidence is not an unchanged result.",
+                        Text(stringResource(R.string.explore_a_fresh_successful_check_and_comparable_history_are),
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
         }
         if (items.isNotEmpty()) item {
-            OutlinedButton(onClick = { model.refresh(false) }, enabled = !model.loading) { Text("Load More") }
+            OutlinedButton(onClick = { model.refresh(false) }, enabled = !model.loading) { Text(stringResource(R.string.explore_load_more)) }
         }
     }
 }

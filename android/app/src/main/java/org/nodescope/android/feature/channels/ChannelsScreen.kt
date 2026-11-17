@@ -1,5 +1,8 @@
 package org.nodescope.android.feature.channels
 
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.meshCardColors
 import org.nodescope.android.core.network.BackendCapability
@@ -67,51 +70,52 @@ fun ChannelsScreen(
     // shows (iOS), not the server's network-wide latest.
     LaunchedEffect(selection, loaded, feed.observers) { if (!beacon) model.loadRegionalPreviews(selection, loaded, feed.observers) }
     val previews by model.regionalPreviews.collectAsStateWithLifecycle()
-    val server = remember(loaded, previews, selection.region) {
+    val noRegionalMessages = stringResource(R.string.channels_no_regional_messages)
+    val server = remember(loaded, previews, selection.region, noRegionalMessages) {
         if (selection.region == null || previews.isEmpty()) loaded else loaded.map { channel ->
             val preview = previews[channel.id] ?: return@map channel
             val message = preview.message
-            channel.copy(lastMessage = message?.text ?: "No recent messages from this region",
+            channel.copy(lastMessage = message?.text ?: noRegionalMessages,
                 lastSender = message?.sender, lastActivity = message?.timestamp?.toString() ?: channel.lastActivity)
         }
     }
     val filters = ChannelFilters(source, activity, sort, query)
     val sections = remember(server, monitored, summaries, filters, now) { channelSections(server, monitored, summaries, filters, now) }
 
-    if (showFilters) FilterSheet("Channel filters", regionControl, listOf(
-        FilterGroup("Source", ChannelSource.entries, source, { it.title }) { source = it },
-        FilterGroup("Activity", ChannelActivity.entries, activity, { it.title }) { activity = it },
-        FilterGroup("Sort by", ChannelSort.entries, sort, { it.title }) { sort = it },
+    if (showFilters) FilterSheet(stringResource(R.string.channels_channel_filters), regionControl, listOf(
+        FilterGroup(stringResource(R.string.channels_source), ChannelSource.entries, source, { stringResource(it.titleRes) }) { source = it },
+        FilterGroup(stringResource(R.string.channels_activity), ChannelActivity.entries, activity, { stringResource(it.titleRes) }) { activity = it },
+        FilterGroup(stringResource(R.string.channels_sort_by), ChannelSort.entries, sort, { stringResource(it.titleRes) }) { sort = it },
     ), onReset = { source = ChannelSource.ALL; activity = ChannelActivity.ALL; sort = ChannelSort.RECENT; onClearRegion() }) { showFilters = false }
 
-    val summary = (listOf(selection.region ?: "Entire network") +
-        listOfNotNull(source.takeIf { it != ChannelSource.ALL }?.title, activity.takeIf { it != ChannelActivity.ALL }?.title,
-            sort.takeIf { it != ChannelSort.RECENT }?.title)).joinToString(" · ")
+    val summary = (listOf(selection.region ?: stringResource(R.string.channels_entire_network_2)) +
+        listOfNotNull(source.takeIf { it != ChannelSource.ALL }?.let { stringResource(it.titleRes) }, activity.takeIf { it != ChannelActivity.ALL }?.let { stringResource(it.titleRes) },
+            sort.takeIf { it != ChannelSort.RECENT }?.let { stringResource(it.titleRes) })).joinToString(" · ")
 
     PullToRefreshBox(isRefreshing = channelState.loading && server.isNotEmpty(), onRefresh = ::refresh, modifier = Modifier.fillMaxSize()) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item {
-                BrowseHeader("Channels", feed.connection, "Live mesh traffic", summary,
+                BrowseHeader(stringResource(R.string.channels_channels), feed.connection, stringResource(R.string.channels_live_mesh_traffic), summary,
                     filters.activeCount + (if (selection.region != null) 1 else 0), searching,
                     onFilters = { showFilters = true }, onSearch = { searching = !searching; if (!searching) query = "" }) {
-                    FilledIconButton(onClick = onAdd) { Icon(Icons.Outlined.Add, "Add channel") }
+                    FilledIconButton(onClick = onAdd) { Icon(Icons.Outlined.Add, stringResource(R.string.channels_add_channel)) }
                 }
             }
-            if (searching) item { BrowseSearchField(query, { query = it }, "Search channels") }
+            if (searching) item { BrowseSearchField(query, { query = it }, stringResource(R.string.channels_search_channels)) }
             if (model.monitor.recoveryNeeded) item {
-                Text("Previously monitored channels couldn't be unlocked on this device. Add them again to keep listening.",
+                Text(stringResource(R.string.channels_previously_monitored_channels_couldn_t_be_unlocked_on),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
             item { LoadStatus(channelState, server.isNotEmpty(), now, ::refresh) }
             if (beacon) item { BeaconFeatureNotice(BackendCapability.CHANNEL_DECRYPT_ON_PHONE) }
             if (sections.monitored.isNotEmpty()) {
-                item { SectionLabel("Monitoring on this device · ${sections.monitored.size}") }
+                item { SectionLabel(stringResource(R.string.channels_monitoring_on_this_device, sections.monitored.size)) }
                 items(sections.monitored, key = { it.id }) { ChannelCard(it, now, it.id == selectedId) { onChannel(it) } }
             }
             if (sections.server.isNotEmpty()) {
                 item {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        SectionLabel("Server monitored channels")
+                        SectionLabel(stringResource(R.string.channels_server_monitored_channels))
                         LearnButton(GlossaryTerm.CHANNEL, Modifier.padding(top = 8.dp))
                     }
                 }
@@ -121,8 +125,8 @@ fun ChannelsScreen(
             // and "No channels yet" flashed on every visit.
             if (sections.isEmpty && !channelState.loading && channelState.updatedAt != null && channelState.error == null) item {
                 EmptyState(if (query.isBlank()) Icons.Outlined.Tag else Icons.Outlined.SearchOff,
-                    if (query.isBlank()) "No channels yet" else "No matching channels",
-                    if (query.isBlank()) "Channels appear as your analyzer hears group messages. You can also add a hashtag or private channel." else "Try a different search or filter.")
+                    if (query.isBlank()) stringResource(R.string.channels_no_channels_yet) else stringResource(R.string.channels_no_matching_channels),
+                    if (query.isBlank()) stringResource(R.string.channels_channels_appear_as_your_analyzer_hears_group_messages) else stringResource(R.string.channels_try_a_different_search_or_filter))
             }
         }
     }
@@ -184,8 +188,8 @@ private fun ChannelCard(row: ChannelRow, now: Long, isSelected: Boolean, onClick
                         color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
                 listOfNotNull(
-                    row.messageCount?.let { "$it message${if (it == 1) "" else "s"}" },
-                    if (row.monitored) "On this device" else null,
+                    row.messageCount?.let { pluralStringResource(R.plurals.channels_message_count, it, it) },
+                    if (row.monitored) stringResource(R.string.channels_on_this_device) else null,
                 ).takeIf { it.isNotEmpty() }?.let { parts ->
                     Text(parts.joinToString(" · "), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)

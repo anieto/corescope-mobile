@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.settings
 
+import androidx.compose.ui.platform.LocalResources
+import org.nodescope.android.core.design.withDescription
 import androidx.compose.ui.platform.LocalContext
 import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.meshCardColors
@@ -51,6 +53,7 @@ fun SettingsScreen(
     /** Shows this build's highlights again; null hides the row. */
     whatsNewVersion: String? = null, onWhatsNew: () -> Unit = {},
 ) {
+    val resources = LocalResources.current
     // After an analyzer change, report whether the new source connects (as iOS does).
     var status by remember { mutableStateOf<SourceStatus?>(null) }
     val currentConnection by rememberUpdatedState(connection)
@@ -61,10 +64,10 @@ fun SettingsScreen(
         status = SourceStatus.Connecting
         while (System.currentTimeMillis() - changedAt < 8_000) {
             if (currentConnection == LiveConnection.LIVE) { status = SourceStatus.Connected; delay(2_000); status = null; return@LaunchedEffect }
-            currentError?.let { status = SourceStatus.Failed("Couldn't connect: $it"); delay(4_000); status = null; return@LaunchedEffect }
+            currentError?.let { status = SourceStatus.Failed(resources.getString(R.string.settings_couldn_t_connect, it)); delay(4_000); status = null; return@LaunchedEffect }
             delay(100)
         }
-        status = SourceStatus.Failed("Couldn't connect to ${preferences.host}.")
+        status = SourceStatus.Failed(resources.getString(R.string.settings_couldn_t_connect_to, preferences.host))
         delay(4_000)
         status = null
     }
@@ -76,74 +79,74 @@ fun SettingsScreen(
                     Text(stringResource(R.string.settings), style = MaterialTheme.typography.headlineLarge)
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Box(Modifier.size(7.dp).background(statusAccent(connection == LiveConnection.LIVE), CircleShape))
-                        Text(connectionLabel(connection, "Analyzer connected"), style = MaterialTheme.typography.labelMedium,
+                        Text(connectionLabel(connection, stringResource(R.string.settings_analyzer_connected)), style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
             item {
-                Panel("Display", Icons.Outlined.Contrast) {
-                    CaptionedChoice("Appearance") {
+                Panel(stringResource(R.string.settings_display), Icons.Outlined.Contrast) {
+                    CaptionedChoice(stringResource(R.string.settings_appearance)) {
                         AdaptiveChoiceRow(Appearance.entries, preferences.appearance, label = { mode ->
                             stringResource(when (mode) { Appearance.SYSTEM -> R.string.system; Appearance.LIGHT -> R.string.light; Appearance.DARK -> R.string.dark })
                         }, onSelect = onAppearance)
                     }
-                    CaptionedChoice("Units") {
+                    CaptionedChoice(stringResource(R.string.settings_units)) {
                         AdaptiveChoiceRow(DistanceUnit.entries, preferences.distanceUnit, label = { unit ->
-                            when (unit) { DistanceUnit.IMPERIAL -> "Imperial (mi)"; DistanceUnit.METRIC -> "Metric (km)" }
+                            when (unit) { DistanceUnit.IMPERIAL -> stringResource(R.string.settings_imperial_mi); DistanceUnit.METRIC -> stringResource(R.string.settings_metric_km) }
                         }, onSelect = onDistanceUnit)
                     }
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("Background Texture", style = MaterialTheme.typography.titleSmall)
-                            Text("Show decorative lines and nodes", style = MaterialTheme.typography.bodySmall,
+                            Text(stringResource(R.string.settings_background_texture), style = MaterialTheme.typography.titleSmall)
+                            Text(stringResource(R.string.settings_show_decorative_lines_and_nodes), style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Switch(checked = preferences.backgroundTexture, onCheckedChange = onBackgroundTexture,
-                            modifier = Modifier.semantics { contentDescription = "Background Texture" })
+                            modifier = Modifier.withDescription(stringResource(R.string.settings_background_texture)) { description -> contentDescription = description })
                     }
                     val context = LocalContext.current
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("Term explanations", style = MaterialTheme.typography.titleSmall)
-                            Text("Show ⓘ beside terms like SNR and hops.", style = MaterialTheme.typography.bodySmall,
+                            Text(stringResource(R.string.settings_term_explanations), style = MaterialTheme.typography.titleSmall)
+                            Text(stringResource(R.string.settings_show_beside_terms_like_snr_and_hops), style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Switch(checked = org.nodescope.android.feature.learn.LearnSettings.showsExplanations(context),
                             onCheckedChange = { org.nodescope.android.feature.learn.LearnSettings.setShowsExplanations(context, it) },
-                            modifier = Modifier.semantics { contentDescription = "Term explanations" })
+                            modifier = Modifier.withDescription(stringResource(R.string.settings_term_explanations)) { description -> contentDescription = description })
                     }
                 }
             }
             item {
                 // Options that only change the live map (iOS Settings → Live Map).
                 val context = LocalContext.current
-                Panel("Live Map", Icons.Outlined.Map) {
+                Panel(stringResource(R.string.settings_live_map), Icons.Outlined.Map) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("Group Nearby Nodes", style = MaterialTheme.typography.titleSmall)
-                            Text("Combine close nodes into numbered bubbles when zoomed out. On a large mesh, turning this off can make the map lag when you pan or tap a node.",
+                            Text(stringResource(R.string.settings_group_nearby_nodes), style = MaterialTheme.typography.titleSmall)
+                            Text(stringResource(R.string.settings_combine_close_nodes_into_numbered_bubbles_when_zoomed),
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Switch(checked = org.nodescope.android.feature.map.LiveMapSettings.groupsNodes(context),
                             onCheckedChange = { org.nodescope.android.feature.map.LiveMapSettings.setGroupsNodes(context, it) },
-                            modifier = Modifier.semantics { contentDescription = "Group Nearby Nodes" })
+                            modifier = Modifier.withDescription(stringResource(R.string.settings_group_nearby_nodes)) { description -> contentDescription = description })
                     }
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("Realistic Propagation", style = MaterialTheme.typography.titleSmall)
-                            Text("Collect a packet's reports from different observers for a few seconds, then animate its paths together. Runs slightly behind live; the analyzer sets the delay.",
+                            Text(stringResource(R.string.settings_realistic_propagation), style = MaterialTheme.typography.titleSmall)
+                            Text(stringResource(R.string.settings_collect_a_packet_s_reports_from_different_observers),
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Switch(checked = org.nodescope.android.feature.map.LiveMapSettings.realisticPropagation(context),
                             onCheckedChange = { org.nodescope.android.feature.map.LiveMapSettings.setRealisticPropagation(context, it) },
-                            modifier = Modifier.semantics { contentDescription = "Realistic Propagation" })
+                            modifier = Modifier.withDescription(stringResource(R.string.settings_realistic_propagation)) { description -> contentDescription = description })
                     }
                 }
             }
             item {
-                Panel("Analyzer", Icons.Outlined.Dns) {
-                    NavigationRow("Choose source", preferences.host, Icons.Outlined.Hub, onSource)
+                Panel(stringResource(R.string.settings_analyzer), Icons.Outlined.Dns) {
+                    NavigationRow(stringResource(R.string.settings_choose_source), preferences.host, Icons.Outlined.Hub, onSource)
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         val live = connection == LiveConnection.LIVE
                         Box(Modifier.size(32.dp).background((statusAccent(live)).copy(alpha = 0.14f), MaterialTheme.shapes.small),
@@ -152,39 +155,39 @@ fun SettingsScreen(
                         }
                         Column(Modifier.weight(1f)) {
                             Text(when (connection) {
-                                LiveConnection.LIVE -> "Connected"; LiveConnection.CONNECTING -> "Connecting…"
-                                LiveConnection.RECONNECTING -> "Reconnecting…"; LiveConnection.PAUSED -> "Paused"
+                                LiveConnection.LIVE -> stringResource(R.string.settings_connected); LiveConnection.CONNECTING -> stringResource(R.string.settings_connecting)
+                                LiveConnection.RECONNECTING -> stringResource(R.string.settings_reconnecting); LiveConnection.PAUSED -> stringResource(R.string.settings_paused)
                             }, style = MaterialTheme.typography.titleSmall)
                             Text(sessionError ?: when (connection) {
-                                LiveConnection.LIVE -> "Receiving live updates"
-                                LiveConnection.CONNECTING -> "Opening the live connection"
-                                LiveConnection.RECONNECTING -> "Trying to restore live updates"
-                                LiveConnection.PAUSED -> "Live updates are paused"
+                                LiveConnection.LIVE -> stringResource(R.string.settings_receiving_live_updates)
+                                LiveConnection.CONNECTING -> stringResource(R.string.settings_opening_the_live_connection)
+                                LiveConnection.RECONNECTING -> stringResource(R.string.settings_trying_to_restore_live_updates)
+                                LiveConnection.PAUSED -> stringResource(R.string.settings_live_updates_are_paused)
                             }, style = MaterialTheme.typography.labelMedium,
                                 color = if (sessionError != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
                     }
-                    LearnLabel("Choose the network you want to explore.", GlossaryTerm.ANALYZER, style = MaterialTheme.typography.bodySmall,
+                    LearnLabel(stringResource(R.string.settings_choose_the_network_you_want_to_explore), GlossaryTerm.ANALYZER, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    NavigationRow("Analyzer diagnostics", "Check connection and features", Icons.Outlined.HealthAndSafety, onDiagnostics)
+                    NavigationRow(stringResource(R.string.settings_analyzer_diagnostics), stringResource(R.string.settings_check_connection_and_features), Icons.Outlined.HealthAndSafety, onDiagnostics)
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    NavigationRow("Cache & storage", "Review or clear downloaded data", Icons.Outlined.SdStorage, onStorage)
+                    NavigationRow(stringResource(R.string.settings_cache_storage), stringResource(R.string.settings_review_or_clear_downloaded_data), Icons.Outlined.SdStorage, onStorage)
                 }
             }
             item {
-                Panel("Help & support", Icons.Outlined.HelpOutline) {
+                Panel(stringResource(R.string.settings_help_support), Icons.Outlined.HelpOutline) {
                     whatsNewVersion?.let { version ->
-                        NavigationRow("What's new", "Highlights in version $version", Icons.Outlined.AutoAwesome, onWhatsNew)
+                        NavigationRow(stringResource(R.string.settings_what_s_new), stringResource(R.string.settings_highlights_in_version, version), Icons.Outlined.AutoAwesome, onWhatsNew)
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     }
-                    NavigationRow("About & how to use", "NodeScope field guide", Icons.Outlined.Info, onAbout)
+                    NavigationRow(stringResource(R.string.settings_about_how_to_use), stringResource(R.string.settings_nodescope_field_guide), Icons.Outlined.Info, onAbout)
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    NavigationRow("Glossary", "What the terms in NodeScope mean", Icons.AutoMirrored.Outlined.MenuBook, onGlossary)
+                    NavigationRow(stringResource(R.string.settings_glossary), stringResource(R.string.settings_what_the_terms_in_nodescope_mean), Icons.AutoMirrored.Outlined.MenuBook, onGlossary)
                     onSupport?.let { open ->
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        NavigationRow("Support development", "Buy me a coffee", Icons.Outlined.Favorite, open, external = true)
+                        NavigationRow(stringResource(R.string.settings_support_development), stringResource(R.string.settings_buy_me_a_coffee), Icons.Outlined.Favorite, open, external = true)
                     }
                 }
             }
@@ -196,8 +199,8 @@ fun SettingsScreen(
             val shown = status
             val (icon, text, tone) = when (shown) {
                 is SourceStatus.Failed -> Triple(Icons.Outlined.ErrorOutline, shown.message, MaterialTheme.colorScheme.error)
-                SourceStatus.Connected -> Triple(Icons.Outlined.CheckCircle, "Connected to ${preferences.host}", statusAccent(true))
-                else -> Triple(Icons.Outlined.Sync, "Connecting to ${preferences.host}…", MaterialTheme.colorScheme.primary)
+                SourceStatus.Connected -> Triple(Icons.Outlined.CheckCircle, stringResource(R.string.settings_connected_to, preferences.host), statusAccent(true))
+                else -> Triple(Icons.Outlined.Sync, stringResource(R.string.settings_connecting_to, preferences.host), MaterialTheme.colorScheme.primary)
             }
             Surface(shape = MaterialTheme.shapes.large, shadowElevation = 6.dp, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
                 Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -259,7 +262,7 @@ fun NavigationRow(title: String, value: String, icon: ImageVector, onClick: () -
             Text(value, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         // A link that leaves the app says so instead of implying another screen.
-        Icon(if (external) Icons.AutoMirrored.Outlined.OpenInNew else Icons.Outlined.ChevronRight, if (external) "Opens in your browser" else null,
+        Icon(if (external) Icons.AutoMirrored.Outlined.OpenInNew else Icons.Outlined.ChevronRight, if (external) stringResource(R.string.settings_opens_in_your_browser) else null,
             Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

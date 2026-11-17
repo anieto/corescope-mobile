@@ -1,5 +1,8 @@
 package org.nodescope.android.feature.observers
 
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import org.nodescope.android.feature.learn.*
 import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.foundation.background
@@ -70,48 +73,48 @@ fun ObserversScreen(
     }
     val models = remember(all) { all.mapNotNull { it.model }.distinct().sorted() }
 
-    if (showFilters) FilterSheet("Observer filters", regionControl, listOf(
-        FilterGroup("Activity", ObserverActivity.entries, activity, { it.title }) { activity = it },
-        FilterGroup("Hardware", listOf(null) + models, hardware, { it ?: "All models" }) { hardware = it },
-        FilterGroup("Sort by", ObserverSort.entries, sort, { it.title }) { sort = it },
+    if (showFilters) FilterSheet(stringResource(R.string.observers_observer_filters), regionControl, listOf(
+        FilterGroup(stringResource(R.string.observers_activity), ObserverActivity.entries, activity, { stringResource(it.titleRes) }) { activity = it },
+        FilterGroup(stringResource(R.string.observers_hardware), listOf(null) + models, hardware, { it ?: stringResource(R.string.observers_all_models) }) { hardware = it },
+        FilterGroup(stringResource(R.string.observers_sort_by), ObserverSort.entries, sort, { stringResource(it.titleRes) }) { sort = it },
     ), onReset = { activity = ObserverActivity.ALL; hardware = null; sort = ObserverSort.RECENT; onClearRegion() }) { showFilters = false }
 
     val filterCount = listOf(selection.region != null, activity != ObserverActivity.ALL, hardware != null, sort != ObserverSort.RECENT).count { it }
-    val summary = (listOf(selection.region ?: "Entire network") + listOfNotNull(activity.takeIf { it != ObserverActivity.ALL }?.title,
-        hardware, sort.takeIf { it != ObserverSort.RECENT }?.title)).joinToString(" · ")
+    val summary = (listOf(selection.region ?: stringResource(R.string.observers_entire_network)) + listOfNotNull(activity.takeIf { it != ObserverActivity.ALL }?.let { stringResource(it.titleRes) },
+        hardware, sort.takeIf { it != ObserverSort.RECENT }?.let { stringResource(it.titleRes) })).joinToString(" · ")
     fun refresh() = if (beacon != null) liveActions.refreshObservers() else model.observers.load(selection.host, force = true)
 
     PullToRefreshBox(isRefreshing = beacon == null && state.loading && all.isNotEmpty(), onRefresh = ::refresh, modifier = Modifier.fillMaxSize()) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item {
-                BrowseHeader("Observers", feed.connection, "Network telemetry live", summary, filterCount, searching,
+                BrowseHeader(stringResource(R.string.observers_observers), feed.connection, stringResource(R.string.observers_network_telemetry_live), summary, filterCount, searching,
                     onFilters = { showFilters = true }, onSearch = { searching = !searching; if (!searching) query = "" },
                     titleAccessory = { LearnButton(GlossaryTerm.OBSERVER) })
             }
-            if (searching) item { BrowseSearchField(query, { query = it }, "Search name, ID, region or model") }
+            if (searching) item { BrowseSearchField(query, { query = it }, stringResource(R.string.observers_search_name_id_region_or_model)) }
             if (beaconSource) {
                 if (beacon?.observerNeedsRecovery != false) item {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Observer status may be outdated.", Modifier.weight(1f), style = MaterialTheme.typography.bodySmall,
+                        Text(stringResource(R.string.observers_observer_status_may_be_outdated), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        if (beacon?.observerRecoveryError != null) TextButton(onClick = ::refresh) { Text("Retry") }
+                        if (beacon?.observerRecoveryError != null) TextButton(onClick = ::refresh) { Text(stringResource(R.string.retry)) }
                     }
                 }
             } else item { LoadStatus(state, all.isNotEmpty(), now, ::refresh) }
             if (visible.isNotEmpty()) item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SummaryMetric("Observers", visible.size.toString(), Modifier.weight(1f))
-                    SummaryMetric("Packets / hr", observerCountTotal(visible.map { it.packetsLastHour })?.let(::compactCount) ?: "Unknown", Modifier.weight(1f))
-                    SummaryMetric("Packets", observerCountTotal(visible.map { it.packetCount })?.let(::compactCount) ?: "Unknown", Modifier.weight(1f))
+                    SummaryMetric(stringResource(R.string.observers_observers), visible.size.toString(), Modifier.weight(1f))
+                    SummaryMetric(stringResource(R.string.observers_packets_hr), observerCountTotal(visible.map { it.packetsLastHour })?.let(::compactCount) ?: stringResource(R.string.observers_unknown), Modifier.weight(1f))
+                    SummaryMetric(stringResource(R.string.observers_packets), observerCountTotal(visible.map { it.packetCount })?.let(::compactCount) ?: stringResource(R.string.observers_unknown), Modifier.weight(1f))
                 }
             }
-            if (visible.isNotEmpty()) item { SectionLabel("Observer nodes") }
+            if (visible.isNotEmpty()) item { SectionLabel(stringResource(R.string.observers_observer_nodes)) }
             items(visible, key = { it.id }) { ObserverCard(it, now, it.id == selectedId) { onObserver(it) } }
             val loaded = if (beaconSource) beacon?.observerCatalog != null && !beacon.observerNeedsRecovery
                 else !state.loading && state.updatedAt != null
             if (visible.isEmpty() && loaded) item {
-                EmptyState(Icons.Outlined.SensorsOff, if (all.isEmpty()) "No observers" else "No matching observers",
-                    if (all.isEmpty()) "This analyzer has not reported any observers." else "Try a different search, region or filter.")
+                EmptyState(Icons.Outlined.SensorsOff, if (all.isEmpty()) stringResource(R.string.observers_no_observers) else stringResource(R.string.observers_no_matching_observers),
+                    if (all.isEmpty()) stringResource(R.string.observers_this_analyzer_has_not_reported_any_observers) else stringResource(R.string.observers_try_a_different_search_region_or_filter))
             }
         }
     }
@@ -136,19 +139,19 @@ private fun ObserverCard(observer: MeshObserver, now: Long, isSelected: Boolean,
         colors = meshCardColors(selected = isSelected)) {
         Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.size(42.dp).background(tone.copy(alpha = 0.14f), CircleShape), contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.Sensors, if (active) "Active" else "Inactive", tint = tone)
+                Icon(Icons.Outlined.Sensors, if (active) stringResource(R.string.observers_active) else stringResource(R.string.observers_inactive), tint = tone)
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(observer.displayName, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(observer.online?.let { if (it) "Online" else "Offline" } ?: relativeTime(parseInstant(observer.lastSeen), now),
+                    Text(observer.online?.let { if (it) stringResource(R.string.observers_online) else stringResource(R.string.observers_offline) } ?: relativeTime(parseInstant(observer.lastSeen), now),
                         style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Text(listOfNotNull(if (active) "Active" else "Inactive", observer.iata, observer.model).joinToString(" · "),
+                Text(listOfNotNull(if (active) stringResource(R.string.observers_active_2) else stringResource(R.string.observers_inactive_2), observer.iata, observer.model).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(listOfNotNull(
                     observer.packetsLastHour?.let { "${compactCount(it)}/hr" },
-                    observer.packetCount?.let { "${compactCount(it)} packets" },
+                    observer.packetCount?.let { pluralStringResource(R.plurals.observers_list_packet_count, it.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), compactCount(it)) },
                 ).joinToString("  ·  "), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

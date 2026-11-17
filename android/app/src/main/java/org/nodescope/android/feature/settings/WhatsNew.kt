@@ -1,5 +1,8 @@
 package org.nodescope.android.feature.settings
 
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
+import org.nodescope.android.core.design.withDescription
 import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -87,30 +90,30 @@ object WhatsNew {
 fun WhatsNewDialog(releases: List<WhatsNewRelease>, onDismiss: () -> Unit, onOpen: (AppFeature) -> Unit,
     /** Off when opened from Settings, which is where the hint points. */
     showsSettingsHint: Boolean = true) {
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("What's New in NodeScope") }, text = {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.settings_what_s_new_in_nodescope)) }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             releases.forEach { release ->
-                if (releases.size > 1) Text("Version ${release.version}", style = MaterialTheme.typography.labelLarge,
+                if (releases.size > 1) Text(stringResource(R.string.settings_version_2, release.version), style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
                 release.items.forEach { item -> WhatsNewRow(item) { item.destination?.let { onDismiss(); onOpen(it) } } }
             }
-            if (showsSettingsHint) Text("You can review these anytime in Settings → Help & support → What's new.",
+            if (showsSettingsHint) Text(stringResource(R.string.settings_you_can_review_these_anytime_in_settings_help),
                 Modifier.padding(top = 8.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-    }, confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } })
+    }, confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_done)) } })
 }
 
 @Composable private fun WhatsNewRow(item: WhatsNewItem, open: () -> Unit) {
     val opens = item.destination != null
     Row(Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small)
-        .then(if (opens) Modifier.clickable(onClickLabel = "Open ${item.title}", role = Role.Button, onClick = open) else Modifier)
+        .then(if (opens) Modifier.clickable(onClickLabel = stringResource(R.string.settings_open, item.title), role = Role.Button, onClick = open) else Modifier)
         .padding(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top) {
         Icon(item.icon.vector(), null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(item.title, style = MaterialTheme.typography.titleSmall, fontFamily = MonaspaceNeon)
             Text(item.detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             item.location?.let { location ->
-                Text(location, Modifier.padding(top = 2.dp).semantics { contentDescription = "Found in $location" },
+                Text(location, Modifier.padding(top = 2.dp).withDescription(stringResource(R.string.settings_found_in, location)) { description -> contentDescription = description },
                     style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
             }
         }

@@ -1,5 +1,6 @@
 package org.nodescope.android.feature.candidatesites
 
+import org.nodescope.android.core.design.UiText
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -14,7 +15,7 @@ class CandidatePlansViewModel(private val library: SavedPlansLibrary) : ViewMode
     val plans: List<DeploymentPlan> get() = library.plans
     val loaded: Boolean get() = library.loaded
     val busy: Boolean get() = library.busy
-    val error: String? get() = library.error
+    val error: UiText? get() = library.error
     var editing by mutableStateOf<DeploymentPlan?>(null); private set
 
     init { viewModelScope.launch { library.load() } }

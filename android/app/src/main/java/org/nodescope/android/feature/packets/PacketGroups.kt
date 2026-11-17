@@ -170,7 +170,7 @@ fun routeIndexFor(path: List<String?>, options: List<RouteOption>): Int? {
 }
 
 /** Hops, region and signal of the strongest observer, for the line under a route's name. */
-fun RouteOption.summary(): String = listOfNotNull("$hops hops", heardBy.firstOrNull()?.region,
+fun RouteOption.summary(hopLabel: String): String = listOfNotNull(hopLabel, heardBy.firstOrNull()?.region,
     heardBy.firstOrNull()?.let { first -> first.rssi?.let { "%.0f dBm".format(it) } ?: first.snr?.let { "%.1f dB".format(it) } }).joinToString(" · ")
 
 /** Coordinates for a route of public keys; an unknown or unplaced node breaks the chain rather than bridging it. */

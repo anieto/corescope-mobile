@@ -1,5 +1,7 @@
 package org.nodescope.android.core.design
 
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import org.nodescope.android.feature.learn.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.background
@@ -25,7 +27,7 @@ import kotlinx.coroutines.delay
 import androidx.lifecycle.repeatOnLifecycle
 import org.nodescope.android.core.network.LiveConnection
 import org.nodescope.android.core.network.Loaded
-import org.nodescope.android.core.network.beaconExplanation
+import org.nodescope.android.core.network.beaconUiExplanation
 
 /** Minute-resolution clock so "5m ago" labels stay truthful while a screen is open. */
 @Composable
@@ -48,11 +50,11 @@ fun BrowseHeader(
         IconButton(onClick = onFilters) {
             BadgedBox(badge = { if (filterCount > 0) Badge(containerColor = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer) { Text(filterCount.toString()) } }) {
-                Icon(Icons.Outlined.FilterList, "Filter and sort, $filterCount active")
+                Icon(Icons.Outlined.FilterList, stringResource(R.string.common_filter_and_sort_active, filterCount))
             }
         }
         IconButton(onClick = onSearch) {
-            Icon(if (searching) Icons.Outlined.Close else Icons.Outlined.Search, if (searching) "Close search" else "Search $title")
+            Icon(if (searching) Icons.Outlined.Close else Icons.Outlined.Search, if (searching) stringResource(R.string.common_close_search) else stringResource(R.string.common_search, title))
         }
         addAction?.invoke()
     }
@@ -82,7 +84,7 @@ fun BrowseHeader(
 fun BrowseSearchField(query: String, onQuery: (String) -> Unit, placeholder: String) {
     TextField(query, onQuery, singleLine = true, shape = MaterialTheme.shapes.large, placeholder = { Text(placeholder) },
         leadingIcon = { Icon(Icons.Outlined.Search, null) },
-        trailingIcon = { if (query.isNotEmpty()) IconButton(onClick = { onQuery("") }) { Icon(Icons.Outlined.Close, "Clear search") } },
+        trailingIcon = { if (query.isNotEmpty()) IconButton(onClick = { onQuery("") }) { Icon(Icons.Outlined.Close, stringResource(R.string.common_clear_search)) } },
         colors = TextFieldDefaults.colors(focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
             focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer, unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer),
         modifier = Modifier.fillMaxWidth())
@@ -96,12 +98,12 @@ fun LoadStatus(state: Loaded<*, *>, hasContent: Boolean, now: Long, onRetry: () 
         state.error != null -> Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(state.error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                if (hasContent) Text("Showing the last loaded data" + (state.updatedAt?.let { " from ${relativeTime(java.time.Instant.ofEpochMilli(it), now)}" } ?: "") + ".",
+                if (hasContent) Text(state.updatedAt?.let { stringResource(R.string.common_showing_last_loaded_data_at, relativeTime(java.time.Instant.ofEpochMilli(it), now)) } ?: stringResource(R.string.common_showing_last_loaded_data),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            TextButton(onClick = onRetry) { Text("Retry") }
+            TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
         }
-        state.updatedAt != null -> Text("Updated ${relativeTime(java.time.Instant.ofEpochMilli(state.updatedAt), now)}",
+        state.updatedAt != null -> Text(stringResource(R.string.common_updated, relativeTime(java.time.Instant.ofEpochMilli(state.updatedAt), now)),
             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -117,7 +119,7 @@ fun EmptyState(icon: ImageVector, title: String, message: String, action: (@Comp
     }
 }
 
-class FilterGroup<T>(val title: String, val options: List<T>, val selected: T, val label: (T) -> String, val onSelect: (T) -> Unit)
+class FilterGroup<T>(val title: String, val options: List<T>, val selected: T, val label: @Composable (T) -> String, val onSelect: (T) -> Unit)
 
 /** Filters and sorting in a native sheet; region uses the app-wide region control. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -127,10 +129,10 @@ fun FilterSheet(title: String, regionControl: @Composable () -> Unit, groups: Li
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
-                TextButton(onClick = onReset) { Text("Reset") }
+                TextButton(onClick = onReset) { Text(stringResource(R.string.common_reset)) }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                SectionLabel("Region")
+                SectionLabel(stringResource(R.string.common_region))
                 LearnButton(GlossaryTerm.REGION, Modifier.padding(top = 8.dp))
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -173,11 +175,12 @@ fun MetricChip(text: String, icon: ImageVector, color: Color = MaterialTheme.col
 }
 
 /** Connection state is independent of data freshness and individual node activity. */
-fun connectionLabel(connection: LiveConnection, liveLabel: String = "Live"): String = when (connection) {
+@Composable
+fun connectionLabel(connection: LiveConnection, liveLabel: String = stringResource(R.string.common_connection_live)): String = when (connection) {
     LiveConnection.LIVE -> liveLabel
-    LiveConnection.CONNECTING -> "Connecting"
-    LiveConnection.RECONNECTING -> "Reconnecting"
-    LiveConnection.PAUSED -> "Paused"
+    LiveConnection.CONNECTING -> stringResource(R.string.common_connection_connecting)
+    LiveConnection.RECONNECTING -> stringResource(R.string.common_connection_reconnecting)
+    LiveConnection.PAUSED -> stringResource(R.string.common_connection_paused)
 }
 
 /** Full-width radio rows preserve readable labels when segmented controls become cramped. */
@@ -214,9 +217,9 @@ fun BeaconFeatureNotice(capability: org.nodescope.android.core.network.BackendCa
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Icon(Icons.Outlined.Info, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-                Text("Beacon Support", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                Text(stringResource(R.string.common_beacon_support), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
             }
-            Text(capability.beaconExplanation,
+            Text(capability.beaconUiExplanation.asString(),
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

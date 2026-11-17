@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.nodes
 
+import androidx.annotation.StringRes
+import org.nodescope.android.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import java.time.Instant
@@ -91,7 +93,7 @@ fun spreadingFactor(radio: String?): Int? = radio?.split(',')?.getOrNull(2)?.tri
 fun snrFloor(spreadingFactor: Int): Double = -7.5 - 2.5 * (spreadingFactor - 7)
 
 /** Plain-language quality from how far the SNR sits above the decode limit. */
-enum class SignalQuality(val label: String) { STRONG("Strong"), GOOD("Good"), WEAK("Weak"), NEAR_LIMIT("Near limit") }
+enum class SignalQuality(@param:StringRes val labelRes: Int) { STRONG(R.string.node_detail_strong), GOOD(R.string.node_detail_good), WEAK(R.string.node_detail_weak), NEAR_LIMIT(R.string.node_detail_near_limit) }
 
 fun signalQuality(margin: Double): SignalQuality = when {
     margin >= 15 -> SignalQuality.STRONG

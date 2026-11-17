@@ -1,5 +1,9 @@
 package org.nodescope.android.feature.coverage
 
+import org.nodescope.android.core.design.UiText
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -8,29 +12,29 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import org.nodescope.android.core.design.MonaspaceNeon
 
-internal fun CoverageStudyRunFailure.coverageMessage(): String = when (this) {
-    CoverageStudyRunFailure.network -> "Terrain request failed. Check your connection and retry; the provider may be temporarily unavailable."
-    CoverageStudyRunFailure.terrain -> "Required terrain is missing, changed or invalid. Retry, or choose another location. Missing heights are never replaced with sea level."
-    CoverageStudyRunFailure.storage -> "Terrain cache could not be prepared. Free device storage or wait for another calculation to finish, then retry with a smaller radius."
-    CoverageStudyRunFailure.limits -> "This study exceeds the download or calculation budget. Choose a smaller radius or wider sample spacing."
-    else -> "Calculation could not produce a valid result. Review radio inputs and try a smaller area. No partial result was published."
+internal fun CoverageStudyRunFailure.coverageMessage(): UiText = when (this) {
+    CoverageStudyRunFailure.network -> UiText.Resource(R.string.coverage_terrain_request_failed_check_your_connection_and_retry)
+    CoverageStudyRunFailure.terrain -> UiText.Resource(R.string.coverage_required_terrain_is_missing_changed_or_invalid_retry)
+    CoverageStudyRunFailure.storage -> UiText.Resource(R.string.coverage_terrain_cache_could_not_be_prepared_free_device)
+    CoverageStudyRunFailure.limits -> UiText.Resource(R.string.coverage_this_study_exceeds_the_download_or_calculation_budget)
+    else -> UiText.Resource(R.string.coverage_calculation_could_not_produce_a_valid_result_review)
 }
 
-internal fun CoverageNodeStatus.coverageLabel(): String = when (reason) {
-    CoverageNodeReason.outsideRadius -> "Outside study radius"
-    CoverageNodeReason.processingLimit -> "Not evaluated — work limit"
-    CoverageNodeReason.pathWorkLimit -> "Unknown — individual path work limit"
-    CoverageNodeReason.missingTerrain -> "Unknown — missing terrain"
-    CoverageNodeReason.unsupportedPath -> "Unknown — unsupported path"
-    CoverageNodeReason.accuracyUnresolved -> "Unknown — sampling did not converge"
-    CoverageNodeReason.thresholdUnresolved -> "Unknown — too close to threshold"
+internal fun CoverageNodeStatus.coverageLabel(): UiText = when (reason) {
+    CoverageNodeReason.outsideRadius -> UiText.Resource(R.string.coverage_outside_study_radius)
+    CoverageNodeReason.processingLimit -> UiText.Resource(R.string.coverage_not_evaluated_work_limit)
+    CoverageNodeReason.pathWorkLimit -> UiText.Resource(R.string.coverage_unknown_individual_path_work_limit)
+    CoverageNodeReason.missingTerrain -> UiText.Resource(R.string.coverage_unknown_missing_terrain)
+    CoverageNodeReason.unsupportedPath -> UiText.Resource(R.string.coverage_unknown_unsupported_path)
+    CoverageNodeReason.accuracyUnresolved -> UiText.Resource(R.string.coverage_unknown_sampling_did_not_converge)
+    CoverageNodeReason.thresholdUnresolved -> UiText.Resource(R.string.coverage_unknown_too_close_to_threshold)
     else -> when (state) {
-        CoverageNodeState.inCoverage -> if ((adjustedMarginDb ?: 0.0) <= 10) "Predicted above threshold — limited headroom"
-            else "Predicted above threshold — greater headroom"
-        CoverageNodeState.belowThreshold -> "Predicted below threshold"
-        CoverageNodeState.unknown -> "Unknown"
-        CoverageNodeState.stale -> "Changed — calculate again"
-        CoverageNodeState.notEvaluated -> "Not evaluated"
+        CoverageNodeState.inCoverage -> if ((adjustedMarginDb ?: 0.0) <= 10) UiText.Resource(R.string.coverage_predicted_above_threshold_limited_headroom)
+            else UiText.Resource(R.string.coverage_predicted_above_threshold_greater_headroom)
+        CoverageNodeState.belowThreshold -> UiText.Resource(R.string.coverage_predicted_below_threshold)
+        CoverageNodeState.unknown -> UiText.Resource(R.string.coverage_unknown)
+        CoverageNodeState.stale -> UiText.Resource(R.string.coverage_changed_calculate_again)
+        CoverageNodeState.notEvaluated -> UiText.Resource(R.string.coverage_not_evaluated_3)
     }
 }
 
@@ -45,21 +49,21 @@ internal fun CoverageNodeStatus.coverageLabel(): String = when (reason) {
         })
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Estimated result", style = MaterialTheme.typography.titleMedium)
-        Text("${counts.first} above threshold · ${counts.second} below · ${counts.third} unresolved samples", fontFamily = MonaspaceNeon)
-        if (result.area.workLimited) Text("Calculation limits left some paths unresolved. Paths that reach their individual limit may need a smaller radius or wider sample spacing. Unresolved cells are not predictions of poor reception.",
+        Text(stringResource(R.string.coverage_estimated_result), style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.coverage_above_threshold_below_unresolved_samples, counts.first, counts.second, counts.third), fontFamily = MonaspaceNeon)
+        if (result.area.workLimited) Text(stringResource(R.string.coverage_calculation_limits_left_some_paths_unresolved_paths_that),
             style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color(0xFFFF9500))
-        Text("Predicted margin after reserve: red below 0 dB; amber 0–10 dB; green above 10 dB. Gray hatching means no prediction, including the unsupported 250 m near-site area. Outside the study is unshaded. Green does not establish reachability or a working return link.", style = MaterialTheme.typography.bodySmall)
-        Text("This is a sampled estimate, not measured reception or a guarantee. Gaps and work-limited areas remain unknown. The nearest 200 available nodes use the same assumed receiver; the catalog is incomplete.", style = MaterialTheme.typography.bodySmall)
+        Text(stringResource(R.string.coverage_predicted_margin_after_reserve_red_below_0_db), style = MaterialTheme.typography.bodySmall)
+        Text(stringResource(R.string.coverage_this_is_a_sampled_estimate_not_measured_reception), style = MaterialTheme.typography.bodySmall)
         result.model?.let {
             Text(it.scenario, style = MaterialTheme.typography.bodySmall)
-            Text("Model revision: ${it.sourceRevision}", fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelSmall)
+            Text(stringResource(R.string.coverage_model_revision, it.sourceRevision), fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelSmall)
         }
         result.terrainSources?.let { sources ->
-            Text("${sources.descriptors.size} terrain tiles · EGM96 heights", style = MaterialTheme.typography.bodySmall)
-            Text("Mapzen / AWS Skadi uses mixed regional elevation sources; trees and buildings may remain in the terrain surface.", style = MaterialTheme.typography.bodySmall)
-            TextButton(onClick = { uri.openUri("https://github.com/tilezen/joerd/blob/master/docs/attribution.md") }) { Text("Terrain source credits") }
-            TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "Hide terrain provenance" else "Terrain provenance") }
+            Text(pluralStringResource(R.plurals.coverage_terrain_tiles_egm96_heights, sources.descriptors.size, sources.descriptors.size), style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.coverage_mapzen_aws_skadi_uses_mixed_regional_elevation_sources), style = MaterialTheme.typography.bodySmall)
+            TextButton(onClick = { uri.openUri("https://github.com/tilezen/joerd/blob/master/docs/attribution.md") }) { Text(stringResource(R.string.coverage_terrain_source_credits)) }
+            TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) stringResource(R.string.coverage_hide_terrain_provenance) else stringResource(R.string.coverage_terrain_provenance)) }
             if (expanded) sources.descriptors.forEach { source ->
                 Text(source.tile, fontFamily = MonaspaceNeon)
                 Text(source.url, style = MaterialTheme.typography.labelSmall)

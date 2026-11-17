@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.explore
 
+import androidx.annotation.StringRes
+import org.nodescope.android.R
 import android.content.Context
 import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
@@ -32,7 +34,7 @@ const val ACTIVE_WINDOW = 15 * 60_000L
 const val PACKET_WINDOW = 60 * 60_000L
 const val PACKET_SAMPLE = 1_000
 
-enum class GlanceMetric(val title: String) { ACTIVE_NODES("Active nodes"), OBSERVERS_ONLINE("Observers online"), PACKETS("Packets"), AVERAGE_SNR("Average SNR") }
+enum class GlanceMetric(@param:StringRes val titleRes: Int) { ACTIVE_NODES(R.string.explore_active_nodes), OBSERVERS_ONLINE(R.string.explore_observers_online), PACKETS(R.string.explore_packets_2), AVERAGE_SNR(R.string.explore_average_snr) }
 
 data class GlanceValue(val value: String, val detail: String)
 

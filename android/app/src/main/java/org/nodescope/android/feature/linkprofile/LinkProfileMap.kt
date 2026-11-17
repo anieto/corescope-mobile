@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.linkprofile
 
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -99,6 +101,8 @@ internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, point
             mapState.fittedPath.value = path
             mapState.framed.value = true
         }
+        val pointALabel = stringResource(R.string.link_profile_point_a)
+        val pointBLabel = stringResource(R.string.link_profile_point_b)
         LaunchedEffect(engine.overlays, pointA, pointB, nodes, analysis, dark, names) {
             val a = pointA?.let { Coordinate.gps(it.latitude, it.longitude) }
             val b = pointB?.let { Coordinate.gps(it.latitude, it.longitude) }
@@ -110,8 +114,8 @@ internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, point
             } == true
             engine.overlays?.setNodes(nodeMarkers(nodes.filterNot(::isOccupied)), grouped = true)
             engine.overlays?.setPins(listOfNotNull(
-                a?.let { MapPin(it, MapPin.Kind.POINT_A, names["A"] ?: "Point A") },
-                b?.let { MapPin(it, MapPin.Kind.POINT_B, names["B"] ?: "Point B") }))
+                a?.let { MapPin(it, MapPin.Kind.POINT_A, names["A"] ?: pointALabel) },
+                b?.let { MapPin(it, MapPin.Kind.POINT_B, names["B"] ?: pointBLabel) }))
         }
         // The route's dashes are laid out for the screen, so they are redrawn whenever the camera settles.
         LaunchedEffect(engine.overlays, engine.camera, pointA, pointB, analysis, dark, camera) {
@@ -164,23 +168,23 @@ internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, point
                 DropdownMenu(expanded = true, onDismissRequest = { menu = null }) {
                     when (open) {
                         is LinkMapMenu.Move -> {
-                            Text(open.name ?: "Dropped pin", Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                            Text(open.name ?: stringResource(R.string.link_profile_dropped_pin), Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             listOf("A", "B").forEach { letter ->
-                                DropdownMenuItem(text = { Text("Move $letter here") }, leadingIcon = { EndpointDot(letter, dark) }, onClick = {
+                                DropdownMenuItem(text = { Text(stringResource(R.string.link_profile_move_here, letter)) }, leadingIcon = { EndpointDot(letter, dark) }, onClick = {
                                     menu = null
                                     onPlace(letter, open.spot, open.name)
                                 })
                             }
                         }
                         is LinkMapMenu.Pin -> {
-                            Text("Point ${open.endpoint} · ${names[open.endpoint] ?: "Dropped pin"}", Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                            Text(stringResource(R.string.link_profile_point, open.endpoint, names[open.endpoint] ?: stringResource(R.string.link_profile_dropped_pin)), Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            DropdownMenuItem(text = { Text("Choose new point") }, onClick = { menu = null; onChooseNew(open.endpoint) })
-                            DropdownMenuItem(text = { Text("Estimate coverage from here") }, onClick = {
+                            DropdownMenuItem(text = { Text(stringResource(R.string.link_profile_choose_new_point)) }, onClick = { menu = null; onChooseNew(open.endpoint) })
+                            DropdownMenuItem(text = { Text(stringResource(R.string.link_profile_estimate_coverage_from_here)) }, onClick = {
                                 menu = null; onCoverage(open.endpoint)
                             })
-                            DropdownMenuItem(text = { Text("Remove", color = MaterialTheme.colorScheme.error) }, onClick = { menu = null; onRemove(open.endpoint) })
+                            DropdownMenuItem(text = { Text(stringResource(R.string.link_profile_remove), color = MaterialTheme.colorScheme.error) }, onClick = { menu = null; onRemove(open.endpoint) })
                         }
                     }
                 }
@@ -195,11 +199,11 @@ internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, point
             }
             Snackbar(Modifier.align(Alignment.BottomCenter).padding(horizontal = 16.dp)
                 .padding(bottom = bottomInset + if (engine is MapLibreEngine) 44.dp else 12.dp),
-                action = { TextButton(onClick = onUndo) { Text("Undo", color = SnackbarDefaults.actionColor) } }) { Text(offer.message) }
+                action = { TextButton(onClick = onUndo) { Text(stringResource(R.string.link_profile_undo), color = SnackbarDefaults.actionColor) } }) { Text(offer.message.asString()) }
         }
         Box(Modifier.align(Alignment.TopEnd).padding(8.dp)) {
             Surface(shape = MaterialTheme.shapes.medium, tonalElevation = 2.dp, shadowElevation = 2.dp) {
-                IconButton(onClick = { layersOpen = true }) { Icon(androidx.compose.material.icons.Icons.Outlined.Layers, "Map layers") }
+                IconButton(onClick = { layersOpen = true }) { Icon(androidx.compose.material.icons.Icons.Outlined.Layers, stringResource(R.string.link_profile_map_layers)) }
             }
             MapLayersMenu(layersOpen, { layersOpen = false }, choice, dark) {
                 choice = it
@@ -209,14 +213,14 @@ internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, point
         }
         if (engine.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (engine.failed) Surface(Modifier.align(Alignment.Center)) {
-            TextButton(onClick = { retry++ }) { Text("Map failed to load. Retry") }
+            TextButton(onClick = { retry++ }) { Text(stringResource(R.string.link_profile_map_failed_to_load_retry)) }
         }
         // Google draws its own logo and attribution on the map.
         val uri = LocalUriHandler.current
         if (engine is MapLibreEngine) Row(Modifier.align(Alignment.BottomEnd).padding(bottom = bottomInset)) {
             val style = MaterialTheme.typography.labelSmall
-            TextButton(onClick = { uri.openUri("https://carto.com/attributions") }) { Text("© CARTO", style = style) }
-            TextButton(onClick = { uri.openUri("https://www.openstreetmap.org/copyright") }) { Text("© OpenStreetMap", style = style) }
+            TextButton(onClick = { uri.openUri("https://carto.com/attributions") }) { Text(stringResource(R.string.common_carto_attribution), style = style) }
+            TextButton(onClick = { uri.openUri("https://www.openstreetmap.org/copyright") }) { Text(stringResource(R.string.common_openstreetmap_attribution), style = style) }
         }
     }
 }

@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.settings
 
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.core.design.withDescription
 import org.nodescope.android.core.design.meshCardColors
 import androidx.compose.foundation.clickable
 import org.nodescope.android.core.design.rememberCopyAction
@@ -46,9 +48,11 @@ private fun DiagnosticLevel.tone(): Color = when (this) {
     DiagnosticLevel.WARNING -> ActivityAmber
     DiagnosticLevel.FAILURE -> MaterialTheme.colorScheme.error
 }
-private fun DiagnosticLevel.spoken() = when (this) {
-    DiagnosticLevel.SUCCESS -> "available"; DiagnosticLevel.WARNING -> "limited"; DiagnosticLevel.FAILURE -> "unavailable"
-}
+@Composable private fun DiagnosticLevel.spoken() = stringResource(when (this) {
+    DiagnosticLevel.SUCCESS -> R.string.settings_diagnostics_spoken_available
+    DiagnosticLevel.WARNING -> R.string.settings_diagnostics_spoken_limited
+    DiagnosticLevel.FAILURE -> R.string.settings_diagnostics_spoken_unavailable
+})
 private fun AnalyzerCapability.icon(): ImageVector = when (this) {
     AnalyzerCapability.MAP_CONFIGURATION -> Icons.Outlined.Map
     AnalyzerCapability.NODES -> Icons.Outlined.Hub
@@ -77,54 +81,54 @@ fun DiagnosticsScreen(diagnostics: AnalyzerDiagnostics, host: String, connection
     LaunchedEffect(host) { run() }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            Section("Connection") {
-                Row { Text("Analyzer", Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant); Text(host, textAlign = TextAlign.End) }
+            Section(stringResource(R.string.settings_connection)) {
+                Row { Text(stringResource(R.string.settings_analyzer), Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant); Text(host, textAlign = TextAlign.End) }
                 val current = report
                 if (current != null) {
-                    Row { Text("Server type", Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant); Text(current.backendType, textAlign = TextAlign.End) }
+                    Row { Text(stringResource(R.string.settings_server_type), Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant); Text(current.backendType, textAlign = TextAlign.End) }
                     current.serverVersion?.let { version ->
-                        Row { Text("Server version (last reported)", Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant); Text(version, textAlign = TextAlign.End) }
+                        Row { Text(stringResource(R.string.settings_server_version_last_reported), Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant); Text(version, textAlign = TextAlign.End) }
                     }
-                    DiagnosticRow("HTTPS connection", current.connectionDetail, Icons.Outlined.Lock, current.connectionLevel)
-                    DiagnosticRow("API compatibility", current.compatibilityDetail, Icons.Outlined.Verified, current.compatibilityLevel)
+                    DiagnosticRow(stringResource(R.string.settings_https_connection), current.connectionDetail.asString(), Icons.Outlined.Lock, current.connectionLevel)
+                    DiagnosticRow(stringResource(R.string.settings_api_compatibility), current.compatibilityDetail.asString(), Icons.Outlined.Verified, current.compatibilityLevel)
                     Row {
-                        Text("Last checked", Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.settings_last_checked), Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(relativeTime(java.time.Instant.ofEpochMilli(current.checkedAt), now))
                     }
                 } else if (running) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp); Text("Checking analyzer…")
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp); Text(stringResource(R.string.settings_checking_analyzer))
                 }
             }
         }
         item {
-            Section("Live updates", footer = "The live stream uses a separate WebSocket connection, so it can reconnect independently of the read-only API.") {
-                DiagnosticRow("Live packet stream", when (connection) {
-                    LiveConnection.LIVE -> "Connected"
-                    else -> "Connecting or temporarily unavailable"
+            Section(stringResource(R.string.settings_live_updates), footer = stringResource(R.string.settings_the_live_stream_uses_a_separate_websocket_connection)) {
+                DiagnosticRow(stringResource(R.string.settings_live_packet_stream), when (connection) {
+                    LiveConnection.LIVE -> stringResource(R.string.settings_connected)
+                    else -> stringResource(R.string.settings_connecting_or_temporarily_unavailable)
                 }, Icons.Outlined.SettingsInputAntenna, if (connection == LiveConnection.LIVE) DiagnosticLevel.SUCCESS else DiagnosticLevel.WARNING)
             }
         }
         item {
-            Section("Capabilities") {
+            Section(stringResource(R.string.settings_capabilities)) {
                 val current = report
                 when {
-                    current != null -> current.capabilities.forEach { check -> DiagnosticRow(check.capability.title, check.detail, check.capability.icon(), check.level) }
+                    current != null -> current.capabilities.forEach { check -> DiagnosticRow(stringResource(check.capability.titleRes), check.detail.asString(), check.capability.icon(), check.level) }
                     running -> (if (LocalBeaconSource.current) AnalyzerCapability.entries else AnalyzerCapability.coreScopeProbed).forEach { capability ->
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Icon(capability.icon(), null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(capability.title, Modifier.weight(1f))
+                            Text(stringResource(capability.titleRes), Modifier.weight(1f))
                             CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                         }
                     }
-                    else -> Text("Run diagnostics to check this analyzer.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    else -> Text(stringResource(R.string.settings_run_diagnostics_to_check_this_analyzer), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
         item {
-            Section(null, footer = "Diagnostics make read-only requests to the selected analyzer. No settings or analyzer data are changed.") {
+            Section(null, footer = stringResource(R.string.settings_diagnostics_make_read_only_requests_to_the_selected)) {
                 FilledTonalButton(onClick = ::run, enabled = !running, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Outlined.Refresh, null); Spacer(Modifier.width(8.dp))
-                    Text(if (running) "Running diagnostics…" else "Run diagnostics again")
+                    Text(if (running) stringResource(R.string.settings_running_diagnostics) else stringResource(R.string.settings_run_diagnostics_again))
                 }
             }
         }
@@ -133,7 +137,7 @@ fun DiagnosticsScreen(diagnostics: AnalyzerDiagnostics, host: String, connection
 
 @Composable
 private fun DiagnosticRow(title: String, detail: String, icon: ImageVector, level: DiagnosticLevel) {
-    Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = "$title, ${level.spoken()}. $detail" },
+    Row(Modifier.fillMaxWidth().withDescription(stringResource(R.string.settings_value, title, level.spoken(), detail), mergeDescendants = true) { description -> contentDescription = description },
         verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -165,8 +169,8 @@ fun StorageScreen(storage: CacheStorage, onCleared: () -> Unit) {
             org.nodescope.android.feature.candidatesites.SavedPlansUsage.application(context.filesDir)
         }
     }
-    if (confirm) AlertDialog(onDismissRequest = { confirm = false }, title = { Text("Clear cached data?") },
-        text = { Text("Downloaded map tiles, temporary files, and Favorites activity comparison snapshots will be removed. Favorites, monitored channels and keys, recent items, appearance, and analyzer settings will be kept.") },
+    if (confirm) AlertDialog(onDismissRequest = { confirm = false }, title = { Text(stringResource(R.string.settings_clear_cached_data)) },
+        text = { Text(stringResource(R.string.settings_downloaded_map_tiles_temporary_files_and_favorites_activity)) },
         confirmButton = {
             TextButton(onClick = {
                 confirm = false
@@ -178,54 +182,52 @@ fun StorageScreen(storage: CacheStorage, onCleared: () -> Unit) {
                     clearedAt = if (error == null) System.currentTimeMillis() else null
                     busy = false
                 }
-            }) { Text("Clear cached data", color = MaterialTheme.colorScheme.error) }
-        }, dismissButton = { TextButton(onClick = { confirm = false }) { Text("Cancel") } })
+            }) { Text(stringResource(R.string.settings_clear_cached_data_2), color = MaterialTheme.colorScheme.error) }
+        }, dismissButton = { TextButton(onClick = { confirm = false }) { Text(stringResource(R.string.common_cancel)) } })
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            Section("Cache usage") {
+            Section(stringResource(R.string.settings_cache_usage)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Downloaded data", Modifier.weight(1f))
+                    Text(stringResource(R.string.settings_downloaded_data), Modifier.weight(1f))
                     if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                     else Text(Formatter.formatShortFileSize(context, usage?.bytes ?: 0), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Row { Text("Cached files", Modifier.weight(1f)); Text("${usage?.files ?: 0}", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                Row { Text(stringResource(R.string.settings_cached_files), Modifier.weight(1f)); Text(stringResource(R.string.settings_value_2, usage?.files ?: 0), color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 clearedAt?.let { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Icon(Icons.Outlined.CheckCircle, null, tint = HealthyGreen); Text("Cleared ${relativeTime(java.time.Instant.ofEpochMilli(it), now)}")
+                    Icon(Icons.Outlined.CheckCircle, null, tint = HealthyGreen); Text(stringResource(R.string.settings_cleared, relativeTime(java.time.Instant.ofEpochMilli(it), now)))
                 } }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             }
         }
         item {
-            Section("What is cached", footer = "Favorites, monitored-channel keys, recent items, app preferences, and your selected analyzer are stored separately and are never removed here.") {
-                ContentRow("Map tiles", "Basemap tiles, fonts and styles downloaded while you use the map", Icons.Outlined.Map)
-                ContentRow("Temporary files", "Short-lived data the app and system keep to speed things up", Icons.Outlined.Autorenew)
-                ContentRow("Favorites activity snapshots", "Saved comparisons reset when you clear cached data", Icons.Outlined.Autorenew)
-                ContentRow("Analyzer responses", "Kept in memory while the app is open and refreshed when you clear", Icons.Outlined.Dns)
+            Section(stringResource(R.string.settings_what_is_cached), footer = stringResource(R.string.settings_favorites_monitored_channel_keys_recent_items_app_preferences)) {
+                ContentRow(stringResource(R.string.settings_map_tiles), stringResource(R.string.settings_basemap_tiles_fonts_and_styles_downloaded_while_you), Icons.Outlined.Map)
+                ContentRow(stringResource(R.string.settings_temporary_files), stringResource(R.string.settings_short_lived_data_the_app_and_system_keep), Icons.Outlined.Autorenew)
+                ContentRow(stringResource(R.string.settings_favorites_activity_snapshots), stringResource(R.string.settings_saved_comparisons_reset_when_you_clear_cached_data), Icons.Outlined.Autorenew)
+                ContentRow(stringResource(R.string.settings_analyzer_responses), stringResource(R.string.settings_kept_in_memory_while_the_app_is_open), Icons.Outlined.Dns)
             }
         }
         item {
             val plans = savedPlans
             val limit = org.nodescope.android.feature.candidatesites.DeploymentPlanStore.MAXIMUM_RESULT_STORAGE
             val backups = (plans?.backupBytes ?: 0) > 0
-            Section("Saved plans", footer = "Never removed here. Cloud backup keeps your plans and studies but not saved results; after a " +
-                "cloud restore, calculate again. A phone-to-phone transfer (Android 12+) keeps everything. Unsaved changes aren't backed up." +
-                if (backups) " Upgrade backups are copies of your saved plans from before an update, kept in case they're needed." else "") {
+            Section(stringResource(R.string.settings_saved_plans), footer = stringResource(if (backups) R.string.settings_saved_plans_backup_footer_with_copies else R.string.settings_saved_plans_backup_footer)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Saved results", Modifier.weight(1f))
+                    Text(stringResource(R.string.settings_saved_results), Modifier.weight(1f))
                     if (plans == null) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                    else Text("${Formatter.formatShortFileSize(context, plans.resultBytes)} of ${Formatter.formatShortFileSize(context, limit)}",
+                    else Text(stringResource(R.string.settings_of, Formatter.formatShortFileSize(context, plans.resultBytes), Formatter.formatShortFileSize(context, limit)),
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (plans != null && backups) Row {
-                    Text("Upgrade backups", Modifier.weight(1f))
+                    Text(stringResource(R.string.settings_upgrade_backups), Modifier.weight(1f))
                     Text(Formatter.formatShortFileSize(context, plans.backupBytes), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
         item {
-            Section(null, footer = "Current content can remain visible while NodeScope fetches fresh data. The map re-downloads tiles as needed.") {
+            Section(null, footer = stringResource(R.string.settings_current_content_can_remain_visible_while_nodescope_fetches)) {
                 Button(onClick = { confirm = true }, enabled = !busy && (usage?.bytes ?: 0) > 0, modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Clear cached data") }
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.settings_clear_cached_data_2)) }
             }
         }
     }
@@ -250,30 +252,30 @@ fun AboutScreen() {
         item {
             Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Image(painterResource(R.drawable.app_icon), null, Modifier.size(72.dp).clip(MaterialTheme.shapes.medium))
-                Text("NodeScope", style = MaterialTheme.typography.titleLarge)
-                Text("Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})", style = MaterialTheme.typography.labelMedium,
+                Text(stringResource(R.string.settings_nodescope), style = MaterialTheme.typography.titleLarge)
+                Text(stringResource(R.string.settings_version, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE), style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         item {
-            Section("What this is") {
-                Text("NodeScope is an unofficial, read-only companion app for CoreScope, the mesh network analyzer used by MeshTexas and other MeshCore communities. It talks directly to a CoreScope server's public API to show the same live nodes, packet traffic, channel messages, and observer data you'd see on the CoreScope web dashboard — just in a native app.")
-                Text("This app has no backend of its own. Everything shown here comes from whatever analyzer host is configured in Settings, and it's not affiliated with the CoreScope or MeshCore projects.")
+            Section(stringResource(R.string.settings_what_this_is)) {
+                Text(stringResource(R.string.settings_nodescope_is_an_unofficial_read_only_companion_app))
+                Text(stringResource(R.string.settings_this_app_has_no_backend_of_its_own))
             }
         }
         item {
-            Section("How to use") {
-                HowTo(Icons.Outlined.Map, "Map", "Every known node, color-coded by role. Live packet traffic animates as it hops between nodes. Tap a node for its details.")
-                HowTo(Icons.Outlined.Explore, "Explore", "Network at a glance, saved nodes, recently viewed items, and the live packet feed.")
-                HowTo(Icons.Outlined.Tag, "Channels", "Group channel traffic as a chat feed. Tap View packet on a message to see how it reached the analyzer and replay it on the map.")
-                HowTo(Icons.Outlined.Sensors, "Observers", "The physical devices feeding this analyzer — hardware, firmware, and recent signal stats.")
-                HowTo(Icons.Outlined.FilterList, "Region filter", "Available on Map, Channels, Observers, and Live Packets. Narrows everything to one region and zooms the map there automatically.")
+            Section(stringResource(R.string.settings_how_to_use)) {
+                HowTo(Icons.Outlined.Map, stringResource(R.string.settings_map), stringResource(R.string.settings_every_known_node_color_coded_by_role_live))
+                HowTo(Icons.Outlined.Explore, stringResource(R.string.settings_explore), stringResource(R.string.settings_network_at_a_glance_saved_nodes_recently_viewed))
+                HowTo(Icons.Outlined.Tag, stringResource(R.string.settings_channels), stringResource(R.string.settings_group_channel_traffic_as_a_chat_feed_tap))
+                HowTo(Icons.Outlined.Sensors, stringResource(R.string.settings_observers), stringResource(R.string.settings_the_physical_devices_feeding_this_analyzer_hardware_firmware))
+                HowTo(Icons.Outlined.FilterList, stringResource(R.string.settings_region_filter), stringResource(R.string.settings_available_on_map_channels_observers_and_live_packets))
             }
         }
         item {
-            Section("Project links") {
-                LinkRow(Icons.Outlined.Inventory2, "CoreScope project") { uri.openUri("https://github.com/Kpa-clawbot/CoreScope") }
-                LinkRow(Icons.Outlined.Code, "NodeScope on GitHub") { uri.openUri("https://github.com/anieto/corescope-mobile") }
+            Section(stringResource(R.string.settings_project_links)) {
+                LinkRow(Icons.Outlined.Inventory2, stringResource(R.string.settings_corescope_project)) { uri.openUri("https://github.com/Kpa-clawbot/CoreScope") }
+                LinkRow(Icons.Outlined.Code, stringResource(R.string.settings_nodescope_on_github)) { uri.openUri("https://github.com/anieto/corescope-mobile") }
             }
         }
         item {
@@ -281,34 +283,34 @@ fun AboutScreen() {
             val context = LocalContext.current
             val copy = rememberCopyAction()
             val certificate = remember { runCatching { AppIdentity.fingerprint(AppIdentity.signingSha1(context)) }.getOrDefault("unavailable") }
-            Section("App identity") {
-                Text("If the map won't load, send these to the developer. Tap to copy.", style = MaterialTheme.typography.bodySmall,
+            Section(stringResource(R.string.settings_app_identity)) {
+                Text(stringResource(R.string.settings_if_the_map_won_t_load_send_these), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                IdentityRow("Package", context.packageName) { copy("Package", context.packageName, false) }
-                IdentityRow("Signing certificate (SHA-1)", certificate) { copy("Signing certificate SHA-1", certificate, false) }
+                IdentityRow(stringResource(R.string.settings_package), context.packageName) { copy(context.getString(R.string.settings_package_2), context.packageName, false) }
+                IdentityRow(stringResource(R.string.settings_signing_certificate_sha_1), certificate) { copy(context.getString(R.string.settings_signing_certificate_sha_1_2), certificate, false) }
             }
         }
         item {
-            Section("Map data") {
-                Text("Basemaps © CARTO, map data © OpenStreetMap contributors, rendered with MapLibre. Region locations use OurAirports data (public domain).",
+            Section(stringResource(R.string.settings_map_data)) {
+                Text(stringResource(R.string.settings_basemaps_carto_map_data_openstreetmap_contributors_rendered_with),
                     style = MaterialTheme.typography.bodyMedium)
-                LinkRow(Icons.Outlined.Map, "OpenStreetMap copyright") { uri.openUri("https://www.openstreetmap.org/copyright") }
-                LinkRow(Icons.Outlined.Layers, "CARTO attributions") { uri.openUri("https://carto.com/attributions") }
+                LinkRow(Icons.Outlined.Map, stringResource(R.string.settings_openstreetmap_copyright)) { uri.openUri("https://www.openstreetmap.org/copyright") }
+                LinkRow(Icons.Outlined.Layers, stringResource(R.string.settings_carto_attributions)) { uri.openUri("https://carto.com/attributions") }
             }
         }
         item {
-            Section("Font") {
-                Text("Headings and values use Monaspace Neon by GitHub, under the SIL Open Font License 1.1.",
+            Section(stringResource(R.string.settings_font)) {
+                Text(stringResource(R.string.settings_headings_and_values_use_monaspace_neon_by_github),
                     style = MaterialTheme.typography.bodyMedium)
-                LinkRow(Icons.Outlined.TextFields, "Monaspace") { uri.openUri("https://github.com/githubnext/monaspace") }
+                LinkRow(Icons.Outlined.TextFields, stringResource(R.string.settings_monaspace)) { uri.openUri("https://github.com/githubnext/monaspace") }
             }
         }
         item {
-            Section("License") {
-                Text("NodeScope · Copyright © 2026 BetweenThieves Development", style = MaterialTheme.typography.titleSmall)
-                Text("Free and open-source software licensed under GNU GPL version 3 with an application-store distribution exception. You may share and modify it under those terms. NodeScope comes with absolutely no warranty.",
+            Section(stringResource(R.string.settings_license)) {
+                Text(stringResource(R.string.settings_nodescope_copyright_2026_betweenthieves_development), style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.settings_free_and_open_source_software_licensed_under_gnu),
                     style = MaterialTheme.typography.bodyMedium)
-                LinkRow(Icons.Outlined.Description, "View GPLv3 license") { uri.openUri("https://www.gnu.org/licenses/gpl-3.0.html") }
+                LinkRow(Icons.Outlined.Description, stringResource(R.string.settings_view_gplv3_license)) { uri.openUri("https://www.gnu.org/licenses/gpl-3.0.html") }
             }
         }
     }
@@ -330,7 +332,7 @@ private fun LinkRow(icon: ImageVector, title: String, onClick: () -> Unit) {
     TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(0.dp)) {
         Icon(icon, null, Modifier.size(20.dp)); Spacer(Modifier.width(12.dp))
         Text(title, Modifier.weight(1f))
-        Icon(Icons.AutoMirrored.Outlined.OpenInNew, "Opens in browser", Modifier.size(18.dp))
+        Icon(Icons.AutoMirrored.Outlined.OpenInNew, stringResource(R.string.settings_opens_in_browser), Modifier.size(18.dp))
     }
 }
 
@@ -349,7 +351,7 @@ private fun Section(title: String?, footer: String? = null, content: @Composable
 
 @Composable
 private fun IdentityRow(label: String, value: String, onCopy: () -> Unit) {
-    Column(Modifier.fillMaxWidth().clickable(onClickLabel = "Copy $label", onClick = onCopy).padding(vertical = 4.dp)) {
+    Column(Modifier.fillMaxWidth().clickable(onClickLabel = stringResource(R.string.settings_copy, label), onClick = onCopy).padding(vertical = 4.dp)) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.bodyMedium, fontFamily = MonaspaceNeon)
     }

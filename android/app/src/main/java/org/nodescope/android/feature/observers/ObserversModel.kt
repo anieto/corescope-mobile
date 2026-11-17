@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.observers
 
+import androidx.annotation.StringRes
+import org.nodescope.android.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import java.time.Instant
@@ -9,8 +11,8 @@ import org.nodescope.android.core.network.BrowseRepository
 import org.nodescope.android.core.network.KeyedLoader
 import org.nodescope.android.core.network.ResponseCache
 
-enum class ObserverActivity(val title: String) { ALL("All activity"), RECENT("Active in 15 minutes") }
-enum class ObserverSort(val title: String) { RECENT("Recently seen"), HOURLY("Packets per hour"), TOTAL("Total packets"), NAME("Name") }
+enum class ObserverActivity(@param:StringRes val titleRes: Int) { ALL(R.string.observers_all_activity), RECENT(R.string.observers_active_in_15_minutes) }
+enum class ObserverSort(@param:StringRes val titleRes: Int) { RECENT(R.string.observers_recently_seen), HOURLY(R.string.observers_packets_per_hour), TOTAL(R.string.observers_total_packets), NAME(R.string.observers_name) }
 
 const val ACTIVE_WINDOW_MILLIS = 15 * 60_000L
 

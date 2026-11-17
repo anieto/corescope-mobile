@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.channels
 
+import org.nodescope.android.core.design.UiText
+import org.nodescope.android.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import java.util.concurrent.ConcurrentHashMap
@@ -28,7 +30,7 @@ data class OlderMessages(
     val messages: List<ChannelMessage> = emptyList(),
     val total: Int? = null,
     val loading: Boolean = false,
-    val error: String? = null,
+    val error: UiText? = null,
 )
 
 /** Shared by the Channels list and its conversations, so one packet download serves both. */
@@ -74,7 +76,7 @@ class ChannelsViewModel(private val repository: BrowseRepository, val monitor: M
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                base.copy(error = e.message ?: "Unable to load older messages.")
+                base.copy(error = e.message?.let(UiText::Raw) ?: UiText.Resource(R.string.channels_unable_to_load_older_messages))
             }.takeIf { olderState.value.key == key } ?: return@launch
         }
     }

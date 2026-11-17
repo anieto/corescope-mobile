@@ -1,5 +1,10 @@
 package org.nodescope.android.feature.nodes
 
+import org.nodescope.android.core.design.nodeRoleLabel
+import org.nodescope.android.core.design.withDescription
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import org.nodescope.android.feature.learn.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -59,8 +64,8 @@ fun NodeAnalyticsScreen(model: NodeAnalyticsViewModel, host: String, publicKey: 
                         Icon(roleIcon(node?.role), null, tint = Color(0xFF14243A))
                     }
                     Column(Modifier.weight(1f)) {
-                        Text(node?.name?.takeIf(String::isNotBlank) ?: "Unnamed node", style = MaterialTheme.typography.titleMedium)
-                        Text("${node?.role?.replaceFirstChar { it.uppercase() } ?: "Unknown role"} • ${publicKey.take(8).uppercase()}…${publicKey.takeLast(4).uppercase()}",
+                        Text(node?.name?.takeIf(String::isNotBlank) ?: stringResource(R.string.node_detail_unnamed_node), style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.node_detail_value, node?.role?.let { nodeRoleLabel(it) } ?: stringResource(R.string.node_detail_unknown_role), publicKey.take(8).uppercase(), publicKey.takeLast(4).uppercase()),
                             style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                     }
                 }
@@ -72,21 +77,21 @@ fun NodeAnalyticsScreen(model: NodeAnalyticsViewModel, host: String, publicKey: 
             }
         }
         if (!beacon && result == AnalyticsResult.Unsupported) item {
-            EmptyState(Icons.Outlined.QueryStats, "Analytics unavailable", "This analyzer does not currently provide node analytics.")
+            EmptyState(Icons.Outlined.QueryStats, stringResource(R.string.node_detail_analytics_unavailable), stringResource(R.string.node_detail_this_analyzer_does_not_currently_provide_node_analytics))
         }
         if (analytics != null) {
             analytics.context?.takeIf { it.completeness != AnalyticsCompleteness.COMPLETE }?.explanation?.let { text ->
                 item { CoverageNotice(text) }
             }
             if (analytics.computedStats?.totalPackets == 0L && analytics.activityTimeline.all { it.count == 0L } && analytics.snrTrend.isEmpty()) item {
-                EmptyState(Icons.Outlined.QueryStats, "No activity in this range", "No node observations were recorded during the selected time range.")
+                EmptyState(Icons.Outlined.QueryStats, stringResource(R.string.node_detail_no_activity_in_this_range), stringResource(R.string.node_detail_no_node_observations_were_recorded_during_the_selected))
             }
             analytics.computedStats?.let { stats -> item { SummaryCard(stats, observations) } }
             val activity = analytics.activityTimeline.mapNotNull { point -> parseInstant(point.bucket)?.let { it.toEpochMilli() to point.count.toDouble() } }.sortedBy { it.first }
             dataDomain(activity.map { it.first })?.let { (from, to) -> item {
                 val noun = if (observations) "observations" else "packets"
-                ChartCard("Activity", "${compactCount(analytics.activityTimeline.sumOf { it.count })} $noun", Icons.Outlined.MonitorHeart) {
-                    TimeChart("${if (observations) "Observation" else "Packet"} activity over the last ${range.title}", listOf(TimeSeries(seriesColors[0], activity)), from, to,
+                ChartCard(stringResource(R.string.node_detail_activity), stringResource(R.string.node_detail_value_2, compactCount(analytics.activityTimeline.sumOf { it.count }), noun), Icons.Outlined.MonitorHeart) {
+                    TimeChart(stringResource(R.string.node_detail_activity_over_the_last, if (observations) stringResource(R.string.node_detail_observation) else stringResource(R.string.node_detail_packet), range.title), listOf(TimeSeries(seriesColors[0], activity)), from, to,
                         area = true, zeroBased = true, formatValue = { compactCount(it.toLong()) }, formatTime = { analyticsTimeLabel(it, to - from) })
                 }
             } }
@@ -96,28 +101,28 @@ fun NodeAnalyticsScreen(model: NodeAnalyticsViewModel, host: String, publicKey: 
             }
             if (analytics.packetTypeBreakdown.isNotEmpty()) item {
                 // Same donut as an observer's packet types, so the two pages read alike.
-                ChartCard("Packet types", "Traffic reported by payload", Icons.Outlined.DonutLarge) {
+                ChartCard(stringResource(R.string.node_detail_packet_types), stringResource(R.string.node_detail_traffic_reported_by_payload), Icons.Outlined.DonutLarge) {
                     val slices = analytics.packetTypeBreakdown.sortedByDescending { it.count }.map { ChartPoint(payloadTypeLabel(it.payloadType), it.count) }
                     val total = slices.sumOf { it.value }
-                    DonutChart("Packet types: " + slices.take(3).joinToString(", ") { "${it.label} ${percentOf(it.value, total)}" }, slices)
+                    DonutChart(stringResource(R.string.node_detail_packet_types_description, slices.take(3).joinToString(", ") { "${it.label} ${percentOf(it.value, total)}" }), slices)
                 }
             }
             if (analytics.hopDistribution.isNotEmpty()) item {
-                ChartCard("Hop count", "How far packets traveled", Icons.Outlined.Route, GlossaryTerm.HOP) {
-                    BarChart("Hop count distribution", analytics.hopDistribution.map { ChartPoint("${it.hops} hops", it.count) }, MaterialTheme.colorScheme.primary)
+                ChartCard(stringResource(R.string.node_detail_hop_count), stringResource(R.string.node_detail_how_far_packets_traveled), Icons.Outlined.Route, GlossaryTerm.HOP) {
+                    BarChart(stringResource(R.string.node_detail_hop_count_distribution), analytics.hopDistribution.map { ChartPoint(pluralStringResource(R.plurals.node_detail_hop_chart_label, it.hops.toIntOrNull() ?: 0, it.hops), it.count) }, MaterialTheme.colorScheme.primary)
                 }
             }
             if (analytics.observerCoverage.isNotEmpty()) item {
-                ListCard("Observer coverage", Icons.Outlined.Visibility, analytics.observerCoverage.sortedByDescending { it.packetCount }) { observer ->
+                ListCard(stringResource(R.string.node_detail_observer_coverage), Icons.Outlined.Visibility, analytics.observerCoverage.sortedByDescending { it.packetCount }) { observer ->
                     val name = observer.observerName?.takeIf(String::isNotBlank) ?: observer.observerId.take(12)
-                    ListRow(Icons.Outlined.Sensors, name, "Last heard ${relativeTime(parseInstant(observer.lastSeen), now)}",
-                        compactCount(observer.packetCount), observer.avgSnr?.let { "%.1f dB".format(it) } ?: "No SNR") { onObserver(observer.observerId, name) }
+                    ListRow(Icons.Outlined.Sensors, name, stringResource(R.string.node_detail_last_heard_2, relativeTime(parseInstant(observer.lastSeen), now)),
+                        compactCount(observer.packetCount), observer.avgSnr?.let { "%.1f dB".format(it) } ?: stringResource(R.string.node_detail_no_snr)) { onObserver(observer.observerId, name) }
                 }
             }
             if (analytics.peerInteractions.isNotEmpty()) item {
-                ListCard("Peer interactions", Icons.Outlined.People, analytics.peerInteractions.sortedByDescending { it.messageCount }) { peer ->
+                ListCard(stringResource(R.string.node_detail_peer_interactions), Icons.Outlined.People, analytics.peerInteractions.sortedByDescending { it.messageCount }) { peer ->
                     ListRow(Icons.Outlined.SettingsInputAntenna, peer.peerName?.takeIf(String::isNotBlank) ?: peer.peerKey.take(12),
-                        "Last contact ${relativeTime(parseInstant(peer.lastContact), now)}", "${compactCount(peer.messageCount)} messages", null, null)
+                        stringResource(R.string.node_detail_last_contact, relativeTime(parseInstant(peer.lastContact), now)), pluralStringResource(R.plurals.node_detail_peer_message_count, peer.messageCount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), compactCount(peer.messageCount)), null, null)
                 }
             }
             if (observations) item { BeaconLimitationsNotice() }
@@ -133,7 +138,7 @@ internal fun AnalyticsLayout(range: AnalyticsRange, onRange: (AnalyticsRange) ->
         Column(Modifier.widthIn(max = 840.dp).fillMaxSize()) {
             Surface(color = MaterialTheme.colorScheme.background) {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Time range", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.node_detail_time_range), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                         AnalyticsRange.entries.forEachIndexed { index, option ->
                             SegmentedButton(selected = range == option, onClick = { onRange(option) },
@@ -164,9 +169,9 @@ private fun BeaconLimitationsNotice() {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.semantics { heading() }) {
             Icon(Icons.Outlined.Info, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-            Text("Unavailable from Beacon", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.node_detail_unavailable_from_beacon), style = MaterialTheme.typography.titleMedium)
         }
-        Text("Beacon node history does not identify observers or peers, so observer coverage, peer interactions, availability, longest silence, and signal grade cannot be calculated reliably.",
+        Text(stringResource(R.string.node_detail_beacon_node_history_does_not_identify_observers_or),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -178,8 +183,8 @@ private fun BeaconSignalCard(points: List<SignalPoint>) {
         points.mapNotNull { p -> p.snr?.let { snr -> parseInstant(p.timestamp)?.let { it.toEpochMilli() to snr } } }.sortedBy { it.first }
     }
     val (from, to) = dataDomain(readings.map { it.first }) ?: return
-    ChartCard("Signal", "Reported SNR over time; Beacon does not identify the observer", Icons.Outlined.GraphicEq, GlossaryTerm.SNR) {
-        TimeChart("Reported SNR over time", listOf(TimeSeries(SignalBlue, readings)), from, to, area = false, zeroBased = false,
+    ChartCard(stringResource(R.string.node_detail_signal), stringResource(R.string.node_detail_reported_snr_over_time_beacon_does_not_identify), Icons.Outlined.GraphicEq, GlossaryTerm.SNR) {
+        TimeChart(stringResource(R.string.node_detail_reported_snr_over_time), listOf(TimeSeries(SignalBlue, readings)), from, to, area = false, zeroBased = false,
             formatValue = { db(it) }, formatTime = { analyticsTimeLabel(it, to - from) })
     }
 }
@@ -189,17 +194,17 @@ private fun SummaryCard(stats: ComputedStats, observations: Boolean) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     fun percent(value: Double?) = value?.let { String.format(Locale.US, "%.0f%%", it) } ?: "—"
     val metrics = listOf(
-        Triple(percent(stats.availabilityPct), "Availability", HealthyGreen),
-        Triple(stats.signalGrade ?: "—", "Signal grade", SignalBlue),
-        Triple(stats.avgPacketsPerDay?.let { String.format(Locale.US, "%.0f", it) } ?: "—", if (observations) "Observations / day" else "Packets / day", SignalBlue),
-        Triple(percent(stats.relayPct), "Relayed", ActivityAmber),
-        Triple(stats.uniqueObservers?.toString() ?: "—", "Observers", Color(0xFF5C8DFF)),
-        Triple(stats.longestSilenceMs?.let(::formatSilence) ?: "—", "Longest silence", MaterialTheme.colorScheme.onSurfaceVariant),
+        Triple(percent(stats.availabilityPct), stringResource(R.string.node_detail_availability), HealthyGreen),
+        Triple(stats.signalGrade ?: "—", stringResource(R.string.node_detail_signal_grade), SignalBlue),
+        Triple(stats.avgPacketsPerDay?.let { String.format(Locale.US, "%.0f", it) } ?: "—", stringResource(if (observations) R.string.node_detail_observations_per_day else R.string.node_detail_packets_per_day), SignalBlue),
+        Triple(percent(stats.relayPct), stringResource(R.string.node_detail_relayed), ActivityAmber),
+        Triple(stats.uniqueObservers?.toString() ?: "—", stringResource(R.string.node_detail_observers_2), Color(0xFF5C8DFF)),
+        Triple(stats.longestSilenceMs?.let(::formatSilence) ?: "—", stringResource(R.string.node_detail_longest_silence), MaterialTheme.colorScheme.onSurfaceVariant),
     )
     AnalyticsCard {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Icon(Icons.Outlined.Speed, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-            Text("At a glance", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.node_detail_at_a_glance), style = MaterialTheme.typography.titleMedium)
         }
         (if (expanded) metrics else metrics.take(2)).chunked(2).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -215,7 +220,7 @@ private fun SummaryCard(stats: ComputedStats, observations: Boolean) {
             }
         }
         TextButton(onClick = { expanded = !expanded }) {
-            Text(if (expanded) "Show fewer metrics" else "All six metrics")
+            Text(if (expanded) stringResource(R.string.node_detail_show_fewer_metrics) else stringResource(R.string.node_detail_all_six_metrics))
             Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null)
         }
     }
@@ -227,15 +232,15 @@ private fun HeatmapCard(grid: Array<LongArray>, observations: Boolean) {
     val busiest = grid.withIndex().flatMap { (day, row) -> row.withIndex().map { (hour, count) -> Triple(day, hour, count) } }.maxByOrNull { it.third }
     val empty = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.08f)
     val noun = if (observations) "observations" else "packets"
-    ChartCard("Activity by time", "${if (observations) "Observed" else "Packet"} activity by weekday and hour, shown in UTC", Icons.Outlined.CalendarMonth) {
-        Column(Modifier.semantics(mergeDescendants = true) {
-            contentDescription = busiest?.takeIf { it.third > 0 }?.let { "Busiest: ${dayNames[it.first]} at ${"%02d".format(it.second)}:00 UTC, ${it.third} $noun" }
-                ?: "No activity recorded"
-        }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    ChartCard(stringResource(R.string.node_detail_activity_by_time), stringResource(R.string.node_detail_activity_by_weekday_and_hour_shown_in_utc, if (observations) stringResource(R.string.node_detail_observed) else stringResource(R.string.node_detail_packet)), Icons.Outlined.CalendarMonth) {
+        val activityDescription = busiest?.takeIf { it.third > 0 }?.let {
+            stringResource(R.string.node_detail_busiest_at_00_utc, dayNames[it.first], "%02d".format(it.second), it.third, noun)
+        } ?: stringResource(R.string.node_detail_no_activity_recorded)
+        Column(Modifier.semantics(mergeDescendants = true) { contentDescription = activityDescription }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row {
                 Spacer(Modifier.width(32.dp))
                 (0 until 24 step 6).forEach { hour ->
-                    Text("%02d".format(hour), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.node_detail_02d).format(hour), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             grid.forEachIndexed { day, row ->
@@ -252,9 +257,9 @@ private fun HeatmapCard(grid: Array<LongArray>, observations: Boolean) {
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
-                Text("Less", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.node_detail_less), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 (1..4).forEach { level -> Box(Modifier.size(12.dp).background(HealthyGreen.copy(alpha = level * 0.25f), MaterialTheme.shapes.extraSmall)) }
-                Text("More", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.node_detail_more), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -283,12 +288,15 @@ private fun SignalCard(points: List<SignalPoint>, observers: List<MeshObserver>,
     val counts = signals.mapNotNull { it.quality }.groupingBy { it }.eachCount()
     val floors = signals.mapNotNull { it.spreadingFactor }.distinct()
     val best = signals.first()
-    ChartCard("Signal", "How well observers hear this node (SNR)", Icons.Outlined.GraphicEq, GlossaryTerm.SNR) {
+    ChartCard(stringResource(R.string.node_detail_signal), stringResource(R.string.node_detail_how_well_observers_hear_this_node_snr), Icons.Outlined.GraphicEq, GlossaryTerm.SNR) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Heard by ${signals.size} observer${if (signals.size == 1) "" else "s"}" +
-                SignalQuality.entries.mapNotNull { q -> counts[q]?.let { " · $it ${q.label.lowercase()}" } }.joinToString(""),
+            val qualityCounts = SignalQuality.entries.mapNotNull { quality ->
+                counts[quality]?.let { stringResource(R.string.node_detail_signal_quality_count, it, stringResource(quality.labelRes).lowercase()) }
+            }
+            Text((listOf(pluralStringResource(R.plurals.node_detail_heard_by_observer, signals.size, signals.size)) + qualityCounts).joinToString(" · "),
                 style = MaterialTheme.typography.titleSmall)
-            Text("Best: ${best.observer}, ${db(best.median)}" + (best.margin?.let { " (${db(it)} above the decode limit)" } ?: ""),
+            Text(best.margin?.let { stringResource(R.string.node_detail_best_with_margin, best.observer, db(best.median), db(it)) }
+                ?: stringResource(R.string.node_detail_best, best.observer, db(best.median)),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         // Shared scale across rows, always including the decode limit so the margin is visible.
@@ -302,19 +310,19 @@ private fun SignalCard(points: List<SignalPoint>, observers: List<MeshObserver>,
                 selected = if (selected == key) null else key
             }
         }
-        if (signals.size > 5) TextButton(onClick = { expandedList = !expandedList }) { Text(if (expandedList) "Show less" else "Show all ${signals.size} observers") }
+        if (signals.size > 5) TextButton(onClick = { expandedList = !expandedList }) { Text(if (expandedList) stringResource(R.string.node_detail_show_less) else pluralStringResource(R.plurals.node_detail_show_all_observers, signals.size, signals.size)) }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             SignalQuality.entries.forEach { quality ->
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Box(Modifier.size(8.dp).background(qualityColor(quality), CircleShape))
-                    Text(quality.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(quality.labelRes), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
         Text(when {
-            floors.size == 1 -> "Quality is the margin above the SF${floors.single()} decode limit (${db(snrFloor(floors.single()))}): near limit < 5 dB, weak 5–10, good 10–15, strong 15+. Bars show each observer's typical range; the tick is its median."
-            floors.isEmpty() -> "Radio settings are unavailable, so only measured values are shown. Bars show each observer's typical range; the tick is its median."
-            else -> "Quality is the margin above each observer's own decode limit (it depends on its spreading factor). Bars show typical range; the tick is the median."
+            floors.size == 1 -> stringResource(R.string.node_detail_quality_is_the_margin_above_the_sf_decode, floors.single(), db(snrFloor(floors.single())))
+            floors.isEmpty() -> stringResource(R.string.node_detail_radio_settings_are_unavailable_so_only_measured_values)
+            else -> stringResource(R.string.node_detail_quality_is_the_margin_above_each_observer_s)
         }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -326,18 +334,17 @@ private fun ObserverSignalRow(signal: ObserverSignal, scaleLow: Double, scaleHig
     val tick = MaterialTheme.colorScheme.onSurface
     val tone = qualityColor(signal.quality)
     Column(Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Row(Modifier.semantics(mergeDescendants = true) {
-            contentDescription = "${signal.observer}: ${signal.quality?.label ?: "quality unknown"}, median ${db(signal.median)}, " +
-                "typically ${db(signal.low)} to ${db(signal.high)}, ${signal.count} readings. Double tap for details."
-        }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.withDescription(pluralStringResource(R.plurals.node_detail_signal_row_description, signal.count,
+            signal.observer, signal.quality?.let { stringResource(it.labelRes) } ?: stringResource(R.string.node_detail_quality_unknown),
+            db(signal.median), db(signal.low), db(signal.high), signal.count), mergeDescendants = true) { desc -> contentDescription = desc }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Column(Modifier.weight(1f)) {
                 Text(signal.observer, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("typical ${String.format(Locale.US, "%.1f to %.1f dB", signal.low, signal.high)} · ${signal.count} reading${if (signal.count == 1) "" else "s"}" +
-                    if (signal.fewReadings) " · few readings" else "", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(pluralStringResource(R.plurals.node_detail_typical_reading, signal.count, String.format(Locale.US, "%.1f to %.1f dB", signal.low, signal.high), signal.count) +
+                    if (signal.fewReadings) stringResource(R.string.node_detail_few_readings) else "", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             signal.quality?.let { quality ->
                 Surface(color = tone.copy(alpha = 0.16f), shape = CircleShape) {
-                    Text(quality.label, Modifier.padding(horizontal = 8.dp, vertical = 3.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface)
+                    Text(stringResource(quality.labelRes), Modifier.padding(horizontal = 8.dp, vertical = 3.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
             Text(db(signal.median), style = MaterialTheme.typography.labelLarge)
@@ -353,13 +360,13 @@ private fun ObserverSignalRow(signal: ObserverSignal, scaleLow: Double, scaleHig
         }
         if (expanded) {
             val stats = listOfNotNull(
-                "Median SNR" to db(signal.median),
-                "Typical range" to String.format(Locale.US, "%.1f to %.1f dB", signal.low, signal.high),
-                "Min / max" to String.format(Locale.US, "%.1f / %.1f dB", signal.min, signal.max),
-                signal.margin?.let { "Above decode limit" to "${db(it)} (SF${signal.spreadingFactor} limit ${db(signal.floor!!)})" },
-                signal.medianRssi?.let { "Median RSSI" to String.format(Locale.US, "%.0f dBm", it) },
-                "Readings" to signal.count.toString(),
-                signal.lastHeard?.let { "Last heard" to relativeTime(java.time.Instant.ofEpochMilli(it), now) },
+                stringResource(R.string.node_detail_median_snr) to db(signal.median),
+                stringResource(R.string.node_detail_typical_range) to String.format(Locale.US, "%.1f to %.1f dB", signal.low, signal.high),
+                stringResource(R.string.node_detail_min_max) to String.format(Locale.US, "%.1f / %.1f dB", signal.min, signal.max),
+                signal.margin?.let { stringResource(R.string.node_detail_above_decode_limit) to stringResource(R.string.node_detail_decode_limit_value, db(it), signal.spreadingFactor.toString(), db(signal.floor!!)) },
+                signal.medianRssi?.let { stringResource(R.string.node_detail_median_rssi) to String.format(Locale.US, "%.0f dBm", it) },
+                stringResource(R.string.node_detail_readings) to signal.count.toString(),
+                signal.lastHeard?.let { stringResource(R.string.node_detail_last_heard_3) to relativeTime(java.time.Instant.ofEpochMilli(it), now) },
             )
             Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 stats.chunked(2).forEach { row ->
@@ -375,7 +382,7 @@ private fun ObserverSignalRow(signal: ObserverSignal, scaleLow: Double, scaleHig
                 }
                 if (readings.isNotEmpty()) {
                     ReadingsChart(signal, readings, scaleLow, scaleHigh)
-                    Text("Each dot is one reading, on the same scale as the bars. Shading marks the quality zones; the red line is the decode limit.",
+                    Text(stringResource(R.string.node_detail_each_dot_is_one_reading_on_the_same),
                         style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -392,10 +399,12 @@ private fun ReadingsChart(signal: ObserverSignal, readings: List<Pair<Long, Doub
     val (from, to) = dataDomain(readings.map { it.first }) ?: return
     val floor = signal.floor
     val zoneAlpha = 0.10f
-    Column(Modifier.semantics(mergeDescendants = true) {
-        contentDescription = "${readings.size} readings from ${db(signal.min)} to ${db(signal.max)}" +
-            (floor?.let { ", decode limit ${db(it)}" } ?: "")
-    }) {
+    val description = if (floor == null) {
+        pluralStringResource(R.plurals.node_detail_readings_description, readings.size, readings.size, db(signal.min), db(signal.max))
+    } else {
+        pluralStringResource(R.plurals.node_detail_readings_description_limit, readings.size, readings.size, db(signal.min), db(signal.max), db(floor))
+    }
+    Column(Modifier.semantics(mergeDescendants = true) { contentDescription = description }) {
         Row(Modifier.fillMaxWidth().height(130.dp)) {
             Column(Modifier.fillMaxHeight().padding(end = 6.dp), verticalArrangement = Arrangement.SpaceBetween, horizontalAlignment = Alignment.End) {
                 Text(String.format(Locale.US, "%.0f dB", scaleHigh), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -443,7 +452,7 @@ private fun <T> ListCard(title: String, icon: ImageVector, items: List<T>, row: 
                 row(item)
             }
         }
-        if (items.size > 5) TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "Show less" else "Show all ${items.size}") }
+        if (items.size > 5) TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) stringResource(R.string.node_detail_show_less) else stringResource(R.string.node_detail_show_all, items.size)) }
     }
 }
 

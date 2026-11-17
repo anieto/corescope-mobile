@@ -1,5 +1,7 @@
 package org.nodescope.android.core.network
 
+import org.nodescope.android.R
+import org.nodescope.android.core.design.UiText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -25,6 +27,25 @@ val BackendCapability.beaconExplanation: String get() = when (this) {
         "Beacon servers don’t provide map defaults. NodeScope uses region coordinates to frame the map instead."
     BackendCapability.NODE_CHECK ->
         "Node Check needs to know which observers heard a node, which is currently available only with CoreScope servers."
+}
+
+val BackendCapability.beaconUiExplanation: UiText get() = when (this) {
+    BackendCapability.NEIGHBORS ->
+        UiText.Resource(R.string.beacon_neighbor_information_isn_t_available_from_this_source)
+    BackendCapability.NODE_ANALYTICS ->
+        UiText.Resource(R.string.beacon_node_analytics_for_beacon_servers_aren_t_supported)
+    BackendCapability.OBSERVER_ANALYTICS ->
+        UiText.Resource(R.string.beacon_observer_analytics_for_beacon_servers_aren_t_supported)
+    BackendCapability.SERVER_CHANNELS ->
+        UiText.Resource(R.string.beacon_channel_messages_from_beacon_servers_aren_t_supported)
+    BackendCapability.CHANNEL_DECRYPT_ON_PHONE ->
+        UiText.Resource(R.string.beacon_on_device_channel_decryption_isn_t_currently_supported)
+    BackendCapability.NODE_HEALTH, BackendCapability.NODE_REACH, BackendCapability.NODE_PATHS ->
+        UiText.Resource(R.string.beacon_route_and_network_importance_statistics_and_per_observer)
+    BackendCapability.MAP_DEFAULTS ->
+        UiText.Resource(R.string.beacon_beacon_servers_don_t_provide_map_defaults_nodescope)
+    BackendCapability.NODE_CHECK ->
+        UiText.Resource(R.string.beacon_node_check_needs_to_know_which_observers_heard)
 }
 
 class BeaconUnsupportedException(val capability: BackendCapability) : IllegalStateException(capability.beaconExplanation)

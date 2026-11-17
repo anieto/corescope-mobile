@@ -1,5 +1,7 @@
 package org.nodescope.android.core.design
 
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -116,12 +118,12 @@ fun TimeChart(description: String, series: List<TimeSeries>, from: Long, to: Lon
     var showValues by remember { mutableStateOf(false) }
     if (showValues) AlertDialog(
         onDismissRequest = { showValues = false },
-        title = { Text("Chart values") },
+        title = { Text(stringResource(R.string.common_chart_values)) },
         text = {
             LazyColumn(Modifier.heightIn(max = 400.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                item { Text("$description · timestamps in UTC", style = MaterialTheme.typography.bodyMedium) }
+                item { Text(stringResource(R.string.common_timestamps_in_utc, description), style = MaterialTheme.typography.bodyMedium) }
                 series.forEachIndexed { index, data ->
-                    if (series.size > 1) item { Text("Series ${index + 1}", style = MaterialTheme.typography.titleSmall) }
+                    if (series.size > 1) item { Text(stringResource(R.string.common_series, index + 1), style = MaterialTheme.typography.titleSmall) }
                     items(data.points.sortedBy { it.first }) { point ->
                         Column(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}) {
                             Text(java.time.Instant.ofEpochMilli(point.first).toString(), style = MaterialTheme.typography.bodySmall)
@@ -131,7 +133,7 @@ fun TimeChart(description: String, series: List<TimeSeries>, from: Long, to: Lon
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { showValues = false }) { Text("Done") } },
+        confirmButton = { TextButton(onClick = { showValues = false }) { Text(stringResource(R.string.common_done)) } },
     )
     var selectedPoint by remember(series, from, to) { mutableStateOf<Pair<Long, Double>?>(null) }
     val points = remember(series) { series.flatMap { it.points }.sortedBy { it.first } }
@@ -147,7 +149,7 @@ fun TimeChart(description: String, series: List<TimeSeries>, from: Long, to: Lon
                 Text(formatValue(low), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Canvas(Modifier.weight(1f).fillMaxHeight().padding(vertical = 4.dp)
-                .semantics { contentDescription = "Interactive plot: $description" }
+                .withDescription(stringResource(R.string.common_interactive_plot, description)) { description -> contentDescription = description }
                 .pointerInput(points, from, to) {
                     detectTapGestures { position ->
                         val time = from + ((to - from) * (position.x / size.width.coerceAtLeast(1)).coerceIn(0f, 1f)).toLong()
@@ -187,10 +189,10 @@ fun TimeChart(description: String, series: List<TimeSeries>, from: Long, to: Lon
             Text(formatTime(to), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.End)
         }
         selectedPoint?.let { point ->
-            Text("${java.time.Instant.ofEpochMilli(point.first)} · ${point.second.toBigDecimal().stripTrailingZeros().toPlainString()}",
+            Text(stringResource(R.string.common_value, java.time.Instant.ofEpochMilli(point.first), point.second.toBigDecimal().stripTrailingZeros().toPlainString()),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
         }
-        TextButton(onClick = { showValues = true }) { Text("View chart values") }
+        TextButton(onClick = { showValues = true }) { Text(stringResource(R.string.common_view_chart_values)) }
     }
 }
 
@@ -235,7 +237,7 @@ fun DonutChart(description: String, slices: List<ChartPoint>, modifier: Modifier
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                     Box(Modifier.size(9.dp).background(CategoryColors[index % CategoryColors.size], CircleShape))
                     Text(slice.label, style = MaterialTheme.typography.labelMedium)
-                    Text("${compactCount(slice.value)} · ${percentOf(slice.value, total)}", style = MaterialTheme.typography.labelMedium,
+                    Text(stringResource(R.string.common_value, compactCount(slice.value), percentOf(slice.value, total)), style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }

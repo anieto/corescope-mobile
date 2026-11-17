@@ -1,5 +1,9 @@
 package org.nodescope.android.feature.channels
 
+import androidx.annotation.StringRes
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import org.nodescope.android.core.design.MonaspaceNeon
 import org.nodescope.android.core.design.meshCardColors
 import android.content.Intent
@@ -27,10 +31,10 @@ import org.nodescope.android.core.model.MonitoredChannel
 import org.nodescope.android.core.storage.ChannelMonitorException
 import org.nodescope.android.core.storage.MonitoredChannelStore
 
-private enum class AddMode(val label: String, val title: String, val icon: ImageVector) {
-    HASHTAG("Hashtag", "Monitor a hashtag", Icons.Outlined.Tag),
-    PRIVATE("Private", "Add a private key", Icons.Outlined.Key),
-    GENERATE("Generate", "Generate a private channel", Icons.Outlined.AutoAwesome),
+private enum class AddMode(@param:StringRes val labelRes: Int, @param:StringRes val titleRes: Int, val icon: ImageVector) {
+    HASHTAG(R.string.channels_hashtag, R.string.channels_monitor_a_hashtag, Icons.Outlined.Tag),
+    PRIVATE(R.string.channels_private, R.string.channels_add_a_private_key, Icons.Outlined.Key),
+    GENERATE(R.string.channels_generate, R.string.channels_generate_a_private_channel, Icons.Outlined.AutoAwesome),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,38 +69,38 @@ fun AddChannelScreen(store: MonitoredChannelStore, onDone: () -> Unit) {
                 Icon(Icons.Outlined.Shield, null, Modifier.padding(12.dp).size(26.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
             }
             Column {
-                Text("Listen to a channel", style = MaterialTheme.typography.titleLarge)
-                Text("Keys are processed and stored on this device.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.channels_listen_to_a_channel), style = MaterialTheme.typography.titleLarge)
+                Text(stringResource(R.string.channels_keys_are_processed_and_stored_on_this_device), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             AddMode.entries.forEachIndexed { index, option ->
                 SegmentedButton(selected = mode == option, onClick = { mode = option; error = null; generated = null },
                     shape = SegmentedButtonDefaults.itemShape(index, AddMode.entries.size),
-                    icon = { SegmentedButtonDefaults.Icon(mode == option) { Icon(option.icon, null, Modifier.size(18.dp)) } }) { Text(option.label) }
+                    icon = { SegmentedButtonDefaults.Icon(mode == option) { Icon(option.icon, null, Modifier.size(18.dp)) } }) { Text(stringResource(option.labelRes)) }
             }
         }
         Card(colors = meshCardColors()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(mode.title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                Text(stringResource(mode.titleRes), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                 val plain = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, imeAction = ImeAction.Done)
                 when (mode) {
                     AddMode.HASHTAG -> {
-                        OutlinedTextField(hashtag, { hashtag = it }, Modifier.fillMaxWidth(), label = { Text("Channel name") },
+                        OutlinedTextField(hashtag, { hashtag = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.channels_channel_name)) },
                             placeholder = { Text("#wardriving") }, singleLine = true, keyboardOptions = plain)
-                        Text("NodeScope derives the public hashtag key and decrypts matching traffic locally.",
+                        Text(stringResource(R.string.channels_nodescope_derives_the_public_hashtag_key_and_decrypts),
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     AddMode.PRIVATE -> {
-                        OutlinedTextField(keyHex, { keyHex = it }, Modifier.fillMaxWidth(), label = { Text("32-character hexadecimal key") },
+                        OutlinedTextField(keyHex, { keyHex = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.channels_32_character_hexadecimal_key)) },
                             singleLine = true, textStyle = LocalTextStyle.current.copy(fontFamily = MonaspaceNeon),
                             keyboardOptions = plain.copy(keyboardType = KeyboardType.Password))
-                        OutlinedTextField(label, { label = it }, Modifier.fillMaxWidth(), label = { Text("Display name (optional)") }, singleLine = true)
+                        OutlinedTextField(label, { label = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.channels_display_name_optional)) }, singleLine = true)
                     }
                     AddMode.GENERATE -> {
-                        OutlinedTextField(label, { label = it }, Modifier.fillMaxWidth(), label = { Text("Display name (optional)") },
+                        OutlinedTextField(label, { label = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.channels_display_name_optional)) },
                             singleLine = true, enabled = generated == null)
-                        Text("A cryptographically secure key is generated on this device. Share it only with trusted participants.",
+                        Text(stringResource(R.string.channels_a_cryptographically_secure_key_is_generated_on_this),
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -107,35 +111,36 @@ fun AddChannelScreen(store: MonitoredChannelStore, onDone: () -> Unit) {
         Surface(color = HealthyGreen.copy(alpha = 0.10f), shape = MaterialTheme.shapes.medium) {
             Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Icon(Icons.Outlined.PhonelinkLock, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Channel keys are encrypted on this device and never sent to an analyzer or included in backups. NodeScope listens to traffic but cannot transmit over radio.",
+                Text(stringResource(R.string.channels_channel_keys_are_encrypted_on_this_device_and),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         if (generated == null) Button(onClick = ::save, enabled = canSave, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-            Text(if (mode == AddMode.GENERATE) "Generate secure channel" else "Monitor channel")
-        } else Button(onClick = onDone, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Done") }
+            Text(if (mode == AddMode.GENERATE) stringResource(R.string.channels_generate_secure_channel) else stringResource(R.string.channels_monitor_channel))
+        } else Button(onClick = onDone, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(stringResource(R.string.common_done)) }
     }
 }
 
 @Composable
 private fun GeneratedKey(channel: MonitoredChannel) {
+    val resources = LocalResources.current
     val copy = rememberCopyAction()
     val context = LocalContext.current
     Card(colors = meshCardColors()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Generated key for ${channel.title}", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.channels_generated_key_for, channel.title), style = MaterialTheme.typography.titleMedium)
             Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.small) {
                 Text(channel.keyHex, Modifier.fillMaxWidth().padding(12.dp), fontFamily = MonaspaceNeon, style = MaterialTheme.typography.bodyMedium)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { copy("Channel key", channel.keyHex, true) }, Modifier.weight(1f)) {
-                    Icon(Icons.Outlined.ContentCopy, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Copy key")
+                OutlinedButton(onClick = { copy(resources.getString(R.string.channels_channel_key), channel.keyHex, true) }, Modifier.weight(1f)) {
+                    Icon(Icons.Outlined.ContentCopy, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.channels_copy_key))
                 }
                 OutlinedButton(onClick = {
                     context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
-                        .putExtra(Intent.EXTRA_TEXT, channel.keyHex).putExtra(Intent.EXTRA_SUBJECT, "Private MeshCore channel key"), "Share channel key"))
+                        .putExtra(Intent.EXTRA_TEXT, channel.keyHex).putExtra(Intent.EXTRA_SUBJECT, resources.getString(R.string.channels_private_meshcore_channel_key)), resources.getString(R.string.channels_share_channel_key)))
                 }, Modifier.weight(1f)) {
-                    Icon(Icons.Outlined.Share, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Share")
+                    Icon(Icons.Outlined.Share, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.common_share))
                 }
             }
         }
