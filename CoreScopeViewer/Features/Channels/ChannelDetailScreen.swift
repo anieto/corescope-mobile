@@ -367,7 +367,7 @@ private struct ChatBubbleRow: View {
                             )
                         }
                         MessageMetricChip(
-                            text: "\(message.hops) hop\(message.hops == 1 ? "" : "s")",
+                            text: String(localized: "\(message.hops) hops"),
                             symbol: "point.3.connected.trianglepath.dotted",
                             color: NodeScopeStyle.activity
                         )

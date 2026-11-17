@@ -4,12 +4,6 @@
     "" : {
 
     },
-    " (%@ above the decode limit)" : {
-
-    },
-    " ago" : {
-
-    },
     " at %@ SNR" : {
 
     },
@@ -135,8 +129,30 @@
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@, median %2$@, typically %3$@ to %4$@, %5$lld readings"
+            "state" : "translated",
+            "value" : "%1$@, median %2$@, typically %3$@ to %4$@, %#@readings@"
+          },
+          "substitutions" : {
+            "readings" : {
+              "argNum" : 5,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg reading"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg readings"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -165,11 +181,56 @@
 
     },
     "%lld %@" : {
+      "comment" : "Signal quality tally, e.g. \"3 good\"",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$lld %2$@"
+          }
+        }
+      }
+    },
+    "%lld Coverage studies" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Coverage study"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Coverage studies"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld Link Profiles" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Link Profile"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Link Profiles"
+                }
+              }
+            }
           }
         }
       }
@@ -203,12 +264,46 @@
     "%lld active" : {
 
     },
-    "%lld channel%@ · keys remain local" : {
+    "%lld channels" : {
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld channel%2$@ · keys remain local"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld channel"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld channels"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld channels · keys remain local" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld channel · keys remain local"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld channels · keys remain local"
+                }
+              }
+            }
           }
         }
       }
@@ -227,17 +322,97 @@
 
     },
     "%lld days" : {
-
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld day"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld days"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld days ago" : {
-
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld day ago"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld days ago"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld favorites · %lld claimed nodes" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld favorites · %2$lld claimed nodes"
+            "state" : "translated",
+            "value" : "%#@favorites@ · %#@claimed@"
+          },
+          "substitutions" : {
+            "favorites" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg favorite"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg favorites"
+                    }
+                  }
+                }
+              }
+            },
+            "claimed" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg claimed node"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg claimed nodes"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -256,48 +431,228 @@
 
     },
     "%lld hops" : {
-
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld hop"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld hops"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld hours ago" : {
-
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld hour ago"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld hours ago"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld mV" : {
 
     },
     "%lld minutes ago" : {
-
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld minute ago"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld minutes ago"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld nearby nodes" : {
 
     },
     "%lld nodes" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld node"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld nodes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld not in your library yet" : {
 
     },
     "%lld observations" : {
-
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld observation"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld observations"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld observations at UTC hour %lld" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld observations at UTC hour %2$lld"
+            "state" : "translated",
+            "value" : "%#@obs@ at UTC hour %2$lld"
+          },
+          "substitutions" : {
+            "obs" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg observation"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg observations"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
     },
     "%lld observers" : {
-
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld observer"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld observers"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld observers hear it directly" : {
-
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld observer hears it directly"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld observers hear it directly"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld packets at UTC hour %lld" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld packets at UTC hour %2$lld"
+            "state" : "translated",
+            "value" : "%#@pkts@ at UTC hour %2$lld"
+          },
+          "substitutions" : {
+            "pkts" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg packet"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg packets"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -306,33 +661,156 @@
 
     },
     "%lld readings" : {
-
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld reading"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld readings"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld readings from %@ to %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld readings from %2$@ to %3$@"
+            "state" : "translated",
+            "value" : "%#@readings@ from %2$@ to %3$@"
+          },
+          "substitutions" : {
+            "readings" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg reading"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg readings"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld readings from %@ to %@, decode limit %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@readings@ from %2$@ to %3$@, decode limit %4$@"
+          },
+          "substitutions" : {
+            "readings" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg reading"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg readings"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
     },
     "%lld receivers" : {
-
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld receiver"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld receivers"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld recorded packets" : {
 
     },
     "%lld regions" : {
-
-    },
-    "%lld resolved route%@" : {
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld resolved route%2$@"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld region"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld regions"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld resolved routes" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld resolved route"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld resolved routes"
+                }
+              }
+            }
           }
         }
       }
@@ -340,12 +818,24 @@
     "%lld routes together" : {
 
     },
-    "%lld saved item%@ on this analyzer" : {
+    "%lld saved items on this analyzer" : {
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld saved item%2$@ on this analyzer"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld saved item on this analyzer"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld saved items on this analyzer"
+                }
+              }
+            }
           }
         }
       }
@@ -354,16 +844,95 @@
 
     },
     "%lld sites" : {
-
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld site"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld sites"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld studies" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld study"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld studies"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld terrain tiles · EGM96 heights" : {
 
     },
     "%lld things to check · Live test" : {
-
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld thing to check · Live test"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld things to check · Live test"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld transmissions" : {
-
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld transmission"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld transmissions"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld with unsaved changes" : {
 
@@ -371,10 +940,7 @@
     "%lld." : {
 
     },
-    ", decode limit %@" : {
-
-    },
-    "." : {
+    "**What to do:** %@" : {
 
     },
     "0–10" : {
@@ -629,6 +1195,9 @@
     "All regions" : {
 
     },
+    "Already in your library" : {
+
+    },
     "Already in your library. Importing adds a separate copy; nothing here is replaced." : {
 
     },
@@ -822,6 +1391,16 @@
         }
       }
     },
+    "Best: %@, %@ (%@ above the decode limit)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Best: %1$@, %2$@ (%3$@ above the decode limit)"
+          }
+        }
+      }
+    },
     "Beta" : {
 
     },
@@ -975,7 +1554,7 @@
     "Check the site name, coordinates, and displayed numeric ranges. Try a shorter name if needed. Optional fields may be blank." : {
 
     },
-    "Checked " : {
+    "Checked %@ ago" : {
 
     },
     "Checked: %@" : {
@@ -1229,6 +1808,58 @@
     },
     "Create plan" : {
 
+    },
+    "Creates %lld plans with %lld Coverage studies, using Coverage's defaults for the receiver and study area. Nothing is calculated. Candidate Sites is then removed." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Creates %#@plans@ with %#@studies@, using Coverage's defaults for the receiver and study area. Nothing is calculated. Candidate Sites is then removed."
+          },
+          "substitutions" : {
+            "plans" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg plan"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg plans"
+                    }
+                  }
+                }
+              }
+            },
+            "studies" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg Coverage study"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg Coverage studies"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "Current" : {
 
@@ -1718,7 +2349,26 @@
       }
     },
     "Heard by %lld observers" : {
-
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Heard by %lld observer"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Heard by %lld observers"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "Heard by 1 observer" : {
 
@@ -1730,7 +2380,26 @@
 
     },
     "Heard! %lld observers so far" : {
-
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Heard! %lld observer so far"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Heard! %lld observers so far"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "Heard! 1 observer so far" : {
 
@@ -1886,12 +2555,24 @@
     "It won’t appear on the live map or the analyzer’s map." : {
 
     },
-    "Its %lld %@ in Saved Plans as standalone studies." : {
+    "Its %lld studies stay in Saved Plans as standalone studies." : {
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Its %1$lld %2$@ in Saved Plans as standalone studies."
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Its %lld study stays in Saved Plans as a standalone study."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Its %lld studies stay in Saved Plans as standalone studies."
+                }
+              }
+            }
           }
         }
       }
@@ -1966,10 +2647,10 @@
     "Last heard" : {
 
     },
-    "Last heard " : {
+    "Last heard %@" : {
 
     },
-    "Last heard %@" : {
+    "Last heard %@ ago" : {
 
     },
     "Last heard is the latest reported activity. Checked is when the app retrieved that information. Saved data keeps its original check time." : {
@@ -1993,7 +2674,7 @@
     "Latest observation %@" : {
 
     },
-    "Latest telemetry sample " : {
+    "Latest telemetry sample %@." : {
 
     },
     "Latitude" : {
@@ -2196,7 +2877,26 @@
 
     },
     "Map of %lld observers that heard this node" : {
-
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Map of %lld observer that heard this node"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Map of %lld observers that heard this node"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "Map samples" : {
 
@@ -2387,6 +3087,9 @@
     "Network telemetry live" : {
 
     },
+    "New" : {
+
+    },
     "New Estimated Coverage" : {
 
     },
@@ -2520,6 +3223,9 @@
 
     },
     "No recent traffic" : {
+
+    },
+    "No studies" : {
 
     },
     "No studies yet. Use + to start a Link Profile or Estimated Coverage here, or add a study you've already saved." : {
@@ -3432,7 +4138,26 @@
 
     },
     "Route with %lld hops" : {
-
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Route with %lld hop"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Route with %lld hops"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "Route: %@. Change route" : {
 
@@ -3515,7 +4240,7 @@
     "Saved comparisons reset when you clear cached data" : {
 
     },
-    "Saved data · checked " : {
+    "Saved data · checked %@ ago" : {
 
     },
     "Saved evidence" : {
@@ -3761,10 +4486,48 @@
       }
     },
     "Show all %lld observations" : {
-
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Show %lld observation"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Show all %lld observations"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "Show all %lld observers" : {
-
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Show %lld observer"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Show all %lld observers"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "Show coverage setup" : {
 
@@ -4573,9 +5336,6 @@
     "What this means" : {
 
     },
-    "What to do: " : {
-
-    },
     "What's New" : {
 
     },
@@ -4654,12 +5414,6 @@
     "analyzer.example.org" : {
 
     },
-    "channel" : {
-
-    },
-    "channels" : {
-
-    },
     "few readings" : {
 
     },
@@ -4678,19 +5432,7 @@
     "no repeater needed" : {
 
     },
-    "node" : {
-
-    },
-    "nodes" : {
-
-    },
-    "observer" : {
-
-    },
     "observer, last advert" : {
-
-    },
-    "observers" : {
 
     },
     "observers, last advert" : {
@@ -4728,7 +5470,26 @@
 
     },
     "· %lld hops" : {
-
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "· %lld hop"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "· %lld hops"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "· Heard %@" : {
 

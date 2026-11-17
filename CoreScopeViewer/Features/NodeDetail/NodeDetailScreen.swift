@@ -829,7 +829,7 @@ private struct NodePathsCard: View {
 
     var body: some View {
         NodeDetailCard(title: "Known Paths", symbol: "point.topleft.down.curvedto.point.bottomright.up") {
-            Text("\(total) resolved route\(total == 1 ? "" : "s")")
+            Text("\(total) resolved routes")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 

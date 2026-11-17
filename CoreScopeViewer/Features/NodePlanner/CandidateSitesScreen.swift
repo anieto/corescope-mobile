@@ -53,7 +53,7 @@ struct CandidateSitesScreen: View {
             Button("Cancel", role: .cancel) {}
         } message: { conversion in
             Text(([
-                "Creates \(conversion.plans.count) \(conversion.plans.count == 1 ? "plan" : "plans") with \(conversion.studies.count) Coverage \(conversion.studies.count == 1 ? "study" : "studies"), using Coverage's defaults for the receiver and study area. Nothing is calculated. Candidate Sites is then removed."
+                String(localized: "Creates \(conversion.plans.count) plans with \(conversion.studies.count) Coverage studies, using Coverage's defaults for the receiver and study area. Nothing is calculated. Candidate Sites is then removed.")
             ] + conversion.notes).joined(separator: "\n\n"))
         }
         .confirmationDialog("Delete this plan and its saved sites?", isPresented: Binding(

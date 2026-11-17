@@ -621,9 +621,7 @@ private struct ObserverTelemetrySummaryCard: View {
                         telemetryValue("Receive Errors", value: latest.receiveErrors?.formatted())
                     }
                 }
-                Text("Latest telemetry sample ")
-                    + Text(latest.timestamp, style: .relative)
-                    + Text(".")
+                Text("Latest telemetry sample \(latest.timestamp, style: .relative).")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

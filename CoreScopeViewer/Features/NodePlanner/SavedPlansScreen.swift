@@ -243,8 +243,8 @@ private struct PlanActionsMenu: View {
                 Task { if await CandidatePlansModel.shared.deletePlan(plan.id) { dismiss() } }
             }
         } message: {
-            Text(count == 0 ? "This plan is empty."
-                : "Its \(count) \(count == 1 ? "study stays" : "studies stay") in Saved Plans as standalone studies.")
+            Text(count == 0 ? String(localized: "This plan is empty.")
+                : String(localized: "Its \(count) studies stay in Saved Plans as standalone studies."))
         }
     }
 }
@@ -308,9 +308,9 @@ private struct StudyPlanRow: View {
         let links = studies.filter { $0.kind == .linkProfile }.count
         let coverage = studies.count - links
         var parts: [String] = []
-        if links > 0 { parts.append(links == 1 ? "1 Link Profile" : "\(links) Link Profiles") }
-        if coverage > 0 { parts.append(coverage == 1 ? "1 Coverage study" : "\(coverage) Coverage studies") }
-        return parts.isEmpty ? "No studies" : parts.joined(separator: " · ")
+        if links > 0 { parts.append(String(localized: "\(links) Link Profiles")) }
+        if coverage > 0 { parts.append(String(localized: "\(coverage) Coverage studies")) }
+        return parts.isEmpty ? String(localized: "No studies") : parts.joined(separator: " · ")
     }
 
     var body: some View {

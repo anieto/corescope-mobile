@@ -940,7 +940,7 @@ private struct NodeSignalCard: View {
     private func headline(for summaries: [ObserverSignalSummary]) -> String {
         let counts = Dictionary(grouping: summaries.compactMap(\.quality), by: { $0 }).mapValues(\.count)
         let parts = SignalQuality.allCases.compactMap { quality in
-            counts[quality].map { "\($0) \(quality.label.lowercased())" }
+            counts[quality].map { String(localized: "\($0) \(quality.label.lowercased())", comment: "Signal quality tally, e.g. \"3 good\"") }
         }
         let heard = summaries.count == 1
             ? String(localized: "Heard by 1 observer")
@@ -949,11 +949,10 @@ private struct NodeSignalCard: View {
     }
 
     private func bestLine(for best: ObserverSignalSummary) -> String {
-        var line = String(localized: "Best: \(best.observer), \(formattedDB(best.median))")
-        if let margin = best.margin {
-            line += String(localized: " (\(formattedDB(margin)) above the decode limit)")
+        guard let margin = best.margin else {
+            return String(localized: "Best: \(best.observer), \(formattedDB(best.median))")
         }
-        return line
+        return String(localized: "Best: \(best.observer), \(formattedDB(best.median)) (\(formattedDB(margin)) above the decode limit)")
     }
 
     private func explanation(for summaries: [ObserverSignalSummary]) -> String {
@@ -1202,11 +1201,11 @@ private struct ObserverReadingsChart: View {
     }
 
     private var accessibilityValue: String {
-        var value = String(localized: "\(readings.count) readings from \(formattedDB(summary.minimum)) to \(formattedDB(summary.maximum))")
-        if let floor = summary.floor {
-            value += String(localized: ", decode limit \(formattedDB(floor))")
+        let minimum = formattedDB(summary.minimum), maximum = formattedDB(summary.maximum)
+        guard let floor = summary.floor else {
+            return String(localized: "\(readings.count) readings from \(minimum) to \(maximum)")
         }
-        return value
+        return String(localized: "\(readings.count) readings from \(minimum) to \(maximum), decode limit \(formattedDB(floor))")
     }
 }
 

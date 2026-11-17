@@ -665,7 +665,7 @@ private struct MonitoringSectionHeader: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Monitoring on This Device")
                     .font(.caption.weight(.bold))
-                Text("\(count) channel\(count == 1 ? "" : "s") · keys remain local")
+                Text("\(count) channels · keys remain local")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }

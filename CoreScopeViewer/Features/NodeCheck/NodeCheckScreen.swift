@@ -637,7 +637,7 @@ private struct NodeCheckFindingRow: View {
                     .foregroundStyle(.secondary)
                     .wrapsFully()
                 if let fix = finding.fix {
-                    (Text("What to do: ").bold() + Text(fix))
+                    Text("**What to do:** \(fix)")
                         .font(.subheadline)
                         .wrapsFully()
                         .padding(10)

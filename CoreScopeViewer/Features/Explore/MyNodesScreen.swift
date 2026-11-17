@@ -277,13 +277,14 @@ private struct ActivityItemContent: View {
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(activity.state == .recentlyHeard ? Color.accentColor : Color.secondary)
                     if let lastSeen {
-                        (Text("Last heard ") + Text(lastSeen, style: .relative) + Text(" ago"))
+                        Text("Last heard \(lastSeen, style: .relative) ago")
                             .font(.subheadline)
                             .accessibilityLabel(Text("Last heard: \(lastSeen, format: .dateTime)"))
                     }
                     if let fetchedAt {
-                        (Text(state == .cached ? "Saved data · checked " : "Checked ") +
-                         Text(fetchedAt, style: .relative) + Text(" ago"))
+                        (state == .cached
+                            ? Text("Saved data · checked \(fetchedAt, style: .relative) ago")
+                            : Text("Checked \(fetchedAt, style: .relative) ago"))
                             .font(.caption).foregroundStyle(.secondary)
                         if context.date.timeIntervalSince(fetchedAt) > 300 {
                             Text("Refresh needed").font(.caption).foregroundStyle(.secondary)

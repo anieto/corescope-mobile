@@ -353,12 +353,13 @@ struct ImportPackageSheet: View {
     }
 
     private func detail(_ item: SavedPlansImport.Item) -> String {
-        let count = item.kind == .plan ? "\(item.studies) \(item.studies == 1 ? "study" : "studies") · " : ""
-        switch item.status {
-        case .new: return count + "New"
-        case .alreadyHere: return count + "Already in your library"
-        case .partlyHere(let fresh): return count + "\(fresh) not in your library yet"
+        let status = switch item.status {
+        case .new: String(localized: "New")
+        case .alreadyHere: String(localized: "Already in your library")
+        case .partlyHere(let fresh): String(localized: "\(fresh) not in your library yet")
         }
+        guard item.kind == .plan else { return status }
+        return String(localized: "\(item.studies) studies") + " · " + status
     }
 
     private func load() async {

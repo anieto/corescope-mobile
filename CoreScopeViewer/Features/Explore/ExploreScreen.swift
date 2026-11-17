@@ -776,10 +776,11 @@ private struct NetworkAtAGlanceCard: View {
         let channels = favorites.count { $0.kind == .channel }
         let nodes = favorites.count { $0.kind == .node }
         let observers = favorites.count { $0.kind == .observer }
-        let channelLabel = channels == 1 ? String(localized: "channel") : String(localized: "channels")
-        let nodeLabel = nodes == 1 ? String(localized: "node") : String(localized: "nodes")
-        let observerLabel = observers == 1 ? String(localized: "observer") : String(localized: "observers")
-        return "\(channels) \(channelLabel) · \(nodes) \(nodeLabel) · \(observers) \(observerLabel)"
+        return [
+            String(localized: "\(channels) channels"),
+            String(localized: "\(nodes) nodes"),
+            String(localized: "\(observers) observers"),
+        ].joined(separator: " · ")
     }
 
     private func isActive(_ date: Date?) -> Bool {
@@ -1052,7 +1053,7 @@ private struct ExploreHeader: View {
         VStack(alignment: .leading, spacing: 5) {
             Text("Explore")
                 .font(.monaspace(.largeTitle).bold())
-            Text("\(count) saved item\(count == 1 ? "" : "s") on this analyzer")
+            Text("\(count) saved items on this analyzer")
                 .font(.caption.weight(.medium))
                 .foregroundStyle(.secondary)
         }
