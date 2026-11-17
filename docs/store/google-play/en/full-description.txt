@@ -1,0 +1,41 @@
+NodeScope is an unofficial, read-only companion app for CoreScope and Beacon, the mesh network analyzers used by MeshTexas and other MeshCore communities. It connects directly to an analyzer's public API and live feed to show the same nodes, packet traffic, channel messages and observer data you'd see on the web dashboard, in a native Android app.
+
+Available in English, Spanish and Brazilian Portuguese. Beacon support is in beta; features and history vary by server.
+
+WHAT NODESCOPE SHOWS YOU
+
+Live map
+Every known node, color-coded by role. Live packet traffic animates hop by hop as it crosses the mesh. Tap a route to see every hop, the observer that heard it, and its signal; tap a node for its details. Filter by region, role, recent activity or receiving observer, and center the map on yourself.
+
+Explore
+A network-at-a-glance dashboard of active nodes, online observers, packets and average signal, plus global search across nodes, observers, channels and packets. Save favorites and jump back to recently viewed items.
+
+Node Check
+Is your node getting out? See which observers hear it and what to fix, or run a live test while you send a flood advert. Requires a CoreScope server.
+
+Live packets
+Watch packets arrive in real time, grouped by transmission, with decoded payloads, raw data, every observation and every route. Replay any packet's path on the map.
+
+Channels
+Public channel traffic as a live chat feed. Monitor your own hashtag or private channels too: keys stay on your device, and messages are decrypted locally.
+
+Observers
+The devices feeding your analyzer: hardware, firmware, radio settings, battery and noise, plus charts of their packet types, traffic and signal.
+
+Node analytics
+Signal quality explained in plain terms, activity over time, a weekly heatmap, packet types, hop counts, observer coverage and the peers a node talks to.
+
+Node Planner
+Check a site before you install hardware. Link Profile shows the terrain between two points, line of sight, Fresnel clearance and estimated link margin. Estimated Coverage (beta) maps where a transmitter is likely to be heard. Keep studies in Saved Plans and share them as files with Android, iPhone and iPad. Results are estimates, not observed links.
+
+GOOD TO KNOW
+
+Bring your own analyzer. NodeScope has no backend of its own. Pick a community source such as MeshTexas, or point it at any CoreScope- or Beacon-compatible host.
+
+Works on a flaky connection. Recently loaded data stays available and is clearly marked as not live.
+
+Private by design. No account, no ads, no analytics. Your location is used only on your device, only when you ask to center the map, and is never sent anywhere. Link Profile sends the two points you pick to Open-Meteo for elevation, and Estimated Coverage downloads terrain tiles from Amazon Web Services.
+
+Not affiliated with CoreScope, Beacon, MeshTexas or MeshCore. NodeScope is an independent, unofficial viewer.
+
+Support, FAQ and feature requests: betweenthieves.dev/nodescope/support

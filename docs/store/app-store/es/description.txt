@@ -1,0 +1,41 @@
+NodeScope es una app complementaria no oficial y de solo lectura para CoreScope y Beacon, los analizadores de redes mesh que usan MeshTexas y otras comunidades de MeshCore. Se conecta directamente a la API pública del analizador que elijas para mostrar nodos, paquetes, canales, rutas, observadores y análisis en iPhone y iPad.
+
+Disponible en inglés, español y portugués de Brasil. La compatibilidad con Beacon está en beta; las funciones y el historial varían según el servidor.
+
+EXPLORA TU RED
+Mira los nodos activos, los observadores en línea, los paquetes recientes y la información de señal. Busca nodos, observadores, canales, claves públicas y paquetes, y guarda favoritos en tu panel.
+
+REVISIÓN DE NODO
+¿Tu nodo está saliendo? Mira qué observadores lo escuchan y qué corregir, o haz una prueba en vivo mientras envías un anuncio flood. Requiere un servidor CoreScope.
+
+ANÁLISIS DE NODOS
+Gráficos de disponibilidad, calidad de señal, actividad, retransmisión, cobertura de observadores, tipos de paquete, saltos y vecinos, según el analizador. Las métricas que faltan se indican, nunca se estiman. Exporta en CSV o JSON.
+
+MAPA EN VIVO
+Mira los nodos por rol, con el tráfico de paquetes en vivo animado salto por salto. Filtra por región, rol, actividad u observador. Propagación realista reúne durante unos segundos los reportes de un paquete y luego anima todas sus rutas juntas. Reproduce las rutas de cualquier paquete, con los observadores que lo escucharon marcados.
+
+PAQUETES EN VIVO
+Sigue el tráfico a medida que llega, agrupado por transmisión. Filtra, inspecciona, reproduce rutas o pausa la transmisión mientras exploras.
+
+CANALES
+Lee el tráfico de los canales grupales como una conversación. Monitorea canales protegidos con clave en tu dispositivo; las claves se quedan en tu Llavero y nunca se envían al analizador.
+
+OBSERVADORES
+Revisa los dispositivos que alimentan el analizador: hardware, firmware, actividad y señal. Los servidores Beacon compatibles agregan batería, ruido de fondo, tiempo en aire y tiempo activo.
+
+PLANIFICADOR DE NODOS
+Revisa un sitio antes de instalar equipo. Perfil de enlace muestra el terreno entre dos puntos, la línea de vista, el despeje de Fresnel y el margen estimado del enlace. Cobertura estimada (beta) muestra dónde es probable que se escuche un transmisor. Guarda tus estudios en Planes guardados y compártelos como archivos. Los resultados son estimaciones, no enlaces observados.
+
+HERRAMIENTAS DE CAMPO Y APRENDIZAJE
+Obtén la distancia y el rumbo de brújula hacia un nodo u observador. Toca ⓘ junto a términos como SNR y saltos para ver una explicación sencilla, o consulta el Glosario.
+
+COMPARTIR Y DIAGNÓSTICO
+Comparte enlaces a nodos, observadores, canales y paquetes. Agrega nodos a MeshCore con un código QR de contacto. Comprueba la conexión con el analizador y borra los datos descargados sin perder favoritos ni claves.
+
+ANALIZADORES DE LA COMUNIDAD
+Elige una fuente CoreScope o Beacon de la comunidad, o ingresa el nombre de host de un analizador compatible.
+
+PRIVACIDAD DESDE EL DISEÑO
+Sin cuenta, sin backend propio y sin publicidad, rastreo ni SDK de análisis. NodeScope se conecta directamente al analizador que elijas. Perfil de enlace envía los dos puntos que elijas a Open-Meteo para obtener la elevación, y Cobertura estimada descarga teselas de terreno de Amazon Web Services. Tu ubicación y tus claves de canal nunca se transmiten.
+
+NodeScope es un proyecto independiente y no está afiliado a CoreScope, Beacon, MeshTexas ni MeshCore.

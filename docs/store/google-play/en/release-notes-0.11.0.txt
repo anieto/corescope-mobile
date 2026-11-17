@@ -1,0 +1,3 @@
+New: Saved Plans. Keep link profiles and coverage studies in named plans with notes; results open on Android, iPhone and iPad without calculating again. Export and import plans as files.
+New: Estimated Coverage (beta). See where a transmitter is likely to be heard.
+Now in Spanish and Brazilian Portuguese, with units that follow your region and a new UK option.

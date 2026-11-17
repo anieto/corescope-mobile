@@ -1,0 +1,15 @@
+Novo: Planos salvos. Agrupe perfis de enlace e estudos de cobertura em planos com nome e notas. Os resultados são salvos junto e abrem no iPhone, no iPad e no Android sem calcular de novo, e um Perfil de enlace calculado agora reabre com o resultado.
+
+Compartilhe e faça backup: exporte um estudo, um plano ou a biblioteca inteira como arquivo para enviar ou guardar, e abra um arquivo do NodeScope para importar uma cópia. Nada na sua biblioteca é substituído.
+
+O trabalho não salvo é mantido quando você troca de analisador ou o NodeScope fecha; retome-o em Planos salvos.
+
+Novo: Cobertura estimada (beta). Posicione um transmissor em qualquer lugar, sobre um nó conhecido, na sua localização ou tocando e segurando o mapa, e veja onde ele provavelmente será ouvido, com base no terreno e nas suas configurações de rádio. Toque no mapa para ver o sinal previsto em qualquer ponto.
+
+Novo: NodeScope em espanhol e português do Brasil. As unidades agora seguem a sua região até você escolher uma, com uma nova opção para o Reino Unido: milhas, com alturas em metros.
+
+Melhor no iPad e no Mac: as barras laterais começam no topo do painel, o mapa se estende atrás da barra de pacotes ao vivo e, no Mac, ⌘1–⌘5 trocam de aba, ⌘F busca e ⌘R atualiza.
+
+Depois de uma atualização, o NodeScope mostra as novidades. Reveja-as quando quiser em Ajustes.
+
+A Cobertura é uma estimativa baseada nos dados do terreno e no receptor que você presume, não uma garantia de recepção real.

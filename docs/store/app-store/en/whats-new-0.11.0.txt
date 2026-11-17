@@ -1,0 +1,15 @@
+New: Saved Plans. Group link profiles and coverage studies into named plans, with notes. Results are saved with them and open on iPhone, iPad and Android without calculating again, and a calculated Link Profile now reopens with its result.
+
+Share and back up: export a study, a plan or your whole library as a file to send or keep, and open a NodeScope file to import a copy. Nothing in your library is replaced.
+
+Unsaved work is kept when you switch analyzer or NodeScope closes; pick it up again from Saved Plans.
+
+New: Estimated Coverage (Beta). Place a transmitter anywhere, on a known node, at your location or with a long press, and see where it's likely to be heard, based on terrain and your radio settings. Tap the map to check the predicted signal at any spot.
+
+New: NodeScope in Spanish and Brazilian Portuguese. Units now follow your region until you choose one, with a new UK option: miles, with heights in metres.
+
+Better on iPad and Mac: sidebars start at the top of the panel, the map runs behind the live packets sidebar, and on the Mac ⌘1–⌘5 switch tabs, ⌘F searches and ⌘R refreshes.
+
+After an update, NodeScope shows what's new. Reopen it anytime from Settings.
+
+Coverage is an estimate from terrain data and the receiver you assume, not a guarantee of real-world reception.

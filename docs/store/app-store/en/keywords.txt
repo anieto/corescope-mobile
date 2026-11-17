@@ -1,0 +1,1 @@
+meshcore,lora,repeater,node,packet,radio,analyzer,tracker,monitor,offgrid,ham,companion,corescope

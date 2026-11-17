@@ -1,0 +1,3 @@
+Novo: Planos salvos. Guarde perfis de enlace e estudos de cobertura em planos com notas; os resultados abrem no Android, iPhone e iPad sem calcular de novo. Exporte e importe planos como arquivos.
+Novo: Cobertura estimada (beta). Veja onde um transmissor provavelmente será ouvido.
+Agora em espanhol e português do Brasil, com unidades conforme a sua região e uma nova opção para o Reino Unido.
