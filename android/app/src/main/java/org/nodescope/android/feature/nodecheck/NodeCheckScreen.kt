@@ -207,9 +207,9 @@ fun NodeCheckScreen(
                 is NodeCheckState.Report -> reportItems(state.report, observers, feed, onNodePage.takeIf { initialKey == null })
                 is NodeCheckState.NotFound -> {
                     item {
-                        MessageCard(NodeCheckLevel.BAD, "We haven’t heard this node",
-                            if (state.fullKey == null) "No observer on this analyzer has picked it up. To test a new node, enter its full public key; you can then run a live test and watch for its first advert."
-                            else "No observer on this analyzer has picked it up yet. Run a live test, send a flood advert, and watch for its first one. If nothing arrives, check that the radio uses the same settings as other nodes in your area and that a repeater is in range.")
+                        MessageCard(NodeCheckLevel.BAD, stringResource(R.string.node_check_rule_not_found),
+                            if (state.fullKey == null) stringResource(R.string.node_check_rule_not_found_without_key)
+                            else stringResource(R.string.node_check_rule_not_found_with_key))
                     }
                     state.fullKey?.let { key ->
                         item(key = "live-$key") {
@@ -248,7 +248,9 @@ private fun androidx.compose.foundation.lazy.LazyListScope.reportItems(
         item {
             ObserversCard(
                 if (advert.kind == "flood") stringResource(R.string.node_check_who_heard_its_last_flood_advert) else stringResource(R.string.node_check_who_heard_its_last_advert),
-                (advert.sentAt?.let { "Sent ${NodeCheckRules.ago(it)}. " } ?: "") + "Closest first; Direct means no repeater in between.",
+                advert.sentAt?.let {
+                    stringResource(R.string.node_check_rule_observer_order_with_time, NodeCheckRules.ago(it).asString())
+                } ?: stringResource(R.string.node_check_rule_observer_order),
                 advert.observers, showsPackets = false)
         }
     }
@@ -278,14 +280,14 @@ private fun SummaryCard(report: NodeCheckReport, onLiveTest: () -> Unit, onNodeP
                     }
                 }
             }
-            StatusBadge(report.level, report.headline)
+            StatusBadge(report.level, report.headline.asString())
             StatGrid(listOf(
-                Stat(stringResource(R.string.node_check_last_heard), report.lastHeard?.let { NodeCheckRules.ago(it) } ?: "—",
+                Stat(stringResource(R.string.node_check_last_heard), report.lastHeard?.let { NodeCheckRules.ago(it).asString() } ?: "—",
                     report.lastHeard?.let { DateTimeFormatter.ofPattern("MMM d, h:mm a").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(it)) } ?: stringResource(R.string.node_check_not_heard)),
                 Stat(stringResource(R.string.node_check_reached), advert?.observers?.size?.toString() ?: "—",
                     advert?.let { pluralStringResource(R.plurals.node_check_advert_observers, it.observers.size) } ?: stringResource(R.string.node_check_no_recent_advert)),
                 Stat(stringResource(R.string.node_check_regions), advert?.regions?.size?.toString() ?: "—", advert?.regions?.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: stringResource(R.string.node_check_none_yet)),
-                Stat(stringResource(R.string.node_check_nearest), NodeCheckRules.hopsLabel(advert?.observers?.firstOrNull()?.hops), when (report.direct.size) {
+                Stat(stringResource(R.string.node_check_nearest), NodeCheckRules.hopsLabel(advert?.observers?.firstOrNull()?.hops).asString(), when (report.direct.size) {
                     0 -> stringResource(R.string.node_check_no_direct_observers)
                     else -> pluralStringResource(R.plurals.node_check_direct_count, report.direct.size, report.direct.size)
                 }),
@@ -340,9 +342,9 @@ private fun StatGrid(stats: List<Stat>) {
 @Composable
 private fun FindingsCard(findings: List<NodeCheckFinding>) {
     val groups = listOf(
-        "Needs attention" to findings.filter { it.level == NodeCheckLevel.BAD || it.level == NodeCheckLevel.WARN },
-        "Looking good" to findings.filter { it.level == NodeCheckLevel.GOOD },
-        "Good to know" to findings.filter { it.level == NodeCheckLevel.INFO },
+        stringResource(R.string.node_check_rule_needs_attention) to findings.filter { it.level == NodeCheckLevel.BAD || it.level == NodeCheckLevel.WARN },
+        stringResource(R.string.node_check_rule_looking_good) to findings.filter { it.level == NodeCheckLevel.GOOD },
+        stringResource(R.string.node_check_rule_good_to_know) to findings.filter { it.level == NodeCheckLevel.INFO },
     ).filter { it.second.isNotEmpty() }
     Card(colors = meshCardColors()) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -366,11 +368,12 @@ private fun FindingRow(finding: NodeCheckFinding) {
             Icon(finding.level.icon(), null, Modifier.size(16.dp), tint = color)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(finding.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-            Text(finding.detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            finding.fix?.let { fix ->
+            Text(finding.title.asString(), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+            Text(finding.detail.asString(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            finding.fix?.asString()?.let { fix ->
+                val label = stringResource(R.string.node_check_rule_fix_label)
                 Text(buildAnnotatedString {
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append("What to do: ") }
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(label); append(' ') }
                     append(fix)
                 }, Modifier.padding(top = 4.dp).fillMaxWidth().clip(MaterialTheme.shapes.small)
                     .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)).padding(10.dp),
@@ -430,15 +433,15 @@ private fun ObserverRow(observer: HeardObserver, showsPackets: Boolean) {
     val good = statusAccent(true)
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp).semantics(mergeDescendants = true) {},
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(observer.name, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontFamily = MonaspaceNeon,
+        Text(observer.displayName.asString(), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontFamily = MonaspaceNeon,
             maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(if (showsPackets) observer.packets?.let { "$it pkts" } ?: "—" else NodeCheckRules.hopsLabel(observer.hops),
+        Text(if (showsPackets) observer.packets?.let { stringResource(R.string.node_check_rule_observer_packets, it) } ?: "—" else NodeCheckRules.hopsLabel(observer.hops).asString(),
             Modifier.clip(CircleShape).background((if (direct) good else MaterialTheme.colorScheme.onSurface).copy(alpha = 0.12f))
                 .padding(horizontal = 8.dp, vertical = 2.dp),
             style = MaterialTheme.typography.labelSmall, color = if (direct) good else MaterialTheme.colorScheme.onSurfaceVariant)
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(snr?.let { NodeCheckRules.signedDecibels(it) } ?: "—", style = MaterialTheme.typography.labelMedium, fontFamily = MonaspaceNeon)
+                Text(snr?.let { NodeCheckRules.signedDecibels(it).asString() } ?: "—", style = MaterialTheme.typography.labelMedium, fontFamily = MonaspaceNeon)
                 observer.rssi?.let { Text(stringResource(R.string.node_check_dbm, it.toInt()), style = MaterialTheme.typography.labelMedium, fontFamily = MonaspaceNeon,
                     color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
@@ -491,7 +494,7 @@ private fun LiveTestCard(
                 reports.forEach { packet ->
                     packet.routeType?.let { if (it <= 1) sawFlood = true else sawZeroHop = true }
                     val id = packet.observerId!!
-                    val entry = HeardObserver(id, packet.observerName ?: "Unnamed observer", observers[id]?.iata ?: packet.region,
+                    val entry = HeardObserver(id, packet.observerName, observers[id]?.iata ?: packet.region,
                         packet.hops.size, packet.snr?.let { (it * 10).toInt() / 10.0 }, packet.rssi)
                     val previous = best[id]
                     if (previous == null || (previous.hops ?: 99) > (entry.hops ?: 99)) best[id] = entry
@@ -570,7 +573,7 @@ private fun LiveTestCard(
                 StatGrid(listOf(
                     Stat(stringResource(R.string.node_check_observers), stringResource(R.string.node_check_value_2, count), stringResource(R.string.node_check_heard_it)),
                     Stat(stringResource(R.string.node_check_regions), stringResource(R.string.node_check_value_2, regions.size), regions.joinToString(", ").ifEmpty { "—" }),
-                    Stat(stringResource(R.string.node_check_nearest), NodeCheckRules.hopsLabel(nearest), if (nearest == 0) stringResource(R.string.node_check_no_repeater_needed) else stringResource(R.string.node_check_through_repeaters)),
+                    Stat(stringResource(R.string.node_check_nearest), NodeCheckRules.hopsLabel(nearest).asString(), if (nearest == 0) stringResource(R.string.node_check_no_repeater_needed) else stringResource(R.string.node_check_through_repeaters)),
                 ))
                 NodeCheckMap(heard, observers)
                 ObserversCard(null, null, heard, showsPackets = false, embedded = true)
@@ -632,7 +635,7 @@ private fun ChooseCard(state: NodeCheckState.Choose, onPick: (MeshNode) -> Unit)
                             maxLines = 1, overflow = TextOverflow.Ellipsis)
                         val heard = runCatching { Instant.parse(node.lastSeen).toEpochMilli() }.getOrNull()
                         Text(listOfNotNull(nodeRoleLabel(node.role), node.publicKey.take(8).uppercase(),
-                            heard?.let { "heard ${NodeCheckRules.ago(it)}" }).joinToString(" · "),
+                            heard?.let { stringResource(R.string.node_check_rule_picker_last_heard, NodeCheckRules.ago(it).asString()) }).joinToString(" · "),
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Icon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -680,7 +683,7 @@ fun NodeCheckLinkCard(report: NodeCheckReport?, loading: Boolean, onClick: () ->
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.node_check_node_check), style = MaterialTheme.typography.titleMedium)
                 if (report != null) {
-                    Text(report.headline, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = accent)
+                    Text(report.headline.asString(), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = accent)
                     val issues = report.findings.count { it.level == NodeCheckLevel.BAD || it.level == NodeCheckLevel.WARN }
                     Text(if (issues == 0) stringResource(R.string.node_check_findings_and_live_test) else pluralStringResource(R.plurals.node_check_issues_count, issues, issues),
                         style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

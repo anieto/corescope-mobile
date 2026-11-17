@@ -1,5 +1,10 @@
 package org.nodescope.android.core.model
 
+import androidx.annotation.PluralsRes
+import androidx.annotation.StringRes
+import org.nodescope.android.R
+import org.nodescope.android.core.design.UiText
+import org.nodescope.android.core.design.formatDisplayDecimal
 import java.time.Instant
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -31,19 +36,22 @@ data class NodeCheckInput(
 
 enum class NodeCheckLevel { BAD, WARN, GOOD, INFO }
 
-data class NodeCheckFinding(val level: NodeCheckLevel, val title: String, val detail: String, val fix: String? = null)
+data class NodeCheckFinding(val level: NodeCheckLevel, val title: UiText, val detail: UiText, val fix: UiText? = null)
 
 data class HeardObserver(
-    val observerId: String, val name: String, val region: String?, val hops: Int?,
+    val observerId: String, val name: String?, val region: String?, val hops: Int?,
     val snr: Double?, val rssi: Double?, val packets: Int? = null,
-)
+) {
+    val displayName: UiText
+        get() = name?.let(UiText::Raw) ?: UiText.Resource(R.string.node_check_rule_unnamed_observer)
+}
 
 data class AdvertReach(val sentAt: Long?, val kind: String?, val observers: List<HeardObserver>, val regions: List<String>)
 
 data class NodeCheckReport(
     val node: NodeCheckInput.Node,
     val level: NodeCheckLevel,
-    val headline: String,
+    val headline: UiText,
     /** Problems first, then what's working, then notes. */
     val findings: List<NodeCheckFinding>,
     val latestAdvert: AdvertReach?,
@@ -66,110 +74,112 @@ object NodeCheckRules {
         val latestAdvert = input.adverts.firstOrNull()?.let { reach(listOf(it), input.observerRegions) }
         val latestFlood = input.adverts.firstOrNull { it.kind == "flood" }?.let { reach(listOf(it), input.observerRegions) }
         val direct = input.directObservers.map {
-            HeardObserver(it.observerId, it.name ?: "Unnamed observer", input.observerRegions[it.observerId], 0,
+            HeardObserver(it.observerId, it.name, input.observerRegions[it.observerId], 0,
                 it.averageSnr?.let(::round1), it.averageRssi?.let { value -> value.roundToInt().toDouble() }, it.packets)
         }.sortedByDescending { it.snr ?: -99.0 }
 
         val lastHeard = input.node.lastHeard ?: input.healthLastHeard ?: input.node.lastSeen
         val quiet = lastHeard?.let { now - it } ?: Long.MAX_VALUE
         val findings = mutableListOf<NodeCheckFinding>()
-        fun add(level: NodeCheckLevel, title: String, detail: String, fix: String? = null) { findings += NodeCheckFinding(level, title, detail, fix) }
+        fun add(level: NodeCheckLevel, title: UiText, detail: UiText, fix: UiText? = null) { findings += NodeCheckFinding(level, title, detail, fix) }
 
         // Last heard.
         if (role in infrastructure) {
             val silentAfter = if (role == "room") 3 * DAY else 2 * DAY
             when {
                 lastHeard != null && quiet <= DAY ->
-                    add(NodeCheckLevel.GOOD, "Heard ${ago(lastHeard, now)}", "Observers are hearing this node regularly.")
+                    add(NodeCheckLevel.GOOD, text(R.string.node_check_rule_heard, ago(lastHeard, now)), text(R.string.node_check_rule_regularly))
                 lastHeard != null && quiet <= silentAfter ->
-                    add(NodeCheckLevel.WARN, "Quiet: last heard ${ago(lastHeard, now)}",
-                        if (role == "room") "A working room server usually sends an advert at least twice a day."
-                        else "A working repeater usually turns up at least once a day, from its own adverts or the traffic it relays.",
-                        "Check that it still has power and its antenna is connected. If it runs on solar, check the battery.")
+                    add(NodeCheckLevel.WARN, text(R.string.node_check_rule_quiet, ago(lastHeard, now)),
+                        if (role == "room") text(R.string.node_check_rule_room_advert_cadence)
+                        else text(R.string.node_check_rule_repeater_advert_cadence),
+                        text(R.string.node_check_rule_fix_quiet))
                 else -> add(NodeCheckLevel.BAD,
-                    lastHeard?.let { "Not heard for ${duration(now - it)}" } ?: "No recent traffic",
-                    if (role == "room") "Nothing from this node has reached an observer in the last three days."
-                    else "Nothing from this node has reached an observer in the last two days.",
-                    "Check power, the antenna and the radio settings, then send a flood advert.")
+                    lastHeard?.let { text(R.string.node_check_rule_not_heard_for, duration(now - it)) } ?: text(R.string.node_check_rule_no_recent_traffic),
+                    if (role == "room") text(R.string.node_check_rule_room_silent)
+                    else text(R.string.node_check_rule_repeater_silent),
+                    text(R.string.node_check_rule_fix_silent))
             }
         } else if (lastHeard != null) {
-            add(if (quiet <= 14 * DAY) NodeCheckLevel.INFO else NodeCheckLevel.WARN, "Last heard ${ago(lastHeard, now)}",
-                "Companions are only heard when they send something, so a quiet spell is normal.",
-                if (quiet > 14 * DAY) "Send a flood advert to check that it still reaches the mesh." else null)
+            add(if (quiet <= 14 * DAY) NodeCheckLevel.INFO else NodeCheckLevel.WARN, text(R.string.node_check_rule_last_heard, ago(lastHeard, now)),
+                text(R.string.node_check_rule_companion_quiet),
+                if (quiet > 14 * DAY) text(R.string.node_check_rule_fix_companion_quiet) else null)
         }
 
         // Reach of the most recent flood advert.
         if (latestFlood != null && latestFlood.observers.isNotEmpty()) {
             val count = latestFlood.observers.size
-            val regionText = if (latestFlood.regions.isEmpty()) ""
-                else " in ${plural(latestFlood.regions.size, "region", "regions")} (${latestFlood.regions.joinToString(", ")})"
-            add(NodeCheckLevel.GOOD, "Last flood advert reached ${plural(count, "observer", "observers")}$regionText",
-                latestFlood.sentAt?.let { "Sent ${ago(it, now)}." } ?: "The time it was sent is unknown.",
-                if (count < 3) "Only a few observers heard it. That can simply mean there are few observers near you, or that it needs another repeater in range to travel further." else null)
+            val observerCount = countText(R.plurals.node_check_observer_count, count)
+            val title = if (latestFlood.regions.isEmpty()) text(R.string.node_check_rule_flood_reached, observerCount)
+                else text(R.string.node_check_rule_flood_reached_regions, observerCount,
+                    countText(R.plurals.node_check_region_count, latestFlood.regions.size), latestFlood.regions.joinToString(", "))
+            add(NodeCheckLevel.GOOD, title,
+                latestFlood.sentAt?.let { text(R.string.node_check_rule_advert_sent, ago(it, now)) } ?: text(R.string.node_check_rule_advert_time_unknown),
+                if (count < 3) text(R.string.node_check_rule_few_observers) else null)
         } else if (input.adverts.isNotEmpty()) {
-            add(NodeCheckLevel.INFO, "No recent flood advert",
-                "Its recent adverts were zero-hop, which only reach radios in direct range, so they don’t show how far it gets.",
-                "Send a flood advert to see how far it travels.")
+            add(NodeCheckLevel.INFO, text(R.string.node_check_rule_no_recent_flood),
+                text(R.string.node_check_rule_zero_hop_reach),
+                text(R.string.node_check_rule_fix_send_flood))
         } else {
-            add(NodeCheckLevel.INFO, "No recent adverts", "The analyzer has no recent adverts from this node.",
-                "Send a flood advert to see how far it travels.")
+            add(NodeCheckLevel.INFO, text(R.string.node_check_rule_no_recent_adverts), text(R.string.node_check_rule_analyzer_has_no_recent_adverts),
+                text(R.string.node_check_rule_fix_send_flood))
         }
 
         // Nearest observer.
         val best = direct.firstOrNull()
         if (best != null) {
-            val signal = best.snr?.let { " at ${signedDecibels(it)} SNR" }.orEmpty()
+            val detail = best.snr?.let { text(R.string.node_check_rule_strongest_with_snr, best.displayName, signedDecibels(it)) }
+                ?: text(R.string.node_check_rule_strongest, best.displayName)
             add(NodeCheckLevel.GOOD,
-                if (direct.size == 1) "1 observer hears it directly" else "${direct.size} observers hear it directly",
-                "The strongest is ${best.name}$signal.")
+                countText(R.plurals.node_check_rule_direct_observers, direct.size), detail)
         } else {
             val nearest = latestFlood?.observers?.firstOrNull()?.hops
-            if (nearest != null && nearest > 0) add(NodeCheckLevel.INFO, "Nearest observer is ${plural(nearest, "hop", "hops")} away",
-                "No observer hears this node directly, so it reaches the mesh through repeaters. That’s normal unless you expected an observer nearby to hear it.")
+            if (nearest != null && nearest > 0) add(NodeCheckLevel.INFO, text(R.string.node_check_rule_nearest_observer, countText(R.plurals.node_check_rule_hops, nearest)),
+                text(R.string.node_check_rule_repeater_path))
         }
 
         // Repeaters should be relaying.
         if (role == "repeater" && quiet <= 2 * DAY) {
             val lastRelayed = input.node.lastRelayed
             when {
-                lastRelayed == null -> add(NodeCheckLevel.WARN, "Not seen relaying",
-                    "Observers hear this repeater, but haven’t seen it pass on anyone else’s traffic.",
-                    "Check that repeating is turned on. If it is, there may simply be no traffic near it yet.")
-                now - lastRelayed > 2 * DAY -> add(NodeCheckLevel.WARN, "Last relayed ${ago(lastRelayed, now)}",
-                    "It’s still heard, but hasn’t relayed traffic for a while.",
-                    "Check that repeating is still on and nothing changed in its settings.")
-                else -> add(NodeCheckLevel.GOOD, "Relaying traffic",
-                    "Other nodes’ packets are passing through it. It last relayed one ${ago(lastRelayed, now)}.")
+                lastRelayed == null -> add(NodeCheckLevel.WARN, text(R.string.node_check_rule_not_relaying),
+                    text(R.string.node_check_rule_not_relaying_detail),
+                    text(R.string.node_check_rule_fix_enable_repeating))
+                now - lastRelayed > 2 * DAY -> add(NodeCheckLevel.WARN, text(R.string.node_check_rule_last_relayed, ago(lastRelayed, now)),
+                    text(R.string.node_check_rule_hasnt_relayed),
+                    text(R.string.node_check_rule_fix_check_repeating))
+                else -> add(NodeCheckLevel.GOOD, text(R.string.node_check_rule_relaying),
+                    text(R.string.node_check_rule_relaying_detail, ago(lastRelayed, now)))
             }
         }
 
         // Clock.
         input.clock?.let { clock ->
-            val fix = "Sync the clock from the MeshCore app, or by running “clock sync” on the node."
+            val fix = text(R.string.node_check_rule_fix_clock)
             when (clock.severity) {
-                "warning", "critical" -> add(NodeCheckLevel.WARN, "Clock is off by ${describeOffset(clock.offsetSeconds)}",
-                    "Nodes with the wrong time can have their adverts treated as old.", fix)
-                "bimodal_clock" -> add(NodeCheckLevel.WARN, "Clock keeps jumping",
-                    "Its clock sometimes reads right and sometimes far off, which usually means it loses time on restart.", fix)
-                "absurd", "no_clock" -> add(NodeCheckLevel.WARN, "Clock isn’t set",
-                    "Its clock is far from the real time, as if it was never set.", fix)
-                "ok" -> if (role in infrastructure) add(NodeCheckLevel.GOOD, "Clock is right", "Its clock is within a few minutes of the real time.")
+                "warning", "critical" -> add(NodeCheckLevel.WARN, text(R.string.node_check_rule_clock_off, describeOffset(clock.offsetSeconds)),
+                    text(R.string.node_check_rule_adverts_treated_as_old), fix)
+                "bimodal_clock" -> add(NodeCheckLevel.WARN, text(R.string.node_check_rule_clock_jumps),
+                    text(R.string.node_check_rule_clock_jumps_detail), fix)
+                "absurd", "no_clock" -> add(NodeCheckLevel.WARN, text(R.string.node_check_rule_clock_not_set),
+                    text(R.string.node_check_rule_clock_not_set_detail), fix)
+                "ok" -> if (role in infrastructure) add(NodeCheckLevel.GOOD, text(R.string.node_check_rule_clock_right), text(R.string.node_check_rule_clock_right_detail))
             }
         }
 
         // Location, only for nodes meant to be found on a map.
         val hasLocation = input.node.lat != null && input.node.lon != null && !(input.node.lat == 0.0 && input.node.lon == 0.0)
-        if (role in infrastructure && !hasLocation) add(NodeCheckLevel.INFO, "No location set",
-            "It won’t appear on the live map or the analyzer’s map.",
-            "Set a location in the node’s settings if you’re comfortable sharing it.")
+        if (role in infrastructure && !hasLocation) add(NodeCheckLevel.INFO, text(R.string.node_check_rule_no_location),
+            text(R.string.node_check_rule_no_location_detail),
+            text(R.string.node_check_rule_fix_location))
 
         val sorted = findings.sortedBy { it.level.ordinal } // stable: keeps order within a level
         val level = sorted.firstOrNull()?.level ?: NodeCheckLevel.INFO
         val headline = when (level) {
-            NodeCheckLevel.BAD -> "This node has gone quiet"
-            NodeCheckLevel.WARN -> "Heard, with something to check"
-            NodeCheckLevel.GOOD -> "This node is getting out"
-            NodeCheckLevel.INFO -> "Heard before, but nothing recent to go on"
+            NodeCheckLevel.BAD -> text(R.string.node_check_rule_headline_bad)
+            NodeCheckLevel.WARN -> text(R.string.node_check_rule_headline_warn)
+            NodeCheckLevel.GOOD -> text(R.string.node_check_rule_headline_good)
+            NodeCheckLevel.INFO -> text(R.string.node_check_rule_headline_info)
         }
         return NodeCheckReport(input.node, level, headline, sorted, latestFlood ?: latestAdvert, direct, lastHeard)
     }
@@ -178,7 +188,7 @@ object NodeCheckRules {
     fun reach(adverts: List<NodeCheckInput.Advert>, regions: Map<String, String>): AdvertReach {
         val seen = LinkedHashMap<String, HeardObserver>()
         for (advert in adverts) for (observation in advert.observations) {
-            val entry = HeardObserver(observation.observerId, observation.observerName ?: "Unnamed observer",
+            val entry = HeardObserver(observation.observerId, observation.observerName,
                 observation.region ?: regions[observation.observerId], observation.hops, observation.snr?.let(::round1), observation.rssi)
             val previous = seen[observation.observerId]
             if (previous != null && (previous.hops ?: 99) <= (entry.hops ?: 99)) continue
@@ -192,44 +202,49 @@ object NodeCheckRules {
     fun sortClosest(observers: Collection<HeardObserver>): List<HeardObserver> =
         observers.sortedWith(compareBy<HeardObserver> { it.hops ?: 99 }.thenByDescending { it.snr ?: -99.0 })
 
-    fun ago(millis: Long, now: Long = System.currentTimeMillis()): String {
+    fun ago(millis: Long, now: Long = System.currentTimeMillis()): UiText {
         val diff = (now - millis).coerceAtLeast(0)
         return when {
-            diff < 2 * 60_000 -> "just now"
-            diff < HOUR -> "${(diff / 60_000.0).roundToInt()} minutes ago"
-            diff < 2 * HOUR -> "an hour ago"
-            diff < DAY -> "${(diff.toDouble() / HOUR).roundToInt()} hours ago"
-            diff < 2 * DAY -> "a day ago"
-            else -> "${(diff.toDouble() / DAY).roundToInt()} days ago"
+            diff < 2 * 60_000 -> text(R.string.node_check_rule_ago_now)
+            diff < HOUR -> countText(R.plurals.node_check_rule_ago_minutes, (diff / 60_000.0).roundToInt())
+            diff < 2 * HOUR -> text(R.string.node_check_rule_ago_an_hour)
+            diff < DAY -> countText(R.plurals.node_check_rule_ago_hours, (diff.toDouble() / HOUR).roundToInt())
+            diff < 2 * DAY -> text(R.string.node_check_rule_ago_a_day)
+            else -> countText(R.plurals.node_check_rule_ago_days, (diff.toDouble() / DAY).roundToInt())
         }
     }
 
-    private fun duration(millis: Long) = if (millis < 2 * DAY) "a day" else "${(millis.toDouble() / DAY).roundToInt()} days"
+    private fun duration(millis: Long): UiText =
+        if (millis < 2 * DAY) text(R.string.node_check_rule_duration_a_day)
+        else countText(R.plurals.node_check_rule_days, (millis.toDouble() / DAY).roundToInt())
 
-    private fun plural(count: Int, one: String, many: String) = "$count ${if (count == 1) one else many}"
-
-    fun signedDecibels(value: Double): String {
-        val text = if (value % 1.0 == 0.0) value.toInt().toString() else "%.1f".format(value)
-        return if (value > 0) "+$text dB" else "$text dB"
+    fun signedDecibels(value: Double): UiText {
+        val number = formatDisplayDecimal(value, 1)
+        return if (value > 0) text(R.string.node_check_rule_positive_decibels, number)
+        else text(R.string.node_check_rule_decibels, number)
     }
 
-    fun hopsLabel(hops: Int?): String = when (hops) {
-        null -> "—"
-        0 -> "Direct"
-        1 -> "1 hop"
-        else -> "$hops hops"
+    fun hopsLabel(hops: Int?): UiText = when (hops) {
+        null -> UiText.Raw("—")
+        0 -> text(R.string.node_check_rule_direct)
+        else -> countText(R.plurals.node_check_rule_hops, hops)
     }
 
-    private fun describeOffset(seconds: Double?): String {
-        if (seconds == null || !seconds.isFinite()) return "a while"
+    private fun describeOffset(seconds: Double?): UiText {
+        if (seconds == null || !seconds.isFinite()) return text(R.string.node_check_rule_offset_unknown)
         val magnitude = abs(seconds)
         val amount = when {
-            magnitude < 3_600 -> plural((magnitude / 60).roundToInt(), "minute", "minutes")
-            magnitude < 2 * 86_400 -> plural((magnitude / 3_600).roundToInt(), "hour", "hours")
-            else -> plural((magnitude / 86_400).roundToInt(), "day", "days")
+            magnitude < 3_600 -> countText(R.plurals.node_check_rule_minutes, (magnitude / 60).roundToInt())
+            magnitude < 2 * 86_400 -> countText(R.plurals.node_check_rule_hours, (magnitude / 3_600).roundToInt())
+            else -> countText(R.plurals.node_check_rule_days, (magnitude / 86_400).roundToInt())
         }
-        return if (seconds < 0) "$amount behind" else "$amount ahead"
+        return if (seconds < 0) text(R.string.node_check_rule_offset_behind, amount)
+        else text(R.string.node_check_rule_offset_ahead, amount)
     }
+
+    private fun text(@StringRes id: Int, vararg args: Any): UiText = UiText.Resource(id, *args)
+
+    private fun countText(@PluralsRes id: Int, count: Int): UiText = UiText.Plural(id, count, count)
 
     private fun round1(value: Double) = (value * 10).roundToInt() / 10.0
 }

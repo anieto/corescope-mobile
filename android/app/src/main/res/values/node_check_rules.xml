@@ -1,0 +1,109 @@
+<resources>
+    <!-- English report wording from iOS NodeCheckRules, plus Android report labels. -->
+    <string name="node_check_rule_unnamed_observer">Unnamed observer</string>
+    <string name="node_check_rule_flood_reached">Last flood advert reached %1$s</string>
+    <string name="node_check_rule_flood_reached_regions">Last flood advert reached %1$s in %2$s (%3$s)</string>
+    <string name="node_check_rule_advert_sent">Sent %1$s.</string>
+    <string name="node_check_rule_strongest_with_snr">The strongest is %1$s at %2$s SNR.</string>
+    <string name="node_check_rule_strongest">The strongest is %1$s.</string>
+    <string name="node_check_rule_heard">Heard %1$s</string>
+    <string name="node_check_rule_quiet">Quiet: last heard %1$s</string>
+    <string name="node_check_rule_not_heard_for">Not heard for %1$s</string>
+    <string name="node_check_rule_last_heard">Last heard %1$s</string>
+    <string name="node_check_rule_last_relayed">Last relayed %1$s</string>
+    <string name="node_check_rule_relaying_detail">Other nodes’ packets are passing through it. It last relayed one %1$s.</string>
+    <string name="node_check_rule_clock_off">Clock is off by %1$s</string>
+    <string name="node_check_rule_nearest_observer">Nearest observer is %1$s away</string>
+    <string name="node_check_rule_ago_now">just now</string>
+    <string name="node_check_rule_ago_an_hour">an hour ago</string>
+    <string name="node_check_rule_ago_a_day">a day ago</string>
+    <string name="node_check_rule_duration_a_day">a day</string>
+    <string name="node_check_rule_positive_decibels">+%1$s dB</string>
+    <string name="node_check_rule_decibels">%1$s dB</string>
+    <string name="node_check_rule_direct">Direct</string>
+    <string name="node_check_rule_offset_unknown">a while</string>
+    <string name="node_check_rule_offset_behind">%1$s behind</string>
+    <string name="node_check_rule_offset_ahead">%1$s ahead</string>
+    <string name="node_check_rule_regularly">Observers are hearing this node regularly.</string>
+    <string name="node_check_rule_room_advert_cadence">A working room server usually sends an advert at least twice a day.</string>
+    <string name="node_check_rule_repeater_advert_cadence">A working repeater usually turns up at least once a day, from its own adverts or the traffic it relays.</string>
+    <string name="node_check_rule_fix_quiet">Check that it still has power and its antenna is connected. If it runs on solar, check the battery.</string>
+    <string name="node_check_rule_no_recent_traffic">No recent traffic</string>
+    <string name="node_check_rule_room_silent">Nothing from this node has reached an observer in the last three days.</string>
+    <string name="node_check_rule_repeater_silent">Nothing from this node has reached an observer in the last two days.</string>
+    <string name="node_check_rule_fix_silent">Check power, the antenna and the radio settings, then send a flood advert.</string>
+    <string name="node_check_rule_companion_quiet">Companions are only heard when they send something, so a quiet spell is normal.</string>
+    <string name="node_check_rule_fix_companion_quiet">Send a flood advert to check that it still reaches the mesh.</string>
+    <string name="node_check_rule_advert_time_unknown">The time it was sent is unknown.</string>
+    <string name="node_check_rule_few_observers">Only a few observers heard it. That can simply mean there are few observers near you, or that it needs another repeater in range to travel further.</string>
+    <string name="node_check_rule_no_recent_flood">No recent flood advert</string>
+    <string name="node_check_rule_zero_hop_reach">Its recent adverts were zero-hop, which only reach radios in direct range, so they don’t show how far it gets.</string>
+    <string name="node_check_rule_fix_send_flood">Send a flood advert to see how far it travels.</string>
+    <string name="node_check_rule_no_recent_adverts">No recent adverts</string>
+    <string name="node_check_rule_analyzer_has_no_recent_adverts">The analyzer has no recent adverts from this node.</string>
+    <string name="node_check_rule_repeater_path">No observer hears this node directly, so it reaches the mesh through repeaters. That’s normal unless you expected an observer nearby to hear it.</string>
+    <string name="node_check_rule_not_relaying">Not seen relaying</string>
+    <string name="node_check_rule_not_relaying_detail">Observers hear this repeater, but haven’t seen it pass on anyone else’s traffic.</string>
+    <string name="node_check_rule_fix_enable_repeating">Check that repeating is turned on. If it is, there may simply be no traffic near it yet.</string>
+    <string name="node_check_rule_hasnt_relayed">It’s still heard, but hasn’t relayed traffic for a while.</string>
+    <string name="node_check_rule_fix_check_repeating">Check that repeating is still on and nothing changed in its settings.</string>
+    <string name="node_check_rule_relaying">Relaying traffic</string>
+    <string name="node_check_rule_fix_clock">Sync the clock from the MeshCore app, or by running “clock sync” on the node.</string>
+    <string name="node_check_rule_adverts_treated_as_old">Nodes with the wrong time can have their adverts treated as old.</string>
+    <string name="node_check_rule_clock_jumps">Clock keeps jumping</string>
+    <string name="node_check_rule_clock_jumps_detail">Its clock sometimes reads right and sometimes far off, which usually means it loses time on restart.</string>
+    <string name="node_check_rule_clock_not_set">Clock isn’t set</string>
+    <string name="node_check_rule_clock_not_set_detail">Its clock is far from the real time, as if it was never set.</string>
+    <string name="node_check_rule_clock_right">Clock is right</string>
+    <string name="node_check_rule_clock_right_detail">Its clock is within a few minutes of the real time.</string>
+    <string name="node_check_rule_no_location">No location set</string>
+    <string name="node_check_rule_no_location_detail">It won’t appear on the live map or the analyzer’s map.</string>
+    <string name="node_check_rule_fix_location">Set a location in the node’s settings if you’re comfortable sharing it.</string>
+    <string name="node_check_rule_headline_bad">This node has gone quiet</string>
+    <string name="node_check_rule_headline_warn">Heard, with something to check</string>
+    <string name="node_check_rule_headline_good">This node is getting out</string>
+    <string name="node_check_rule_headline_info">Heard before, but nothing recent to go on</string>
+    <string name="node_check_rule_not_found">We haven’t heard this node</string>
+    <string name="node_check_rule_not_found_without_key">No observer on this analyzer has picked it up. To test a new node, enter its full public key; you can then run a live test and watch for its first advert.</string>
+    <string name="node_check_rule_not_found_with_key">No observer on this analyzer has picked it up yet. Run a live test, send a flood advert, and watch for its first one. If nothing arrives, check that the radio uses the same settings as other nodes in your area and that a repeater is in range.</string>
+    <string name="node_check_rule_needs_attention">Needs attention</string>
+    <string name="node_check_rule_looking_good">Looking good</string>
+    <string name="node_check_rule_good_to_know">Good to know</string>
+    <string name="node_check_rule_observer_order">Closest first; Direct means no repeater in between.</string>
+    <string name="node_check_rule_observer_order_with_time">Sent %1$s. Closest first; Direct means no repeater in between.</string>
+    <string name="node_check_rule_fix_label">What to do:</string>
+    <string name="node_check_rule_picker_last_heard">heard %1$s</string>
+    <string name="node_check_rule_observer_packets">%1$d pkts</string>
+    <plurals name="node_check_rule_direct_observers">
+        <item quantity="one">%1$d observer hears it directly</item>
+        <item quantity="other">%1$d observers hear it directly</item>
+    </plurals>
+    <plurals name="node_check_rule_ago_minutes">
+        <item quantity="one">%1$d minute ago</item>
+        <item quantity="other">%1$d minutes ago</item>
+    </plurals>
+    <plurals name="node_check_rule_ago_hours">
+        <item quantity="one">%1$d hour ago</item>
+        <item quantity="other">%1$d hours ago</item>
+    </plurals>
+    <plurals name="node_check_rule_ago_days">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
+    <plurals name="node_check_rule_hops">
+        <item quantity="one">%1$d hop</item>
+        <item quantity="other">%1$d hops</item>
+    </plurals>
+    <plurals name="node_check_rule_minutes">
+        <item quantity="one">%1$d minute</item>
+        <item quantity="other">%1$d minutes</item>
+    </plurals>
+    <plurals name="node_check_rule_hours">
+        <item quantity="one">%1$d hour</item>
+        <item quantity="other">%1$d hours</item>
+    </plurals>
+    <plurals name="node_check_rule_days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+</resources>

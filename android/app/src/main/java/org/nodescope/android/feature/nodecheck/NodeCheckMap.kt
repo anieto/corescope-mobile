@@ -52,9 +52,10 @@ internal fun NodeCheckMap(heard: List<HeardObserver>, observers: Map<String, Mes
 
     // Route-node anchors draw as filled role-coloured dots on both engines; companion is green
     // and room is blue, matching the legend below.
-    LaunchedEffect(engine.overlays, points) {
+    val unnamedObserver = stringResource(R.string.node_check_rule_unnamed_observer)
+    LaunchedEffect(engine.overlays, points, unnamedObserver) {
         engine.overlays?.setRouteAnchors(points.map { (entry, at) ->
-            MapMarker(at, if (entry.hops == 0) "companion" else "room", name = entry.name)
+            MapMarker(at, if (entry.hops == 0) "companion" else "room", name = entry.name ?: unnamedObserver)
         })
     }
     LaunchedEffect(engine.camera, points.size) {
