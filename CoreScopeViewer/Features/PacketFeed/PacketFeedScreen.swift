@@ -1384,13 +1384,13 @@ private struct LivePacketCard: View {
                     // The badges keep their size; in a narrow sidebar the type name truncates
                     // rather than the counts wrapping a digit per line.
                     if hopCount > 0 {
-                        Label("\(hopCount)", systemImage: "arrow.right")
+                        Label(hopCount.formatted(), systemImage: "arrow.right")
                             .liveObservationBadge()
                             .fixedSize()
                     }
 
                     if observationCount > 1 {
-                        Label("\(observationCount)", systemImage: "eye.fill")
+                        Label(observationCount.formatted(), systemImage: "eye.fill")
                             .liveObservationBadge(color: .purple)
                             .fixedSize()
                     }

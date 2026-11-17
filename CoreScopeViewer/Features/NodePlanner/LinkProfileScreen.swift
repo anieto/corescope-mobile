@@ -1908,7 +1908,7 @@ private struct LinkProfileTerrainCanvas: View {
             context.stroke(path, with: .color(.secondary.opacity(0.22)), style: StrokeStyle(lineWidth: 0.5, dash: [4, 4]))
             let displayElevation = distanceUnit.displayHeight(meters: y)
             context.draw(
-                Text(index == 4 ? "\(Int(displayElevation)) \(distanceUnit.heightSymbol)" : "\(Int(displayElevation))")
+                Text(verbatim: index == 4 ? "\(Int(displayElevation)) \(distanceUnit.heightSymbol)" : "\(Int(displayElevation))")
                     .font(.system(size: 9))
                     .foregroundStyle(.secondary),
                 at: coordinates.point(x: xRange.lowerBound, y: y),

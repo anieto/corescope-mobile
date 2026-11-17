@@ -199,9 +199,6 @@
         }
       }
     },
-    "%lld" : {
-
-    },
     "%lld %@" : {
       "comment" : "Signal quality tally, e.g. \"3 good\"",
       "localizations" : {

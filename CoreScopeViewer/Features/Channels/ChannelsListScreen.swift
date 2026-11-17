@@ -525,7 +525,7 @@ private struct ChannelsHeader: View {
                         ? "line.3.horizontal.decrease.circle"
                         : "line.3.horizontal.decrease.circle.fill")
                     if filterCount > 0 {
-                        Text("\(filterCount)")
+                        Text(filterCount, format: .number)
                             .font(.caption.weight(.bold))
                     }
                 }
@@ -763,7 +763,7 @@ private struct ChannelCard: View {
         if let messageCount {
             HStack(spacing: 4) {
                 Image(systemName: "bubble.left.fill")
-                Text("\(messageCount)")
+                Text(messageCount, format: .number)
             }
             .font(.caption2.weight(.semibold))
             .foregroundStyle(.secondary)

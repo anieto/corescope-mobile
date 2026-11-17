@@ -402,7 +402,7 @@ private struct ObserversHeader: View {
                         ? "line.3.horizontal.decrease.circle"
                         : "line.3.horizontal.decrease.circle.fill")
                     if filterCount > 0 {
-                        Text("\(filterCount)")
+                        Text(filterCount, format: .number)
                             .font(.caption.weight(.bold))
                     }
                 }

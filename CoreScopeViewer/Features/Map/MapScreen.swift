@@ -1153,7 +1153,7 @@ struct MapScreen: View {
 
                 ForEach(mapClusters) { cluster in
                     Annotation("", coordinate: cluster.coordinate, anchor: .center) {
-                        Text("\(cluster.count)")
+                        Text(cluster.count, format: .number)
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(.white)
                             .frame(width: 20, height: 20)
@@ -3887,7 +3887,7 @@ private struct MapRouteDetailsSheet: View {
             List {
                 Section("Summary") {
                     LabeledContent {
-                        Text("\(route.hops.count)")
+                        Text(route.hops.count, format: .number)
                     } label: {
                         LearnLabel("Hops", term: .hop)
                     }
@@ -4008,7 +4008,7 @@ private struct MapRouteHopRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Text("\(hop.position)")
+            Text(hop.position, format: .number)
                 .font(.caption.bold())
                 .foregroundStyle(.black)
                 .frame(width: 26, height: 26)

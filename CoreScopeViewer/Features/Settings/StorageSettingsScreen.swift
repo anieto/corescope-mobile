@@ -103,7 +103,7 @@ private struct StorageUsageSection: View {
             }
 
             LabeledContent("Cached files") {
-                Text("\(usage?.fileCount ?? 0)")
+                Text(usage?.fileCount ?? 0, format: .number)
             }
 
             if let clearedAt {
