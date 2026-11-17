@@ -36,6 +36,8 @@ struct WhatsNewItem: Decodable, Identifiable {
         case "linkProfile": "point.topleft.down.to.point.bottomright.curvepath"
         case "keyboard": "keyboard"
         case "nodeCheck": "checkmark.seal"
+        case "share": "square.and.arrow.up"
+        case "drafts": "doc.badge.clock"
         default: "sparkles"
         }
     }

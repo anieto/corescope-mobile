@@ -12,6 +12,8 @@ import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.Route
 import androidx.compose.material.icons.outlined.Sensors
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.Verified
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -122,5 +124,7 @@ private fun String.vector(): ImageVector = when (this) {
     "linkProfile" -> Icons.Outlined.Route
     "keyboard" -> Icons.Outlined.Keyboard
     "nodeCheck" -> Icons.Outlined.Verified
+    "share" -> Icons.Outlined.Share
+    "drafts" -> Icons.Outlined.EditNote
     else -> Icons.Outlined.AutoAwesome
 }

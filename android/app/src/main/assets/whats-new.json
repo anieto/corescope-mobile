@@ -2,8 +2,32 @@
   "version": 1,
   "releases": [
     {
-      "version": "0.10.6",
+      "version": "0.11.0",
       "items": [
+        {
+          "id": "saved-plans",
+          "title": "Saved Plans",
+          "detail": "Group link profiles and coverage studies into named plans, with notes. Results are saved with them and open on iPhone, iPad and Android alike, without calculating again.",
+          "icon": "savedPlans",
+          "destination": "savedPlans",
+          "location": "Explore → Node Planner → Saved Plans"
+        },
+        {
+          "id": "share-plans",
+          "title": "Share and back up plans",
+          "detail": "Export a study, a plan or your whole library as a file to send or keep. Open a NodeScope file to import a copy; nothing in your library is replaced.",
+          "icon": "share",
+          "destination": "savedPlans",
+          "location": "Saved Plans → a study or plan's menu, or Back up library"
+        },
+        {
+          "id": "unfinished-studies",
+          "title": "Unsaved work is kept",
+          "detail": "Changes you haven't saved survive switching analyzer or NodeScope closing. Pick them up again from Saved Plans.",
+          "icon": "drafts",
+          "destination": "savedPlans",
+          "location": "Saved Plans → Continue unfinished study"
+        },
         {
           "id": "estimated-coverage",
           "title": "Estimated Coverage (Beta)",
@@ -21,19 +45,14 @@
           "location": "Explore → Node Planner → Link Profile"
         },
         {
-          "id": "saved-plans",
-          "title": "Saved Plans",
-          "detail": "Save link profiles and coverage studies, with their results, and pick up where you left off. Candidate sites live here too.",
-          "icon": "savedPlans",
-          "destination": "savedPlans",
-          "location": "Explore → Node Planner → Saved Plans"
-        },
-        {
           "id": "ipad-mac",
           "title": "Better on iPad and Mac",
           "detail": "Cleaner sidebars on iPad, and keyboard shortcuts: ⌘1–⌘5 switch tabs, ⌘F searches, ⌘R refreshes.",
           "icon": "keyboard",
-          "platforms": ["ipad", "mac"]
+          "platforms": [
+            "ipad",
+            "mac"
+          ]
         }
       ]
     }
