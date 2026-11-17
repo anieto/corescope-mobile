@@ -1,5 +1,8 @@
 package org.nodescope.android.feature.coverage
 
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
+import org.nodescope.android.core.design.withDescription
 import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -158,8 +161,8 @@ internal fun EstimatedCoverageScreen(model: EstimatedCoverageViewModel, nodes: L
                                 if (dragged > 30 * density.density) expanded = false
                             }) { _, amount -> dragged += amount }
                         }) {
-                        Box(Modifier.fillMaxWidth().clickable(onClickLabel = if (expanded) "Hide coverage setup" else "Show coverage setup") { expanded = !expanded }
-                            .semantics { contentDescription = if (expanded) "Hide coverage setup" else "Show coverage setup" },
+                        Box(Modifier.fillMaxWidth().clickable(onClickLabel = if (expanded) stringResource(R.string.coverage_hide_coverage_setup_2) else stringResource(R.string.coverage_show_coverage_setup_2)) { expanded = !expanded }
+                            .withDescription(if (expanded) stringResource(R.string.coverage_hide_coverage_setup) else stringResource(R.string.coverage_show_coverage_setup)) { desc -> contentDescription = desc },
                             contentAlignment = Alignment.Center) { BottomSheetDefaults.DragHandle() }
                         Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             CoverageTitle(compact = true)
@@ -181,9 +184,9 @@ internal fun EstimatedCoverageScreen(model: EstimatedCoverageViewModel, nodes: L
 
 @Composable private fun CoverageTitle(compact: Boolean = false) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("Estimated Coverage", style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.coverage_estimated_coverage), style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleLarge)
         Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.secondaryContainer) {
-            Text("Beta", Modifier.padding(horizontal = 8.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall)
+            Text(stringResource(R.string.coverage_beta), Modifier.padding(horizontal = 8.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall)
         }
     }
 }
@@ -203,13 +206,13 @@ internal fun EstimatedCoverageScreen(model: EstimatedCoverageViewModel, nodes: L
             val failure = model.runner.failure
             when {
                 model.isChoosingLocation -> {
-                    Text("Choose a new transmitter location", style = MaterialTheme.typography.titleMedium)
-                    Text("Touch & hold the map to place it.", color = secondary)
-                    OutlinedButton(onClick = { model.isChoosingLocation = false }) { Text("Cancel") }
+                    Text(stringResource(R.string.coverage_choose_a_new_transmitter_location), style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.coverage_touch_hold_the_map_to_place_it), color = secondary)
+                    OutlinedButton(onClick = { model.isChoosingLocation = false }) { Text(stringResource(R.string.common_cancel)) }
                 }
                 model.coordinate == null -> {
-                    Text("Place your transmitter to estimate coverage.", style = MaterialTheme.typography.titleMedium)
-                    Text("Touch & hold the map, on a known node or anywhere, or use your location.", color = secondary)
+                    Text(stringResource(R.string.coverage_place_your_transmitter_to_estimate_coverage), style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.coverage_touch_hold_the_map_on_a_known_node), color = secondary)
                     CoverageCurrentLocationButton(model)
                 }
                 model.isCalculating -> {
@@ -217,10 +220,10 @@ internal fun EstimatedCoverageScreen(model: EstimatedCoverageViewModel, nodes: L
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                         Text(when {
-                            progress is CoverageCalculationProgress.CheckingNodes -> "Checking known-node paths…"
-                            model.runner.preparationStage == CoveragePreparationStage.preparingTerrain -> "Downloading and preparing terrain…"
-                            model.runner.preparationStage == CoveragePreparationStage.calculating -> "Calculating map samples…"
-                            else -> "Validating and cleaning up…"
+                            progress is CoverageCalculationProgress.CheckingNodes -> stringResource(R.string.coverage_checking_known_node_paths)
+                            model.runner.preparationStage == CoveragePreparationStage.preparingTerrain -> stringResource(R.string.coverage_downloading_and_preparing_terrain)
+                            model.runner.preparationStage == CoveragePreparationStage.calculating -> stringResource(R.string.coverage_calculating_map_samples)
+                            else -> stringResource(R.string.coverage_validating_and_cleaning_up)
                         }, style = MaterialTheme.typography.titleMedium)
                     }
                     model.startedAt?.let { ElapsedTime(it) }
@@ -228,20 +231,20 @@ internal fun EstimatedCoverageScreen(model: EstimatedCoverageViewModel, nodes: L
                     if (progress is CoverageCalculationProgress.MapSamples) {
                         LinearProgressIndicator(progress = { progress.completed.toFloat() / progress.total.coerceAtLeast(1) },
                             modifier = Modifier.fillMaxWidth())
-                        Text("%,d of %,d map samples processed".format(progress.completed, progress.total),
+                        Text(stringResource(R.string.coverage_d_of_d_map_samples_processed).format(progress.completed, progress.total),
                             fontFamily = MonaspaceNeon, style = MaterialTheme.typography.bodyMedium)
-                        Text("Some samples may remain unresolved. Difficult terrain takes longer.",
+                        Text(stringResource(R.string.coverage_some_samples_may_remain_unresolved_difficult_terrain_takes),
                             style = MaterialTheme.typography.bodySmall, color = secondary)
                     }
-                    Text("Keep this screen open; leaving cancels the calculation.", style = MaterialTheme.typography.bodySmall, color = secondary)
-                    OutlinedButton(onClick = model::cancel) { Text("Cancel calculation") }
+                    Text(stringResource(R.string.coverage_keep_this_screen_open_leaving_cancels_the_calculation), style = MaterialTheme.typography.bodySmall, color = secondary)
+                    OutlinedButton(onClick = model::cancel) { Text(stringResource(R.string.coverage_cancel_calculation)) }
                 }
                 failure != null -> {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Icon(Icons.Filled.Warning, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error)
-                        Text(failure.coverageMessage(), color = MaterialTheme.colorScheme.error)
+                        Text(failure.coverageMessage().asString(), color = MaterialTheme.colorScheme.error)
                     }
-                    Button(onClick = model::calculate, enabled = model.canCalculate, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = ActivityAmber, contentColor = Color.White)) { Text("Try Again") }
+                    Button(onClick = model::calculate, enabled = model.canCalculate, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = ActivityAmber, contentColor = Color.White)) { Text(stringResource(R.string.coverage_try_again)) }
                 }
                 result != null -> {
                     val counts = remember(result.executionID) { result.sampleCounts() }
@@ -249,43 +252,43 @@ internal fun EstimatedCoverageScreen(model: EstimatedCoverageViewModel, nodes: L
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Icon(if (partial) Icons.Filled.Warning else Icons.Filled.CheckCircle, null, Modifier.size(20.dp),
                             tint = if (partial) Color(0xFFFF9500) else Color(0xFF34C759))
-                        Text(if (partial) "Partial coverage estimate" else "Estimated coverage", style = MaterialTheme.typography.titleMedium)
+                        Text(if (partial) stringResource(R.string.coverage_partial_coverage_estimate) else stringResource(R.string.coverage_estimated_coverage_2), style = MaterialTheme.typography.titleMedium)
                     }
-                    Text("${counts.first} above threshold · ${counts.second} below · ${counts.third} unresolved",
+                    Text(stringResource(R.string.coverage_above_threshold_below_unresolved, counts.first, counts.second, counts.third),
                         fontFamily = MonaspaceNeon, style = MaterialTheme.typography.bodyMedium, color = secondary)
                     val pathLimited = result.nodes.run.nodesToEvaluate.any { result.nodes.run.status(it).reason == CoverageNodeReason.pathWorkLimit }
                     if (result.hasPendingWork) {
                         // A batch stopped early (its budget or low memory): Continue picks up where it left off.
-                        Text("This batch left samples unfinished. Continue to calculate them using the same inputs and terrain.",
+                        Text(stringResource(R.string.coverage_this_batch_left_samples_unfinished_continue_to_calculate),
                             style = MaterialTheme.typography.bodySmall, color = secondary)
-                        Button(onClick = { model.calculate(continuing = true) }, enabled = model.canCalculate, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = ActivityAmber, contentColor = Color.White)) { Text("Continue calculation") }
+                        Button(onClick = { model.calculate(continuing = true) }, enabled = model.canCalculate, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = ActivityAmber, contentColor = Color.White)) { Text(stringResource(R.string.coverage_continue_calculation)) }
                     } else if (result.area.workLimited || pathLimited) {
                         Text(if (result.area.chargedSamples >= result.limits.areaSamples || result.area.chargedGeometry >= result.limits.areaGeometry)
-                            "The study exhausted its work budget. Some samples were not calculated. Try a smaller radius or wider sample spacing."
-                            else "Some individual paths exceeded their work limits. Wider grid spacing may not fix these paths; try a smaller radius.",
+                            stringResource(R.string.coverage_the_study_exhausted_its_work_budget_some_samples)
+                            else stringResource(R.string.coverage_some_individual_paths_exceeded_their_work_limits_wider),
                             style = MaterialTheme.typography.bodySmall, color = secondary)
-                        Text("Hatched areas have no prediction.", style = MaterialTheme.typography.bodySmall, color = secondary)
+                        Text(stringResource(R.string.coverage_hatched_areas_have_no_prediction), style = MaterialTheme.typography.bodySmall, color = secondary)
                     }
-                    if (model.overlayError) Text("The result could not be drawn. Calculate again.", style = MaterialTheme.typography.bodySmall,
+                    if (model.overlayError) Text(stringResource(R.string.coverage_the_result_could_not_be_drawn_calculate_again), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error)
                     else if (model.layer == null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
-                        Text("Preparing coverage overlay…", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.coverage_preparing_coverage_overlay), style = MaterialTheme.typography.bodySmall)
                     }
                 }
                 else -> {
                     val problem = model.setupProblem
                     Text(when (model.runner.snapshot.phase) {
-                        CoverageStudyPublicationPhase.stale -> "Inputs changed. Calculate again."
-                        CoverageStudyPublicationPhase.cancelled -> "Calculation cancelled."
-                        else -> if (problem == null || problem == CoverageSetupProblem.CheckingWork) "Ready to calculate." else "Review the setup."
+                        CoverageStudyPublicationPhase.stale -> stringResource(R.string.coverage_inputs_changed_calculate_again)
+                        CoverageStudyPublicationPhase.cancelled -> stringResource(R.string.coverage_calculation_cancelled)
+                        else -> if (problem == null || problem == CoverageSetupProblem.CheckingWork) stringResource(R.string.coverage_ready_to_calculate) else stringResource(R.string.coverage_review_the_setup)
                     }, style = MaterialTheme.typography.titleMedium)
                     Text(setupSummary(model, unit), style = MaterialTheme.typography.bodyMedium, color = secondary)
                     readyHint(model, problem)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = secondary) }
-                    Button(onClick = model::calculate, enabled = model.canCalculate, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = ActivityAmber, contentColor = Color.White)) { Text("Calculate coverage") }
+                    Button(onClick = model::calculate, enabled = model.canCalculate, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = ActivityAmber, contentColor = Color.White)) { Text(stringResource(R.string.coverage_calculate_coverage)) }
                 }
             }
-            model.inputError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+            model.inputError?.let { Text(it.asString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
         }
         if (!model.isChoosingLocation && model.coordinate != null && !model.isCalculating) {
             // A blue tonal fill keeps Reset subordinate to calculation.
@@ -293,7 +296,7 @@ internal fun EstimatedCoverageScreen(model: EstimatedCoverageViewModel, nodes: L
                 contentPadding = PaddingValues(horizontal = 12.dp)) {
                 Icon(Icons.Filled.Refresh, contentDescription = null, Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("Reset")
+                Text(stringResource(R.string.coverage_reset))
             }
         }
     }
@@ -304,8 +307,8 @@ internal fun EstimatedCoverageScreen(model: EstimatedCoverageViewModel, nodes: L
     LaunchedEffect(startedAt) { while (true) { now = System.currentTimeMillis(); delay(1000) } }
     val seconds = ((now - startedAt) / 1000).coerceAtLeast(0)
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("Elapsed")
-        Text("%d:%02d".format(seconds / 60, seconds % 60), fontFamily = MonaspaceNeon)
+        Text(stringResource(R.string.coverage_elapsed))
+        Text(stringResource(R.string.coverage_d_02d).format(seconds / 60, seconds % 60), fontFamily = MonaspaceNeon)
     }
 }
 
@@ -318,22 +321,24 @@ internal fun CoverageStudyResult.sampleCounts(): Triple<Int, Int, Int> {
 }
 
 /** The transmitter and area in a line: "USA/Canada · 22 dBm · Antenna 20 ft · 10 mi / 1 mi". */
+@Composable
 private fun setupSummary(model: EstimatedCoverageViewModel, unit: DistanceUnit): String {
-    val radio = model.radioPreset?.title ?: "Custom radio"
-    val power = model.number("power")?.let { "${it.editorText()} dBm" } ?: "— dBm"
-    val antenna = "Antenna ${model.values["txHeight"].orEmpty()} ${if (model.heightInFeet) "ft" else "m"}"
+    val radio = model.radioPreset?.title ?: stringResource(R.string.coverage_custom_radio_2)
+    val power = model.number("power")?.let { stringResource(R.string.coverage_dbm, it.editorText()) } ?: "— dBm"
+    val antenna = stringResource(R.string.coverage_antenna_2, model.values["txHeight"].orEmpty(), if (model.heightInFeet) "ft" else "m")
     val area = "${formatDistance(model.radiusMeters / 1000.0, unit)} / ${spacingLabel(model.spacingMeters, unit)}"
     return listOf(radio, power, antenna, area).joinToString(" · ")
 }
 
+@Composable
 private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupProblem?): String? = when (problem) {
     CoverageSetupProblem.NoTransmitter, CoverageSetupProblem.CheckingWork -> null
-    is CoverageSetupProblem.Field -> "A value is out of range. Open the setup to fix it."
-    CoverageSetupProblem.Radio -> "The combined radio values exceed calculation limits."
-    CoverageSetupProblem.Grid, CoverageSetupProblem.TooMuchWork -> "This area needs more work than the limit allows. Choose wider spacing or a smaller radius."
+    is CoverageSetupProblem.Field -> stringResource(R.string.coverage_a_value_is_out_of_range_open_the)
+    CoverageSetupProblem.Radio -> stringResource(R.string.coverage_the_combined_radio_values_exceed_calculation_limits)
+    CoverageSetupProblem.Grid, CoverageSetupProblem.TooMuchWork -> stringResource(R.string.coverage_this_area_needs_more_work_than_the_limit)
     null -> when {
-        !model.acceptsScenario -> "Accept the model assumptions in the setup to calculate."
-        model.runner.snapshot.phase == CoverageStudyPublicationPhase.cancelled -> "No partial result was published."
+        !model.acceptsScenario -> stringResource(R.string.coverage_accept_the_model_assumptions_in_the_setup_to)
+        model.runner.snapshot.phase == CoverageStudyPublicationPhase.cancelled -> stringResource(R.string.coverage_no_partial_result_was_published)
         else -> null
     }
 }
@@ -346,10 +351,10 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
         org.nodescope.android.feature.candidatesites.SavedStudyActions(snapshot = model::savedSnapshot,
             didSave = { model.savedStudy = it; model.markClean() }, onOpen = onOpenSaved, suggestedPlanID = model.suggestedPlanID)
         if (model.usesSavedCatalog) {
-            Text(if (model.savedStudy?.coverage?.calculatedResult == null) "Saved node locations · Inputs-only save"
-                else "Saved node locations · Saved coverage results",
+            Text(if (model.savedStudy?.coverage?.calculatedResult == null) stringResource(R.string.coverage_saved_node_locations_inputs_only_save)
+                else stringResource(R.string.coverage_saved_node_locations_saved_coverage_results),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            TextButton(onClick = model::refreshNodesFromSource, contentPadding = PaddingValues(0.dp)) { Text("Refresh nodes from current source") }
+            TextButton(onClick = model::refreshNodesFromSource, contentPadding = PaddingValues(0.dp)) { Text(stringResource(R.string.coverage_refresh_nodes_from_current_source)) }
         }
         CoverageSetupGuide(model)
         CoverageReportCard(model.diagnosticReport)
@@ -357,10 +362,10 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
         CoverageRadioCard(model)
         CoverageReceiverCard(model)
         CoverageStudyAreaCard(model)
-        if (model.canReuseSmallerStudy) Text("The next calculation will reuse matching samples from the smaller study and calculate the added area.",
+        if (model.canReuseSmallerStudy) Text(stringResource(R.string.coverage_the_next_calculation_will_reuse_matching_samples_from),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         CoverageCalculationCard(model, showNodes)
-        Text("Planning estimates only: terrain does not account for buildings, foliage or interference. Terrain is downloaded from AWS Skadi and cached on this device. Use Save to keep this setup before leaving the tool.",
+        Text(stringResource(R.string.coverage_planning_estimates_only_terrain_does_not_account_for),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -375,7 +380,8 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
 @Composable private fun CoverageDisclosure(title: String, summary: List<String>, expanded: Boolean, toggle: () -> Unit,
     content: @Composable ColumnScope.() -> Unit) {
     CoverageCard {
-        Row(Modifier.fillMaxWidth().clickable(onClick = toggle).semantics { stateDescription = if (expanded) "Expanded" else "Collapsed" },
+        val disclosureState = stringResource(if (expanded) R.string.coverage_disclosure_expanded else R.string.coverage_disclosure_collapsed)
+        Row(Modifier.fillMaxWidth().clickable(onClick = toggle).semantics { stateDescription = disclosureState },
             verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(title, style = MaterialTheme.typography.titleMedium)
@@ -394,25 +400,25 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
     var dismissed by remember { mutableStateOf(preferences.getBoolean("coverage.setupGuideDismissed.v1", false)) }
     fun dismiss(value: Boolean) { dismissed = value; preferences.edit { putBoolean("coverage.setupGuideDismissed.v1", value) } }
     if (dismissed) {
-        TextButton(onClick = { dismiss(false) }) { Text("Show setup guide") }
+        TextButton(onClick = { dismiss(false) }) { Text(stringResource(R.string.coverage_show_setup_guide)) }
         return
     }
     CoverageCard {
-        Text("Your first coverage study", style = MaterialTheme.typography.titleMedium)
-        Text("1. Place your transmitter", style = MaterialTheme.typography.titleSmall)
-        Text("Touch and hold the map, or open Transmitter settings to enter coordinates or use your location.", style = MaterialTheme.typography.bodyMedium)
-        if (model.coordinate == null) Button(onClick = { model.isChoosingLocation = true }) { Text("Choose on map") }
-        Text("2. Check the equipment", style = MaterialTheme.typography.titleSmall)
-        Text("Open the transmitter, radio and receiver sections. Set antenna heights above ground and choose the radio preset used by your mesh.",
+        Text(stringResource(R.string.coverage_your_first_coverage_study), style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.coverage_1_place_your_transmitter), style = MaterialTheme.typography.titleSmall)
+        Text(stringResource(R.string.coverage_touch_and_hold_the_map_or_open_transmitter), style = MaterialTheme.typography.bodyMedium)
+        if (model.coordinate == null) Button(onClick = { model.isChoosingLocation = true }) { Text(stringResource(R.string.coverage_choose_on_map)) }
+        Text(stringResource(R.string.coverage_2_check_the_equipment), style = MaterialTheme.typography.titleSmall)
+        Text(stringResource(R.string.coverage_open_the_transmitter_radio_and_receiver_sections_set),
             style = MaterialTheme.typography.bodyMedium)
-        Text("3. Choose the area and calculate", style = MaterialTheme.typography.titleSmall)
-        Text("Start with a small radius. Wider sample spacing is faster; finer spacing reveals smaller coverage gaps. Review the model assumptions, then tap Calculate coverage above.",
+        Text(stringResource(R.string.coverage_3_choose_the_area_and_calculate), style = MaterialTheme.typography.titleSmall)
+        Text(stringResource(R.string.coverage_start_with_a_small_radius_wider_sample_spacing),
             style = MaterialTheme.typography.bodyMedium)
-        Text("Colors show predicted margin, not guaranteed connectivity. Hatched areas have no prediction.",
+        Text(stringResource(R.string.coverage_colors_show_predicted_margin_not_guaranteed_connectivity_hatched),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { dismiss(true) }) { Text("Got it") }
-            OutlinedButton(onClick = { dismiss(true) }) { Text("Skip guide") }
+            Button(onClick = { dismiss(true) }) { Text(stringResource(R.string.coverage_got_it)) }
+            OutlinedButton(onClick = { dismiss(true) }) { Text(stringResource(R.string.coverage_skip_guide)) }
         }
     }
 }
@@ -421,23 +427,23 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
 @Composable private fun CoverageTransmitterCard(model: EstimatedCoverageViewModel) {
     var showsCoordinates by rememberSaveable { mutableStateOf(false) }
     val point = model.coordinate
-    val title = if (point == null) "Transmitter not placed" else model.transmitterName ?: "Dropped pin"
-    val antenna = "Antenna ${model.values["txHeight"].orEmpty()} ${model.heightUnit} · ${model.values["txGain"].orEmpty()} dBi"
+    val title = if (point == null) stringResource(R.string.coverage_transmitter_not_placed) else model.transmitterName ?: stringResource(R.string.coverage_dropped_pin)
+    val antenna = stringResource(R.string.coverage_antenna_dbi, model.values["txHeight"].orEmpty(), model.heightUnit, model.values["txGain"].orEmpty())
     val place = point?.let { String.format(Locale.US, "%.4f, %.4f", it.latitude, it.longitude) }
-    CoverageDisclosure("Transmitter settings", listOfNotNull(title, listOfNotNull(place, antenna).joinToString(" · ")),
+    CoverageDisclosure(stringResource(R.string.coverage_transmitter_settings), listOfNotNull(title, listOfNotNull(place, antenna).joinToString(" · ")),
         model.transmitterExpanded, { model.transmitterExpanded = !model.transmitterExpanded }) {
         CoverageHeightSetting(model, "txHeight", CoverageHeightPreset.transmitter)
         CoverageAntennaSetting(model, "txGain")
-        CoverageNumberField(model, "txLoss", "System loss", "dB", GlossaryTerm.CABLE_LOSS)
+        CoverageNumberField(model, "txLoss", stringResource(R.string.coverage_field_system_loss), "dB", GlossaryTerm.CABLE_LOSS)
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { model.isChoosingLocation = true }) { Text(if (point != null) "Choose new point" else "Choose on map") }
-            Button(onClick = { showsCoordinates = !showsCoordinates }) { Text(if (showsCoordinates) "Hide coordinates" else "Enter coordinates") }
+            Button(onClick = { model.isChoosingLocation = true }) { Text(if (point != null) stringResource(R.string.coverage_choose_new_point) else stringResource(R.string.coverage_choose_on_map_2)) }
+            Button(onClick = { showsCoordinates = !showsCoordinates }) { Text(if (showsCoordinates) stringResource(R.string.coverage_hide_coordinates) else stringResource(R.string.coverage_enter_coordinates)) }
         }
         CoverageCurrentLocationButton(model)
         if (showsCoordinates) {
-            LearnLabel("Coordinates", GlossaryTerm.PLANNING_COORDINATES)
-            CoverageTextField("Latitude", model.latitudeText, model.issue("latitude")) { model.typeCoordinates(it, model.longitudeText) }
-            CoverageTextField("Longitude", model.longitudeText, model.issue("longitude")) { model.typeCoordinates(model.latitudeText, it) }
+            LearnLabel(stringResource(R.string.coverage_coordinates), GlossaryTerm.PLANNING_COORDINATES)
+            CoverageTextField(stringResource(R.string.coverage_latitude), model.latitudeText, model.issue("latitude")) { model.typeCoordinates(it, model.longitudeText) }
+            CoverageTextField(stringResource(R.string.coverage_longitude), model.longitudeText, model.issue("longitude")) { model.typeCoordinates(model.latitudeText, it) }
         }
     }
 }
@@ -448,37 +454,37 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
     var customizing by rememberSaveable { mutableStateOf(false) }
     val preset = model.radioPreset
     val summary = listOfNotNull("${model.values["frequency"].orEmpty()} MHz", preset?.modemSummary,
-        "${model.values["power"].orEmpty()} dBm", "sensitivity ${model.values["sensitivity"].orEmpty()} dBm").joinToString(" · ")
-    CoverageDisclosure("Radio settings", listOf(summary, "Reserve: ${model.values["reserve"].orEmpty()} dB"), expanded, { expanded = !expanded }) {
+        "${model.values["power"].orEmpty()} dBm", stringResource(R.string.coverage_radio_sensitivity_summary, model.values["sensitivity"].orEmpty())).joinToString(" · ")
+    CoverageDisclosure(stringResource(R.string.coverage_radio_settings), listOf(summary, stringResource(R.string.coverage_radio_reserve_summary, model.values["reserve"].orEmpty())), expanded, { expanded = !expanded }) {
         CoverageRadioPresetMenu(preset, model::applyRadioPreset)
         TextButton(onClick = { customizing = !customizing }, contentPadding = PaddingValues(0.dp)) {
-            Text(if (customizing) "Hide radio values" else if (preset == null) "Customize radio · edited" else "Customize radio")
+            Text(if (customizing) stringResource(R.string.coverage_hide_radio_values) else if (preset == null) stringResource(R.string.coverage_customize_radio_edited) else stringResource(R.string.coverage_customize_radio))
         }
         if (customizing) {
-            CoverageNumberField(model, "frequency", "Frequency", "MHz", GlossaryTerm.RADIO_FREQUENCY)
-            CoverageNumberField(model, "power", "Transmit power", "dBm", GlossaryTerm.TRANSMIT_POWER)
-            CoverageNumberField(model, "sensitivity", "Receiver sensitivity", "dBm", GlossaryTerm.RECEIVER_SENSITIVITY)
+            CoverageNumberField(model, "frequency", stringResource(R.string.coverage_field_frequency), "MHz", GlossaryTerm.RADIO_FREQUENCY)
+            CoverageNumberField(model, "power", stringResource(R.string.coverage_field_transmit_power), "dBm", GlossaryTerm.TRANSMIT_POWER)
+            CoverageNumberField(model, "sensitivity", stringResource(R.string.coverage_field_receiver_sensitivity), "dBm", GlossaryTerm.RECEIVER_SENSITIVITY)
         }
-        LearnLabel("Planning reserve", GlossaryTerm.PLANNING_RESERVE)
+        LearnLabel(stringResource(R.string.coverage_planning_reserve), GlossaryTerm.PLANNING_RESERVE)
         val reserve = model.number("reserve")
         CoveragePresetRow(CoverageReservePreset.choicesDb.map { db ->
-            Triple(if (db == 0.0) "None" else "${db.editorText()} dB", reserve == db) { model.set("reserve", db.editorText()) }
+            Triple(if (db == 0.0) stringResource(R.string.coverage_none) else "${db.editorText()} dB", reserve == db) { model.set("reserve", db.editorText()) }
         })
-        CoverageNumberField(model, "reserve", "Reserve", "dB", null)
+        CoverageNumberField(model, "reserve", stringResource(R.string.coverage_field_reserve), "dB", null)
     }
 }
 
 /** The assumed receiver: the same for the map and every known node. */
 @Composable private fun CoverageReceiverCard(model: EstimatedCoverageViewModel) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    CoverageDisclosure("Receiver assumptions",
-        listOf("Antenna ${model.values["rxHeight"].orEmpty()} ${model.heightUnit} · ${model.values["rxGain"].orEmpty()} dBi · loss ${model.values["rxLoss"].orEmpty()} dB"),
+    CoverageDisclosure(stringResource(R.string.coverage_receiver_assumptions),
+        listOf(stringResource(R.string.coverage_antenna_dbi_loss_db, model.values["rxHeight"].orEmpty(), model.heightUnit, model.values["rxGain"].orEmpty(), model.values["rxLoss"].orEmpty())),
         expanded, { expanded = !expanded }) {
-        Text("One assumed receiver for the coverage map and the known nodes. These are not the nodes’ reported equipment.",
+        Text(stringResource(R.string.coverage_one_assumed_receiver_for_the_coverage_map_and),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         CoverageHeightSetting(model, "rxHeight", CoverageHeightPreset.receiver)
         CoverageAntennaSetting(model, "rxGain")
-        CoverageNumberField(model, "rxLoss", "System loss", "dB", GlossaryTerm.CABLE_LOSS)
+        CoverageNumberField(model, "rxLoss", stringResource(R.string.coverage_field_system_loss), "dB", GlossaryTerm.CABLE_LOSS)
     }
 }
 
@@ -498,59 +504,59 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
         val next = if (increasing) kotlin.math.floor(steps + 0.0005) + 1 else kotlin.math.ceil(steps - 0.0005) - 1
         setRadius(next * step)
     }
-    val label = "${shown.let { if (it % 1.0 == 0.0) it.toLong().toString() else String.format(Locale.US, "%.3f", it).trimEnd('0') }} ${if (imperial) "mi" else "km"}"
+    val label = stringResource(R.string.coverage_value, shown.let { if (it % 1.0 == 0.0) it.toLong().toString() else String.format(Locale.US, "%.3f", it).trimEnd('0') }, if (imperial) "mi" else "km")
     CoverageCard {
-        Text("Study area", style = MaterialTheme.typography.titleMedium)
-        LearnLabel("Study radius", GlossaryTerm.STUDY_RADIUS)
+        Text(stringResource(R.string.coverage_study_area), style = MaterialTheme.typography.titleMedium)
+        LearnLabel(stringResource(R.string.coverage_study_radius), GlossaryTerm.STUDY_RADIUS)
         Text(label, fontFamily = MonaspaceNeon)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { adjust(false) }, enabled = shown > step) { Text("−", style = MaterialTheme.typography.titleLarge) }
+            IconButton(onClick = { adjust(false) }, enabled = shown > step) { Text(stringResource(R.string.coverage_value_2), style = MaterialTheme.typography.titleLarge) }
             Slider(value = shown.coerceIn(step, maximum).toFloat(), onValueChange = { draft = it },
                 onValueChangeFinished = { draft?.let { setRadius(it.toDouble()) }; draft = null },
                 valueRange = step.toFloat()..maximum.toFloat(), steps = ((maximum - step) / step).toInt() - 1,
-                modifier = Modifier.weight(1f).semantics { contentDescription = "Study radius"; stateDescription = label })
+                modifier = Modifier.weight(1f).withDescription(stringResource(R.string.coverage_study_radius)) { description -> contentDescription = description; stateDescription = label })
             IconButton(onClick = { adjust(true) }, enabled = shown < maximum - 0.0005) { Text("+", style = MaterialTheme.typography.titleLarge) }
         }
-        Text("Doubling the radius roughly quadruples the map samples at the same spacing. Longer paths also take more work.",
+        Text(stringResource(R.string.coverage_doubling_the_radius_roughly_quadruples_the_map_samples),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        LearnLabel("Sample spacing", GlossaryTerm.COVERAGE_DETAIL)
+        LearnLabel(stringResource(R.string.coverage_sample_spacing), GlossaryTerm.COVERAGE_DETAIL)
         val choices = (if (imperial) EstimatedCoverageViewModel.imperialSpacings else EstimatedCoverageViewModel.metricSpacings).let {
             if (model.spacingMeters in it) it else (it + model.spacingMeters).sorted()
         }
         CoverageSpacingMenu(model.spacingMeters, choices, unit, model::setSpacing)
         val grid = model.grid
         if (grid != null) {
-            CoverageValueRow("Map samples", "%,d".format(grid.count))
-            CoverageValueRow("Minimum terrain samples", model.minimumWorkSamples?.let { "%,d".format(it) } ?: "—")
-            Text("Lower bound only; extra terrain detail and refinement add work. The area budget is 120 million samples per batch.",
+            CoverageValueRow(stringResource(R.string.coverage_map_samples), stringResource(R.string.coverage_d).format(grid.count))
+            CoverageValueRow(stringResource(R.string.coverage_minimum_terrain_samples), model.minimumWorkSamples?.let { "%,d".format(it) } ?: "—")
+            Text(stringResource(R.string.coverage_lower_bound_only_extra_terrain_detail_and_refinement),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             when (model.workFits) {
-                null -> Text("Checking calculation limits…", style = MaterialTheme.typography.bodySmall)
-                false -> Text("This area needs more calculation work than the current limit allows. Choose wider spacing or a smaller radius.",
+                null -> Text(stringResource(R.string.coverage_checking_calculation_limits), style = MaterialTheme.typography.bodySmall)
+                false -> Text(stringResource(R.string.coverage_this_area_needs_more_calculation_work_than_the),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                true -> Text("Minimum work fits one batch; complex terrain can require more.", style = MaterialTheme.typography.bodySmall,
+                true -> Text(stringResource(R.string.coverage_minimum_work_fits_one_batch_complex_terrain_can), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-        } else Text("This radius and detail exceed the current grid limit. Choose wider spacing or a smaller radius.", color = Color(0xFFFF9500))
+        } else Text(stringResource(R.string.coverage_this_radius_and_detail_exceed_the_current_grid), color = Color(0xFFFF9500))
     }
 }
 
 /** The model's assumptions to accept, the run's messages, and the result. */
 @Composable private fun CoverageCalculationCard(model: EstimatedCoverageViewModel, showNodes: () -> Unit) {
     CoverageCard {
-        Text("Calculation", style = MaterialTheme.typography.titleMedium)
-        Text("Beta estimate: terrain-only, inland paths, vertical polarization and median atmosphere. No building or tree clutter model; terrain surfaces may still contain vegetation. Not suitable for coastal or sea paths without a different model configuration.",
+        Text(stringResource(R.string.coverage_calculation), style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.coverage_beta_estimate_terrain_only_inland_paths_vertical_polarization),
             style = MaterialTheme.typography.bodyMedium)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Use these model assumptions", Modifier.weight(1f))
+            Text(stringResource(R.string.coverage_use_these_model_assumptions), Modifier.weight(1f))
             Switch(model.acceptsScenario, model::updateAcceptsScenario)
         }
-        Text("Downloads terrain on demand (up to 500 MB per run; 1 GB cache). Start with a small area.",
+        Text(stringResource(R.string.coverage_downloads_terrain_on_demand_up_to_500_mb),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (model.coordinate != null) OutlinedButton(onClick = showNodes) { Text("Known nodes (${model.knownNodes.size})") }
+        if (model.coordinate != null) OutlinedButton(onClick = showNodes) { Text(stringResource(R.string.coverage_known_nodes, model.knownNodes.size)) }
         when (model.runner.snapshot.phase) {
-            CoverageStudyPublicationPhase.cancelled -> Text("Calculation cancelled. No partial result was published.", style = MaterialTheme.typography.bodySmall)
-            CoverageStudyPublicationPhase.stale -> Text("Inputs or catalog changed. Calculate again to update the result.", style = MaterialTheme.typography.bodySmall)
+            CoverageStudyPublicationPhase.cancelled -> Text(stringResource(R.string.coverage_calculation_cancelled_no_partial_result_was_published), style = MaterialTheme.typography.bodySmall)
+            CoverageStudyPublicationPhase.stale -> Text(stringResource(R.string.coverage_inputs_or_catalog_changed_calculate_again_to_update), style = MaterialTheme.typography.bodySmall)
             else -> {}
         }
         model.activeResult?.let { result ->
@@ -566,7 +572,7 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
 @Composable private fun CoverageHeightSetting(model: EstimatedCoverageViewModel, field: String, presets: List<CoverageHeightPreset>) {
     val feet = model.heightInFeet
     val meters = model.number(field)?.let { if (feet) it * 0.3048 else it }
-    LearnLabel("Antenna height", GlossaryTerm.ANTENNA_HEIGHT)
+    LearnLabel(stringResource(R.string.coverage_antenna_height), GlossaryTerm.ANTENNA_HEIGHT)
     CoveragePresetRow(presets.map { preset ->
         // Imperial chips advertise whole feet; apply that exact displayed height.
         val text = if (feet) String.format(Locale.US, "%.0f", preset.meters / 0.3048) else preset.meters.editorText()
@@ -574,26 +580,26 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
             model.set(field, text)
         }
     })
-    CoverageNumberField(model, field, "Above ground", model.heightUnit, null)
+    CoverageNumberField(model, field, stringResource(R.string.coverage_field_above_ground), model.heightUnit, null)
 }
 
 /** An antenna type whose gain fills the field, or a custom gain. */
 @Composable private fun CoverageAntennaSetting(model: EstimatedCoverageViewModel, field: String) {
     val gain = model.number(field)
     AntennaPresetMenu(gain) { model.set(field, it.editorText()) }
-    CoverageNumberField(model, field, "Antenna gain", "dBi", null)
+    CoverageNumberField(model, field, stringResource(R.string.coverage_field_antenna_gain), "dBi", null)
 }
 
 @Composable internal fun AntennaPresetMenu(gain: Double?, choose: (Double) -> Unit) {
     val match = gain?.let(CoverageAntennaPreset::matching)
     var open by remember { mutableStateOf(false) }
-    LearnLabel("Antenna", GlossaryTerm.ANTENNA_GAIN)
+    LearnLabel(stringResource(R.string.coverage_antenna), GlossaryTerm.ANTENNA_GAIN)
     Box {
-        OutlinedButton(onClick = { open = true }, Modifier.fillMaxWidth()) { Text(match?.title ?: "Custom", Modifier.weight(1f)); Icon(Icons.Filled.ExpandMore, null) }
+        OutlinedButton(onClick = { open = true }, Modifier.fillMaxWidth()) { Text(match?.title ?: stringResource(R.string.coverage_custom), Modifier.weight(1f)); Icon(Icons.Filled.ExpandMore, null) }
         DropdownMenu(open, { open = false }) {
             CoverageAntennaPreset.all.forEach { preset ->
-                DropdownMenuItem(text = { Text("${preset.title} · ${preset.gainDbi.editorText()} dBi") },
-                    trailingIcon = if (preset == match) ({ Text("✓") }) else null,
+                DropdownMenuItem(text = { Text(stringResource(R.string.coverage_dbi, preset.title, preset.gainDbi.editorText())) },
+                    trailingIcon = if (preset == match) ({ Text(stringResource(R.string.coverage_value_3)) }) else null,
                     onClick = { choose(preset.gainDbi); open = false })
             }
         }
@@ -605,7 +611,7 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
     Box {
         OutlinedButton(onClick = { open = true }, Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f)) {
-                Text(current?.let { "${it.family.title} · ${it.title}" } ?: "Custom radio")
+                Text(current?.let { "${it.family.title} · ${it.title}" } ?: stringResource(R.string.coverage_custom_radio))
                 current?.let { Text(it.modemSummary, style = MaterialTheme.typography.bodySmall) }
             }
             Icon(Icons.Filled.ExpandMore, null)
@@ -616,8 +622,8 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
                     color = MaterialTheme.colorScheme.primary)
                 CoverageRadioPreset.presets(family).forEach { preset ->
                     DropdownMenuItem(text = {
-                        Column { Text(preset.title); Text("${preset.modemSummary} · ${preset.frequencyMHz.editorText()} MHz", style = MaterialTheme.typography.bodySmall) }
-                    }, trailingIcon = if (preset == current) ({ Text("✓") }) else null, onClick = { choose(preset); open = false })
+                        Column { Text(preset.title); Text(stringResource(R.string.coverage_mhz, preset.modemSummary, preset.frequencyMHz.editorText()), style = MaterialTheme.typography.bodySmall) }
+                    }, trailingIcon = if (preset == current) ({ Text(stringResource(R.string.coverage_value_3)) }) else null, onClick = { choose(preset); open = false })
                 }
             }
         }
@@ -632,7 +638,7 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
 
 @Composable private fun CoverageNumberField(model: EstimatedCoverageViewModel, field: String, label: String, unit: String, term: GlossaryTerm?) {
     if (term != null) LearnLabel(label, term)
-    CoverageTextField(if (term != null) "$label ($unit)" else "$label ($unit)", model.values[field].orEmpty(), model.issue(field)) { model.set(field, it) }
+    CoverageTextField(if (term != null) stringResource(R.string.coverage_value_4, label, unit) else stringResource(R.string.coverage_value_4, label, unit), model.values[field].orEmpty(), model.issue(field)) { model.set(field, it) }
 }
 
 @Composable private fun CoverageTextField(label: String, value: String, issue: CoverageSetupIssue?, change: (String) -> Unit) {
@@ -643,15 +649,16 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text))
 }
 
+@Composable
 private fun CoverageSetupIssue.message(): String = when (this) {
-    CoverageSetupIssue.required -> "Enter a value."
-    CoverageSetupIssue.number -> "Enter a finite number using a decimal point."
-    CoverageSetupIssue.latitude -> "Coverage calculations support latitude from −85° to 85°."
-    CoverageSetupIssue.longitude -> "Longitude must be between −180° and 180°."
-    CoverageSetupIssue.frequency -> "Frequency must be between 30 and 6000 MHz."
-    CoverageSetupIssue.height -> "Antenna height must be between 1 and 3000 m above ground (about 3 to 9843 ft)."
-    CoverageSetupIssue.nonnegative -> "Enter zero or a positive value."
-    CoverageSetupIssue.unknownField -> "This field is not supported."
+    CoverageSetupIssue.required -> stringResource(R.string.coverage_enter_a_value)
+    CoverageSetupIssue.number -> stringResource(R.string.coverage_enter_a_finite_number_using_a_decimal_point)
+    CoverageSetupIssue.latitude -> stringResource(R.string.coverage_coverage_calculations_support_latitude_from_85_to_85)
+    CoverageSetupIssue.longitude -> stringResource(R.string.coverage_longitude_must_be_between_180_and_180)
+    CoverageSetupIssue.frequency -> stringResource(R.string.coverage_frequency_must_be_between_30_and_6000_mhz)
+    CoverageSetupIssue.height -> stringResource(R.string.coverage_antenna_height_must_be_between_1_and_3000)
+    CoverageSetupIssue.nonnegative -> stringResource(R.string.coverage_enter_zero_or_a_positive_value)
+    CoverageSetupIssue.unknownField -> stringResource(R.string.coverage_this_field_is_not_supported)
 }
 
 /** The last calculation report, as iOS: collapsed by default, shared only when asked. */
@@ -662,18 +669,19 @@ private fun CoverageSetupIssue.message(): String = when (this) {
     Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth().clickable { open = !open }, verticalAlignment = Alignment.CenterVertically) {
-                Text("Last calculation report", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                Text(if (open) "▴" else "▾", style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { contentDescription = if (open) "Collapse" else "Expand" })
+                Text(stringResource(R.string.coverage_last_calculation_report), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                val disclosure = stringResource(if (open) R.string.coverage_disclosure_collapse else R.string.coverage_disclosure_expand)
+                Text(if (open) "▴" else "▾", style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { contentDescription = disclosure })
             }
             if (open) {
-                Text("Includes coordinates, radio assumptions, work counters and available-memory observations. A run left in progress does not identify why the app stopped.",
+                Text(stringResource(R.string.coverage_includes_coordinates_radio_assumptions_work_counters_and_available),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedButton(onClick = {
                     val send = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain")
-                        .putExtra(android.content.Intent.EXTRA_SUBJECT, "Coverage calculation report")
+                        .putExtra(android.content.Intent.EXTRA_SUBJECT, context.getString(R.string.coverage_coverage_calculation_report))
                         .putExtra(android.content.Intent.EXTRA_TEXT, report)
-                    context.startActivity(android.content.Intent.createChooser(send, "Share calculation report"))
-                }) { Text("Share calculation report") }
+                    context.startActivity(android.content.Intent.createChooser(send, context.getString(R.string.coverage_share_calculation_report_2)))
+                }) { Text(stringResource(R.string.coverage_share_calculation_report)) }
                 androidx.compose.foundation.text.selection.SelectionContainer {
                     Text(report, fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelSmall)
                 }
@@ -694,7 +702,7 @@ private fun CoverageSetupIssue.message(): String = when (this) {
         ExposedDropdownMenu(open, { open = false }) {
             choices.forEach { choice ->
                 DropdownMenuItem(text = { Text(spacingLabel(choice, unit)) }, onClick = { choose(choice); open = false },
-                    trailingIcon = if (choice == meters) ({ Text("✓") }) else null)
+                    trailingIcon = if (choice == meters) ({ Text(stringResource(R.string.coverage_value_3)) }) else null)
             }
         }
     }
@@ -736,17 +744,17 @@ private fun spacingLabel(meters: Int, unit: DistanceUnit): String {
                 when (result) {
                     is LocationResult.Found -> {
                         if (CoverageSetupValidation.supportsCoordinate(result.coordinate.latitude, result.coordinate.longitude)) {
-                            model.place(result.coordinate, "Current location")
-                            message = "Check the pin on the map, especially when using approximate location."
-                        } else message = "Your location is outside the supported latitude range of −85° to 85°. Choose a point on the map."
+                            model.place(result.coordinate, context.getString(R.string.coverage_current_location))
+                            message = context.getString(R.string.coverage_check_the_pin_on_the_map_especially_when)
+                        } else message = context.getString(R.string.coverage_your_location_is_outside_the_supported_latitude_range)
                     }
-                    LocationResult.ServicesOff -> message = "Turn on location services, or choose a point on the map."
-                    LocationResult.Unavailable -> message = "Couldn't find your location. Try again, or choose a point on the map."
+                    LocationResult.ServicesOff -> message = context.getString(R.string.coverage_turn_on_location_services_or_choose_a_point)
+                    LocationResult.Unavailable -> message = context.getString(R.string.coverage_couldn_t_find_your_location_try_again_or)
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                if (request == generation) message = "Couldn't get your location. Check location permission and services in Settings, or choose a point on the map."
+                if (request == generation) message = context.getString(R.string.coverage_couldn_t_get_your_location_check_location_permission)
             } finally {
                 if (request == generation) locating = false
             }
@@ -757,7 +765,7 @@ private fun spacingLabel(meters: Int, unit: DistanceUnit): String {
             if (grants.values.any { it }) locate()
             else {
                 locating = false
-                message = "Location permission is off. Allow it in the app's settings, or choose a point on the map."
+                message = context.getString(R.string.coverage_location_permission_is_off_allow_it_in_the)
             }
         }
     }
@@ -769,10 +777,10 @@ private fun spacingLabel(meters: Int, unit: DistanceUnit): String {
                 locating = true
                 message = null
                 if (hasLocationPermission(context)) locate() else permission.launch(LOCATION_PERMISSIONS)
-            }, modifier = Modifier.weight(1f), enabled = !locating) { Text("Use current location") }
+            }, modifier = Modifier.weight(1f), enabled = !locating) { Text(stringResource(R.string.coverage_use_current_location)) }
             if (locating) {
                 CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                TextButton(onClick = { cancel() }) { Text("Cancel") }
+                TextButton(onClick = { cancel() }) { Text(stringResource(R.string.common_cancel)) }
             }
         }
         message?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -784,28 +792,28 @@ private fun spacingLabel(meters: Int, unit: DistanceUnit): String {
 @Composable private fun CoverageKnownNodesDialog(model: EstimatedCoverageViewModel, dismiss: () -> Unit) {
     val statuses = model.nodeStatuses
     val result = model.activeResult
-    AlertDialog(onDismissRequest = dismiss, title = { Text("Known nodes") }, text = {
+    AlertDialog(onDismissRequest = dismiss, title = { Text(stringResource(R.string.coverage_known_nodes_2)) }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("This list shows the nearest 200 located nodes available in the current catalog. Predictions use your receiver assumptions, not reported node equipment. It is not a complete inventory of nearby radios.",
+            Text(stringResource(R.string.coverage_this_list_shows_the_nearest_200_located_nodes),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (model.knownNodes.isEmpty()) Text(if (model.coordinate == null) "Place a transmitter to find nearby known nodes."
-                else "No located nodes are available in the current catalog.")
+            if (model.knownNodes.isEmpty()) Text(if (model.coordinate == null) stringResource(R.string.coverage_place_a_transmitter_to_find_nearby_known_nodes)
+                else stringResource(R.string.coverage_no_located_nodes_are_available_in_the_current))
             model.knownNodes.forEach { node ->
                 val status = statuses[node.publicKey]
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(node.displayName, fontFamily = MonaspaceNeon, style = MaterialTheme.typography.titleSmall)
-                    Text(status?.coverageLabel() ?: "Not evaluated", style = MaterialTheme.typography.bodySmall)
+                    Text(status?.coverageLabel()?.asString() ?: stringResource(R.string.coverage_not_evaluated), style = MaterialTheme.typography.bodySmall)
                     status?.adjustedMarginDb?.let { margin ->
-                        Text(String.format(Locale.US, "Margin after reserve: %.1f dB", margin), fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelMedium)
+                        Text(stringResource(R.string.coverage_inspection_margin, String.format(Locale.US, "%.1f", margin)), fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelMedium)
                         result?.let {
-                            Text(String.format(Locale.US, "Predicted receive level: %.1f dBm", margin + it.budget.sensitivityDbm + it.budget.reserveDb),
+                            Text(stringResource(R.string.coverage_inspection_receive_level, String.format(Locale.US, "%.1f", margin + it.budget.sensitivityDbm + it.budget.reserveDb)),
                                 fontFamily = MonaspaceNeon, style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }
             }
         }
-    }, confirmButton = { TextButton(onClick = dismiss) { Text("Done") } })
+    }, confirmButton = { TextButton(onClick = dismiss) { Text(stringResource(R.string.common_done)) } })
 }
 
 // MARK: - Legend
@@ -815,7 +823,7 @@ private fun spacingLabel(meters: Int, unit: DistanceUnit): String {
     var open by remember { mutableStateOf(false) }
     TextButton(onClick = { open = true }, contentPadding = PaddingValues(0.dp)) {
         Column {
-            Text("Predicted margin ⓘ", style = MaterialTheme.typography.labelMedium)
+            Text(stringResource(R.string.coverage_predicted_margin), style = MaterialTheme.typography.labelMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 CoverageMarginSwatch(CoverageRasterClass.belowThreshold, "<0")
                 CoverageMarginSwatch(CoverageRasterClass.limitedHeadroom, "0–10")
@@ -824,21 +832,21 @@ private fun spacingLabel(meters: Int, unit: DistanceUnit): String {
             }
         }
     }
-    if (open) AlertDialog(onDismissRequest = { open = false }, title = { Text("Coverage colors") }, text = {
+    if (open) AlertDialog(onDismissRequest = { open = false }, title = { Text(stringResource(R.string.coverage_coverage_colors)) }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Margin after planning reserve", style = MaterialTheme.typography.titleSmall)
-            Text("Red · Below 0 dB: predicted below threshold")
-            Text("Amber · 0–10 dB: limited predicted headroom")
-            Text("Green · Above 10 dB: greater predicted headroom")
-            Text("Gray hatching · No usable prediction")
-            Text("Outside the study radius is unshaded. The area within 250 m of the transmitter is unsupported and hatched.",
+            Text(stringResource(R.string.coverage_margin_after_planning_reserve), style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.coverage_red_below_0_db_predicted_below_threshold))
+            Text(stringResource(R.string.coverage_amber_0_10_db_limited_predicted_headroom))
+            Text(stringResource(R.string.coverage_green_above_10_db_greater_predicted_headroom))
+            Text(stringResource(R.string.coverage_gray_hatching_no_usable_prediction))
+            Text(stringResource(R.string.coverage_outside_the_study_radius_is_unshaded_the_area),
                 style = MaterialTheme.typography.bodySmall)
-            Text("What this means", style = MaterialTheme.typography.titleSmall)
-            Text("Margin is the predicted received signal minus receiver sensitivity and your planning reserve. Colors use unrounded values.")
-            Text("Green does not mean reachable. This is a one-way terrain prediction, not a test of packet delivery, return-link strength, modem compatibility or interference.")
-            Text("Map cells use the nearest calculated sample. Known nodes are calculated at their exact coordinates and can differ from the surrounding cell.")
+            Text(stringResource(R.string.coverage_what_this_means), style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.coverage_margin_is_the_predicted_received_signal_minus_receiver))
+            Text(stringResource(R.string.coverage_green_does_not_mean_reachable_this_is_a))
+            Text(stringResource(R.string.coverage_map_cells_use_the_nearest_calculated_sample_known))
         }
-    }, confirmButton = { TextButton(onClick = { open = false }) { Text("Done") } })
+    }, confirmButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.common_done)) } })
 }
 
 @Composable private fun CoverageMarginSwatch(state: CoverageRasterClass, label: String) {

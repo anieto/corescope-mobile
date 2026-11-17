@@ -1,5 +1,9 @@
 package org.nodescope.android.feature.coverage
 
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
+import org.nodescope.android.core.design.withDescription
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -57,7 +61,10 @@ internal fun rememberCoverageMapState(origin: Coordinate?): CoverageMapState {
 internal fun CoverageMap(model: EstimatedCoverageViewModel, modifier: Modifier, mapState: CoverageMapState,
     snapshot: AnalyzerSnapshot?, selectedRegion: String?, sourceViewport: RegionCoordinate?,
     bottomInset: Dp, onPlacementSettled: (Long) -> Unit) {
-    Box(modifier.semantics { contentDescription = "Map for choosing the transmitter location" }) {
+    val resources = LocalResources.current
+    val transmitterLabel = stringResource(R.string.coverage_transmitter)
+    val notEvaluatedLabel = stringResource(R.string.coverage_not_evaluated_2)
+    Box(modifier.withDescription(stringResource(R.string.coverage_map_for_choosing_the_transmitter_location)) { description -> contentDescription = description }) {
         var camera by mapState.camera
         val context = LocalContext.current
         val uri = LocalUriHandler.current
@@ -116,9 +123,9 @@ internal fun CoverageMap(model: EstimatedCoverageViewModel, modifier: Modifier, 
             engine.overlays?.setPins(nodes.mapNotNull { node ->
                 node.coordinate?.let { point ->
                     val status = statuses[node.publicKey]
-                    MapPin(point, status.pinKind(), node.displayName + (status?.let { " · ${it.coverageLabel()}" } ?: ""))
+                    MapPin(point, status.pinKind(), node.displayName + (status?.let { " · ${it.coverageLabel().resolve(resources)}" } ?: ""))
                 }
-            } + listOfNotNull(transmitter?.let { MapPin(it, MapPin.Kind.TRANSMITTER, model.transmitterName ?: "Transmitter") }) + listOfNotNull(inspection?.pin))
+            } + listOfNotNull(transmitter?.let { MapPin(it, MapPin.Kind.TRANSMITTER, model.transmitterName ?: transmitterLabel) }) + listOfNotNull(inspection?.pin))
         }
         // A known node under the finger wins over the spot itself.
         val onLongPress: (MapTap) -> Unit = { tap ->
@@ -139,10 +146,10 @@ internal fun CoverageMap(model: EstimatedCoverageViewModel, modifier: Modifier, 
                     val status = statuses[node.publicKey]
                     val margin = status?.adjustedMarginDb
                     val budget = model.activeResult?.budget
-                    CoverageMapInspection(node.displayName, status?.coverageLabel() ?: "Not evaluated",
+                    CoverageMapInspection(node.displayName, status?.coverageLabel()?.resolve(resources) ?: notEvaluatedLabel,
                         margin?.let { value -> budget?.let { value + it.sensitivityDbm + it.reserveDb } }, margin)
                 } else if (transmitter != null && pinNear(point, transmitter, camera, 28 * density)) {
-                    CoverageMapInspection(model.transmitterName ?: "Transmitter", "Transmitter")
+                    CoverageMapInspection(model.transmitterName ?: transmitterLabel, transmitterLabel)
                 } else {
                     layer?.let { current ->
                         coverageSampleInspection(current.raster.sample(point.latitude, point.longitude),
@@ -170,7 +177,7 @@ internal fun CoverageMap(model: EstimatedCoverageViewModel, modifier: Modifier, 
         }
         Box(Modifier.align(Alignment.TopEnd).padding(8.dp)) {
             Surface(shape = MaterialTheme.shapes.medium, tonalElevation = 2.dp, shadowElevation = 2.dp) {
-                IconButton(onClick = { layersOpen = true }) { Icon(Icons.Outlined.Layers, "Map layers") }
+                IconButton(onClick = { layersOpen = true }) { Icon(Icons.Outlined.Layers, stringResource(R.string.coverage_map_layers)) }
             }
             MapLayersMenu(layersOpen, { layersOpen = false }, choice, dark) {
                 choice = it
@@ -180,7 +187,7 @@ internal fun CoverageMap(model: EstimatedCoverageViewModel, modifier: Modifier, 
         }
         if (engine.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (engine.failed) Surface(Modifier.align(Alignment.Center)) {
-            TextButton(onClick = { retry++ }) { Text("Map failed to load. Retry") }
+            TextButton(onClick = { retry++ }) { Text(stringResource(R.string.coverage_map_failed_to_load_retry)) }
         }
         // A few seconds to take back a placement, move or removal, above the attribution.
         model.undo?.let { offer ->
@@ -190,7 +197,7 @@ internal fun CoverageMap(model: EstimatedCoverageViewModel, modifier: Modifier, 
             }
             Snackbar(Modifier.align(Alignment.BottomCenter).padding(horizontal = 16.dp)
                 .padding(bottom = bottomInset + if (engine is MapLibreEngine) 44.dp else 12.dp),
-                action = { TextButton(onClick = model::undoLastChange) { Text("Undo", color = SnackbarDefaults.actionColor) } }) { Text(offer.message) }
+                action = { TextButton(onClick = model::undoLastChange) { Text(stringResource(R.string.coverage_undo), color = SnackbarDefaults.actionColor) } }) { Text(offer.message.asString()) }
         }
         inspection?.let { selected ->
             Surface(Modifier.align(Alignment.BottomCenter)
@@ -204,18 +211,18 @@ internal fun CoverageMap(model: EstimatedCoverageViewModel, modifier: Modifier, 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(selected.title, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
                         IconButton(onClick = { inspection = null }) {
-                            Icon(Icons.Outlined.Close, "Close sample details")
+                            Icon(Icons.Outlined.Close, stringResource(R.string.coverage_close_sample_details))
                         }
                     }
                     selected.status?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
                     selected.receiveDbm?.let {
-                        CoverageInspectionValue("Predicted RX", String.format(Locale.US, "%.1f dBm", it))
+                        CoverageInspectionValue(stringResource(R.string.coverage_predicted_rx), String.format(Locale.US, "%.1f dBm", it))
                     }
                     selected.marginDb?.let {
-                        CoverageInspectionValue("Margin after reserve", String.format(Locale.US, "%.1f dB", it))
+                        CoverageInspectionValue(stringResource(R.string.coverage_margin_after_reserve), String.format(Locale.US, "%.1f dB", it))
                     }
                     selected.spacingMeters?.let {
-                        CoverageInspectionValue("Grid spacing", formatDistance(it / 1000.0, unit))
+                        CoverageInspectionValue(stringResource(R.string.coverage_grid_spacing), formatDistance(it / 1000.0, unit))
                     }
                 }
             }
@@ -223,8 +230,8 @@ internal fun CoverageMap(model: EstimatedCoverageViewModel, modifier: Modifier, 
         // Google draws its own logo and attribution on the map.
         if (engine is MapLibreEngine) Row(Modifier.align(Alignment.BottomEnd).padding(bottom = bottomInset)) {
             val style = MaterialTheme.typography.labelSmall
-            TextButton(onClick = { uri.openUri("https://carto.com/attributions") }) { Text("© CARTO", style = style) }
-            TextButton(onClick = { uri.openUri("https://www.openstreetmap.org/copyright") }) { Text("© OpenStreetMap", style = style) }
+            TextButton(onClick = { uri.openUri("https://carto.com/attributions") }) { Text(stringResource(R.string.common_carto_attribution), style = style) }
+            TextButton(onClick = { uri.openUri("https://www.openstreetmap.org/copyright") }) { Text(stringResource(R.string.common_openstreetmap_attribution), style = style) }
         }
     }
 }
