@@ -21,7 +21,7 @@ struct WhatsNewItem: Decodable, Identifiable {
     let platforms: [String]?
 
     /// Whether this item applies here. The Mac runs the iPad app, so it counts as an iPad too.
-    var appliesHere: Bool {
+    @MainActor var appliesHere: Bool {
         guard let platforms else { return true }
         if platforms.contains("ios") { return true }
         let isMac = ProcessInfo.processInfo.isiOSAppOnMac
@@ -67,6 +67,7 @@ struct WhatsNewTranslation: Decodable {
     }
 }
 
+@MainActor
 enum WhatsNew {
     static let lastSeenDefaultsKey = "whatsNewLastSeenVersion"
 

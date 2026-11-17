@@ -107,7 +107,7 @@ final class FavoriteChangesModel {
                         let catalog = try await repositories.base.observers()
                         try Task.checkCancellation()
                         try repositories.lifetime.check()
-                        let captured = await visit.visit
+                        let captured = visit.visit
                         let now = Date.now
                         rows = items.map { item in
                             let entity = MyNodesEntity(kind: item.kind == .node ? .node : .observer, value: item.entityID)

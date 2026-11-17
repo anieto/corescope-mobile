@@ -14,7 +14,7 @@ enum AppFont {
     }
 
     /// Large and inline navigation titles, which SwiftUI draws through UIKit.
-    static func styleNavigationTitles() {
+    @MainActor static func styleNavigationTitles() {
         let appearance = UINavigationBar.appearance()
         appearance.largeTitleTextAttributes = [.font: uiFont(.largeTitle)]
         appearance.titleTextAttributes = [.font: uiFont(.headline)]
