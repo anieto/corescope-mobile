@@ -34,7 +34,7 @@ object PortableInputFingerprint {
         }
         fun optionalInt64(value: Long?) = apply { if (value == null) bytes.write(0) else { bytes.write(1); long(value) } }
 
-        fun sha256(): String = MessageDigest.getInstance("SHA-256").digest(bytes.toByteArray()).joinToString("") { "%02x".format(it) }
+        fun sha256(): String = MessageDigest.getInstance("SHA-256").digest(bytes.toByteArray()).joinToString("") { "%02x".format(java.util.Locale.ROOT, it) }
 
         private fun long(value: Long) { for (shift in 56 downTo 0 step 8) bytes.write(((value ushr shift) and 0xff).toInt()) }
     }

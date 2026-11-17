@@ -151,7 +151,7 @@ class CoverageRunDiagnostics(private val inputs: CoverageStudyInputs, private va
                 val status = result.nodes.run.status(node)
                 add("${bits(node.latitude)},${bits(node.longitude)},${status.state.name},${status.reason.name},${bits(status.adjustedMarginDb)}")
             }
-            return digest.digest().joinToString("") { "%02x".format(it) }
+            return digest.digest().joinToString("") { "%02x".format(java.util.Locale.ROOT, it) }
         }
 
         /** Adds the overlay's preparation time to the report for [executionID], if it is still the latest. */

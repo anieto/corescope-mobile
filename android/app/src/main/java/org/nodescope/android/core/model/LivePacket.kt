@@ -69,7 +69,7 @@ fun parseLivePacket(data: JsonObject, live: Boolean, now: Long = System.currentT
         ?: data["path_json"] as? JsonArray
     val hops = path.orEmpty().map { value -> when (value) {
         is JsonPrimitive -> if (value is JsonNull) null else if (value.isString) value.content
-            else value.intOrNull?.takeIf { it in 0..255 }?.let { "%02x".format(it) }
+            else value.intOrNull?.takeIf { it in 0..255 }?.let { "%02x".format(java.util.Locale.ROOT, it) }
         is JsonObject -> value.text("pubkey") ?: value.text("hash")
         else -> null
     } }

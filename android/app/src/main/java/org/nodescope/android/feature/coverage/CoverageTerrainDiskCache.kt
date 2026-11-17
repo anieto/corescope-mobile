@@ -286,7 +286,7 @@ class CoverageTerrainDiskCache(private val root: File, private val quota: Long) 
             if (!setOf("terrain.hgt", "metadata.json", "metadata.part").containsAll(names) ||
                 !regular(File(child, "metadata.json")) || !regular(File(child, "terrain.hgt"))) fail(CoverageTerrainCacheState.INVALID_CACHE)
             val metadata = json.decodeFromString<Metadata>(smallData(File(child, "metadata.json")).decodeToString(throwOnInvalidSequence = true))
-            val key = MessageDigest.getInstance("SHA-256").digest(metadata.identity.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it.toInt() and 255) }
+            val key = MessageDigest.getInstance("SHA-256").digest(metadata.identity.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(java.util.Locale.ROOT, it.toInt() and 255) }
             if (metadata.schema != 1 || metadata.side !in 2..3601 || 3600 % (metadata.side - 1) != 0 ||
                 !digest(metadata.decodedSHA256) || metadata.downloadedSHA256?.let { !digest(it) } == true || metadata.fetchedAtMilliseconds < 0 ||
                 metadata.accessSequence < 0 || metadata.accessSequence == Long.MAX_VALUE || key != name) fail(CoverageTerrainCacheState.INVALID_CACHE)

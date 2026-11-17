@@ -22,7 +22,7 @@ object AppIdentity {
         } else packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES).signatures
         val signature = requireNotNull(signatures?.firstOrNull()) { "App signing certificate unavailable" }
         return MessageDigest.getInstance("SHA-1").digest(signature.toByteArray())
-            .joinToString("") { "%02X".format(it) }
+            .joinToString("") { "%02X".format(java.util.Locale.ROOT, it) }
     }
 
     /** "AB:CD:…", as key consoles show certificate fingerprints. */

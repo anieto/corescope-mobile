@@ -45,7 +45,7 @@ class CoverageTerrainDescriptor(
         }
         canonicalIdentity = JsonObject(identity.toSortedMap()).toString()
         cacheKey = MessageDigest.getInstance("SHA-256").digest(canonicalIdentity.toByteArray(Charsets.UTF_8))
-            .joinToString("") { "%02x".format(it.toInt() and 255) }
+            .joinToString("") { "%02x".format(java.util.Locale.ROOT, it.toInt() and 255) }
     }
 
     private fun validURL(text: String, allowLoopback: Boolean): Boolean = try {

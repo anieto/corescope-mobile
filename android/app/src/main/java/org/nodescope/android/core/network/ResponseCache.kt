@@ -25,7 +25,7 @@ class ResponseCache(
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private fun file(url: HttpUrl) = File(directory, MessageDigest.getInstance("SHA-256")
-        .digest("$backendKind|$url".toByteArray()).joinToString("") { "%02x".format(it) } + ".json")
+        .digest("$backendKind|$url".toByteArray()).joinToString("") { "%02x".format(java.util.Locale.ROOT, it) } + ".json")
 
     /** The body saved at most [maxAgeMillis] ago, or null. */
     suspend fun read(url: HttpUrl, maxAgeMillis: Long): Cached<String>? = withContext(Dispatchers.IO) {

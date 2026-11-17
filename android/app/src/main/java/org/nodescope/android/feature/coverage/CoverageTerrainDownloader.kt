@@ -114,7 +114,7 @@ object CoverageTerrainDownloader {
                                             output.write(buffer, 0, count)
                                             hash.update(buffer, 0, count)
                                         }
-                                        val digest = hash.digest().joinToString("") { "%02x".format(it.toInt() and 255) }
+                                        val digest = hash.digest().joinToString("") { "%02x".format(java.util.Locale.ROOT, it.toInt() and 255) }
                                         if (received != descriptor.packedBytes || (descriptor.compressedSHA256 != null && digest != descriptor.compressedSHA256)) corrupt()
                                         owned.sha256 = digest
                                         output.fd.sync()

@@ -124,7 +124,7 @@ internal data class PathStretch(val points: List<Coordinate>, val color: Int, va
     val width: Float = 4f, val casingWidth: Float = 7f)
 
 /** ARGB as the "#RRGGBB" string MapLibre expressions take. */
-internal fun Int.hexColor(): String = String.format("#%06X", this and 0xFFFFFF)
+internal fun Int.hexColor(): String = String.format(java.util.Locale.ROOT, "#%06X", this and 0xFFFFFF)
 
 /** A dropped pin, styled apart from node markers so a chosen place never reads as a node. */
 internal data class MapPin(val coordinate: Coordinate, val kind: Kind, val name: String) {
