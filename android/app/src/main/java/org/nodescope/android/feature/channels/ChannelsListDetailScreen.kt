@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.channels
 
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.runtime.*
@@ -47,9 +49,9 @@ fun ChannelsListDetailScreen(
         else if (onExit != null) onExit() else selectedId = null
     }
     AdaptiveListDetail(
-        selectedId = selectedId, detailTitle = if (packet != null) "Packet" else selectedName,
-        detailBackLabel = if (packet != null) "Back to channel" else null,
-        emptyTitle = "Select a channel", emptyDescription = "Choose a channel to read its messages here.",
+        selectedId = selectedId, detailTitle = if (packet != null) stringResource(R.string.channels_packet) else selectedName,
+        detailBackLabel = if (packet != null) stringResource(R.string.channels_back_to_channel) else null,
+        emptyTitle = stringResource(R.string.channels_select_a_channel), emptyDescription = stringResource(R.string.channels_choose_a_channel_to_read_its_messages_here),
         emptyIcon = Icons.Outlined.Forum, onCloseDetail = ::closeDetails,
         listPane = { showSelection ->
             ChannelsScreen(model, selection, feed, regionControl, onClearRegion,

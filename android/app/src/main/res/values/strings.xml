@@ -1203,6 +1203,94 @@
     <string name="link_profile_value_2">%1$s%%</string>
     <string name="link_profile_worst_fresnel_clearance">Worst Fresnel clearance</string>
 
+    <!-- channel strings -->
+    <string name="channels_32_character_hexadecimal_key">32-character hexadecimal key</string>
+    <string name="channels_a_cryptographically_secure_key_is_generated_on_this">A cryptographically secure key is generated on this device. Share it only with trusted participants.</string>
+    <string name="channels_active_in_one_hour">Active in one hour</string>
+    <string name="channels_activity">Activity</string>
+    <string name="channels_add_a_private_key">Add a private key</string>
+    <string name="channels_add_channel">Add channel</string>
+    <string name="channels_add_channel_to_favorites">Add channel to favorites</string>
+    <string name="channels_all_activity">All activity</string>
+    <string name="channels_all_channels">All channels</string>
+    <string name="channels_back_to_channel">Back to channel</string>
+    <string name="channels_channel_actions">Channel actions</string>
+    <string name="channels_channel_filters">Channel filters</string>
+    <string name="channels_channel_key">Channel key</string>
+    <string name="channels_channel_keys_are_encrypted_on_this_device_and">Channel keys are encrypted on this device and never sent to an analyzer or included in backups. NodeScope listens to traffic but cannot transmit over radio.</string>
+    <string name="channels_channel_name">Channel name</string>
+    <string name="channels_channel_name_2">Channel name</string>
+    <string name="channels_channels">Channels</string>
+    <string name="channels_channels_appear_as_your_analyzer_hears_group_messages">Channels appear as your analyzer hears group messages. You can also add a hashtag or private channel.</string>
+    <string name="channels_choose_a_channel_to_read_its_messages_here">Choose a channel to read its messages here.</string>
+    <string name="channels_copy_channel_name">Copy channel name</string>
+    <string name="channels_copy_key">Copy key</string>
+    <string name="channels_decrypted_on_this_device_from_recent_traffic">Decrypted on this device from recent traffic</string>
+    <string name="channels_display_name_optional">Display name (optional)</string>
+    <string name="channels_entire_network">Entire network</string>
+    <string name="channels_entire_network_2">Entire network</string>
+    <string name="channels_generate">Generate</string>
+    <string name="channels_generate_a_private_channel">Generate a private channel</string>
+    <string name="channels_generate_secure_channel">Generate secure channel</string>
+    <string name="channels_generated_key_for">Generated key for %1$s</string>
+    <string name="channels_hashtag">Hashtag</string>
+    <string name="channels_heard">Heard %1$s×</string>
+    <plurals name="channels_hop_count">
+        <item quantity="one">%1$d hop</item>
+        <item quantity="other">%1$d hops</item>
+    </plurals>
+    <string name="channels_keys_are_processed_and_stored_on_this_device">Keys are processed and stored on this device.</string>
+    <string name="channels_listen_to_a_channel">Listen to a channel</string>
+    <string name="channels_live_mesh_traffic">Live mesh traffic</string>
+    <string name="channels_load_older_messages">Load older messages</string>
+    <string name="channels_loading_older_messages">Loading older messages…</string>
+    <plurals name="channels_message">
+        <item quantity="one">%1$d message · %2$s</item>
+        <item quantity="other">%1$d messages · %2$s</item>
+    </plurals>
+    <plurals name="channels_message_count">
+        <item quantity="one">%1$d message</item>
+        <item quantity="other">%1$d messages</item>
+    </plurals>
+    <string name="channels_message_count_2">Message count</string>
+    <string name="channels_monitor_a_hashtag">Monitor a hashtag</string>
+    <string name="channels_monitor_channel">Monitor channel</string>
+    <string name="channels_monitored_by_the_analyzer">Monitored by the analyzer</string>
+    <string name="channels_monitored_on_this_device">Monitored on this device</string>
+    <string name="channels_monitoring_on_this_device">Monitoring on this device · %1$s</string>
+    <string name="channels_name">Name</string>
+    <string name="channels_new_messages_appear_as_the_analyzer_hears_them">New messages appear as the analyzer hears them.</string>
+    <string name="channels_no_channels_yet">No channels yet</string>
+    <string name="channels_no_matching_channels">No matching channels</string>
+    <string name="channels_no_messages_from_this_region">No messages from this region</string>
+    <string name="channels_no_messages_yet">No messages yet</string>
+    <string name="channels_no_regional_messages">No recent messages from this region</string>
+    <string name="channels_nodescope_derives_the_public_hashtag_key_and_decrypts">NodeScope derives the public hashtag key and decrypts matching traffic locally.</string>
+    <string name="channels_observer_regions_are_unavailable_so_messages_from_every">Observer regions are unavailable, so messages from every region are shown.</string>
+    <string name="channels_on_this_device">On this device</string>
+    <string name="channels_only_recent_traffic_can_be_decrypted_new_messages">Only recent traffic can be decrypted. New messages appear as the analyzer hears them.</string>
+    <string name="channels_packet">Packet</string>
+    <string name="channels_previously_monitored_channels_couldn_t_be_unlocked_on">Previously monitored channels couldn\'t be unlocked on this device. Add them again to keep listening.</string>
+    <string name="channels_private">Private</string>
+    <string name="channels_private_meshcore_channel_key">Private MeshCore channel key</string>
+    <string name="channels_recent_activity">Recent activity</string>
+    <string name="channels_remove_channel_from_favorites">Remove channel from favorites</string>
+    <string name="channels_search_channels">Search channels</string>
+    <string name="channels_select_a_channel">Select a channel</string>
+    <string name="channels_server_monitored">Server monitored</string>
+    <string name="channels_server_monitored_channels">Server monitored channels</string>
+    <string name="channels_share_channel_key">Share channel key</string>
+    <string name="channels_share_channel_link">Share channel link</string>
+    <string name="channels_share_channel_link_2">Share channel link</string>
+    <string name="channels_sort_by">Sort by</string>
+    <string name="channels_source">Source</string>
+    <string name="channels_stop_monitoring">Stop monitoring %1$s?</string>
+    <string name="channels_stop_monitoring_2">Stop monitoring</string>
+    <string name="channels_this_removes_the_channel_and_its_key_from">This removes the channel and its key from this device. The analyzer is not affected.</string>
+    <string name="channels_try_a_different_search_or_filter">Try a different search or filter.</string>
+    <string name="channels_unable_to_load_older_messages">Unable to load older messages.</string>
+    <string name="channels_view_packet">View packet</string>
+
     <style name="Theme.NodeScope" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
     </style>

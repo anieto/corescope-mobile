@@ -1,5 +1,9 @@
 package org.nodescope.android.feature.channels
 
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import org.nodescope.android.core.network.BackendCapability
 
 import org.nodescope.android.core.design.senderColor
@@ -75,35 +79,35 @@ fun ChannelDetailScreen(
     var confirmRemove by remember { mutableStateOf(false) }
 
     if (confirmRemove && monitored != null) AlertDialog(onDismissRequest = { confirmRemove = false },
-        title = { Text("Stop monitoring ${monitored.title}?") },
-        text = { Text("This removes the channel and its key from this device. The analyzer is not affected.") },
-        confirmButton = { TextButton(onClick = { confirmRemove = false; runCatching { model.monitor.remove(monitored.channelName) }.onSuccess { onRemoved() } }) { Text("Stop monitoring") } },
-        dismissButton = { TextButton(onClick = { confirmRemove = false }) { Text("Cancel") } })
+        title = { Text(stringResource(R.string.channels_stop_monitoring, monitored.title)) },
+        text = { Text(stringResource(R.string.channels_this_removes_the_channel_and_its_key_from)) },
+        confirmButton = { TextButton(onClick = { confirmRemove = false; runCatching { model.monitor.remove(monitored.channelName) }.onSuccess { onRemoved() } }) { Text(stringResource(R.string.channels_stop_monitoring_2)) } },
+        dismissButton = { TextButton(onClick = { confirmRemove = false }) { Text(stringResource(R.string.common_cancel)) } })
 
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("${conversation.size} message${if (conversation.size == 1) "" else "s"} · ${if (beacon) "Entire network" else selection.region ?: "Entire network"}",
+                    Text(pluralStringResource(R.plurals.channels_message, conversation.size, conversation.size, if (beacon) stringResource(R.string.channels_entire_network_2) else selection.region ?: stringResource(R.string.channels_entire_network)),
                         style = MaterialTheme.typography.labelMedium)
-                    Text(if (monitored != null) "Decrypted on this device from recent traffic" else "Monitored by the analyzer",
+                    Text(if (monitored != null) stringResource(R.string.channels_decrypted_on_this_device_from_recent_traffic) else stringResource(R.string.channels_monitored_by_the_analyzer),
                         style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onClick = onFavorite) {
                     Icon(if (favorite) Icons.Outlined.Star else Icons.Outlined.StarBorder,
-                        if (favorite) "Remove channel from favorites" else "Add channel to favorites",
+                        if (favorite) stringResource(R.string.channels_remove_channel_from_favorites) else stringResource(R.string.channels_add_channel_to_favorites),
                         tint = if (favorite) Color(0xFFE0A100) else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 ChannelActions(channelName, channelId, monitored != null, onRefresh = { refresh(true) }, onRemove = { confirmRemove = true })
             }
             if (beacon && monitored != null) BeaconFeatureNotice(BackendCapability.CHANNEL_DECRYPT_ON_PHONE)
             else LoadStatus(loadState, raw.isNotEmpty(), now) { refresh(true) }
-            if (regional == null) Text("Observer regions are unavailable, so messages from every region are shown.",
+            if (regional == null) Text(stringResource(R.string.channels_observer_regions_are_unavailable_so_messages_from_every),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (conversation.isEmpty() && !loadState.loading && loadState.updatedAt != null) EmptyState(Icons.Outlined.ChatBubbleOutline,
-            if (selection.region == null || beacon) "No messages yet" else "No messages from this region",
-            if (monitored != null) "Only recent traffic can be decrypted. New messages appear as the analyzer hears them." else "New messages appear as the analyzer hears them.")
+            if (selection.region == null || beacon) stringResource(R.string.channels_no_messages_yet) else stringResource(R.string.channels_no_messages_from_this_region),
+            if (monitored != null) stringResource(R.string.channels_only_recent_traffic_can_be_decrypted_new_messages) else stringResource(R.string.channels_new_messages_appear_as_the_analyzer_hears_them))
         // Newest first with a reversed layout keeps the latest message at the bottom, like a chat.
         LazyColumn(Modifier.fillMaxSize(), reverseLayout = true, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(conversation, key = { it.first.id }) { (message, trailing) ->
@@ -113,9 +117,9 @@ fun ChannelDetailScreen(
             if (hasOlder || olderState.key == messageKey && olderState.error != null) item(key = "older") {
                 val older = olderState.takeIf { it.key == messageKey }
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    older?.error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+                    older?.error?.let { Text(it.asString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
                     OutlinedButton(onClick = { model.loadOlder(messageKey) }, enabled = older?.loading != true) {
-                        Text(if (older?.loading == true) "Loading older messages…" else "Load older messages")
+                        Text(if (older?.loading == true) stringResource(R.string.channels_loading_older_messages) else stringResource(R.string.channels_load_older_messages))
                     }
                 }
             }
@@ -125,23 +129,24 @@ fun ChannelDetailScreen(
 
 @Composable
 private fun ChannelActions(name: String, channelId: String, monitored: Boolean, onRefresh: () -> Unit, onRemove: () -> Unit) {
+    val resources = LocalResources.current
     var open by remember { mutableStateOf(false) }
     val copy = rememberCopyAction()
     val context = androidx.compose.ui.platform.LocalContext.current
     Box {
-        IconButton(onClick = { open = true }) { Icon(Icons.Outlined.MoreVert, "Channel actions") }
+        IconButton(onClick = { open = true }) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.channels_channel_actions)) }
         DropdownMenu(open, { open = false }) {
-            DropdownMenuItem(text = { Text("Refresh") }, leadingIcon = { Icon(Icons.Outlined.Refresh, null) }, onClick = { open = false; onRefresh() })
-            DropdownMenuItem(text = { Text("Copy channel name") }, leadingIcon = { Icon(Icons.Outlined.ContentCopy, null) },
-                onClick = { open = false; copy("Channel name", name, false) })
-            DropdownMenuItem(text = { Text("Share channel link") }, leadingIcon = { Icon(Icons.Outlined.Share, null) }, onClick = {
+            DropdownMenuItem(text = { Text(stringResource(R.string.refresh)) }, leadingIcon = { Icon(Icons.Outlined.Refresh, null) }, onClick = { open = false; onRefresh() })
+            DropdownMenuItem(text = { Text(stringResource(R.string.channels_copy_channel_name)) }, leadingIcon = { Icon(Icons.Outlined.ContentCopy, null) },
+                onClick = { open = false; copy(resources.getString(R.string.channels_channel_name_2), name, false) })
+            DropdownMenuItem(text = { Text(stringResource(R.string.channels_share_channel_link)) }, leadingIcon = { Icon(Icons.Outlined.Share, null) }, onClick = {
                 open = false
                 // Same link format as iOS (`nodescope://channel/<identifier>`).
                 val link = org.nodescope.android.core.model.NodeScopeLink.channel(channelId).url
                 context.startActivity(android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SEND)
-                    .setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, link), "Share channel link"))
+                    .setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, link), resources.getString(R.string.channels_share_channel_link_2)))
             })
-            if (monitored) DropdownMenuItem(text = { Text("Stop monitoring") }, leadingIcon = { Icon(Icons.Outlined.Delete, null) },
+            if (monitored) DropdownMenuItem(text = { Text(stringResource(R.string.channels_stop_monitoring_2)) }, leadingIcon = { Icon(Icons.Outlined.Delete, null) },
                 onClick = { open = false; onRemove() })
         }
     }
@@ -160,8 +165,8 @@ private fun ChatBubble(message: ConversationMessage, trailing: Boolean, onPacket
                     SelectionContainer { Text(linkified(message.text, MaterialTheme.colorScheme.primary), style = MaterialTheme.typography.bodyLarge) }
                     Text(shortDateTime(message.timestamp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     val metadata = listOfNotNull(
-                        if (message.repeats > 1) "Heard ${message.repeats}×" else null,
-                        message.hops?.let { "$it hop${if (it == 1) "" else "s"}" },
+                        if (message.repeats > 1) stringResource(R.string.channels_heard, message.repeats) else null,
+                        message.hops?.let { pluralStringResource(R.plurals.channels_hop_count, it, it) },
                         message.snr?.let { "%.1f dB".format(it) },
                     )
                     if (metadata.isNotEmpty()) Text(metadata.joinToString(" · "),
@@ -169,7 +174,7 @@ private fun ChatBubble(message: ConversationMessage, trailing: Boolean, onPacket
                     onPacket?.let { open ->
                         TextButton(onClick = open, contentPadding = PaddingValues(horizontal = 0.dp)) {
                             Icon(Icons.Outlined.Route, null, Modifier.size(16.dp)); Spacer(Modifier.width(4.dp))
-                            Text("View packet", style = MaterialTheme.typography.labelMedium)
+                            Text(stringResource(R.string.channels_view_packet), style = MaterialTheme.typography.labelMedium)
                             Icon(Icons.Outlined.ChevronRight, null, Modifier.size(16.dp))
                         }
                     }

@@ -1,14 +1,16 @@
 package org.nodescope.android.feature.channels
 
+import androidx.annotation.StringRes
+import org.nodescope.android.R
 import java.time.Instant
 import org.nodescope.android.core.model.*
 import org.nodescope.android.core.network.ChannelCrypto
 import org.nodescope.android.core.network.ChannelPacket
 import org.nodescope.android.core.network.GroupPayload
 
-enum class ChannelSource(val title: String) { ALL("All channels"), MONITORED("Monitored on this device"), SERVER("Server monitored") }
-enum class ChannelActivity(val title: String) { ALL("All activity"), LAST_HOUR("Active in one hour") }
-enum class ChannelSort(val title: String) { RECENT("Recent activity"), MESSAGES("Message count"), NAME("Name") }
+enum class ChannelSource(@param:StringRes val titleRes: Int) { ALL(R.string.channels_all_channels), MONITORED(R.string.channels_monitored_on_this_device), SERVER(R.string.channels_server_monitored) }
+enum class ChannelActivity(@param:StringRes val titleRes: Int) { ALL(R.string.channels_all_activity), LAST_HOUR(R.string.channels_active_in_one_hour) }
+enum class ChannelSort(@param:StringRes val titleRes: Int) { RECENT(R.string.channels_recent_activity), MESSAGES(R.string.channels_message_count_2), NAME(R.string.channels_name) }
 
 data class ChannelFilters(
     val source: ChannelSource = ChannelSource.ALL,
