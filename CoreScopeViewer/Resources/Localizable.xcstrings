@@ -1,0 +1,4747 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "" : {
+
+    },
+    " (%@ above the decode limit)" : {
+
+    },
+    " ago" : {
+
+    },
+    " at %@ SNR" : {
+
+    },
+    " in %@ (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : " in %1$@ (%2$@)"
+          }
+        }
+      }
+    },
+    "%.0f RSSI" : {
+
+    },
+    "%.0f dB" : {
+
+    },
+    "%.0f dBm avg RSSI" : {
+
+    },
+    "%.1f avg hops" : {
+
+    },
+    "%.1f dB" : {
+
+    },
+    "%@ (%lld of %lld)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ (%2$lld of %3$lld)"
+          }
+        }
+      }
+    },
+    "%@ ahead" : {
+
+    },
+    "%@ behind" : {
+
+    },
+    "%@ dB" : {
+
+    },
+    "%@ dBm" : {
+
+    },
+    "%@ dBm RSSI" : {
+
+    },
+    "%@ degrees clockwise from north" : {
+
+    },
+    "%@ degrees clockwise from the top of the device, accuracy plus or minus %@ degrees" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ degrees clockwise from the top of the device, accuracy plus or minus %2$@ degrees"
+          }
+        }
+      }
+    },
+    "%@ isn’t supported for Beacon servers in this version of NodeScope." : {
+
+    },
+    "%@ messages" : {
+
+    },
+    "%@ observations" : {
+
+    },
+    "%@ of %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ of %2$@"
+          }
+        }
+      }
+    },
+    "%@ of %@ map samples processed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ of %2$@ map samples processed"
+          }
+        }
+      }
+    },
+    "%@ packets" : {
+
+    },
+    "%@ readings" : {
+
+    },
+    "%@ · %@ dBi" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@ dBi"
+          }
+        }
+      }
+    },
+    "%@, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@"
+          }
+        }
+      }
+    },
+    "%@, median %@, typically %@ to %@, %lld readings" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, median %2$@, typically %3$@ to %4$@, %5$lld readings"
+          }
+        }
+      }
+    },
+    "%@: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@"
+          }
+        }
+      }
+    },
+    "%@…%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@…%2$@"
+          }
+        }
+      }
+    },
+    "%lld" : {
+
+    },
+    "%lld %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld %2$@"
+          }
+        }
+      }
+    },
+    "%lld OBS" : {
+
+    },
+    "%lld TX" : {
+
+    },
+    "%lld above threshold · %lld below · %lld unresolved" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld above threshold · %2$lld below · %3$lld unresolved"
+          }
+        }
+      }
+    },
+    "%lld above threshold · %lld below · %lld unresolved samples" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld above threshold · %2$lld below · %3$lld unresolved samples"
+          }
+        }
+      }
+    },
+    "%lld active" : {
+
+    },
+    "%lld channel%@ · keys remain local" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld channel%2$@ · keys remain local"
+          }
+        }
+      }
+    },
+    "%lld d %lld h" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld d %2$lld h"
+          }
+        }
+      }
+    },
+    "%lld dBm" : {
+
+    },
+    "%lld days" : {
+
+    },
+    "%lld days ago" : {
+
+    },
+    "%lld favorites · %lld claimed nodes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld favorites · %2$lld claimed nodes"
+          }
+        }
+      }
+    },
+    "%lld h %lld min" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld h %2$lld min"
+          }
+        }
+      }
+    },
+    "%lld hear it directly" : {
+
+    },
+    "%lld hops" : {
+
+    },
+    "%lld hours ago" : {
+
+    },
+    "%lld mV" : {
+
+    },
+    "%lld minutes ago" : {
+
+    },
+    "%lld nearby nodes" : {
+
+    },
+    "%lld nodes" : {
+
+    },
+    "%lld observations" : {
+
+    },
+    "%lld observations at UTC hour %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld observations at UTC hour %2$lld"
+          }
+        }
+      }
+    },
+    "%lld observers" : {
+
+    },
+    "%lld observers hear it directly" : {
+
+    },
+    "%lld packets at UTC hour %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld packets at UTC hour %2$lld"
+          }
+        }
+      }
+    },
+    "%lld pkts" : {
+
+    },
+    "%lld readings" : {
+
+    },
+    "%lld readings from %@ to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld readings from %2$@ to %3$@"
+          }
+        }
+      }
+    },
+    "%lld receivers" : {
+
+    },
+    "%lld recorded packets" : {
+
+    },
+    "%lld regions" : {
+
+    },
+    "%lld resolved route%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld resolved route%2$@"
+          }
+        }
+      }
+    },
+    "%lld routes together" : {
+
+    },
+    "%lld saved item%@ on this analyzer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld saved item%2$@ on this analyzer"
+          }
+        }
+      }
+    },
+    "%lld saved items · View activity" : {
+
+    },
+    "%lld sites" : {
+
+    },
+    "%lld terrain tiles · EGM96 heights" : {
+
+    },
+    "%lld things to check · Live test" : {
+
+    },
+    "%lld transmissions" : {
+
+    },
+    "%lld with unsaved changes" : {
+
+    },
+    "%lld." : {
+
+    },
+    ", decode limit %@" : {
+
+    },
+    "." : {
+
+    },
+    "0–10" : {
+
+    },
+    "1 hears it directly" : {
+
+    },
+    "1 hop" : {
+
+    },
+    "1 observer" : {
+
+    },
+    "1 observer hears it directly" : {
+
+    },
+    "1 reading" : {
+
+    },
+    "1 region" : {
+
+    },
+    "1 thing to check · Live test" : {
+
+    },
+    "1. Place your transmitter" : {
+
+    },
+    "1/2-wave dipole" : {
+
+    },
+    "1/4-wave ground plane" : {
+
+    },
+    "12" : {
+
+    },
+    "2. Check the equipment" : {
+
+    },
+    "24 h" : {
+
+    },
+    "3 dBi omni" : {
+
+    },
+    "3. Choose the area and calculate" : {
+
+    },
+    "32-character hexadecimal key" : {
+
+    },
+    "5 dBi omni" : {
+
+    },
+    "6 dBi omni" : {
+
+    },
+    "7 days" : {
+
+    },
+    "<0" : {
+
+    },
+    ">10 dB" : {
+
+    },
+    "?" : {
+
+    },
+    "A cryptographically secure key will be generated locally. Share it only with trusted participants." : {
+
+    },
+    "A fresh successful check and comparable history are required. Missing or cached evidence is not an unchanged result." : {
+
+    },
+    "A packet's path, played hop by hop." : {
+
+    },
+    "A value is out of range. Open the setup to fix it." : {
+
+    },
+    "A working repeater usually turns up at least once a day, from its own adverts or the traffic it relays." : {
+
+    },
+    "A working room server usually sends an advert at least twice a day." : {
+
+    },
+    "ACCOUNT CONNECTION" : {
+
+    },
+    "About" : {
+
+    },
+    "About %@" : {
+
+    },
+    "About & How to Use" : {
+
+    },
+    "About activity" : {
+
+    },
+    "Above decode limit" : {
+
+    },
+    "Above ground" : {
+
+    },
+    "Accept the model assumptions in the setup to calculate." : {
+
+    },
+    "Account nodes" : {
+
+    },
+    "Account settings were reset" : {
+
+    },
+    "Acknowledgements" : {
+
+    },
+    "Action" : {
+
+    },
+    "Actions for %@" : {
+
+    },
+    "Active in 15 Minutes" : {
+
+    },
+    "Active in One Hour" : {
+
+    },
+    "Active nodes" : {
+
+    },
+    "Activity" : {
+
+    },
+    "Activity by Time" : {
+
+    },
+    "Activity changed" : {
+
+    },
+    "Activity could not be updated. Refresh to try again." : {
+
+    },
+    "Activity data was cleared or the source changed. Refresh to continue." : {
+
+    },
+    "Activity intensity ranges from less to more" : {
+
+    },
+    "Activity since your last review" : {
+
+    },
+    "Activity unknown" : {
+
+    },
+    "Activity, signal, coverage, and peer trends" : {
+
+    },
+    "Add Channel" : {
+
+    },
+    "Add Favorite Node" : {
+
+    },
+    "Add Private Key" : {
+
+    },
+    "Add a node here, or save observers and channels from their detail pages." : {
+
+    },
+    "Add channel to favorites" : {
+
+    },
+    "Add existing study" : {
+
+    },
+    "Add favorite node" : {
+
+    },
+    "Add node to favorites" : {
+
+    },
+    "Add nodes in Favorites or save observers from their detail pages to follow them here." : {
+
+    },
+    "Add observer to favorites" : {
+
+    },
+    "Add site" : {
+
+    },
+    "Add study" : {
+
+    },
+    "Add to MeshCore" : {
+
+    },
+    "Add to favorites" : {
+
+    },
+    "Adding moves the study here from where it is now." : {
+
+    },
+    "Additional antenna height" : {
+
+    },
+    "Additional loss (dB, 0–200)" : {
+
+    },
+    "Adjust antennas & radio" : {
+
+    },
+    "Advertisements" : {
+
+    },
+    "Age" : {
+
+    },
+    "All" : {
+
+    },
+    "All %lld routes" : {
+
+    },
+    "All %lld routes replay together. Choose one to see its hops and who heard it." : {
+
+    },
+    "All Activity" : {
+
+    },
+    "All Channels" : {
+
+    },
+    "All Models" : {
+
+    },
+    "All Packets" : {
+
+    },
+    "All Regions" : {
+
+    },
+    "All Routes" : {
+
+    },
+    "All regions" : {
+
+    },
+    "Already in your library. Importing adds a separate copy; nothing here is replaced." : {
+
+    },
+    "Amber · 0–10 dB: limited predicted headroom" : {
+
+    },
+    "An unfinished study" : {
+
+    },
+    "Analytics" : {
+
+    },
+    "Analytics Unavailable" : {
+
+    },
+    "Analyzer" : {
+
+    },
+    "Analyzer Diagnostics" : {
+
+    },
+    "Analyzer Scope" : {
+
+    },
+    "Analyzer Source" : {
+
+    },
+    "Analyzer catalog updated %@" : {
+
+    },
+    "Analyzer catalog · %@ · fetch time unknown" : {
+
+    },
+    "Analyzer catalog · %@ · fetched %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Analyzer catalog · %1$@ · fetched %2$@"
+          }
+        }
+      }
+    },
+    "Analyzer connected" : {
+
+    },
+    "Analyzer hostname" : {
+
+    },
+    "Analyzer offline" : {
+
+    },
+    "Analyzer responses" : {
+
+    },
+    "Analyzer source: %@" : {
+
+    },
+    "Analyzing link…" : {
+
+    },
+    "Antenna" : {
+
+    },
+    "Antenna %@" : {
+
+    },
+    "Antenna %@ · %@ dBi" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Antenna %1$@ · %2$@ dBi"
+          }
+        }
+      }
+    },
+    "Antenna %@ · %@ dBi · loss %@ dB" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Antenna %1$@ · %2$@ dBi · loss %3$@ dB"
+          }
+        }
+      }
+    },
+    "Antenna gain" : {
+
+    },
+    "Antenna gain (dBi, −100–100)" : {
+
+    },
+    "Antenna height" : {
+
+    },
+    "Antenna height (ft)" : {
+
+    },
+    "Antenna height (m, 0–10000)" : {
+
+    },
+    "Antenna height must be between 1 and 3000 m above ground (about 3 to 9843 ft)." : {
+
+    },
+    "Any Time" : {
+
+    },
+    "Appearance" : {
+
+    },
+    "Apply" : {
+
+    },
+    "Assumptions" : {
+
+    },
+    "At a Glance" : {
+
+    },
+    "Australia (Narrow)" : {
+
+    },
+    "Availability" : {
+
+    },
+    "Average SNR" : {
+
+    },
+    "Average signal of everything they’ve heard straight from this node." : {
+
+    },
+    "Avg SNR" : {
+
+    },
+    "Back" : {
+
+    },
+    "Back up library…" : {
+
+    },
+    "Background Texture" : {
+
+    },
+    "Battery" : {
+
+    },
+    "Battery History" : {
+
+    },
+    "Beacon" : {
+
+    },
+    "Beacon Support" : {
+
+    },
+    "Beacon adds nodes as it hears their advertisements. Some repeaters advertise only every 12–47 hours, so a quiet region can take time to fill in." : {
+
+    },
+    "Beacon has not recorded any neighboring nodes for this node yet." : {
+
+    },
+    "Beacon node history does not identify observers or peers, so observer coverage, peer interactions, availability, longest silence, and signal grade cannot be calculated reliably." : {
+
+    },
+    "Beacon provides up to 30 days of hourly activity. Packet types and hops cover the last seven days." : {
+
+    },
+    "Beacon reports nearby nodes, but not link direction or observer coverage." : {
+
+    },
+    "Beacon reports observer activity as observations. Unique-node history, recent packet rows, and a true SNR distribution aren’t available from this endpoint." : {
+
+    },
+    "Beacon retains up to seven days of observation history." : {
+
+    },
+    "Beacon servers don’t provide map defaults. NodeScope uses region coordinates to frame the map instead." : {
+
+    },
+    "Beacon · Beta" : {
+
+    },
+    "Best: %@, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Best: %1$@, %2$@"
+          }
+        }
+      }
+    },
+    "Beta" : {
+
+    },
+    "Beta estimate: terrain-only, inland paths, vertical polarization and median atmosphere. No building or tree clutter model; terrain surfaces may still contain vegetation. Not suitable for coastal or sea paths without a different model configuration." : {
+
+    },
+    "Bidirectional" : {
+
+    },
+    "Blocked by terrain" : {
+
+    },
+    "Browse Channels" : {
+
+    },
+    "Browse Observers" : {
+
+    },
+    "Cable loss (dB, 0–200)" : {
+
+    },
+    "Cache & Storage" : {
+
+    },
+    "Cache Usage" : {
+
+    },
+    "Cached files" : {
+
+    },
+    "Calculate" : {
+
+    },
+    "Calculate coverage" : {
+
+    },
+    "Calculated" : {
+
+    },
+    "Calculating map samples…" : {
+
+    },
+    "Calculation" : {
+
+    },
+    "Calculation cancelled." : {
+
+    },
+    "Calculation cancelled. No partial result was published." : {
+
+    },
+    "Calculation could not produce a valid result. Review radio inputs and try a smaller area. No partial result was published." : {
+
+    },
+    "Calculation limits left some paths unresolved. Continue can calculate pending samples in another batch. Paths that reach their individual limit may need a smaller radius or wider sample spacing. Unresolved cells are not predictions of poor reception." : {
+
+    },
+    "Calibrating" : {
+
+    },
+    "Can't import this file" : {
+
+    },
+    "Cancel" : {
+
+    },
+    "Cancel calculation" : {
+
+    },
+    "Cancel location request" : {
+
+    },
+    "Candidate Sites" : {
+
+    },
+    "Candidate site lists" : {
+
+    },
+    "Candidate sites" : {
+
+    },
+    "Candidate sites are moving into Saved Plans. Each list becomes a plan, and each site an Estimated Coverage study with its location and equipment, ready to calculate." : {
+
+    },
+    "Capabilities" : {
+
+    },
+    "Center on my location" : {
+
+    },
+    "Change Starting Point" : {
+
+    },
+    "Changed — calculate again" : {
+
+    },
+    "Changes" : {
+
+    },
+    "Changes are saved only when you choose Save plan." : {
+
+    },
+    "Changes could not be opened. Try again." : {
+
+    },
+    "Changes could not be updated. Refresh to try again." : {
+
+    },
+    "Changes you haven't saved, kept on this device. Resume one to keep working, or discard it." : {
+
+    },
+    "Channel Filters" : {
+
+    },
+    "Channel actions" : {
+
+    },
+    "Channel keys stay in this device's Keychain and are never sent to an analyzer. NodeScope monitors traffic but cannot transmit over RF." : {
+
+    },
+    "Channel messages from Beacon servers aren’t supported in this version of NodeScope. Support for server-decrypted channels is planned for a future update." : {
+
+    },
+    "Channel name" : {
+
+    },
+    "Channels" : {
+
+    },
+    "Check Again" : {
+
+    },
+    "Check Node" : {
+
+    },
+    "Check power, the antenna and the radio settings, then send a flood advert." : {
+
+    },
+    "Check that it still has power and its antenna is connected. If it runs on solar, check the battery." : {
+
+    },
+    "Check that repeating is still on and nothing changed in its settings." : {
+
+    },
+    "Check that repeating is turned on. If it is, there may simply be no traffic near it yet." : {
+
+    },
+    "Check the pin on the map, especially when using approximate location." : {
+
+    },
+    "Check the site name, coordinates, and displayed numeric ranges. Try a shorter name if needed. Optional fields may be blank." : {
+
+    },
+    "Checked " : {
+
+    },
+    "Checked: %@" : {
+
+    },
+    "Checking analyzer…" : {
+
+    },
+    "Checking calculation limits…" : {
+
+    },
+    "Checking changes…" : {
+
+    },
+    "Checking known-node paths…" : {
+
+    },
+    "Checking whether observers hear it…" : {
+
+    },
+    "Checking…" : {
+
+    },
+    "Choose Another Source" : {
+
+    },
+    "Choose Nearby Equipment" : {
+
+    },
+    "Choose New Point" : {
+
+    },
+    "Choose New Point %@" : {
+
+    },
+    "Choose Source" : {
+
+    },
+    "Choose Your Starting Point" : {
+
+    },
+    "Choose a channel to read its messages." : {
+
+    },
+    "Choose a community analyzer to explore its live nodes, routes, channels, and observers." : {
+
+    },
+    "Choose a new transmitter location" : {
+
+    },
+    "Choose a transmitter between 85°S and 85°N." : {
+
+    },
+    "Choose an observer to see its activity and signal data." : {
+
+    },
+    "Choose on Map" : {
+
+    },
+    "Choose on map" : {
+
+    },
+    "Choose site location" : {
+
+    },
+    "Choose where you're starting from to see distance and direction." : {
+
+    },
+    "Claimed node" : {
+
+    },
+    "Claimed nodes are managed on CoreScope. Removing an account favorite does not unclaim a node." : {
+
+    },
+    "Clear" : {
+
+    },
+    "Clear Cached Data" : {
+
+    },
+    "Clear Cached Data?" : {
+
+    },
+    "Clear search" : {
+
+    },
+    "Clear terrain path" : {
+
+    },
+    "Cleared %@" : {
+
+    },
+    "Clock is off by %@" : {
+
+    },
+    "Clock is right" : {
+
+    },
+    "Clock isn’t set" : {
+
+    },
+    "Clock keeps jumping" : {
+
+    },
+    "Close" : {
+
+    },
+    "Close Field Tools" : {
+
+    },
+    "Close channel search" : {
+
+    },
+    "Close live packets" : {
+
+    },
+    "Close observer search" : {
+
+    },
+    "Close packet details" : {
+
+    },
+    "Close sample details" : {
+
+    },
+    "Closest first; Direct means no repeater in between." : {
+
+    },
+    "Collapsed" : {
+
+    },
+    "Collect a packet's reports from different observers for a few seconds, then animate its paths together. Runs slightly behind live; the analyzer sets the delay." : {
+
+    },
+    "Colors match the dots on the map." : {
+
+    },
+    "Colors show predicted margin, not guaranteed connectivity. Hatched areas have no prediction." : {
+
+    },
+    "Combine close nodes into numbered bubbles when zoomed out. On a large mesh, turning this off can make the map lag when you pan or tap a node." : {
+
+    },
+    "Coming Soon" : {
+
+    },
+    "Community sources are fetched from NodeScope’s source registry when available." : {
+
+    },
+    "Companion" : {
+
+    },
+    "Companions are only heard when they send something, so a quiet spell is normal." : {
+
+    },
+    "Compares saved nodes and observers using the 15-minute recently-heard window. Silence does not mean offline." : {
+
+    },
+    "Comparison data was cleared or the source changed. Reopen Changes to continue." : {
+
+    },
+    "Comparison unavailable" : {
+
+    },
+    "Connected" : {
+
+    },
+    "Connecting…" : {
+
+    },
+    "Connection" : {
+
+    },
+    "Contents" : {
+
+    },
+    "Continue" : {
+
+    },
+    "Continue calculation" : {
+
+    },
+    "Continue unfinished study" : {
+
+    },
+    "Coordinates are required. Leave unknown equipment values blank. Coordinates use decimal degrees; a minus sign means south or west." : {
+
+    },
+    "Copied" : {
+
+    },
+    "Copy Channel Name" : {
+
+    },
+    "Copy Contact Link" : {
+
+    },
+    "Copy Message" : {
+
+    },
+    "Copy Observer ID" : {
+
+    },
+    "Copy Packet Hash" : {
+
+    },
+    "Copy Public Key" : {
+
+    },
+    "Copy account selections to device" : {
+
+    },
+    "Copy selections and sign out" : {
+
+    },
+    "CoreScope" : {
+
+    },
+    "CoreScope account" : {
+
+    },
+    "Couldn't Add Channel" : {
+
+    },
+    "Couldn't Load Nodes" : {
+
+    },
+    "Couldn't get your location. Check location permission and services in Settings, or choose a point on the map." : {
+
+    },
+    "Couldn't identify this server" : {
+
+    },
+    "Couldn't load nodes" : {
+
+    },
+    "Couldn’t check this node" : {
+
+    },
+    "Coverage calculations support latitude from −85° to 85°." : {
+
+    },
+    "Coverage colors" : {
+
+    },
+    "Coverage modeling and proposed-site comparisons are still being built." : {
+
+    },
+    "Create" : {
+
+    },
+    "Create plan" : {
+
+    },
+    "Current" : {
+
+    },
+    "Current content can remain visible while NodeScope fetches fresh data. New requests will no longer use cached responses." : {
+
+    },
+    "Current location" : {
+
+    },
+    "Custom" : {
+
+    },
+    "Custom Analyzer" : {
+
+    },
+    "Custom radio" : {
+
+    },
+    "Customize Dashboard" : {
+
+    },
+    "Customize radio" : {
+
+    },
+    "Customize radio · edited" : {
+
+    },
+    "Dashboard Metrics" : {
+
+    },
+    "Decibels" : {
+
+    },
+    "Decode limit" : {
+
+    },
+    "Decrease study radius" : {
+
+    },
+    "Delete" : {
+
+    },
+    "Delete plan" : {
+
+    },
+    "Delete study" : {
+
+    },
+    "Delete this plan and its saved sites?" : {
+
+    },
+    "Delete “%@”?" : {
+
+    },
+    "Deployment Planning" : {
+
+    },
+    "Deployment plan" : {
+
+    },
+    "Deployment plans" : {
+
+    },
+    "Detailed node statistics are not available on this server." : {
+
+    },
+    "Details & Analytics" : {
+
+    },
+    "Device favorites and account nodes on this source. Account removals are uploaded with Sync now." : {
+
+    },
+    "Device location · ±%@" : {
+
+    },
+    "Diagnostics make read-only requests to the selected analyzer. No settings or analyzer data are changed." : {
+
+    },
+    "Diffraction loss" : {
+
+    },
+    "Direct" : {
+
+    },
+    "Discard" : {
+
+    },
+    "Discard changes" : {
+
+    },
+    "Discard site changes?" : {
+
+    },
+    "Discard unsaved changes?" : {
+
+    },
+    "Discard “%@”?" : {
+
+    },
+    "Disconnected" : {
+
+    },
+    "Display" : {
+
+    },
+    "Display name (optional)" : {
+
+    },
+    "Distance" : {
+
+    },
+    "Done" : {
+
+    },
+    "Doubling the radius roughly quadruples the map samples at the same spacing. Longer paths also take more work." : {
+
+    },
+    "Downloaded account selections and pending account edits will be removed from this device. Existing device favorites are preserved." : {
+
+    },
+    "Downloaded analyzer responses and Favorites activity comparison snapshots will be removed. Favorites, monitored channels and keys, recent items, appearance, and analyzer settings will be kept." : {
+
+    },
+    "Downloaded data" : {
+
+    },
+    "Downloading and preparing terrain…" : {
+
+    },
+    "Downloads terrain on demand (up to 500 MB per run; 1 GB cache). Start with a small area." : {
+
+    },
+    "Drag metrics into your preferred order and hide the ones you don’t need." : {
+
+    },
+    "Dropped pin" : {
+
+    },
+    "Duplicate" : {
+
+    },
+    "EU 433 MHz (Narrow)" : {
+
+    },
+    "EU 868 Long Fast" : {
+
+    },
+    "EU/UK (Narrow)" : {
+
+    },
+    "EU/UK Narrow" : {
+
+    },
+    "Each dot is one reading, on the same scale as the bars. Shading marks the quality zones; the red line is the decode limit." : {
+
+    },
+    "Each packet has its own color, on every path it took." : {
+
+    },
+    "Edit" : {
+
+    },
+    "Edit location & antenna" : {
+
+    },
+    "Edit name and notes" : {
+
+    },
+    "Edit plan" : {
+
+    },
+    "Edit site" : {
+
+    },
+    "Edited %@" : {
+
+    },
+    "Elapsed" : {
+
+    },
+    "Elevation data is unavailable. Try again when you have a connection." : {
+
+    },
+    "Email" : {
+
+    },
+    "Enjoying NodeScope?" : {
+
+    },
+    "Enter Coordinates" : {
+
+    },
+    "Enter a finite number." : {
+
+    },
+    "Enter a value." : {
+
+    },
+    "Enter its full public key. If the analyzer hasn’t heard it yet, you can run a live test, send a flood advert, and watch for its first one." : {
+
+    },
+    "Enter the hostname for a compatible public analyzer. NodeScope connects directly to it." : {
+
+    },
+    "Enter valid latitude and longitude values." : {
+
+    },
+    "Enter zero or a positive value." : {
+
+    },
+    "Entire network" : {
+
+    },
+    "Estimate coverage from here" : {
+
+    },
+    "Estimate terrain clearance and modeled path loss between two locations." : {
+
+    },
+    "Estimated Coverage" : {
+
+    },
+    "Estimated coverage" : {
+
+    },
+    "Estimated result" : {
+
+    },
+    "Evaluate proposed locations, terrain paths, and radio assumptions before installing a node." : {
+
+    },
+    "Evaluate proposed sites and point-to-point terrain paths" : {
+
+    },
+    "Every saved study is already in this plan." : {
+
+    },
+    "Every screen uses the selected analyzer’s supported features and regions." : {
+
+    },
+    "Expanded" : {
+
+    },
+    "Explains the markers, lines and colors on the map" : {
+
+    },
+    "Explore" : {
+
+    },
+    "Explore Your Mesh" : {
+
+    },
+    "Export CSV" : {
+
+    },
+    "Export JSON" : {
+
+    },
+    "Export node analytics" : {
+
+    },
+    "Export plan…" : {
+
+    },
+    "Exported" : {
+
+    },
+    "Export…" : {
+
+    },
+    "Favorite observers" : {
+
+    },
+    "Favorites" : {
+
+    },
+    "Favorites activity snapshots" : {
+
+    },
+    "Favorites activity snapshots could not be cleared. Please try again." : {
+
+    },
+    "Favorites, monitored-channel keys, recent items, app preferences, and your selected analyzer are stored separately and are never removed here." : {
+
+    },
+    "Field Map" : {
+
+    },
+    "Field Tools" : {
+
+    },
+    "Field Tools uses your location only while this workspace is open and active. It does not record a trail or run in the background." : {
+
+    },
+    "Filter and sort channels" : {
+
+    },
+    "Filter and sort observers" : {
+
+    },
+    "Filter live packets" : {
+
+    },
+    "Find a Node" : {
+
+    },
+    "Find nodes, observers, channels, public keys, and packet hashes." : {
+
+    },
+    "Finding location…" : {
+
+    },
+    "Finding route" : {
+
+    },
+    "Finding your location…" : {
+
+    },
+    "Findings and a live advert test" : {
+
+    },
+    "Firmware" : {
+
+    },
+    "First Seen" : {
+
+    },
+    "First seen" : {
+
+    },
+    "First visit · starting comparison history" : {
+
+    },
+    "Follow the Mesh" : {
+
+    },
+    "Foreground location active" : {
+
+    },
+    "Found in %@" : {
+
+    },
+    "Free and open-source software licensed under GNU GPL version 3 with an application-store distribution exception. You may share and modify it under those terms. NodeScope comes with absolutely no warranty." : {
+
+    },
+    "Free-space path loss" : {
+
+    },
+    "Frequency" : {
+
+    },
+    "Frequency (MHz, 0.001–100000)" : {
+
+    },
+    "Frequency must be between 30 and 6000 MHz." : {
+
+    },
+    "Fresh comparisons you view become the baseline for your next visit. History expires after 7 days." : {
+
+    },
+    "Fresnel zone" : {
+
+    },
+    "Fri" : {
+
+    },
+    "Friday" : {
+
+    },
+    "From" : {
+
+    },
+    "Generate" : {
+
+    },
+    "Generate Private Channel" : {
+
+    },
+    "Generate Secure Channel" : {
+
+    },
+    "Generated Key" : {
+
+    },
+    "Glossary" : {
+
+    },
+    "Good" : {
+
+    },
+    "Good to know" : {
+
+    },
+    "Got it" : {
+
+    },
+    "Gray hatching · No usable prediction" : {
+
+    },
+    "Green does not mean reachable. This is a one-way terrain prediction, not a test of packet delivery, return-link strength, modem compatibility or interference." : {
+
+    },
+    "Green · Above 10 dB: greater predicted headroom" : {
+
+    },
+    "Grid spacing" : {
+
+    },
+    "Ground elevation: %@" : {
+
+    },
+    "Ground elevation: Loading…" : {
+
+    },
+    "Ground elevation: Unavailable" : {
+
+    },
+    "Group Nearby Nodes" : {
+
+    },
+    "Group related studies into a plan, such as one for each site you're considering. Link Profile and Estimated Coverage can also save standalone studies." : {
+
+    },
+    "Grouped Nodes" : {
+
+    },
+    "Guide Me" : {
+
+    },
+    "Guide to %@" : {
+
+    },
+    "Guide to Node in Field Tools" : {
+
+    },
+    "Guide to Observer in Field Tools" : {
+
+    },
+    "Handheld" : {
+
+    },
+    "Hardware" : {
+
+    },
+    "Hash" : {
+
+    },
+    "Hashtag" : {
+
+    },
+    "Hatched areas have no prediction." : {
+
+    },
+    "Health" : {
+
+    },
+    "Heard" : {
+
+    },
+    "Heard %@" : {
+
+    },
+    "Heard By" : {
+
+    },
+    "Heard In" : {
+
+    },
+    "Heard before, but nothing recent to go on" : {
+
+    },
+    "Heard by" : {
+
+    },
+    "Heard by %@" : {
+
+    },
+    "Heard by %@ in %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Heard by %1$@ in %2$@"
+          }
+        }
+      }
+    },
+    "Heard by %lld observers" : {
+
+    },
+    "Heard by 1 observer" : {
+
+    },
+    "Heard it directly" : {
+
+    },
+    "Heard the packet in a replay. A ring shows the node it's on." : {
+
+    },
+    "Heard! %lld observers so far" : {
+
+    },
+    "Heard! 1 observer so far" : {
+
+    },
+    "Heard, with something to check" : {
+
+    },
+    "Help" : {
+
+    },
+    "Help & Support" : {
+
+    },
+    "Hide Coordinates" : {
+
+    },
+    "Hide coverage setup" : {
+
+    },
+    "Hide link details" : {
+
+    },
+    "Hide live packets" : {
+
+    },
+    "Hide location & antenna settings" : {
+
+    },
+    "Hide radio values" : {
+
+    },
+    "Hide raw packet" : {
+
+    },
+    "Hides details" : {
+
+    },
+    "Hides nodes that haven't been heard from in this time. Live traffic and replays aren't affected." : {
+
+    },
+    "High-gain Yagi" : {
+
+    },
+    "History refresh failed" : {
+
+    },
+    "Hop %lld" : {
+
+    },
+    "Hop %lld, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Hop %1$lld, %2$@"
+          }
+        }
+      }
+    },
+    "Hop Count" : {
+
+    },
+    "Hop count distribution chart" : {
+
+    },
+    "Hops" : {
+
+    },
+    "How do I check a brand-new node?" : {
+
+    },
+    "How far packets traveled" : {
+
+    },
+    "How to Use" : {
+
+    },
+    "How well observers hear this node (SNR)" : {
+
+    },
+    "If NodeScope has been useful, you can leave an optional tip to support its continued development." : {
+
+    },
+    "Import device favorites into this account?" : {
+
+    },
+    "Import device node favorites" : {
+
+    },
+    "Import node favorites" : {
+
+    },
+    "Import saved plans" : {
+
+    },
+    "Import these as inputs only" : {
+
+    },
+    "Imported items are added as copies. Nothing in your library is replaced, and nothing is calculated." : {
+
+    },
+    "Import…" : {
+
+    },
+    "In the MeshCore app, a companion’s public key is in its settings. For a repeater or room server, it’s shown when you log in to manage it. You can also share the node as a contact and paste the link here. The first 8 or more characters of the key are enough; names work too, but several nodes can share a name." : {
+
+    },
+    "Include available results" : {
+
+    },
+    "Include plan notes" : {
+
+    },
+    "Includes coordinates, radio assumptions, work counters and available-memory observations. A run left in progress does not identify why the app stopped." : {
+
+    },
+    "Includes saved results" : {
+
+    },
+    "Incoming Traffic" : {
+
+    },
+    "Increase study radius" : {
+
+    },
+    "Initial bearing" : {
+
+    },
+    "Inputs changed. Calculate again." : {
+
+    },
+    "Inputs only · Calculate to see results" : {
+
+    },
+    "Inputs only: the recipient calculates again to see results." : {
+
+    },
+    "Inputs or catalog changed. Calculate again to update the result." : {
+
+    },
+    "Is it getting out? Findings and a live advert test" : {
+
+    },
+    "Is your node getting out? Check any node, or watch for a new one's first advert" : {
+
+    },
+    "Is your node getting out? See which observers hear it, and what to fix if something looks wrong." : {
+
+    },
+    "It may have been deleted. Its studies, if any, are under Standalone studies." : {
+
+    },
+    "It won’t appear on the live map or the analyzer’s map." : {
+
+    },
+    "Its %lld %@ in Saved Plans as standalone studies." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Its %1$lld %2$@ in Saved Plans as standalone studies."
+          }
+        }
+      }
+    },
+    "Its clock is far from the real time, as if it was never set." : {
+
+    },
+    "Its clock is within a few minutes of the real time." : {
+
+    },
+    "Its clock sometimes reads right and sometimes far off, which usually means it loses time on restart." : {
+
+    },
+    "Its recent adverts were zero-hop, which only reach radios in direct range, so they don’t show how far it gets." : {
+
+    },
+    "Its unsaved changes can't be recovered. Saved studies aren't affected." : {
+
+    },
+    "It’s still heard, but hasn’t relayed traffic for a while." : {
+
+    },
+    "Keep editing" : {
+
+    },
+    "Keep this screen open; leaving cancels the calculation." : {
+
+    },
+    "Keeps “%@” as it is and saves a separate study." : {
+
+    },
+    "Keys are processed and stored on this device." : {
+
+    },
+    "Known Paths" : {
+
+    },
+    "Known node" : {
+
+    },
+    "Known nodes" : {
+
+    },
+    "Known nodes (%lld)" : {
+
+    },
+    "Last Heard" : {
+
+    },
+    "Last Seen" : {
+
+    },
+    "Last calculation report" : {
+
+    },
+    "Last checked" : {
+
+    },
+    "Last contact %@" : {
+
+    },
+    "Last flood advert reached %@%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Last flood advert reached %1$@%2$@"
+          }
+        }
+      }
+    },
+    "Last heard" : {
+
+    },
+    "Last heard " : {
+
+    },
+    "Last heard %@" : {
+
+    },
+    "Last heard is the latest reported activity. Checked is when the app retrieved that information. Saved data keeps its original check time." : {
+
+    },
+    "Last heard: %@" : {
+
+    },
+    "Last relayed %@" : {
+
+    },
+    "Last reviewed: %@" : {
+
+    },
+    "Last seen unknown" : {
+
+    },
+    "Latest Packet & Route" : {
+
+    },
+    "Latest observation %@" : {
+
+    },
+    "Latest telemetry sample " : {
+
+    },
+    "Latitude" : {
+
+    },
+    "Latitude (−90 to 90)" : {
+
+    },
+    "Latitude must be between −90 and 90. Longitude must be between −180 and 180." : {
+
+    },
+    "Leave a Tip" : {
+
+    },
+    "Left out when exported" : {
+
+    },
+    "Less" : {
+
+    },
+    "License" : {
+
+    },
+    "Line-of-sight calculations include modified GPLv3 work from MeshCore One. Terrain data uses Copernicus DEM 2021 GLO-90 through Open-Meteo. Monaspace Neon is used under the SIL Open Font License 1.1." : {
+
+    },
+    "Link Profile" : {
+
+    },
+    "Link margin" : {
+
+    },
+    "Link margin %@ dB · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Link margin %1$@ dB · %2$@"
+          }
+        }
+      }
+    },
+    "Links" : {
+
+    },
+    "Listen to a Channel" : {
+
+    },
+    "Listening for live traffic" : {
+
+    },
+    "Listening for your advert…" : {
+
+    },
+    "Live" : {
+
+    },
+    "Live Map" : {
+
+    },
+    "Live Map, connected" : {
+
+    },
+    "Live Map, reconnecting" : {
+
+    },
+    "Live Packet Filters" : {
+
+    },
+    "Live Packets" : {
+
+    },
+    "Live Updates" : {
+
+    },
+    "Live feed paused" : {
+
+    },
+    "Live feed paused · %lld new" : {
+
+    },
+    "Live mesh traffic" : {
+
+    },
+    "Live test: did anyone hear me?" : {
+
+    },
+    "Live traffic paused" : {
+
+    },
+    "Load More" : {
+
+    },
+    "Load older messages" : {
+
+    },
+    "Loading channel" : {
+
+    },
+    "Loading known nodes" : {
+
+    },
+    "Loading known nodes…" : {
+
+    },
+    "Loading mesh reach" : {
+
+    },
+    "Loading observed signal and receiver evidence…" : {
+
+    },
+    "Loading observer" : {
+
+    },
+    "Loading older messages…" : {
+
+    },
+    "Loading packet…" : {
+
+    },
+    "Loading route locations…" : {
+
+    },
+    "Loading tips…" : {
+
+    },
+    "Location access is denied. Use a manual reference instead." : {
+
+    },
+    "Location added to this draft. Check the pin on the map, especially when using approximate location." : {
+
+    },
+    "Location is optional and is only used when you choose to center the map on yourself." : {
+
+    },
+    "Location services are unavailable." : {
+
+    },
+    "Location updated %@" : {
+
+    },
+    "Locations aren't hidden: a study without them couldn't be calculated again. Unfinished studies, caches and settings are never included." : {
+
+    },
+    "Longest silence" : {
+
+    },
+    "Longitude" : {
+
+    },
+    "Longitude (−180 to 180)" : {
+
+    },
+    "Longitude must be between −180° and 180°." : {
+
+    },
+    "Looking good" : {
+
+    },
+    "Lower bound only; extra terrain detail and refinement add work. The area budget is 120 million samples per batch." : {
+
+    },
+    "Makes a one-time tip purchase" : {
+
+    },
+    "Manage account node selections separately from favorites saved on this device." : {
+
+    },
+    "Manual reference" : {
+
+    },
+    "Map" : {
+
+    },
+    "Map Filters" : {
+
+    },
+    "Map Key" : {
+
+    },
+    "Map cells use the nearest calculated sample. Known nodes are calculated at their exact coordinates and can differ from the surrounding cell." : {
+
+    },
+    "Map data may be outdated." : {
+
+    },
+    "Map data may be outdated. Waiting for refresh…" : {
+
+    },
+    "Map filters" : {
+
+    },
+    "Map for choosing the transmitter location" : {
+
+    },
+    "Map for selecting Point A and Point B" : {
+
+    },
+    "Map key" : {
+
+    },
+    "Map of %lld observers that heard this node" : {
+
+    },
+    "Map samples" : {
+
+    },
+    "Map style" : {
+
+    },
+    "Mapzen / AWS Skadi uses mixed regional elevation sources; trees and buildings may remain in the terrain surface." : {
+
+    },
+    "Margin after planning reserve" : {
+
+    },
+    "Margin after reserve" : {
+
+    },
+    "Margin after reserve: %.1f dB" : {
+
+    },
+    "Margin is the predicted received signal minus receiver sensitivity and your planning reserve. Colors use unrounded values." : {
+
+    },
+    "Marginal" : {
+
+    },
+    "Marginal clearance" : {
+
+    },
+    "Mast" : {
+
+    },
+    "Measured across a %lld-day network window" : {
+
+    },
+    "Measuring network reach" : {
+
+    },
+    "Median RSSI" : {
+
+    },
+    "Median SNR" : {
+
+    },
+    "Mesh Reach" : {
+
+    },
+    "MeshCore" : {
+
+    },
+    "Meshtastic" : {
+
+    },
+    "Message" : {
+
+    },
+    "Message Count" : {
+
+    },
+    "Min / max" : {
+
+    },
+    "Minimum terrain samples" : {
+
+    },
+    "Minimum work fits one batch; complex terrain can require more. Each Continue action gets a new bounded work budget without recalculating completed samples." : {
+
+    },
+    "Missing observers have unknown activity. Some sources return an incomplete observer list." : {
+
+    },
+    "Model" : {
+
+    },
+    "Model revision: %@" : {
+
+    },
+    "Mon" : {
+
+    },
+    "Monday" : {
+
+    },
+    "Monitor Channel" : {
+
+    },
+    "Monitor Hashtag" : {
+
+    },
+    "Monitored on This Device" : {
+
+    },
+    "Monitoring on This Device" : {
+
+    },
+    "More" : {
+
+    },
+    "More in Glossary" : {
+
+    },
+    "More observers may still report it, so keep watching until the timer runs out." : {
+
+    },
+    "More than one node matches “%@”. Pick yours, or enter its public key." : {
+
+    },
+    "More than one node starts with that key. Enter more of it." : {
+
+    },
+    "Move" : {
+
+    },
+    "Move %@ here" : {
+
+    },
+    "Move to Saved Plans" : {
+
+    },
+    "Move to Saved Plans?" : {
+
+    },
+    "Move to plan" : {
+
+    },
+    "Move “%@”" : {
+
+    },
+    "N" : {
+
+    },
+    "Name" : {
+
+    },
+    "Name unavailable" : {
+
+    },
+    "Name, ID, or region" : {
+
+    },
+    "Name, key, or role" : {
+
+    },
+    "Name, public key, or role" : {
+
+    },
+    "Near limit" : {
+
+    },
+    "Nearby" : {
+
+    },
+    "Nearby Equipment" : {
+
+    },
+    "Nearby grid sample" : {
+
+    },
+    "Nearby nodes when zoomed out. Tap to zoom in." : {
+
+    },
+    "Nearest" : {
+
+    },
+    "Nearest observer is %@ away" : {
+
+    },
+    "Needs attention" : {
+
+    },
+    "Neighbor information isn’t available from this source." : {
+
+    },
+    "Neighbors" : {
+
+    },
+    "Network Evidence & Actions" : {
+
+    },
+    "Network at a Glance" : {
+
+    },
+    "Network lines and nodes behind page content." : {
+
+    },
+    "Network summary actions" : {
+
+    },
+    "Network telemetry live" : {
+
+    },
+    "New Estimated Coverage" : {
+
+    },
+    "New Link Profile" : {
+
+    },
+    "New Zealand (Narrow)" : {
+
+    },
+    "New mesh traffic will appear here as the analyzer receives it." : {
+
+    },
+    "New mesh traffic will appear here as the analyzer receives it. Beacon retains up to seven days of packet history, and quiet regions may have no recent traffic." : {
+
+    },
+    "New plan" : {
+
+    },
+    "New plan name" : {
+
+    },
+    "New plan…" : {
+
+    },
+    "No %@ in this plan." : {
+
+    },
+    "No Activity in This Range" : {
+
+    },
+    "No Diagnostic Results" : {
+
+    },
+    "No Located Equipment" : {
+
+    },
+    "No Neighbors Reported" : {
+
+    },
+    "No Nodes Reported Yet" : {
+
+    },
+    "No activity change" : {
+
+    },
+    "No candidate sites. Plan new sites in Saved Plans." : {
+
+    },
+    "No channels yet" : {
+
+    },
+    "No complete link budget was supplied." : {
+
+    },
+    "No favorites to compare" : {
+
+    },
+    "No favorites yet" : {
+
+    },
+    "No filters active" : {
+
+    },
+    "No fully resolved route is available. Uncertain hops are not replayed." : {
+
+    },
+    "No installed app opened MeshCore links. Scan the code from your MeshCore app, or copy the link and import it there." : {
+
+    },
+    "No located nodes are available in the current catalog." : {
+
+    },
+    "No location selected" : {
+
+    },
+    "No location set" : {
+
+    },
+    "No longer recently heard" : {
+
+    },
+    "No mappable route was recorded for this packet." : {
+
+    },
+    "No matching channels" : {
+
+    },
+    "No messages from this region" : {
+
+    },
+    "No messages yet" : {
+
+    },
+    "No node observations were recorded during the selected time range." : {
+
+    },
+    "No observer activity or telemetry was recorded during the selected time range." : {
+
+    },
+    "No observer hears this node directly, so it reaches the mesh through repeaters. That’s normal unless you expected an observer nearby to hear it." : {
+
+    },
+    "No observer on this analyzer has picked it up yet. Run a live test, send a flood advert, and watch for its first one. If nothing arrives, check that the radio uses the same settings as other nodes in your area and that a repeater is in range." : {
+
+    },
+    "No observer on this analyzer has picked it up. To test a new node, enter its full public key; you can then run a live test and watch for its first advert." : {
+
+    },
+    "No observer reported an advert from this node. Check that it was a flood advert, that the radio uses the same settings as other nodes in your area, and that a repeater is in range." : {
+
+    },
+    "No observers in range" : {
+
+    },
+    "No partial result was published." : {
+
+    },
+    "No plans or studies match “%@”." : {
+
+    },
+    "No recent advert" : {
+
+    },
+    "No recent adverts" : {
+
+    },
+    "No recent flood advert" : {
+
+    },
+    "No recent messages from this region" : {
+
+    },
+    "No recent traffic" : {
+
+    },
+    "No studies yet. Use + to start a Link Profile or Estimated Coverage here, or add a study you've already saved." : {
+
+    },
+    "No unfinished studies." : {
+
+    },
+    "No usable prediction" : {
+
+    },
+    "Node Analytics" : {
+
+    },
+    "Node Check" : {
+
+    },
+    "Node Check needs to know which observers heard a node, which is currently available only with CoreScope servers." : {
+
+    },
+    "Node Details" : {
+
+    },
+    "Node Planner" : {
+
+    },
+    "Node Roles" : {
+
+    },
+    "Node actions" : {
+
+    },
+    "Node analytics for Beacon servers aren’t supported in this version of NodeScope. Support is planned for a future update." : {
+
+    },
+    "Node name, public key, or contact link" : {
+
+    },
+    "Node names and IDs" : {
+
+    },
+    "NodeScope" : {
+
+    },
+    "NodeScope Route" : {
+
+    },
+    "NodeScope channel key" : {
+
+    },
+    "NodeScope derives the public hashtag key and decrypts matching traffic locally." : {
+
+    },
+    "NodeScope makes live activity easier to understand at a glance." : {
+
+    },
+    "NodeScope reached its request limit before Beacon history was exhausted." : {
+
+    },
+    "NodeScope will resume the live feed when the analyzer reconnects." : {
+
+    },
+    "NodeScope · Copyright © 2026 BetweenThieves Development" : {
+
+    },
+    "Nodes" : {
+
+    },
+    "Nodes Shown" : {
+
+    },
+    "Nodes with the wrong time can have their adverts treated as old." : {
+
+    },
+    "Nodes, routes, packets, channels, observers, regions, and map configuration" : {
+
+    },
+    "Noise Floor" : {
+
+    },
+    "Noise Floor History" : {
+
+    },
+    "Noise floor" : {
+
+    },
+    "None" : {
+
+    },
+    "None hear it directly" : {
+
+    },
+    "None yet" : {
+
+    },
+    "North up" : {
+
+    },
+    "Not Connected" : {
+
+    },
+    "Not Now" : {
+
+    },
+    "Not available on this source" : {
+
+    },
+    "Not checked yet" : {
+
+    },
+    "Not enough known locations to replay this route" : {
+
+    },
+    "Not evaluated" : {
+
+    },
+    "Not evaluated — work limit" : {
+
+    },
+    "Not heard" : {
+
+    },
+    "Not heard for %@" : {
+
+    },
+    "Not recently heard" : {
+
+    },
+    "Not recently seen" : {
+
+    },
+    "Not seen relaying" : {
+
+    },
+    "Notes" : {
+
+    },
+    "Notes are too long." : {
+
+    },
+    "Nothing from this node has reached an observer in the last three days." : {
+
+    },
+    "Nothing from this node has reached an observer in the last two days." : {
+
+    },
+    "Nothing heard in two minutes" : {
+
+    },
+    "Now in %@." : {
+
+    },
+    "OK" : {
+
+    },
+    "Observation Types" : {
+
+    },
+    "Observation activity chart" : {
+
+    },
+    "Observation type distribution" : {
+
+    },
+    "Observations" : {
+
+    },
+    "Observations / day" : {
+
+    },
+    "Observations Over Time" : {
+
+    },
+    "Observations received over time" : {
+
+    },
+    "Observed Evidence" : {
+
+    },
+    "Observed activity by weekday and hour, shown in UTC" : {
+
+    },
+    "Observed over the last 24 hours" : {
+
+    },
+    "Observer" : {
+
+    },
+    "Observer Coverage" : {
+
+    },
+    "Observer Details" : {
+
+    },
+    "Observer Filters" : {
+
+    },
+    "Observer Nodes" : {
+
+    },
+    "Observer Telemetry" : {
+
+    },
+    "Observer actions" : {
+
+    },
+    "Observer activity unknown" : {
+
+    },
+    "Observer analytics for Beacon servers aren’t supported in this version of NodeScope. Activity and telemetry support is planned for a future update." : {
+
+    },
+    "Observer analytics is not available on this server." : {
+
+    },
+    "Observer battery voltage over time" : {
+
+    },
+    "Observer list may be incomplete" : {
+
+    },
+    "Observer noise floor over time" : {
+
+    },
+    "Observer status may be outdated." : {
+
+    },
+    "Observers" : {
+
+    },
+    "Observers are hearing this node regularly." : {
+
+    },
+    "Observers hear this repeater, but haven’t seen it pass on anyone else’s traffic." : {
+
+    },
+    "Observers online" : {
+
+    },
+    "Observers that hear it directly" : {
+
+    },
+    "Obstructed" : {
+
+    },
+    "Off" : {
+
+    },
+    "Offline" : {
+
+    },
+    "On" : {
+
+    },
+    "On the Map" : {
+
+    },
+    "On-device channel decryption isn’t currently supported for Beacon sources. Future support depends on changes to Beacon’s API." : {
+
+    },
+    "One assumed receiver for the coverage map and the known nodes. These are not the nodes’ reported equipment." : {
+
+    },
+    "One way" : {
+
+    },
+    "Online" : {
+
+    },
+    "Only a few observers heard it. That can simply mean there are few observers near you, or that it needs another repeater in range to travel further." : {
+
+    },
+    "Open" : {
+
+    },
+    "Open CoreScope" : {
+
+    },
+    "Open Map" : {
+
+    },
+    "Open Node Page" : {
+
+    },
+    "Open in MeshCore" : {
+
+    },
+    "Open the transmitter, radio and receiver sections. Set antenna heights above ground and choose the radio preset used by your mesh." : {
+
+    },
+    "Opens %@" : {
+
+    },
+    "Opens Node Check" : {
+
+    },
+    "Opens Node Check for this node" : {
+
+    },
+    "Opens a prefilled email to the NodeScope team" : {
+
+    },
+    "Opens details for this route hop" : {
+
+    },
+    "Opens historical analytics for this node" : {
+
+    },
+    "Opens nearby equipment and deployment planning tools" : {
+
+    },
+    "Opens node details" : {
+
+    },
+    "Opens related details" : {
+
+    },
+    "Opens the point-to-point terrain analysis tool" : {
+
+    },
+    "Optional" : {
+
+    },
+    "Or tap the map to choose a place" : {
+
+    },
+    "Or tap the map to choose another place" : {
+
+    },
+    "Other nodes’ packets are passing through it. It last relayed one %@." : {
+
+    },
+    "Outside study radius" : {
+
+    },
+    "Outside the study radius is unshaded. The area within 250 m of the transmitter is unsupported and hatched." : {
+
+    },
+    "Packet" : {
+
+    },
+    "Packet Details" : {
+
+    },
+    "Packet Type" : {
+
+    },
+    "Packet Types" : {
+
+    },
+    "Packet actions" : {
+
+    },
+    "Packet activity by weekday and hour, shown in UTC" : {
+
+    },
+    "Packet activity chart" : {
+
+    },
+    "Packet selected" : {
+
+    },
+    "Packet type distribution" : {
+
+    },
+    "Packet types and hops cover the last seven days, the individual observations Beacon keeps." : {
+
+    },
+    "Packet types and hops use the observations NodeScope downloaded before reaching its request limit." : {
+
+    },
+    "Packets" : {
+
+    },
+    "Packets / Hr" : {
+
+    },
+    "Packets / day" : {
+
+    },
+    "Packets Over Time" : {
+
+    },
+    "Packets last hour" : {
+
+    },
+    "Packets per Hour" : {
+
+    },
+    "Packets received over time" : {
+
+    },
+    "Partial coverage estimate" : {
+
+    },
+    "Partially obstructed" : {
+
+    },
+    "Password" : {
+
+    },
+    "Pause Live" : {
+
+    },
+    "Paused" : {
+
+    },
+    "Paused Traffic" : {
+
+    },
+    "Pauses the feed and makes packet details available" : {
+
+    },
+    "Pauses the feed and reveals replay and packet detail actions" : {
+
+    },
+    "Payload" : {
+
+    },
+    "Payload Version" : {
+
+    },
+    "Peer Interactions" : {
+
+    },
+    "Place a transmitter to find nearby known nodes." : {
+
+    },
+    "Place your points to analyze the link." : {
+
+    },
+    "Place your transmitter to estimate coverage." : {
+
+    },
+    "Placing a point sends its coordinates to Open-Meteo for elevation." : {
+
+    },
+    "Plan" : {
+
+    },
+    "Plan actions" : {
+
+    },
+    "Plan before you deploy" : {
+
+    },
+    "Plan name" : {
+
+    },
+    "Plan not found" : {
+
+    },
+    "Plan notes" : {
+
+    },
+    "Plan, %@, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Plan, %1$@, %2$@"
+          }
+        }
+      }
+    },
+    "Planner results are estimates based on terrain data and the assumptions you enter. Buildings, vegetation, interference, hardware variation, and weather can change real-world performance." : {
+
+    },
+    "Planning estimates only: terrain does not account for buildings, foliage or interference. Placing points sends their coordinates to Open-Meteo for elevation; results are cached on this device." : {
+
+    },
+    "Planning estimates only: terrain does not account for buildings, foliage or interference. Terrain is downloaded from AWS Skadi and cached on this device. Use Save to keep this setup before leaving the tool." : {
+
+    },
+    "Planning reserve" : {
+
+    },
+    "Plans" : {
+
+    },
+    "Plans, notes and studies" : {
+
+    },
+    "Play Again" : {
+
+    },
+    "Play replay again" : {
+
+    },
+    "Point %@ moved" : {
+
+    },
+    "Point %@ not placed" : {
+
+    },
+    "Point %@ placed" : {
+
+    },
+    "Point %@ removed" : {
+
+    },
+    "Point A" : {
+
+    },
+    "Point B" : {
+
+    },
+    "Points cleared" : {
+
+    },
+    "Precise locations" : {
+
+    },
+    "Predicted RX" : {
+
+    },
+    "Predicted above threshold — greater headroom" : {
+
+    },
+    "Predicted above threshold — limited headroom" : {
+
+    },
+    "Predicted below threshold" : {
+
+    },
+    "Predicted margin" : {
+
+    },
+    "Predicted margin after reserve. Show legend and limitations." : {
+
+    },
+    "Predicted margin after reserve: red below 0 dB; amber 0–10 dB; green above 10 dB. Gray hatching means no prediction, including the unsupported 250 m near-site area. Outside the study is unshaded. Green does not establish reachability or a working return link." : {
+
+    },
+    "Predicted receive level" : {
+
+    },
+    "Predicted receive level: %.1f dBm" : {
+
+    },
+    "Preparing coverage overlay…" : {
+
+    },
+    "Preset" : {
+
+    },
+    "Previous review is over 7 days old · starting again" : {
+
+    },
+    "Private" : {
+
+    },
+    "Private MeshCore channel key" : {
+
+    },
+    "Project Links" : {
+
+    },
+    "Proposed site" : {
+
+    },
+    "Public Key" : {
+
+    },
+    "Public key %@" : {
+
+    },
+    "QR code for adding %@ as a MeshCore contact" : {
+
+    },
+    "Quality is the margin above each observer's own decode limit, which depends on its spreading factor. Bars show typical range; the tick is the median." : {
+
+    },
+    "Quality is the margin above the SF%lld decode limit (%@): near limit under 5 dB, weak 5–10, good 10–15, strong 15+. Bars show each observer's typical range; the tick is its median." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Quality is the margin above the SF%1$lld decode limit (%2$@): near limit under 5 dB, weak 5–10, good 10–15, strong 15+. Bars show each observer's typical range; the tick is its median."
+          }
+        }
+      }
+    },
+    "Quiet: last heard %@" : {
+
+    },
+    "RSSI" : {
+
+    },
+    "RSSI: %@ dBm" : {
+
+    },
+    "RX Airtime" : {
+
+    },
+    "Radio settings" : {
+
+    },
+    "Radio settings are unavailable, so only measured values are shown. Bars show each observer's typical range; the tick is its median." : {
+
+    },
+    "Range: 0 to 10,000 meters (about 32,808 feet)." : {
+
+    },
+    "Raw Packet" : {
+
+    },
+    "Reached" : {
+
+    },
+    "Reading file…" : {
+
+    },
+    "Readings" : {
+
+    },
+    "Ready to calculate." : {
+
+    },
+    "Realistic Propagation" : {
+
+    },
+    "Receive Errors" : {
+
+    },
+    "Received" : {
+
+    },
+    "Receiver assumptions" : {
+
+    },
+    "Receiver sensitivity" : {
+
+    },
+    "Receiver sensitivity: %.1f dBm · Reserve: %.1f dB" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Receiver sensitivity: %1$.1f dBm · Reserve: %2$.1f dB"
+          }
+        }
+      }
+    },
+    "Recent Activity" : {
+
+    },
+    "Recent Packets" : {
+
+    },
+    "Recent Searches" : {
+
+    },
+    "Recent history may be incomplete." : {
+
+    },
+    "Recent observer evidence" : {
+
+    },
+    "Recently Seen" : {
+
+    },
+    "Recently Viewed" : {
+
+    },
+    "Recently heard" : {
+
+    },
+    "Recently heard again" : {
+
+    },
+    "Recently heard means the source recorded activity within 15 minutes. Silence does not mean a node is offline." : {
+
+    },
+    "Recently seen" : {
+
+    },
+    "Reconnecting" : {
+
+    },
+    "Reconnecting to analyzer" : {
+
+    },
+    "Red · Below 0 dB: predicted below threshold" : {
+
+    },
+    "Reference Coordinate" : {
+
+    },
+    "Reference selected" : {
+
+    },
+    "Refresh" : {
+
+    },
+    "Refresh failed. Showing saved target evidence." : {
+
+    },
+    "Refresh from account" : {
+
+    },
+    "Refresh map data" : {
+
+    },
+    "Refresh needed" : {
+
+    },
+    "Refresh nodes from current source" : {
+
+    },
+    "Region" : {
+
+    },
+    "Region groups" : {
+
+    },
+    "Region scope: %@" : {
+
+    },
+    "Regions" : {
+
+    },
+    "Relayed" : {
+
+    },
+    "Relaying traffic" : {
+
+    },
+    "Reload library" : {
+
+    },
+    "Reload plans" : {
+
+    },
+    "Remove" : {
+
+    },
+    "Remove Favorite" : {
+
+    },
+    "Remove account favorite %@" : {
+
+    },
+    "Remove channel from favorites" : {
+
+    },
+    "Remove from Recent" : {
+
+    },
+    "Remove from account" : {
+
+    },
+    "Remove from device" : {
+
+    },
+    "Remove from favorites" : {
+
+    },
+    "Remove node from favorites" : {
+
+    },
+    "Remove observer from favorites" : {
+
+    },
+    "Remove site" : {
+
+    },
+    "Remove this site from the plan?" : {
+
+    },
+    "Rename" : {
+
+    },
+    "Rename study" : {
+
+    },
+    "Renaming doesn't change the study's inputs or results." : {
+
+    },
+    "Reopen saved link profiles, coverage studies and candidate sites." : {
+
+    },
+    "Repeater" : {
+
+    },
+    "Replaces the saved “%@” with what's open now." : {
+
+    },
+    "Replay" : {
+
+    },
+    "Replay in progress" : {
+
+    },
+    "Replay on Map" : {
+
+    },
+    "Replayed Route" : {
+
+    },
+    "Reported SNR over time" : {
+
+    },
+    "Reported SNR over time; Beacon does not identify the observer" : {
+
+    },
+    "Request a Community Source" : {
+
+    },
+    "Required terrain is missing, changed or invalid. Retry, or choose another location. Missing heights are never replaced with sea level." : {
+
+    },
+    "Reserve" : {
+
+    },
+    "Reserve: %@ dB" : {
+
+    },
+    "Reset" : {
+
+    },
+    "Reset All Filters" : {
+
+    },
+    "Resolved Path" : {
+
+    },
+    "Restore saved account favorites" : {
+
+    },
+    "Results" : {
+
+    },
+    "Results not included" : {
+
+    },
+    "Results open on another device without calculating again." : {
+
+    },
+    "Results that can't be imported" : {
+
+    },
+    "Resume" : {
+
+    },
+    "Resume Live" : {
+
+    },
+    "Resume live traffic" : {
+
+    },
+    "Resumes live traffic" : {
+
+    },
+    "Resumes this study" : {
+
+    },
+    "Retry" : {
+
+    },
+    "Retry Replay" : {
+
+    },
+    "Retry route replay" : {
+
+    },
+    "Retry update" : {
+
+    },
+    "Returns to live traffic" : {
+
+    },
+    "Review history could not be saved." : {
+
+    },
+    "Review history could not be saved. Refresh to try again." : {
+
+    },
+    "Review the highlighted inputs and choose a smaller area or wider spacing." : {
+
+    },
+    "Review the setup." : {
+
+    },
+    "Rooftop" : {
+
+    },
+    "Room" : {
+
+    },
+    "Route" : {
+
+    },
+    "Route Details" : {
+
+    },
+    "Route Observer" : {
+
+    },
+    "Route Only" : {
+
+    },
+    "Route and network-importance statistics, and per-observer health, are currently available only with CoreScope servers." : {
+
+    },
+    "Route details from NodeScope" : {
+
+    },
+    "Route replay" : {
+
+    },
+    "Route with %lld hops" : {
+
+    },
+    "Route: %@. Change route" : {
+
+    },
+    "Route: all %lld routes. Change route" : {
+
+    },
+    "Routes" : {
+
+    },
+    "Run Again" : {
+
+    },
+    "Run Diagnostics Again" : {
+
+    },
+    "Run Live Test" : {
+
+    },
+    "Run diagnostics to check this analyzer." : {
+
+    },
+    "Running Diagnostics…" : {
+
+    },
+    "SNR" : {
+
+    },
+    "SNR %@ dB" : {
+
+    },
+    "SNR Distribution" : {
+
+    },
+    "SNR dB" : {
+
+    },
+    "SNR range" : {
+
+    },
+    "SNR: %@ decibels" : {
+
+    },
+    "Sample spacing" : {
+
+    },
+    "Sat" : {
+
+    },
+    "Saturday" : {
+
+    },
+    "Save" : {
+
+    },
+    "Save as new" : {
+
+    },
+    "Save changes" : {
+
+    },
+    "Save in" : {
+
+    },
+    "Save inputs only" : {
+
+    },
+    "Save nodes or observers in Favorites to follow changes here." : {
+
+    },
+    "Save plan" : {
+
+    },
+    "Save study" : {
+
+    },
+    "Saved Plans" : {
+
+    },
+    "Saved comparisons reset when you clear cached data" : {
+
+    },
+    "Saved data · checked " : {
+
+    },
+    "Saved evidence" : {
+
+    },
+    "Saved fallback" : {
+
+    },
+    "Saved inputs · No calculated result" : {
+
+    },
+    "Saved node locations · Inputs-only save" : {
+
+    },
+    "Saved node locations · Saved coverage results" : {
+
+    },
+    "Saved plans changed outside this editor. Your draft is still open. Close it before reloading the library." : {
+
+    },
+    "Saved plans could not be opened. Your files have not been changed. Try again when storage is available." : {
+
+    },
+    "Saved plans, studies and their results are never removed here. They're included in iCloud Backup and computer backups when those are turned on. Changes you haven't saved aren't backed up.%@" : {
+
+    },
+    "Saved result could not be verified" : {
+
+    },
+    "Saved result needs another version of NodeScope" : {
+
+    },
+    "Saved result not on this device" : {
+
+    },
+    "Saved result not on this device. Your inputs are available; calculate to see results." : {
+
+    },
+    "Saved result · calculated %@" : {
+
+    },
+    "Saved results" : {
+
+    },
+    "Saves the current inputs and, once calculated, the result. Estimated Coverage also keeps the node locations it used." : {
+
+    },
+    "Saving…" : {
+
+    },
+    "Scan this code from your MeshCore app’s add-contact screen on another phone, or open it directly on this one. Other MeshCore apps can import the copied link or the code." : {
+
+    },
+    "Scope" : {
+
+    },
+    "Search" : {
+
+    },
+    "Search Nodes" : {
+
+    },
+    "Search by node name, public key, or role." : {
+
+    },
+    "Search channels" : {
+
+    },
+    "Search for nodes, observers, and channels, then save the ones you want to follow." : {
+
+    },
+    "Search located equipment" : {
+
+    },
+    "Search nodes" : {
+
+    },
+    "Search observer nodes" : {
+
+    },
+    "Search observers" : {
+
+    },
+    "Search the Network" : {
+
+    },
+    "Search the network" : {
+
+    },
+    "See distance, direction, and recent network evidence" : {
+
+    },
+    "Seen %@" : {
+
+    },
+    "Seen %lld×" : {
+
+    },
+    "Select" : {
+
+    },
+    "Select a Channel" : {
+
+    },
+    "Select a node or observer to see its distance and direction." : {
+
+    },
+    "Select an Observer" : {
+
+    },
+    "Selected" : {
+
+    },
+    "Selected site" : {
+
+    },
+    "Send a flood advert from %@ and watch which observers report it, as it happens." : {
+
+    },
+    "Send a flood advert now: in the MeshCore app, send an advert and choose Flood; on a repeater or room server, run advert. Reports usually arrive within a few seconds." : {
+
+    },
+    "Send a flood advert to check that it still reaches the mesh." : {
+
+    },
+    "Send a flood advert to see how far it travels." : {
+
+    },
+    "Send a flood advert. In the MeshCore app, send an advert and choose Flood. On a repeater or room server, run the advert command." : {
+
+    },
+    "Sender" : {
+
+    },
+    "Sensor" : {
+
+    },
+    "Sent" : {
+
+    },
+    "Sent %@." : {
+
+    },
+    "Sent %@. Closest first; Direct means no repeater in between." : {
+
+    },
+    "Server Monitored" : {
+
+    },
+    "Server Monitored Channels" : {
+
+    },
+    "Server rate limit · try later" : {
+
+    },
+    "Server type" : {
+
+    },
+    "Server version (last reported)" : {
+
+    },
+    "Set a location in the node’s settings if you’re comfortable sharing it." : {
+
+    },
+    "Set up an area study and review known nodes around a proposed transmitter." : {
+
+    },
+    "Settings" : {
+
+    },
+    "Share" : {
+
+    },
+    "Share Channel Link" : {
+
+    },
+    "Share Contact Link" : {
+
+    },
+    "Share Node Link" : {
+
+    },
+    "Share Observer Link" : {
+
+    },
+    "Share Packet Link" : {
+
+    },
+    "Share Route" : {
+
+    },
+    "Share Securely" : {
+
+    },
+    "Share calculation report" : {
+
+    },
+    "Short explanations of the words NodeScope uses. Tap %@ beside a term anywhere in the app to see its entry." : {
+
+    },
+    "Short-lived responses used to make revisiting screens faster" : {
+
+    },
+    "Show" : {
+
+    },
+    "Show %@ beside terms like SNR and hops." : {
+
+    },
+    "Show %lld more in %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Show %1$lld more in %2$@"
+          }
+        }
+      }
+    },
+    "Show All" : {
+
+    },
+    "Show All (%lld)" : {
+
+    },
+    "Show Details" : {
+
+    },
+    "Show Less" : {
+
+    },
+    "Show More" : {
+
+    },
+    "Show all %lld %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Show all %1$lld %2$@"
+          }
+        }
+      }
+    },
+    "Show all %lld observations" : {
+
+    },
+    "Show all %lld observers" : {
+
+    },
+    "Show coverage setup" : {
+
+    },
+    "Show less" : {
+
+    },
+    "Show link details" : {
+
+    },
+    "Show live packets" : {
+
+    },
+    "Show on Map" : {
+
+    },
+    "Show raw packet" : {
+
+    },
+    "Show route nodes only" : {
+
+    },
+    "Show selected packet details" : {
+
+    },
+    "Show setup guide" : {
+
+    },
+    "Show this observer's route" : {
+
+    },
+    "Showing saved data" : {
+
+    },
+    "Shown apart so each can be tapped. The lines lead to where they are." : {
+
+    },
+    "Shows details" : {
+
+    },
+    "Shows only packets received by the chosen observer. Node markers follow the filters above." : {
+
+    },
+    "Shows or hides transmitter location, antenna height, gain, and system loss." : {
+
+    },
+    "Sign in" : {
+
+    },
+    "Sign out" : {
+
+    },
+    "Sign out of CoreScope?" : {
+
+    },
+    "Signal" : {
+
+    },
+    "Signal and receiver coverage aren’t included in this catalog record." : {
+
+    },
+    "Signal grade" : {
+
+    },
+    "Signal unavailable" : {
+
+    },
+    "Signal-to-noise ratio distribution" : {
+
+    },
+    "Signed in" : {
+
+    },
+    "Site name" : {
+
+    },
+    "Skip guide" : {
+
+    },
+    "Small Yagi" : {
+
+    },
+    "Some individual paths exceeded their work limits. Wider grid spacing may not fix these paths; try a smaller radius." : {
+
+    },
+    "Some samples may remain unresolved. Difficult terrain takes longer." : {
+
+    },
+    "Sort By" : {
+
+    },
+    "Source" : {
+
+    },
+    "Source connected" : {
+
+    },
+    "Source detection was interrupted. Retry to continue." : {
+
+    },
+    "Source saved — connecting" : {
+
+    },
+    "Spread-Out Nodes" : {
+
+    },
+    "Standalone" : {
+
+    },
+    "Standalone studies" : {
+
+    },
+    "Start Exploring" : {
+
+    },
+    "Start Live Test" : {
+
+    },
+    "Start the test below." : {
+
+    },
+    "Start with a small radius. Wider sample spacing is faster; finer spacing reveals smaller coverage gaps. Review the model assumptions, then tap Calculate coverage above." : {
+
+    },
+    "Starting Point" : {
+
+    },
+    "Status" : {
+
+    },
+    "Stop" : {
+
+    },
+    "Stop Guidance" : {
+
+    },
+    "Stop Monitoring" : {
+
+    },
+    "Storage" : {
+
+    },
+    "Stored on this device. Backup details are in Settings › Cache & Storage." : {
+
+    },
+    "Strong" : {
+
+    },
+    "Strongest average receiver: %@ · %@ dB SNR" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Strongest average receiver: %1$@ · %2$@ dB SNR"
+          }
+        }
+      }
+    },
+    "Studies" : {
+
+    },
+    "Studies (%lld)" : {
+
+    },
+    "Study area" : {
+
+    },
+    "Study name" : {
+
+    },
+    "Study radius" : {
+
+    },
+    "Suggest a public analyzer for the community list. Please confirm that its owner or operator permits it to be listed and used in NodeScope." : {
+
+    },
+    "Summary" : {
+
+    },
+    "Sun" : {
+
+    },
+    "Sunday" : {
+
+    },
+    "Support Development" : {
+
+    },
+    "Switch without saving" : {
+
+    },
+    "Sync & device favorites" : {
+
+    },
+    "Sync is paused. Use the server’s selections or restore your saved account favorites. Device favorites are unaffected." : {
+
+    },
+    "Sync now" : {
+
+    },
+    "Sync the clock from the MeshCore app, or by running “clock sync” on the node." : {
+
+    },
+    "Sync uploads only account edits. Device favorites stay local unless you import them." : {
+
+    },
+    "System loss" : {
+
+    },
+    "TX Airtime" : {
+
+    },
+    "TX power %@ dBm; antenna gains %@/%@ dBi; system losses %@/%@ dB; receiver sensitivity %@ dBm; standard atmospheric refraction (k = 4/3)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "TX power %1$@ dBm; antenna gains %2$@/%3$@ dBi; system losses %4$@/%5$@ dB; receiver sensitivity %6$@ dBm; standard atmospheric refraction (k = 4/3)."
+          }
+        }
+      }
+    },
+    "Tap for color bands" : {
+
+    },
+    "Tap the map to set a reference" : {
+
+    },
+    "Target Details" : {
+
+    },
+    "Target direction" : {
+
+    },
+    "Technical Data" : {
+
+    },
+    "Temporary network data" : {
+
+    },
+    "Tentative site" : {
+
+    },
+    "Term Explanations" : {
+
+    },
+    "Terrain" : {
+
+    },
+    "Terrain cache could not be prepared. Free device storage or wait for another calculation to finish, then retry with a smaller radius." : {
+
+    },
+    "Terrain elevation, line of sight, first Fresnel zone, and obstructed regions" : {
+
+    },
+    "Terrain profile" : {
+
+    },
+    "Terrain provenance" : {
+
+    },
+    "Terrain request failed. Check your connection and retry; the provider may be temporarily unavailable." : {
+
+    },
+    "Terrain source" : {
+
+    },
+    "Terrain source credits" : {
+
+    },
+    "Test complete." : {
+
+    },
+    "Test stopped" : {
+
+    },
+    "Test stopped." : {
+
+    },
+    "Thank You!" : {
+
+    },
+    "Thank you for supporting NodeScope!" : {
+
+    },
+    "That plan no longer exists." : {
+
+    },
+    "That plan no longer exists. Choose another place to save." : {
+
+    },
+    "That study is no longer in Saved Plans." : {
+
+    },
+    "That was a zero-hop advert, so only radios in direct range pass it on. Send a flood advert to see how far it really travels." : {
+
+    },
+    "The analyzer has no recent adverts from this node." : {
+
+    },
+    "The analyzer is rate limiting requests until %@. Showing saved target evidence." : {
+
+    },
+    "The analyzer is rate limiting requests. Showing saved target evidence." : {
+
+    },
+    "The combined radio values exceed calculation limits." : {
+
+    },
+    "The file couldn't be prepared. Your saved plans haven't changed." : {
+
+    },
+    "The link could not be analyzed with these settings." : {
+
+    },
+    "The live connection changed. Retry or return to the observer list." : {
+
+    },
+    "The live connection changed. Retry or return to the packet list." : {
+
+    },
+    "The live stream uses a separate WebSocket connection, so it can reconnect independently of the read-only API." : {
+
+    },
+    "The next calculation will reuse matching samples from the smaller study and calculate the added area." : {
+
+    },
+    "The plan could not be saved. Your draft is still open and the previous save is unchanged." : {
+
+    },
+    "The purchase couldn't be completed." : {
+
+    },
+    "The purchase couldn't be completed. Please try again." : {
+
+    },
+    "The purchase couldn't be verified." : {
+
+    },
+    "The purchase is pending approval." : {
+
+    },
+    "The result could not be drawn. Calculate again." : {
+
+    },
+    "The saved calculation could not be restored. Your inputs are available; calculate again to replace the result." : {
+
+    },
+    "The saved result can't be shown on this device and doesn't match the changed inputs. Confirm saving inputs only, or save as new." : {
+
+    },
+    "The saved result can't be shown on this device and doesn't match the changed inputs. Updating keeps the new inputs without a result; calculate again to get one. To keep the original and its result, choose Save as new." : {
+
+    },
+    "The saved result could not be verified, so it isn't shown. Your inputs are available; calculate to see results." : {
+
+    },
+    "The server changed. Return to the observer list." : {
+
+    },
+    "The server changed. Return to the packet list." : {
+
+    },
+    "The strongest is %@%@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "The strongest is %1$@%2$@."
+          }
+        }
+      }
+    },
+    "The study exhausted its work budget. Some samples were not calculated. Try a smaller radius or wider sample spacing." : {
+
+    },
+    "The study you opened was deleted. This saves it as a new study." : {
+
+    },
+    "The time it was sent is unknown." : {
+
+    },
+    "Their inputs are imported; calculate to see results." : {
+
+    },
+    "There isn’t enough storage to save this result. Your previous save is unchanged. Remove an older study, or save inputs only." : {
+
+    },
+    "These studies are left out unless you import their inputs only." : {
+
+    },
+    "These unfinished studies couldn't be saved on this device: %@. Switching analyzer now loses their latest changes. Saved plans aren't affected." : {
+
+    },
+    "This adds device node favorites to this account’s pending selections. Choose Sync now to upload. Observer and channel favorites stay local." : {
+
+    },
+    "This analyzer does not currently provide node analytics." : {
+
+    },
+    "This analyzer has no nodes or observers with usable reported coordinates." : {
+
+    },
+    "This area needs more calculation work than the current limit allows. Choose wider spacing or a smaller radius." : {
+
+    },
+    "This area needs more work than the limit allows. Choose wider spacing or a smaller radius." : {
+
+    },
+    "This batch left samples unfinished. Continue to calculate them using the same inputs and terrain." : {
+
+    },
+    "This batch was cancelled. The previous completed batch is still available." : {
+
+    },
+    "This change couldn’t be saved: a name may be empty or too long, or the library is full (100 plans or 100 studies)." : {
+
+    },
+    "This channel feature is not available on this server." : {
+
+    },
+    "This field is not supported." : {
+
+    },
+    "This file shows" : {
+
+    },
+    "This is a sampled estimate, not measured reception or a guarantee. Gaps and work-limited areas remain unknown. The nearest 200 available nodes use the same assumed receiver; the catalog is incomplete." : {
+
+    },
+    "This list shows the nearest 200 located nodes available in the current catalog. Predictions use your receiver assumptions, not reported node equipment. It is not a complete inventory of nearby radios." : {
+
+    },
+    "This node has gone quiet" : {
+
+    },
+    "This node is getting out" : {
+
+    },
+    "This observer's route is %@" : {
+
+    },
+    "This plan is empty." : {
+
+    },
+    "This radius and detail exceed the current grid limit. Choose wider spacing or a smaller radius." : {
+
+    },
+    "This removes the study and its saved result from this device." : {
+
+    },
+    "This saved channel is no longer available on this Beacon server." : {
+
+    },
+    "This saved result needs another version of NodeScope. Your inputs are available; calculate to see results." : {
+
+    },
+    "This server doesn’t have this channel’s key, so the message can’t be shown." : {
+
+    },
+    "This study exceeds the download or calculation budget. Choose a smaller radius or wider sample spacing." : {
+
+    },
+    "This study was changed elsewhere since you opened it. Save as new to keep your version." : {
+
+    },
+    "This study was deleted since you opened it. Save it as new to keep it." : {
+
+    },
+    "Through repeaters" : {
+
+    },
+    "Thu" : {
+
+    },
+    "Thursday" : {
+
+    },
+    "Time" : {
+
+    },
+    "Time Range" : {
+
+    },
+    "Tips are one-time purchases. They don't unlock features or include goods, services, or membership benefits." : {
+
+    },
+    "Tips are temporarily unavailable." : {
+
+    },
+    "Tips couldn't be loaded. Please try again." : {
+
+    },
+    "Today" : {
+
+    },
+    "Toggle live packets" : {
+
+    },
+    "Total Packets" : {
+
+    },
+    "Total height" : {
+
+    },
+    "Total path loss" : {
+
+    },
+    "Touch & hold the map to place Point %@." : {
+
+    },
+    "Touch & hold the map to place it." : {
+
+    },
+    "Touch & hold the map, on a known node or anywhere, or use your location." : {
+
+    },
+    "Touch and hold the map, or open Transmitter settings to enter coordinates or use your location." : {
+
+    },
+    "Touch and hold to copy the public key" : {
+
+    },
+    "Touch and hold to place a tentative pin. Pan and zoom to find the site." : {
+
+    },
+    "Tower" : {
+
+    },
+    "Traffic reported by payload" : {
+
+    },
+    "Transmissions" : {
+
+    },
+    "Transmit power" : {
+
+    },
+    "Transmit power (dBm, −200–100)" : {
+
+    },
+    "Transmitter" : {
+
+    },
+    "Transmitter moved" : {
+
+    },
+    "Transmitter not placed" : {
+
+    },
+    "Transmitter placed" : {
+
+    },
+    "Transmitter removed" : {
+
+    },
+    "Transmitter settings" : {
+
+    },
+    "Try Again" : {
+
+    },
+    "Try again" : {
+
+    },
+    "Try another region or pull to refresh the network." : {
+
+    },
+    "Tue" : {
+
+    },
+    "Tuesday" : {
+
+    },
+    "Two-way Links" : {
+
+    },
+    "Type" : {
+
+    },
+    "Typical range" : {
+
+    },
+    "US Community Sources" : {
+
+    },
+    "US Long Fast" : {
+
+    },
+    "US/Canada Narrow" : {
+
+    },
+    "USA/Canada" : {
+
+    },
+    "Unable to update" : {
+
+    },
+    "Unavailable from Beacon" : {
+
+    },
+    "Unavailable on this source" : {
+
+    },
+    "Undo" : {
+
+    },
+    "Unfinished studies" : {
+
+    },
+    "Unique Nodes Heard" : {
+
+    },
+    "Unique nodes heard over time" : {
+
+    },
+    "Units" : {
+
+    },
+    "Unknown" : {
+
+    },
+    "Unknown Node" : {
+
+    },
+    "Unknown observer" : {
+
+    },
+    "Unknown role" : {
+
+    },
+    "Unknown — individual path work limit" : {
+
+    },
+    "Unknown — missing terrain" : {
+
+    },
+    "Unknown — sampling did not converge" : {
+
+    },
+    "Unknown — too close to threshold" : {
+
+    },
+    "Unknown — unsupported path" : {
+
+    },
+    "Unnamed Node" : {
+
+    },
+    "Unnamed node" : {
+
+    },
+    "Unnamed observer" : {
+
+    },
+    "Unsaved work couldn't be kept" : {
+
+    },
+    "Update existing" : {
+
+    },
+    "Update failed · retry with Refresh" : {
+
+    },
+    "Updated %@" : {
+
+    },
+    "Updated %@ ago" : {
+
+    },
+    "Updated now" : {
+
+    },
+    "Updating activity…" : {
+
+    },
+    "Updating network summary" : {
+
+    },
+    "Upgrade backups" : {
+
+    },
+    "Uptime" : {
+
+    },
+    "Use %@, Beacon beta server, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Use %1$@, Beacon beta server, %2$@"
+          }
+        }
+      }
+    },
+    "Use %@, CoreScope server, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Use %1$@, CoreScope server, %2$@"
+          }
+        }
+      }
+    },
+    "Use Coordinate" : {
+
+    },
+    "Use Current Location" : {
+
+    },
+    "Use Custom Analyzer" : {
+
+    },
+    "Use My Location" : {
+
+    },
+    "Use Your Location?" : {
+
+    },
+    "Use an existing account on this source. Your password is not saved." : {
+
+    },
+    "Use coordinates" : {
+
+    },
+    "Use coordinates updates the site draft. Apply the site, then Save plan to keep it." : {
+
+    },
+    "Use current location" : {
+
+    },
+    "Use server selections" : {
+
+    },
+    "Use these model assumptions" : {
+
+    },
+    "Use your location, tap anywhere on the map, or enter coordinates." : {
+
+    },
+    "Using default antenna and radio settings." : {
+
+    },
+    "Using your antenna and radio settings." : {
+
+    },
+    "Validating and cleaning up…" : {
+
+    },
+    "Vehicle" : {
+
+    },
+    "Version %@" : {
+
+    },
+    "Version %@ (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Version %1$@ (%2$@)"
+          }
+        }
+      }
+    },
+    "View %lld Nearby" : {
+
+    },
+    "View Packet" : {
+
+    },
+    "Volts" : {
+
+    },
+    "Waiting for Packets" : {
+
+    },
+    "Watch for up to two minutes as observers report it." : {
+
+    },
+    "We haven’t heard this node" : {
+
+    },
+    "Weak" : {
+
+    },
+    "Wed" : {
+
+    },
+    "Wednesday" : {
+
+    },
+    "Welcome to NodeScope" : {
+
+    },
+    "What Is Cached" : {
+
+    },
+    "What This Is" : {
+
+    },
+    "What the markers, lines and colors on the map mean." : {
+
+    },
+    "What this means" : {
+
+    },
+    "What to do: " : {
+
+    },
+    "What's New" : {
+
+    },
+    "What's New in NodeScope" : {
+
+    },
+    "Where do I find my node’s public key?" : {
+
+    },
+    "Which node is yours?" : {
+
+    },
+    "Who heard its last advert" : {
+
+    },
+    "Who heard its last flood advert" : {
+
+    },
+    "Within 1 Hour" : {
+
+    },
+    "Within 15 Minutes" : {
+
+    },
+    "Within 24 Hours" : {
+
+    },
+    "Within 7 Days" : {
+
+    },
+    "Worst Fresnel clearance" : {
+
+    },
+    "You" : {
+
+    },
+    "You can change sources anytime in Settings, or add a custom analyzer." : {
+
+    },
+    "You can review these anytime in Settings → Help & Support → What's New." : {
+
+    },
+    "Your first coverage study" : {
+
+    },
+    "Your location" : {
+
+    },
+    "Your location is outside the supported latitude range of −85° to 85°. Choose a point on the map." : {
+
+    },
+    "Your location, when you share it." : {
+
+    },
+    "Your nodes" : {
+
+    },
+    "Zone end" : {
+
+    },
+    "Zone start" : {
+
+    },
+    "a day" : {
+
+    },
+    "a day ago" : {
+
+    },
+    "a while" : {
+
+    },
+    "an hour ago" : {
+
+    },
+    "analyzer.example.org" : {
+
+    },
+    "channel" : {
+
+    },
+    "channels" : {
+
+    },
+    "few readings" : {
+
+    },
+    "heard %@" : {
+
+    },
+    "heard it" : {
+
+    },
+    "just now" : {
+
+    },
+    "latest %@ dB SNR" : {
+
+    },
+    "no repeater needed" : {
+
+    },
+    "node" : {
+
+    },
+    "nodes" : {
+
+    },
+    "observer" : {
+
+    },
+    "observer, last advert" : {
+
+    },
+    "observers" : {
+
+    },
+    "observers, last advert" : {
+
+    },
+    "quality unknown" : {
+
+    },
+    "sensitivity %@ dBm" : {
+
+    },
+    "this node" : {
+
+    },
+    "this observer" : {
+
+    },
+    "through repeaters" : {
+
+    },
+    "typical %@ to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "typical %1$@ to %2$@"
+          }
+        }
+      }
+    },
+    "your node" : {
+
+    },
+    "·" : {
+
+    },
+    "· %lld hops" : {
+
+    },
+    "· Heard %@" : {
+
+    },
+    "· Seen %@" : {
+
+    },
+    "—" : {
+
+    },
+    "•" : {
+
+    }
+  },
+  "version" : "1.0"
+}
