@@ -1799,4 +1799,23 @@
     <string name="field_direction_wnw">WNW</string>
     <string name="field_direction_nw">NW</string>
     <string name="field_direction_nnw">NNW</string>
+    <string name="coverage_radio_preset_meshcore_us_ca">USA/Canada</string>
+    <string name="coverage_radio_preset_meshcore_eu_uk_narrow">EU/UK (Narrow)</string>
+    <string name="coverage_radio_preset_meshcore_eu_433_narrow">EU 433 MHz (Narrow)</string>
+    <string name="coverage_radio_preset_meshcore_au_narrow">Australia (Narrow)</string>
+    <string name="coverage_radio_preset_meshcore_nz_narrow">New Zealand (Narrow)</string>
+    <string name="coverage_radio_preset_meshtastic_us_long_fast">US Long Fast</string>
+    <string name="coverage_radio_preset_meshtastic_eu_868_long_fast">EU 868 Long Fast</string>
+    <string name="coverage_antenna_preset_quarter_wave">1/4-wave ground plane</string>
+    <string name="coverage_antenna_preset_half_wave_dipole">1/2-wave dipole</string>
+    <string name="coverage_antenna_preset_omni_3">3 dBi omni</string>
+    <string name="coverage_antenna_preset_omni_5">5 dBi omni</string>
+    <string name="coverage_antenna_preset_omni_6">6 dBi omni</string>
+    <string name="coverage_antenna_preset_yagi_small">Small Yagi</string>
+    <string name="coverage_antenna_preset_yagi_high">High-gain Yagi</string>
+    <string name="coverage_height_preset_handheld">Handheld</string>
+    <string name="coverage_height_preset_vehicle">Vehicle</string>
+    <string name="coverage_height_preset_rooftop">Rooftop</string>
+    <string name="coverage_height_preset_mast">Mast</string>
+    <string name="coverage_height_preset_tower">Tower</string>
 </resources>

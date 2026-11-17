@@ -641,7 +641,7 @@ internal fun ProfileHeightControl(endpoint: String, meters: Double, unit: Distan
                         profileHeightMeters(profileDisplayHeight(preset.meters, unit).roundToInt().toDouble(), unit)
                     else preset.meters
                     onMetersChanged(value)
-                }, label = { Text(stringResource(R.string.link_profile_value, preset.title, formatProfileHeight(preset.meters, unit))) })
+                }, label = { Text(stringResource(R.string.link_profile_value, preset.title.asString(), formatProfileHeight(preset.meters, unit))) })
         }
     }
     val maximum = profileHeightMaximum(unit)
