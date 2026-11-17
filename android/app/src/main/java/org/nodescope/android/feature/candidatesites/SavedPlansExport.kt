@@ -1,5 +1,8 @@
 package org.nodescope.android.feature.candidatesites
 
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import android.content.Intent
 import android.text.format.Formatter
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -204,6 +207,7 @@ object SavedPlansExport {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExportPackageSheet(contents: SavedPlansExport.Contents, dismiss: () -> Unit) {
+    val resources = LocalResources.current
     val context = LocalContext.current
     val library = SavedPlansLibrary.shared(context)
     val scope = rememberCoroutineScope()
@@ -215,9 +219,9 @@ fun ExportPackageSheet(contents: SavedPlansExport.Contents, dismiss: () -> Unit)
     var file by remember { mutableStateOf<File?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     val title = when (contents) {
-        is SavedPlansExport.Contents.Study -> "Export study"
-        is SavedPlansExport.Contents.Plan -> "Export plan"
-        SavedPlansExport.Contents.Library -> "Back up library"
+        is SavedPlansExport.Contents.Study -> stringResource(R.string.planner_export_study)
+        is SavedPlansExport.Contents.Plan -> stringResource(R.string.planner_export_plan_2)
+        SavedPlansExport.Contents.Library -> stringResource(R.string.planner_back_up_library_2)
     }
     val hasNotes = when (contents) {
         is SavedPlansExport.Contents.Study -> false
@@ -250,7 +254,7 @@ fun ExportPackageSheet(contents: SavedPlansExport.Contents, dismiss: () -> Unit)
                 SavedPlansExport.Preview.of(pack) to target
             }.getOrNull()
         }
-        if (built == null) message = "The file couldn't be prepared. Your saved plans haven't changed."
+        if (built == null) message = resources.getString(R.string.planner_the_file_couldn_t_be_prepared_your_saved)
         else { preview = built.first; file = built.second }
     }
     // Files from earlier exports: a recipient may still have been reading them while that sheet was open.
@@ -264,7 +268,7 @@ fun ExportPackageSheet(contents: SavedPlansExport.Contents, dismiss: () -> Unit)
                 // Streamed, so a large backup isn't held in memory.
                 runCatching { context.contentResolver.openOutputStream(uri, "w")!!.use { out -> source.inputStream().use { it.copyTo(out) } } }.isSuccess
             }
-            message = if (saved) "Saved." else "The file couldn't be saved there. Nothing else was changed."
+            message = if (saved) resources.getString(R.string.planner_saved) else resources.getString(R.string.planner_the_file_couldn_t_be_saved_there_nothing)
         }
     }
 
@@ -273,41 +277,41 @@ fun ExportPackageSheet(contents: SavedPlansExport.Contents, dismiss: () -> Unit)
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(title, style = MaterialTheme.typography.titleLarge)
-            ToggleRow("Include available results", includesResults) { includesResults = it }
-            Text(if (includesResults) "Results open on another device without calculating again."
-                else "Inputs only: the recipient calculates again to see results.",
+            ToggleRow(stringResource(R.string.planner_include_available_results), includesResults) { includesResults = it }
+            Text(if (includesResults) stringResource(R.string.planner_results_open_on_another_device_without_calculating_again)
+                else stringResource(R.string.planner_inputs_only_the_recipient_calculates_again_to_see),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (hasNotes) ToggleRow("Include plan notes", includesNotes) { includesNotes = it }
+            if (hasNotes) ToggleRow(stringResource(R.string.planner_include_plan_notes), includesNotes) { includesNotes = it }
             HorizontalDivider()
-            Text("This file shows", style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.planner_this_file_shows), style = MaterialTheme.typography.titleSmall)
             val shown = preview
             if (shown == null) LinearProgressIndicator(Modifier.fillMaxWidth()) else {
-                Fact("Studies", "${shown.studies}")
-                if (shown.plans > 0) Fact("Plans", "${shown.plans}")
-                if (shown.candidateSitePlans > 0) Fact("Candidate site lists", "${shown.candidateSitePlans}")
-                Fact("Precise locations", "${shown.locations}")
+                Fact(stringResource(R.string.planner_studies), stringResource(R.string.planner_value_3, shown.studies))
+                if (shown.plans > 0) Fact(stringResource(R.string.planner_plans), stringResource(R.string.planner_value_3, shown.plans))
+                if (shown.candidateSitePlans > 0) Fact(stringResource(R.string.planner_candidate_site_lists), stringResource(R.string.planner_value_3, shown.candidateSitePlans))
+                Fact(stringResource(R.string.planner_precise_locations), stringResource(R.string.planner_value_3, shown.locations))
                 if (shown.nodes > 0) {
                     val more = shown.nodes - shown.nodeNames.size
                     val names = shown.nodeNames.joinToString()
-                    Fact("Node names and IDs", if (names.isEmpty()) "${shown.nodes}" else if (more > 0) "$names and $more more" else names)
+                    Fact(stringResource(R.string.planner_node_names_and_ids), if (names.isEmpty()) stringResource(R.string.planner_value_3, shown.nodes) else if (more > 0) stringResource(R.string.planner_and_more, names, more) else names)
                 }
                 if (shown.analyzers.isNotEmpty() || shown.unknownSource > 0)
-                    Fact("Analyzer", (shown.analyzers + listOfNotNull(if (shown.unknownSource > 0) "Unknown source (${shown.unknownSource})" else null)).joinToString("\n"))
-                if (shown.notedPlans > 0) Fact("Plan notes", "${shown.notedPlans}")
-                if (includesResults) Fact("Results", if (shown.results == 0) "None"
-                    else "${shown.results} · ${Formatter.formatShortFileSize(context, shown.resultBytes)}")
+                    Fact(stringResource(R.string.planner_analyzer), (shown.analyzers + listOfNotNull(if (shown.unknownSource > 0) stringResource(R.string.planner_unknown_source, shown.unknownSource) else null)).joinToString("\n"))
+                if (shown.notedPlans > 0) Fact(stringResource(R.string.planner_plan_notes), stringResource(R.string.planner_value_3, shown.notedPlans))
+                if (includesResults) Fact(stringResource(R.string.planner_results), if (shown.results == 0) stringResource(R.string.planner_none)
+                    else stringResource(R.string.planner_value_4, shown.results, Formatter.formatShortFileSize(context, shown.resultBytes)))
                 if (includesResults && shown.omitted.isNotEmpty()) {
-                    Text("Results not included", style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.planner_results_not_included), style = MaterialTheme.typography.titleSmall)
                     shown.omitted.forEach { (name, reason) -> Fact(name, SavedPlansExport.describe(reason)) }
                 }
             }
-            Text("Locations aren't hidden: a study without them couldn't be calculated again. Unfinished studies, caches and settings are never included.",
+            Text(stringResource(R.string.planner_locations_aren_t_hidden_a_study_without_them),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             message?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End)) {
                 OutlinedButton(onClick = { file?.let { saver.launch(it.name) } }, enabled = file != null) {
                     Icon(Icons.Outlined.SaveAlt, null)
-                    Text("Save to device", Modifier.padding(start = 8.dp))
+                    Text(stringResource(R.string.planner_save_to_device), Modifier.padding(start = 8.dp))
                 }
                 Button(onClick = {
                     val target = file ?: return@Button
@@ -317,7 +321,7 @@ fun ExportPackageSheet(contents: SavedPlansExport.Contents, dismiss: () -> Unit)
                     context.startActivity(Intent.createChooser(send, title))
                 }, enabled = file != null) {
                     Icon(Icons.Outlined.Share, null)
-                    Text("Share", Modifier.padding(start = 8.dp))
+                    Text(stringResource(R.string.common_share), Modifier.padding(start = 8.dp))
                 }
             }
         }

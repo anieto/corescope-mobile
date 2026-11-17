@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.candidatesites
 
+import org.nodescope.android.R
+import org.nodescope.android.core.design.UiText
 import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,7 +21,7 @@ class SavedPlansLibrary(private val store: DeploymentPlanStore) {
     var studies by mutableStateOf<List<SavedStudy>>(emptyList()); private set
     var loaded by mutableStateOf(false); private set
     var busy by mutableStateOf(false); private set
-    var error by mutableStateOf<String?>(null)
+    var error by mutableStateOf<UiText?>(null)
     /** Named study plans (version 3). Membership lives only in each study's planID. */
     var studyPlans by mutableStateOf<List<StudyPlan>>(emptyList()); private set
 
@@ -32,7 +34,7 @@ class SavedPlansLibrary(private val store: DeploymentPlanStore) {
             loaded = true
             error = null
         } catch (_: Exception) {
-            error = "Saved plans could not be opened. Your files have not been changed. Try again when storage is available."
+            error = UiText.Resource(R.string.planner_saved_plans_could_not_be_opened_your_files)
         } finally { busy = false }
     }
 
@@ -78,7 +80,7 @@ class SavedPlansLibrary(private val store: DeploymentPlanStore) {
         val target: String? = when (destination) {
             Destination.Standalone -> null
             is Destination.Plan -> {
-                if (containers.none { it.id == destination.id }) { error = "That plan no longer exists. Choose another place to save."; return null }
+                if (containers.none { it.id == destination.id }) { error = UiText.Resource(R.string.planner_that_plan_no_longer_exists_choose_another_place); return null }
                 destination.id
             }
             Destination.NewPlan -> {
@@ -92,13 +94,13 @@ class SavedPlansLibrary(private val store: DeploymentPlanStore) {
         when (mode) {
             SaveMode.UPDATE -> {
                 val current = studies.firstOrNull { it.id == study.id }
-                    ?: run { error = "This study was deleted since you opened it. Save it as new to keep it."; return null }
+                    ?: run { error = UiText.Resource(R.string.planner_this_study_was_deleted_since_you_opened_it); return null }
                 if (study.revision != null && current.revision != study.revision) {
-                    error = "This study was changed elsewhere since you opened it. Save as new to keep your version."
+                    error = UiText.Resource(R.string.planner_this_study_was_changed_elsewhere_since_you_opened)
                     return null
                 }
                 if (!inputsOnly && dropsUnreadableResult(study)) {
-                    error = "The saved result can't be shown on this device and doesn't match the changed inputs. Confirm saving inputs only, or save as new."
+                    error = UiText.Resource(R.string.planner_the_saved_result_can_t_be_shown_on_2)
                     return null
                 }
                 // The tool says where its inputs came from; it keeps the saved study's source unless they were captured again.
@@ -240,8 +242,8 @@ class SavedPlansLibrary(private val store: DeploymentPlanStore) {
         return commit(plans, studies.map { if (it.id == id) after else it }, touch(studyPlans, setOf(before.planID, after.planID), now)) != null
     }
 
-    private fun missingStudy(): Boolean { error = "That study is no longer in Saved Plans."; return false }
-    private fun missingPlan(): Boolean { error = "That plan no longer exists."; return false }
+    private fun missingStudy(): Boolean { error = UiText.Resource(R.string.planner_that_study_is_no_longer_in_saved_plans); return false }
+    private fun missingPlan(): Boolean { error = UiText.Resource(R.string.planner_that_plan_no_longer_exists); return false }
 
     private fun apply(document: DeploymentPlanDocument) {
         plans = document.plans
@@ -260,14 +262,14 @@ class SavedPlansLibrary(private val store: DeploymentPlanStore) {
             return saved
         } catch (failure: DeploymentPlanStoreException) {
             error = if (failure.reason == DeploymentPlanStoreFailure.STORAGE_FULL)
-                "There isn’t enough storage to save this result. Your previous save is unchanged. Remove an older study, or save inputs only."
-            else "Saved plans changed outside this editor. Your draft is still open. Close it before reloading the library."
+                UiText.Resource(R.string.planner_there_isn_t_enough_storage_to_save_this)
+            else UiText.Resource(R.string.planner_saved_plans_changed_outside_this_editor_your_draft)
         } catch (failure: DeploymentPlanException) {
             error = if (failure.reason == DeploymentPlanFailure.INVALID_DATA)
-                "This change couldn’t be saved: a name may be empty or too long, or the library is full (100 plans or 100 studies)."
-            else "The plan could not be saved. Your draft is still open and the previous save is unchanged."
+                UiText.Resource(R.string.planner_this_change_couldn_t_be_saved_a_name)
+            else UiText.Resource(R.string.planner_the_plan_could_not_be_saved_your_draft)
         } catch (_: Exception) {
-            error = "The plan could not be saved. Your draft is still open and the previous save is unchanged."
+            error = UiText.Resource(R.string.planner_the_plan_could_not_be_saved_your_draft)
         } finally { busy = false }
         return null
     }

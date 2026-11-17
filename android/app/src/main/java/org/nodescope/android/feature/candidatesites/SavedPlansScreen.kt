@@ -1,5 +1,9 @@
 package org.nodescope.android.feature.candidatesites
 
+import androidx.annotation.StringRes
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import org.nodescope.android.R
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,8 +31,8 @@ import org.nodescope.android.core.design.meshCardColors
 import org.nodescope.android.core.design.meshPageBackground
 
 /** Type filter for studies, as iOS's StudyFilter. */
-enum class StudyFilter(val title: String) {
-    ALL("All"), LINK_PROFILE("Link Profiles"), COVERAGE("Coverage");
+enum class StudyFilter(@param:StringRes val titleRes: Int) {
+    ALL(R.string.planner_study_filter_all), LINK_PROFILE(R.string.planner_study_filter_link_profiles), COVERAGE(R.string.planner_study_filter_coverage);
 
     fun matches(kind: SavedStudy.Kind) = this == ALL || this == of(kind)
 
@@ -75,20 +79,20 @@ fun SavedPlansScreen(kind: SavedStudy.Kind?, onOpen: (SavedStudy) -> Unit, onPla
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item {
                 OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), singleLine = true,
-                    leadingIcon = { Icon(Icons.Outlined.Search, null) }, placeholder = { Text("Plans, notes and studies") })
+                    leadingIcon = { Icon(Icons.Outlined.Search, null) }, placeholder = { Text(stringResource(R.string.planner_plans_notes_and_studies)) })
             }
             if (kind != null) item { StudyFilterRow(filter) { filter = it } }
             // Unfinished work first: one draft resumes from here; several open their own list.
             if (kind == null && !searching) when (drafts.value.size) {
                 0 -> Unit
-                1 -> item { DraftRow(drafts.value.single(), "Continue unfinished study", onResumeDraft) { drafts.discard(it) } }
+                1 -> item { DraftRow(drafts.value.single(), stringResource(R.string.planner_continue_unfinished_study), onResumeDraft) { drafts.discard(it) } }
                 else -> item {
                     Card(Modifier.fillMaxWidth().clickable(onClick = onUnfinished), colors = meshCardColors()) {
                         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Icon(Icons.Outlined.EditNote, null, tint = MaterialTheme.colorScheme.primary)
                             Column(Modifier.weight(1f)) {
-                                Text("Unfinished studies", style = MaterialTheme.typography.titleMedium)
-                                Text("${drafts.value.size} with unsaved changes", style = MaterialTheme.typography.bodyMedium,
+                                Text(stringResource(R.string.planner_unfinished_studies), style = MaterialTheme.typography.titleMedium)
+                                Text(pluralStringResource(R.plurals.planner_with_unsaved_changes, drafts.value.size, drafts.value.size), style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
@@ -99,26 +103,26 @@ fun SavedPlansScreen(kind: SavedStudy.Kind?, onOpen: (SavedStudy) -> Unit, onPla
             if (library.loaded && library.studyPlans.isEmpty() && library.studies.isEmpty()) item {
                 Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Group related studies into a plan, such as one for each site you're considering. Link Profile and Estimated Coverage can also save standalone studies.",
+                        Text(stringResource(R.string.planner_group_related_studies_into_a_plan_such_as),
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Button(onClick = { creatingPlan = true }) { Text("Create plan") }
+                        Button(onClick = { creatingPlan = true }) { Text(stringResource(R.string.planner_create_plan)) }
                     }
                 }
             }
             if (plans.isNotEmpty()) {
-                item { SectionTitle("Plans") }
+                item { SectionTitle(stringResource(R.string.planner_plans)) }
                 items(plans, key = { "plan-" + it.id }) { plan ->
                     StudyPlanRow(plan, library.studies.filter { it.planID == plan.id }) { onPlan(plan.id, filter) }
                 }
             }
             if (studies.isNotEmpty() || (searching && plans.isEmpty())) {
-                item { SectionTitle(if (searching) "Studies" else "Standalone studies") }
+                item { SectionTitle(if (searching) stringResource(R.string.planner_studies_2) else stringResource(R.string.planner_standalone_studies)) }
                 items(studies, key = { "study-" + it.id }) { study ->
                     SavedStudyRow(study, if (searching) library.plan(study.planID)?.name else null, !library.busy,
                         open = { onOpen(study) }, actions = actions)
                 }
                 if (studies.isEmpty()) item {
-                    Text("No plans or studies match “$query”.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.planner_no_plans_or_studies_match, query), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             if (kind == null && !searching) item {
@@ -126,7 +130,7 @@ fun SavedPlansScreen(kind: SavedStudy.Kind?, onOpen: (SavedStudy) -> Unit, onPla
                     // Superseded by plans of studies: shown only to people who already saved candidate sites.
                     if (library.plans.isNotEmpty()) Card(Modifier.fillMaxWidth().clickable(onClick = onCandidateSites), colors = meshCardColors()) {
                         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text("Candidate sites", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                            Text(stringResource(R.string.planner_candidate_sites), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
                         }
                     }
@@ -134,20 +138,20 @@ fun SavedPlansScreen(kind: SavedStudy.Kind?, onOpen: (SavedStudy) -> Unit, onPla
                         if (library.loaded && (library.studies.isNotEmpty() || library.studyPlans.isNotEmpty() || library.plans.isNotEmpty()))
                             OutlinedButton(onClick = { backingUp = true }) {
                                 Icon(Icons.Outlined.Share, null)
-                                Text("Back up library…", Modifier.padding(start = 8.dp))
+                                Text(stringResource(R.string.planner_back_up_library), Modifier.padding(start = 8.dp))
                             }
                         OutlinedButton(onClick = { chooser.launch(arrayOf("*/*")) }, enabled = library.loaded) {
                             Icon(Icons.Outlined.FileOpen, null)
-                            Text("Import…", Modifier.padding(start = 8.dp))
+                            Text(stringResource(R.string.planner_import), Modifier.padding(start = 8.dp))
                         }
                     }
-                    Text("Stored on this device. Backup details are in Settings › Cache & Storage.",
+                    Text(stringResource(R.string.planner_stored_on_this_device_backup_details_are_in),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             item { LibraryStatus(library) }
         }
-        ExtendedFloatingActionButton(text = { Text("New plan") }, icon = { Icon(Icons.Outlined.CreateNewFolder, null) },
+        ExtendedFloatingActionButton(text = { Text(stringResource(R.string.planner_new_plan)) }, icon = { Icon(Icons.Outlined.CreateNewFolder, null) },
             onClick = { if (library.loaded) creatingPlan = true }, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp))
     }
     if (creatingPlan) PlanEditorDialog(null) { creatingPlan = false }
@@ -178,8 +182,8 @@ fun StudyPlanScreen(planId: String, initialFilter: StudyFilter, onOpen: (SavedSt
     if (plan == null) {
         Column(Modifier.fillMaxSize().meshPageBackground().padding(24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (library.loaded) {
-                Text("Plan not found", style = MaterialTheme.typography.titleLarge)
-                Text("It may have been deleted. Its studies, if any, are under Standalone studies.",
+                Text(stringResource(R.string.planner_plan_not_found), style = MaterialTheme.typography.titleLarge)
+                Text(stringResource(R.string.planner_it_may_have_been_deleted_its_studies_if),
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else LinearProgressIndicator(Modifier.fillMaxWidth())
             LibraryStatus(library)
@@ -195,13 +199,13 @@ fun StudyPlanScreen(planId: String, initialFilter: StudyFilter, onOpen: (SavedSt
                 Row(verticalAlignment = Alignment.Top) {
                     Text(plan.notes ?: "", Modifier.weight(1f).padding(top = 12.dp))
                     Box {
-                        IconButton(onClick = { planMenu = true }) { Icon(Icons.Outlined.MoreVert, "Plan actions") }
+                        IconButton(onClick = { planMenu = true }) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.planner_plan_actions)) }
                         DropdownMenu(planMenu, { planMenu = false }) {
-                            DropdownMenuItem({ Text("Edit name and notes") }, { planMenu = false; editing = true },
+                            DropdownMenuItem({ Text(stringResource(R.string.planner_edit_name_and_notes)) }, { planMenu = false; editing = true },
                                 leadingIcon = { Icon(Icons.Outlined.Edit, null) })
-                            DropdownMenuItem({ Text("Export plan…") }, { planMenu = false; exportingPlan = true },
+                            DropdownMenuItem({ Text(stringResource(R.string.planner_export_plan)) }, { planMenu = false; exportingPlan = true },
                                 leadingIcon = { Icon(Icons.Outlined.Share, null) })
-                            DropdownMenuItem({ Text("Delete plan") }, { planMenu = false; confirmingDelete = true },
+                            DropdownMenuItem({ Text(stringResource(R.string.planner_delete_plan)) }, { planMenu = false; confirmingDelete = true },
                                 leadingIcon = { Icon(Icons.Outlined.Delete, null) })
                         }
                     }
@@ -209,28 +213,28 @@ fun StudyPlanScreen(planId: String, initialFilter: StudyFilter, onOpen: (SavedSt
             }
             item { StudyFilterRow(filter) { filter = it } }
             item {
-                SectionTitle(if (filter == StudyFilter.ALL) "Studies (${members.size})"
-                    else "${filter.title} (${shown.size} of ${members.size})")
+                SectionTitle(if (filter == StudyFilter.ALL) stringResource(R.string.planner_studies_3, members.size)
+                    else stringResource(R.string.planner_of, stringResource(filter.titleRes), shown.size, members.size))
             }
             items(shown, key = { it.id }) { study ->
                 SavedStudyRow(study, null, !library.busy, open = { onOpen(study) }, actions = actions)
             }
             if (members.isEmpty()) item {
-                Text("No studies yet. Use + to start a Link Profile or Estimated Coverage here, or add a study you've already saved.",
+                Text(stringResource(R.string.planner_no_studies_yet_use_to_start_a_link),
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else if (shown.isEmpty()) item {
-                Text("No ${filter.title.lowercase()} in this plan.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.planner_no_in_this_plan, stringResource(filter.titleRes).lowercase()), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             item { LibraryStatus(library) }
         }
         Box(Modifier.align(Alignment.BottomEnd).padding(16.dp)) {
-            FloatingActionButton(onClick = { adding = true }) { Icon(Icons.Outlined.Add, "Add study") }
+            FloatingActionButton(onClick = { adding = true }) { Icon(Icons.Outlined.Add, stringResource(R.string.planner_add_study)) }
             DropdownMenu(adding, { adding = false }) {
-                DropdownMenuItem({ Text("New Link Profile") }, { adding = false; onNewTool(SavedStudy.Kind.LINK_PROFILE) },
+                DropdownMenuItem({ Text(stringResource(R.string.planner_new_link_profile)) }, { adding = false; onNewTool(SavedStudy.Kind.LINK_PROFILE) },
                     leadingIcon = { Icon(Icons.Outlined.Route, null) })
-                DropdownMenuItem({ Text("New Estimated Coverage") }, { adding = false; onNewTool(SavedStudy.Kind.COVERAGE) },
+                DropdownMenuItem({ Text(stringResource(R.string.planner_new_estimated_coverage)) }, { adding = false; onNewTool(SavedStudy.Kind.COVERAGE) },
                     leadingIcon = { Icon(Icons.Outlined.CellTower, null) })
-                DropdownMenuItem({ Text("Add existing study") }, { adding = false; addingExisting = true },
+                DropdownMenuItem({ Text(stringResource(R.string.planner_add_existing_study)) }, { adding = false; addingExisting = true },
                     leadingIcon = { Icon(Icons.Outlined.MoveToInbox, null) })
             }
         }
@@ -239,14 +243,14 @@ fun StudyPlanScreen(planId: String, initialFilter: StudyFilter, onOpen: (SavedSt
     if (addingExisting) AddExistingStudyDialog(planId) { addingExisting = false }
     if (exportingPlan) ExportPackageSheet(SavedPlansExport.Contents.Plan(planId)) { exportingPlan = false }
     if (confirmingDelete) AlertDialog(onDismissRequest = { confirmingDelete = false },
-        title = { Text("Delete “${plan.name}”?") },
-        text = { Text(if (members.isEmpty()) "This plan is empty."
-            else "Its ${members.size} ${if (members.size == 1) "study stays" else "studies stay"} in Saved Plans as standalone studies.") },
+        title = { Text(stringResource(R.string.planner_delete, plan.name)) },
+        text = { Text(if (members.isEmpty()) stringResource(R.string.planner_this_plan_is_empty)
+            else pluralStringResource(R.plurals.planner_orphaned_studies, members.size, members.size)) },
         confirmButton = { TextButton(onClick = {
             confirmingDelete = false
             scope.launch { if (library.deleteStudyPlan(planId)) onDeleted() }
-        }) { Text("Delete plan", color = MaterialTheme.colorScheme.error) } },
-        dismissButton = { TextButton(onClick = { confirmingDelete = false }) { Text("Cancel") } })
+        }) { Text(stringResource(R.string.planner_delete_plan), color = MaterialTheme.colorScheme.error) } },
+        dismissButton = { TextButton(onClick = { confirmingDelete = false }) { Text(stringResource(R.string.common_cancel)) } })
     StudyActionDialogs(actions)
 }
 
@@ -258,7 +262,7 @@ fun StudyPlanScreen(planId: String, initialFilter: StudyFilter, onOpen: (SavedSt
     SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
         StudyFilter.entries.forEachIndexed { index, option ->
             SegmentedButton(filter == option, { select(option) }, SegmentedButtonDefaults.itemShape(index, StudyFilter.entries.size)) {
-                Text(option.title, maxLines = 1)
+                Text(stringResource(option.titleRes), maxLines = 1)
             }
         }
     }
@@ -268,8 +272,8 @@ fun StudyPlanScreen(planId: String, initialFilter: StudyFilter, onOpen: (SavedSt
     val scope = rememberCoroutineScope()
     Column {
         library.error?.let { message ->
-            Text(message, color = MaterialTheme.colorScheme.error)
-            TextButton(onClick = { scope.launch { library.reload() } }, enabled = !library.busy) { Text("Reload library") }
+            Text(message.asString(), color = MaterialTheme.colorScheme.error)
+            TextButton(onClick = { scope.launch { library.reload() } }, enabled = !library.busy) { Text(stringResource(R.string.planner_reload_library)) }
         }
         if (library.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
     }
@@ -277,23 +281,25 @@ fun StudyPlanScreen(planId: String, initialFilter: StudyFilter, onOpen: (SavedSt
 
 private fun savedDate(milliseconds: Long): String = DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(milliseconds))
 
-private fun kindTitle(kind: SavedStudy.Kind) = if (kind == SavedStudy.Kind.LINK_PROFILE) "Link Profile" else "Estimated Coverage"
+@Composable private fun kindTitle(kind: SavedStudy.Kind) = stringResource(
+    if (kind == SavedStudy.Kind.LINK_PROFILE) R.string.planner_study_type_link_profile else R.string.planner_study_type_coverage
+)
 private fun kindIcon(kind: SavedStudy.Kind): ImageVector = if (kind == SavedStudy.Kind.LINK_PROFILE) Icons.Outlined.Route else Icons.Outlined.CellTower
 
 @Composable private fun StudyPlanRow(plan: StudyPlan, studies: List<SavedStudy>, open: () -> Unit) {
     val links = studies.count { it.kind == SavedStudy.Kind.LINK_PROFILE }
     val coverage = studies.size - links
     val counts = listOfNotNull(
-        links.takeIf { it > 0 }?.let { if (it == 1) "1 Link Profile" else "$it Link Profiles" },
-        coverage.takeIf { it > 0 }?.let { if (it == 1) "1 Coverage study" else "$it Coverage studies" },
-    ).joinToString(" · ").ifEmpty { "No studies" }
+        links.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.planner_link_profiles_count, it, it) },
+        coverage.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.planner_coverage_studies_count, it, it) },
+    ).joinToString(" · ").ifEmpty { stringResource(R.string.planner_no_studies) }
     Card(Modifier.fillMaxWidth().clickable(onClick = open), colors = meshCardColors()) {
         Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Icon(Icons.Outlined.Folder, null, tint = MaterialTheme.colorScheme.primary)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(plan.name, style = MaterialTheme.typography.titleSmall)
                 Text(counts, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Updated ${savedDate(plan.updatedAtMilliseconds)}", style = MaterialTheme.typography.bodySmall,
+                Text(stringResource(R.string.planner_updated, savedDate(plan.updatedAtMilliseconds)), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
@@ -326,21 +332,21 @@ private fun resultText(status: SavedResultStatus) = when (status) {
                     }
                 }
                 Text(resultText(study.resultStatus), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Updated ${savedDate(study.updatedAtMilliseconds)}", style = MaterialTheme.typography.bodySmall,
+                Text(stringResource(R.string.planner_updated, savedDate(study.updatedAtMilliseconds)), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Box {
-                IconButton(onClick = { menu = true }, enabled = enabled) { Icon(Icons.Outlined.MoreVert, "Actions for ${study.name}") }
+                IconButton(onClick = { menu = true }, enabled = enabled) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.planner_actions_for, study.name)) }
                 DropdownMenu(menu, { menu = false }) {
-                    DropdownMenuItem({ Text("Rename") }, { menu = false; actions.renaming = study.id },
+                    DropdownMenuItem({ Text(stringResource(R.string.planner_rename)) }, { menu = false; actions.renaming = study.id },
                         leadingIcon = { Icon(Icons.Outlined.Edit, null) })
-                    DropdownMenuItem({ Text("Move to plan") }, { menu = false; actions.moving = study.id },
+                    DropdownMenuItem({ Text(stringResource(R.string.planner_move_to_plan)) }, { menu = false; actions.moving = study.id },
                         leadingIcon = { Icon(Icons.Outlined.DriveFileMove, null) })
-                    DropdownMenuItem({ Text("Duplicate") }, { menu = false; scope.launch { library.duplicateStudy(study.id) } },
+                    DropdownMenuItem({ Text(stringResource(R.string.planner_duplicate)) }, { menu = false; scope.launch { library.duplicateStudy(study.id) } },
                         leadingIcon = { Icon(Icons.Outlined.ContentCopy, null) })
-                    DropdownMenuItem({ Text("Export…") }, { menu = false; actions.exporting = study.id },
+                    DropdownMenuItem({ Text(stringResource(R.string.planner_export)) }, { menu = false; actions.exporting = study.id },
                         leadingIcon = { Icon(Icons.Outlined.Share, null) })
-                    DropdownMenuItem({ Text("Delete study") }, { menu = false; actions.deleting = study.id },
+                    DropdownMenuItem({ Text(stringResource(R.string.planner_delete_study)) }, { menu = false; actions.deleting = study.id },
                         leadingIcon = { Icon(Icons.Outlined.Delete, null) })
                 }
             }
@@ -369,46 +375,46 @@ private class StudyActions(renaming: String?, moving: String?, deleting: String?
     actions.renaming?.let { id ->
         val study = library.studies.firstOrNull { it.id == id } ?: run { actions.renaming = null; return@let }
         var name by rememberSaveable(id) { mutableStateOf(study.name) }
-        AlertDialog(onDismissRequest = { actions.renaming = null }, title = { Text("Rename study") },
+        AlertDialog(onDismissRequest = { actions.renaming = null }, title = { Text(stringResource(R.string.planner_rename_study)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Name") })
-                    Text("Renaming doesn't change the study's inputs or results.", style = MaterialTheme.typography.bodySmall,
+                    OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text(stringResource(R.string.planner_name)) })
+                    Text(stringResource(R.string.planner_renaming_doesn_t_change_the_study_s_inputs), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
             confirmButton = { TextButton(onClick = {
                 scope.launch { if (library.renameStudy(id, name)) actions.renaming = null }
-            }, enabled = validPlanName(name) && !library.busy) { Text("Rename") } },
-            dismissButton = { TextButton(onClick = { actions.renaming = null }) { Text("Cancel") } })
+            }, enabled = validPlanName(name) && !library.busy) { Text(stringResource(R.string.planner_rename)) } },
+            dismissButton = { TextButton(onClick = { actions.renaming = null }) { Text(stringResource(R.string.common_cancel)) } })
     }
     actions.moving?.let { id ->
         val study = library.studies.firstOrNull { it.id == id } ?: run { actions.moving = null; return@let }
-        AlertDialog(onDismissRequest = { actions.moving = null }, title = { Text("Move “${study.name}”") },
+        AlertDialog(onDismissRequest = { actions.moving = null }, title = { Text(stringResource(R.string.planner_move_2, study.name)) },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
-                    Text("Now in ${library.plan(study.planID)?.name ?: "Standalone"}.", style = MaterialTheme.typography.bodySmall,
+                    Text(stringResource(R.string.planner_now_in, library.plan(study.planID)?.name ?: stringResource(R.string.planner_standalone_2)), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     val choices = listOf<StudyPlan?>(null) + SavedPlansLibrary.sorted(library.studyPlans, { it.id }, { it.updatedAtMilliseconds })
                     choices.forEach { plan ->
-                        ChoiceRow(plan?.name ?: "Standalone", if (plan == null) Icons.Outlined.Description else Icons.Outlined.Folder,
+                        ChoiceRow(plan?.name ?: stringResource(R.string.planner_standalone_2), if (plan == null) Icons.Outlined.Description else Icons.Outlined.Folder,
                             selected = study.planID == plan?.id, enabled = !library.busy) {
                             if (study.planID == plan?.id) actions.moving = null
                             else scope.launch { if (library.moveStudy(id, plan?.id)) actions.moving = null }
                         }
                     }
-                    library.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    library.error?.let { Text(it.asString(), color = MaterialTheme.colorScheme.error) }
                 }
             },
-            confirmButton = {}, dismissButton = { TextButton(onClick = { actions.moving = null }) { Text("Cancel") } })
+            confirmButton = {}, dismissButton = { TextButton(onClick = { actions.moving = null }) { Text(stringResource(R.string.common_cancel)) } })
     }
     actions.deleting?.let { id ->
         val study = library.studies.firstOrNull { it.id == id } ?: run { actions.deleting = null; return@let }
-        AlertDialog(onDismissRequest = { actions.deleting = null }, title = { Text("Delete “${study.name}”?") },
-            text = { Text("This removes the study and its saved result from this device.") },
+        AlertDialog(onDismissRequest = { actions.deleting = null }, title = { Text(stringResource(R.string.planner_delete, study.name)) },
+            text = { Text(stringResource(R.string.planner_this_removes_the_study_and_its_saved_result)) },
             confirmButton = { TextButton(onClick = { actions.deleting = null; scope.launch { library.deleteStudy(id) } }) {
-                Text("Delete study", color = MaterialTheme.colorScheme.error) } },
-            dismissButton = { TextButton(onClick = { actions.deleting = null }) { Text("Cancel") } })
+                Text(stringResource(R.string.planner_delete_study), color = MaterialTheme.colorScheme.error) } },
+            dismissButton = { TextButton(onClick = { actions.deleting = null }) { Text(stringResource(R.string.common_cancel)) } })
     }
 }
 
@@ -426,25 +432,25 @@ private class StudyActions(renaming: String?, moving: String?, deleting: String?
     val library = SavedPlansLibrary.shared(LocalContext.current)
     val scope = rememberCoroutineScope()
     val candidates = SavedPlansLibrary.sorted(library.studies.filter { it.planID != planId }, { it.id }, { it.updatedAtMilliseconds })
-    AlertDialog(onDismissRequest = dismiss, title = { Text("Add existing study") },
+    AlertDialog(onDismissRequest = dismiss, title = { Text(stringResource(R.string.planner_add_existing_study)) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Adding moves the study here from where it is now.", style = MaterialTheme.typography.bodySmall,
+                Text(stringResource(R.string.planner_adding_moves_the_study_here_from_where_it), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (candidates.isEmpty()) Text("Every saved study is already in this plan.")
+                if (candidates.isEmpty()) Text(stringResource(R.string.planner_every_saved_study_is_already_in_this_plan))
                 candidates.forEach { study ->
                     Column(Modifier.fillMaxWidth().clickable(enabled = !library.busy) {
                         scope.launch { if (library.moveStudy(study.id, planId)) dismiss() }
                     }.padding(vertical = 8.dp)) {
                         Text(study.name, style = MaterialTheme.typography.titleSmall)
-                        Text("${kindTitle(study.kind)} · ${library.plan(study.planID)?.name ?: "Standalone"}",
+                        Text(stringResource(R.string.planner_value, kindTitle(study.kind), library.plan(study.planID)?.name ?: stringResource(R.string.planner_standalone_2)),
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                library.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                library.error?.let { Text(it.asString(), color = MaterialTheme.colorScheme.error) }
             }
         },
-        confirmButton = {}, dismissButton = { TextButton(onClick = dismiss) { Text("Cancel") } })
+        confirmButton = {}, dismissButton = { TextButton(onClick = dismiss) { Text(stringResource(R.string.common_cancel)) } })
 }
 
 /** Creates a plan ([plan] null) or edits one's name and notes. */
@@ -454,14 +460,14 @@ private class StudyActions(renaming: String?, moving: String?, deleting: String?
     var name by rememberSaveable { mutableStateOf(plan?.name ?: "") }
     var notes by rememberSaveable { mutableStateOf(plan?.notes ?: "") }
     val valid = validPlanName(name) && notes.toByteArray(Charsets.UTF_8).size <= 4096
-    AlertDialog(onDismissRequest = { if (!library.busy) dismiss() }, title = { Text(if (plan == null) "New plan" else "Edit plan") },
+    AlertDialog(onDismissRequest = { if (!library.busy) dismiss() }, title = { Text(if (plan == null) stringResource(R.string.planner_new_plan_3) else stringResource(R.string.planner_edit_plan)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Plan name") })
+                OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text(stringResource(R.string.planner_plan_name)) })
                 OutlinedTextField(notes, { notes = it }, Modifier.fillMaxWidth(), minLines = 3, maxLines = 8,
-                    label = { Text("Notes (optional)") },
+                    label = { Text(stringResource(R.string.planner_notes_optional)) },
                     isError = notes.toByteArray(Charsets.UTF_8).size > 4096)
-                library.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                library.error?.let { Text(it.asString(), color = MaterialTheme.colorScheme.error) }
             }
         },
         confirmButton = { TextButton(onClick = {
@@ -469,8 +475,8 @@ private class StudyActions(renaming: String?, moving: String?, deleting: String?
                 val saved = if (plan == null) library.createStudyPlan(name, notes) != null else library.editStudyPlan(plan.id, name, notes)
                 if (saved) dismiss()
             }
-        }, enabled = library.loaded && !library.busy && valid) { Text(if (plan == null) "Create" else "Save") } },
-        dismissButton = { TextButton(onClick = dismiss, enabled = !library.busy) { Text("Cancel") } })
+        }, enabled = library.loaded && !library.busy && valid) { Text(if (plan == null) stringResource(R.string.planner_create) else stringResource(R.string.planner_save_2)) } },
+        dismissButton = { TextButton(onClick = dismiss, enabled = !library.busy) { Text(stringResource(R.string.common_cancel)) } })
 }
 
 // Saving from a tool
@@ -485,8 +491,8 @@ fun SavedStudyActions(snapshot: () -> SavedStudy?, didSave: (SavedStudy) -> Unit
     var saving by rememberSaveable { mutableStateOf(false) }
     val available = snapshot() != null
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(onClick = { saving = true }, modifier = Modifier.weight(1f), enabled = available) { Text("Save") }
-        Button(onClick = onOpen, modifier = Modifier.weight(1f)) { Text("Open") }
+        Button(onClick = { saving = true }, modifier = Modifier.weight(1f), enabled = available) { Text(stringResource(R.string.planner_save)) }
+        Button(onClick = onOpen, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.planner_open)) }
     }
     if (saving) {
         val study = remember { snapshot() }
@@ -544,41 +550,41 @@ fun SavedStudyActions(snapshot: () -> SavedStudy?, didSave: (SavedStudy) -> Unit
     ModalBottomSheet(onDismissRequest = { if (!submitting) dismiss() }, sheetState = sheetState) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(if (existing == null) "Save study" else "Save changes", style = MaterialTheme.typography.titleLarge)
+            Text(if (existing == null) stringResource(R.string.planner_save_study) else stringResource(R.string.planner_save_changes), style = MaterialTheme.typography.titleLarge)
             if (existing != null) {
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                     SegmentedButton(!asNew, {
                         if (asNew && name == library.uniqueName(SavedPlansLibrary.copyName(existing.name))) name = existing.name
                         asNew = false
-                    }, SegmentedButtonDefaults.itemShape(0, 2)) { Text("Update existing") }
+                    }, SegmentedButtonDefaults.itemShape(0, 2)) { Text(stringResource(R.string.planner_update_existing)) }
                     SegmentedButton(asNew, {
                         if (!asNew && name == existing.name) name = library.uniqueName(SavedPlansLibrary.copyName(existing.name))
                         asNew = true
-                    }, SegmentedButtonDefaults.itemShape(1, 2)) { Text("Save as new") }
+                    }, SegmentedButtonDefaults.itemShape(1, 2)) { Text(stringResource(R.string.planner_save_as_new)) }
                 }
-                Text(if (asNew) "Keeps “${existing.name}” as it is and saves a separate study."
-                    else "Replaces the saved “${existing.name}” with what's open now.",
+                Text(if (asNew) stringResource(R.string.planner_keeps_as_it_is_and_saves_a_separate, existing.name)
+                    else stringResource(R.string.planner_replaces_the_saved_with_what_s_open_now, existing.name),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (needsInputsOnly) {
                     Row(Modifier.fillMaxWidth().selectable(inputsOnly, !submitting, Role.Checkbox) { inputsOnly = !inputsOnly },
                         verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(inputsOnly, null, enabled = !submitting)
-                        Text("Save inputs only", Modifier.padding(start = 8.dp))
+                        Text(stringResource(R.string.planner_save_inputs_only), Modifier.padding(start = 8.dp))
                     }
-                    Text("The saved result can't be shown on this device and doesn't match the changed inputs. Updating keeps the new inputs without a result; calculate again to get one. To keep the original and its result, choose Save as new.",
+                    Text(stringResource(R.string.planner_the_saved_result_can_t_be_shown_on),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else if (wasDeleted) {
-                Text("The study you opened was deleted. This saves it as a new study.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.planner_the_study_you_opened_was_deleted_this_saves), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             // The name is kept on focus; select or edit it as usual.
-            OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = { Text("Study name") }, singleLine = true,
+            OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.planner_study_name)) }, singleLine = true,
                 enabled = !submitting)
-            Text("Saves the current inputs and, once calculated, the result. Estimated Coverage also keeps the node locations it used.",
+            Text(stringResource(R.string.planner_saves_the_current_inputs_and_once_calculated_the),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("Save in", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.planner_save_in), style = MaterialTheme.typography.titleMedium)
             Column {
-                ChoiceRow("Standalone", Icons.Outlined.Description, target == SavedPlansLibrary.Destination.Standalone, !submitting) {
+                ChoiceRow(stringResource(R.string.planner_standalone), Icons.Outlined.Description, target == SavedPlansLibrary.Destination.Standalone, !submitting) {
                     destination = SavedPlansLibrary.Destination.Standalone.encoded()
                 }
                 SavedPlansLibrary.sorted(library.studyPlans, { it.id }, { it.updatedAtMilliseconds }).forEach { plan ->
@@ -586,24 +592,24 @@ fun SavedStudyActions(snapshot: () -> SavedStudy?, didSave: (SavedStudy) -> Unit
                         destination = SavedPlansLibrary.Destination.Plan(plan.id).encoded()
                     }
                 }
-                ChoiceRow("New plan…", Icons.Outlined.CreateNewFolder, target == SavedPlansLibrary.Destination.NewPlan, !submitting) {
+                ChoiceRow(stringResource(R.string.planner_new_plan_2), Icons.Outlined.CreateNewFolder, target == SavedPlansLibrary.Destination.NewPlan, !submitting) {
                     destination = SavedPlansLibrary.Destination.NewPlan.encoded()
                 }
             }
             if (target == SavedPlansLibrary.Destination.NewPlan) OutlinedTextField(newPlanName, { newPlanName = it }, Modifier.fillMaxWidth(),
-                label = { Text("New plan name") }, singleLine = true, enabled = !submitting)
+                label = { Text(stringResource(R.string.planner_new_plan_name)) }, singleLine = true, enabled = !submitting)
             Text(if (existing != null && !asNew)
-                    "Now in ${library.plan(existing.planID)?.name ?: "Standalone"}. Choose another plan to move it there, or Standalone to keep it outside any plan."
-                else "A plan groups related studies, such as every study for one site. Standalone keeps this study outside any plan. You can move it later.",
+                    stringResource(R.string.planner_now_in_choose_another_plan_to_move_it, library.plan(existing.planID)?.name ?: stringResource(R.string.planner_standalone_2))
+                else stringResource(R.string.planner_a_plan_groups_related_studies_such_as_every),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             library.error?.let { message ->
-                Text(message, color = MaterialTheme.colorScheme.error)
-                TextButton(onClick = { scope.launch { library.reload() } }, enabled = !library.busy && !submitting) { Text("Reload library") }
+                Text(message.asString(), color = MaterialTheme.colorScheme.error)
+                TextButton(onClick = { scope.launch { library.reload() } }, enabled = !library.busy && !submitting) { Text(stringResource(R.string.planner_reload_library)) }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
-                TextButton(onClick = dismiss, enabled = !submitting) { Text("Cancel") }
+                TextButton(onClick = dismiss, enabled = !submitting) { Text(stringResource(R.string.common_cancel)) }
                 Button(onClick = ::submit, enabled = prepared && library.loaded && !library.busy && !submitting && valid) {
-                    Text(when { existing == null -> "Save study"; asNew -> "Save as new"; else -> "Update" })
+                    Text(when { existing == null -> stringResource(R.string.planner_save_study_2); asNew -> stringResource(R.string.planner_save_as_new_2); else -> stringResource(R.string.planner_update) })
                 }
             }
         }
@@ -643,11 +649,11 @@ fun UnfinishedStudiesScreen(onResume: (StudyDraft) -> Unit) {
     LazyColumn(Modifier.fillMaxSize().meshPageBackground(), contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
-            Text("Changes you haven't saved, kept on this device. Resume one to keep working, or discard it.",
+            Text(stringResource(R.string.planner_changes_you_haven_t_saved_kept_on_this),
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         items(drafts.value, key = { it.id }) { draft -> DraftRow(draft, null, onResume) { drafts.discard(it) } }
-        if (drafts.value.isEmpty()) item { Text("No unfinished studies.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        if (drafts.value.isEmpty()) item { Text(stringResource(R.string.planner_no_unfinished_studies), color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 
@@ -664,18 +670,18 @@ fun UnfinishedStudiesScreen(onResume: (StudyDraft) -> Unit) {
                     Text(draft.title, style = MaterialTheme.typography.titleSmall)
                     Text(listOfNotNull(kindTitle(draft.kind), draft.host).joinToString(" · "),
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("Edited $edited", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.planner_edited, edited), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = { confirming = true }) { Text("Discard") }
-                TextButton(onClick = { resume(draft) }) { Text("Resume") }
+                TextButton(onClick = { confirming = true }) { Text(stringResource(R.string.planner_discard)) }
+                TextButton(onClick = { resume(draft) }) { Text(stringResource(R.string.planner_resume)) }
             }
         }
     }
-    if (confirming) AlertDialog(onDismissRequest = { confirming = false }, title = { Text("Discard “${draft.title}”?") },
-        text = { Text("Its unsaved changes can't be recovered. Saved studies aren't affected.") },
+    if (confirming) AlertDialog(onDismissRequest = { confirming = false }, title = { Text(stringResource(R.string.planner_discard_2, draft.title)) },
+        text = { Text(stringResource(R.string.planner_its_unsaved_changes_can_t_be_recovered_saved)) },
         confirmButton = { TextButton(onClick = { confirming = false; discard(draft) }) {
-            Text("Discard", color = MaterialTheme.colorScheme.error) } },
-        dismissButton = { TextButton(onClick = { confirming = false }) { Text("Cancel") } })
+            Text(stringResource(R.string.planner_discard), color = MaterialTheme.colorScheme.error) } },
+        dismissButton = { TextButton(onClick = { confirming = false }) { Text(stringResource(R.string.common_cancel)) } })
 }
