@@ -1,5 +1,7 @@
 package org.nodescope.android
 
+import org.nodescope.android.core.design.UiText
+
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.test.*
@@ -33,7 +35,7 @@ class AnalyzerSessionTest {
         runCurrent()
         assertTrue(states.any { it.snapshot === saved && it.loading })
         assertSame(saved, states.last().snapshot)
-        assertEquals("offline", states.last().error)
+        assertEquals(R.string.analyzer_error_connect, (states.last().error as UiText.Resource).id)
     }
     @Test fun sourceChangeCancelsPendingWorkAndEmitsCleanState() = runTest {
         val preferences = MemoryPreferences(AppPreferences(host = "old.example", onboarded = true))
@@ -94,7 +96,7 @@ class AnalyzerSessionTest {
         runCurrent()
         session.refresh(); runCurrent()
         assertNotNull(states.last().snapshot)
-        assertEquals("Offline", states.last().error)
+        assertEquals(R.string.analyzer_error_connect, (states.last().error as UiText.Resource).id)
         session.refresh(); runCurrent()
         assertNull(states.last().error)
         assertEquals(3, attempt)

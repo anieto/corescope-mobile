@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.linkprofile
 
+import org.nodescope.android.R
+
 import kotlin.math.*
 
 // Port of NodeScope's iOS NodePlannerRFEngine. Portions derived from MeshCore One
@@ -57,16 +59,16 @@ object LinkProfileEngine {
     }
 
     fun analyze(request: PathRequest): PathResult {
-        require(request.profile.size >= 2) { "At least two terrain samples are required" }
-        require(positive(request.frequencyMHz, request.refractionK)) { "Frequency and refraction factor must be positive and finite" }
-        require(listOf(request.heightAMeters, request.heightBMeters).all { it.isFinite() && it >= 0 }) { "Antenna heights must be finite and nonnegative" }
+        if (!(request.profile.size >= 2)) throw ProfileValidationError(R.string.link_profile_error_at_least_two_terrain_samples_are_required, "At least two terrain samples are required")
+        if (!(positive(request.frequencyMHz, request.refractionK))) throw ProfileValidationError(R.string.link_profile_error_frequency_and_refraction_factor_must_be_positive_and_finite, "Frequency and refraction factor must be positive and finite")
+        if (!(listOf(request.heightAMeters, request.heightBMeters).all { it.isFinite() && it >= 0 })) throw ProfileValidationError(R.string.link_profile_error_antenna_heights_must_be_finite_and_nonnegative, "Antenna heights must be finite and nonnegative")
         request.profile.forEachIndexed { index, point ->
-            require(point.distanceMeters.isFinite() && point.elevationMeters.isFinite()) { "Terrain values must be finite" }
-            require(index == 0 || point.distanceMeters > request.profile[index - 1].distanceMeters) { "Terrain distances must increase" }
+            if (!(point.distanceMeters.isFinite() && point.elevationMeters.isFinite())) throw ProfileValidationError(R.string.link_profile_error_terrain_values_must_be_finite, "Terrain values must be finite")
+            if (!(index == 0 || point.distanceMeters > request.profile[index - 1].distanceMeters)) throw ProfileValidationError(R.string.link_profile_error_terrain_distances_must_increase, "Terrain distances must increase")
         }
         request.linkBudget?.let {
             require(listOf(it.transmitPowerDBm, it.gainADB, it.gainBDB, it.lossADB, it.lossBDB, it.receiverSensitivityDBm).all(Double::isFinite))
-            require(it.lossADB >= 0 && it.lossBDB >= 0) { "System losses must be nonnegative" }
+            if (!(it.lossADB >= 0 && it.lossBDB >= 0)) throw ProfileValidationError(R.string.link_profile_error_system_losses_must_be_nonnegative, "System losses must be nonnegative")
         }
         val length = request.profile.last().distanceMeters - request.profile.first().distanceMeters
         var worst = Double.POSITIVE_INFINITY

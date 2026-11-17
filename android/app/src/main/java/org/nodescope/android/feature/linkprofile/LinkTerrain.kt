@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.linkprofile
 
+import org.nodescope.android.R
+
 import java.io.File
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
@@ -17,7 +19,7 @@ import kotlin.math.*
 
 @Serializable
 data class ProfileCoordinate(val latitude: Double, val longitude: Double) {
-    init { require(latitude.isFinite() && longitude.isFinite() && latitude in -90.0..90.0 && longitude in -180.0..180.0) { "Enter valid latitude and longitude." } }
+    init { if (!(latitude.isFinite() && longitude.isFinite() && latitude in -90.0..90.0 && longitude in -180.0..180.0)) throw ProfileValidationError(R.string.link_profile_error_enter_valid_latitude_and_longitude, "Enter valid latitude and longitude.") }
 }
 /** [coordinates] are the requested sample positions, one per point, kept for saved results (B). */
 data class TerrainProfile(val points: List<ElevationPoint>, val fetchedAt: Long, val origin: String,
@@ -86,7 +88,7 @@ class LinkTerrainProvider(
                     .addQueryParameter("latitude", missing.joinToString(",") { it.latitude.toString() })
                     .addQueryParameter("longitude", missing.joinToString(",") { it.longitude.toString() }).build()
                 val elevations = json.decodeFromString<Response>(client.read(url)).elevation
-                require(elevations.size == missing.size && elevations.all(Double::isFinite)) { "The elevation service returned invalid terrain data." }
+                if (!(elevations.size == missing.size && elevations.all(Double::isFinite))) throw ProfileValidationError(R.string.link_profile_error_the_elevation_service_returned_invalid_terrain_data, "The elevation service returned invalid terrain data.")
                 missing.zip(elevations).forEach { (coordinate, elevation) -> resolved[coordinate] = Record(coordinate, elevation, time) }
                 coroutineContext.ensureActive()
                 // Failed cache writes must not discard a successful network calculation.

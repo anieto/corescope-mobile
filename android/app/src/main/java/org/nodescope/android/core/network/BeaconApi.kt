@@ -70,7 +70,7 @@ data class BeaconServerInfo(val serverVersion: String) {
 
 sealed class BeaconApiException(message: String) : IOException(message) {
     class UnrecognizedVersion : BeaconApiException("The server did not report a recognized Beacon version.")
-    class UnsupportedVersion(version: String) :
+    class UnsupportedVersion(val version: String) :
         BeaconApiException("Beacon $version is not supported. Version 2.0.3 or newer is required.")
     class RateLimited(val untilMillis: Long) : BeaconApiException(
         "This server is rate limiting requests. Try again after ${

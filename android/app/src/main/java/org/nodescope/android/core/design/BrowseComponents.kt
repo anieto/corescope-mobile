@@ -97,7 +97,7 @@ fun LoadStatus(state: Loaded<*, *>, hasContent: Boolean, now: Long, onRetry: () 
         state.loading && !hasContent -> LinearProgressIndicator(Modifier.fillMaxWidth())
         state.error != null -> Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(state.error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                Text(state.displayError?.asString() ?: stringResource(R.string.analyzer_error_load), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 if (hasContent) Text(state.updatedAt?.let { stringResource(R.string.common_showing_last_loaded_data_at, relativeTime(java.time.Instant.ofEpochMilli(it), now)) } ?: stringResource(R.string.common_showing_last_loaded_data),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

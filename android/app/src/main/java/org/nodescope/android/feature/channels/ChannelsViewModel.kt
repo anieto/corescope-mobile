@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.channels
 
+import org.nodescope.android.core.network.analyzerErrorText
+
 import org.nodescope.android.core.design.UiText
 import org.nodescope.android.R
 import androidx.lifecycle.ViewModel
@@ -76,7 +78,7 @@ class ChannelsViewModel(private val repository: BrowseRepository, val monitor: M
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                base.copy(error = e.message?.let(UiText::Raw) ?: UiText.Resource(R.string.channels_unable_to_load_older_messages))
+                base.copy(error = e.analyzerErrorText(R.string.channels_unable_to_load_older_messages))
             }.takeIf { olderState.value.key == key } ?: return@launch
         }
     }

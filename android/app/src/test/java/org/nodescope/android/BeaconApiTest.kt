@@ -797,7 +797,7 @@ class BeaconApiTest {
         router.setHost(host)
         router.resolve(knownCoreScope = false)
         assertFalse(router.state.value.ready)
-        assertTrue(router.state.value.error!!.contains("2.0.3 or newer"))
+        assertEquals(R.string.beacon_error_unsupported_version, (router.state.value.error as UiText.Resource).id)
         assertEquals(0, coreScopeChecks)
         assertEquals(AnalyzerSourceRouter.Route.NotReady, router.route(host))
     }

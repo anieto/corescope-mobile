@@ -312,7 +312,15 @@ fun ImportPackageSheet(uri: Uri, dismiss: () -> Unit) {
                     problem = null
                     val records = try {
                         SavedPlansImport.records(ready, current(), selected, inputsOnly)
-                    } catch (refusal: SavedPlansImport.Refusal) { problem = refusal.message; return@Button }
+                    } catch (refusal: SavedPlansImport.Refusal) { problem = when (refusal) {
+                        SavedPlansImport.Refusal.NothingSelected -> resources.getString(R.string.planner_import_already_selected)
+                        SavedPlansImport.Refusal.TooLarge -> resources.getString(R.string.planner_import_no_result_space)
+                        is SavedPlansImport.Refusal.TooMany -> resources.getString(when (refusal.what) {
+                            "studies" -> R.string.planner_import_study_limit
+                            "plans" -> R.string.planner_import_plan_limit
+                            else -> R.string.planner_import_site_list_limit
+                        })
+                    }; return@Button }
                     importing = true
                     scope.launch {
                         val saved = library.addRecords(records.plans, records.studyPlans, records.studies)

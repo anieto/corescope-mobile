@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.settings
 
+import org.nodescope.android.core.design.UiText
+
 import androidx.compose.ui.platform.LocalResources
 import org.nodescope.android.core.design.withDescription
 import androidx.compose.ui.platform.LocalContext
@@ -45,7 +47,7 @@ private sealed interface SourceStatus {
 /** iOS `SettingsScreen`: appearance, analyzer source, connection and diagnostics, storage, about. */
 @Composable
 fun SettingsScreen(
-    preferences: AppPreferences, connection: LiveConnection, sessionError: String?, sourceChangedAt: Long?,
+    preferences: AppPreferences, connection: LiveConnection, sessionError: UiText?, sourceChangedAt: Long?,
     onAppearance: (Appearance) -> Unit, onSource: () -> Unit, onDiagnostics: () -> Unit, onStorage: () -> Unit,
     onAbout: () -> Unit, onGlossary: () -> Unit, onMapLab: () -> Unit, onSupport: (() -> Unit)? = null,
     onDistanceUnit: (DistanceUnit) -> Unit = {},
@@ -64,7 +66,7 @@ fun SettingsScreen(
         status = SourceStatus.Connecting
         while (System.currentTimeMillis() - changedAt < 8_000) {
             if (currentConnection == LiveConnection.LIVE) { status = SourceStatus.Connected; delay(2_000); status = null; return@LaunchedEffect }
-            currentError?.let { status = SourceStatus.Failed(resources.getString(R.string.settings_couldn_t_connect, it)); delay(4_000); status = null; return@LaunchedEffect }
+            currentError?.let { status = SourceStatus.Failed(resources.getString(R.string.settings_couldn_t_connect, it.resolve(resources))); delay(4_000); status = null; return@LaunchedEffect }
             delay(100)
         }
         status = SourceStatus.Failed(resources.getString(R.string.settings_couldn_t_connect_to, preferences.host))
@@ -158,7 +160,7 @@ fun SettingsScreen(
                                 LiveConnection.LIVE -> stringResource(R.string.settings_connected); LiveConnection.CONNECTING -> stringResource(R.string.settings_connecting)
                                 LiveConnection.RECONNECTING -> stringResource(R.string.settings_reconnecting); LiveConnection.PAUSED -> stringResource(R.string.settings_paused)
                             }, style = MaterialTheme.typography.titleSmall)
-                            Text(sessionError ?: when (connection) {
+                            Text(sessionError?.asString() ?: when (connection) {
                                 LiveConnection.LIVE -> stringResource(R.string.settings_receiving_live_updates)
                                 LiveConnection.CONNECTING -> stringResource(R.string.settings_opening_the_live_connection)
                                 LiveConnection.RECONNECTING -> stringResource(R.string.settings_trying_to_restore_live_updates)

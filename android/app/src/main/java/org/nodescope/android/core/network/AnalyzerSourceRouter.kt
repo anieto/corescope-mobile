@@ -1,5 +1,8 @@
 package org.nodescope.android.core.network
 
+import org.nodescope.android.core.design.UiText
+import org.nodescope.android.R
+
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
@@ -34,7 +37,7 @@ class AnalyzerSourceRouter(
         val session: AnalyzerSourceSession = AnalyzerSourceSession(),
         val beacon: BeaconBackend? = null,
         val ready: Boolean = false,
-        val error: String? = null,
+        val error: UiText? = null,
         val resolutionId: Long = 0,
     ) {
         val backendType: String get() = if (beacon != null) "Beacon" else "CoreScope"
@@ -109,15 +112,15 @@ class AnalyzerSourceRouter(
             }
         } catch (e: CancellationException) {
             if (!currentCoroutineContext().isActive) throw e
-            fail(resolutionId, captured, "Source detection was interrupted. Retry to continue.")
+            fail(resolutionId, captured, UiText.Resource(R.string.app_source_detection_interrupted))
         } catch (e: Exception) {
-            fail(resolutionId, captured, e.message ?: "Couldn't identify this server.")
+            fail(resolutionId, captured, e.analyzerErrorText(R.string.app_couldn_t_identify_this_server))
         } finally {
             synchronized(lock) { if (resolvingId == resolutionId) resolvingId = null }
         }
     }
 
-    private fun fail(resolutionId: Long, captured: AnalyzerSourceSession, message: String) = synchronized(lock) {
+    private fun fail(resolutionId: Long, captured: AnalyzerSourceSession, message: UiText) = synchronized(lock) {
         val now = mutableState.value
         if (now.resolutionId == resolutionId && now.session.id == captured.id) mutableState.value = now.copy(error = message)
     }

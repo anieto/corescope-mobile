@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.nodecheck
 
+import org.nodescope.android.core.network.analyzerErrorText
+
 import org.nodescope.android.core.design.nodeRoleLabel
 import org.nodescope.android.core.design.UiText
 import androidx.compose.ui.res.pluralStringResource
@@ -100,7 +102,7 @@ class NodeCheckViewModel(private val repository: BrowseRepository) : ViewModel()
             _state.value = if (input != null) NodeCheckState.Report(NodeCheckRules.report(input))
                 else NodeCheckState.NotFound(key, key.takeIf { it.length == 64 }?.lowercase())
         } catch (e: CancellationException) { throw e } catch (e: Exception) {
-            _state.value = NodeCheckState.Failed(e.message?.let(UiText::Raw) ?: UiText.Resource(R.string.node_check_couldn_t_reach_the_analyzer))
+            _state.value = NodeCheckState.Failed(e.analyzerErrorText(R.string.node_check_couldn_t_reach_the_analyzer))
         }
     }
 
@@ -119,7 +121,7 @@ class NodeCheckViewModel(private val repository: BrowseRepository) : ViewModel()
                 else -> _state.value = NodeCheckState.Choose(name, matches)
             }
         } catch (e: CancellationException) { throw e } catch (e: Exception) {
-            _state.value = NodeCheckState.Failed(e.message?.let(UiText::Raw) ?: UiText.Resource(R.string.node_check_couldn_t_reach_the_analyzer))
+            _state.value = NodeCheckState.Failed(e.analyzerErrorText(R.string.node_check_couldn_t_reach_the_analyzer))
         }
     }
 
