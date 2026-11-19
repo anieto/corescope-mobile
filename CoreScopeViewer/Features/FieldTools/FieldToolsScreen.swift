@@ -1427,14 +1427,10 @@ private struct FieldTargetQuickActions: View {
     let analytics: FieldTargetAnalyticsEvidence?
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 8) { actions }
-            VStack(spacing: 8) { actions }
-        }
-        .buttonStyle(.bordered)
-        .controlSize(.large)
-        .frame(maxWidth: 520)
-        .frame(maxWidth: .infinity)
+        VStack(spacing: 8) { actions }
+            .buttonStyle(StandaloneActionButtonStyle())
+            .frame(maxWidth: 520)
+            .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
@@ -1443,6 +1439,7 @@ private struct FieldTargetQuickActions: View {
         case .node(let node):
             NavigationLink {
                 NodeDetailScreen(node: node)
+                    .id(node.publicKey)
             } label: {
                 Label("Node Details", systemImage: "info.circle")
             }

@@ -56,7 +56,8 @@ fun ChannelsListDetailScreen(
         listPane = { showSelection ->
             ChannelsScreen(model, selection, feed, regionControl, onClearRegion,
                 onChannel = { packet = null; selectedId = it.id; selectedName = it.name }, onAdd = onAdd,
-                selectedId = selectedId.takeIf { showSelection }, resetRequest = resetRequest)
+                selectedId = selectedId.takeIf { showSelection }, resetRequest = resetRequest,
+                favoriteIds = library.favorites.filter { it.kind == SavedKind.CHANNEL }.mapTo(mutableSetOf()) { it.entityId })
         },
         detailPane = { id ->
             val known = channels.value.takeIf { channels.key == selection }?.firstOrNull { it.id == id }

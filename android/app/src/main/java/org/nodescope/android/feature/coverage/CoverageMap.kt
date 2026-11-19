@@ -133,7 +133,7 @@ internal fun CoverageMap(model: EstimatedCoverageViewModel, modifier: Modifier, 
                 val node = engine.camera?.let { ready -> nodeNear(spot, nodes, ready, 28 * density) }
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 inspection = null
-                model.place(node?.coordinate ?: spot, node?.name?.takeIf { it.isNotBlank() })
+                model.place(node?.coordinate ?: spot, node?.name?.takeIf { it.isNotBlank() }, node?.publicKey)
             }
         }
         val onTap: (MapTap) -> Boolean = { tap ->

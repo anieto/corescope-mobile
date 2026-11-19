@@ -79,19 +79,28 @@ fun SourceScreen(
             Text(stringResource(R.string.onboarding_community_sources_are_fetched_from_nodescope_s_source), Modifier.padding(horizontal = 4.dp),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        item { SectionLabel(stringResource(R.string.onboarding_custom_analyzer), Modifier.padding(horizontal = 4.dp)) }
         item {
-            OutlinedTextField(custom, { custom = it }, enabled = !saving,
-                label = { Text(stringResource(R.string.analyzer_hostname)) }, placeholder = { Text("analyzer.example.org") },
-                singleLine = true, modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false,
-                    keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { if (custom.isNotBlank()) onSave(custom) }))
-        }
-        if (error != null) item { Text(error, color = MaterialTheme.colorScheme.error) }
-        item {
-            FilledTonalButton(onClick = { onSave(custom) }, enabled = !saving && custom.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
-                Text(if (saving) stringResource(R.string.saving) else stringResource(R.string.onboarding_use_custom_analyzer))
+            Card(modifier = Modifier.fillMaxWidth(), colors = meshCardColors()) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    SectionLabel(stringResource(R.string.onboarding_custom_analyzer))
+                    OutlinedTextField(custom, { custom = it }, enabled = !saving,
+                        label = { Text(stringResource(R.string.analyzer_hostname)) }, placeholder = { Text("analyzer.example.org") },
+                        singleLine = true, modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false,
+                            keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { if (custom.isNotBlank()) onSave(custom) }))
+                    if (error != null) Text(error, color = MaterialTheme.colorScheme.error)
+                    FilledTonalButton(
+                        onClick = { onSave(custom) },
+                        enabled = !saving && custom.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(if (saving) stringResource(R.string.saving) else stringResource(R.string.onboarding_use_custom_analyzer))
+                    }
+                }
             }
         }
         item {

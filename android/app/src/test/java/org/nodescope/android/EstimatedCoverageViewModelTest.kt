@@ -26,6 +26,65 @@ class EstimatedCoverageViewModelTest {
         finally { root.deleteRecursively(); Dispatchers.resetMain() }
     }
 
+    @Test fun reportedDefaultsPreserveManualValuesAndPreviouslyAppliedReports() = model(DistanceUnit.IMPERIAL) { model ->
+        model.place(Coordinate(50.5, -115.5), null)
+        val metadata = org.nodescope.android.core.model.RepeaterMetadata(
+            "a".repeat(64), 7.6, 5.0, null, null, null,
+            listOf(org.nodescope.android.core.model.RepeaterMetadata.Claim("Operator", null)), null, null,
+        )
+        model.set("txGain", "3")
+        model.applyReportedDefaults(metadata, "test.invalid")
+        assertEquals(7.6, model.inputs()!!.transmitHeightMeters, 1e-9)
+        assertEquals(3.0, model.inputs()!!.budget.transmitGainDbi, 0.0)
+        assertNotNull(model.reportedTransmitHeight)
+        assertNull(model.reportedTransmitGain)
+        model.applyReportedDefaults(metadata.copy(heightMeters = 9.0), "test.invalid")
+        assertEquals(7.6, model.inputs()!!.transmitHeightMeters, 1e-9)
+        model.set("txHeight", "25")
+        model.applyReportedDefaults(metadata, "test.invalid")
+        assertEquals(7.62, model.inputs()!!.transmitHeightMeters, 1e-9)
+        assertNull(model.reportedTransmitHeight)
+    }
+
+    @Test fun reportedHeightInImperialRetainsMetersAndProvenanceWhenReopened() = model(DistanceUnit.IMPERIAL) { model ->
+        model.place(Coordinate(50.5, -115.5), null)
+        val source = org.nodescope.android.core.model.ReportedAntennaSource("test.invalid", "a".repeat(64), 1, "Editor")
+        val initial = model.inputs()!!.transmitHeightMeters
+        model.applyReportedHeight(0.0, source)
+        assertEquals(initial, model.inputs()!!.transmitHeightMeters, 0.0)
+        model.applyReportedHeight(1.0, source)
+        assertEquals(1.0, model.inputs()!!.transmitHeightMeters, 1e-9)
+        model.applyReportedHeight(7.6, source)
+        assertEquals(7.6, model.inputs()!!.transmitHeightMeters, 1e-9)
+        val saved = requireNotNull(model.savedSnapshot())
+        model.set("txHeight", "26")
+        assertNull(model.reportedTransmitHeight)
+        model.restore(saved)
+        assertEquals(7.6, model.inputs()!!.transmitHeightMeters, 1e-9)
+        assertEquals(source, model.reportedTransmitHeight)
+    }
+
+    @Test fun applyingReportedGainRetainsOtherInputsAndRoundTrips() = model(DistanceUnit.IMPERIAL) { model ->
+        model.place(Coordinate(50.5, -115.5), null)
+        val before = requireNotNull(model.inputs())
+        val source = org.nodescope.android.core.model.ReportedAntennaSource("test.invalid", "a".repeat(64), 1, "Editor")
+        model.applyReportedGain(31.0, source)
+        assertEquals(before.budget.transmitGainDbi, model.inputs()!!.budget.transmitGainDbi, 0.0)
+        assertNull(model.reportedTransmitGain)
+        model.applyReportedGain(8.5, source)
+        val after = requireNotNull(model.inputs())
+        assertEquals(8.5, after.budget.transmitGainDbi, 0.0)
+        assertEquals(before.transmitHeightMeters, after.transmitHeightMeters, 0.0)
+        assertEquals(before.budget.transmitPowerDbm, after.budget.transmitPowerDbm, 0.0)
+        assertEquals(before.budget.receiveGainDbi, after.budget.receiveGainDbi, 0.0)
+        val saved = requireNotNull(model.savedSnapshot())
+        model.set("txGain", "4")
+        assertNull(model.reportedTransmitGain)
+        model.restore(saved)
+        assertEquals(8.5, model.number("txGain")!!, 0.0)
+        assertEquals(source, model.reportedTransmitGain)
+    }
+
     @Test fun metricDefaultsProduceValidStudyInputs() = model { model ->
         assertEquals(CoverageSetupProblem.NoTransmitter, model.setupProblem)
         model.place(Coordinate(50.5, -115.5), null)

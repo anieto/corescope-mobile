@@ -15,6 +15,7 @@ import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Keyboard
+import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Route
 import androidx.compose.material.icons.outlined.Sensors
 import androidx.compose.material.icons.outlined.Share
@@ -80,16 +81,20 @@ object WhatsNew {
         return english.map { release -> release.copy(items = release.items.map(translation::applyTo)) }
     }
 
+    /** All shipped highlights available in Settings, newest first. */
+    fun history(releases: List<WhatsNewRelease>, appVersion: String): List<WhatsNewRelease> =
+        releases.filter { compare(it.version, appVersion) <= 0 }.sortedWith { a, b -> compare(b.version, a.version) }
+
     /** The newest highlights [appVersion] has, for Settings. */
     fun latest(releases: List<WhatsNewRelease>, appVersion: String): WhatsNewRelease? =
-        releases.filter { compare(it.version, appVersion) <= 0 }.maxWithOrNull { a, b -> compare(a.version, b.version) }
+        history(releases, appVersion).firstOrNull()
 
     /**
      * Highlights to show on launch: releases newer than the last one seen, up to [appVersion], newest
      * first. Someone updating from before this feature existed has no record, so sees only this build's.
      */
     fun pending(releases: List<WhatsNewRelease>, lastSeen: String?, appVersion: String): List<WhatsNewRelease> {
-        val shipped = releases.filter { compare(it.version, appVersion) <= 0 }.sortedWith { a, b -> compare(b.version, a.version) }
+        val shipped = history(releases, appVersion)
         if (lastSeen.isNullOrEmpty()) return shipped.take(1)
         return shipped.filter { compare(it.version, lastSeen) > 0 }
     }
@@ -151,5 +156,6 @@ private fun String.vector(): ImageVector = when (this) {
     "nodeCheck" -> Icons.Outlined.Verified
     "share" -> Icons.Outlined.Share
     "drafts" -> Icons.Outlined.EditNote
+    "notifications" -> Icons.Outlined.NotificationsNone
     else -> Icons.Outlined.AutoAwesome
 }

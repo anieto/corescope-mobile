@@ -221,3 +221,118 @@ struct SavedStudyRestorationTests {
         #expect(reopened.nodeSnapshots == original.nodeSnapshots)
     }
 }
+
+extension SavedStudyRestorationTests {
+    @Test func communityGainIsExplicitAndSavedWithProvenance() throws {
+        let metadata = try repeaterReport(gainJSON: "8.5")
+        let link = LinkProfileModel(elevationProvider: SavedStudyElevationProbe())
+        link.awaitsExplicitCalculation = true
+        link.latitudeA = 32
+        link.longitudeA = -97
+        link.latitudeB = 32.1
+        link.longitudeB = -97.1
+        link.heightA = 6.096
+        link.gainADB = 3
+        link.applyReportedGain(nil, host: "test.invalid", endpoint: .pointA)
+        let invalid = try repeaterReport(gainJSON: "31")
+        link.applyReportedGain(invalid, host: "test.invalid", endpoint: .pointA)
+        #expect(link.gainADB == 3)
+
+        let priorB = link.gainBDB
+        link.applyReportedGain(metadata, host: "test.invalid", endpoint: .pointA)
+        #expect(link.gainADB == 8.5)
+        #expect(link.gainBDB == priorB)
+        #expect(link.heightA == 6.096)
+        let snapshot = try #require(link.savedSnapshot())
+        let reopened = LinkProfileModel(elevationProvider: SavedStudyElevationProbe())
+        reopened.restore(try JSONDecoder().decode(SavedStudy.self, from: JSONEncoder().encode(snapshot)))
+        #expect(reopened.gainADB == 8.5)
+        #expect(reopened.reportedGainA?.publicKey == metadata.pubkey)
+        let updated = try repeaterReport(gainJSON: "12")
+        #expect(updated.applicableGainDbi == 12)
+        #expect(reopened.gainADB == 8.5)
+        reopened.gainADB = 5
+        #expect(reopened.savedSnapshot()?.linkProfile?.pointA.antenna.reportedGainSource == nil)
+    }
+
+    @Test func coverageRetainsAntennaHeightAndPowerWhenApplyingGain() throws {
+        let model = EstimatedCoverageModel(distanceUnit: .imperial)
+        model.latitude = 32
+        model.longitude = -97
+        model.transmitHeightMeters = DistanceUnit.imperial.meters(fromDisplayedHeight: 20)
+        let height = model.transmitHeightMeters
+        let power = model.transmitPowerDbm
+        let receiverGain = model.receiveGainDbi
+
+        let defaultGain = try repeaterReport(gainJSON: "0")
+        model.applyReportedGain(defaultGain, host: "test.invalid")
+        #expect(model.reportedTransmitGain == nil)
+        let report = try repeaterReport(gainJSON: "5")
+        model.applyReportedGain(report, host: "test.invalid")
+        #expect(model.transmitGainDbi == 5)
+        #expect(model.transmitHeightMeters == height)
+        #expect(model.transmitPowerDbm == power)
+        #expect(model.receiveGainDbi == receiverGain)
+        let saved = try #require(model.savedSnapshot())
+        let reopened = EstimatedCoverageModel(distanceUnit: .metric)
+        reopened.restore(try JSONDecoder().decode(SavedStudy.self, from: JSONEncoder().encode(saved)))
+        #expect(reopened.transmitGainDbi == 5)
+        #expect(reopened.transmitHeightMeters == height)
+        #expect(reopened.reportedTransmitGain?.updatedBy == "Community editor")
+        reopened.transmitGainDbi = 2.5
+        #expect(reopened.reportedTransmitGain == nil)
+    }
+
+    @Test func reportedHeightRequiresAClaimAndSurvivesSaving() throws {
+        let key = String(repeating: "a", count: 64)
+        func report(height: Double, claimed: Bool) throws -> RepeaterMetadata {
+            let claimers = claimed ? #"[{"displayName":"Operator"}]"# : "[]"
+            return try APIClient.makeDecoder().decode(RepeaterMetadata.self, from: Data("""
+                {"pubkey":"\(key)","heightM":\(height),"claimers":\(claimers)}
+                """.utf8))
+        }
+        let valid = try report(height: 7.6, claimed: true)
+        let coverage = EstimatedCoverageModel(distanceUnit: .imperial)
+        coverage.latitude = 32
+        coverage.longitude = -97
+        let initial = coverage.transmitHeightMeters
+        coverage.applyReportedHeight(try report(height: 20, claimed: false), host: "test.invalid")
+        coverage.applyReportedHeight(try report(height: 0, claimed: true), host: "test.invalid")
+        #expect(coverage.transmitHeightMeters == initial)
+        coverage.applyReportedHeight(valid, host: "test.invalid")
+        let saved = try #require(coverage.savedSnapshot())
+        let reopened = EstimatedCoverageModel(distanceUnit: .metric)
+        reopened.restore(try JSONDecoder().decode(SavedStudy.self, from: JSONEncoder().encode(saved)))
+        #expect(reopened.transmitHeightMeters == 7.6)
+        #expect(reopened.reportedTransmitHeight?.publicKey == key)
+        reopened.transmitHeightMeters = 10
+        #expect(reopened.reportedTransmitHeight == nil)
+
+        let untouched = EstimatedCoverageModel(distanceUnit: .imperial)
+        untouched.applyReportedDefaults(valid, host: "test.invalid")
+        #expect(untouched.transmitHeightMeters == 7.6)
+        untouched.applyReportedDefaults(try report(height: 9, claimed: true), host: "test.invalid")
+        #expect(untouched.transmitHeightMeters == 7.6)
+        untouched.transmitHeightMeters = 12
+        untouched.applyReportedDefaults(valid, host: "test.invalid")
+        #expect(untouched.transmitHeightMeters == 12)
+        #expect(untouched.reportedTransmitHeight == nil)
+
+        let link = LinkProfileModel(elevationProvider: SavedStudyElevationProbe())
+        link.awaitsExplicitCalculation = true
+        link.applyReportedDefaults(valid, host: "test.invalid", endpoint: .pointB)
+        #expect(link.heightB == 7.6)
+        #expect(link.reportedHeightB?.publicKey == key)
+        #expect(link.reportedHeightA == nil)
+        link.heightB = 12
+        #expect(link.reportedHeightB == nil)
+    }
+
+    private func repeaterReport(gainJSON: String) throws -> RepeaterMetadata {
+        let key = String(repeating: "a", count: 64)
+        return try APIClient.makeDecoder().decode(RepeaterMetadata.self, from: Data("""
+            {"pubkey":"\(key)","heightM":25,"gainDbi":\(gainJSON),"power":"solar","status":"maintenance",
+             "updatedAt":"2026-11-17T12:00:00Z","updatedBy":"Community editor"}
+            """.utf8))
+    }
+}

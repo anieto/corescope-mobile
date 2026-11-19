@@ -31,3 +31,8 @@ NodeScope uses Monaspace Neon for headings and the values people scan; everythin
 - iOS: `.font(.monaspace(.headline))` takes any text style and keeps its size; add weights as usual (`.font(.monaspace(.subheadline).weight(.semibold))`). Don't add `.monospaced()` to a Monaspace font; it is already monospaced. Helpers live in `Features/Shared/AppFont.swift`.
 - Android: the theme's display, headline and title styles are already Monaspace Neon; use `MonaspaceNeon` (core/design/Theme.kt) instead of `FontFamily.Monospace` for values.
 - The font files ship unmodified (Reserved Font Name "Monaspace" under the SIL OFL 1.1); don't subset or rename them. The licence is bundled as `Monaspace-OFL.txt` and credited in About.
+
+# External links
+
+- Open external HTTP and HTTPS links in the app first. Use SwiftUI `Link` or the `openURL` environment on iOS, and Compose `LocalUriHandler` on Android. The app supplies Safari View Controller or Android Custom Tabs through those handlers.
+- Let the system handle non-web schemes such as `mailto:`, `tel:`, and MeshCore links. Use a standalone browser for web links only when the in-app viewer is unavailable or the user explicitly chooses one.

@@ -2,6 +2,18 @@
   "version": 1,
   "language": "pt-BR",
   "items": {
+    "watched-node-alerts": {
+      "title": "Alertas de nós monitorados",
+      "detail": "Toque no sino na página de detalhes de um nó para monitorá-lo. Se o administrador do CoreScope ativou o NodeScope Push, você pode receber alertas quando o nó deixar de ser ouvido ou voltar a ser ouvido. Ative os alertas push para este dispositivo nas configurações da sua conta do CoreScope."
+    },
+    "repeater-details": {
+      "title": "Detalhes informados dos repetidores",
+      "detail": "Veja o estado e os equipamentos informados pela comunidade em analisadores CoreScope compatíveis. Use a altura e o ganho de antena informados na Cobertura estimada e no Perfil do enlace."
+    },
+    "channel-favorites": {
+      "title": "Canais favoritos",
+      "detail": "Encontre seus canais favoritos reunidos no topo da lista de Canais."
+    },
     "saved-plans": {
       "title": "Planos salvos",
       "detail": "Agrupe perfis de enlace e estudos de cobertura em planos com nome e notas. Os resultados são salvos junto e abrem do mesmo jeito no iPhone, no iPad e no Android, sem calcular de novo.",

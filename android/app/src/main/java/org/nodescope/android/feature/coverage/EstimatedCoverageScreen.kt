@@ -73,6 +73,16 @@ internal fun EstimatedCoverageScreen(model: EstimatedCoverageViewModel, nodes: L
     snapshot: AnalyzerSnapshot? = null, selectedRegion: String? = null, sourceViewport: RegionCoordinate? = null,
     onOpenSaved: () -> Unit = {}) {
     LaunchedEffect(nodes, sourceKey, selectedRegion) { model.offerCatalog(nodes, sourceKey, selectedRegion) }
+    val repeaterSelection = model.transmitterSelection?.takeIf { model.isCurrentRepeaterSource(it) }
+    LaunchedEffect(model, repeaterSelection) {
+        if (repeaterSelection != null) {
+            val metadata = model.repeaterMetadata(repeaterSelection)
+            if (metadata != null && model.transmitterSelection == repeaterSelection &&
+                model.isCurrentRepeaterSource(repeaterSelection)) {
+                model.applyReportedDefaults(metadata, repeaterSelection.analyzerHost)
+            }
+        }
+    }
     // Leaving or backgrounding cancels active work, as before and on iOS.
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { model.cancel() }
     BackHandler(enabled = model.isChoosingLocation) { model.isChoosingLocation = false }
@@ -431,10 +441,19 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
     val title = if (point == null) stringResource(R.string.coverage_transmitter_not_placed) else model.transmitterName ?: stringResource(R.string.coverage_dropped_pin)
     val antenna = stringResource(R.string.coverage_antenna_dbi, model.displayNumber("txHeight"), model.heightUnit, model.displayNumber("txGain"))
     val place = point?.let { String.format("%.4f, %.4f", it.latitude, it.longitude) }
-    CoverageDisclosure(stringResource(R.string.coverage_transmitter_settings), listOfNotNull(title, listOfNotNull(place, antenna).joinToString(" · ")),
+    val reported = org.nodescope.android.core.design.reportedAntennaSourceText(
+        height = model.reportedTransmitHeight != null, gain = model.reportedTransmitGain != null,
+    )
+    CoverageDisclosure(stringResource(R.string.coverage_transmitter_settings),
+        listOfNotNull(title, listOfNotNull(place, antenna).joinToString(" · "), reported),
         model.transmitterExpanded, { model.transmitterExpanded = !model.transmitterExpanded }) {
         CoverageHeightSetting(model, "txHeight", CoverageHeightPreset.transmitter)
         CoverageAntennaSetting(model, "txGain")
+        org.nodescope.android.core.design.ReportedRepeaterAntennaControl(
+            model.transmitterSelection?.takeIf { model.isCurrentRepeaterSource(it) },
+            minimumHeight = 1.0, load = model::repeaterMetadata,
+            applyHeight = model::applyReportedHeight, applyGain = model::applyReportedGain,
+        )
         CoverageNumberField(model, "txLoss", stringResource(R.string.coverage_field_system_loss), "dB", GlossaryTerm.CABLE_LOSS)
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { model.isChoosingLocation = true }) { Text(if (point != null) stringResource(R.string.coverage_choose_new_point) else stringResource(R.string.coverage_choose_on_map_2)) }

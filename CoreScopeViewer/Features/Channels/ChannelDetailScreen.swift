@@ -1,4 +1,3 @@
-import SafariServices
 import SwiftUI
 import UIKit
 
@@ -15,7 +14,6 @@ struct ChannelDetailScreen: View {
     @State private var lastProcessedLiveEventID: Int?
     @State private var liveRefreshTask: Task<Void, Never>?
     @State private var liveLoadTask: Task<Void, Never>?
-    @State private var browserLink: BrowserLink?
     @State private var hasShownLatest = false
 
     private let scrollBottomID = "channel-conversation-bottom"
@@ -37,8 +35,7 @@ struct ChannelDetailScreen: View {
                     ForEach(orderedMessages) { message in
                         ChatBubbleRow(
                             message: message,
-                            isTrailing: messageSides[message.id] ?? false,
-                            openURL: { browserLink = BrowserLink(url: $0) }
+                            isTrailing: messageSides[message.id] ?? false
                         )
                             .id(message.id)
                     }
@@ -143,10 +140,6 @@ struct ChannelDetailScreen: View {
         }
         .refreshable {
             await loadMessages(forceRefresh: true)
-        }
-        .sheet(item: $browserLink) { link in
-            InAppBrowser(url: link.url)
-                .ignoresSafeArea()
         }
         .onChange(of: liveFeed.recentEvents.first?.id) {
             scheduleLiveRefreshIfNeeded()
@@ -333,7 +326,6 @@ struct ChannelDetailScreen: View {
 private struct ChatBubbleRow: View {
     let message: ChannelMessage
     let isTrailing: Bool
-    let openURL: (URL) -> Void
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -349,7 +341,7 @@ private struct ChatBubbleRow: View {
                     .padding(isTrailing ? .trailing : .leading, 4)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    MessageLinkText(text: message.text, openURL: openURL)
+                    MessageLinkText(text: message.text)
                         .font(.body)
                         .foregroundStyle(.primary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -407,15 +399,9 @@ private struct ChatBubbleRow: View {
 
 private struct MessageLinkText: View {
     let text: String
-    let openURL: (URL) -> Void
 
     var body: some View {
         Text(linkifiedText)
-            .environment(\.openURL, OpenURLAction { url in
-                guard Self.isWebURL(url) else { return .systemAction }
-                openURL(url)
-                return .handled
-            })
     }
 
     private var linkifiedText: AttributedString {
@@ -444,21 +430,6 @@ private struct MessageLinkText: View {
         guard let scheme = url.scheme?.lowercased() else { return false }
         return scheme == "http" || scheme == "https"
     }
-}
-
-private struct BrowserLink: Identifiable {
-    let url: URL
-    var id: String { url.absoluteString }
-}
-
-private struct InAppBrowser: UIViewControllerRepresentable {
-    let url: URL
-
-    func makeUIViewController(context: Context) -> SFSafariViewController {
-        SFSafariViewController(url: url)
-    }
-
-    func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
 }
 
 private struct MessageMetricChip: View {

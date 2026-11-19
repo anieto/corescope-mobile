@@ -56,7 +56,7 @@ fun roleColor(role: String): Color = roleColors[role.lowercase()] ?: Color(0xFF2
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun MapFiltersSheet(filters: MapFilters, observers: List<MeshObserver>, onChange: (MapFilters) -> Unit, onDismiss: () -> Unit) {
+internal fun MapFiltersSheet(filters: MapFilters, observers: List<MeshObserver>, onChange: (MapFilters) -> Unit, onDismiss: () -> Unit, hasReportedStatuses: Boolean = false) {
     var page by remember { mutableStateOf(FilterPage.FILTERS) }
     MeshModalBottomSheet(onDismissRequest = onDismiss) {
         when (page) {
@@ -82,6 +82,12 @@ internal fun MapFiltersSheet(filters: MapFilters, observers: List<MeshObserver>,
                     }
                 }
                 FilterFootnote(stringResource(R.string.live_map_colors_match_the_dots_on_the_map))
+
+                if (hasReportedStatuses || filters.reportedStatus != null) {
+                    org.nodescope.android.core.design.ReportedStatusFilter(filters.reportedStatus) {
+                        onChange(filters.copy(reportedStatus = it))
+                    }
+                }
 
                 SectionLabel(stringResource(R.string.live_map_routes))
                 val selected = observers.firstOrNull { it.id.equals(filters.observerId, true) }

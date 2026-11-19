@@ -24,12 +24,25 @@ import kotlin.coroutines.resumeWithException
 @Serializable
 data class CoreScopeAccountUser(val id: Long, val email: String, val displayName: String, val csrfToken: String)
 
+@Serializable
+data class CoreScopeAccountCapabilities(val enabled: Boolean, val notifications: Boolean? = null)
+
+@Serializable
+data class CoreScopeWatchedNode(val pubkey: String, val name: String)
+
+@Serializable
+data class CoreScopeAccountNotifications(
+    val enabled: Boolean, val watches: List<CoreScopeWatchedNode>, val nodeScopePush: StagingPushCapability? = null,
+)
+
 class AccountException(val kind: Kind) : Exception(when (kind) {
     Kind.RESET -> "Account settings were reset on the server. Choose how to continue before syncing."
     Kind.THROTTLED -> "Account writes are limited to once a minute. Your changes are saved; try Sync now later."
     Kind.UNSUPPORTED -> "This source does not support compatible CoreScope accounts."
     Kind.SIGNED_OUT -> "Sign in again to access this account."
-    Kind.REJECTED -> "The request was rejected. Check your credentials or try again later."
+    Kind.REJECTED, Kind.PUSH_LINK_GONE -> "The request was rejected. Check your credentials or try again later."
+    Kind.WATCH_LIMIT -> "This account reached its watch limit. Stop watching a node before adding another."
+    Kind.WATCH_UNKNOWN -> "This analyzer doesn’t know that node yet."
     Kind.CONFLICT -> "Account favorites changed during sync. Try Sync now again."
     Kind.STORAGE -> "The account session could not be saved securely."
     Kind.RESPONSE -> "The account response could not be read. No favorites were changed."
@@ -39,13 +52,15 @@ class AccountException(val kind: Kind) : Exception(when (kind) {
         Kind.THROTTLED -> UiText.Resource(R.string.account_error_throttled)
         Kind.UNSUPPORTED -> UiText.Resource(R.string.account_error_unsupported)
         Kind.SIGNED_OUT -> UiText.Resource(R.string.account_error_signed_out)
-        Kind.REJECTED -> UiText.Resource(R.string.account_error_rejected)
+        Kind.REJECTED, Kind.PUSH_LINK_GONE -> UiText.Resource(R.string.account_error_rejected)
+        Kind.WATCH_LIMIT -> UiText.Resource(R.string.account_watch_limit)
+        Kind.WATCH_UNKNOWN -> UiText.Resource(R.string.account_watch_unknown)
         Kind.CONFLICT -> UiText.Resource(R.string.account_error_conflict)
         Kind.STORAGE -> UiText.Resource(R.string.account_error_storage)
         Kind.RESPONSE -> UiText.Resource(R.string.account_error_response)
     }
 
-    enum class Kind { UNSUPPORTED, SIGNED_OUT, REJECTED, CONFLICT, RESPONSE, STORAGE, RESET, THROTTLED }
+    enum class Kind { UNSUPPORTED, SIGNED_OUT, REJECTED, CONFLICT, RESPONSE, STORAGE, RESET, THROTTLED, PUSH_LINK_GONE, WATCH_LIMIT, WATCH_UNKNOWN }
 }
 
 /** Only sealed session tokens go to preferences; passwords are never persisted. */
@@ -82,9 +97,22 @@ class CoreScopeAccountClient(
     /** Whether a session was restored or created; without one there is nothing to validate. */
     val hasSession: Boolean get() = cookie != null
 
-    suspend fun supportsAccounts(): Boolean {
+    suspend fun supportsAccounts(): Boolean = accountCapabilities()?.enabled == true
+
+    suspend fun accountCapabilities(): CoreScopeAccountCapabilities? {
         val body = json.parseToJsonElement(request("api/config/client", authenticated = false)).jsonObject
-        return body["userManagement"]?.jsonObject?.get("enabled")?.jsonPrimitive?.booleanOrNull == true
+        return body["userManagement"]?.takeUnless { it == JsonNull }
+            ?.let { json.decodeFromJsonElement<CoreScopeAccountCapabilities>(it) }
+    }
+
+    suspend fun notifications(): CoreScopeAccountNotifications =
+        json.decodeFromString(request("api/account/notifications"))
+
+    suspend fun setWatch(pubkey: String, watched: Boolean, csrf: String): CoreScopeAccountNotifications {
+        val key = pubkey.lowercase()
+        require(Regex("[0-9a-f]{64}").matches(key))
+        val method = if (watched) "PUT" else "DELETE"
+        return json.decodeFromString(request("api/account/notifications/watches/$key", method, csrf = csrf))
     }
 
     suspend fun login(email: String, password: String): CoreScopeAccountUser {
@@ -115,6 +143,18 @@ class CoreScopeAccountClient(
             ack.getValue("generation").jsonPrimitive.content, document, base.allowlist)
     }
 
+    suspend fun pushCapability(): StagingPushCapability? =
+        json.parseToJsonElement(request("api/account/notifications")).jsonObject["nodeScopePush"]
+            ?.takeUnless { it == JsonNull }?.let { json.decodeFromJsonElement<StagingPushCapability>(it) }
+
+    suspend fun linkPushDevice(installation: String, proof: String, csrf: String): StagingPushLink =
+        json.decodeFromString(request("api/account/notifications/devices/$installation", "PUT",
+            buildJsonObject { put("proof", proof) }.toString(), csrf))
+
+    suspend fun unlinkPushDevice(installation: String, csrf: String) {
+        request("api/account/notifications/devices/$installation", "DELETE", csrf = csrf)
+    }
+
     suspend fun logout() {
         try { request("api/auth/logout", "POST") }
         finally { cookie = null; persist(null) }
@@ -143,6 +183,13 @@ class CoreScopeAccountClient(
         if (result.code == 429) {
             val until = myNodesCoreScopeCooldown.record(origin.toString(), result.retryAfter, System.currentTimeMillis())
             throw BeaconApiException.RateLimited(until)
+        }
+        if (result.code == 410 && method == "PUT" && path.startsWith("api/account/notifications/devices/")) {
+            throw AccountException(AccountException.Kind.PUSH_LINK_GONE)
+        }
+        if (method == "PUT" && path.startsWith("api/account/notifications/watches/")) {
+            if (result.code == 409) throw AccountException(AccountException.Kind.WATCH_LIMIT)
+            if (result.code == 404) throw AccountException(AccountException.Kind.WATCH_UNKNOWN)
         }
         if (result.code == 409) throw AccountException(AccountException.Kind.CONFLICT)
         if (result.code !in 200..299) throw AccountException(AccountException.Kind.REJECTED)

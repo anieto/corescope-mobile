@@ -208,6 +208,17 @@ class RoutingAnalyzerBackend(
         on(host, { it.beaconNodeHealth(host, publicKey) }) { coreScope.beaconNodeHealth(host, publicKey) }
     override suspend fun packetDetail(host: String, hash: String) =
         on(host, { it.packetDetail(host, hash) }) { coreScope.packetDetail(host, hash) }
+    override suspend fun repeaterIsUnclaimed(host: String, publicKey: String) =
+        when (router.route(host)) {
+            AnalyzerSourceRouter.Route.CoreScope -> coreScope.repeaterIsUnclaimed(host, publicKey)
+            else -> false
+        }
+
+    override suspend fun repeaterMetadata(host: String, force: Boolean) =
+        when (router.route(host)) {
+            AnalyzerSourceRouter.Route.CoreScope -> coreScope.repeaterMetadata(host, force)
+            else -> emptyMap()
+        }
     override suspend fun allNodes(host: String) = on(host, { it.allNodes(host) }) { coreScope.allNodes(host) }
     override suspend fun observerDetail(host: String, id: String) =
         on(host, { it.observerDetail(host, id) }) { coreScope.observerDetail(host, id) }

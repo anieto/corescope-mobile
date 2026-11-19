@@ -38,6 +38,7 @@ struct WhatsNewItem: Decodable, Identifiable {
         case "nodeCheck": "checkmark.seal"
         case "share": "square.and.arrow.up"
         case "drafts": "doc.badge.clock"
+        case "notifications": "bell"
         default: "sparkles"
         }
     }
@@ -90,16 +91,16 @@ enum WhatsNew {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
     }
 
-    /// The newest highlights this build has, for Settings.
-    static var latest: WhatsNewRelease? {
-        releases.filter { compare($0.version, appVersion) <= 0 }.max { compare($0.version, $1.version) < 0 }
+    /// All shipped highlights available in Settings, newest first.
+    static var history: [WhatsNewRelease] {
+        releases.filter { compare($0.version, appVersion) <= 0 }
+            .sorted { compare($0.version, $1.version) > 0 }
     }
 
     /// Highlights to show on launch: releases newer than the last one seen, up to this build.
     /// Someone updating from before this feature existed has no record, so sees only this build's.
     static func pending(lastSeen: String?) -> [WhatsNewRelease] {
-        let shipped = releases.filter { compare($0.version, appVersion) <= 0 }
-            .sorted { compare($0.version, $1.version) > 0 }
+        let shipped = history
         guard let lastSeen, !lastSeen.isEmpty else { return Array(shipped.prefix(1)) }
         return shipped.filter { compare($0.version, lastSeen) > 0 }
     }

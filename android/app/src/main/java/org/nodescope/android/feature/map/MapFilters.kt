@@ -33,9 +33,10 @@ data class MapFilters(
     val roles: Set<String> = emptySet(),
     val activity: ActivityFilter = ActivityFilter.ALL,
     val observerId: String? = null,
+    val reportedStatus: String? = null,
 ) {
-    val isFiltering: Boolean get() = roles.isNotEmpty() || activity != ActivityFilter.ALL || observerId != null
-    val activeCount: Int get() = listOf(roles.isNotEmpty(), activity != ActivityFilter.ALL, observerId != null).count { it }
+    val isFiltering: Boolean get() = roles.isNotEmpty() || activity != ActivityFilter.ALL || observerId != null || reportedStatus != null
+    val activeCount: Int get() = listOf(roles.isNotEmpty(), activity != ActivityFilter.ALL, observerId != null, reportedStatus != null).count { it }
 
     /** A node with no last-heard time never matches an activity window. */
     fun shows(node: MeshNode, now: Long): Boolean =

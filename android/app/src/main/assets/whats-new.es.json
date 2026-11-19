@@ -2,6 +2,18 @@
   "version": 1,
   "language": "es",
   "items": {
+    "watched-node-alerts": {
+      "title": "Alertas de nodos seguidos",
+      "detail": "Toca la campana en la página de detalles de un nodo para seguirlo. Si el administrador de CoreScope activó NodeScope Push, puedes recibir alertas cuando el nodo deje de oírse o vuelva a oírse. Activa las alertas push para este dispositivo en los ajustes de tu cuenta de CoreScope."
+    },
+    "repeater-details": {
+      "title": "Detalles reportados de repetidores",
+      "detail": "Consulta el estado y el equipo reportados por la comunidad en analizadores CoreScope compatibles. Usa la altura y la ganancia de antena reportadas en Cobertura estimada y Perfil de enlace."
+    },
+    "channel-favorites": {
+      "title": "Canales favoritos",
+      "detail": "Encuentra tus canales favoritos juntos al principio de la lista de Canales."
+    },
     "saved-plans": {
       "title": "Planes guardados",
       "detail": "Agrupa perfiles de enlace y estudios de cobertura en planes con nombre y notas. Los resultados se guardan con ellos y se abren igual en iPhone, iPad y Android, sin volver a calcular.",

@@ -39,11 +39,19 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         INFOPLIST_KEY_UIRequiresFullScreen: YES
-        MARKETING_VERSION: "0.10.1"
-        CURRENT_PROJECT_VERSION: "8"
+        MARKETING_VERSION: "0.11.1"
+        CURRENT_PROJECT_VERSION: "5"
         TARGETED_DEVICE_FAMILY: "1,2"
         SWIFT_STRICT_CONCURRENCY: complete
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      configs:
+        Debug:
+          CODE_SIGN_ENTITLEMENTS: CoreScopeViewer/NodeScopeStaging.entitlements
+          CURRENT_PROJECT_VERSION: "3"
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) NODESCOPE_PUSH_STAGING"
+        Release:
+          CODE_SIGN_ENTITLEMENTS: CoreScopeViewer/NodeScopeProduction.entitlements
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) NODESCOPE_PUSH_PRODUCTION"
 
   CoreScopeViewerTests:
     type: bundle.unit-test

@@ -6,7 +6,7 @@ EXPLORE SUA REDE
 Veja os nós ativos, os observadores online, os pacotes recentes e as informações de sinal. Busque nós, observadores, canais, chaves públicas e pacotes, e salve favoritos no seu painel.
 
 VERIFICAÇÃO DE NÓ
-Seu nó está saindo? Veja quais observadores o ouvem e o que corrigir, ou faça um teste ao vivo enquanto envia um anúncio flood. Requer um servidor CoreScope.
+Seu nó está sendo ouvido? Veja quais observadores o ouvem e o que corrigir, ou faça um teste ao vivo enquanto envia um anúncio flood. Requer um servidor CoreScope.
 
 ANÁLISES DE NÓS
 Gráficos de disponibilidade, qualidade do sinal, atividade, retransmissão, cobertura de observadores, tipos de pacote, saltos e vizinhos, conforme o analisador. Métricas ausentes são indicadas, nunca estimadas. Exporte em CSV ou JSON.

@@ -277,3 +277,33 @@ struct AdaptiveSidebarSection<Content: View, Header: View>: View {
         }
     }
 }
+
+/// An opaque surface for secondary actions placed directly on the page background.
+struct StandaloneActionButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var labelColor: Color {
+        guard isEnabled else { return .secondary }
+        return colorScheme == .dark
+            ? NodeScopeStyle.signal
+            : NodeScopeStyle.signal.mix(with: NodeScopeStyle.deepNavy, by: 0.45)
+    }
+
+    func makeBody(configuration: Configuration) -> some View {
+        let surface = Color(uiColor: .secondarySystemGroupedBackground)
+        let fill = surface.mix(with: NodeScopeStyle.signal, by: configuration.isPressed ? 0.23 : 0.13)
+        return configuration.label
+            .font(.body.weight(.medium))
+            .foregroundStyle(labelColor)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .background(isEnabled ? fill : surface, in: Capsule())
+            .overlay {
+                Capsule().strokeBorder(isEnabled ? labelColor.opacity(0.35) : Color(uiColor: .separator))
+            }
+            .contentShape(Capsule())
+    }
+}

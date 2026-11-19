@@ -489,6 +489,7 @@ private struct NodeCheckSummaryCard: View {
                 if showsNodeLink {
                     NavigationLink {
                         NodeDetailScreen(node: meshNode)
+                            .id(meshNode.publicKey)
                     } label: {
                         Label("Open Node Page", systemImage: "info.circle")
                             .frame(maxWidth: .infinity)

@@ -2,6 +2,11 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
+private struct WatchedNodeDestination: Hashable {
+    let node: MeshNode
+    let requestID: UUID
+}
+
 struct ExploreScreen: View {
     let resetID: UUID
     let isTabActive: Bool
@@ -121,6 +126,11 @@ struct ExploreScreen: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: MeshNode.self) { node in
                 NodeDetailScreen(node: node)
+                    .id(node.publicKey)
+            }
+            .navigationDestination(for: WatchedNodeDestination.self) { destination in
+                NodeDetailScreen(node: destination.node)
+                    .id(destination.requestID)
             }
             .navigationDestination(for: MeshObserver.self) { observer in
                 ObserverDetailScreen(observer: observer)
@@ -308,6 +318,18 @@ struct ExploreScreen: View {
             }) else { return }
             navigationPath = NavigationPath()
             navigationPath.append(node)
+        case .watchedNode(let publicKey, let sourceSessionID):
+            guard sourceSessionID == settings.sourceSession.id else { return }
+            // A verified push can refer to a node outside the currently loaded catalog.
+            let node = nodeViewModel.nodes.first { $0.publicKey.caseInsensitiveCompare(publicKey) == .orderedSame }
+                ?? MeshNode(publicKey: publicKey, name: nil, role: "unknown", lat: nil, lon: nil,
+                            lastSeen: nil, firstSeen: nil, advertCount: nil, hashSize: nil,
+                            hashSizeInconsistent: nil, lastHeard: nil, defaultScope: nil)
+            // Each alert opens a fresh detail, including a repeat alert for the same node.
+            let destination = WatchedNodeDestination(node: node, requestID: appNavigationStore.requestID)
+            var path = NavigationPath()
+            path.append(destination)
+            navigationPath = path
         case .channel(let hash):
             guard let channel = channelViewModel.channels.first(where: {
                 $0.hash.caseInsensitiveCompare(hash) == .orderedSame
@@ -420,15 +442,13 @@ private struct FavoritesScreen: View {
         List {
             Section {
                 FavoriteSourceIdentity(host: settings.host)
-                Text("Device favorites and account nodes on this source. Account removals are uploaded with Sync now.")
-                    .font(.subheadline).foregroundStyle(.secondary)
-                if settings.beaconBackend == nil {
-                    NavigationLink { CoreScopeAccountScreen().id(settings.sourceSession.id) } label: {
-                        Label("CoreScope account", systemImage: "person.crop.circle")
-                    }
-                }
                 NavigationLink(value: ExploreDestination.activity) {
                     Label("Activity", systemImage: "waveform.path")
+                }
+                if settings.beaconBackend == nil {
+                    NavigationLink { CoreScopeAccountScreen().id(settings.sourceSession.id) } label: {
+                        Label("Manage account favorites", systemImage: "person.crop.circle")
+                    }
                 }
             }
             .instrumentListRows()

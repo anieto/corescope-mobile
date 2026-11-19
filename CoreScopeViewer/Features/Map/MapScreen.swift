@@ -44,6 +44,9 @@ struct MapScreen: View {
     @State private var iataCoordinates: [String: CLLocationCoordinate2D] = [:]
     @State private var iataRadiusKm: [String: Double] = [:]
     @State private var mapDisplayStyle = MapDisplayStyle.persisted
+    @Environment(FavoritesStore.self) private var favoritesStore
+    @State private var repeaterStatuses: [String: String] = [:]
+    @State private var repeaterStatusSource: UUID?
     @State private var nodeFilters = MapNodeFilterSelection()
     @State private var filteredNodeCount = 0
     @State private var locationManager = MapLocationManager()
@@ -129,6 +132,7 @@ struct MapScreen: View {
         let isRouteHop: Bool
         let leaderOffset: CGSize?
         let label: String?
+        let reportedStatus: String?
         let labelSide: LabelSide
         let colorScheme: ColorScheme
 
@@ -149,7 +153,7 @@ struct MapScreen: View {
                     }
                     .overlay(alignment: labelSide.alignment) {
                         if let label {
-                            MapNodeNameLabel(name: label, side: labelSide, colorScheme: colorScheme)
+                            MapNodeNameLabel(name: label, reportedStatus: reportedStatus, side: labelSide, colorScheme: colorScheme)
                         }
                     }
             }
@@ -158,12 +162,19 @@ struct MapScreen: View {
 
     private struct MapNodeNameLabel: View {
         let name: String
+        var reportedStatus: String? = nil
         let side: LabelSide
         let colorScheme: ColorScheme
 
         var body: some View {
-            Text(name)
-                .font(.monaspace(.caption2).weight(.semibold))
+            HStack(spacing: 4) {
+                Text(name).font(.monaspace(.caption2).weight(.semibold))
+                if let reportedStatus {
+                    Text(reportedRepeaterStatusLabel(reportedStatus))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
@@ -495,6 +506,7 @@ struct MapScreen: View {
                 .toolbarVisibility(usesWideMapHeader ? .hidden : .automatic, for: .navigationBar)
                 .navigationDestination(item: $selectedNode) { node in
                     NodeDetailScreen(node: node)
+                        .id(node.publicKey)
                 }
                 .overlay(alignment: .top) {
                     if isTabActive && usesWideMapHeader {
@@ -678,7 +690,7 @@ struct MapScreen: View {
         }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { chromeTopInset = $0 }
         .sheet(isPresented: $isSearchPresented) {
-            MapNodeSearchSheet(nodes: viewModel.nodes, selectNode: focusOnSearchedNode)
+            MapNodeSearchSheet(nodes: viewModel.nodes, statuses: currentRepeaterStatuses, savedNodes: savedNodeKeys, selectNode: focusOnSearchedNode)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
@@ -698,7 +710,8 @@ struct MapScreen: View {
         .sheet(isPresented: $isMapFiltersPresented) {
             MapNodeFilterSheet(
                 filters: $nodeFilters,
-                observers: mapObserverOptions
+                observers: mapObserverOptions,
+                hasRepeaterStatuses: !currentRepeaterStatuses.isEmpty
             )
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
@@ -745,6 +758,15 @@ struct MapScreen: View {
         .task {
             processedEventIds = Set(liveFeed.recentEvents.map { liveEventKey(for: $0) })
             isInitialLoadComplete = true
+        }
+        .task(id: "\(settings.sourceSession.id)|\(isTabActive)|\(settings.sourceIsReady)") {
+            guard isTabActive, settings.sourceIsReady else { return }
+            let backend = AnalyzerBackendFactory.make(settings: settings)
+            let catalog = await FieldCatalogRepository.shared.repeaterMetadata(for: backend)
+            guard backend.sourceSession.isCurrent, !Task.isCancelled else { return }
+            repeaterStatusSource = backend.sourceSession.id
+            repeaterStatuses = catalog.reportedStatuses
+            updateDisplayedNodes()
         }
         .task(id: mapLoadTaskID) {
             let sourceHost = settings.host
@@ -967,6 +989,7 @@ struct MapScreen: View {
     private func focusOnSearchedNode(_ node: MeshNode) {
         guard let coordinate = validCoordinate(node.coordinate) else { return }
         highlightedNodeID = node.id
+        updateDisplayedNodes()
         withAnimation(.easeInOut(duration: 0.35)) {
             cameraPosition = .region(
                 MKCoordinateRegion(
@@ -1134,6 +1157,7 @@ struct MapScreen: View {
                                 leaderOffset: leaderOffsets[node.id],
                                 label: labeledIDs.contains(Self.nodeLabelID(node.id))
                                     ? node.name ?? shortKey(node.publicKey) : nil,
+                                reportedStatus: currentRepeaterStatuses[node.publicKey.lowercased()],
                                 labelSide: labelSides[node.id] ?? .below,
                                 colorScheme: colorScheme
                             )
@@ -1260,8 +1284,29 @@ struct MapScreen: View {
         }
     }
 
+    private var currentRepeaterStatuses: [String: String] {
+        repeaterStatusSource == settings.sourceSession.id ? repeaterStatuses : [:]
+    }
+
+    private var savedNodeKeys: Set<String> {
+        let host = AnalyzerSettings.normalizedHost(settings.host)
+        return Set(favoritesStore.items.filter { $0.source == host && $0.kind == .node }.map { $0.entityID.lowercased() })
+    }
+
     private func updateDisplayedNodes(in region: MKCoordinateRegion? = nil) {
-        let nodes = viewModel.nodes
+        let statuses = currentRepeaterStatuses
+        let nodes: [MeshNode]
+        if let status = nodeFilters.reportedStatus, !statuses.isEmpty {
+            var retained = savedNodeKeys
+            if let highlightedNodeID { retained.insert(highlightedNodeID.lowercased()) }
+            if let selectedNode { retained.insert(selectedNode.publicKey.lowercased()) }
+            nodes = viewModel.nodes.filter { node in
+                let key = node.publicKey.lowercased()
+                return retained.contains(key) || statuses[key] == status
+            }
+        } else {
+            nodes = viewModel.nodes
+        }
         let displayRegion = (region ?? visibleRegion).map(DisplayRegion.init)
         let selectedRoles = nodeFilters.selectedRoles
         let groupsNodes = groupsNodes
@@ -3932,6 +3977,7 @@ private struct MapRouteDetailsSheet: View {
                         if let node = hop.node {
                             NavigationLink {
                                 NodeDetailScreen(node: node)
+                                    .id(node.publicKey)
                             } label: {
                                 MapRouteHopRow(hop: hop, showsDisclosureIndicator: false)
                             }
@@ -4046,15 +4092,17 @@ private struct MapNodeFilterSelection: Codable, Equatable {
     var selectedRoles: Set<String> = []
     var activityFilter: MapNodeActivityFilter = .all
     var selectedObserverID: String?
+    var reportedStatus: String?
 
     var isFiltering: Bool {
-        !selectedRoles.isEmpty || activityFilter != .all || selectedObserverID != nil
+        !selectedRoles.isEmpty || activityFilter != .all || selectedObserverID != nil || reportedStatus != nil
     }
 
     var activeFilterCount: Int {
         (selectedRoles.isEmpty ? 0 : 1)
             + (activityFilter == .all ? 0 : 1)
             + (selectedObserverID == nil ? 0 : 1)
+            + (reportedStatus == nil ? 0 : 1)
     }
 
     static func persisted(for analyzerHost: String) -> Self {
@@ -4310,6 +4358,7 @@ private struct MapKeyLinesSymbol: View {
 private struct MapNodeFilterSheet: View {
     @Binding var filters: MapNodeFilterSelection
     let observers: [MapObserverOption]
+    let hasRepeaterStatuses: Bool
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
@@ -4329,6 +4378,10 @@ private struct MapNodeFilterSheet: View {
             List {
                 MapNodesShownSection(selection: $filters.activityFilter)
                 MapRoleFilterSection(selectedRoles: $filters.selectedRoles)
+                if hasRepeaterStatuses || filters.reportedStatus != nil {
+                    Section { ReportedRepeaterStatusPicker(selection: $filters.reportedStatus) }
+                        .instrumentListRows()
+                }
                 MapObserverFilterSummarySection(
                     selectedObserverTitle: selectedObserverTitle,
                     action: { isObserverPickerPresented = true }
@@ -4638,12 +4691,15 @@ private struct MapObserverPickerSheet: View {
 
 private struct MapNodeSearchSheet: View {
     let nodes: [MeshNode]
+    let statuses: [String: String]
+    let savedNodes: Set<String>
     let selectNode: (MeshNode) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
     @State private var results: [MeshNode] = []
     @State private var selectedRoles: Set<String> = []
+    @State private var reportedStatus: String?
 
     private let roles = ["repeater", "room", "companion", "sensor"]
 
@@ -4675,7 +4731,12 @@ private struct MapNodeSearchSheet: View {
                     .padding(.horizontal, 16)
                 }
 
-                if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedRoles.isEmpty {
+                if !statuses.isEmpty {
+                    ReportedRepeaterStatusPicker(selection: $reportedStatus)
+                        .padding(.horizontal, 16)
+                }
+
+                if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedRoles.isEmpty && reportedStatus == nil {
                     ContentUnavailableView(
                         String(localized: "Find a Node"),
                         systemImage: "magnifyingglass",
@@ -4693,7 +4754,8 @@ private struct MapNodeSearchSheet: View {
                                 name: node.name ?? String(localized: "Unnamed Node"),
                                 role: node.role,
                                 publicKey: node.publicKey,
-                                lastSeen: node.latestActivity
+                                lastSeen: node.latestActivity,
+                                reportedStatus: statuses[node.publicKey.lowercased()]
                             )
                         }
                         .buttonStyle(.plain)
@@ -4717,15 +4779,15 @@ private struct MapNodeSearchSheet: View {
             .onChange(of: nodes) {
                 updateResults()
             }
-            .onChange(of: selectedRoles) {
-                updateResults()
-            }
+            .onChange(of: selectedRoles) { updateResults() }
+            .onChange(of: statuses) { updateResults() }
+            .onChange(of: reportedStatus) { updateResults() }
         }
     }
 
     private func updateResults() {
         let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !normalizedQuery.isEmpty || !selectedRoles.isEmpty else {
+        guard !normalizedQuery.isEmpty || !selectedRoles.isEmpty || reportedStatus != nil else {
             results = []
             return
         }
@@ -4741,6 +4803,10 @@ private struct MapNodeSearchSheet: View {
                 || node.role.localizedCaseInsensitiveContains(normalizedQuery)
         }
         .filter { selectedRoles.isEmpty || selectedRoles.contains($0.role) }
+        .filter { node in
+            reportedStatus == nil || savedNodes.contains(node.publicKey.lowercased())
+                || statuses[node.publicKey.lowercased()] == reportedStatus
+        }
         .sorted { lhs, rhs in
             let lhsName = lhs.name ?? lhs.publicKey
             let rhsName = rhs.name ?? rhs.publicKey
@@ -4782,6 +4848,7 @@ private struct MapNodeSearchRow: View {
     let role: String
     let publicKey: String
     let lastSeen: Date?
+    let reportedStatus: String?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -4803,6 +4870,13 @@ private struct MapNodeSearchRow: View {
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                if let reportedStatus {
+                    Text(reportedRepeaterStatusLabel(reportedStatus))
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.quaternary, in: Capsule())
+                }
             }
 
             Spacer()
@@ -5093,5 +5167,28 @@ private struct MapSidebarBackgroundExtension: ViewModifier {
 
     func body(content: Content) -> some View {
         content.ignoresSafeArea(.container, edges: isEnabled ? [.vertical, .leading] : [])
+    }
+}
+
+
+private struct ReportedRepeaterStatusPicker: View {
+    @Binding var selection: String?
+
+    var body: some View {
+        Picker("Reported status", selection: $selection) {
+            Text("Any status").tag(String?.none)
+            ForEach(["active", "maintenance", "decommissioned"], id: \.self) { status in
+                Text(reportedRepeaterStatusLabel(status)).tag(Optional(status))
+            }
+        }
+        .pickerStyle(.menu)
+    }
+}
+
+private func reportedRepeaterStatusLabel(_ status: String) -> String {
+    switch status {
+    case "active": String(localized: "Reported active")
+    case "maintenance": String(localized: "Reported maintenance")
+    default: String(localized: "Reported decommissioned")
     }
 }

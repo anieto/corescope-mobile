@@ -1,4 +1,5 @@
 import CoreImage.CIFilterBuiltins
+import SafariServices
 import SwiftUI
 import UIKit
 
@@ -13,7 +14,27 @@ struct NodeDetailScreen: View {
     @State private var linkedNodesByPublicKey: [String: MeshNode] = [:]
     @State private var selectedLinkedNode: MeshNode?
     @State private var meshCoreContact: MeshCoreContactLink?
+    @State private var browserLink: BrowserLink?
+    @State private var unclaimedRepeaterURL: URL?
+    @State private var showsClaimConfirmation = false
+    @State private var repeaterMetadata: RepeaterMetadata?
+    @State private var metadataSourceID: UUID?
     @State private var showsFieldTools = false
+    @State private var showsWatchSettings = false
+    @State private var watchTask: Task<Void, Never>?
+    @State private var watchMessage: String?
+    @State private var showsWatchAlert = false
+    @State private var watchIntent: Bool?
+    @State private var isWatched = false
+
+    private enum WatchAction {
+        case refresh, confirm, set(Bool)
+
+        var isInteractive: Bool {
+            if case .refresh = self { return false }
+            return true
+        }
+    }
 
     private var hasFieldCoordinate: Bool {
         guard let latitude = displayedNode.lat, let longitude = displayedNode.lon else { return false }
@@ -38,7 +59,32 @@ struct NodeDetailScreen: View {
                     retry: retryNodeData
                 )
 
-                NodeIdentityCard(node: displayedNode)
+                NodeIdentityCard(
+                    node: displayedNode,
+                    isCheckingWatch: watchTask != nil,
+                    isWatched: isWatched,
+                    onWatch: settings.beaconBackend == nil ? { updateWatch(.confirm) } : nil
+                )
+
+                if metadataSourceID == settings.sourceSession.id,
+                   let repeaterMetadata, repeaterMetadata.pubkey == node.publicKey.lowercased() {
+                    RepeaterMetadataCard(metadata: repeaterMetadata, openCoreScope: coreScopeRepeaterURL.map { url in
+                        { browserLink = BrowserLink(url: url) }
+                    })
+                }
+
+                if let unclaimedRepeaterURL, unclaimedRepeaterURL == coreScopeRepeaterURL {
+                    Button {
+                        showsClaimConfirmation = true
+                    } label: {
+                        Label("Claim Repeater", systemImage: "person.badge.plus")
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity, minHeight: 28)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .tint(Color(red: 0, green: 0.39, blue: 0.65))
+                }
 
                 if hasFieldCoordinate {
                     Button {
@@ -147,6 +193,61 @@ struct NodeDetailScreen: View {
         }
         .navigationDestination(item: $selectedLinkedNode) { linkedNode in
             NodeDetailScreen(node: linkedNode)
+                .id(linkedNode.publicKey)
+        }
+        .navigationDestination(isPresented: $showsWatchSettings) {
+            CoreScopeAccountScreen(watchNode: displayedNode, onWatchAdded: { showWatchConfirmation(watched: true) })
+                .id(settings.sourceSession.id)
+        }
+        .task(id: "\(settings.sourceSession.id)|\(node.publicKey)") {
+            isWatched = false
+            updateWatch(.refresh)
+        }
+        .alert(watchAlertTitle, isPresented: $showsWatchAlert) {
+            if let watchIntent {
+                if watchIntent {
+                    Button("Watch node") { updateWatch(.set(true)) }
+                } else {
+                    Button("Stop watching", role: .destructive) { updateWatch(.set(false)) }
+                }
+                Button("Cancel", role: .cancel) {}
+            } else {
+                Button("OK", role: .cancel) {}
+            }
+        } message: {
+            let name = displayedNode.name ?? String(localized: "this node")
+            if let watchIntent {
+                if watchIntent {
+                    Text("Add \(name) to your CoreScope watch list.")
+                } else {
+                    Text("Remove \(name) from your CoreScope watch list.")
+                }
+            } else {
+                Text(watchMessage ?? "")
+            }
+        }
+        .onDisappear { watchTask?.cancel() }
+        .alert("Claim this repeater?", isPresented: $showsClaimConfirmation) {
+            Button("Continue to CoreScope") {
+                if let unclaimedRepeaterURL, unclaimedRepeaterURL == coreScopeRepeaterURL {
+                    browserLink = BrowserLink(url: unclaimedRepeaterURL)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Only claim repeaters you run and maintain. Site admins can remove an incorrect claim. Sign in to CoreScope and choose Claim to finish.")
+        }
+        .task(id: coreScopeRepeaterURL) {
+            await refreshRepeaterClaim()
+        }
+        .sheet(item: $browserLink, onDismiss: {
+            Task {
+                await refreshRepeaterClaim()
+                await refreshRepeaterMetadata(force: true)
+            }
+        }) { link in
+            InAppBrowser(url: link.url)
+                .ignoresSafeArea()
         }
         .sheet(item: $meshCoreContact) { contact in
             MeshCoreContactSheet(contact: contact)
@@ -160,11 +261,36 @@ struct NodeDetailScreen: View {
         .onChange(of: nodeCatalogViewModel.nodes) {
             linkedNodesByPublicKey = nodeCatalogViewModel.nodesByPubkey
         }
-        .task {
+        .task(id: "\(settings.sourceSession.id)|\(node.publicKey)|\(settings.sourceIsReady)") {
+            await refreshRepeaterMetadata(force: false)
+        }
+        .task(id: node.publicKey) {
             viewModel.configure(settings: settings)
             nodeCatalogViewModel.configure(settings: settings)
             await refreshNodeData(forceCatalogRefresh: false)
         }
+    }
+
+    private func refreshRepeaterClaim() async {
+        unclaimedRepeaterURL = nil
+        guard let url = coreScopeRepeaterURL,
+              let backend = AnalyzerBackendFactory.make(settings: settings) as? CoreScopeBackend else { return }
+        let key = displayedNode.publicKey
+        let isUnclaimed = try? await backend.repeaterIsUnclaimed(publicKey: key)
+        guard backend.sourceSession.isCurrent, !Task.isCancelled, url == coreScopeRepeaterURL else { return }
+        if isUnclaimed == true { unclaimedRepeaterURL = url }
+    }
+
+    private var coreScopeRepeaterURL: URL? {
+        guard settings.beaconBackend == nil,
+              displayedNode.role.lowercased() == "repeater",
+              displayedNode.publicKey.count == 64,
+              displayedNode.publicKey.utf8.allSatisfy({ (48...57).contains($0) || (65...70).contains($0) || (97...102).contains($0) })
+        else { return nil }
+        var url = URLComponents(url: settings.baseURL, resolvingAgainstBaseURL: false)
+        url?.path = "/"
+        url?.fragment = "/nodes/\(displayedNode.publicKey.lowercased())?section=node-repeater-info"
+        return url?.url
     }
 
     private var quickActionsMenu: some View {
@@ -190,6 +316,14 @@ struct NodeDetailScreen: View {
                 }
             }
 
+            if let coreScopeRepeaterURL {
+                Button {
+                    browserLink = BrowserLink(url: coreScopeRepeaterURL)
+                } label: {
+                    Label("Open Repeater in CoreScope", systemImage: "arrow.up.right")
+                }
+            }
+
             if let url = NodeScopeDeepLink.node(displayedNode.publicKey).url {
                 ShareLink(item: url) {
                     Label("Share Node Link", systemImage: "square.and.arrow.up")
@@ -199,6 +333,89 @@ struct NodeDetailScreen: View {
             Image(systemName: "ellipsis.circle")
         }
         .accessibilityLabel("Node actions")
+    }
+
+    private var watchAlertTitle: String {
+        switch watchIntent {
+        case true?: String(localized: "Watch this node?")
+        case false?: String(localized: "Stop watching this node?")
+        case nil: String(localized: "Watched-node alerts")
+        }
+    }
+
+    private func updateWatch(_ action: WatchAction) {
+        guard watchTask == nil, settings.beaconBackend == nil else { return }
+        let origin = settings.baseURL
+        let sourceSession = settings.sourceSession
+        let key = displayedNode.publicKey.lowercased()
+
+        watchTask = Task {
+            defer { watchTask = nil }
+            do {
+                let cookie = try AccountSessionKeychain.load(origin: origin.absoluteString)
+                if cookie == nil { throw CoreScopeAccountError.signedOut }
+                let client = try CoreScopeAccountClient(origin: origin, cookie: cookie, lifetime: sourceSession,
+                    save: { try AccountSessionKeychain.save($0, origin: origin.absoluteString) })
+                if action.isInteractive, try await client.accountCapabilities()?.notifications != true {
+                    try Task.checkCancellation()
+                    try sourceSession.check()
+                    presentWatchAlert(message: String(localized: "This analyzer has CoreScope account notifications turned off."))
+                    return
+                }
+                let notifications: CoreScopeAccountNotifications
+                switch action {
+                case .refresh, .confirm:
+                    notifications = try await client.notifications()
+                case .set(let watched):
+                    let user = try await client.me()
+                    try Task.checkCancellation()
+                    notifications = try await client.setWatch(key, watched: watched, csrf: user.csrfToken)
+                }
+                try Task.checkCancellation()
+                try sourceSession.check()
+                isWatched = notifications.watches.contains { $0.pubkey == key }
+
+                switch action {
+                case .refresh:
+                    break
+                case .confirm:
+                    presentWatchAlert(intent: !isWatched)
+                case .set:
+                    showWatchConfirmation(watched: isWatched)
+                }
+            } catch CoreScopeAccountError.signedOut {
+                guard !Task.isCancelled, sourceSession.isCurrent else { return }
+                isWatched = false
+                switch action {
+                case .refresh:
+                    break
+                case .confirm:
+                    presentWatchAlert(intent: true)
+                case .set(true):
+                    showsWatchSettings = true
+                case .set(false):
+                    presentWatchAlert(message: CoreScopeAccountError.signedOut.localizedDescription)
+                }
+            } catch {
+                guard !Task.isCancelled, sourceSession.isCurrent else { return }
+                guard action.isInteractive else { return }
+                presentWatchAlert(message: error.localizedDescription)
+            }
+        }
+    }
+
+    private func presentWatchAlert(intent: Bool? = nil, message: String? = nil) {
+        watchIntent = intent
+        watchMessage = message
+        showsWatchAlert = true
+    }
+
+    private func showWatchConfirmation(watched: Bool) {
+        isWatched = watched
+        let name = displayedNode.name ?? String(localized: "this node")
+        presentWatchAlert(message: watched
+            ? String(localized: "You’re watching \(name). Manage alerts in CoreScope Account.")
+            : String(localized: "You’re no longer watching \(name)."))
     }
 
     private var canShowOnMap: Bool {
@@ -235,12 +452,22 @@ struct NodeDetailScreen: View {
         }
     }
 
+    private func refreshRepeaterMetadata(force: Bool) async {
+        guard settings.sourceIsReady else { return }
+        let backend = AnalyzerBackendFactory.make(settings: settings)
+        let catalog = await FieldCatalogRepository.shared.repeaterMetadata(for: backend, force: force)
+        guard backend.sourceSession.isCurrent, !Task.isCancelled else { return }
+        repeaterMetadata = catalog[node.publicKey]
+        metadataSourceID = backend.sourceSession.id
+    }
+
     private func refreshNodeData(forceCatalogRefresh: Bool) async {
         async let details: Void = viewModel.load(pubkey: node.publicKey)
         async let catalog: Void = nodeCatalogViewModel.loadNodes(
             region: nil,
             forceRefresh: forceCatalogRefresh
         )
+        if forceCatalogRefresh { await refreshRepeaterMetadata(force: true) }
         _ = await (details, catalog)
         linkedNodesByPublicKey = nodeCatalogViewModel.nodesByPubkey
     }
@@ -311,6 +538,9 @@ private struct NodeReachLoadingCard: View {
 
 private struct NodeIdentityCard: View {
     let node: MeshNode
+    let isCheckingWatch: Bool
+    let isWatched: Bool
+    let onWatch: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -344,6 +574,27 @@ private struct NodeIdentityCard: View {
                             LearnButton(term: .lastHeard)
                         }
                     }
+                }
+                Spacer(minLength: 0)
+
+                if let onWatch {
+                    Button(action: onWatch) {
+                        Group {
+                            if isCheckingWatch {
+                                ProgressView()
+                            } else {
+                                Image(systemName: isWatched ? "bell.fill" : "bell")
+                                    .font(.body.weight(.semibold))
+                            }
+                        }
+                        .frame(width: 44, height: 44)
+                        .background(NodeScopeStyle.signal.opacity(0.13), in: Circle())
+                        .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(NodeScopeStyle.signal)
+                    .disabled(isCheckingWatch)
+                    .accessibilityLabel(isCheckingWatch ? "Checking watch status…" : isWatched ? "Stop watching" : "Watch node")
                 }
             }
 
@@ -971,13 +1222,13 @@ private struct MeshCoreContactSheet: View {
                                   systemImage: copied ? "checkmark" : "doc.on.doc")
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(StandaloneActionButtonStyle())
 
                         ShareLink(item: contact.urlString) {
                             Label("Share Contact Link", systemImage: "square.and.arrow.up")
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(StandaloneActionButtonStyle())
                     }
                     .controlSize(.large)
 
@@ -1028,4 +1279,174 @@ private struct MeshCoreContactSheet: View {
         }
         return UIImage(cgImage: cgImage)
     }
+}
+
+
+private struct RepeaterMetadataCard: View {
+    let metadata: RepeaterMetadata
+    let openCoreScope: (() -> Void)?
+    @State private var expanded = false
+    @State private var showsInfo = false
+    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .localeDefault
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 4) {
+                Button {
+                    withAnimation { expanded.toggle() }
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Reported Details").font(.monaspace(.headline))
+                            if let status = metadata.status {
+                                Text(statusTitle(status)).foregroundStyle(.secondary)
+                            }
+                        }
+                        .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 8)
+                        Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                            .foregroundStyle(.secondary)
+                            .accessibilityHidden(true)
+                    }
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityValue(expanded ? Text("Expanded") : Text("Collapsed"))
+
+                Button {
+                    showsInfo = true
+                } label: {
+                    Image(systemName: "info.circle")
+                        .foregroundStyle(.secondary)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("About Reported Details")
+            }
+
+            if expanded {
+                VStack(alignment: .leading, spacing: 8) {
+                    if let power = metadata.power {
+                        ReportedDetailRow("Power source") {
+                            Text(powerTitle(power))
+                        }
+                    }
+                    if let height = metadata.heightM {
+                        ReportedDetailRow("Reported antenna height") {
+                            let value = distanceUnit.displayHeight(meters: height).formatted(.number.precision(.fractionLength(0...3)))
+                            Text("\(value) \(distanceUnit.heightSymbol)").font(.monaspace(.subheadline))
+                        }
+                    }
+                    if let gain = metadata.gainDbi {
+                        ReportedDetailRow("Antenna gain") {
+                            if gain == 0 {
+                                Text("0 dBi (server default or reported)")
+                            } else {
+                                Text("\(gain.formatted()) dBi").font(.monaspace(.subheadline))
+                            }
+                        }
+                    }
+                    ForEach(Array(metadata.claimers.enumerated()), id: \.offset) { _, claim in
+                        ReportedDetailRow("Claimed by") {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(verbatim: claim.displayName)
+                                if let date = claim.claimedAt {
+                                    Text(date, format: .dateTime).font(.caption)
+                                }
+                            }
+                        }
+                    }
+                    if let editor = metadata.updatedBy {
+                        ReportedDetailRow("Last edited by") { Text(verbatim: editor) }
+                    }
+                    if let date = metadata.updatedAt {
+                        ReportedDetailRow("Details updated") { Text(date, format: .dateTime) }
+                    }
+                    if let notes = metadata.notes {
+                        Text("Notes").font(.monaspace(.subheadline))
+                        Text(verbatim: notes)
+                            .textSelection(.enabled)
+                    }
+                }
+                .padding(.top, 8)
+            }
+        }
+        .font(.subheadline)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .instrumentCard()
+        .alert("About Reported Details", isPresented: $showsInfo) {
+            if let openCoreScope {
+                Button("Open CoreScope", action: openCoreScope)
+            }
+            Button("Done", role: .cancel) {}
+        } message: {
+            Text("These details come from community reports on this CoreScope analyzer. A claim means someone says they operate the repeater. Reported status reflects what someone entered. Last heard reflects activity the analyzer observed.")
+        }
+    }
+
+    private func statusTitle(_ status: String) -> LocalizedStringKey {
+        switch status {
+        case "active": "Reported active"
+        case "maintenance": "Reported maintenance"
+        default: "Reported decommissioned"
+        }
+    }
+
+    private func powerTitle(_ power: String) -> LocalizedStringKey {
+        switch power {
+        case "mains": "Mains"
+        case "battery": "Battery"
+        default: "Solar"
+        }
+    }
+}
+
+
+/// Keeps short label-value pairs aligned and gives long values the full card width.
+private struct ReportedDetailRow<Value: View>: View {
+    let label: LocalizedStringKey
+    let value: Value
+
+    init(_ label: LocalizedStringKey, @ViewBuilder value: () -> Value) {
+        self.label = label
+        self.value = value()
+    }
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(label).fixedSize()
+                Spacer(minLength: 0)
+                value
+                    .multilineTextAlignment(.trailing)
+                    .foregroundStyle(.secondary)
+                    .fixedSize()
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(label)
+                value.foregroundStyle(.secondary)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct BrowserLink: Identifiable {
+    let url: URL
+    var id: String { url.absoluteString }
+}
+
+private struct InAppBrowser: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        SFSafariViewController(url: url)
+    }
+
+    func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
 }

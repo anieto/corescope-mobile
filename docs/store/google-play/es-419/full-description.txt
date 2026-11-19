@@ -11,7 +11,7 @@ Explorar
 Un panel con la red de un vistazo: nodos activos, observadores en línea, paquetes y señal promedio, además de una búsqueda global de nodos, observadores, canales y paquetes. Guarda favoritos y vuelve a los elementos que viste recientemente.
 
 Revisión de nodo
-¿Tu nodo está saliendo? Mira qué observadores lo escuchan y qué corregir, o haz una prueba en vivo mientras envías un anuncio flood. Requiere un servidor CoreScope.
+¿Se escucha tu nodo? Mira qué observadores lo escuchan y qué corregir, o haz una prueba en vivo mientras envías un anuncio flood. Requiere un servidor CoreScope.
 
 Paquetes en vivo
 Mira los paquetes llegar en tiempo real, agrupados por transmisión, con la carga útil decodificada, los datos sin procesar, cada observación y cada ruta. Reproduce en el mapa la ruta de cualquier paquete.

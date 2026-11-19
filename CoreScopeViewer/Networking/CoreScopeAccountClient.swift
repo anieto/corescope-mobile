@@ -8,15 +8,34 @@ struct CoreScopeAccountUser: Codable, Sendable {
     let csrfToken: String
 }
 
+struct CoreScopeAccountCapabilities: Decodable, Sendable {
+    let enabled: Bool
+    let notifications: Bool?
+}
+
+struct CoreScopeWatchedNode: Decodable, Identifiable, Sendable {
+    let pubkey: String
+    let name: String
+    var id: String { pubkey }
+}
+
+struct CoreScopeAccountNotifications: Decodable, Sendable {
+    let enabled: Bool
+    let watches: [CoreScopeWatchedNode]
+    let nodeScopePush: StagingPushCapability?
+}
+
 enum CoreScopeAccountError: Error, LocalizedError {
-    case unsupported, signedOut, rejected, conflict, storage, response, reset, throttled
+    case unsupported, signedOut, rejected, conflict, storage, response, reset, throttled, pushLinkGone, watchLimit, watchUnknown
     var errorDescription: String? {
         switch self {
         case .reset: String(localized: "Account settings were reset on the server. Choose how to continue before syncing.")
         case .throttled: String(localized: "Account writes are limited to once a minute. Your changes are saved; try Sync now later.")
         case .unsupported: String(localized: "This source does not support compatible CoreScope accounts.")
         case .signedOut: String(localized: "Sign in again to access this account.")
-        case .rejected: String(localized: "The request was rejected. Check your credentials or try again later.")
+        case .rejected, .pushLinkGone: String(localized: "The request was rejected. Check your credentials or try again later.")
+        case .watchLimit: String(localized: "This account reached its watch limit. Stop watching a node before adding another.")
+        case .watchUnknown: String(localized: "This analyzer doesn’t know that node yet.")
         case .conflict: String(localized: "Account favorites changed during sync. Try Sync now again.")
         case .storage: String(localized: "The account session could not be saved securely.")
         case .response: String(localized: "The account response could not be read. No favorites were changed.")
@@ -87,10 +106,27 @@ actor CoreScopeAccountClient {
         session = URLSession(configuration: configuration, delegate: AccountRedirectPolicy(), delegateQueue: nil)
     }
 
-    func supportsAccounts() async throws -> Bool {
-        struct Config: Decodable { struct Management: Decodable { let enabled: Bool }; let userManagement: Management? }
+    func supportsAccounts() async throws -> Bool { try await accountCapabilities()?.enabled == true }
+
+    func accountCapabilities() async throws -> CoreScopeAccountCapabilities? {
+        struct Config: Decodable { let userManagement: CoreScopeAccountCapabilities? }
         let data = try await request("api/config/client", authenticated: false)
-        return try JSONDecoder().decode(Config.self, from: data).userManagement?.enabled == true
+        return try JSONDecoder().decode(Config.self, from: data).userManagement
+    }
+
+    func notifications() async throws -> CoreScopeAccountNotifications {
+        let data = try await request("api/account/notifications")
+        return try JSONDecoder().decode(CoreScopeAccountNotifications.self, from: data)
+    }
+
+    func setWatch(_ pubkey: String, watched: Bool, csrf: String) async throws -> CoreScopeAccountNotifications {
+        let key = pubkey.lowercased()
+        guard key.range(of: "^[0-9a-f]{64}$", options: .regularExpression) != nil else {
+            throw CoreScopeAccountError.rejected
+        }
+        let data = try await request("api/account/notifications/watches/\(key)",
+                                     method: watched ? "PUT" : "DELETE", csrf: csrf)
+        return try JSONDecoder().decode(CoreScopeAccountNotifications.self, from: data)
     }
 
     func login(email: String, password: String) async throws -> CoreScopeAccountUser {
@@ -127,6 +163,23 @@ actor CoreScopeAccountClient {
         let ack = try JSONDecoder().decode(Ack.self, from: data)
         return CoreScopeAccountSettings(revision: ack.revision, generation: ack.generation, doc: document, allowlist: base.allowlist)
     }
+
+    #if NODESCOPE_PUSH_STAGING || NODESCOPE_PUSH_PRODUCTION
+    func pushCapability() async throws -> StagingPushCapability? {
+        struct Notifications: Decodable { let nodeScopePush: StagingPushCapability? }
+        let data = try await request("api/account/notifications")
+        return try JSONDecoder().decode(Notifications.self, from: data).nodeScopePush
+    }
+
+    func linkPushDevice(_ installationID: String, proof: String, csrf: String) async throws -> StagingPushLink {
+        let data = try await request("api/account/notifications/devices/\(installationID)", method: "PUT",
+                                     body: JSONEncoder().encode(["proof": proof]), csrf: csrf)
+        return try JSONDecoder().decode(StagingPushLink.self, from: data)
+    }
+    func unlinkPushDevice(_ installationID: String, csrf: String) async throws {
+        _ = try await request("api/account/notifications/devices/\(installationID)", method: "DELETE", csrf: csrf)
+    }
+    #endif
 
     func logout() async throws {
         // Always forget the local token, including when server revocation is unavailable.
@@ -173,6 +226,13 @@ actor CoreScopeAccountClient {
                 origin: APIClient(baseURL: origin).cacheIdentifier,
                 retryAfter: http.value(forHTTPHeaderField: "Retry-After"), now: .now)
             throw BeaconAPIError.rateLimited(until: until)
+        }
+        if http.statusCode == 410 && method == "PUT" && path.hasPrefix("api/account/notifications/devices/") {
+            throw CoreScopeAccountError.pushLinkGone
+        }
+        if method == "PUT", path.hasPrefix("api/account/notifications/watches/") {
+            if http.statusCode == 409 { throw CoreScopeAccountError.watchLimit }
+            if http.statusCode == 404 { throw CoreScopeAccountError.watchUnknown }
         }
         if http.statusCode == 409 { throw CoreScopeAccountError.conflict }
         guard (200..<300).contains(http.statusCode) else { throw CoreScopeAccountError.rejected }

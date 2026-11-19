@@ -11,7 +11,7 @@ Explorar
 Um painel com a rede em resumo: nós ativos, observadores online, pacotes e sinal médio, além de uma busca global por nós, observadores, canais e pacotes. Salve favoritos e volte aos itens vistos recentemente.
 
 Verificação de nó
-Seu nó está saindo? Veja quais observadores o ouvem e o que corrigir, ou faça um teste ao vivo enquanto envia um anúncio flood. Requer um servidor CoreScope.
+Seu nó está sendo ouvido? Veja quais observadores o ouvem e o que corrigir, ou faça um teste ao vivo enquanto envia um anúncio flood. Requer um servidor CoreScope.
 
 Pacotes ao vivo
 Veja os pacotes chegarem em tempo real, agrupados por transmissão, com a carga útil decodificada, os dados brutos, cada observação e cada rota. Reproduza no mapa a rota de qualquer pacote.

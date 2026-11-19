@@ -45,7 +45,7 @@ struct MyNodesScreen: View {
                             forceRefresh = false
                             revision += 1
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(StandaloneActionButtonStyle())
                         .disabled(loading || scenePhase != .active || !isTabActive)
                         }
                     }

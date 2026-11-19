@@ -250,15 +250,12 @@ fun FavoritesScreen(model: ExploreViewModel?, host: String, snapshot: AnalyzerSn
             }
         }
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
-                    Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
-                        NavigationRow(stringResource(R.string.explore_activity), stringResource(R.string.explore_last_heard_and_freshness_for_saved_nodes_and), Icons.Outlined.GraphicEq, actions.onActivity)
-                        if (!isBeacon) NavigationRow(stringResource(R.string.explore_corescope_account), stringResource(R.string.explore_sync_node_favorites_with_your_account_on_this), Icons.Outlined.AccountCircle, actions.onAccount)
-                    }
+            Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                    NavigationRow(stringResource(R.string.explore_activity), stringResource(R.string.explore_last_heard_and_freshness_for_saved_nodes_and), Icons.Outlined.GraphicEq, actions.onActivity)
+                    if (!isBeacon) NavigationRow(stringResource(R.string.explore_manage_account_favorites),
+                        stringResource(R.string.explore_sync_node_favorites_with_your_account_on_this), Icons.Outlined.AccountCircle, actions.onAccount)
                 }
-                Text(stringResource(R.string.explore_device_favorites_and_account_nodes_on_this_source),
-                    Modifier.padding(horizontal = 4.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         if (favorites.isEmpty()) item {

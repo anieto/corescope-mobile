@@ -13,6 +13,7 @@ struct LinkCoverageSeed: Identifiable {
     let sensitivityDbm: Double
     /// Where to suggest saving the new coverage study.
     var planID: String?
+    var repeaterSelection: ReportedRepeaterSelection? = nil
 }
 
 struct EstimatedCoverageScreen: View {
@@ -46,7 +47,11 @@ struct EstimatedCoverageScreen: View {
             model.longitude = seed.point.longitude
             model.transmitterName = seed.point.name
             model.transmitHeightMeters = seed.point.antenna.heightMeters
+            model.reportedTransmitHeight = seed.point.antenna.reportedHeightSource
             model.transmitGainDbi = seed.point.antenna.gainDbi
+            model.reportedTransmitGain = seed.point.antenna.reportedGainSource
+            model.protectAntennaInputs()
+            model.reportedTransmitterSelection = seed.repeaterSelection
             model.transmitLossDb = seed.point.antenna.lossDb
             model.frequencyMHz = seed.frequencyMHz
             model.transmitPowerDbm = seed.transmitPowerDbm
@@ -155,6 +160,13 @@ struct EstimatedCoverageScreen: View {
                 }
             }
         }
+        .task(id: settings.sourceIsReady ? model.reportedTransmitterSelection : nil) {
+            let selection = model.reportedTransmitterSelection
+            if let metadata = await reportedRepeaterMetadata(for: selection, settings: settings),
+               selection == model.reportedTransmitterSelection {
+                model.applyReportedDefaults(metadata, host: settings.host)
+            }
+        }
         .task(id: model.activeResult?.executionID) { await model.renderOverlay() }
         .task(id: "\(model.radiusMeters):\(model.spacingMeters)") { await model.checkWork() }
         .sheet(isPresented: $showsNodes) { CoverageKnownNodesSheet(model: model) }
@@ -197,6 +209,7 @@ struct CoverageUndo: Identifiable {
     let message: LocalizedStringResource
     let coordinate: CLLocationCoordinate2D?
     let name: String?
+    var selection: ReportedRepeaterSelection? = nil
 }
 
 /// Why Calculate is not available yet.
@@ -234,7 +247,7 @@ final class EstimatedCoverageModel {
         let nodes = activeResult == nil ? currentSavedNodes : calculatedCatalog
         let coverage = SavedCoverage(
             transmitter: SavedEndpoint(name: transmitterName, latitude: latitude, longitude: longitude,
-                antenna: SavedAntenna(heightMeters: transmitHeightMeters, gainDbi: transmitGainDbi, lossDb: transmitLossDb)),
+                antenna: SavedAntenna(heightMeters: transmitHeightMeters, gainDbi: transmitGainDbi, lossDb: transmitLossDb, reportedGainSource: reportedTransmitGain, reportedHeightSource: reportedTransmitHeight)),
             receiver: SavedAntenna(heightMeters: receiveHeightMeters, gainDbi: receiveGainDbi, lossDb: receiveLossDb),
             frequencyMHz: frequencyMHz, transmitPowerDbm: transmitPowerDbm,
             sensitivityDbm: sensitivityDbm, reserveDb: reserveDb, radiusMeters: radiusMeters,
@@ -270,7 +283,11 @@ final class EstimatedCoverageModel {
         longitude = coverage.transmitter.longitude
         transmitterName = coverage.transmitter.name
         transmitHeightMeters = coverage.transmitter.antenna.heightMeters
+        reportedTransmitHeight = coverage.transmitter.antenna.reportedHeightSource
         transmitGainDbi = coverage.transmitter.antenna.gainDbi
+        reportedTransmitGain = coverage.transmitter.antenna.reportedGainSource
+        protectAntennaInputs()
+        reportedTransmitterSelection = nil
         transmitLossDb = coverage.transmitter.antenna.lossDb
         receiveHeightMeters = coverage.receiver.heightMeters
         receiveGainDbi = coverage.receiver.gainDbi
@@ -335,8 +352,27 @@ final class EstimatedCoverageModel {
     var reserveDb = 10.0
 
     // Transmitter antenna.
-    var transmitHeightMeters = CoverageHeightPreset.rooftop.meters
-    var transmitGainDbi = 2.15
+    var reportedTransmitHeight: ReportedAntennaSource?
+    private var editedTransmitHeight = false
+    var transmitHeightMeters = CoverageHeightPreset.rooftop.meters {
+        didSet {
+            if oldValue != transmitHeightMeters {
+                reportedTransmitHeight = nil
+                editedTransmitHeight = true
+            }
+        }
+    }
+    var reportedTransmitterSelection: ReportedRepeaterSelection?
+    var reportedTransmitGain: ReportedAntennaSource?
+    private var editedTransmitGain = false
+    var transmitGainDbi = 2.15 {
+        didSet {
+            if oldValue != transmitGainDbi {
+                reportedTransmitGain = nil
+                editedTransmitGain = true
+            }
+        }
+    }
     var transmitLossDb = 1.0
 
     // The assumed receiver, used for the footprint and every known node alike.
@@ -354,6 +390,7 @@ final class EstimatedCoverageModel {
             transmitHeightMeters = distanceUnit.meters(fromDisplayedHeight: 20)
             receiveHeightMeters = distanceUnit.meters(fromDisplayedHeight: 5)
         }
+        editedTransmitHeight = false
     }
     var spacingMeters = 1000
     // Bump this key when the disclosed model assumptions change.
@@ -480,6 +517,35 @@ final class EstimatedCoverageModel {
 
     // MARK: Presets
 
+    func applyReportedDefaults(_ metadata: RepeaterMetadata, host: String) {
+        let source = metadata.antennaSource(host: host)
+        if !editedTransmitHeight, source.isFromDifferentRepeater(than: reportedTransmitHeight) {
+            applyReportedHeight(metadata, host: host)
+        }
+        if !editedTransmitGain, source.isFromDifferentRepeater(than: reportedTransmitGain) {
+            applyReportedGain(metadata, host: host)
+        }
+    }
+
+    func protectAntennaInputs() {
+        editedTransmitHeight = reportedTransmitHeight == nil
+        editedTransmitGain = reportedTransmitGain == nil
+    }
+
+    func applyReportedHeight(_ metadata: RepeaterMetadata?, host: String) {
+        guard let metadata, let height = metadata.applicableHeightMeters(minimum: 1) else { return }
+        transmitHeightMeters = height
+        reportedTransmitHeight = metadata.antennaSource(host: host)
+        editedTransmitHeight = false
+    }
+
+    func applyReportedGain(_ metadata: RepeaterMetadata?, host: String) {
+        guard let metadata, let gain = metadata.applicableGainDbi else { return }
+        transmitGainDbi = gain
+        reportedTransmitGain = metadata.antennaSource(host: host)
+        editedTransmitGain = false
+    }
+
     func applyRadioPreset(_ preset: CoverageRadioPreset) {
         radioPresetID = preset.id
         frequencyMHz = preset.frequencyMHz
@@ -505,31 +571,33 @@ final class EstimatedCoverageModel {
     // MARK: Transmitter
 
     /// Places or moves the transmitter from the map or the location button, with Undo.
-    func place(_ coordinate: CLLocationCoordinate2D, name: String?) {
+    func place(_ coordinate: CLLocationCoordinate2D, name: String?, selection: ReportedRepeaterSelection? = nil) {
         guard CLLocationCoordinate2DIsValid(coordinate), abs(coordinate.latitude) <= 85 else {
             inputError = "Choose a transmitter between 85°S and 85°N."
             return
         }
         inputError = nil
         let moved = self.coordinate != nil
-        let before = (self.coordinate, transmitterName)
+        let before = (self.coordinate, transmitterName, reportedTransmitterSelection)
         latitude = coordinate.latitude
         longitude = coordinate.longitude
         transmitterName = name
+        reportedTransmitterSelection = selection
         transmitterSettingsExpanded = true
         transmitterPlacementID = UUID()
         isChoosingLocation = false
-        undo = CoverageUndo(message: moved ? "Transmitter moved" : "Transmitter placed", coordinate: before.0, name: before.1)
+        undo = CoverageUndo(message: moved ? "Transmitter moved" : "Transmitter placed", coordinate: before.0, name: before.1, selection: before.2)
     }
 
     /// Clears the transmitter and its result, with Undo; the radio and antennas are kept.
     func clearTransmitter() {
-        let before = (coordinate, transmitterName)
+        let before = (coordinate, transmitterName, reportedTransmitterSelection)
         latitude = nil
         longitude = nil
         transmitterName = nil
+        reportedTransmitterSelection = nil
         isChoosingLocation = false
-        undo = CoverageUndo(message: "Transmitter removed", coordinate: before.0, name: before.1)
+        undo = CoverageUndo(message: "Transmitter removed", coordinate: before.0, name: before.1, selection: before.2)
     }
 
     func undoLastChange() {
@@ -537,6 +605,7 @@ final class EstimatedCoverageModel {
         latitude = undo.coordinate?.latitude
         longitude = undo.coordinate?.longitude
         transmitterName = undo.name
+        reportedTransmitterSelection = undo.selection
         isChoosingLocation = false
         self.undo = nil
     }
@@ -544,6 +613,7 @@ final class EstimatedCoverageModel {
     /// Typed coordinates are no longer the known node the transmitter was placed on.
     func coordinatesTyped() {
         transmitterName = nil
+        reportedTransmitterSelection = nil
         undo = nil
     }
 
@@ -992,7 +1062,9 @@ private struct EstimatedCoverageMapPane: View {
             }
         ) { coordinate, node in
             holds += 1
-            model.place(coordinate, name: node?.name)
+            model.place(coordinate, name: node?.name, selection: model.usesSavedCatalog || model.sourceID != settings.sourceSession.id.description ? nil : node.map {
+                ReportedRepeaterSelection(publicKey: $0.publicKey, sourceID: settings.sourceSession.id)
+            })
         }
         // Extend the map beneath the status bar, floating panel and tab bar while
         // its overlays continue to respect the safe area reserved for controls.
@@ -1363,6 +1435,7 @@ private struct CoverageTransmitterCard: View {
                         Text(summary)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
+                        ReportedAntennaSourceLabel(height: model.reportedTransmitHeight != nil, gain: model.reportedTransmitGain != nil)
                     }
                     Spacer(minLength: 8)
                     Image(systemName: "chevron.down")
@@ -1379,6 +1452,12 @@ private struct CoverageTransmitterCard: View {
                 CoverageHeightSetting(title: "Antenna height", meters: model.binding(\.transmitHeightMeters),
                     presets: CoverageHeightPreset.transmitter, issue: model.issue(for: "txHeight"))
                 CoverageAntennaSetting(gainDbi: model.binding(\.transmitGainDbi))
+                ReportedRepeaterAntennaControl(selection: model.reportedTransmitterSelection,
+                    minimumHeight: 1
+                ) { metadata, host in
+                    model.applyReportedHeight(metadata, host: host)
+                    model.applyReportedGain(metadata, host: host)
+                }
                 CoverageNumericSetting(title: "System loss", term: .cableLoss, value: model.binding(\.transmitLossDb), unit: "dB",
                     issue: model.issue(for: "txLoss"))
                 ViewThatFits(in: .horizontal) {
@@ -2042,7 +2121,9 @@ extension EstimatedCoverageModel: StudyDraftSource {
                 "receiveGainDbi": text(receiveGainDbi), "receiveLossDb": text(receiveLossDb), "frequencyMHz": text(frequencyMHz),
                 "transmitPowerDbm": text(transmitPowerDbm), "sensitivityDbm": text(sensitivityDbm), "reserveDb": text(reserveDb),
                 "radiusMeters": String(radiusMeters), "spacingMeters": String(spacingMeters),
-                "radioPresetID": radioPresetID ?? "", "usesSavedCatalog": String(usesSavedCatalog)]
+                "radioPresetID": radioPresetID ?? "", "usesSavedCatalog": String(usesSavedCatalog),
+                "reportedTransmitGain": reportedTransmitGain?.draftValue ?? "",
+                "reportedTransmitHeight": reportedTransmitHeight?.draftValue ?? ""]
     }
 
     /// What's open now counts as saved: on opening, and after a successful Save.
@@ -2054,7 +2135,9 @@ extension EstimatedCoverageModel: StudyDraftSource {
         let editor = draft.editor
         func number(_ key: String) -> Double? { editor[key].flatMap(Double.init) }
         let transmitter = SavedAntenna(heightMeters: number("transmitHeightMeters") ?? transmitHeightMeters,
-                                       gainDbi: number("transmitGainDbi") ?? transmitGainDbi, lossDb: number("transmitLossDb") ?? transmitLossDb)
+                                       gainDbi: number("transmitGainDbi") ?? transmitGainDbi, lossDb: number("transmitLossDb") ?? transmitLossDb,
+                                       reportedGainSource: ReportedAntennaSource.fromDraft(editor["reportedTransmitGain"]),
+                                       reportedHeightSource: ReportedAntennaSource.fromDraft(editor["reportedTransmitHeight"]))
         let receiver = SavedAntenna(heightMeters: number("receiveHeightMeters") ?? receiveHeightMeters,
                                     gainDbi: number("receiveGainDbi") ?? receiveGainDbi, lossDb: number("receiveLossDb") ?? receiveLossDb)
         let name = editor["transmitterName"].flatMap { $0.isEmpty ? nil : $0 }
@@ -2075,6 +2158,9 @@ extension EstimatedCoverageModel: StudyDraftSource {
             invalidate()
             transmitterName = name
             transmitHeightMeters = transmitter.heightMeters; transmitGainDbi = transmitter.gainDbi; transmitLossDb = transmitter.lossDb
+            reportedTransmitGain = transmitter.reportedGainSource
+            reportedTransmitHeight = transmitter.reportedHeightSource
+            reportedTransmitterSelection = nil
             receiveHeightMeters = receiver.heightMeters; receiveGainDbi = receiver.gainDbi; receiveLossDb = receiver.lossDb
             frequencyMHz = number("frequencyMHz") ?? frequencyMHz
             transmitPowerDbm = number("transmitPowerDbm") ?? transmitPowerDbm
@@ -2083,6 +2169,7 @@ extension EstimatedCoverageModel: StudyDraftSource {
             radiusMeters = editor["radiusMeters"].flatMap(Int.init) ?? radiusMeters
             spacingMeters = editor["spacingMeters"].flatMap(Int.init) ?? spacingMeters
         }
+        protectAntennaInputs()
         radioPresetID = editor["radioPresetID"].flatMap { $0.isEmpty ? nil : $0 }
         savedStudy = study
         suggestedPlanID = draft.planID
@@ -2113,5 +2200,84 @@ extension EstimatedCoverageModel: StudyDraftSource {
                             editor: editor, planID: suggestedPlanID, savedStudyID: savedStudy?.id,
                             savedRevision: savedStudy?.revision, catalog: catalog, catalogComplete: savedCatalogComplete,
                             result: payload)
+    }
+}
+
+
+struct ReportedRepeaterSelection: Equatable {
+    let publicKey: String
+    let sourceID: UUID
+}
+
+struct ReportedRepeaterAntennaControl: View {
+    let selection: ReportedRepeaterSelection?
+    var minimumHeight: Double = 0
+    let apply: (RepeaterMetadata, String) -> Void
+
+    @Environment(AnalyzerSettings.self) private var settings
+    @AppStorage(DistanceUnit.defaultsKey) private var distanceUnit: DistanceUnit = .localeDefault
+    @State private var loaded: (ReportedRepeaterSelection, RepeaterMetadata)?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let selection, selection.sourceID == settings.sourceSession.id,
+               let loaded, loaded.0 == selection {
+                let metadata = loaded.1
+                let height = metadata.applicableHeightMeters(minimum: minimumHeight)
+                let gain = metadata.applicableGainDbi
+                if height != nil || gain != nil {
+                    Button("Use reported values") {
+                        apply(metadata, settings.host)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.blue)
+                }
+                if let height {
+                    let value = distanceUnit.displayHeight(meters: height).formatted(.number.precision(.fractionLength(0...3)))
+                    Text("Reported height above ground: \(value) \(distanceUnit.heightSymbol)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if let gain {
+                    Text("Reported antenna gain: \(gain.formatted()) dBi")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .task(id: settings.sourceIsReady ? selection : nil) {
+            loaded = nil
+            if let selection, let metadata = await reportedRepeaterMetadata(for: selection, settings: settings) {
+                loaded = (selection, metadata)
+            }
+        }
+    }
+}
+
+@MainActor
+func reportedRepeaterMetadata(for selection: ReportedRepeaterSelection?, settings: AnalyzerSettings) async -> RepeaterMetadata? {
+    guard settings.sourceIsReady, let selection, selection.sourceID == settings.sourceSession.id else { return nil }
+    let backend = AnalyzerBackendFactory.make(settings: settings)
+    let catalog = await FieldCatalogRepository.shared.repeaterMetadata(for: backend)
+    guard backend.sourceSession.isCurrent, !Task.isCancelled else { return nil }
+    return catalog[selection.publicKey]
+}
+
+struct ReportedAntennaSourceLabel: View {
+    let height: Bool
+    let gain: Bool
+
+    var body: some View {
+        Group {
+            if height && gain {
+                Text("Using reported antenna height and gain")
+            } else if height {
+                Text("Using reported antenna height")
+            } else if gain {
+                Text("Using reported antenna gain")
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
     }
 }

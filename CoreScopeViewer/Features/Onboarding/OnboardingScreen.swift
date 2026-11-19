@@ -8,6 +8,7 @@ struct OnboardingScreen: View {
     @State private var selectedHost = ""
     @State private var showsSourcePicker = false
     @State private var step: Step = .source
+    @State private var accountSupportedHost: String?
 
     private enum Step {
         case source
@@ -21,7 +22,12 @@ struct OnboardingScreen: View {
                 case .source:
                     sourceSelection
                 case .overview:
-                    overview
+                    GeometryReader { viewport in
+                        ScrollView {
+                            overview.frame(minHeight: viewport.size.height)
+                        }
+                    }
+                    .task(id: selectedHost) { await checkAccountSupport(host: selectedHost) }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -179,6 +185,14 @@ struct OnboardingScreen: View {
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .padding(.horizontal, 24)
 
+            if accountSupportedHost == selectedHost {
+                Text("You can browse without an account. To sync saved nodes, sign in under Settings → CoreScope Account.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 28)
+            }
+
             Text("Location is optional and is only used when you choose to center the map on yourself.")
                 .font(.caption)
                 .foregroundStyle(Color.secondary)
@@ -196,6 +210,21 @@ struct OnboardingScreen: View {
             .padding(.bottom, 28)
         }
         .adaptiveContentWidth(720)
+    }
+
+    private func checkAccountSupport(host: String) async {
+        accountSupportedHost = nil
+        let normalized = AnalyzerSettings.normalizedHost(host)
+        guard !normalized.isEmpty,
+              !sourceRegistry.sources.contains(where: {
+                  AnalyzerSettings.normalizedHost($0.host).caseInsensitiveCompare(normalized) == .orderedSame
+                      && $0.backendType == .beacon
+              }),
+              let origin = URL(string: "https://\(normalized)"),
+              let client = try? CoreScopeAccountClient(origin: origin),
+              (try? await client.supportsAccounts()) == true,
+              !Task.isCancelled, host == selectedHost else { return }
+        accountSupportedHost = host
     }
 
     private var selectedSourceName: String {

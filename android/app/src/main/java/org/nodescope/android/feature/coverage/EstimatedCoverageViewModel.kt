@@ -4,6 +4,11 @@ import org.nodescope.android.core.storage.DistanceUnit
 import org.nodescope.android.R
 import org.nodescope.android.core.design.UiText
 import android.content.SharedPreferences
+import org.nodescope.android.core.model.antennaSource
+import org.nodescope.android.core.model.RepeaterMetadata
+import org.nodescope.android.core.model.ReportedAntennaSource
+import org.nodescope.android.core.model.ReportedRepeaterSelection
+import org.nodescope.android.core.network.BrowseRepository
 import androidx.compose.runtime.*
 import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
@@ -41,14 +46,20 @@ internal class EstimatedCoverageViewModel(
     distanceUnit: DistanceUnit,
     /** Where the last calculation report is kept (app files, not the cache); null keeps no report. */
     private val diagnosticsFile: File? = null,
+    private val browse: BrowseRepository? = null,
 ) : ViewModel(), org.nodescope.android.feature.candidatesites.StudyDraftSource {
     /** The last transmitter placement, offered back for a few seconds. */
-    data class Undo(val id: Long, val message: UiText, val latitude: String, val longitude: String, val name: String?)
+    data class Undo(val id: Long, val message: UiText, val latitude: String, val longitude: String, val name: String?, val selection: ReportedRepeaterSelection?)
 
     // Transmitter location, as text so typed coordinates keep their own validation.
     var latitudeText by mutableStateOf(""); private set
     var longitudeText by mutableStateOf(""); private set
     /** The known node the transmitter was placed on, or "Current location"; null for a dropped pin. */
+    var transmitterSelection by mutableStateOf<ReportedRepeaterSelection?>(null); private set
+    private var editedTransmitHeight = false
+    private var editedTransmitGain = false
+    var reportedTransmitHeight by mutableStateOf<ReportedAntennaSource?>(null); private set
+    var reportedTransmitGain by mutableStateOf<ReportedAntennaSource?>(null); private set
     var transmitterName by mutableStateOf<String?>(null); private set
     /** Choose New Point: the panel collapses and the header prompts for a touch & hold. */
     var isChoosingLocation by mutableStateOf(false)
@@ -89,7 +100,7 @@ internal class EstimatedCoverageViewModel(
     var sourceID by mutableStateOf(""); private set
     /** The latest live catalog, kept while a saved one is shown so Refresh can switch to it. */
     private var liveNodes: List<MeshNode> = emptyList()
-    private var liveSource: String? = null
+    private var liveSource by mutableStateOf<String?>(null)
 
     // Saved studies. A reopened study keeps the node locations it was saved with until refreshed.
     /** The saved study this setup came from, so Save replaces it rather than adding another. */
@@ -140,7 +151,9 @@ internal class EstimatedCoverageViewModel(
     /** Everything the setup holds, as text, including incomplete numbers. */
     fun draftEditor(): Map<String, String> = fields + mapOf("radiusMeters" to radiusMeters.toString(),
         "spacingMeters" to spacingMeters.toString(), "transmitterName" to (transmitterName ?: ""),
-        "usesSavedCatalog" to usesSavedCatalog.toString())
+        "usesSavedCatalog" to usesSavedCatalog.toString(),
+        "reportedTransmitGain" to reportedTransmitGain?.draftValue().orEmpty(),
+        "reportedTransmitHeight" to reportedTransmitHeight?.draftValue().orEmpty())
 
     /** What's open now counts as saved: on opening, and after a successful Save. */
     fun markClean() { cleanEditor = draftEditor() }
@@ -161,6 +174,10 @@ internal class EstimatedCoverageViewModel(
         latitudeText = editor["latitude"].orEmpty()
         longitudeText = editor["longitude"].orEmpty()
         transmitterName = editor["transmitterName"]?.takeIf(String::isNotEmpty)
+        transmitterSelection = null
+        reportedTransmitGain = ReportedAntennaSource.fromDraft(editor["reportedTransmitGain"])
+        reportedTransmitHeight = ReportedAntennaSource.fromDraft(editor["reportedTransmitHeight"])
+        protectAntennaInputs()
         values = values + editor.filterKeys { it in values.keys }
         editor["radiusMeters"]?.toIntOrNull()?.let { radiusMeters = it }
         editor["spacingMeters"]?.toIntOrNull()?.let { spacingMeters = it }
@@ -276,8 +293,12 @@ internal class EstimatedCoverageViewModel(
         latitudeText = seed.point.latitude.toString()
         longitudeText = seed.point.longitude.toString()
         transmitterName = seed.point.name
+        reportedTransmitGain = seed.point.antenna.reportedGainSource
+        reportedTransmitHeight = seed.point.antenna.reportedHeightSource
+        protectAntennaInputs()
+        transmitterSelection = seed.repeaterSelection
         // Formatted as a reopened study is: "20 ft" and "22", never "20.0" or 32.808398950131235.
-        values = values + mapOf("txHeight" to heightEditorText(seed.point.antenna.heightMeters),
+        values = values + mapOf("txHeight" to heightEditorText(seed.point.antenna.heightMeters, exact = reportedTransmitHeight != null),
             "txGain" to seed.point.antenna.gainDbi.editorText(), "txLoss" to seed.point.antenna.lossDb.editorText(),
             "frequency" to seed.frequencyMHz.editorText(), "power" to seed.transmitPowerDbm.editorText(),
             "sensitivity" to seed.sensitivityDbm.editorText())
@@ -286,10 +307,63 @@ internal class EstimatedCoverageViewModel(
     }
 
     /** A height in metres as the setup shows it: feet to two decimals when imperial, trailing zeros dropped. */
-    private fun heightEditorText(meters: Double): String =
-        if (heightInFeet) String.format(java.util.Locale.US, "%.2f", meters / 0.3048).trimEnd('0').trimEnd('.') else meters.editorText()
+    private fun heightEditorText(meters: Double, exact: Boolean = false): String = when {
+        !heightInFeet -> meters.editorText()
+        exact -> {
+            val feet = meters / 0.3048
+            // A downward round-trip would reject a reported height exactly at the one-meter minimum.
+            val editorFeet = if (feet * 0.3048 < meters) Math.nextUp(feet) else feet
+            editorFeet.editorText()
+        }
+        else -> String.format(java.util.Locale.US, "%.2f", meters / 0.3048).trimEnd('0').trimEnd('.')
+    }
 
-    fun set(field: String, text: String) { values = values + (field to text) }
+    fun isCurrentRepeaterSource(selection: ReportedRepeaterSelection) =
+        !usesSavedCatalog && selection.analyzerHost == liveSource
+
+    suspend fun repeaterMetadata(selection: ReportedRepeaterSelection) =
+        browse?.repeaterMetadata(selection.analyzerHost)?.get(selection.publicKey.lowercase(java.util.Locale.ROOT))
+
+    internal fun applyReportedDefaults(metadata: RepeaterMetadata, host: String) {
+        val source = metadata.antennaSource(host)
+        if (!editedTransmitHeight && source.isFromDifferentRepeater(reportedTransmitHeight)) {
+            metadata.applicableHeightMeters(minimum = 1.0)?.let { applyReportedHeight(it, source) }
+        }
+        if (!editedTransmitGain && source.isFromDifferentRepeater(reportedTransmitGain)) {
+            metadata.applicableGainDbi?.let { applyReportedGain(it, source) }
+        }
+    }
+
+    private fun protectAntennaInputs() {
+        editedTransmitHeight = reportedTransmitHeight == null
+        editedTransmitGain = reportedTransmitGain == null
+    }
+
+    fun applyReportedHeight(heightMeters: Double, source: ReportedAntennaSource) {
+        if (heightMeters !in 1.0..300.0) return
+        set("txHeight", heightEditorText(heightMeters, exact = true))
+        reportedTransmitHeight = source
+        editedTransmitHeight = false
+    }
+
+    fun applyReportedGain(gain: Double, source: ReportedAntennaSource) {
+        if (!gain.isFinite() || gain !in -10.0..30.0 || gain == 0.0) return
+        set("txGain", gain.editorText())
+        reportedTransmitGain = source
+        editedTransmitGain = false
+    }
+
+    fun set(field: String, text: String) {
+        if (field == "txGain" && values[field] != text) {
+            reportedTransmitGain = null
+            editedTransmitGain = true
+        }
+        if (field == "txHeight" && values[field] != text) {
+            reportedTransmitHeight = null
+            editedTransmitHeight = true
+        }
+        values = values + (field to text)
+    }
 
     fun applyRadioPreset(preset: CoverageRadioPreset) {
         values = values + mapOf("frequency" to preset.frequencyMHz.editorText(), "power" to preset.transmitPowerDbm.editorText(),
@@ -307,7 +381,7 @@ internal class EstimatedCoverageViewModel(
     // MARK: Transmitter
 
     /** Places or moves the transmitter from the map or the location button, with Undo. */
-    fun place(point: Coordinate, name: String?) {
+    fun place(point: Coordinate, name: String?, publicKey: String? = null) {
         if (!CoverageSetupValidation.supportsCoordinate(point.latitude, point.longitude)) {
             inputError = UiText.Resource(R.string.coverage_choose_a_transmitter_between_85_s_and_85)
             return
@@ -318,6 +392,8 @@ internal class EstimatedCoverageViewModel(
         latitudeText = point.latitude.toString()
         longitudeText = point.longitude.toString()
         transmitterName = name
+        transmitterSelection = publicKey?.takeIf { !usesSavedCatalog && sourceID == liveSource }
+            ?.let { ReportedRepeaterSelection(sourceID, it) }
         transmitterExpanded = true
         isChoosingLocation = false
         placementID++
@@ -329,6 +405,7 @@ internal class EstimatedCoverageViewModel(
         latitudeText = ""
         longitudeText = ""
         transmitterName = null
+        transmitterSelection = null
         isChoosingLocation = false
     }
 
@@ -337,6 +414,7 @@ internal class EstimatedCoverageViewModel(
         latitudeText = offer.latitude
         longitudeText = offer.longitude
         transmitterName = offer.name
+        transmitterSelection = offer.selection
         isChoosingLocation = false
         undo = null
     }
@@ -348,11 +426,12 @@ internal class EstimatedCoverageViewModel(
         latitudeText = latitude
         longitudeText = longitude
         transmitterName = null
+        transmitterSelection = null
         undo = null
     }
 
     private fun offerUndo(message: UiText) {
-        undo = Undo(++undoCounter, message, latitudeText, longitudeText, transmitterName)
+        undo = Undo(++undoCounter, message, latitudeText, longitudeText, transmitterName, transmitterSelection)
     }
 
     // MARK: Catalog
@@ -544,7 +623,9 @@ internal class EstimatedCoverageViewModel(
             val gain = number("${prefix}Gain") ?: return null
             val loss = number("${prefix}Loss") ?: return null
             return org.nodescope.android.feature.candidatesites.SavedAntenna(
-                if (prefix == "tx") inputs.transmitHeightMeters else inputs.receiveHeightMeters, gain, loss)
+                if (prefix == "tx") inputs.transmitHeightMeters else inputs.receiveHeightMeters, gain, loss,
+                if (prefix == "tx") reportedTransmitGain else null,
+                if (prefix == "tx") reportedTransmitHeight else null)
         }
         val coverage = org.nodescope.android.feature.candidatesites.SavedCoverage(
             org.nodescope.android.feature.candidatesites.SavedEndpoint(transmitterName, point.latitude, point.longitude, antenna("tx") ?: return null),
@@ -572,9 +653,13 @@ internal class EstimatedCoverageViewModel(
         latitudeText = coverage.transmitter.latitude.toString()
         longitudeText = coverage.transmitter.longitude.toString()
         transmitterName = coverage.transmitter.name
+        transmitterSelection = null
+        reportedTransmitGain = coverage.transmitter.antenna.reportedGainSource
+        reportedTransmitHeight = coverage.transmitter.antenna.reportedHeightSource
+        protectAntennaInputs()
         values = mapOf(
             "frequency" to coverage.frequencyMHz.editorText(), "power" to coverage.transmitPowerDbm.editorText(),
-            "txHeight" to heightText(coverage.transmitter.antenna.heightMeters), "txGain" to coverage.transmitter.antenna.gainDbi.editorText(),
+            "txHeight" to heightEditorText(coverage.transmitter.antenna.heightMeters, exact = reportedTransmitHeight != null), "txGain" to coverage.transmitter.antenna.gainDbi.editorText(),
             "txLoss" to coverage.transmitter.antenna.lossDb.editorText(),
             "rxHeight" to heightText(coverage.receiver.heightMeters), "rxGain" to coverage.receiver.gainDbi.editorText(),
             "rxLoss" to coverage.receiver.lossDb.editorText(),
@@ -659,4 +744,4 @@ internal fun nearestCoverageNodes(nodes: List<MeshNode>, selected: Coordinate?):
 data class LinkCoverageSeed(val point: org.nodescope.android.feature.candidatesites.SavedEndpoint,
     val frequencyMHz: Double, val transmitPowerDbm: Double, val sensitivityDbm: Double,
     /** Where to suggest saving the new coverage study. */
-    val planID: String? = null)
+    val planID: String? = null, val repeaterSelection: ReportedRepeaterSelection? = null)

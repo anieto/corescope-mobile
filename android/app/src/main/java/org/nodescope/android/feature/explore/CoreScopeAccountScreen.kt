@@ -7,6 +7,12 @@ import org.nodescope.android.core.design.withDescription
 import org.nodescope.android.core.design.MonaspaceNeon
 import org.nodescope.android.core.design.meshCardColors
 import android.content.Context
+import android.Manifest
+import android.os.Build
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
@@ -53,6 +59,14 @@ import org.nodescope.android.core.storage.NodeLibrary
 import org.nodescope.android.core.storage.AccountSelectionStore
 
 internal class CoreScopeAccountModel(private val context: Context, private val host: String) {
+    enum class NotificationStatus { Checking, Unavailable, Failed, Ready }
+
+    var notificationStatus by mutableStateOf(NotificationStatus.Checking)
+        private set
+    var notifications by mutableStateOf<CoreScopeAccountNotifications?>(null)
+        private set
+    private var sourceNotificationsEnabled = false
+
     var user by mutableStateOf<CoreScopeAccountUser?>(null)
         private set
     var supported by mutableStateOf(false)
@@ -75,7 +89,9 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
     suspend fun open(library: NodeLibrary) = action {
         val client = CoreScopeAccountClient.forSource(context, host)
         this.client = client
-        supported = client.supportsAccounts()
+        val capabilities = client.accountCapabilities()
+        supported = capabilities?.enabled == true
+        sourceNotificationsEnabled = capabilities?.notifications == true
         if (!supported) throw AccountException(AccountException.Kind.UNSUPPORTED)
         // Like iOS, only a restored session is validated; a first visit goes straight to sign-in.
         if (client.hasSession) {
@@ -175,9 +191,68 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
 
     suspend fun copyToDevice(library: NodeLibrary) = action { copy(library) }
 
+    val push = StagingPush.get(context)
+
+    suspend fun loadNotifications() {
+        val currentUser = user ?: return
+        val currentClient = client ?: return
+        if (!sourceNotificationsEnabled) {
+            notifications = null
+            notificationStatus = NotificationStatus.Unavailable
+            return
+        }
+        notificationStatus = NotificationStatus.Checking
+        try {
+            val current = currentClient.notifications()
+            if (client !== currentClient || user?.id != currentUser.id) return
+            notifications = current
+            notificationStatus = NotificationStatus.Ready
+            if (PushPlatform.enabled) StagingPush.attempt {
+                current.nodeScopePush?.let { push.renew(context, currentClient, currentUser, it) }
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: AccountException) {
+            if (client !== currentClient || user?.id != currentUser.id) return
+            if (error.kind == AccountException.Kind.SIGNED_OUT) {
+                store.deactivate(origin)
+                user = null
+                selection = null
+                resetDocument = null
+                notifications = null
+                message = error.displayText
+            } else notificationStatus = NotificationStatus.Failed
+        } catch (_: Exception) {
+            if (client === currentClient && user?.id == currentUser.id) notificationStatus = NotificationStatus.Failed
+        }
+    }
+
+    suspend fun setWatch(key: String, watched: Boolean) = action {
+        val currentClient = client ?: return@action
+        val currentUser = user ?: return@action
+        if (notificationStatus != NotificationStatus.Ready) return@action
+        notifications = currentClient.setWatch(key, watched, currentUser.csrfToken)
+    }
+
+    fun pushEnabled(userId: Long) = push.enabled(origin, userId)
+
+    suspend fun setPush(enabled: Boolean) = action {
+        val currentClient = client ?: return@action
+        val currentUser = user ?: return@action
+        if (enabled) {
+            val capability = notifications?.nodeScopePush ?: return@action
+            push.enable(context, currentClient, currentUser, capability)
+            message = UiText.Resource(R.string.staging_push_enabled)
+        } else {
+            push.disable(origin, currentUser.id, currentClient, currentUser.csrfToken)
+            message = UiText.Resource(R.string.staging_push_disabled)
+        }
+    }
+
     suspend fun logout(copyTo: NodeLibrary? = null) = action {
         val id = user?.id ?: return@action
         if (copyTo != null) copy(copyTo)
+        if (PushPlatform.enabled) StagingPush.attempt { push.disable(origin, id, client, user?.csrfToken) }
         var failed = false
         try { client?.logout() }
         catch (error: Exception) {
@@ -227,7 +302,11 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
 }
 
 @Composable
-fun CoreScopeAccountScreen(host: String, sourceName: String?, library: NodeLibrary, acquire: (() -> org.nodescope.android.core.storage.MyNodesRepositories)? = null) {
+fun CoreScopeAccountScreen(
+    host: String, sourceName: String?, library: NodeLibrary,
+    acquire: (() -> org.nodescope.android.core.storage.MyNodesRepositories)? = null,
+    watchKey: String? = null, watchName: String? = null,
+) {
     val context = LocalContext.current
     val model = remember(host) { CoreScopeAccountModel(context.applicationContext, host) }
     val scope = rememberCoroutineScope()
@@ -256,6 +335,8 @@ fun CoreScopeAccountScreen(host: String, sourceName: String?, library: NodeLibra
     }
     var showsImport by remember { mutableStateOf(false) }
     var showsSignOut by remember { mutableStateOf(false) }
+    var showsPushGuide by remember { mutableStateOf(false) }
+    val uriHandler = LocalUriHandler.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(host, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { model.open(library) }
@@ -280,7 +361,67 @@ fun CoreScopeAccountScreen(host: String, sourceName: String?, library: NodeLibra
             TextButton(onClick = { showsSignOut = false; scope.launch { model.logout(library) } }) { Text(stringResource(R.string.explore_copy_selections_and_sign_out)) }
         } },
         dismissButton = { TextButton(onClick = { showsSignOut = false }) { Text(stringResource(R.string.common_cancel)) } })
+    val grantPush = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) scope.launch { model.setPush(true) }
+    }
+    val pushRevision by model.push.changes.collectAsState()
+    val pushEnabled = remember(model, model.user?.id, pushRevision) {
+        model.user?.id?.let(model::pushEnabled) == true
+    }
+    LaunchedEffect(model, model.user?.id, pushEnabled, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { model.loadNotifications() }
+    }
+    val requestedWatchKey = watchKey?.lowercase()
+    val watchingRequestedNode = model.notifications?.watches?.any { it.pubkey == requestedWatchKey } == true
+    var attemptedRequestedWatch by remember(model, requestedWatchKey, model.user?.id) { mutableStateOf(false) }
+    LaunchedEffect(requestedWatchKey, model.user?.id, model.notificationStatus, model.busy) {
+        if (requestedWatchKey != null && model.user != null && !model.busy &&
+            model.notificationStatus == CoreScopeAccountModel.NotificationStatus.Ready &&
+            !attemptedRequestedWatch && !watchingRequestedNode) {
+            attemptedRequestedWatch = true
+            // The operation changes busy, which restarts this effect. Use the screen scope.
+            scope.launch { model.setWatch(requestedWatchKey, true) }
+        }
+    }
+    if (showsPushGuide) {
+        val steps = stringResource(R.string.account_push_guide_steps)
+        AlertDialog(
+            onDismissRequest = { showsPushGuide = false },
+            title = { Text(stringResource(R.string.account_push_guide_title)) },
+            text = { Text(steps) },
+            confirmButton = { TextButton(onClick = { showsPushGuide = false }) { Text(stringResource(android.R.string.ok)) } },
+            dismissButton = {
+                TextButton(onClick = {
+                    val share = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(android.content.Intent.EXTRA_TEXT, "$steps\n\nhttps://nodescope.app/push-setup/")
+                    }
+                    context.startActivity(android.content.Intent.createChooser(share, null))
+                }) { Text(stringResource(R.string.account_push_guide_share)) }
+            },
+        )
+    }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (requestedWatchKey != null) item {
+            val requestedName = watchName?.takeIf { it.isNotBlank() }
+                ?: stringResource(R.string.account_watch_this_node)
+            val retryWatch = !watchingRequestedNode && attemptedRequestedWatch && !model.busy &&
+                model.notificationStatus == CoreScopeAccountModel.NotificationStatus.Ready
+            AccountCard(stringResource(R.string.account_watch_node), null) {
+                Text(requestedName, style = MaterialTheme.typography.titleMedium)
+                if (watchingRequestedNode) {
+                    Text(stringResource(R.string.account_watch_confirmation, requestedName))
+                } else if (model.user == null) {
+                    Text(stringResource(R.string.account_watch_sign_in))
+                } else if (retryWatch) {
+                    Button(onClick = { scope.launch { model.setWatch(requestedWatchKey, true) } }) {
+                        Text(stringResource(R.string.account_alerts_retry))
+                    }
+                } else if (model.notificationStatus == CoreScopeAccountModel.NotificationStatus.Ready) {
+                    Text(stringResource(R.string.account_watch_adding))
+                }
+            }
+        }
         item {
             AccountCard(stringResource(R.string.explore_account_connection), Icons.Outlined.AccountCircle) {
                 FavoriteSourceIdentity(host, sourceName)
@@ -302,6 +443,62 @@ fun CoreScopeAccountScreen(host: String, sourceName: String?, library: NodeLibra
                     Text(user.displayName.ifBlank { user.email }, style = MaterialTheme.typography.titleMedium)
                     if (user.displayName.isNotBlank() && user.displayName != user.email) Text(user.email,
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            item {
+                AccountCard(stringResource(R.string.staging_push_channel), null) {
+                    when (model.notificationStatus) {
+                        CoreScopeAccountModel.NotificationStatus.Checking -> Text(stringResource(R.string.account_alerts_checking))
+                        CoreScopeAccountModel.NotificationStatus.Failed -> {
+                            Text(stringResource(R.string.account_alerts_failed))
+                            TextButton(onClick = { scope.launch { model.loadNotifications() } }) {
+                                Text(stringResource(R.string.account_alerts_retry))
+                            }
+                        }
+                        CoreScopeAccountModel.NotificationStatus.Unavailable -> Text(stringResource(R.string.account_alerts_unavailable))
+                        CoreScopeAccountModel.NotificationStatus.Ready -> model.notifications?.let { alerts ->
+                            if (alerts.watches.isEmpty() && requestedWatchKey == null) Text(stringResource(R.string.account_watches_empty), style = MaterialTheme.typography.bodySmall)
+                            alerts.watches.forEach { watch ->
+                                AccountNodeRow(watch.name.ifBlank { null }, watch.pubkey) {
+                                    TextButton(enabled = !model.busy, onClick = {
+                                        scope.launch { model.setWatch(watch.pubkey, false) }
+                                    }, modifier = Modifier.withDescription(
+                                        stringResource(R.string.account_stop_watching_node, watch.name.ifBlank { watch.pubkey }),
+                                    ) { text -> contentDescription = text }) {
+                                        Text(stringResource(R.string.account_stop_watching))
+                                    }
+                                }
+                            }
+                            HorizontalDivider()
+                            TextButton(onClick = { uriHandler.openUri("https://${normalizeHost(host)}/#/account?section=notifications") }) {
+                                Text(stringResource(R.string.account_manage_email_alerts))
+                            }
+                            if (!alerts.enabled) Text(stringResource(R.string.account_email_alerts_off), style = MaterialTheme.typography.bodySmall)
+                            if (PushPlatform.enabled) {
+                                if (pushEnabled || alerts.nodeScopePush?.supported() == true) {
+                                    OutlinedButton(enabled = !model.busy, onClick = {
+                                        if (!pushEnabled && Build.VERSION.SDK_INT >= 33 &&
+                                            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                                            grantPush.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                        } else {
+                                            scope.launch { model.setPush(!pushEnabled) }
+                                        }
+                                    }) {
+                                        Text(stringResource(if (pushEnabled) R.string.account_disable_push_device else R.string.account_enable_push_device))
+                                    }
+                                }
+                                if (alerts.nodeScopePush == null) {
+                                    Text(stringResource(R.string.account_push_unavailable), style = MaterialTheme.typography.bodySmall)
+                                    TextButton(onClick = { showsPushGuide = true }) {
+                                        Text(stringResource(R.string.account_push_guide_open))
+                                    }
+                                } else if (!alerts.nodeScopePush.supported()) {
+                                    Text(stringResource(R.string.account_push_relay_unsupported), style = MaterialTheme.typography.bodySmall)
+                                }
+                            }
+                            Unit
+                        }
+                    }
                 }
             }
             if (paused) item {

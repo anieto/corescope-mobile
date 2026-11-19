@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.11.1
+
+### Added
+
+- Watch nodes from their detail pages and receive push alerts on iOS and Android when your CoreScope administrator enables NodeScope Push.
+- View community-reported repeater details and use antenna values in coverage and link studies.
+- Find favorite channels in a dedicated section of the Channels tab.
+
+### Fixed
+
+- Clarified Brazilian Portuguese and Spanish Node Check wording about whether a node is active or being heard. Updated the matching store descriptions.
+
 ## 0.4.0 - 2026-09-18
 
 Release focused on clearer map exploration and deeper packet-route inspection.

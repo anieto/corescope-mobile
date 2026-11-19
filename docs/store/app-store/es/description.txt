@@ -6,7 +6,7 @@ EXPLORA TU RED
 Mira los nodos activos, los observadores en línea, los paquetes recientes y la información de señal. Busca nodos, observadores, canales, claves públicas y paquetes, y guarda favoritos en tu panel.
 
 REVISIÓN DE NODO
-¿Tu nodo está saliendo? Mira qué observadores lo escuchan y qué corregir, o haz una prueba en vivo mientras envías un anuncio flood. Requiere un servidor CoreScope.
+¿Se escucha tu nodo? Mira qué observadores lo escuchan y qué corregir, o haz una prueba en vivo mientras envías un anuncio flood. Requiere un servidor CoreScope.
 
 ANÁLISIS DE NODOS
 Gráficos de disponibilidad, calidad de señal, actividad, retransmisión, cobertura de observadores, tipos de paquete, saltos y vecinos, según el analizador. Las métricas que faltan se indican, nunca se estiman. Exporta en CSV o JSON.

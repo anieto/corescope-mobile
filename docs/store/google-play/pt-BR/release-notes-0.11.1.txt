@@ -1,0 +1,4 @@
+Novo: Alertas de nós monitorados. Toque no sino de um nó para receber um alerta push quando ele deixar de ser ouvido ou voltar a ser ouvido. Requer uma conta do CoreScope em um analisador com NodeScope Push.
+Novo: Detalhes informados dos repetidores, com valores de antena para estudos de cobertura e enlace. Os canais favoritos têm uma seção própria.
+Corrigido: textos mais claros na Verificação de nó.
+Da 0.11.0: Planos salvos, Cobertura estimada (beta), espanhol e português do Brasil.

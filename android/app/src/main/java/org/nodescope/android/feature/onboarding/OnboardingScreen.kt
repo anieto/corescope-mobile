@@ -26,6 +26,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.nodescope.android.R
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import kotlinx.coroutines.CancellationException
+import org.nodescope.android.core.model.AnalyzerSourceType
+import org.nodescope.android.core.network.CoreScopeAccountClient
 import org.nodescope.android.core.model.AnalyzerSource
 import org.nodescope.android.core.network.normalizeHost
 import org.nodescope.android.core.storage.SourceIcons
@@ -65,6 +69,19 @@ fun OnboardingScreen(
         return
     }
     val source = sources.firstOrNull { runCatching { normalizeHost(it.host) }.getOrNull().equals(host, true) }
+    var accountSupported by remember(host) { mutableStateOf(false) }
+    LaunchedEffect(step, host, source?.backendType) {
+        accountSupported = false
+        if (step != OnboardingStep.OVERVIEW || host.isBlank() || source?.backendType == AnalyzerSourceType.BEACON) return@LaunchedEffect
+        try {
+            val origin = "https://${normalizeHost(host)}/".toHttpUrlOrNull() ?: return@LaunchedEffect
+            accountSupported = CoreScopeAccountClient(origin).supportsAccounts()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            // Account discovery is optional and never blocks first launch.
+        }
+    }
     when (step) {
         OnboardingStep.SOURCE -> OnboardingPage(
             icon = null, title = stringResource(R.string.welcome),
@@ -100,6 +117,10 @@ fun OnboardingScreen(
                         stringResource(R.string.onboarding_live_routes_animate_hop_by_hop_open_a))
                     FeatureRow(Icons.Outlined.FilterList, stringResource(R.string.onboarding_focus_your_view), stringResource(R.string.onboarding_choose_a_region_on_the_map_to_narrow))
                 }
+            }
+            if (accountSupported) {
+                Text(stringResource(R.string.onboarding_optional_corescope_account), textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(stringResource(R.string.onboarding_location_is_optional_and_is_only_used_when), textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

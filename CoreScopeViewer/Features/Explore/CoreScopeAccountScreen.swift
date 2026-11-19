@@ -2,6 +2,11 @@ import SwiftUI
 
 @MainActor @Observable
 final class CoreScopeAccountModel {
+    enum NotificationStatus { case checking, unavailable, failed, ready }
+    private(set) var notificationStatus: NotificationStatus = .checking
+    private(set) var notifications: CoreScopeAccountNotifications?
+    private var sourceNotificationsEnabled = false
+
     private(set) var user: CoreScopeAccountUser?
     private(set) var supported = false
     private(set) var busy = false
@@ -46,7 +51,9 @@ final class CoreScopeAccountModel {
             let client = try CoreScopeAccountClient(origin: settings.baseURL, cookie: cookie, lifetime: settings.sourceSession,
                 save: { try AccountSessionKeychain.save($0, origin: origin) })
             self.client = client
-            supported = try await client.supportsAccounts()
+            let capabilities = try await client.accountCapabilities()
+            supported = capabilities?.enabled == true
+            sourceNotificationsEnabled = capabilities?.notifications == true
             guard supported else { throw CoreScopeAccountError.unsupported }
             if cookie != nil {
                 user = try await client.me()
@@ -170,10 +177,67 @@ final class CoreScopeAccountModel {
         message = String(localized: "Account selections copied to device favorites.")
     }
 
+    func loadNotifications() async {
+        guard let user, let client else { return }
+        if !sourceNotificationsEnabled {
+            notifications = nil
+            notificationStatus = .unavailable
+            return
+        }
+        notificationStatus = .checking
+        do {
+            let current = try await client.notifications()
+            try Task.checkCancellation()
+            guard self.user?.id == user.id else { return }
+            notifications = current
+            notificationStatus = .ready
+            #if NODESCOPE_PUSH_STAGING || NODESCOPE_PUSH_PRODUCTION
+            if let capability = current.nodeScopePush {
+                await StagingPush.shared.renew(client: client, user: user, capability: capability)
+            }
+            #endif
+        } catch CoreScopeAccountError.signedOut {
+            guard !Task.isCancelled, self.user?.id == user.id else { return }
+            store.deactivate(origin: origin)
+            self.user = nil
+            selection = nil
+            resetDocument = nil
+            notifications = nil
+            message = String(localized: "Sign in again to access this account.")
+        } catch {
+            if !Task.isCancelled { notificationStatus = .failed }
+        }
+    }
+
+    func setWatch(_ key: String, watched: Bool) async {
+        await action {
+            guard let client, let user, notificationStatus == .ready else { return }
+            notifications = try await client.setWatch(key, watched: watched, csrf: user.csrfToken)
+        }
+    }
+
+    #if NODESCOPE_PUSH_STAGING || NODESCOPE_PUSH_PRODUCTION
+    func setPush(_ enable: Bool) async {
+        await action {
+            guard let client, let user else { return }
+            if enable, let pushCapability = notifications?.nodeScopePush {
+                try await StagingPush.shared.enable(client: client, user: user, capability: pushCapability)
+                message = String(localized: "Watched-node alerts enabled on this device.")
+            } else {
+                try await StagingPush.shared.disable(origin: client.origin, account: user.id, client: client, csrf: user.csrfToken)
+                message = String(localized: "Watched-node alerts disabled on this device.")
+            }
+        }
+    }
+    #endif
+
     func logout(copyTo favorites: FavoritesStore? = nil) async {
         await action {
             guard let client, let user else { return }
             if let favorites { try copy(favorites) }
+            #if NODESCOPE_PUSH_STAGING || NODESCOPE_PUSH_PRODUCTION
+            try? await StagingPush.shared.disable(origin: client.origin, account: user.id, client: client, csrf: user.csrfToken)
+            #endif
             // Clear account data only after the credential store confirms local deletion.
             var revocationFailed = false
             do { try await client.logout() }
@@ -185,6 +249,8 @@ final class CoreScopeAccountModel {
             selection = nil
             resetDocument = nil
             self.user = nil
+            notifications = nil
+            notificationStatus = .checking
             message = revocationFailed
                 ? String(localized: "Signed out on this device. Server revocation was not confirmed; the session may remain active until revoked on CoreScope or expired.")
                 : String(localized: "Signed out. Device favorites are unchanged.")
@@ -218,6 +284,10 @@ final class CoreScopeAccountModel {
 }
 
 struct CoreScopeAccountScreen: View {
+    var watchNode: MeshNode? = nil
+    var onWatchAdded: (() -> Void)? = nil
+    @Environment(\.dismiss) private var dismiss
+    @State private var attemptedRequestedWatch = false
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(FavoritesStore.self) private var favorites
     @Environment(\.scenePhase) private var scenePhase
@@ -226,58 +296,89 @@ struct CoreScopeAccountScreen: View {
     @State private var password = ""
     @State private var operation: Task<Void, Never>?
     @State private var showsSignOut = false
+    @State private var showsPushGuide = false
 
     var body: some View {
-        ZStack {
-            MeshBackground(subdued: true).ignoresSafeArea()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    AccountSourceCard(host: settings.host)
-                    if model.busy || model.message != nil {
-                        AccountStatusCard(busy: model.busy, message: model.message)
-                    }
-                    if let user = model.user {
-                        AccountIdentityCard(user: user)
-                        if model.resetDocument != nil {
-                            AccountResetCard { restore in
-                                run { await model.resolveReset(restore: restore) }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                if let watchNode {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("Add a watch", systemImage: "bell")
+                            .font(.monaspace(.headline))
+                        Text(watchNode.name ?? watchNode.publicKey)
+                            .font(.monaspace(.subheadline))
+                        if model.user == nil {
+                            Text("Sign in to CoreScope to add this node to your watch list.")
+                                .font(.subheadline).foregroundStyle(.secondary)
+                        } else if model.notificationStatus == .ready {
+                            if model.busy || !attemptedRequestedWatch {
+                                ProgressView("Adding watch…")
+                            } else if model.notifications?.watches.contains(where: {
+                                $0.pubkey == watchNode.publicKey.lowercased()
+                            }) != true {
+                                Button("Retry adding watch") { run { await finishRequestedWatch() } }
+                                    .buttonStyle(.borderedProminent)
                             }
                         }
-                        AccountSyncCard(paused: model.resetDocument != nil,
-                            sync: { run { await model.sync(upload: true) } },
-                            refresh: { run { await model.sync(upload: false) } },
-                            importFavorites: { run { await model.importDeviceFavorites(favorites) } },
-                            copy: { run { await model.copyToDevice(favorites) } })
-                        AccountSelectionsCard(keys: model.favoriteKeys, claimed: model.claimed,
-                            paused: model.resetDocument != nil) { key in
-                            run { await model.removeFavorite(key) }
-                        }
-                        Button("Sign out", role: .destructive) { showsSignOut = true }
-                            .buttonStyle(.bordered).frame(maxWidth: .infinity, alignment: .leading)
-                            .confirmationDialog("Sign out of CoreScope?", isPresented: $showsSignOut, titleVisibility: .visible) {
-                                Button("Sign out", role: .destructive) { run { await model.logout() } }
-                                Button("Copy selections and sign out") { run { await model.logout(copyTo: favorites) } }
-                            } message: {
-                                Text("Downloaded account selections and pending account edits will be removed from this device. Existing device favorites are preserved.")
-                            }
-                    } else if model.supported {
-                        AccountSignInCard(email: $email, password: $password, website: settings.baseURL) {
-                            let secret = password
-                            password = ""
-                            run { await model.login(email: email, password: secret, favorites: favorites) }
-                        }
-                    } else if !model.busy {
-                        Button("Try again", systemImage: "arrow.clockwise") {
-                            run { await model.open(settings: settings, favorites: favorites) }
-                        }.buttonStyle(.bordered)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(16)
+                    .instrumentCard()
                 }
-                .padding(16)
-                .disabled(model.busy || scenePhase != .active)
+                AccountSourceCard(host: settings.host)
+                if model.busy || model.message != nil {
+                    AccountStatusCard(busy: model.busy, message: model.message)
+                }
+                if let user = model.user {
+                    AccountIdentityCard(user: user)
+                    notificationCard(user)
+                    if model.resetDocument != nil {
+                        AccountResetCard { restore in
+                            run { await model.resolveReset(restore: restore) }
+                        }
+                    }
+                    AccountSyncCard(paused: model.resetDocument != nil,
+                        sync: { run { await model.sync(upload: true) } },
+                        refresh: { run { await model.sync(upload: false) } },
+                        importFavorites: { run { await model.importDeviceFavorites(favorites) } },
+                        copy: { run { await model.copyToDevice(favorites) } })
+                    AccountSelectionsCard(keys: model.favoriteKeys, claimed: model.claimed,
+                        paused: model.resetDocument != nil) { key in
+                        run { await model.removeFavorite(key) }
+                    }
+                    Button(role: .destructive) {
+                        showsSignOut = true
+                    } label: {
+                        Text("Sign out")
+                    }
+                    .buttonStyle(StandaloneActionButtonStyle())
+                    .confirmationDialog("Sign out of CoreScope?", isPresented: $showsSignOut, titleVisibility: .visible) {
+                        Button("Sign out", role: .destructive) { run { await model.logout() } }
+                        Button("Copy selections and sign out") { run { await model.logout(copyTo: favorites) } }
+                    } message: {
+                        Text("Downloaded account selections and pending account edits will be removed from this device. Existing device favorites are preserved.")
+                    }
+                } else if model.supported {
+                    AccountSignInCard(email: $email, password: $password, website: settings.baseURL) {
+                        let secret = password
+                        password = ""
+                        run { await model.login(email: email, password: secret, favorites: favorites) }
+                    }
+                } else if !model.busy {
+                    Button {
+                        run { await model.open(settings: settings, favorites: favorites) }
+                    } label: {
+                        Label("Try again", systemImage: "arrow.clockwise")
+                    }
+                    .buttonStyle(StandaloneActionButtonStyle())
+                }
             }
-            .adaptiveScrollContentWidth()
-            .scrollDismissesKeyboard(.interactively)
+            .padding(16)
+            .disabled(model.busy || scenePhase != .active)
         }
+        .adaptiveScrollContentWidth()
+        .scrollDismissesKeyboard(.interactively)
+        .meshPageBackground()
         .tint(NodeScopeStyle.signal)
         .navigationTitle("CoreScope account")
         .toolbar(.visible, for: .navigationBar)
@@ -285,11 +386,142 @@ struct CoreScopeAccountScreen: View {
             guard scenePhase == .active else { return }
             await model.open(settings: settings, favorites: favorites)
         }
+        .task(id: notificationTaskID) {
+            guard model.user != nil, scenePhase == .active else { return }
+            await model.loadNotifications()
+            if !attemptedRequestedWatch { await finishRequestedWatch() }
+        }
+        .onChange(of: model.busy) { _, busy in
+            if !busy, watchNode != nil, !attemptedRequestedWatch, model.notificationStatus == .ready {
+                run { await finishRequestedWatch() }
+            }
+        }
+        .sheet(isPresented: $showsPushGuide) {
+            NavigationStack {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Share these steps with your CoreScope administrator.")
+                        Text(Self.pushSetupSteps)
+                        ShareLink(item: "\(String(localized: Self.pushSetupSteps))\n\nhttps://nodescope.app/push-setup/") {
+                            Label("Share setup steps", systemImage: "square.and.arrow.up")
+                        }
+                    }
+                    .padding(20)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .meshPageBackground()
+                .navigationTitle("NodeScope push setup")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { showsPushGuide = false }
+                    }
+                }
+            }
+        }
         .onDisappear { operation?.cancel(); password = "" }
         .onChange(of: scenePhase) { _, phase in
             if phase != .active { operation?.cancel(); password = "" }
         }
 
+    }
+
+    private static let pushSetupSteps: LocalizedStringResource = """
+    1. Run a CoreScope version with NodeScope push support and enable account notifications.
+    2. Open Admin → Notifications → NodeScope Push and tap Enable.
+    3. Confirm the card shows Connected. Users can then enable push on their devices in NodeScope.
+    """
+
+    private var notificationTaskID: String {
+        let account = model.user?.id ?? 0
+        #if NODESCOPE_PUSH_STAGING || NODESCOPE_PUSH_PRODUCTION
+        let linked = StagingPush.shared.enabled(origin: settings.baseURL, account: account)
+        #else
+        let linked = false
+        #endif
+        return "\(settings.sourceSession.id)|\(scenePhase)|\(account)|\(linked)"
+    }
+
+    private func notificationCard(_ user: CoreScopeAccountUser) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Watched-node alerts", systemImage: "bell")
+                .font(.monaspace(.headline))
+                .accessibilityAddTraits(.isHeader)
+            switch model.notificationStatus {
+            case .checking:
+                ProgressView("Checking alert availability…")
+            case .failed:
+                Text("Couldn’t check alert availability.")
+                Button("Retry") {
+                    run {
+                        await model.loadNotifications()
+                        if !attemptedRequestedWatch { await finishRequestedWatch() }
+                    }
+                }
+            case .unavailable:
+                Text("This analyzer has CoreScope account notifications turned off.")
+            case .ready:
+                if let notifications = model.notifications {
+                    watchControls(notifications)
+                    Divider()
+                    Link("Manage email alerts in CoreScope", destination: URL(string: "#/account?section=notifications", relativeTo: settings.baseURL)!.absoluteURL)
+                    if !notifications.enabled {
+                        Text("Email alerts are off for this account.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    #if NODESCOPE_PUSH_STAGING || NODESCOPE_PUSH_PRODUCTION
+                    let linked = StagingPush.shared.enabled(origin: settings.baseURL, account: user.id)
+                    if linked || notifications.nodeScopePush?.supports("ios") == true {
+                        Button(linked ? "Disable push on this device" : "Enable push on this device") {
+                            run { await model.setPush(!linked) }
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    if notifications.nodeScopePush == nil {
+                        Text("Push alerts aren’t available on this analyzer. Ask your CoreScope administrator to enable NodeScope Push. You can still watch nodes. To receive email alerts, your administrator must have set up email delivery, and email alerts must be on in your CoreScope account.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                        Button("View push setup guide") { showsPushGuide = true }
+                    } else if notifications.nodeScopePush?.supports("ios") != true {
+                        Text("This analyzer’s push relay isn’t supported by this NodeScope build.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    #endif
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .instrumentCard()
+    }
+
+    private func finishRequestedWatch() async {
+        guard let key = watchNode?.publicKey.lowercased(), model.user != nil,
+              model.notificationStatus == .ready, !model.busy, !Task.isCancelled else { return }
+        attemptedRequestedWatch = true
+        if model.notifications?.watches.contains(where: { $0.pubkey == key }) != true {
+            await model.setWatch(key, watched: true)
+        }
+        if model.notifications?.watches.contains(where: { $0.pubkey == key }) == true, !Task.isCancelled {
+            dismiss()
+            onWatchAdded?()
+        }
+    }
+
+    @ViewBuilder
+    private func watchControls(_ notifications: CoreScopeAccountNotifications) -> some View {
+        if notifications.watches.isEmpty && watchNode == nil {
+            Text("No nodes watched. Open a node and tap the bell to add it to your watch list.")
+                .font(.subheadline).foregroundStyle(.secondary)
+        }
+        ForEach(notifications.watches) { watch in
+            HStack {
+                Text(watch.name.isEmpty ? watch.pubkey : watch.name)
+                    .font(.monaspace(.subheadline)).lineLimit(2).truncationMode(.middle)
+                Spacer()
+                Button("Stop watching") { run { await model.setWatch(watch.pubkey, watched: false) } }
+                    .accessibilityLabel(Text("Stop watching \(watch.name.isEmpty ? watch.pubkey : watch.name)"))
+            }
+        }
     }
 
     private struct AccountLoadIdentity: Equatable {

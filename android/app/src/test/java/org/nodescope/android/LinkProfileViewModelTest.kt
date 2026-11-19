@@ -18,13 +18,49 @@ class LinkProfileViewModelTest {
     private fun profile(coordinates: List<ProfileCoordinate>, elevation: Double) = TerrainProfile(
         coordinates.mapIndexed { index, _ -> ElevationPoint(index * 100.0, elevation) }, 1000, "cache", coordinates)
 
+    @Test fun reportedGainIsExplicitAndSavedWithProvenance() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        try {
+            fun model() = LinkProfileViewModel(LinkTerrainProviding { profile(it, 120.0) }, SavedStateHandle())
+            val editor = model()
+            editor.place("A", ProfileCoordinate(40.0, -90.0), "Site A")
+            editor.place("B", ProfileCoordinate(41.0, -91.0), "Site B")
+            editor.edit("Gain A (dBi)", "3")
+            editor.edit("Height A (m)", "6.096")
+            val source = org.nodescope.android.core.model.ReportedAntennaSource("test.invalid", "a".repeat(64), 1, "Editor")
+            editor.applyReportedGain("A", Double.NaN, source)
+            editor.applyReportedGain("A", 0.0, source)
+            assertEquals("3", editor.state.value.fields["Gain A (dBi)"])
+            editor.applyReportedGain("A", 8.5, source)
+            editor.applyReportedHeight("A", 7.6, source)
+            val study = requireNotNull(editor.savedSnapshot())
+            val reopened = model()
+            val json = kotlinx.serialization.json.Json
+            val serializer = org.nodescope.android.feature.candidatesites.SavedStudy.serializer()
+            reopened.restore(json.decodeFromString(serializer, json.encodeToString(serializer, study)))
+            assertEquals(source, reopened.state.value.reportedGains["A"])
+            assertEquals("8.5", reopened.state.value.fields["Gain A (dBi)"])
+            assertEquals("2.15", reopened.state.value.fields["Gain B (dBi)"])
+            assertEquals("7.6", reopened.state.value.fields["Height A (m)"])
+            assertEquals(source, reopened.state.value.reportedHeights["A"])
+            assertEquals(source, reopened.coverageSeed("A")?.point?.antenna?.reportedHeightSource)
+            reopened.edit("Height A (m)", "12")
+            assertNull(reopened.state.value.reportedHeights["A"])
+            assertEquals(source, reopened.coverageSeed("A")?.point?.antenna?.reportedGainSource)
+            reopened.edit("Gain A (dBi)", "4")
+            assertNull(reopened.savedSnapshot()?.linkProfile?.pointA?.antenna?.reportedGainSource)
+            advanceUntilIdle()
+        } finally { Dispatchers.resetMain() }
+    }
+
     @Test fun coverageHandoffUsesSelectedEndpointAndLeavesLinkUntouched() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         try {
             val model = LinkProfileViewModel(LinkTerrainProviding { profile(it, 120.0) }, SavedStateHandle())
             assertNull(model.coverageSeed("A"))
             model.place("A", ProfileCoordinate(40.0, -90.0), "Site A")
-            model.place("B", ProfileCoordinate(41.0, -91.0), "Site B")
+            val selection = org.nodescope.android.core.model.ReportedRepeaterSelection("test.invalid", "b".repeat(64))
+            model.place("B", ProfileCoordinate(41.0, -91.0), "Site B", selection)
             model.edit("Height A (m)", "6")
             model.edit("Height B (m)", "30")
             model.edit("Gain B (dBi)", "9")
@@ -33,6 +69,7 @@ class LinkProfileViewModelTest {
             val before = model.state.value
             val seed = requireNotNull(model.coverageSeed("B"))
             assertEquals("Site B", seed.point.name)
+            assertEquals(selection, seed.repeaterSelection)
             assertEquals(41.0, seed.point.latitude, 0.0)
             assertEquals(-91.0, seed.point.longitude, 0.0)
             assertEquals(30.0, seed.point.antenna.heightMeters, 0.0)

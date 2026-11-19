@@ -2,6 +2,29 @@
   "version": 1,
   "releases": [
     {
+      "version": "0.11.1",
+      "items": [
+        {
+          "id": "watched-node-alerts",
+          "title": "Watched-node alerts",
+          "detail": "Tap the bell on a node’s detail page to watch it. Get push alerts when the node goes quiet or is heard again if your CoreScope administrator has enabled NodeScope Push. Turn on push for this device in your CoreScope account settings.",
+          "icon": "notifications"
+        },
+        {
+          "id": "repeater-details",
+          "title": "Reported repeater details",
+          "detail": "See community-reported status and equipment on supported CoreScope analyzers. Use reported antenna height and gain in Estimated Coverage and Link Profile.",
+          "icon": "coverage"
+        },
+        {
+          "id": "channel-favorites",
+          "title": "Favorite channels",
+          "detail": "Find your favorite channels together at the top of the Channels list.",
+          "icon": "sparkles"
+        }
+      ]
+    },
+    {
       "version": "0.11.0",
       "items": [
         {

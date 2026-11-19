@@ -11,6 +11,7 @@ enum AppNavigationDestination: Sendable {
     case mapNode(MeshNode)
     case activeNodes
     case node(String)
+    case watchedNode(String, sourceSessionID: UUID)
     case observer(String)
     case channel(String)
     case packet(String)
@@ -25,6 +26,11 @@ final class AppNavigationStore {
 
     func showOnMap(_ node: MeshNode) {
         destination = .mapNode(node)
+        requestID = UUID()
+    }
+
+    func openWatchedNode(publicKey: String, sourceSessionID: UUID) {
+        destination = .watchedNode(publicKey, sourceSessionID: sourceSessionID)
         requestID = UUID()
     }
 

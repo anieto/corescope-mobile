@@ -123,7 +123,7 @@ enum class Destination(val title: Int, val icon: ImageVector, val route: TopLeve
     OBSERVERS(R.string.observers, Icons.Outlined.Sensors, ObserversRoute),
     SETTINGS(R.string.settings, Icons.Outlined.Settings, SettingsRoute),
 }
-@Serializable data class NodeRoute(val publicKey: String)
+@Serializable data class NodeRoute(val publicKey: String, val refreshOnOpen: Boolean = false)
 @Serializable data class NodeAnalyticsRoute(val publicKey: String)
 @Serializable data object NodePlannerRoute
 @Serializable data class EstimatedCoverageRoute(val studyId: String? = null, val linkSeed: String? = null, val planId: String? = null,
@@ -142,7 +142,7 @@ enum class Destination(val title: Int, val icon: ImageVector, val route: TopLeve
 @Serializable data object PacketRoute
 @Serializable data class PacketDetailRoute(val groupId: String)
 @Serializable data object DiagnosticsRoute
-@Serializable data object CoreScopeAccountRoute
+@Serializable data class CoreScopeAccountRoute(val watchKey: String? = null, val watchName: String? = null)
 @Serializable data object FavoritesRoute
 @Serializable data object MyNodesRoute
 @Serializable data object StorageRoute
@@ -212,7 +212,7 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
                 feed = live, onReconnect = model::reconnectLive, browse = model.browse, monitoredChannels = { model.monitoredChannels },
                 onLiveFeedDemand = model::setLiveFeedDemand,
                 diagnostics = model.diagnostics, cacheStorage = model.cacheStorage, myNodesRepositories = model::myNodesRepositories, myNodesSnapshots = model.myNodesSnapshots, sourceChangedAt = sourceChangedAt,
-                pendingLink = pendingLink, onLinkHandled = model::linkHandled, onDistanceUnit = model::setDistanceUnit, onBackgroundTexture = model::setBackgroundTexture,
+                pendingLink = pendingLink, onLinkHandled = model::linkHandled, sourceSessionId = sourceStatus.session.id, onDistanceUnit = model::setDistanceUnit, onBackgroundTexture = model::setBackgroundTexture,
                 sourceName = sources.firstOrNull { source ->
                     runCatching { org.nodescope.android.core.network.normalizeHost(source.host) }.getOrNull().equals(preferences.host, true)
                 }?.name,
@@ -263,6 +263,7 @@ internal fun AppShell(
     myNodesRepositories: (() -> org.nodescope.android.core.storage.MyNodesRepositories)? = null,
     myNodesSnapshots: org.nodescope.android.core.storage.MyNodesSnapshotStore? = null,
     pendingLink: PendingLink? = null, onLinkHandled: (Long) -> Unit = {},
+    sourceSessionId: java.util.UUID? = null,
     onDistanceUnit: (org.nodescope.android.core.storage.DistanceUnit) -> Unit = {},
     onBackgroundTexture: (Boolean) -> Unit = {},
     onLiveFeedDemand: (java.util.UUID, String, org.nodescope.android.core.network.LiveFeedDemand?) -> Unit = { _, _, _ -> },
@@ -276,10 +277,14 @@ internal fun AppShell(
     val liveFeed = remember { derivedStateOf { feedProvider() } }
     val library = nodeLibrary ?: remember(preferences.host) { NodeLibrary.forAnalyzer(context, preferences.host) }
     val nav = rememberNavController()
-    fun openNode(key: String) {
+    fun navigateToNode(key: String, watchedNode: Boolean) {
         (state.snapshot?.nodes?.firstOrNull { it.publicKey == key } ?: library.node(key))?.let(library::viewed)
-        nav.navigate(NodeRoute(key))
+        nav.navigate(NodeRoute(key, refreshOnOpen = watchedNode)) {
+            // Discard any old detail and its back-stack ViewModel, even on a same-node tap.
+            if (watchedNode) popUpTo(Destination.EXPLORE.route)
+        }
     }
+    fun openNode(key: String) = navigateToNode(key, watchedNode = false)
     val initialTab = remember { Destination.entries.firstOrNull { it.name == preferences.destination } ?: Destination.MAP }
     val entry by nav.currentBackStackEntryAsState()
     var currentTab by rememberSaveable { mutableStateOf(initialTab.name) }
@@ -314,6 +319,9 @@ internal fun AppShell(
     // What's New: once per update with highlights, recorded as soon as it is shown so it never repeats.
     val contentLanguage = stringResource(R.string.content_language)
     val whatsNewReleases = remember(contentLanguage) { org.nodescope.android.feature.settings.WhatsNew.load(context, contentLanguage) }
+    val whatsNewHistory = remember(whatsNewReleases) {
+        org.nodescope.android.feature.settings.WhatsNew.history(whatsNewReleases, org.nodescope.android.BuildConfig.VERSION_NAME)
+    }
     var whatsNew by rememberSaveable { mutableStateOf<List<String>?>(null) }
     var whatsNewFromSettings by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -481,9 +489,16 @@ internal fun AppShell(
         val pending = pendingLink ?: return@LaunchedEffect
         // On a cold start, wait until navigation has its first destination.
         nav.currentBackStackEntryFlow.first()
+        if (pending.watchedNodeSessionId != null && pending.watchedNodeSessionId != sourceSessionId) {
+            onLinkHandled(pending.id)
+            return@LaunchedEffect
+        }
         val id = pending.link.identifier
         when (pending.link.kind) {
-            NodeScopeLink.Kind.NODE -> { selectTab(Destination.EXPLORE); openNode(id) }
+            NodeScopeLink.Kind.NODE -> {
+                selectTab(Destination.EXPLORE)
+                navigateToNode(id, watchedNode = pending.watchedNodeSessionId != null)
+            }
             NodeScopeLink.Kind.OBSERVER -> {
                 selectTab(Destination.OBSERVERS)
                 nav.navigate(ObserverRoute(id, liveFeed.value.observers.firstOrNull { it.id.equals(id, true) }?.displayName ?: id.take(12)))
@@ -659,7 +674,10 @@ internal fun AppShell(
                             MapScreen(mapSnapshot, focusedNode, ::openNode, feed = { currentFeed }, onRefresh = onRefresh, regionControl = { RegionMenu(preferences, state) { focusedNode = null; focusedPosition = null; onRegion(it) } }, focusedCoordinate = focusedPosition?.let { org.nodescope.android.core.model.Coordinate.gps(it[0], it[1]) }, selectedRegion = preferences.region, sourceViewport = sourceViewport, routeReplay = replay, onExitReplay = { replay = null },
                                 host = preferences.host, showActiveNodes = showActiveNodes, onActiveNodesShown = { showActiveNodes = false }, onShowPackets = onShowPackets,
                                 onShowPacketsSheet = onShowPacketsSheet, bottomObscuredFraction = bottomObscuredFraction, onLiveFeedDemand = onLiveFeedDemand,
-                                resetRequest = tabResets[Destination.MAP.ordinal])
+                                resetRequest = tabResets[Destination.MAP.ordinal],
+                                browse = browse, savedNodeKeys = library.favorites
+                                    .filter { it.kind == org.nodescope.android.core.storage.SavedKind.NODE }
+                                    .mapTo(mutableSetOf()) { it.entityId.lowercase(java.util.Locale.ROOT) })
                             }
                         }
                         screen<ExploreRoute> { backStack ->
@@ -736,7 +754,7 @@ internal fun AppShell(
                                     java.io.File(context.cacheDir, "estimated-coverage-terrain-v1"),
                                     context.getSharedPreferences("estimated-coverage", android.content.Context.MODE_PRIVATE),
                                     distanceUnit = preferences.distanceUnit,
-                                    diagnosticsFile = java.io.File(context.filesDir, "CoverageDiagnostics/latest.json"))
+                                    diagnosticsFile = java.io.File(context.filesDir, "CoverageDiagnostics/latest.json"), browse = browse)
                                     .also { model ->
                                         library.studies.firstOrNull { it.id == studyId }?.let(model::restore)
                                         model.suggestedPlanID = backStack.toRoute<EstimatedCoverageRoute>().planId
@@ -779,7 +797,7 @@ internal fun AppShell(
                             val profileModel = viewModel<org.nodescope.android.feature.linkprofile.LinkProfileViewModel>(backStack) {
                                 org.nodescope.android.feature.linkprofile.LinkProfileViewModel(
                                     org.nodescope.android.feature.linkprofile.LinkTerrainProvider(java.io.File(context.cacheDir, "link-profile/elevations.json")),
-                                    createSavedStateHandle(), preferences.distanceUnit)
+                                    createSavedStateHandle(), preferences.distanceUnit, browse = browse)
                                     .also { model ->
                                         library.studies.firstOrNull { it.id == studyId }?.let(model::restore)
                                         model.suggestedPlanID = backStack.toRoute<LinkProfileRoute>().planId
@@ -796,7 +814,7 @@ internal fun AppShell(
                                 profileModel.analyzerOrigin = org.nodescope.android.feature.candidatesites.StudyOrigin(preferences.host, preferences.region, System.currentTimeMillis())
                             }
                             org.nodescope.android.feature.linkprofile.LinkProfileScreen(profileModel, preferences.distanceUnit, state.snapshot?.nodes.orEmpty(),
-                                state.snapshot, preferences.region, sourceViewport,
+                                state.snapshot, preferences.region, sourceViewport, analyzerHost = preferences.host,
                                 onOpenSaved = { nav.navigate(SavedPlansRoute(org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE.name)) },
                                 onCoverage = { seed ->
                                     // Coverage is saved where this Link Profile now is, or else where it was opened from.
@@ -878,12 +896,17 @@ internal fun AppShell(
                         screen<SettingsRoute> {
                             SettingsScreen(preferences, currentFeed.connection, state.error, sourceChangedAt, onAppearance,
                                 onSource = { nav.navigate(SourceRoute) },
+                                onAccount = if (org.nodescope.android.core.design.LocalBeaconSource.current) null else ({ nav.navigate(CoreScopeAccountRoute()) }),
+                                accountSourceName = sourceName,
                                 onDiagnostics = { if (diagnostics != null) nav.navigate(DiagnosticsRoute) },
                                 onStorage = { if (cacheStorage != null) nav.navigate(StorageRoute) },
                                 onAbout = { nav.navigate(AboutRoute) }, onGlossary = { nav.navigate(GlossaryRoute) }, onMapLab = { nav.navigate(MapLabRoute) },
                                 onSupport = { runCatching { uriHandler.openUri(SUPPORT_URL) } }, onDistanceUnit = onDistanceUnit, onBackgroundTexture = onBackgroundTexture,
-                                whatsNewVersion = org.nodescope.android.feature.settings.WhatsNew.latest(whatsNewReleases, org.nodescope.android.BuildConfig.VERSION_NAME)?.version,
-                                onWhatsNew = { org.nodescope.android.feature.settings.WhatsNew.latest(whatsNewReleases, org.nodescope.android.BuildConfig.VERSION_NAME)?.let { whatsNewFromSettings = true; whatsNew = listOf(it.version) } })
+                                whatsNewVersion = whatsNewHistory.firstOrNull()?.version,
+                                onWhatsNew = {
+                                    whatsNewFromSettings = true
+                                    whatsNew = whatsNewHistory.map { it.version }
+                                })
                         }
                         screen<DiagnosticsRoute> { diagnostics?.let { DiagnosticsScreen(it, preferences.host, currentFeed.connection) } }
                         screen<FavoritesRoute> { backStack ->
@@ -891,13 +914,16 @@ internal fun AppShell(
                                 browse?.let { repository -> viewModel(backStack) { ExploreViewModel(repository) } },
                                 preferences.host, state.snapshot, library, ExploreActions(
                                     onActivity = { nav.navigate(MyNodesRoute) },
-                                    onAccount = { nav.navigate(CoreScopeAccountRoute) },
+                                    onAccount = { nav.navigate(CoreScopeAccountRoute()) },
                                     onNode = ::openNode,
                                     onObserver = { id, name -> nav.navigate(ObserverRoute(id, name)) },
                                     onChannel = { id, name -> nav.navigate(ChannelRoute(id, name)) }), sourceName = sourceName)
                         }
-                        screen<CoreScopeAccountRoute> {
-                            org.nodescope.android.feature.explore.CoreScopeAccountScreen(preferences.host, sourceName, library, myNodesRepositories)
+                        screen<CoreScopeAccountRoute> { backStack ->
+                            val route = backStack.toRoute<CoreScopeAccountRoute>()
+                            org.nodescope.android.feature.explore.CoreScopeAccountScreen(
+                                preferences.host, sourceName, library, myNodesRepositories, route.watchKey, route.watchName,
+                            )
                         }
                         screen<MyNodesRoute> {
                             myNodesRepositories?.let { acquire ->
@@ -909,7 +935,8 @@ internal fun AppShell(
                         screen<AboutRoute> { AboutScreen() }
                         screen<GlossaryRoute> { GlossaryScreen() }
                         screen<NodeRoute> { backStack ->
-                            val publicKey = backStack.toRoute<NodeRoute>().publicKey
+                            val route = backStack.toRoute<NodeRoute>()
+                            val publicKey = route.publicKey
                             val node = state.snapshot?.nodes?.firstOrNull { it.publicKey == publicKey } ?: library.node(publicKey)
                             NodeDetailScreen(browse?.let { repository -> viewModel(backStack) { NodeDetailViewModel(repository) } },
                                 preferences.host, publicKey, node,
@@ -921,7 +948,11 @@ internal fun AppShell(
                                 },
                                 onObserver = { id, name -> nav.navigate(ObserverRoute(id, name)) }, onNode = ::openNode,
                                 onAnalytics = browse?.let { { nav.navigate(NodeAnalyticsRoute(publicKey)) } },
-                                onNodeCheck = browse?.let { { nav.navigate(NodeCheckRoute(publicKey)) } })
+                                onNodeCheck = browse?.let { { nav.navigate(NodeCheckRoute(publicKey)) } },
+                                refreshOnOpen = route.refreshOnOpen,
+                                onWatchNode = if (org.nodescope.android.core.design.LocalBeaconSource.current) null else ({ target ->
+                                    nav.navigate(CoreScopeAccountRoute(publicKey, target?.name))
+                                }))
                         }
                         screen<NodeAnalyticsRoute> { backStack ->
                             val publicKey = backStack.toRoute<NodeAnalyticsRoute>().publicKey

@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.sp
 import org.nodescope.android.core.storage.Appearance
 
 val SignalBlue = Color(0xFF299EFF)
+internal val ActionBlue = Color(0xFF0063A6)
 val HealthyGreen = Color(0xFF3DC77A)
 val ActivityAmber = Color(0xFFFFA833)
 
@@ -36,7 +37,7 @@ fun NodeScopeTheme(appearance: Appearance, backgroundTexture: Boolean = true, co
         surfaceContainerHighest = Color(0xFF2B3B47), surfaceContainerLowest = Color(0xFF0B1014),
         outline = Color(0xFF62758B), outlineVariant = Color(0xFF30404B), surfaceTint = SignalBlue,
     ) else lightColorScheme(
-        primary = Color(0xFF0063A6), onPrimary = Color.White, primaryContainer = Color(0xFFD8EBFF), onPrimaryContainer = Color(0xFF003354),
+        primary = ActionBlue, onPrimary = Color.White, primaryContainer = Color(0xFFD8EBFF), onPrimaryContainer = Color(0xFF003354),
         secondary = Color(0xFF456784), secondaryContainer = Color(0xFFE1EDFA), onSecondaryContainer = Color(0xFF213E58),
         background = Color(0xFFF5F7F9), onBackground = Color(0xFF14243A),
         surface = Color.White, onSurface = Color(0xFF14243A), surfaceVariant = Color(0xFFE5EDF6), onSurfaceVariant = Color(0xFF52677E),
