@@ -7,6 +7,7 @@
       "icon": "icons/meshtexas.png",
       "name": "MeshTexas",
       "host": "analyzer.meshtexas.org",
+      "location": [30.6, -96.9],
       "subtitle": "Connecting the Lone Star State",
       "isDefault": true
     },
@@ -16,6 +17,7 @@
       "icon": "icons/comchan.png",
       "name": "Comchan",
       "host": "analyzer.comchan.net",
+      "location": [30.27, -97.74],
       "subtitle": "Central Texas Meshcore",
       "isDefault": false
     },
@@ -25,6 +27,7 @@
       "icon": "icons/ntxmesh.png",
       "name": "NTXMesh",
       "host": "ntxmesh.dhovin.me",
+      "location": [32.86, -96.86],
       "subtitle": "DFW / North Texas Mesh",
       "isDefault": false
     },
@@ -34,6 +37,7 @@
       "icon": "icons/gulf-coast-mesh.png",
       "name": "Gulf Coast Mesh",
       "host": "analyzer.gulfcoastmesh.org",
+      "location": [30.2, -90.5],
       "subtitle": "Comms that hold when the coast does not.",
       "isDefault": false,
       "mapCenter": [
@@ -48,6 +52,7 @@
       "icon": "icons/acadiana-mesh.png",
       "name": "Acadiana Mesh",
       "host": "analyzer.acadianamesh.com",
+      "location": [30.22, -92.02],
       "subtitle": "Lafayette and the Acadiana Region",
       "isDefault": false,
       "mapCenter": [
@@ -62,6 +67,7 @@
       "icon": "icons/colorado-mesh.png",
       "name": "Colorado Mesh",
       "host": "map.meshcore.coloradomesh.org",
+      "location": [39.0, -105.5],
       "subtitle": "Colorado's Mesh Network Community",
       "mapCenter": [39.0, -105.5],
       "mapRadiusKm": 400,
@@ -73,6 +79,7 @@
       "icon": "icons/sacscope.png",
       "name": "SacScope",
       "host": "scope.sacmesh.org",
+      "location": [38.64, -121.32],
       "subtitle": "Sacramento Valley and Surrounding Hills",
       "isDefault": false
     },
@@ -82,6 +89,7 @@
       "icon": "icons/wcmesh.png",
       "name": "WCMesh",
       "host": "corescope.wcmesh.com",
+      "location": [33.83, -117.77],
       "subtitle": "West Coast, USA",
       "isDefault": false
     }
