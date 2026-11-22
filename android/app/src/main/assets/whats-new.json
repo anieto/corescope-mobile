@@ -5,6 +5,12 @@
       "version": "1.0.0",
       "items": [
         {
+          "id": "nodevision",
+          "title": "NodeVision",
+          "detail": "Use your camera to see which way nearby mesh nodes are, or open NodeVision from a node’s details to find that node.",
+          "icon": "sparkles"
+        },
+        {
           "id": "watched-node-alerts",
           "title": "Watched-node alerts",
           "detail": "Tap the bell on a node’s detail page to watch it. Get push alerts when the node goes quiet or is heard again if your CoreScope administrator has enabled NodeScope Push. Turn on push for this device in your CoreScope account settings.",
@@ -33,12 +39,6 @@
           "title": "Radio settings for your mesh",
           "detail": "New Link Profile and Estimated Coverage studies start with radio settings for your mesh. The MeshCore preset for Brazil is also available.",
           "icon": "coverage"
-        },
-        {
-          "id": "nodevision",
-          "title": "NodeVision",
-          "detail": "Use your camera to see which way nearby mesh nodes are, or open NodeVision from a node’s details to find that node.",
-          "icon": "sparkles"
         },
         {
           "id": "repeater-management",

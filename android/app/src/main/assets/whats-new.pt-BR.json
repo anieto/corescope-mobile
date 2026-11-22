@@ -2,6 +2,10 @@
   "version": 1,
   "language": "pt-BR",
   "items": {
+    "nodevision": {
+      "title": "NodeVision",
+      "detail": "Use a câmera para ver em que direção estão os nós próximos da malha ou abra o NodeVision nos detalhes de um nó para encontrá-lo."
+    },
     "watched-node-alerts": {
       "title": "Alertas de nós monitorados",
       "detail": "Toque no sino na página de detalhes de um nó para monitorá-lo. Se o administrador do CoreScope ativou o NodeScope Push, você pode receber alertas quando o nó deixar de ser ouvido ou voltar a ser ouvido. Ative os alertas push para este dispositivo nas configurações da sua conta do CoreScope."
@@ -21,10 +25,6 @@
     "planner-radio-defaults": {
       "title": "Configurações de rádio para sua malha",
       "detail": "Novos estudos de Perfil do enlace e Cobertura estimada começam com configurações de rádio para sua malha. A predefinição do MeshCore para o Brasil também está disponível."
-    },
-    "nodevision": {
-      "title": "NodeVision",
-      "detail": "Use a câmera para ver em que direção estão os nós próximos da malha ou abra o NodeVision nos detalhes de um nó para encontrá-lo."
     },
     "repeater-management": {
       "title": "Gerencie seus repetidores",

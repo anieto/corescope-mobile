@@ -2,6 +2,10 @@
   "version": 1,
   "language": "es",
   "items": {
+    "nodevision": {
+      "title": "NodeVision",
+      "detail": "Usa la cámara para ver en qué dirección están los nodos cercanos de la malla, o abre NodeVision desde los detalles de un nodo para encontrarlo."
+    },
     "watched-node-alerts": {
       "title": "Alertas de nodos seguidos",
       "detail": "Toca la campana en la página de detalles de un nodo para seguirlo. Si el administrador de CoreScope activó NodeScope Push, puedes recibir alertas cuando el nodo deje de oírse o vuelva a oírse. Activa las alertas push para este dispositivo en los ajustes de tu cuenta de CoreScope."
@@ -21,10 +25,6 @@
     "planner-radio-defaults": {
       "title": "Ajustes de radio para tu malla",
       "detail": "Los nuevos estudios de Perfil de enlace y Cobertura estimada empiezan con ajustes de radio para tu malla. También está disponible el preajuste de MeshCore para Brasil."
-    },
-    "nodevision": {
-      "title": "NodeVision",
-      "detail": "Usa la cámara para ver en qué dirección están los nodos cercanos de la malla, o abre NodeVision desde los detalles de un nodo para encontrarlo."
     },
     "repeater-management": {
       "title": "Administra tus repetidores",
