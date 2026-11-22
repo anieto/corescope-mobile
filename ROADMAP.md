@@ -92,6 +92,14 @@ Node Planner ships in steps. Its full scope:
 - Deliver matching calculations and terminology across iOS and Android with adaptive layouts for
   iPhone, iPhone Duo, iPad and Android foldables.
 
+New Link Profiles and Estimated Coverage studies start with a MeshCore radio preset based on
+the current analyzer’s observer reports when available. The planners fall back to the analyzer’s
+country, the device region, then USA/Canada. Country defaults cover US, CA, the EU/EEA, GB, CH,
+AU, NZ, and BR. Brazil uses MeshCore’s narrow modem settings and the
+[MeshCore Brasil reference power of 22 dBm](https://meshcore.com.br/valores-de-referencia/).
+Saved and shared studies keep their recorded radio values. The setup shows which signal supplied
+the default until the user edits or selects a radio.
+
 ### 0.10.1 — Link Profile (first public release)
 
 0.10.0 builds (iOS 7, Android versionCode 18) were made but never submitted; 0.10.1 is the first
@@ -399,6 +407,30 @@ Audit (2026-11-17): iOS is mostly ready, Android is not.
 **After pt-BR:** each further language needs only translation and review. Pick languages based on
 which community sources are listed. Every new feature from Phase 2 on must add strings through the
 catalog / `strings.xml`, never hardcoded.
+
+### Analyzer Source picker: countries and nearest first (implemented)
+
+- iOS and Android group community sources by localized country name, with the device region first
+  when it has a listing. Other countries are alphabetical, source order is preserved within each
+  country, and entries without a country go under Other. When there is no local listing, Custom
+  Analyzer and the source request appear first.
+- Country grouping uses the device region without location permission. The shared Settings
+  and onboarding pickers ask for permission only when the user taps Sort by nearest. They
+  sort on open if permission was already granted. Denial or an unavailable fix leaves
+  country grouping in place without another prompt. Entries without a valid location follow
+  the sorted sources in registry order.
+- First-run onboarding prefers the country's default, then its first listed source. Countries
+  without a listing start with an empty selection. The bundled offline registry lists MeshTexas
+  for the US. Source request emails include the device country, home area, description, region
+  codes, and logo guidance.
+- `location` is for sorting only. `mapCenter` and `mapRadiusKm` frame the map’s All regions
+  view and must not be added just to enable sorting. Every new entry in
+  `CommunitySources/sources-v2.json` needs both `country` (ISO 3166-1 alpha-2) and
+  `location` (home area latitude and longitude). Approximate location is enough, and there
+  is no IP geolocation.
+- The iOS location permission prompt covers map centering, nearest-source sorting, and Field
+  Tools in English, Spanish, and Brazilian Portuguese.
+- Deferred: distance labels in source rows.
 
 ## 1.0.0 — Investigation depth and product maturity
 

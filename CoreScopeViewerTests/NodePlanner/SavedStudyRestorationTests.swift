@@ -23,6 +23,114 @@ private actor FlatTerrainProbe: NodePlannerElevationProviding {
 
 @MainActor
 struct SavedStudyRestorationTests {
+    @Test func observerRadioDefaultsUseTheFrequencyMajorityAndSnapToMeshCore() {
+        let result = PlannerRadioDefault.resolve(observerRadios: [
+            "910.525,62.5,7,5", "917.25,62.5,7,5", "917.250024,125,8,6", nil, "bad"
+        ], sourceCountry: "US", deviceRegion: "DE")
+        #expect(result.preset.id == "meshcore-nz-narrow")
+        #expect(result.origin == .observers)
+        let atLimit = PlannerRadioDefault.resolve(observerRadios: ["911.525,62.5,7,5"],
+                                                   sourceCountry: "NZ", deviceRegion: nil)
+        #expect(atLimit.preset.id == "meshcore-us-ca")
+        let outside = PlannerRadioDefault.resolve(observerRadios: [
+            "911.526,62.5,7,5", "911.526,62.5,7,5", "910.525,62.5,7,5",
+            "910.525,62.5,7", "910.525,NaN,7,5", "910.525,62.5,7,garbage"
+        ], sourceCountry: "NZ", deviceRegion: "US")
+        #expect(outside.preset.id == "meshcore-nz-narrow")
+        #expect(outside.origin == .analyzerCountry)
+    }
+
+    @Test func brazilObserversDoNotDisplaceAustralianOrNewZealandPresets() {
+        let expected = [
+            ("923.125,62.5,8,8", "meshcore-br-narrow"),
+            ("916.575,62.5,7,7", "meshcore-au-narrow"),
+            ("917.375,62.5,7,5", "meshcore-nz-narrow")
+        ]
+        for (report, id) in expected {
+            let resolved = PlannerRadioDefault.resolve(observerRadios: [report], sourceCountry: "US", deviceRegion: "GB")
+            #expect(resolved.origin == .observers)
+            #expect(resolved.preset.id == id)
+        }
+    }
+
+    @Test func savedBrazilProfileIsRecognizedByItsExactRadioValues() throws {
+        let model = LinkProfileModel()
+        model.latitudeA = 50.5
+        model.longitudeA = -115.5
+        model.latitudeB = 50.51
+        model.longitudeB = -115.52
+        model.frequencyMHz = 923.125
+        model.transmitPowerDBm = 22
+        model.receiverSensitivityDBm = -130
+        let study = try #require(model.savedSnapshot())
+        let reopened = LinkProfileModel()
+        reopened.restore(study)
+        #expect(reopened.radioPreset == .brazilNarrow)
+        #expect(reopened.savedSnapshot()?.linkProfile == study.linkProfile)
+        #expect(LinkProfileRadioPreset.brazilNarrow.receiverSensitivityDBm == -130)
+        #expect(LinkProfileRadioPreset.matching(frequencyMHz: 923.125, powerDBm: 21, sensitivityDBm: -130) == .custom)
+    }
+
+    @Test func previousCoveragePresetIDRestoresWithoutChangingRadioValues() throws {
+        let preset = try #require(CoverageRadioPreset.preset(id: "meshcore-nz-narrow"))
+        let original = EstimatedCoverageModel(distanceUnit: .metric)
+        original.latitude = 50.5
+        original.longitude = -115.5
+        original.applyRadioPreset(preset)
+        let saved = try #require(original.savedSnapshot())
+        let draft = StudyDraft(id: UUID().uuidString.lowercased(), kind: .coverage,
+            createdAtMilliseconds: 1, updatedAtMilliseconds: 1, title: "Saved Coverage",
+            host: "analyzer.example", region: nil, editor: original.draftEditor())
+        let reopened = EstimatedCoverageModel(distanceUnit: .metric)
+        reopened.restore(draft: draft, study: saved, result: nil)
+        #expect(reopened.radioPresetID == "meshcore-nz-narrow")
+        #expect(reopened.savedSnapshot()?.coverage?.frequencyMHz == saved.coverage?.frequencyMHz)
+        #expect(reopened.transmitPowerDbm == preset.transmitPowerDbm)
+        #expect(reopened.sensitivityDbm == preset.sensitivityDbm)
+    }
+
+    @Test func sourceCountryOverridesDeviceAndOnlySpecifiedCountriesAreMapped() {
+        let groups = [
+            "meshcore-us-ca": ["US", "CA"],
+            "meshcore-eu-uk-narrow": ["AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR",
+                "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO",
+                "SK", "SI", "ES", "SE", "GB", "CH", "NO", "IS", "LI"],
+            "meshcore-au-narrow": ["AU"],
+            "meshcore-nz-narrow": ["NZ"],
+            "meshcore-br-narrow": ["BR"]
+        ]
+        for (id, countries) in groups {
+            for country in countries {
+                let resolved = PlannerRadioDefault.resolve(observerRadios: [nil, "invalid"], sourceCountry: country, deviceRegion: "JP")
+                #expect(resolved.origin == .analyzerCountry)
+                #expect(resolved.preset.id == id)
+            }
+        }
+        let device = PlannerRadioDefault.resolve(observerRadios: [], sourceCountry: "CR", deviceRegion: "GB")
+        #expect(device.origin == .deviceRegion && device.preset.id == "meshcore-eu-uk-narrow")
+        let fallback = PlannerRadioDefault.resolve(observerRadios: [], sourceCountry: "CR", deviceRegion: "JP")
+        #expect(fallback.origin == .fallback && fallback.preset == .standard)
+    }
+
+    @Test func freshNonUSDefaultsAreRecognizedAndUserChangesWin() {
+        let european = PlannerRadioDefault.resolve(observerRadios: [], sourceCountry: "GB", deviceRegion: "US")
+        let link = LinkProfileModel()
+        link.initializeRadio(european)
+        #expect(link.usesDefaultEquipment && link.frequencyMHz == 869.618)
+        #expect(link.transmitPowerDBm == 14 && link.receiverSensitivityDBm == -130)
+        link.applyRadioPreset(.unitedStatesNarrow)
+        link.startOver()
+        link.initializeRadio(european)
+        #expect(!link.usesDefaultEquipment && link.frequencyMHz == 910.525)
+        #expect(link.radioDefaultOrigin == nil)
+        let coverage = EstimatedCoverageModel(distanceUnit: .metric)
+        coverage.initializeRadio(european)
+        #expect(coverage.radioPresetID == european.preset.id)
+        coverage.applyRadioPreset(.standard)
+        coverage.initializeRadio(european)
+        #expect(coverage.frequencyMHz == 910.525 && coverage.radioDefaultOrigin == nil)
+    }
+
     @Test func aCalculatedLinkProfileSavesItsResultAndReopensItWithoutTerrain() async throws {
         let probe = FlatTerrainProbe()
         let original = LinkProfileModel(elevationProvider: probe)
@@ -88,6 +196,8 @@ struct SavedStudyRestorationTests {
         let snapshot = try #require(original.savedSnapshot())
         let reopened = LinkProfileModel(elevationProvider: probe)
         reopened.restore(snapshot)
+        reopened.initializeRadio(.resolve(observerRadios: [], sourceCountry: "AU", deviceRegion: "US"))
+        #expect(reopened.radioDefaultOrigin == nil)
         #expect(reopened.savedSnapshot()?.linkProfile == snapshot.linkProfile)
         #expect(reopened.savedSnapshot()?.id == snapshot.id)
         #expect(reopened.result == nil && !reopened.isAnalyzing)
@@ -135,6 +245,8 @@ struct SavedStudyRestorationTests {
         let decoded = try DeploymentPlanCodec.decode(DeploymentPlanCodec.encode(document))
         let reopened = EstimatedCoverageModel(distanceUnit: .imperial)
         reopened.restore(try #require(decoded.studies.first))
+        reopened.initializeRadio(.resolve(observerRadios: [], sourceCountry: "AU", deviceRegion: "US"))
+        #expect(reopened.frequencyMHz == original.frequencyMHz && reopened.radioDefaultOrigin == nil)
         let restored = try #require(reopened.activeResult)
         #expect(restored.area.cells.map(\.marginDb) == result.area.cells.map(\.marginDb))
         #expect(restored.area.pendingCount == 1)

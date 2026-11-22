@@ -12,6 +12,7 @@ import kotlinx.coroutines.withContext
 import org.junit.Assert.*
 import org.junit.Test
 import org.nodescope.android.feature.linkprofile.*
+import org.nodescope.android.feature.coverage.PlannerRadioDefault
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LinkProfileViewModelTest {
@@ -50,6 +51,27 @@ class LinkProfileViewModelTest {
             reopened.edit("Gain A (dBi)", "4")
             assertNull(reopened.savedSnapshot()?.linkProfile?.pointA?.antenna?.reportedGainSource)
             advanceUntilIdle()
+        } finally { Dispatchers.resetMain() }
+    }
+
+    @Test fun nonUSRadioIsDefaultEquipmentAndResetPreservesAnExplicitChoice() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        try {
+            val handle = SavedStateHandle()
+            val resolution = PlannerRadioDefault.resolve(emptyList(), "GB", "US")
+            val terrain = LinkTerrainProviding { error("No endpoints") }
+            val model = LinkProfileViewModel(terrain, handle)
+            model.initializeRadio(resolution)
+            assertTrue(model.usesDefaultEquipment)
+            assertEquals("869.618", model.state.value.fields["Frequency (MHz)"])
+            assertEquals(resolution.origin.label, model.state.value.radioDefaultLabel)
+            model.preset("US/Canada Narrow")
+            model.startOver()
+            val recreated = LinkProfileViewModel(terrain, handle)
+            recreated.initializeRadio(resolution)
+            assertFalse(recreated.usesDefaultEquipment)
+            assertEquals("910.525", recreated.state.value.fields["Frequency (MHz)"])
+            assertNull(recreated.state.value.radioDefaultLabel)
         } finally { Dispatchers.resetMain() }
     }
 

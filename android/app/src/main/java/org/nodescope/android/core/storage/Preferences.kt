@@ -48,6 +48,8 @@ data class AppPreferences(
     val registry: String? = null,
     val storedDistanceUnit: DistanceUnit? = null,
     val backgroundTexture: Boolean = true,
+    /** The persisted host, when one has actually been selected. */
+    val savedHost: String? = null,
 ) {
     val distanceUnit: DistanceUnit get() = storedDistanceUnit ?: DistanceUnit.defaultUnit()
 }
@@ -84,7 +86,7 @@ class AndroidPreferences(context: Context, private val appVersion: String = "") 
             Appearance.entries.firstOrNull { mode -> mode.name == it[appearance] } ?: Appearance.SYSTEM,
             it[region], it[destination] ?: "MAP", it[registry],
             DistanceUnit.entries.firstOrNull { unit -> unit.name == it[distanceUnit] },
-            it[backgroundTexture] ?: true)
+            it[backgroundTexture] ?: true, savedHost = it[host])
     }
     override suspend fun selectSource(host: String) {
         store.edit {

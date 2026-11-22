@@ -1021,6 +1021,10 @@
     <string name="coverage_preparing_coverage_overlay">Preparing coverage overlay…</string>
     <string name="coverage_radio_reserve_summary">Reserve: %1$s dB</string>
     <string name="coverage_radio_sensitivity_summary">sensitivity %1$s dBm</string>
+    <string name="planner_radio_origin_observers">Based on this analyzer’s observers</string>
+    <string name="planner_radio_origin_country">Based on this analyzer’s country</string>
+    <string name="planner_radio_origin_region">Based on your region</string>
+    <string name="planner_radio_origin_fallback">Using the USA/Canada default</string>
     <string name="coverage_radio_settings">Radio settings</string>
     <string name="coverage_ready_to_calculate">Ready to calculate.</string>
     <string name="coverage_receiver_assumptions">Receiver assumptions</string>
@@ -1742,16 +1746,22 @@
     <string name="onboarding_focus_your_view">Focus your view</string>
     <string name="onboarding_follow_the_mesh">Follow the mesh</string>
     <string name="onboarding_live_routes_animate_hop_by_hop_open_a">Live routes animate hop by hop. Open a channel message to replay its path.</string>
-    <string name="onboarding_location_is_optional_and_is_only_used_when">Location is optional and is only used when you choose to center the map on yourself.</string>
+    <string name="onboarding_location_uses">Location is optional. It lets you center the map on yourself and sort analyzer sources by distance.</string>
     <string name="onboarding_no_email_app">No email app is set up. Write to %1$s.</string>
     <string name="onboarding_nodescope_makes_live_activity_easier_to_understand_at">NodeScope makes live activity easier to understand at a glance.</string>
     <string name="onboarding_request_a_community_source">Request a community source</string>
     <string name="onboarding_selected">Selected</string>
-    <string name="onboarding_source_request_body">Hello NodeScope team,\n\nI\'d like to request that the following community source be added.\n\nSOURCE DETAILS\nSource name:\nAnalyzer hostname or URL:\nRegion or community:\nOwner or operator contact:\n\nPERMISSION\nDo you have permission from the source owner or operator for this source to be listed and used in NodeScope?\nAnswer: Yes / No / Not yet\n\nADDITIONAL DETAILS\n\nThank you.</string>
+    <string name="onboarding_source_request_body">Hello NodeScope team,\n\nI\'d like to request that the following community source be added.\n\nSOURCE DETAILS\nSource name:\nAnalyzer hostname or URL:\nCountry: %1$s\nHome city or area:\nShort description (one line, shown under the name):\nRegion code(s), if you use any (e.g. LFT):\nOwner or operator contact:\n\nLOGO\nPlease attach a square logo (PNG, at least 256×256), or paste a link to one.\nIf you don’t have one, we’ll use your analyzer’s site icon.\n\nPERMISSION\nDo you have permission from the source owner or operator for this source to be listed and used in NodeScope?\nAnswer: Yes / No / Not yet\n\nADDITIONAL DETAILS\n\nThank you.</string>
     <string name="onboarding_source_request_subject">NodeScope community source request</string>
     <string name="onboarding_suggest_a_public_analyzer_for_the_community_list">Suggest a public analyzer for the community list. Please confirm that its owner or operator permits it to be listed and used in NodeScope.</string>
     <string name="onboarding_tap_a_node_for_its_details_clusters_zoom">Tap a node for its details. Clusters zoom in to reveal nearby nodes.</string>
-    <string name="onboarding_us_community_sources">US community sources</string>
+    <string name="onboarding_sort_by_nearest">Sort by nearest</string>
+    <string name="onboarding_other_sources">Other</string>
+    <string name="onboarding_custom_analyzer_hint">Ask your local mesh community for their analyzer’s address.</string>
+    <string name="onboarding_no_community_for_country">No community is listed for %1$s yet. Pick one to look around, enter your own analyzer, or request a listing for yours.</string>
+    <string name="onboarding_no_community_for_region">No community is listed for your region yet. Pick one to look around, enter your own analyzer, or request a listing for yours.</string>
+    <string name="onboarding_analyzer_hostname_example">analyzer.example.org</string>
+    <string name="onboarding_community_sources">Community Sources</string>
     <string name="onboarding_use_custom_analyzer">Use custom analyzer</string>
     <string name="onboarding_watch_packet_routes">Watch packet routes</string>
     <string name="onboarding_you_can_change_sources_anytime_in_settings_or">You can change sources anytime in Settings, or add a custom analyzer.</string>
@@ -1807,6 +1817,7 @@
     <string name="coverage_radio_preset_meshcore_eu_433_narrow">EU 433 MHz (Narrow)</string>
     <string name="coverage_radio_preset_meshcore_au_narrow">Australia (Narrow)</string>
     <string name="coverage_radio_preset_meshcore_nz_narrow">New Zealand (Narrow)</string>
+    <string name="coverage_radio_preset_meshcore_br_narrow">Brazil (Narrow)</string>
     <string name="coverage_radio_preset_meshtastic_us_long_fast">US Long Fast</string>
     <string name="coverage_radio_preset_meshtastic_eu_868_long_fast">EU 868 Long Fast</string>
     <string name="coverage_antenna_preset_quarter_wave">1/4-wave ground plane</string>
@@ -2032,4 +2043,7 @@
     <string name="repeater_save_details">Save Details</string>
     <string name="repeater_done">Done</string>
     <string name="repeater_edit_denied">This account doesn’t have permission to edit the repeater’s details.</string>
+    <string name="onboarding_location_is_optional_and_is_only_used_when">Location is optional and is only used when you choose to center the map on yourself.</string>
+    <string name="onboarding_us_community_sources">US community sources</string>
+    <string name="settings_this_app_has_no_backend_of_its_own">This app has no backend of its own. Everything shown here comes from whatever analyzer host is configured in Settings, and it\'s not affiliated with the CoreScope or MeshCore projects.</string>
 </resources>

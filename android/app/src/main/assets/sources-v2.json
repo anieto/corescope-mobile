@@ -8,6 +8,8 @@
       "name": "MeshTexas",
       "host": "analyzer.meshtexas.org",
       "subtitle": "Connecting the Lone Star State",
+      "country": "US",
+      "location": [30.6, -96.9],
       "isDefault": true
     }
   ]

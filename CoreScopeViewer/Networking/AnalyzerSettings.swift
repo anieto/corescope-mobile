@@ -30,6 +30,8 @@ final class AnalyzerSettings {
         }
     }
 
+    var savedHost: String? { UserDefaults.standard.string(forKey: Self.hostDefaultsKey) }
+
     init() {
         host = UserDefaults.standard.string(forKey: Self.hostDefaultsKey) ?? Self.defaultHost
     }

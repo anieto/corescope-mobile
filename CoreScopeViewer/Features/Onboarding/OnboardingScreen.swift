@@ -5,7 +5,16 @@ struct OnboardingScreen: View {
     @Environment(AnalyzerSettings.self) private var settings
     let onComplete: () -> Void
 
-    @State private var selectedHost = ""
+    @Environment(\.locale) private var locale
+    @State private var chosenHost: String?
+
+    private var choices: AnalyzerSourceChoices {
+        AnalyzerSourceChoices(sources: sourceRegistry.sources, displayLocale: locale)
+    }
+
+    private var selectedHost: String {
+        chosenHost ?? choices.onboardingHost(savedHost: settings.savedHost, isOnboarded: false) ?? ""
+    }
     @State private var showsSourcePicker = false
     @State private var step: Step = .source
     @State private var accountSupportedHost: String?
@@ -47,20 +56,14 @@ struct OnboardingScreen: View {
             .sheet(isPresented: $showsSourcePicker) {
                 NavigationStack {
                     AnalyzerSourcePickerScreen(
-                        selectedHost: $selectedHost,
+                        selectedHost: Binding(get: { selectedHost }, set: { chosenHost = $0 }),
                         appliesSelectionImmediately: true,
                         onSelection: nil
                     )
                 }
             }
             .task {
-                if selectedHost.isEmpty {
-                    selectedHost = settings.host
-                }
                 await sourceRegistry.refresh()
-                if selectedHost.isEmpty {
-                    selectedHost = sourceRegistry.defaultSource?.host ?? ""
-                }
             }
         }
     }
@@ -107,9 +110,11 @@ struct OnboardingScreen: View {
                         Text(selectedSourceName)
                             .font(.monaspace(.headline))
                             .foregroundStyle(Color.primary)
-                        Text(selectedHost.isEmpty ? "Choose an analyzer" : selectedHost)
-                            .font(.caption)
-                            .foregroundStyle(Color.secondary)
+                        if !selectedHost.isEmpty {
+                            Text(selectedHost)
+                                .font(.monaspace(.caption))
+                                .foregroundStyle(Color.secondary)
+                        }
                     }
                     Spacer()
                     Image(systemName: "chevron.right")
@@ -125,15 +130,24 @@ struct OnboardingScreen: View {
             .padding(.horizontal, 24)
             .accessibilityLabel("Analyzer source: \(selectedSourceName)")
 
-            Text("You can change sources anytime in Settings, or add a custom analyzer.")
-                .font(.caption)
-                .foregroundStyle(Color.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
+            Group {
+                if selectedHost.isEmpty, let country = choices.userCountryName {
+                    Text("No community is listed for \(country) yet. Pick one to look around, enter your own analyzer, or request a listing for yours.")
+                } else if selectedHost.isEmpty {
+                    Text("No community is listed for your region yet. Pick one to look around, enter your own analyzer, or request a listing for yours.")
+                } else {
+                    Text("You can change sources anytime in Settings, or add a custom analyzer.")
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(Color.secondary)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 32)
 
             Spacer()
 
             Button("Continue") {
+                chosenHost = selectedHost
                 withAnimation {
                     step = .overview
                 }
@@ -193,7 +207,7 @@ struct OnboardingScreen: View {
                     .padding(.horizontal, 28)
             }
 
-            Text("Location is optional and is only used when you choose to center the map on yourself.")
+            Text("Location is optional. It lets you center the map on yourself and sort analyzer sources by distance.")
                 .font(.caption)
                 .foregroundStyle(Color.secondary)
                 .multilineTextAlignment(.center)
@@ -228,7 +242,8 @@ struct OnboardingScreen: View {
     }
 
     private var selectedSourceName: String {
-        sourceRegistry.sources.first {
+        guard !selectedHost.isEmpty else { return String(localized: "Choose an analyzer") }
+        return sourceRegistry.sources.first {
             $0.host.caseInsensitiveCompare(selectedHost) == .orderedSame
         }?.name ?? String(localized: "Custom Analyzer")
     }

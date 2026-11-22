@@ -1,3 +1,4 @@
+import CoreLocation
 import Foundation
 import Observation
 
@@ -11,6 +12,7 @@ struct AnalyzerSource: Codable, Hashable, Identifiable {
     let name: String
     let host: String
     let subtitle: String
+    /// The preferred source for its country.
     let isDefault: Bool
     let mapCenter: [Double]?
     let mapRadiusKm: Double?
@@ -20,6 +22,14 @@ struct AnalyzerSource: Codable, Hashable, Identifiable {
     let type: AnalyzerSourceType?
     /// Optional translated subtitles by language tag, such as `{"pt-BR": "…"}`.
     var subtitles: [String: String]? = nil
+    var country: String? = nil
+    var location: [Double]? = nil
+
+    var locationCoordinate: CLLocationCoordinate2D? {
+        guard let location, location.count == 2 else { return nil }
+        let coordinate = CLLocationCoordinate2D(latitude: location[0], longitude: location[1])
+        return CLLocationCoordinate2DIsValid(coordinate) ? coordinate : nil
+    }
 
     /// The subtitle in the app's language when the registry has one, else the English `subtitle`.
     var displaySubtitle: String { ContentTranslation.pick(subtitles) ?? subtitle }
@@ -30,6 +40,102 @@ struct AnalyzerSource: Codable, Hashable, Identifiable {
     var mapLongitude: Double? {
         guard let mapCenter, mapCenter.count > 1 else { return nil }
         return mapCenter[1]
+    }
+}
+
+extension AnalyzerSource {
+    init(from decoder: Decoder) throws {
+        let fields = try decoder.container(keyedBy: CodingKeys.self)
+        id = try fields.decode(String.self, forKey: .id)
+        name = try fields.decode(String.self, forKey: .name)
+        host = try fields.decode(String.self, forKey: .host)
+        subtitle = try fields.decode(String.self, forKey: .subtitle)
+        isDefault = try fields.decode(Bool.self, forKey: .isDefault)
+        mapCenter = try fields.decodeIfPresent([Double].self, forKey: .mapCenter)
+        mapRadiusKm = try fields.decodeIfPresent(Double.self, forKey: .mapRadiusKm)
+        icon = try fields.decodeIfPresent(String.self, forKey: .icon)
+        type = try fields.decodeIfPresent(AnalyzerSourceType.self, forKey: .type)
+        subtitles = try fields.decodeIfPresent([String: String].self, forKey: .subtitles)
+        country = AnalyzerSourceChoices.countryCode(try? fields.decode(String.self, forKey: .country))
+        location = try? fields.decode([Double].self, forKey: .location)
+    }
+}
+
+struct AnalyzerSourceChoices {
+    struct CountrySection: Identifiable {
+        let country: String?
+        let name: String?
+        let sources: [AnalyzerSource]
+        var id: String? { country }
+    }
+
+    let sources: [AnalyzerSource]
+    let userCountry: String?
+    let displayLocale: Locale
+
+    init(sources: [AnalyzerSource], userCountry: String? = Locale.current.region?.identifier,
+         displayLocale: Locale = .current) {
+        self.sources = sources
+        self.userCountry = Self.countryCode(userCountry)
+        self.displayLocale = displayLocale
+    }
+
+    private static let countryCodes = Set(Locale.Region.isoRegions.map(\.identifier))
+
+    static func countryCode(_ value: String?) -> String? {
+        guard let code = value?.uppercased(), code.utf8.count == 2,
+              countryCodes.contains(code) else { return nil }
+        return code
+    }
+
+    var userCountryName: String? {
+        userCountry.map { displayLocale.localizedString(forRegionCode: $0) ?? $0 }
+    }
+
+    private var localSources: [AnalyzerSource] {
+        guard let userCountry else { return [] }
+        return sources.filter { Self.countryCode($0.country) == userCountry }
+    }
+
+    var customFirst: Bool { localSources.isEmpty }
+
+    var countrySections: [CountrySection] {
+        let groups = Dictionary(grouping: sources) { Self.countryCode($0.country) }
+        let countries = groups.compactMap { code, entries -> CountrySection? in
+            guard let code else { return nil }
+            return .init(country: code, name: displayLocale.localizedString(forRegionCode: code) ?? code,
+                         sources: entries)
+        }.sorted { first, second in
+            if first.country == second.country { return false }
+            if first.country == userCountry { return true }
+            if second.country == userCountry { return false }
+            let order = (first.name ?? "").compare(second.name ?? "", options: .caseInsensitive,
+                                                    locale: displayLocale)
+            return order == .orderedSame ? (first.id ?? "") < (second.id ?? "") : order == .orderedAscending
+        }
+        guard let other = groups[nil] else { return countries }
+        return countries + [.init(country: nil, name: nil, sources: other)]
+    }
+
+    func onboardingHost(savedHost: String?, isOnboarded: Bool) -> String? {
+        if let savedHost, !savedHost.isEmpty { return savedHost }
+        guard !isOnboarded else { return nil }
+        let localSources = localSources
+        return (localSources.first(where: \.isDefault) ?? localSources.first)?.host
+    }
+
+    func nearest(to coordinate: CLLocationCoordinate2D) -> [AnalyzerSource] {
+        let origin = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        let ranked: [(index: Int, source: AnalyzerSource, distance: Double)] = sources.enumerated().map { index, source in
+            let distance = source.locationCoordinate.map {
+                origin.distance(from: CLLocation(latitude: $0.latitude, longitude: $0.longitude))
+            }
+            return (index: index, source: source, distance: distance ?? .infinity)
+        }
+        return ranked.sorted { first, second in
+            if first.distance == second.distance { return first.index < second.index }
+            return first.distance < second.distance
+        }.map(\.source)
     }
 }
 
@@ -99,10 +205,6 @@ final class AnalyzerSourceRegistry {
         self.session = session
         sources = defaults.data(forKey: Self.cachedDocumentDefaultsKey)
             .flatMap { try? Self.decodeV2($0).sources } ?? Self.bundledSources
-    }
-
-    var defaultSource: AnalyzerSource? {
-        sources.first(where: \.isDefault) ?? sources.first
     }
 
     func refresh() async {

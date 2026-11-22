@@ -11,6 +11,7 @@ data class AnalyzerSource(
     val name: String,
     val host: String,
     val subtitle: String,
+    /** The preferred source for its country. */
     val isDefault: Boolean = false,
     /** Optional community viewport for "All regions", shared with iOS (`mapCenter` is [lat, lon]). */
     val mapCenter: List<Double>? = null,
@@ -20,11 +21,16 @@ data class AnalyzerSource(
     /** `corescope` or `beacon`; registry v1 entries may omit it and are CoreScope. */
     val type: String? = null,
     val subtitles: Map<String, String>? = null,
+    val country: String? = null,
+    val location: List<Double>? = null,
 ) {
     fun displaySubtitle(language: String): String =
         ContentTranslation.pick(subtitles, ContentTranslation.languages(language)) ?: subtitle
 
     val backendType: AnalyzerSourceType get() = AnalyzerSourceType.from(type) ?: AnalyzerSourceType.CORESCOPE
+    val locationCoordinate: Coordinate? get() = location?.takeIf { it.size == 2 }
+        ?.let { Coordinate.valid(it[0], it[1]) }
+
     val viewport: RegionCoordinate? get() = Coordinate.valid(mapCenter?.getOrNull(0), mapCenter?.getOrNull(1))
         ?.let { RegionCoordinate(it.latitude, it.longitude, mapRadiusKm ?: 250.0) }
 }

@@ -18,7 +18,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.nodescope.android.core.model.Coordinate
 
-/** Permissions asked for only when the person taps "Center on my location". */
+/** Permissions used by map actions that can request precise or approximate location. */
 internal val LOCATION_PERMISSIONS = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
 
 internal fun hasLocationPermission(context: Context) = LOCATION_PERMISSIONS.any {
@@ -32,7 +32,7 @@ internal sealed interface LocationResult {
 }
 
 /**
- * One position fix for centering the map, as on iOS: no tracking and nothing stored. A fix
+ * One foreground position fix, as on iOS: no tracking and nothing stored. A fix
  * from the last two minutes is used straight away; otherwise the best enabled provider is
  * asked once, giving up after 15 seconds.
  */
@@ -40,15 +40,27 @@ internal sealed interface LocationResult {
 internal suspend fun currentLocation(context: Context): LocationResult {
     if (!hasLocationPermission(context)) return LocationResult.Unavailable
     val manager = context.getSystemService(LocationManager::class.java) ?: return LocationResult.Unavailable
+    val hasFineLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+        PackageManager.PERMISSION_GRANTED
     val providers = buildList {
         if (Build.VERSION.SDK_INT >= 31) add(LocationManager.FUSED_PROVIDER)
         add(LocationManager.NETWORK_PROVIDER)
-        add(LocationManager.GPS_PROVIDER)
+        if (hasFineLocation) add(LocationManager.GPS_PROVIDER)
     }.filter { runCatching { manager.isProviderEnabled(it) }.getOrDefault(false) }
     if (providers.isEmpty()) return LocationResult.ServicesOff
     val recent = providers.mapNotNull { runCatching { manager.getLastKnownLocation(it) }.getOrNull() }
         .filter { System.currentTimeMillis() - it.time < 2 * 60_000 }.maxByOrNull { it.time }
-    val location = recent ?: withTimeoutOrNull(15_000) { singleFix(context, manager, providers.first()) }
+    val location = recent ?: withTimeoutOrNull(15_000) {
+        providers.firstNotNullOfOrNull { provider ->
+            try {
+                singleFix(context, manager, provider)
+            } catch (_: SecurityException) {
+                null
+            } catch (_: IllegalArgumentException) {
+                null
+            }
+        }
+    }
     return location?.let { Coordinate.valid(it.latitude, it.longitude) }?.let(LocationResult::Found) ?: LocationResult.Unavailable
 }
 

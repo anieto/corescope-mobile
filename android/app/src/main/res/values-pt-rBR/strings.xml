@@ -1044,6 +1044,10 @@
     <string name="coverage_preparing_coverage_overlay">Preparando a camada de cobertura…</string>
     <string name="coverage_radio_reserve_summary">Reserva: %1$s dB</string>
     <string name="coverage_radio_sensitivity_summary">sensibilidade %1$s dBm</string>
+    <string name="planner_radio_origin_observers">Com base nos observadores deste analisador</string>
+    <string name="planner_radio_origin_country">Com base no país deste analisador</string>
+    <string name="planner_radio_origin_region">Com base na sua região</string>
+    <string name="planner_radio_origin_fallback">Usando a configuração padrão dos EUA e do Canadá</string>
     <string name="coverage_radio_settings">Configurações de rádio</string>
     <string name="coverage_ready_to_calculate">Pronto para calcular.</string>
     <string name="coverage_receiver_assumptions">Premissas do receptor</string>
@@ -1759,16 +1763,22 @@
     <string name="onboarding_focus_your_view">Foque sua visualização</string>
     <string name="onboarding_follow_the_mesh">Acompanhe a rede mesh</string>
     <string name="onboarding_live_routes_animate_hop_by_hop_open_a">As rotas ao vivo são animadas salto a salto. Abra uma mensagem de canal para reproduzir a rota dela.</string>
-    <string name="onboarding_location_is_optional_and_is_only_used_when">A localização é opcional e só é usada quando você escolhe centralizar o mapa em você.</string>
+    <string name="onboarding_location_uses">A localização é opcional. Ela permite centralizar o mapa na sua posição e ordenar as fontes de analisadores por distância.</string>
     <string name="onboarding_no_email_app">Nenhum app de e-mail está configurado. Escreva para %1$s.</string>
     <string name="onboarding_nodescope_makes_live_activity_easier_to_understand_at">O NodeScope deixa a atividade ao vivo mais fácil de entender de relance.</string>
     <string name="onboarding_request_a_community_source">Solicitar uma fonte da comunidade</string>
     <string name="onboarding_selected">Selecionado</string>
-    <string name="onboarding_source_request_body">Olá, equipe do NodeScope,\n\nGostaria de solicitar que a seguinte fonte da comunidade seja adicionada.\n\nDETALHES DA FONTE\nNome da fonte:\nNome de host ou URL do analisador:\nRegião ou comunidade:\nContato do dono ou operador:\n\nPERMISSÃO\nVocê tem permissão do dono ou operador para que esta fonte seja listada e usada no NodeScope?\nResposta: Sim / Não / Ainda não\n\nDETALHES ADICIONAIS\n\nObrigado.</string>
+    <string name="onboarding_source_request_body">Olá, equipe do NodeScope,\n\nGostaria de solicitar que a seguinte fonte da comunidade seja adicionada.\n\nDADOS DA FONTE\nNome da fonte:\nNome do host ou URL do analisador:\nPaís: %1$s\nCidade ou área de origem:\nDescrição breve (uma linha, exibida abaixo do nome):\nCódigos de região, se você usar algum (ex.: LFT):\nContato do proprietário ou operador:\n\nLOGOTIPO\nAnexe um logotipo quadrado (PNG, de pelo menos 256×256) ou cole um link para o arquivo.\nSe você não tiver um, usaremos o ícone do site do seu analisador.\n\nPERMISSÃO\nVocê tem permissão do dono ou operador para que esta fonte seja listada e usada no NodeScope?\nResposta: Sim / Não / Ainda não\n\nDETALHES ADICIONAIS\n\nObrigado.</string>
     <string name="onboarding_source_request_subject">Solicitação de fonte da comunidade para o NodeScope</string>
     <string name="onboarding_suggest_a_public_analyzer_for_the_community_list">Sugira um analisador público para a lista da comunidade. Confirme que o dono ou operador permite que ele seja listado e usado no NodeScope.</string>
     <string name="onboarding_tap_a_node_for_its_details_clusters_zoom">Toque em um nó para ver os detalhes. Os grupos aproximam o mapa para mostrar os nós próximos.</string>
-    <string name="onboarding_us_community_sources">Fontes da comunidade nos EUA</string>
+    <string name="onboarding_sort_by_nearest">Ordenar por proximidade</string>
+    <string name="onboarding_other_sources">Outros</string>
+    <string name="onboarding_custom_analyzer_hint">Peça à sua comunidade mesh local o endereço do analisador.</string>
+    <string name="onboarding_no_community_for_country">Ainda não há comunidades listadas para %1$s. Escolha uma para explorar, informe seu próprio analisador ou solicite a inclusão do seu.</string>
+    <string name="onboarding_no_community_for_region">Ainda não há comunidades listadas para a sua região. Escolha uma para explorar, informe seu próprio analisador ou solicite a inclusão do seu.</string>
+    <string name="onboarding_analyzer_hostname_example">analyzer.example.org</string>
+    <string name="onboarding_community_sources">Fontes comunitárias</string>
     <string name="onboarding_use_custom_analyzer">Usar analisador personalizado</string>
     <string name="onboarding_watch_packet_routes">Ver rotas de pacotes</string>
     <string name="onboarding_you_can_change_sources_anytime_in_settings_or">Você pode trocar de fonte quando quiser em Ajustes, ou adicionar um analisador personalizado.</string>
@@ -1820,6 +1830,7 @@
     <string name="coverage_radio_preset_meshcore_eu_433_narrow">EU 433 MHz (estreito)</string>
     <string name="coverage_radio_preset_meshcore_au_narrow">Austrália (estreito)</string>
     <string name="coverage_radio_preset_meshcore_nz_narrow">Nova Zelândia (estreito)</string>
+    <string name="coverage_radio_preset_meshcore_br_narrow">Brasil (estreito)</string>
     <string name="coverage_radio_preset_meshtastic_us_long_fast">US Long Fast</string>
     <string name="coverage_radio_preset_meshtastic_eu_868_long_fast">EU 868 Long Fast</string>
     <string name="coverage_antenna_preset_quarter_wave">Plano de terra de 1/4 de onda</string>
@@ -2046,4 +2057,7 @@
     <string name="repeater_save_details">Salvar dados</string>
     <string name="repeater_done">Concluir</string>
     <string name="repeater_edit_denied">Esta conta não tem permissão para editar os dados do repetidor.</string>
+    <string name="onboarding_location_is_optional_and_is_only_used_when">A localização é opcional e só é usada quando você escolhe centralizar o mapa em você.</string>
+    <string name="onboarding_us_community_sources">Fontes da comunidade nos EUA</string>
+    <string name="settings_this_app_has_no_backend_of_its_own">Este app não tem um back-end próprio. Tudo o que aparece aqui vem do host do analisador configurado em Ajustes, e ele não é afiliado aos projetos CoreScope ou MeshCore.</string>
 </resources>
