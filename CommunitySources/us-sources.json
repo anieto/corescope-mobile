@@ -50,6 +50,14 @@
       "host": "scope.sacmesh.org",
       "subtitle": "Sacramento Valley and Surrounding Hills",
       "isDefault": false
+    },
+    {
+      "id": "acadiana-mesh",
+      "icon": "icons/acadiana-mesh.png",
+      "name": "Acadiana Mesh",
+      "host": "analyzer.acadianamesh.com",
+      "subtitle": "Lafayette and the Acadiana Region",
+      "isDefault": false
     }
   ]
 }

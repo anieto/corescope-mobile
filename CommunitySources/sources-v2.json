@@ -61,6 +61,20 @@
       "isDefault": false
     },
     {
+      "id": "acadiana-mesh",
+      "type": "corescope",
+      "icon": "icons/acadiana-mesh.png",
+      "name": "Acadiana Mesh",
+      "host": "analyzer.acadianamesh.com",
+      "subtitle": "Lafayette and the Acadiana Region",
+      "isDefault": false,
+      "mapCenter": [
+        30.2,
+        -92.0
+      ],
+      "mapRadiusKm": 150
+    },
+    {
       "id": "colorado-mesh",
       "type": "beacon",
       "icon": "icons/colorado-mesh.png",
