@@ -1729,7 +1729,7 @@
     <string name="settings_term_explanations">Explicações de termos</string>
     <string name="settings_the_live_stream_uses_a_separate_websocket_connection">A transmissão ao vivo usa uma conexão WebSocket separada, então pode se reconectar independentemente da API somente leitura.</string>
     <string name="settings_the_physical_devices_feeding_this_analyzer_hardware_firmware">Os dispositivos físicos que alimentam este analisador: hardware, firmware e estatísticas recentes de sinal.</string>
-    <string name="settings_this_app_has_no_backend_of_its_own">Este app não tem um back-end próprio. Tudo o que aparece aqui vem do host do analisador configurado em Ajustes, e ele não é afiliado aos projetos CoreScope ou MeshCore.</string>
+    <string name="settings_about_data_sources">Tudo o que aparece aqui vem do host do analisador configurado em Ajustes. O único serviço próprio do NodeScope é o relay push opcional para os alertas de nós monitorados, que não guarda dados de conta, localizações nem mensagens. O NodeScope não é afiliado aos projetos CoreScope ou MeshCore.</string>
     <string name="settings_trying_to_restore_live_updates">Tentando restaurar as atualizações ao vivo</string>
     <string name="settings_units">Unidades</string>
     <string name="settings_upgrade_backups">Backups de atualização</string>
@@ -1968,4 +1968,6 @@
     <string name="repeater_height_applied">Usando a altura informada da antena</string>
     <string name="repeater_reported_height_agl">Altura informada acima do solo: %1$s</string>
     <string name="repeater_antenna_applied">Usando a altura e o ganho informados da antena</string>
+    <string name="account_watch_remove_title">Parar de monitorar %1$s?</string>
+    <string name="account_watch_remove_failed">Não foi possível parar de monitorar este nó. Tente novamente.</string>
 </resources>

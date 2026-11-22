@@ -1710,7 +1710,7 @@
     <string name="settings_term_explanations">Term explanations</string>
     <string name="settings_the_live_stream_uses_a_separate_websocket_connection">The live stream uses a separate WebSocket connection, so it can reconnect independently of the read-only API.</string>
     <string name="settings_the_physical_devices_feeding_this_analyzer_hardware_firmware">The physical devices feeding this analyzer — hardware, firmware, and recent signal stats.</string>
-    <string name="settings_this_app_has_no_backend_of_its_own">This app has no backend of its own. Everything shown here comes from whatever analyzer host is configured in Settings, and it\'s not affiliated with the CoreScope or MeshCore projects.</string>
+    <string name="settings_about_data_sources">Everything shown here comes from the analyzer host configured in Settings. NodeScope\'s only service of its own is the optional push relay for watched-node alerts, which stores no account details, locations or messages. NodeScope isn\'t affiliated with the CoreScope or MeshCore projects.</string>
     <string name="settings_trying_to_restore_live_updates">Trying to restore live updates</string>
     <string name="settings_units">Units</string>
     <string name="settings_upgrade_backups">Upgrade backups</string>
@@ -1954,4 +1954,6 @@
     <string name="repeater_height_applied">Using reported antenna height</string>
     <string name="repeater_reported_height_agl">Reported height above ground: %1$s</string>
     <string name="repeater_antenna_applied">Using reported antenna height and gain</string>
+    <string name="account_watch_remove_title">Stop watching %1$s?</string>
+    <string name="account_watch_remove_failed">Couldn’t stop watching this node. Try again.</string>
 </resources>

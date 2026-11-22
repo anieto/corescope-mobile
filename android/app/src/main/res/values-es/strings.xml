@@ -1729,7 +1729,7 @@
     <string name="settings_term_explanations">Explicación de términos</string>
     <string name="settings_the_live_stream_uses_a_separate_websocket_connection">La transmisión en vivo usa una conexión WebSocket aparte, así que puede reconectarse sin depender de la API de solo lectura.</string>
     <string name="settings_the_physical_devices_feeding_this_analyzer_hardware_firmware">Los dispositivos físicos que alimentan este analizador: hardware, firmware y estadísticas recientes de señal.</string>
-    <string name="settings_this_app_has_no_backend_of_its_own">Esta app no tiene un backend propio. Todo lo que se muestra aquí viene del host del analizador configurado en Ajustes, y no está afiliada a los proyectos CoreScope ni MeshCore.</string>
+    <string name="settings_about_data_sources">Todo lo que se muestra aquí viene del host del analizador configurado en Ajustes. El único servicio propio de NodeScope es el relé push opcional para las alertas de nodos seguidos, que no guarda datos de cuenta, ubicaciones ni mensajes. NodeScope no está afiliado a los proyectos CoreScope ni MeshCore.</string>
     <string name="settings_trying_to_restore_live_updates">Intentando restablecer las actualizaciones en vivo</string>
     <string name="settings_units">Unidades</string>
     <string name="settings_upgrade_backups">Actualizar respaldos</string>
@@ -1968,4 +1968,6 @@
     <string name="repeater_height_applied">Usando la altura de antena reportada</string>
     <string name="repeater_reported_height_agl">Altura reportada sobre el suelo: %1$s</string>
     <string name="repeater_antenna_applied">Usando la altura y la ganancia de antena reportadas</string>
+    <string name="account_watch_remove_title">¿Dejar de seguir %1$s?</string>
+    <string name="account_watch_remove_failed">No se pudo dejar de seguir este nodo. Inténtalo de nuevo.</string>
 </resources>

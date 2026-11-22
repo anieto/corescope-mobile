@@ -581,18 +581,18 @@ private struct NodeIdentityCard: View {
                     Button(action: onWatch) {
                         Group {
                             if isCheckingWatch {
-                                ProgressView()
+                                ProgressView().tint(isWatched ? .white : NodeScopeStyle.signal)
                             } else {
                                 Image(systemName: isWatched ? "bell.fill" : "bell")
                                     .font(.body.weight(.semibold))
                             }
                         }
                         .frame(width: 44, height: 44)
-                        .background(NodeScopeStyle.signal.opacity(0.13), in: Circle())
+                        .background(isWatched ? Color(red: 0.08, green: 0.41, blue: 0.27) : NodeScopeStyle.signal.opacity(0.13), in: Circle())
                         .contentShape(Circle())
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(NodeScopeStyle.signal)
+                    .foregroundStyle(isWatched ? Color.white : NodeScopeStyle.signal)
                     .disabled(isCheckingWatch)
                     .accessibilityLabel(isCheckingWatch ? "Checking watch status…" : isWatched ? "Stop watching" : "Watch node")
                 }

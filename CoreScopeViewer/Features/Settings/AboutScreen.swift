@@ -43,9 +43,10 @@ struct AboutScreen: View {
                     dashboard — just in a native app.
                     """)
                 Text("""
-                    This app has no backend of its own. Everything shown here comes \
-                    from whatever analyzer host is configured in Settings, and it's \
-                    not affiliated with the CoreScope or MeshCore projects.
+                    Everything shown here comes from the analyzer host configured in Settings. \
+                    NodeScope's only service of its own is the optional push relay for watched-node \
+                    alerts, which stores no account details, locations or messages. NodeScope isn't \
+                    affiliated with the CoreScope or MeshCore projects.
                     """)
                 .foregroundStyle(.secondary)
             }

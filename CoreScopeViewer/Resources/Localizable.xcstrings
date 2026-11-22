@@ -10857,6 +10857,22 @@
         }
       }
     },
+    "Everything shown here comes from the analyzer host configured in Settings. NodeScope's only service of its own is the optional push relay for watched-node alerts, which stores no account details, locations or messages. NodeScope isn't affiliated with the CoreScope or MeshCore projects." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todo lo que se muestra aquí viene del host del analizador configurado en Ajustes. El único servicio propio de NodeScope es el relé push opcional para las alertas de nodos seguidos, que no guarda datos de cuenta, ubicaciones ni mensajes. NodeScope no está afiliado a los proyectos CoreScope ni MeshCore."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tudo o que aparece aqui vem do host do analisador configurado em Ajustes. O único serviço próprio do NodeScope é o relay push opcional para os alertas de nós monitorados, que não guarda dados de conta, localizações nem mensagens. O NodeScope não é afiliado aos projetos CoreScope ou MeshCore."
+          }
+        }
+      }
+    },
     "Everything selected is already in your library." : {
       "localizations" : {
         "es" : {
@@ -27945,22 +27961,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Esta versão do NodeScope não é compatível com o serviço de retransmissão push deste analisador."
-          }
-        }
-      }
-    },
-    "This app has no backend of its own. Everything shown here comes from whatever analyzer host is configured in Settings, and it's not affiliated with the CoreScope or MeshCore projects." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Esta app no tiene un backend propio. Todo lo que se muestra aquí viene del host del analizador configurado en Ajustes, y no está afiliada a los proyectos CoreScope ni MeshCore."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Este app não tem um back-end próprio. Tudo o que aparece aqui vem do host do analisador configurado em Ajustes, e ele não é afiliado aos projetos CoreScope ou MeshCore."
           }
         }
       }

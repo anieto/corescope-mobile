@@ -27,6 +27,7 @@ import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.CallMade
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -122,7 +123,29 @@ fun NodeDetailScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var addingWatch by remember(key) { mutableStateOf(false) }
-    var confirmsWatch by remember(key) { mutableStateOf(false) }
+    var watchIntent by remember(key) { mutableStateOf<Boolean?>(null) }
+    var isWatched by remember(key) { mutableStateOf(false) }
+    var checkingWatch by remember(key) { mutableStateOf(false) }
+    val watchKey = publicKey.lowercase()
+    LifecycleResumeEffect(key, onWatchNode != null) {
+        val lookup = if (onWatchNode != null) scope.launch {
+            if (addingWatch) return@launch
+            checkingWatch = true
+            try {
+                val client = CoreScopeAccountClient.forSource(context, host)
+                isWatched = client.hasSession && client.notifications().watches.any { it.pubkey == watchKey }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: AccountException) {
+                if (error.kind == AccountException.Kind.SIGNED_OUT) isWatched = false
+            } catch (_: Exception) {
+                // Leave the last known state visible during a temporary failure.
+            } finally {
+                checkingWatch = false
+            }
+        } else null
+        onPauseOrDispose { lookup?.cancel() }
+    }
     var watchFeedback by remember(key) { mutableStateOf<UiText?>(null) }
     watchFeedback?.let { feedback ->
         AlertDialog(
@@ -134,32 +157,41 @@ fun NodeDetailScreen(
             },
         )
     }
-    if (confirmsWatch && node != null && onWatchNode != null) {
+    val shouldWatch = watchIntent
+    if (shouldWatch != null && node != null && onWatchNode != null) {
         val watch = onWatchNode
         val name = node.name?.takeIf { it.isNotBlank() } ?: stringResource(R.string.account_watch_this_node)
         AlertDialog(
-            onDismissRequest = { confirmsWatch = false },
-            title = { Text(stringResource(R.string.account_watch_confirm_title)) },
-            text = { Text(stringResource(R.string.account_watch_confirm_message, name)) },
+            onDismissRequest = { watchIntent = null },
+            title = {
+                Text(if (shouldWatch) stringResource(R.string.account_watch_confirm_title)
+                    else stringResource(R.string.account_watch_remove_title, name))
+            },
+            text = if (shouldWatch) {
+                { Text(stringResource(R.string.account_watch_confirm_message, name)) }
+            } else null,
             dismissButton = {
-                TextButton(onClick = { confirmsWatch = false }) { Text(stringResource(android.R.string.cancel)) }
+                TextButton(onClick = { watchIntent = null }) { Text(stringResource(android.R.string.cancel)) }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    confirmsWatch = false
+                    watchIntent = null
                     if (!addingWatch) {
                         addingWatch = true
                         scope.launch {
                             try {
                                 val client = CoreScopeAccountClient.forSource(context, host)
                                 if (!client.hasSession) {
-                                    watch(node)
+                                    isWatched = false
+                                    if (shouldWatch) watch(node)
+                                    else watchFeedback = UiText.Resource(R.string.account_alerts_failed)
                                 } else if (client.accountCapabilities()?.notifications != true) {
                                     watchFeedback = UiText.Resource(R.string.account_alerts_unavailable)
                                 } else {
                                     val user = client.me()
-                                    client.setWatch(publicKey, true, user.csrfToken)
-                                    watchFeedback = UiText.Resource(
+                                    val notifications = client.setWatch(watchKey, shouldWatch, user.csrfToken)
+                                    isWatched = notifications.watches.any { it.pubkey == watchKey }
+                                    if (shouldWatch && isWatched) watchFeedback = UiText.Resource(
                                         R.string.account_watch_confirmation, node.name?.takeIf { it.isNotBlank() }
                                             ?: context.getString(R.string.account_watch_this_node),
                                     )
@@ -167,16 +199,18 @@ fun NodeDetailScreen(
                             } catch (cancelled: CancellationException) {
                                 throw cancelled
                             } catch (error: AccountException) {
-                                if (error.kind == AccountException.Kind.SIGNED_OUT) watch(node)
-                                else watchFeedback = error.displayText
+                                if (error.kind == AccountException.Kind.SIGNED_OUT) {
+                                    isWatched = false
+                                    if (shouldWatch) watch(node) else watchFeedback = error.displayText
+                                } else watchFeedback = error.displayText
                             } catch (_: Exception) {
-                                watchFeedback = UiText.Resource(R.string.account_watch_failed)
+                                watchFeedback = UiText.Resource(if (shouldWatch) R.string.account_watch_failed else R.string.account_watch_remove_failed)
                             } finally {
                                 addingWatch = false
                             }
                         }
                     }
-                }) { Text(stringResource(R.string.account_watch_node)) }
+                }) { Text(stringResource(if (shouldWatch) R.string.account_watch_node else R.string.account_stop_watching)) }
             },
         )
     }
@@ -237,8 +271,9 @@ fun NodeDetailScreen(
             if (node != null) IdentityCard(
                 node, publicKey, favorite, now, onFavorite, onMap,
                 coreScopeUrl = coreScopeUrl,
-                addingWatch = addingWatch,
-                onWatch = onWatchNode?.let { { confirmsWatch = true } },
+                watchBusy = addingWatch || checkingWatch,
+                isWatched = isWatched,
+                onWatch = onWatchNode?.let { { watchIntent = !isWatched } },
             )
             else if (sections[0].loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             else Text(stringResource(R.string.node_detail_this_node_is_not_in_the_loaded_results, host), style = MaterialTheme.typography.bodyMedium)
@@ -279,7 +314,7 @@ fun NodeDetailScreen(
 @Composable
 private fun IdentityCard(
     node: MeshNode, publicKey: String, favorite: Boolean, now: Long,
-    onFavorite: (MeshNode) -> Unit, onMap: (MeshNode) -> Unit, coreScopeUrl: String?, addingWatch: Boolean, onWatch: (() -> Unit)?,
+    onFavorite: (MeshNode) -> Unit, onMap: (MeshNode) -> Unit, coreScopeUrl: String?, watchBusy: Boolean, isWatched: Boolean, onWatch: (() -> Unit)?,
 ) {
     val uri = LocalUriHandler.current
     val resources = LocalResources.current
@@ -307,12 +342,19 @@ private fun IdentityCard(
                 }
             }
             onWatch?.let {
-                val label = stringResource(if (addingWatch) R.string.account_watch_adding else R.string.account_watch_node)
-                IconButton(onClick = it, enabled = !addingWatch, modifier = Modifier.withDescription(label) { description ->
-                    contentDescription = description
-                }) {
-                    if (addingWatch) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    else Icon(Icons.Outlined.NotificationsNone, null)
+                val label = stringResource(if (isWatched) R.string.account_stop_watching else R.string.account_watch_node)
+                val watchedGreen = Color(0xFF146945)
+                IconButton(
+                    onClick = it,
+                    enabled = !watchBusy,
+                    colors = if (isWatched) IconButtonDefaults.iconButtonColors(
+                        containerColor = watchedGreen, contentColor = Color.White,
+                        disabledContainerColor = watchedGreen, disabledContentColor = Color.White,
+                    ) else IconButtonDefaults.iconButtonColors(),
+                    modifier = Modifier.withDescription(label) { description -> contentDescription = description },
+                ) {
+                    if (watchBusy) CircularProgressIndicator(Modifier.size(20.dp), color = LocalContentColor.current, strokeWidth = 2.dp)
+                    else Icon(if (isWatched) Icons.Filled.Notifications else Icons.Outlined.NotificationsNone, null)
                 }
             }
             IconToggleButton(checked = favorite, onCheckedChange = { onFavorite(node) }) {
