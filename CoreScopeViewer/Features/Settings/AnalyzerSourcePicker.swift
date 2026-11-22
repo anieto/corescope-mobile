@@ -170,15 +170,14 @@ struct AnalyzerSourcePickerScreen: View {
                 select(customHost)
             }
 
-            Button("Use Custom Analyzer") {
+            Button {
                 select(customHost)
+            } label: {
+                Text("Use Custom Analyzer")
+                    .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(
-                customHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    ? metadataColor
-                    : Color.accentColor
-            )
+            .buttonStyle(.borderedProminent)
+            .padding(.vertical, 4)
             .disabled(customHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             .id(ScrollTarget.customAnalyzer)
         } header: {
