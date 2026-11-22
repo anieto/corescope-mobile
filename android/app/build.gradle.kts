@@ -59,8 +59,8 @@ android {
         applicationId = appPackage
         minSdk = 26
         targetSdk = 36
-        versionCode = 29
-        versionName = "0.11.1"
+        versionCode = 35
+        versionName = "1.0.0"
         buildConfigField("String", "CARTO_API_KEY", "\"" + cartoKey.replace("\\", "\\\\").replace("\"", "\\\"") + "\"")
         buildConfigField("boolean", "MAPS_CONFIGURED", cartoKey.isNotBlank().toString())
         buildConfigField("boolean", "GOOGLE_MAPS_CONFIGURED", googleMapsKey.isNotBlank().toString())
@@ -115,11 +115,8 @@ android {
     sourceSets["test"].resources.srcDir("../../shared/fixtures")
 }
 androidComponents {
-    onVariants(selector().withBuildType("staging")) { variant ->
-        variant.outputs.forEach { it.versionCode.set(30) }
-    }
     onVariants(selector().withBuildType("release")) { variant ->
-        variant.outputs.forEach { it.versionCode.set(34) }
+        variant.outputs.forEach { it.versionCode.set(36) }
     }
 }
 

@@ -1985,6 +1985,7 @@
     <string name="nodevision_open">Abrir no NodeVision</string>
     <string name="nodevision_close">Fechar o NodeVision</string>
     <string name="nodevision_unavailable">Câmera indisponível. Você pode voltar aos detalhes do nó.</string>
+    <string name="nodevision_camera_permission">O NodeVision usa a câmera para mostrar em que direção estão os nós próximos da malha.</string>
     <string name="nodevision_near">Perto da localização informada</string>
     <string name="nodevision_waiting_location">Aguardando a localização…</string>
     <string name="nodevision_location_denied">O acesso à localização é necessário para orientar você.</string>

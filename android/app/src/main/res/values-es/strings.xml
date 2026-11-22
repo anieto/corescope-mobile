@@ -1985,6 +1985,7 @@
     <string name="nodevision_open">Abrir en NodeVision</string>
     <string name="nodevision_close">Cerrar NodeVision</string>
     <string name="nodevision_unavailable">Cámara no disponible. Puedes volver a los detalles del nodo.</string>
+    <string name="nodevision_camera_permission">NodeVision usa la cámara para mostrar en qué dirección están los nodos cercanos de la malla.</string>
     <string name="nodevision_near">Cerca de la ubicación indicada</string>
     <string name="nodevision_waiting_location">Esperando la ubicación…</string>
     <string name="nodevision_location_denied">Se necesita acceso a la ubicación para orientarte.</string>

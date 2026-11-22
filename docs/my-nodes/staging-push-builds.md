@@ -10,7 +10,7 @@ upgrade an existing installation. Keep both builds pointed at
 
 Use the CoreScopeViewer scheme with the **Debug** configuration, which
 enables `NODESCOPE_PUSH_STAGING` and the APNs development entitlement. The
-bundle ID is `com.btdev.nodescope`. The staging build number is 3. Install a development-signed
+bundle ID is `com.btdev.nodescope`. The staging build number is 8. Install a development-signed
 build on an enrolled physical iPhone with a provisioning profile for the
 app ID that includes Push Notifications.
 
@@ -21,8 +21,8 @@ another checkout at `shared/rf-engine/build/XCFrameworks/release/NodeScopeRF.xcf
 ## Android
 
 Build from the Android directory with `./gradlew :app:assembleStaging`. The
-package is `org.nodescope.android`, version name 0.11.1 and staging version
-code 30. The Staging build uses the staging Firebase project.
+package is `org.nodescope.android`, version name 1.0.0 and staging version
+code 35. The Staging build uses the staging Firebase project.
 
 Register an Android app with this package in the dedicated Firebase staging
 project. Put these client configuration values in the local Android
@@ -63,7 +63,8 @@ can still appear.
 
 ## Production release builds
 
-The 0.11.1 Release builds use `https://push.nodescope.app`
+The 1.0.0 Release builds use `https://push.nodescope.app`
+(iOS build 8 and Android version code 36)
 and keep their relay installation credentials separate from staging. The
 bundle ID and application ID are unchanged.
 

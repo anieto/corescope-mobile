@@ -2,16 +2,18 @@
 
 The answers for App Store Connect (App Privacy) and the Google Play Console (Data safety), kept here so
 each release can check them against what the app does. They follow the
-[privacy policy](https://nodescope.app/privacy/). Updated for 0.11.1, which adds watched-node alerts
-through the NodeScope push relay (push.nodescope.app).
+[privacy policy](https://nodescope.app/privacy/). Updated for 1.0.0, which adds watched-node alerts
+through the NodeScope push relay (push.nodescope.app), account-based repeater management,
+nearest-source sorting, and NodeVision.
 
 ## What leaves the device, and who receives it
 
 | Data | Receiver | Counts as collected by us? |
 |---|---|---|
-| Analyzer API requests, sign-in credentials, synced favorites, repeater claims and edits | The analyzer the user picks | No. The user chooses the server, and NodeScope sends nothing from it to us. |
+| Analyzer API requests, sign-in credentials, synced favorites, watch changes, repeater claims and edits | The analyzer the user picks | No. The user chooses the server, and NodeScope sends nothing from it to us. |
 | Push token, random installation ID, which analyzers the device gets alerts from, short alert records | NodeScope push relay (ours) | Yes, only while alerts are turned on. |
 | Firebase installation ID and device information (Android only) | Google, through Firebase Cloud Messaging | Yes, on Android, as a service provider delivering alerts. |
+| Camera preview and location for nearest-source sorting and NodeVision guidance | Processed on the device | No. |
 | Two map points, possibly the current position | Open-Meteo (Link Profile) | Unchanged from 0.11.0. Sent on request for real-time servicing and not stored by us. |
 | Terrain tile requests | Amazon Web Services | Unchanged; no user data. |
 | Map tiles; Google Maps SDK data when Google Maps is chosen (Android) | Apple, CARTO, Google | Unchanged from 0.11.0. |

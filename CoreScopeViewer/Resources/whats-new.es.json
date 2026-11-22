@@ -14,6 +14,22 @@
       "title": "Canales favoritos",
       "detail": "Encuentra tus canales favoritos juntos al principio de la lista de Canales."
     },
+    "analyzer-source-picker": {
+      "title": "Encuentra un analizador",
+      "detail": "Explora los analizadores comunitarios agrupados por país o elige Ordenar por cercanía para ver las fuentes más próximas."
+    },
+    "planner-radio-defaults": {
+      "title": "Ajustes de radio para tu malla",
+      "detail": "Los nuevos estudios de Perfil de enlace y Cobertura estimada empiezan con ajustes de radio para tu malla. También está disponible el preajuste de MeshCore para Brasil."
+    },
+    "nodevision": {
+      "title": "NodeVision",
+      "detail": "Usa la cámara para ver en qué dirección están los nodos cercanos de la malla, o abre NodeVision desde los detalles de un nodo para encontrarlo."
+    },
+    "repeater-management": {
+      "title": "Administra tus repetidores",
+      "detail": "Inicia sesión en CoreScope para reclamar los repetidores que mantienes, actualizar su equipo y estado reportados o quitar un reclamo."
+    },
     "saved-plans": {
       "title": "Planes guardados",
       "detail": "Agrupa perfiles de enlace y estudios de cobertura en planes con nombre y notas. Los resultados se guardan con ellos y se abren igual en iPhone, iPad y Android, sin volver a calcular.",

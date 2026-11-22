@@ -32,7 +32,7 @@ class WhatsNewTest {
             {"version":"0.10.7","items":[{"id":"ios","title":"I","detail":"i","icon":"keyboard","platforms":["ios"]}]}]}""")
         // A release with only iOS items isn't a release on Android.
         assertEquals(listOf("0.10.6", "0.10.8", "0.11.0"), releases.map { it.version })
-        assertEquals(listOf("0.11.0", "0.10.8", "0.10.6"), WhatsNew.history(releases, "0.11.1").map { it.version })
+        assertEquals(listOf("0.11.0", "0.10.8", "0.10.6"), WhatsNew.history(releases, "1.0.0").map { it.version })
         assertEquals(listOf("0.10.8", "0.10.6"), WhatsNew.history(releases, "0.10.9").map { it.version })
         // Updating from before this feature: only this build's highlights, not the whole history.
         assertEquals(listOf("0.10.8"), WhatsNew.pending(releases, null, "0.10.8").map { it.version })

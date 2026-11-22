@@ -302,7 +302,8 @@ internal fun NodeVisionScreen(
             val offscreen = abs(pixel) > (limit + if (edge) -6 else 6).coerceAtLeast(0f)
             val showSettings = !cameraGranted || !locationGranted
             val status = when {
-                cameraFailed || !cameraGranted -> R.string.nodevision_unavailable
+                !cameraGranted -> R.string.nodevision_camera_permission
+                cameraFailed -> R.string.nodevision_unavailable
                 !locationGranted -> R.string.nodevision_location_denied
                 near -> R.string.nodevision_near
                 fix == null -> R.string.nodevision_waiting_location

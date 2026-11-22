@@ -1,4 +1,0 @@
-Nuevo: Alertas de nodos seguidos. Toca la campana en un nodo para recibir una alerta push cuando deje de oírse o vuelva a oírse. Requiere una cuenta de CoreScope en un analizador con NodeScope Push.
-Nuevo: Detalles reportados de repetidores, con valores de antena para estudios de cobertura y enlace. Los canales favoritos tienen su propia sección.
-Corregido: textos más claros en Revisión de nodo.
-De la 0.11.0: Planes guardados, Cobertura estimada (beta), español y portugués de Brasil.

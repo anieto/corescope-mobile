@@ -1971,6 +1971,7 @@
     <string name="nodevision_open">Open in NodeVision</string>
     <string name="nodevision_close">Close NodeVision</string>
     <string name="nodevision_unavailable">Camera unavailable. You can return to node details.</string>
+    <string name="nodevision_camera_permission">NodeVision uses the camera to show the direction of nearby mesh nodes.</string>
     <string name="nodevision_near">Near reported location</string>
     <string name="nodevision_waiting_location">Waiting for location…</string>
     <string name="nodevision_location_denied">Location access is needed for guidance.</string>
