@@ -400,25 +400,29 @@ Audit (2026-11-17): iOS is mostly ready, Android is not.
 which community sources are listed. Every new feature from Phase 2 on must add strings through the
 catalog / `strings.xml`, never hardcoded.
 
-### Analyzer Source picker: countries and nearest first (planned)
+### Analyzer Source picker: countries and nearest first (implemented)
 
-The picker shows the community registry as one flat list in file order. That works for a handful
-of US sources, but not once communities in other countries are listed. Until this ships, the
-registry file is kept in geographic order by hand (MeshTexas first, neighbours together).
-
-- **Country sections.** Each registry entry carries `country` (ISO 3166-1 alpha-2, e.g. `US`).
-  Group the picker into one section per country, the device's own region first, then the rest
-  alphabetically. Within a section keep file order. Needs no permission.
-- **Sort by nearest (optional).** A button on the picker that sorts by distance to each entry's
-  `location` ([lat, lon] of the community's home area). Ask for location only when the user taps
-  it; never on first run or when the picker opens. If location is already granted (e.g. from the
-  map), sort nearest first automatically. On denial keep the country order and don't ask again.
-  Approximate location is enough. No IP geolocation.
-- `location` is for sorting only. `mapCenter`/`mapRadiusKm` stay as they are: they frame the map's
-  All regions view, so they must not be added just to enable sorting.
-- Both fields are already in `CommunitySources/sources-v2.json` for every entry; shipped builds
-  ignore them. Every new community source needs both.
-- Android to match.
+- iOS and Android group community sources by localized country name, with the device region first
+  when it has a listing. Other countries are alphabetical, source order is preserved within each
+  country, and entries without a country go under Other. When there is no local listing, Custom
+  Analyzer and the source request appear first.
+- Country grouping uses the device region without location permission. The shared Settings
+  and onboarding pickers ask for permission only when the user taps Sort by nearest. They
+  sort on open if permission was already granted. Denial or an unavailable fix leaves
+  country grouping in place without another prompt. Entries without a valid location follow
+  the sorted sources in registry order.
+- First-run onboarding prefers the country's default, then its first listed source. Countries
+  without a listing start with an empty selection. The bundled offline registry lists MeshTexas
+  for the US. Source request emails include the device country, home area, description, region
+  codes, and logo guidance.
+- `location` is for sorting only. `mapCenter` and `mapRadiusKm` frame the map’s All regions
+  view and must not be added just to enable sorting. Every new entry in
+  `CommunitySources/sources-v2.json` needs both `country` (ISO 3166-1 alpha-2) and
+  `location` (home area latitude and longitude). Approximate location is enough, and there
+  is no IP geolocation.
+- The iOS location permission prompt covers map centering, nearest-source sorting, and Field
+  Tools in English, Spanish, and Brazilian Portuguese.
+- Deferred: distance labels in source rows.
 
 ## 1.0.0 — Investigation depth and product maturity
 

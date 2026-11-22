@@ -1,14 +1,23 @@
+import CoreLocation
 import SwiftUI
 
 struct AnalyzerSourcePickerScreen: View {
     @Environment(AnalyzerSourceRegistry.self) private var sourceRegistry
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.locale) private var locale
     @Binding var selectedHost: String
     let appliesSelectionImmediately: Bool
     let onSelection: ((String) -> Void)?
 
     @State private var customHost = ""
+    @State private var locationManager = MapLocationManager()
+    @State private var location: CLLocationCoordinate2D?
+    @State private var locationAttempted = false
+
+    private var choices: AnalyzerSourceChoices {
+        AnalyzerSourceChoices(sources: sourceRegistry.sources, displayLocale: locale)
+    }
     @FocusState private var isCustomHostFocused: Bool
 
     private enum ScrollTarget: Hashable {
@@ -18,104 +27,15 @@ struct AnalyzerSourcePickerScreen: View {
     var body: some View {
         ScrollViewReader { proxy in
             List {
-                Section {
-                    ForEach(sourceRegistry.sources) { source in
-                        Button {
-                            select(source.host)
-                        } label: {
-                            HStack(spacing: 12) {
-                                AnalyzerSourceLogo(source: source)
-
-                                VStack(alignment: .leading, spacing: 2) {
-                                    HStack(spacing: 6) {
-                                        Text(source.name)
-                                            .foregroundStyle(Color.primary)
-                                        AnalyzerSourceTypeLabel(type: source.backendType, color: metadataColor)
-                                    }
-                                    Text(source.displaySubtitle)
-                                        .font(.caption)
-                                        .foregroundStyle(metadataColor)
-                                    Text(source.host)
-                                        .font(.caption2)
-                                        .foregroundStyle(metadataColor)
-                                }
-
-                                Spacer()
-                                if source.host.caseInsensitiveCompare(selectedHost) == .orderedSame {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundStyle(Color.accentColor)
-                                }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .contentShape(Rectangle())
-                        }
-                        .accessibilityLabel(
-                            source.backendType == .beacon
-                                ? "Use \(source.name), Beacon beta server, \(source.displaySubtitle)"
-                                : "Use \(source.name), CoreScope server, \(source.displaySubtitle)"
-                        )
-                        .accessibilityValue(
-                            source.host.caseInsensitiveCompare(selectedHost) == .orderedSame ? "Selected" : ""
-                        )
-                        .buttonStyle(.plain)
-                    }
-                } header: {
-                    Text("US Community Sources")
-                } footer: {
-                    Text("Community sources are fetched from NodeScope’s source registry when available.")
-                        .foregroundStyle(metadataColor)
+                if choices.customFirst {
+                    customSection
+                    requestSection
                 }
-                .instrumentListRows()
-
-                Section {
-                    TextField(
-                        text: $customHost,
-                        prompt: Text("analyzer.example.org").foregroundStyle(metadataColor)
-                    ) {
-                        Text("Analyzer hostname")
-                            .foregroundStyle(Color.primary)
-                    }
-                    .foregroundStyle(Color.primary)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .keyboardType(.URL)
-                    .submitLabel(.go)
-                    .focused($isCustomHostFocused)
-                    .onSubmit {
-                        select(customHost)
-                    }
-
-                    Button("Use Custom Analyzer") {
-                        select(customHost)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(
-                        customHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            ? metadataColor
-                            : Color.accentColor
-                    )
-                    .disabled(customHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .id(ScrollTarget.customAnalyzer)
-                } header: {
-                    Text("Custom Analyzer")
-                } footer: {
-                    Text("Enter the hostname for a compatible public analyzer. NodeScope connects directly to it.")
-                        .foregroundStyle(metadataColor)
+                communitySections
+                if !choices.customFirst {
+                    customSection
+                    requestSection
                 }
-                .instrumentListRows()
-
-                Section {
-                    if let communitySourceRequestURL {
-                        Link(destination: communitySourceRequestURL) {
-                            Label("Request a Community Source", systemImage: "envelope")
-                        }
-                        .accessibilityHint("Opens a prefilled email to the NodeScope team")
-                    }
-                } footer: {
-                    Text("Suggest a public analyzer for the community list. Please confirm that its owner or operator permits it to be listed and used in NodeScope.")
-                        .foregroundStyle(metadataColor)
-                }
-                .instrumentListRows()
             }
             .scrollDismissesKeyboard(.interactively)
             .onChange(of: isCustomHostFocused) { _, isFocused in
@@ -137,10 +57,165 @@ struct AnalyzerSourcePickerScreen: View {
             .meshPageBackground()
             .navigationTitle("Analyzer Source")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        sortByNearest(allowsAuthorizationPrompt: true)
+                    } label: {
+                        Label("Sort by nearest", systemImage: "location")
+                    }
+                    .disabled(locationAttempted)
+                }
+            }
+            .onDisappear {
+                locationManager.cancelRequest()
+                locationAttempted = false
+                location = nil
+            }
             .task {
+                if locationManager.isAuthorized {
+                    sortByNearest(allowsAuthorizationPrompt: false)
+                }
                 await sourceRegistry.refresh()
             }
         }
+    }
+
+    @ViewBuilder
+    private var communitySections: some View {
+        if let location {
+            communitySection(choices.nearest(to: location), title: String(localized: "Community Sources"),
+                             showsFooter: true)
+        } else {
+            let sections = choices.countrySections
+            ForEach(sections) { section in
+                communitySection(section.sources, title: section.name ?? String(localized: "Other"),
+                                 showsFooter: section.id == sections.last?.id)
+            }
+        }
+    }
+
+    private func communitySection(_ sources: [AnalyzerSource], title: String, showsFooter: Bool) -> some View {
+        Section {
+            ForEach(sources, content: sourceRow)
+        } header: {
+            Text(title).font(.monaspace(.footnote))
+        } footer: {
+            if showsFooter {
+                Text("Community sources are fetched from NodeScope’s source registry when available.")
+                    .foregroundStyle(metadataColor)
+            }
+        }
+        .instrumentListRows()
+    }
+
+    private func sourceRow(_ source: AnalyzerSource) -> some View {
+        Button {
+            select(source.host)
+        } label: {
+            HStack(spacing: 12) {
+                AnalyzerSourceLogo(source: source)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(source.name)
+                            .font(.monaspace(.body))
+                            .foregroundStyle(Color.primary)
+                        AnalyzerSourceTypeLabel(type: source.backendType, color: metadataColor)
+                    }
+                    Text(source.displaySubtitle)
+                        .font(.caption)
+                        .foregroundStyle(metadataColor)
+                    Text(source.host)
+                        .font(.monaspace(.caption2))
+                        .foregroundStyle(metadataColor)
+                }
+
+                Spacer()
+                if source.host.caseInsensitiveCompare(selectedHost) == .orderedSame {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Color.accentColor)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .accessibilityLabel(
+            source.backendType == .beacon
+                ? "Use \(source.name), Beacon beta server, \(source.displaySubtitle)"
+                : "Use \(source.name), CoreScope server, \(source.displaySubtitle)"
+        )
+        .accessibilityValue(
+            source.host.caseInsensitiveCompare(selectedHost) == .orderedSame ? "Selected" : ""
+        )
+        .buttonStyle(.plain)
+    }
+
+    private var customSection: some View {
+        Section {
+            TextField(
+                text: $customHost,
+                prompt: Text("analyzer.example.org").foregroundStyle(metadataColor)
+            ) {
+                Text("Analyzer hostname")
+                    .foregroundStyle(Color.primary)
+            }
+            .foregroundStyle(Color.primary)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .keyboardType(.URL)
+            .submitLabel(.go)
+            .focused($isCustomHostFocused)
+            .onSubmit {
+                select(customHost)
+            }
+
+            Button("Use Custom Analyzer") {
+                select(customHost)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(
+                customHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    ? metadataColor
+                    : Color.accentColor
+            )
+            .disabled(customHost.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .id(ScrollTarget.customAnalyzer)
+        } header: {
+            Text("Custom Analyzer").font(.monaspace(.footnote))
+        } footer: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Enter the hostname for a compatible public analyzer. NodeScope connects directly to it.")
+                if choices.customFirst {
+                    Text("Ask your local mesh community for their analyzer’s address.")
+                }
+            }
+            .foregroundStyle(metadataColor)
+        }
+        .instrumentListRows()
+    }
+
+    private var requestSection: some View {
+        Section {
+            if let communitySourceRequestURL {
+                Link(destination: communitySourceRequestURL) {
+                    Label("Request a Community Source", systemImage: "envelope")
+                }
+                .accessibilityHint("Opens a prefilled email to the NodeScope team")
+            }
+        } footer: {
+            Text("Suggest a public analyzer for the community list. Please confirm that its owner or operator permits it to be listed and used in NodeScope.")
+                .foregroundStyle(metadataColor)
+        }
+        .instrumentListRows()
+    }
+
+    private func sortByNearest(allowsAuthorizationPrompt: Bool) {
+        guard !locationAttempted else { return }
+        locationAttempted = true
+        locationManager.requestCurrentLocation(allowsAuthorizationPrompt: allowsAuthorizationPrompt) {
+            location = $0
+        } failure: {}
     }
 
     private var metadataColor: Color {
@@ -165,24 +240,32 @@ struct AnalyzerSourcePickerScreen: View {
     }
 
     private var communitySourceRequestBody: String {
-        [
-            "Hello NodeScope team,",
+        let country = choices.userCountryName ?? ""
+        return [
+            String(localized: "Hello NodeScope team,"),
             "",
-            "I’d like to request that the following community source be added.",
+            String(localized: "I’d like to request that the following community source be added."),
             "",
-            "SOURCE DETAILS",
-            "Source name:",
-            "Analyzer hostname or URL:",
-            "Region or community:",
-            "Owner or operator contact:",
+            String(localized: "SOURCE DETAILS"),
+            String(localized: "Source name:"),
+            String(localized: "Analyzer hostname or URL:"),
+            String(localized: "Country: \(country)"),
+            String(localized: "Home city or area:"),
+            String(localized: "Short description (one line, shown under the name):"),
+            String(localized: "Region code(s), if you use any (e.g. LFT):"),
+            String(localized: "Owner or operator contact:"),
             "",
-            "PERMISSION",
-            "Do you have permission from the source owner or operator for this source to be listed and used in NodeScope?",
-            "Answer: Yes / No / Not yet",
+            String(localized: "LOGO"),
+            String(localized: "Please attach a square logo (PNG, at least 256×256), or paste a link to one."),
+            String(localized: "If you don’t have one, we’ll use your analyzer’s site icon."),
             "",
-            "ADDITIONAL DETAILS",
+            String(localized: "PERMISSION"),
+            String(localized: "Do you have permission from the source owner or operator for this source to be listed and used in NodeScope?"),
+            String(localized: "Answer: Yes / No / Not yet"),
             "",
-            "Thank you."
+            String(localized: "ADDITIONAL DETAILS"),
+            "",
+            String(localized: "Thank you.")
         ].joined(separator: "\r\n")
     }
 

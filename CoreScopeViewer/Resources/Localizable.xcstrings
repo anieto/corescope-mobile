@@ -3848,6 +3848,22 @@
         }
       }
     },
+    "ADDITIONAL DETAILS" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "INFORMACIÓN ADICIONAL"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DETALHES ADICIONAIS"
+          }
+        }
+      }
+    },
     "About" : {
       "localizations" : {
         "es" : {
@@ -5150,6 +5166,22 @@
         }
       }
     },
+    "Analyzer hostname or URL:" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nombre de host o URL del analizador:"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nome do host ou URL do analisador:"
+          }
+        }
+      }
+    },
     "Analyzer offline" : {
       "localizations" : {
         "es" : {
@@ -5242,6 +5274,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sol. anônima"
+          }
+        }
+      }
+    },
+    "Answer: Yes / No / Not yet" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Respuesta: Sí / No / Todavía no"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resposta: Sim / Não / Ainda não"
           }
         }
       }
@@ -5462,6 +5510,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aplicar"
+          }
+        }
+      }
+    },
+    "Ask your local mesh community for their analyzer’s address." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pide a tu comunidad mesh local la dirección de su analizador."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Peça à sua comunidade mesh local o endereço do analisador."
           }
         }
       }
@@ -7254,6 +7318,22 @@
         }
       }
     },
+    "Choose an analyzer" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un analizador"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolha um analisador"
+          }
+        }
+      }
+    },
     "Choose an observer to see its activity and signal data." : {
       "localizations" : {
         "es" : {
@@ -7762,6 +7842,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Em breve"
+          }
+        }
+      }
+    },
+    "Community Sources" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fuentes comunitarias"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fontes comunitárias"
           }
         }
       }
@@ -8466,6 +8562,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Não foi possível verificar este nó"
+          }
+        }
+      }
+    },
+    "Country: %@" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "País: %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "País: %@"
           }
         }
       }
@@ -9428,6 +9540,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Distância %1$@. Pior folga de Fresnel: %2$@ por cento."
+          }
+        }
+      }
+    },
+    "Do you have permission from the source owner or operator for this source to be listed and used in NodeScope?" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Tienes permiso del propietario u operador de la fuente para que se incluya y se use en NodeScope?"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Você tem permissão do proprietário ou operador para que esta fonte seja listada e usada no NodeScope?"
           }
         }
       }
@@ -11869,6 +11997,22 @@
         }
       }
     },
+    "Hello NodeScope team," : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hola, equipo de NodeScope:"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Olá, equipe do NodeScope,"
+          }
+        }
+      }
+    },
     "Help" : {
       "localizations" : {
         "es" : {
@@ -12093,6 +12237,22 @@
         }
       }
     },
+    "Home city or area:" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciudad o zona de origen:"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cidade ou área de origem:"
+          }
+        }
+      }
+    },
     "Hop %lld" : {
       "localizations" : {
         "es" : {
@@ -12287,6 +12447,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Se o NodeScope tem sido útil, você pode deixar uma gorjeta opcional para apoiar o desenvolvimento."
+          }
+        }
+      }
+    },
+    "If you don’t have one, we’ll use your analyzer’s site icon." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si no tienes uno, usaremos el icono del sitio de tu analizador."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se você não tiver um, usaremos o ícone do site do seu analisador."
           }
         }
       }
@@ -12937,6 +13113,22 @@
         }
       }
     },
+    "I’d like to request that the following community source be added." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Me gustaría solicitar que se añada la siguiente fuente comunitaria."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gostaria de solicitar a inclusão da seguinte fonte comunitária."
+          }
+        }
+      }
+    },
     "Keep editing" : {
       "localizations" : {
         "es" : {
@@ -13061,6 +13253,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nós conhecidos (%lld)"
+          }
+        }
+      }
+    },
+    "LOGO" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LOGOTIPO"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LOGOTIPO"
           }
         }
       }
@@ -14273,6 +14481,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A localização é opcional e só é usada quando você escolhe centralizar o mapa em você."
+          }
+        }
+      }
+    },
+    "Location is optional. It lets you center the map on yourself and sort analyzer sources by distance." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La ubicación es opcional. Te permite centrar el mapa en tu posición y ordenar las fuentes de analizadores por distancia."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A localização é opcional. Ela permite centralizar o mapa na sua posição e ordenar as fontes de analisadores por distância."
           }
         }
       }
@@ -16172,6 +16396,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ainda não há canais"
+          }
+        }
+      }
+    },
+    "No community is listed for %@ yet. Pick one to look around, enter your own analyzer, or request a listing for yours." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no hay comunidades registradas para %@. Elige una para explorar, introduce tu propio analizador o solicita que se incluya el tuyo."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ainda não há comunidades listadas para %@. Escolha uma para explorar, informe seu próprio analisador ou solicite a inclusão do seu."
+          }
+        }
+      }
+    },
+    "No community is listed for your region yet. Pick one to look around, enter your own analyzer, or request a listing for yours." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no hay comunidades registradas para tu región. Elige una para explorar, introduce tu propio analizador o solicita que se incluya el tuyo."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ainda não há comunidades listadas para a sua região. Escolha uma para explorar, informe seu próprio analisador ou solicite a inclusão do seu."
           }
         }
       }
@@ -18592,6 +18848,22 @@
         }
       }
     },
+    "Other" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otros"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Outros"
+          }
+        }
+      }
+    },
     "Other nodes’ packets are passing through it. It last relayed one %@." : {
       "localizations" : {
         "es" : {
@@ -18636,6 +18908,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O que fica fora do raio do estudo não tem sombreado. A área a menos de 250 m do transmissor não é compatível e aparece hachurada."
+          }
+        }
+      }
+    },
+    "Owner or operator contact:" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contacto del propietario u operador:"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contato do proprietário ou operador:"
+          }
+        }
+      }
+    },
+    "PERMISSION" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PERMISO"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PERMISSÃO"
           }
         }
       }
@@ -19442,6 +19746,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reproduzir a reprodução de novo"
+          }
+        }
+      }
+    },
+    "Please attach a square logo (PNG, at least 256×256), or paste a link to one." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adjunta un logotipo cuadrado (PNG, al menos 256×256) o pega un enlace al archivo."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anexe um logotipo quadrado (PNG, de pelo menos 256×256) ou cole um link para o arquivo."
           }
         }
       }
@@ -20612,6 +20932,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Filtro de região"
+          }
+        }
+      }
+    },
+    "Region code(s), if you use any (e.g. LFT):" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Códigos de región, si los usas (p. ej., LFT):"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Códigos de região, se você usar algum (ex.: LFT):"
           }
         }
       }
@@ -22208,6 +22544,22 @@
         }
       }
     },
+    "SOURCE DETAILS" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DATOS DE LA FUENTE"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DADOS DA FONTE"
+          }
+        }
+      }
+    },
     "SSE" : {
       "comment" : "Compass point abbreviation (southSoutheast)",
       "localizations" : {
@@ -23635,6 +23987,22 @@
         }
       }
     },
+    "Short description (one line, shown under the name):" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descripción breve (una línea, debajo del nombre):"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descrição breve (uma linha, exibida abaixo do nome):"
+          }
+        }
+      }
+    },
     "Short explanations of the words NodeScope uses. Tap %@ beside a term anywhere in the app to see its entry." : {
       "localizations" : {
         "es" : {
@@ -24571,6 +24939,22 @@
         }
       }
     },
+    "Sort by nearest" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ordenar por cercanía"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ordenar por proximidade"
+          }
+        }
+      }
+    },
     "Source" : {
       "localizations" : {
         "es" : {
@@ -24615,6 +24999,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A detecção da fonte foi interrompida. Tente de novo para continuar."
+          }
+        }
+      }
+    },
+    "Source name:" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nombre de la fuente:"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nome da fonte:"
           }
         }
       }
@@ -25667,6 +26067,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Obrigado por apoiar o NodeScope!"
+          }
+        }
+      }
+    },
+    "Thank you." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gracias."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obrigado."
           }
         }
       }

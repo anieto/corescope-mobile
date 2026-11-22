@@ -1,0 +1,29 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSLocationWhenInUseUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your location helps center the map, sort analyzer sources by distance, and guide you in Field Tools while you use the app."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu ubicación ayuda a centrar el mapa, ordenar las fuentes de analizadores por distancia y orientarte con las herramientas de campo mientras usas la app."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sua localização ajuda a centralizar o mapa, ordenar as fontes de analisadores por distância e orientar você nas ferramentas de campo enquanto usa o app."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

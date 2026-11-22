@@ -162,7 +162,7 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
     if (!preferences.onboarded) {
         Surface(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize().meshPageBackground().safeDrawingPadding()) {
-                OnboardingScreen(sources, preferences.host, saving, error?.asString(), { model.selectSource(it) }, model.sourceIcons)
+                OnboardingScreen(sources, preferences.savedHost, saving, error?.asString(), { model.selectSource(it) }, model.sourceIcons)
             }
         }
     } else {

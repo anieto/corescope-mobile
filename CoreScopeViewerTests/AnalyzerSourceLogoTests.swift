@@ -1,3 +1,4 @@
+import CoreLocation
 import Foundation
 import Testing
 @testable import CoreScopeViewer
@@ -17,8 +18,12 @@ struct AnalyzerSourceLogoTests {
         let session = URLSession(configuration: configuration)
         defer { session.invalidateAndCancel() }
         let registry = AnalyzerSourceRegistry(defaults: defaults, session: session)
-        #expect(registry.defaultSource?.id == "meshtexas")
-        #expect(registry.defaultSource?.type == .coreScope)
+        #expect(registry.sources.first?.id == "meshtexas")
+        #expect(registry.sources.first?.type == .coreScope)
+        let local = AnalyzerSourceChoices(sources: registry.sources, userCountry: "US")
+        let visitor = AnalyzerSourceChoices(sources: registry.sources, userCountry: "MX")
+        #expect(local.onboardingHost(savedHost: nil, isOnboarded: false) == "analyzer.meshtexas.org")
+        #expect(visitor.onboardingHost(savedHost: nil, isOnboarded: false) == nil)
         let original = registry.sources
         await registry.refresh()
         #expect(registry.sources == original)
@@ -36,7 +41,7 @@ struct AnalyzerSourceLogoTests {
         let registry = AnalyzerSourceRegistry(defaults: defaults, session: session)
         await registry.refresh()
         #expect(registry.lastError == nil)
-        #expect(registry.defaultSource?.backendType == .beacon)
+        #expect(registry.sources.first?.backendType == .beacon)
         #expect(registry.sources.count == 1)
         for status in ["404", "429", "503", "legacy", "malformed"] {
             let failingConfiguration = URLSessionConfiguration.ephemeral
@@ -81,6 +86,77 @@ struct AnalyzerSourceLogoTests {
                 try JSONDecoder().decode(AnalyzerSourceRegistryDocument.self, from: Data(json.utf8))
             }
         }
+    }
+
+    @Test func countrySectionsPutTheDeviceCountryFirstAndKeepFileOrder() {
+        let sources = [source("br1", "BR"), source("other"), source("us1", "US"),
+                       source("ca", "CA"), source("br2", "BR"), source("us2", "US")]
+        let locale = Locale(identifier: "en_US")
+        let local = AnalyzerSourceChoices(sources: sources, userCountry: "US", displayLocale: locale)
+        #expect(!local.customFirst)
+        #expect(local.countrySections.map(\.country) == ["US", "BR", "CA", nil])
+        #expect(local.countrySections.map { $0.sources.map(\.id) } ==
+                [["us1", "us2"], ["br1", "br2"], ["ca"], ["other"]])
+        let visitor = AnalyzerSourceChoices(sources: sources, userCountry: "MX", displayLocale: locale)
+        #expect(visitor.customFirst)
+        #expect(visitor.countrySections.map(\.country) == ["BR", "CA", "US", nil])
+    }
+
+    @Test func nearestSortKeepsTiesAndUnlocatedEntriesInFileOrder() {
+        let sources = [source("missing"), source("far", location: [0, 40]),
+                       source("invalid", location: [100, 0]), source("near1", location: [0, 1]),
+                       source("near2", location: [0, -1]), source("incomplete", location: [1]),
+                       source("nonfinite", location: [.infinity, 0])]
+        let choices = AnalyzerSourceChoices(sources: sources)
+        #expect(choices.nearest(to: .init(latitude: 0, longitude: 0)).map(\.id) ==
+                ["near1", "near2", "far", "missing", "invalid", "incomplete", "nonfinite"])
+    }
+
+    @Test func onboardingRespectsCountryDefaultsAndSavedHosts() {
+        let sources = [source("us", "US", isDefault: true), source("ca1", "CA"),
+                       source("ca2", "CA", isDefault: true), source("br1", "BR"), source("br2", "BR")]
+        let canada = AnalyzerSourceChoices(sources: sources, userCountry: "CA")
+        let brazil = AnalyzerSourceChoices(sources: sources, userCountry: "BR")
+        let mexico = AnalyzerSourceChoices(sources: sources, userCountry: "MX")
+        #expect(canada.onboardingHost(savedHost: nil, isOnboarded: false) == "ca2.example")
+        #expect(brazil.onboardingHost(savedHost: nil, isOnboarded: false) == "br1.example")
+        #expect(mexico.onboardingHost(savedHost: nil, isOnboarded: false) == nil)
+        #expect(canada.onboardingHost(savedHost: "saved.example", isOnboarded: false) == "saved.example")
+        #expect(canada.onboardingHost(savedHost: "saved.example", isOnboarded: true) == "saved.example")
+        #expect(canada.onboardingHost(savedHost: nil, isOnboarded: true) == nil)
+    }
+
+    @Test func newMetadataIsOptionalAndMalformedValuesDoNotDropEntries() throws {
+        let json = """
+        {"version":2,"sources":[
+          {"id":"old","name":"Old","host":"old.example","subtitle":"","isDefault":false},
+          {"id":"bad","name":"Bad","host":"bad.example","subtitle":"","isDefault":false,
+           "country":42,"location":[10,"wrong"]},
+          {"id":"new","name":"New","host":"new.example","subtitle":"","isDefault":true,
+           "country":"us","location":[10,20],"mapCenter":[30,40],"mapRadiusKm":100}
+        ]}
+        """
+        let document = try JSONDecoder().decode(AnalyzerSourceRegistryDocument.self, from: Data(json.utf8))
+        #expect(document.sources.map(\.id) == ["old", "bad", "new"])
+        for source in document.sources.prefix(2) {
+            #expect(source.country == nil)
+            #expect(source.locationCoordinate == nil)
+        }
+        let valid = try #require(document.sources.last)
+        #expect(valid.country == "US")
+        #expect(valid.locationCoordinate?.longitude == 20)
+        #expect(valid.mapLongitude == 40)
+        #expect(valid.mapRadiusKm == 100)
+        let cached = try JSONDecoder().decode(AnalyzerSourceRegistryDocument.self,
+                                              from: JSONEncoder().encode(document))
+        #expect(cached.sources == document.sources)
+    }
+
+    private func source(_ id: String, _ country: String? = nil, location: [Double]? = nil,
+                        isDefault: Bool = false) -> AnalyzerSource {
+        AnalyzerSource(id: id, name: id, host: "\(id).example", subtitle: "", isDefault: isDefault,
+                       mapCenter: nil, mapRadiusKm: nil, icon: nil, type: nil,
+                       country: country, location: location)
     }
 
     @Test func onlyRegistryIconPathsAreAccepted() {
