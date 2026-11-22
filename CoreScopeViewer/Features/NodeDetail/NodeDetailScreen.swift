@@ -5,6 +5,13 @@ import UIKit
 
 struct NodeDetailScreen: View {
     let node: MeshNode
+    private let openedFromNodeVision: Bool
+
+    init(node: MeshNode, openedFromNodeVision: Bool = false) {
+        self.node = node
+        self.openedFromNodeVision = openedFromNodeVision
+    }
+
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(FavoritesStore.self) private var favoritesStore
     @Environment(RecentItemsStore.self) private var recentItemsStore
@@ -20,6 +27,7 @@ struct NodeDetailScreen: View {
     @State private var repeaterMetadata: RepeaterMetadata?
     @State private var metadataSourceID: UUID?
     @State private var showsFieldTools = false
+    @State private var showsNodeVision = false
     @State private var showsWatchSettings = false
     @State private var watchTask: Task<Void, Never>?
     @State private var watchMessage: String?
@@ -40,6 +48,34 @@ struct NodeDetailScreen: View {
         guard let latitude = displayedNode.lat, let longitude = displayedNode.lon else { return false }
         return !(latitude == 0 && longitude == 0)
             && FieldCoordinate(latitude: latitude, longitude: longitude) != nil
+    }
+
+    @ViewBuilder
+    private var nodeVisionActions: some View {
+        if hasFieldCoordinate {
+            if !openedFromNodeVision {
+                Button { showsNodeVision = true } label: {
+                    Label("Open in NodeVision", systemImage: "camera")
+                }
+                .buttonStyle(StandaloneActionButtonStyle())
+            }
+
+            if LegacyFieldGuidance.isEnabled {
+                Button { showsFieldTools = true } label: {
+                    FieldGuidanceLinkCard(entityName: displayedNode.name ?? String(localized: "this node"))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var nodeVisionDestination: some View {
+        let item = FieldCatalogItem.node(displayedNode)
+        if let coordinate = item.coordinate {
+            NodeVisionScreen(name: item.name, target: coordinate,
+                             repeaterKey: displayedNode.publicKey)
+        }
     }
 
     var body: some View {
@@ -86,14 +122,7 @@ struct NodeDetailScreen: View {
                     .tint(Color(red: 0, green: 0.39, blue: 0.65))
                 }
 
-                if hasFieldCoordinate {
-                    Button {
-                        showsFieldTools = true
-                    } label: {
-                        FieldGuidanceLinkCard(entityName: displayedNode.name ?? String(localized: "this node"))
-                    }
-                    .buttonStyle(.plain)
-                }
+                nodeVisionActions
 
                 if settings.beaconBackend != nil {
                     BeaconFeatureNotice(capability: .nodeHealth)
@@ -179,9 +208,9 @@ struct NodeDetailScreen: View {
                     Button {
                         showsFieldTools = true
                     } label: {
-                        Image(systemName: "location.viewfinder")
+                        Image(systemName: "map")
                     }
-                    .accessibilityLabel("Guide to Node in Field Tools")
+                    .accessibilityLabel("Open node in Field Map")
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
@@ -192,7 +221,7 @@ struct NodeDetailScreen: View {
             }
         }
         .navigationDestination(item: $selectedLinkedNode) { linkedNode in
-            NodeDetailScreen(node: linkedNode)
+            NodeDetailScreen(node: linkedNode, openedFromNodeVision: openedFromNodeVision)
                 .id(linkedNode.publicKey)
         }
         .navigationDestination(isPresented: $showsWatchSettings) {
@@ -252,6 +281,7 @@ struct NodeDetailScreen: View {
         .sheet(item: $meshCoreContact) { contact in
             MeshCoreContactSheet(contact: contact)
         }
+        .fullScreenCover(isPresented: $showsNodeVision) { nodeVisionDestination }
         .fullScreenCover(isPresented: $showsFieldTools) {
             FieldToolsScreen(
                 initialNode: displayedNode,

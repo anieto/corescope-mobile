@@ -3,6 +3,16 @@ import MapKit
 import SwiftUI
 
 struct LinkProfileScreen: View {
+    struct NodeVisionSeed: Identifiable {
+        let id = UUID()
+        let origin: FieldCoordinate
+        let target: FieldCoordinate
+        let name: String
+        let selection: ReportedRepeaterSelection
+    }
+
+    private let nodeVisionSeed: NodeVisionSeed?
+    @State private var hasAppliedNodeVisionSeed = false
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(\.dismiss) private var dismiss
@@ -20,7 +30,9 @@ struct LinkProfileScreen: View {
 
     /// `planID` is the plan this tool was opened from: the suggested place to save a new study.
     /// `draft` resumes unsaved work, which stays unsaved.
-    init(savedStudy: SavedStudy? = nil, planID: String? = nil, draft: ResumedDraft? = nil) {
+    init(savedStudy: SavedStudy? = nil, planID: String? = nil, draft: ResumedDraft? = nil,
+         nodeVisionSeed: NodeVisionSeed? = nil) {
+        self.nodeVisionSeed = nodeVisionSeed
         let model = LinkProfileModel()
         model.suggestedPlanID = planID
         if let savedStudy { model.restore(savedStudy) }
@@ -135,6 +147,15 @@ struct LinkProfileScreen: View {
         }
         .onChange(of: mapDisplayStyle) { _, style in
             UserDefaults.standard.set(style.rawValue, forKey: MapDisplayStyle.defaultsKey)
+        }
+        .task {
+            guard let seed = nodeVisionSeed, !hasAppliedNodeVisionSeed else { return }
+            hasAppliedNodeVisionSeed = true
+            model.set(CLLocationCoordinate2D(latitude: seed.origin.latitude, longitude: seed.origin.longitude),
+                      for: .pointA, name: String(localized: "Your location"))
+            model.set(CLLocationCoordinate2D(latitude: seed.target.latitude, longitude: seed.target.longitude),
+                      for: .pointB, name: seed.name, selection: seed.selection)
+            model.markClean()
         }
         .task(id: settings.sourceIsReady ? model.reportedSelectionA : nil) {
             await applyReportedDefaults(to: .pointA)

@@ -292,6 +292,14 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         scheduleAnalysis()
     }
 
+    fun seedFromNodeVision(origin: ProfileCoordinate, target: ProfileCoordinate, name: String,
+                            selection: ReportedRepeaterSelection, originName: String) {
+        if (saved.get<Boolean>("nodeVisionSeedApplied") == true) return
+        setPoint("A", origin.latitude.toString(), origin.longitude.toString(), originName)
+        setPoint("B", target.latitude.toString(), target.longitude.toString(), name, selection)
+        saved["nodeVisionSeedApplied"] = true
+    }
+
     /** Places [endpoint] at [point], named after the known node it was chosen on, if any. */
     fun place(endpoint: String, point: ProfileCoordinate, name: String?, selection: ReportedRepeaterSelection? = null) {
         val before = placement()

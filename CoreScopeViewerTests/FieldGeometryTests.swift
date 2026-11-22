@@ -57,6 +57,51 @@ struct FieldGeometryTests {
         #expect(FieldGeometry.relativeHeadingRotation(trueBearingDegrees: .nan, deviceTrueHeadingDegrees: 0) == nil)
     }
 
+    @Test func showsCameraOffsetsOnTheCorrectSideAcrossNorth() throws {
+        let right = try #require(FieldGeometry.cameraHorizontalOffset(bearing: 10, heading: 350, halfWidthTangent: 0.5))
+        let left = try #require(FieldGeometry.cameraHorizontalOffset(bearing: 350, heading: 10, halfWidthTangent: 0.5))
+        #expect(abs(right - 0.72794) < 0.00001)
+        #expect(right == -left)
+        let cropped = try #require(FieldGeometry.cameraHorizontalOffset(bearing: 10, heading: 350, halfWidthTangent: 0.25))
+        #expect(cropped > 1)
+        #expect(FieldGeometry.cameraHorizontalOffset(bearing: 230, heading: 0, halfWidthTangent: 0.5) == -.infinity)
+    }
+
+    @Test func cameraHeadingUsesTheRearLensAndIgnoresVerticalPointing() {
+        #expect(FieldGeometry.rearCameraHeadingDegrees(deviceScreenAxis: SIMD3(-1, 0, 0)) == 0)
+        #expect(FieldGeometry.rearCameraHeadingDegrees(deviceScreenAxis: SIMD3(0, 1, 0)) == 90)
+        #expect(FieldGeometry.rearCameraHeadingDegrees(deviceScreenAxis: SIMD3(0, 0, 1)) == nil)
+    }
+
+    @Test func bearingGuideMovesOppositeCameraTiltWithoutAltitude() {
+        let level = FieldGeometry.cameraBearingGuideOffset(pitch: 0, halfHeightTangent: 0.5)
+        let up = FieldGeometry.cameraBearingGuideOffset(pitch: 10, halfHeightTangent: 0.5)
+        let down = FieldGeometry.cameraBearingGuideOffset(pitch: -10, halfHeightTangent: 0.5)
+        #expect(abs(level - 0.14) < 0.00001)
+        #expect(up < 0 && down > level)
+    }
+
+    @Test func projectsAntennaElevationAndRejectsUncertainty() throws {
+        let level = try #require(FieldGeometry.cameraVerticalOffset(
+            distance: 500, antennaElevation: 160, phoneElevation: 100,
+            phoneAccuracy: 5, pitch: 0, halfHeightTangent: 0.5))
+        let tilted = try #require(FieldGeometry.cameraVerticalOffset(
+            distance: 500, antennaElevation: 160, phoneElevation: 100,
+            phoneAccuracy: 5, pitch: 10, halfHeightTangent: 0.5))
+        #expect(level > 0 && tilted < 0)
+        #expect(FieldGeometry.cameraVerticalOffset(distance: 16_737, antennaElevation: 203,
+            phoneElevation: 288.8, phoneAccuracy: 30, pitch: 0, halfHeightTangent: 0.5) != nil)
+        #expect(FieldGeometry.cameraVerticalOffset(distance: 46, antennaElevation: 291.6,
+            phoneElevation: 288.8, phoneAccuracy: 30, pitch: 0, halfHeightTangent: 0.5) == nil)
+        #expect(FieldGeometry.cameraVerticalOffset(distance: 46, antennaElevation: 292,
+            phoneElevation: 285, phoneAccuracy: 5, pitch: 0, halfHeightTangent: 0.5) != nil)
+        #expect(FieldGeometry.cameraElevationUncertainty(distance: 46, phoneAccuracy: 5) > 8)
+        #expect(FieldGeometry.cameraVerticalOffset(distance: 30, antennaElevation: 160,
+            phoneElevation: 100, phoneAccuracy: 5, pitch: 0, halfHeightTangent: 0.5) == nil)
+        #expect(FieldGeometry.cameraVerticalOffset(distance: 50, antennaElevation: 160,
+            phoneElevation: 100, phoneAccuracy: 20, pitch: 0, halfHeightTangent: 0.5) == nil)
+    }
+
     @Test func turnsTheShortWayAcrossNorth() {
         #expect(FieldGeometry.nearestEquivalentAngle(to: 1, from: 359) == 361)
         #expect(FieldGeometry.nearestEquivalentAngle(to: 359, from: 361) == 359)

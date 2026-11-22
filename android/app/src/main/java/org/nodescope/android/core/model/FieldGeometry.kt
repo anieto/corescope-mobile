@@ -85,4 +85,38 @@ object FieldGeometry {
         if (!trueBearingDegrees.isFinite() || !deviceTrueHeadingDegrees.isFinite()) return null
         return ((trueBearingDegrees - deviceTrueHeadingDegrees) % 360.0 + 360.0) % 360.0
     }
+
+    /** Fraction of the camera pane's half width, with values outside ±1 offscreen. */
+    fun cameraHorizontalOffset(bearing: Double, heading: Double, halfWidthTangent: Double): Double? {
+        if (!halfWidthTangent.isFinite() || halfWidthTangent <= 0) return null
+        val clockwise = relativeHeadingRotation(bearing, heading) ?: return null
+        val signed = if (clockwise > 180) clockwise - 360 else clockwise
+        if (kotlin.math.abs(signed) >= 89) {
+            return if (signed < 0) Double.NEGATIVE_INFINITY else Double.POSITIVE_INFINITY
+        }
+        return kotlin.math.tan(Math.toRadians(signed)) / halfWidthTangent
+    }
+    /** A tilt-responsive bearing guide. At zero pitch its tip sits at 43% of the preview. */
+    fun cameraBearingGuideOffset(pitch: Double, halfHeightTangent: Double): Double {
+        val levelAngle = kotlin.math.atan(0.14 * halfHeightTangent)
+        val angle = (levelAngle - Math.toRadians(pitch)).coerceIn(-1.55, 1.55)
+        return kotlin.math.tan(angle) / halfHeightTangent
+    }
+
+    fun cameraElevationUncertainty(distance: Double, phoneAccuracy: Double): Double =
+        Math.toDegrees(atan2(phoneAccuracy + 15, distance))
+
+    /** Project a height estimate only when combined vertical uncertainty is small enough to be useful. */
+    fun cameraVerticalOffset(
+        distance: Double, antennaElevation: Double, phoneElevation: Double,
+        phoneAccuracy: Double, pitch: Double, halfHeightTangent: Double,
+    ): Double? {
+        if (!listOf(distance, antennaElevation, phoneElevation, phoneAccuracy, pitch, halfHeightTangent).all(Double::isFinite) ||
+            distance <= 0 || phoneAccuracy <= 0 || halfHeightTangent <= 0 ||
+            cameraElevationUncertainty(distance, phoneAccuracy) > 30) return null
+        val curvature = distance * distance / (2 * EARTH_RADIUS_METERS)
+        val angle = Math.toDegrees(atan2(antennaElevation - phoneElevation - curvature, distance)) - pitch
+        if (kotlin.math.abs(angle) >= 89) return null
+        return kotlin.math.tan(Math.toRadians(angle)) / halfHeightTangent
+    }
 }

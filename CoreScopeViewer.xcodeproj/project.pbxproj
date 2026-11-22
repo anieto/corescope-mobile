@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B65D0A000000000000000002 /* NodeVisionScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B65D0A000000000000000001 /* NodeVisionScreen.swift */; };
 		A1C0DE5701000000000000A2 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A1C0DE5701000000000000A1 /* Localizable.xcstrings */; };
 		01D4A148FE7AC5A25B15E907 /* PacketDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5A6EF6652A955D16C20CA75 /* PacketDetail.swift */; };
 		03072D44FFB2413A87EE4942 /* PortableCoverageResultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75320033F9BE4B5AAD348F51 /* PortableCoverageResultTests.swift */; };
@@ -298,6 +299,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		B65D0A000000000000000001 /* NodeVisionScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeVisionScreen.swift; sourceTree = "<group>"; };
 		A1C0DE5701000000000000A1 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		018110344B462D94B123F8F3 /* MonaspaceNeon-Bold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "MonaspaceNeon-Bold.otf"; sourceTree = "<group>"; };
 		0195932AD8CB6FB9E0F2AB1D /* SavedPlansImportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedPlansImportTests.swift; sourceTree = "<group>"; };
@@ -595,6 +597,12 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		B65D0A000000000000000003 /* NodeVision */ = {
+			isa = PBXGroup;
+			children = (B65D0A000000000000000001 /* NodeVisionScreen.swift */,);
+			path = NodeVision;
+			sourceTree = "<group>";
+		};
 		002B449ACE62846A6E279DD7 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -834,6 +842,7 @@
 				C4CDB038930790E265B0CF22 /* Shared */,
 				316FDFF9305C490A00FBA3B4 /* Explore */,
 				31DFA7DF308BA9DF00B8C681 /* FieldTools */,
+				B65D0A000000000000000003 /* NodeVision */,
 				31DFA7FA308EA23800B8C681 /* NodePlanner */,
 			);
 			path = Features;
@@ -1398,6 +1407,7 @@
 				311510B830843F9600199D51 /* MyNodesScreen.swift in Sources */,
 				310F86543096B5AD009EC5E8 /* CandidateSitesScreen.swift in Sources */,
 				31DFA7E1308BA9DF00B8C681 /* FieldToolsScreen.swift in Sources */,
+				B65D0A000000000000000002 /* NodeVisionScreen.swift in Sources */,
 				311510B03083EBFD00199D51 /* MyNodesVisitSession.swift in Sources */,
 				31DFA7D8308B052600B8C681 /* FieldSnapshot.swift in Sources */,
 				315E3A0B309B790500BAEC98 /* CoverageSetupValidation.swift in Sources */,
@@ -1482,7 +1492,8 @@
 				INFOPLIST_KEY_CFBundleIconName = AppIcon;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = NO;
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Your location centers maps and provides a foreground reference for Field Tools guidance.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "NodeVision uses the camera to show the direction of nearby mesh nodes.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Your location centers maps and provides a foreground reference for Field Tools and NodeVision guidance.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIRequiresFullScreen = NO;
@@ -1684,7 +1695,8 @@
 				INFOPLIST_KEY_CFBundleIconName = AppIcon;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = NO;
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Your location centers maps and provides a foreground reference for Field Tools guidance.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "NodeVision uses the camera to show the direction of nearby mesh nodes.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Your location centers maps and provides a foreground reference for Field Tools and NodeVision guidance.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIRequiresFullScreen = NO;

@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.nodescope.android.feature.nodevision.VisionHeadingWarmup
 import org.nodescope.android.core.model.FieldCardinalDirection
 import org.nodescope.android.core.model.FieldCoordinate
 import org.nodescope.android.core.model.FieldGeometry
@@ -61,5 +62,51 @@ class FieldGeometryTest {
         assertEquals(330.0, requireNotNull(FieldGeometry.relativeHeadingRotation(350.0, 20.0)), 0.0)
         assertEquals(0.0, requireNotNull(FieldGeometry.relativeHeadingRotation(90.0, 90.0)), 0.0)
         assertNull(FieldGeometry.relativeHeadingRotation(Double.NaN, 0.0))
+    }
+
+    @Test
+    fun showsCameraOffsetsOnTheCorrectSideAcrossNorth() {
+        val right = requireNotNull(FieldGeometry.cameraHorizontalOffset(10.0, 350.0, 0.5))
+        val left = requireNotNull(FieldGeometry.cameraHorizontalOffset(350.0, 10.0, 0.5))
+        assertEquals(0.72794, right, 0.00001)
+        assertEquals(right, -left, 0.00001)
+        assertEquals(1.45588, requireNotNull(FieldGeometry.cameraHorizontalOffset(10.0, 350.0, 0.25)), 0.00001)
+        assertEquals(Double.NEGATIVE_INFINITY, FieldGeometry.cameraHorizontalOffset(230.0, 0.0, 0.5))
+    }
+
+    @Test
+    fun projectsAntennaElevationAndRejectsUncertainty() {
+        val level = requireNotNull(FieldGeometry.cameraVerticalOffset(500.0, 160.0, 100.0, 5.0, 0.0, 0.5))
+        val tilted = requireNotNull(FieldGeometry.cameraVerticalOffset(500.0, 160.0, 100.0, 5.0, 10.0, 0.5))
+        assertTrue(FieldGeometry.cameraVerticalOffset(16_737.0, 203.0, 288.8, 30.0, 0.0, 0.5) != null)
+        assertNull(FieldGeometry.cameraVerticalOffset(46.0, 291.6, 288.8, 30.0, 0.0, 0.5))
+        assertTrue(level > 0 && tilted < 0)
+        assertTrue(FieldGeometry.cameraVerticalOffset(46.0, 292.0, 285.0, 5.0, 0.0, 0.5) != null)
+        assertTrue(FieldGeometry.cameraElevationUncertainty(46.0, 5.0) > 8)
+        assertNull(FieldGeometry.cameraVerticalOffset(30.0, 160.0, 100.0, 5.0, 0.0, 0.5))
+        assertNull(FieldGeometry.cameraVerticalOffset(50.0, 160.0, 100.0, 20.0, 0.0, 0.5))
+    }
+    @Test
+    fun bearingGuideMovesOppositeCameraTiltWithoutAltitude() {
+        val level = FieldGeometry.cameraBearingGuideOffset(0.0, 0.5)
+        val up = FieldGeometry.cameraBearingGuideOffset(10.0, 0.5)
+        val down = FieldGeometry.cameraBearingGuideOffset(-10.0, 0.5)
+        assertEquals(0.14, level, 0.00001)
+        assertTrue(up < 0 && down > level)
+    }
+
+    @Test
+    fun headingWarmupAcceptsStableReadingsAcrossNorthAndRestartsAfterLoss() {
+        val warmup = VisionHeadingWarmup()
+        assertNull(warmup.settledHeading(40.0, 0))
+        assertNull(warmup.settledHeading(359.0, 70))
+        assertNull(warmup.settledHeading(0.0, 140))
+        assertNull(warmup.settledHeading(1.0, 210))
+        assertNull(warmup.settledHeading(0.0, 280))
+        assertEquals(359.8, requireNotNull(warmup.settledHeading(359.0, 350)), 0.001)
+        assertEquals(20.0, requireNotNull(warmup.settledHeading(20.0, 420)), 0.001)
+        assertNull(warmup.settledHeading(20.0, 700))
+        warmup.reset()
+        assertNull(warmup.settledHeading(20.0, 770))
     }
 }

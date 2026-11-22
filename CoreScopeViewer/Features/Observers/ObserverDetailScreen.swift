@@ -50,7 +50,7 @@ struct ObserverDetailScreen: View {
 
                 if isCurrentSource {
                     ObserverIdentityCard(observer: displayedObserver)
-                    if hasFieldCoordinate {
+                    if LegacyFieldGuidance.isEnabled && hasFieldCoordinate {
                         Button {
                             showsFieldTools = true
                         } label: {
@@ -136,9 +136,9 @@ struct ObserverDetailScreen: View {
                 Button {
                     showsFieldTools = true
                 } label: {
-                    Image(systemName: "location.viewfinder")
+                    Image(systemName: "map")
                 }
-                .accessibilityLabel("Guide to Observer in Field Tools")
+                .accessibilityLabel("Open observer in Field Map")
             }
         }
         ToolbarItem(placement: .topBarTrailing) {

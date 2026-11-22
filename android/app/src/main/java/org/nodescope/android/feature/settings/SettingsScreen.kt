@@ -22,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -260,11 +261,14 @@ private fun CardRow(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 fun NavigationRow(title: String, value: String, icon: ImageVector, onClick: () -> Unit, external: Boolean = false,
     /** A short tag after the title, such as "Beta", in a capsule as on iOS. */
-    badge: String? = null, sourceName: String? = null) {
+    badge: String? = null, sourceName: String? = null, iconBadgeColor: Color? = null) {
     Row(Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small).clickable(onClick = onClick).heightIn(min = 56.dp).padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box(Modifier.size(32.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.11f), MaterialTheme.shapes.small), contentAlignment = Alignment.Center) {
-            Icon(icon, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+        val iconBackground = iconBadgeColor ?: MaterialTheme.colorScheme.primary.copy(alpha = 0.11f)
+        val iconShape = if (iconBadgeColor == null) MaterialTheme.shapes.small else CircleShape
+        Box(Modifier.size(32.dp).background(iconBackground, iconShape), contentAlignment = Alignment.Center) {
+            Icon(icon, null, Modifier.size(18.dp),
+                tint = if (iconBadgeColor == null) MaterialTheme.colorScheme.primary else Color.White)
         }
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {

@@ -1,5 +1,8 @@
 package org.nodescope.android.feature.nodes
 
+import androidx.compose.runtime.saveable.rememberSaveable
+import org.nodescope.android.core.model.FieldCoordinate
+import org.nodescope.android.feature.nodevision.NodeVisionScreen
 import org.nodescope.android.core.design.nodeRoleLabel
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalResources
@@ -91,7 +94,7 @@ fun NodeDetailScreen(
     favorite: Boolean, onFavorite: (MeshNode) -> Unit, onMap: (MeshNode) -> Unit,
     onObserver: (id: String, name: String) -> Unit, onNode: (String) -> Unit, onAnalytics: (() -> Unit)? = null,
     onViewed: (MeshNode) -> Unit = {}, onNodeCheck: (() -> Unit)? = null,
-    refreshOnOpen: Boolean = false, onWatchNode: ((MeshNode?) -> Unit)? = null,
+    refreshOnOpen: Boolean = false, openedFromNodeVision: Boolean = false, onWatchNode: ((MeshNode?) -> Unit)? = null,
 ) {
     // Without a network layer (previews/tests) only the identity card is shown.
     val health = model?.health?.state?.collectAsStateWithLifecycle()?.value ?: Loaded()
@@ -120,6 +123,18 @@ fun NodeDetailScreen(
     val neighborsValue = neighbors.value?.takeIf { neighbors.key == key && beacon }
     val beaconHealthValue = beaconHealth.value?.takeIf { beaconHealth.key == key && beacon }
     val node = healthValue?.node ?: initial
+    val visionCoordinate = node?.coordinate?.let { FieldCoordinate.create(it.latitude, it.longitude) }
+    var showsNodeVision by rememberSaveable(host, publicKey) { mutableStateOf(false) }
+    if (!openedFromNodeVision && showsNodeVision && visionCoordinate != null) {
+        NodeVisionScreen(
+            name = node?.name?.takeIf { it.isNotBlank() } ?: publicKey,
+            target = visionCoordinate,
+            antennaHeight = metadata.value?.applicableHeightMeters(),
+            initialStatus = metadata.value?.status,
+        ) {
+            showsNodeVision = false
+        }
+    }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var addingWatch by remember(key) { mutableStateOf(false) }
@@ -277,6 +292,11 @@ fun NodeDetailScreen(
             )
             else if (sections[0].loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             else Text(stringResource(R.string.node_detail_this_node_is_not_in_the_loaded_results, host), style = MaterialTheme.typography.bodyMedium)
+        }
+        if (!openedFromNodeVision && visionCoordinate != null) item {
+            Button(onClick = { showsNodeVision = true }, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.nodevision_open))
+            }
         }
         metadata.value?.let { item(key = "repeater-metadata:$host:$publicKey") { RepeaterMetadataCard(it, coreScopeUrl) } }
         if (canClaim && coreScopeUrl != null) item {

@@ -1,5 +1,7 @@
 package org.nodescope.android.feature.explore
 
+import androidx.compose.runtime.saveable.rememberSaveable
+import org.nodescope.android.feature.nodevision.NodeVisionScreen
 import org.nodescope.android.core.design.nodeRoleLabel
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -58,6 +60,8 @@ class ExploreActions(
     val onActivity: () -> Unit = {},
     val onAccount: () -> Unit = {},
     val onNode: (String) -> Unit = {},
+    val onNodeVisionLinkProfile: ((org.nodescope.android.core.model.FieldCoordinate, MeshNode) -> Unit)? = null,
+    val nodeVisionDetails: (@Composable (MeshNode, onDismiss: () -> Unit) -> Unit)? = null,
     val onObserver: (id: String, name: String) -> Unit = { _, _ -> },
     val onChannel: (id: String, name: String) -> Unit = { _, _ -> },
     val onPacket: (hash: String, sender: String, text: String) -> Unit = { _, _, _ -> },
@@ -90,7 +94,7 @@ private fun <T> Loaded<String, T>.valueFor(host: String): T? = value.takeIf { ke
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExploreScreen(model: ExploreViewModel?, host: String, snapshot: AnalyzerSnapshot?, feed: LiveFeedState, library: NodeLibrary,
-    monitored: List<MonitoredChannel>, actions: ExploreActions) {
+    monitored: List<MonitoredChannel>, actions: ExploreActions, selectedRegion: String? = null, snapshotIsLoading: Boolean = false) {
     val context = LocalContext.current
     val now = rememberNow()
     val nodesState = model?.nodes?.state?.collectAsStateWithLifecycle()?.value
@@ -99,6 +103,18 @@ fun ExploreScreen(model: ExploreViewModel?, host: String, snapshot: AnalyzerSnap
     val packetsState = model?.packets?.state?.collectAsStateWithLifecycle()?.value
     // Without a network layer (tests/previews), fall back to what the app already has loaded.
     val nodes = nodesState?.valueFor(host) ?: snapshot?.nodes.orEmpty()
+    var showsNodeVision by rememberSaveable(host) { mutableStateOf(false) }
+    if (showsNodeVision) {
+        NodeVisionScreen(
+            catalog = if (selectedRegion == null) nodes else
+                org.nodescope.android.core.network.beaconMapNodes(snapshot?.nodes.orEmpty(), feed.beacon, selectedRegion),
+            catalogIsLoading = snapshotIsLoading || (selectedRegion == null && nodesState?.loading == true),
+            loadMetadata = { model?.repeaterMetadata(host).orEmpty() },
+            openLinkProfile = actions.onNodeVisionLinkProfile,
+            nodeDetails = actions.nodeVisionDetails,
+            close = { showsNodeVision = false },
+        )
+    }
     val observers = observersState?.valueFor(host) ?: feed.observers
     val channels = channelsState?.valueFor(host).orEmpty()
     val packets = packetsState?.valueFor(host) ?: feed.packets
@@ -158,8 +174,12 @@ fun ExploreScreen(model: ExploreViewModel?, host: String, snapshot: AnalyzerSnap
             item {
                 Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
                     Column(Modifier.padding(16.dp)) {
-                        NavigationRow(stringResource(R.string.explore_node_planner), stringResource(R.string.explore_evaluate_proposed_sites_and_point_to_point_terrain), Icons.Outlined.GraphicEq, actions.onNodePlanner)
-                        NavigationRow(stringResource(R.string.explore_node_check), stringResource(R.string.explore_is_your_node_getting_out_check_any_node), Icons.Outlined.Verified, actions.onNodeCheck)
+                        NavigationRow(stringResource(R.string.explore_node_planner), stringResource(R.string.explore_evaluate_proposed_sites_and_point_to_point_terrain), Icons.Outlined.GraphicEq, actions.onNodePlanner,
+                            iconBadgeColor = SignalBlue)
+                        NavigationRow(stringResource(R.string.nodevision_title), stringResource(R.string.nodevision_explore_subtitle),
+                            Icons.Outlined.CameraAlt, { showsNodeVision = true }, iconBadgeColor = ActivityAmber)
+                        NavigationRow(stringResource(R.string.explore_node_check), stringResource(R.string.explore_is_your_node_getting_out_check_any_node), Icons.Outlined.Verified, actions.onNodeCheck,
+                            iconBadgeColor = HealthyGreen)
                     }
                 }
             }

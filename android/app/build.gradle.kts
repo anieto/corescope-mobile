@@ -148,6 +148,9 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended:1.7.8")
     // Keep app and instrumentation classpaths aligned with AndroidX Test.
     implementation("androidx.concurrent:concurrent-futures:1.2.0")
+    implementation("androidx.camera:camera-camera2:1.4.2")
+    implementation("androidx.camera:camera-lifecycle:1.4.2")
+    implementation("androidx.camera:camera-view:1.4.2")
     implementation("androidx.activity:activity-compose:1.10.1")
     // Web links open in a Custom Tab inside the app (iOS uses SFSafariViewController).
     implementation("androidx.browser:browser:1.10.0")

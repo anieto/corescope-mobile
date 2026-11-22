@@ -21,11 +21,13 @@ import org.nodescope.android.core.storage.SavedItem
 import org.nodescope.android.core.storage.SavedKind
 
 /** Explore covers the entire network (no region), like iOS, so it loads its own data. */
-class ExploreViewModel(repository: BrowseRepository) : ViewModel() {
+class ExploreViewModel(private val repository: BrowseRepository) : ViewModel() {
     val nodes = KeyedLoader(viewModelScope, 60_000, restore = { host: String -> repository.saved(ResponseCache.STALE_LIFETIME) { allNodes(host) } }) { host -> repository.allNodes(host) }
     val observers = KeyedLoader(viewModelScope, 60_000, restore = { host: String -> repository.saved(ResponseCache.STALE_LIFETIME) { observers(host) } }) { host -> repository.observers(host) }
     val channels = KeyedLoader(viewModelScope, 90_000) { host: String -> repository.channels(AnalyzerSelection(host, null)) }
     val packets = KeyedLoader(viewModelScope, 60_000, restore = { host: String -> repository.saved(ResponseCache.STALE_LIFETIME) { recentPackets(host) } }) { host -> repository.recentPackets(host) }
+
+    suspend fun repeaterMetadata(host: String) = repository.repeaterMetadata(host)
 
     fun load(host: String, force: Boolean = false) {
         nodes.load(host, force); observers.load(host, force); channels.load(host, force); packets.load(host, force)
