@@ -62,7 +62,7 @@ struct CoverageRadioPreset: Identifiable, Hashable, Sendable {
              frequencyMHz: 869.525, spreadingFactor: 11, bandwidthKHz: 250, transmitPowerDbm: 27)
     ]
 
-    /// The opening preset, matching Link Profile's.
+    /// Last-resort planning preset.
     static var standard: Self { all[0] }
 
     static func preset(id: String?) -> Self? {
@@ -72,6 +72,92 @@ struct CoverageRadioPreset: Identifiable, Hashable, Sendable {
 
     static func presets(in family: Family) -> [Self] {
         all.filter { $0.family == family }
+    }
+}
+
+/// The radio defaults shown when a new planner opens.
+struct PlannerRadioDefault: Equatable {
+    enum Origin: Equatable {
+        case observers, analyzerCountry, deviceRegion, fallback
+
+        var label: LocalizedStringResource {
+            switch self {
+            case .observers: "Based on this analyzer’s observers"
+            case .analyzerCountry: "Based on this analyzer’s country"
+            case .deviceRegion: "Based on your region"
+            case .fallback: "Using the USA/Canada default"
+            }
+        }
+    }
+
+    let preset: CoverageRadioPreset
+    let origin: Origin
+
+    private static let europeanCountries: Set<String> = [
+        "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE",
+        "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE",
+        "GB", "CH", "NO", "IS", "LI"
+    ]
+
+    static func resolve(observerRadios: [String?], sourceCountry: String?, deviceRegion: String?) -> Self {
+        let reports = observerRadios.compactMap(SignalQualityMath.observerRadio)
+        // Group observer reports at 1 kHz precision to absorb firmware float noise.
+        func frequencyKHz(_ radio: SignalQualityMath.ObserverRadio) -> Double {
+            (radio.frequencyMHz * 1000).rounded()
+        }
+        if let frequency = mostCommon(reports.map(frequencyKHz)),
+           let modem = mostCommon(reports.filter { frequencyKHz($0) == frequency }),
+           let preset = nearest(to: modem) {
+            return .init(preset: preset, origin: .observers)
+        }
+        if let preset = countryPreset(sourceCountry) {
+            return .init(preset: preset, origin: .analyzerCountry)
+        }
+        if let preset = countryPreset(deviceRegion) {
+            return .init(preset: preset, origin: .deviceRegion)
+        }
+        return .init(preset: .standard, origin: .fallback)
+    }
+
+    @MainActor
+    static func current(settings: AnalyzerSettings, registry: AnalyzerSourceRegistry,
+                        observers: ObserverRegionLookup) -> Self {
+        let host = AnalyzerSettings.normalizedHost(settings.host)
+        let source = registry.sources.first {
+            AnalyzerSettings.normalizedHost($0.host).caseInsensitiveCompare(host) == .orderedSame
+        }
+        let region = AnalyzerSourceChoices(sources: []).userCountry
+        return resolve(observerRadios: observers.currentObservers(for: settings.sourceSession).map(\.radio),
+                       sourceCountry: source?.country, deviceRegion: region)
+    }
+
+    private static func countryPreset(_ country: String?) -> CoverageRadioPreset? {
+        guard let country = AnalyzerSourceChoices.countryCode(country) else { return nil }
+        switch country {
+        case "US", "CA": return .standard
+        case "AU": return CoverageRadioPreset.preset(id: "meshcore-au-narrow")
+        case "NZ": return CoverageRadioPreset.preset(id: "meshcore-nz-narrow")
+        case _ where europeanCountries.contains(country): return CoverageRadioPreset.preset(id: "meshcore-eu-uk-narrow")
+        default: return nil
+        }
+    }
+
+    private static func nearest(to radio: SignalQualityMath.ObserverRadio) -> CoverageRadioPreset? {
+        func rank(_ preset: CoverageRadioPreset) -> (Double, Int, Double) {
+            (abs(preset.frequencyMHz - radio.frequencyMHz),
+             abs(preset.spreadingFactor - radio.spreadingFactor),
+             abs(preset.bandwidthKHz - radio.bandwidthKHz))
+        }
+        return CoverageRadioPreset.presets(in: .meshCore)
+            .filter { abs($0.frequencyMHz - radio.frequencyMHz) <= 1 }
+            .min { rank($0) < rank($1) }
+    }
+
+    /// Break equal vote counts by first occurrence in the analyzer's observer list.
+    private static func mostCommon<Value: Hashable>(_ values: [Value]) -> Value? {
+        let counts = Dictionary(grouping: values, by: { $0 }).mapValues(\.count)
+        let maximum = counts.values.max()
+        return values.first { counts[$0] == maximum }
     }
 }
 

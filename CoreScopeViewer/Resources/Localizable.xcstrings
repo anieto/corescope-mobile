@@ -5754,6 +5754,54 @@
         }
       }
     },
+    "Based on this analyzer’s country" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Según el país de este analizador"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Com base no país deste analisador"
+          }
+        }
+      }
+    },
+    "Based on this analyzer’s observers" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Según los observadores de este analizador"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Com base nos observadores deste analisador"
+          }
+        }
+      }
+    },
+    "Based on your region" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Según tu región"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Com base na sua região"
+          }
+        }
+      }
+    },
     "Battery" : {
       "localizations" : {
         "es" : {
@@ -29029,6 +29077,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Usando as configurações padrão de antena e rádio."
+          }
+        }
+      }
+    },
+    "Using the USA/Canada default" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se usa el ajuste predeterminado de EE. UU. y Canadá"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usando a configuração padrão dos EUA e do Canadá"
           }
         }
       }

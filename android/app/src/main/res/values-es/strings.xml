@@ -1044,6 +1044,10 @@
     <string name="coverage_preparing_coverage_overlay">Preparando la capa de cobertura…</string>
     <string name="coverage_radio_reserve_summary">Reserva: %1$s dB</string>
     <string name="coverage_radio_sensitivity_summary">sensibilidad %1$s dBm</string>
+    <string name="planner_radio_origin_observers">Según los observadores de este analizador</string>
+    <string name="planner_radio_origin_country">Según el país de este analizador</string>
+    <string name="planner_radio_origin_region">Según tu región</string>
+    <string name="planner_radio_origin_fallback">Se usa el ajuste predeterminado de EE. UU. y Canadá</string>
     <string name="coverage_radio_settings">Configuración de radio</string>
     <string name="coverage_ready_to_calculate">Listo para calcular.</string>
     <string name="coverage_receiver_assumptions">Supuestos del receptor</string>

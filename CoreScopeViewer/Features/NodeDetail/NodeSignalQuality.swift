@@ -39,6 +39,24 @@ enum SignalQuality: CaseIterable, Sendable {
 }
 
 enum SignalQualityMath {
+    struct ObserverRadio: Hashable {
+        let frequencyMHz: Double
+        let bandwidthKHz: Double
+        let spreadingFactor: Int
+    }
+
+    static func observerRadio(_ radio: String?) -> ObserverRadio? {
+        guard let radio else { return nil }
+        let fields = radio.split(separator: ",", omittingEmptySubsequences: false)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+        guard fields.count == 4,
+              let frequency = Double(fields[0]), frequency.isFinite, frequency > 0,
+              let bandwidth = Double(fields[1]), bandwidth.isFinite, bandwidth > 0,
+              let sf = spreadingFactor(radio: radio),
+              let codingRate = Int(fields[3]), (5...8).contains(codingRate) else { return nil }
+        return ObserverRadio(frequencyMHz: frequency, bandwidthKHz: bandwidth, spreadingFactor: sf)
+    }
+
     /// Observer `radio` is "frequency,bandwidth,spreadingFactor,codingRate",
     /// e.g. "910.525,62.5,7,5".
     static func spreadingFactor(radio: String?) -> Int? {

@@ -5,6 +5,9 @@ import org.nodescope.android.R
 import org.nodescope.android.core.design.UiText
 import androidx.lifecycle.SavedStateHandle
 import org.nodescope.android.core.storage.DistanceUnit
+import org.nodescope.android.feature.coverage.CoverageRadioPreset
+import org.nodescope.android.feature.coverage.PlannerRadioDefault
+import org.nodescope.android.feature.coverage.editorText
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
@@ -20,13 +23,33 @@ import kotlin.coroutines.coroutineContext
 class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private val saved: SavedStateHandle,
     distanceUnit: DistanceUnit = DistanceUnit.defaultUnit()) : ViewModel(), org.nodescope.android.feature.candidatesites.StudyDraftSource {
     companion object {
+        private const val US_PRESET = "US/Canada Narrow"
+        private const val EU_PRESET = "EU/UK Narrow"
+
         val defaults = linkedMapOf(
             "Latitude A" to "", "Longitude A" to "", "Height A (m)" to "10",
             "Latitude B" to "", "Longitude B" to "", "Height B (m)" to "10",
-            "Frequency (MHz)" to "910.525",
-            "Transmit power (dBm)" to "22", "Gain A (dBi)" to "2.15", "Gain B (dBi)" to "2.15",
-            "Loss A (dB)" to "1", "Loss B (dB)" to "1", "Sensitivity (dBm)" to "-128",
-        )
+            "Gain A (dBi)" to "2.15", "Gain B (dBi)" to "2.15",
+            "Loss A (dB)" to "1", "Loss B (dB)" to "1",
+        ) + radioFields(CoverageRadioPreset.standard)
+
+        private fun presetKey(preset: CoverageRadioPreset): String = when (preset.id) {
+            "meshcore-us-ca" -> US_PRESET
+            "meshcore-eu-uk-narrow" -> EU_PRESET
+            else -> preset.id
+        }
+
+        private fun radioFields(preset: CoverageRadioPreset): Map<String, String> {
+            // Preserve the two original Link Profile presets' sensitivity assumptions.
+            val sensitivity = when (preset.id) {
+                "meshcore-us-ca" -> -128.0
+                "meshcore-eu-uk-narrow" -> -130.0
+                else -> preset.sensitivityDbm
+            }
+            return mapOf("Frequency (MHz)" to preset.frequencyMHz.editorText(),
+                "Transmit power (dBm)" to preset.transmitPowerDbm.editorText(),
+                "Sensitivity (dBm)" to sensitivity.editorText())
+        }
         /** The values a preset sets; editing one makes the radio custom. Gains and losses belong to each point. */
         val presetKeys = listOf("Frequency (MHz)", "Transmit power (dBm)", "Sensitivity (dBm)")
     }
@@ -41,22 +64,40 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         /** Reopened from Saved Plans: nothing is fetched or analyzed until Calculate, as on iOS. */
         val awaitingCalculation: Boolean = false,
         /** Why a reopened study's saved result isn't shown; null when there's none or it's shown. */
-        val savedResultNote: UiText? = null)
+        val savedResultNote: UiText? = null,
+        val radioDefaultLabel: Int? = null)
     /** Both endpoints' coordinate fields and node names, as they were before a change. */
     data class Placement(val fields: Map<String, String>, val names: Map<String, String>)
     data class Undo(val message: UiText, val before: Placement, val id: Long = System.nanoTime())
     private val defaultHeight = if (distanceUnit.usesFeet) "6.096" else "6"
+    private var defaultRadio = CoverageRadioPreset.preset(saved.get<String>("defaultRadio")) ?: CoverageRadioPreset.standard
     private val mutable = MutableStateFlow(State((defaults + mapOf("Height A (m)" to defaultHeight, "Height B (m)" to defaultHeight))
         .mapValues { (key, value) -> saved.get<String>(key) ?: value }, saved["preset"] ?: "US/Canada Narrow",
-        names = listOf("A", "B").mapNotNull { endpoint -> saved.get<String>("Name $endpoint")?.let { endpoint to it } }.toMap()))
+        names = listOf("A", "B").mapNotNull { endpoint -> saved.get<String>("Name $endpoint")?.let { endpoint to it } }.toMap(),
+        radioDefaultLabel = PlannerRadioDefault.Origin.entries.firstOrNull { it.name == saved.get<String>("radioDefaultLabel") }?.label))
     val state = mutable.asStateFlow()
     val usesDefaultEquipment: Boolean get() {
         val equipment = defaults.filterKeys { !it.startsWith("Latitude") && !it.startsWith("Longitude") } +
-            mapOf("Height A (m)" to defaultHeight, "Height B (m)" to defaultHeight)
+            mapOf("Height A (m)" to defaultHeight, "Height B (m)" to defaultHeight) + radioFields(defaultRadio)
         return equipment.all { (key, value) ->
             mutable.value.fields[key]?.parseDecimalInput()?.let { kotlin.math.abs(it - value.toDouble()) < 0.0001 } == true
         }
     }
+    internal fun initializeRadio(resolution: PlannerRadioDefault) {
+        if (saved.get<String>("defaultRadio") != null || savedStudy != null ||
+            presetKeys.any { saved.get<String>(it) != null }) return
+        defaultRadio = resolution.preset
+        saved["defaultRadio"] = resolution.preset.id
+        preset(presetKey(defaultRadio))
+        saved["radioDefaultLabel"] = resolution.origin.name
+        mutable.value = mutable.value.copy(radioDefaultLabel = resolution.origin.label)
+    }
+
+    private fun clearRadioDefaultLabel() {
+        saved.remove<String>("radioDefaultLabel")
+        mutable.value = mutable.value.copy(radioDefaultLabel = null)
+    }
+
     /** The saved study this profile came from, so Save replaces it rather than adding another. */
     var savedStudy: org.nodescope.android.feature.candidatesites.SavedStudy? = null
     /** The analyzer and region this tool is working against, for a study's `origin`. */
@@ -93,6 +134,7 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
      * fetched or analyzed until Calculate. Applied once per back-stack entry, as [restore].
      */
     fun restoreDraft(draft: org.nodescope.android.feature.candidatesites.StudyDraft, study: org.nodescope.android.feature.candidatesites.SavedStudy?, result: ByteArray?) {
+        clearRadioDefaultLabel()
         savedStudy = study
         suggestedPlanID = draft.planID
         if (saved.get<String>("restoredDraft") == draft.id) return
@@ -211,6 +253,7 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
             saved.remove<String>("Name $endpoint")
             mutable.value = mutable.value.copy(names = mutable.value.names - endpoint)
         }
+        if (key in presetKeys) clearRadioDefaultLabel()
         val preset = if (key in presetKeys) "Custom" else mutable.value.preset
         saved["preset"] = preset
         mutable.value = mutable.value.copy(fields = mutable.value.fields + (key to value), preset = preset, loading = false, result = null, error = null)
@@ -266,10 +309,9 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
     }
     fun preset(name: String) {
         job?.cancel()
-        val eu = name == "EU/UK Narrow"
-        val fields = mutable.value.fields + if (name == "Custom") emptyMap() else mapOf(
-            "Frequency (MHz)" to if (eu) "869.618" else "910.525",
-            "Transmit power (dBm)" to if (eu) "14" else "22", "Sensitivity (dBm)" to if (eu) "-130" else "-128")
+        clearRadioDefaultLabel()
+        val radio = CoverageRadioPreset.presets(CoverageRadioPreset.Family.MESHCORE).firstOrNull { presetKey(it) == name }
+        val fields = mutable.value.fields + (radio?.let(::radioFields) ?: emptyMap())
         fields.forEach { (key, value) -> saved[key] = value }
         saved["preset"] = name
         mutable.value = mutable.value.copy(fields = fields, preset = name, loading = false, result = null, error = null)
@@ -349,6 +391,7 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
      * Applied once per back-stack entry, so a process restart keeps edits made after reopening.
      */
     fun restore(study: org.nodescope.android.feature.candidatesites.SavedStudy) {
+        clearRadioDefaultLabel()
         savedStudy = study
         if (saved.get<String>("restoredStudy") == study.id) return
         val inputs = study.linkProfile?.takeIf { runCatching { study.validate() }.isSuccess } ?: return
@@ -366,11 +409,9 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
             "Frequency (MHz)" to text(inputs.frequencyMHz), "Transmit power (dBm)" to text(inputs.transmitPowerDbm),
             "Sensitivity (dBm)" to text(inputs.sensitivityDbm))
         val names = listOfNotNull(inputs.pointA.name?.let { "A" to it }, inputs.pointB.name?.let { "B" to it }).toMap()
-        val preset = when (Triple(inputs.frequencyMHz, inputs.transmitPowerDbm, inputs.sensitivityDbm)) {
-            Triple(910.525, 22.0, -128.0) -> "US/Canada Narrow"
-            Triple(869.618, 14.0, -130.0) -> "EU/UK Narrow"
-            else -> "Custom"
-        }
+        val preset = CoverageRadioPreset.presets(CoverageRadioPreset.Family.MESHCORE).firstOrNull { radio ->
+            radioFields(radio).all { (key, value) -> values[key]?.toDoubleOrNull() == value.toDouble() }
+        }?.let(::presetKey) ?: "Custom"
         values.forEach { (key, value) -> saved[key] = value }
         listOf("A", "B").forEach { letter -> names[letter]?.let { saved["Name $letter"] = it } ?: saved.remove<String>("Name $letter") }
         saved["preset"] = preset

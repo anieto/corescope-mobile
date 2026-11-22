@@ -92,6 +92,11 @@ Node Planner ships in steps. Its full scope:
 - Deliver matching calculations and terminology across iOS and Android with adaptive layouts for
   iPhone, iPhone Duo, iPad and Android foldables.
 
+New Link Profiles and Estimated Coverage studies start with a MeshCore radio preset based on
+the current analyzer’s observer reports when available. The planners fall back to the analyzer’s
+country, the device region, then USA/Canada. Saved and shared studies keep their recorded radio
+values. The setup shows which signal supplied the default until the user edits or selects a radio.
+
 ### 0.10.1 — Link Profile (first public release)
 
 0.10.0 builds (iOS 7, Android versionCode 18) were made but never submitted; 0.10.1 is the first

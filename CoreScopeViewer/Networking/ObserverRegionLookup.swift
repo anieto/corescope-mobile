@@ -42,6 +42,11 @@ final class ObserverRegionLookup {
         isLoaded = false
     }
 
+    func currentObservers(for session: AnalyzerSourceSession) -> [MeshObserver] {
+        guard session.isCurrent, apiClient?.sourceSession.id == session.id else { return [] }
+        return observers
+    }
+
     func load() async {
         guard let apiClient else { return }
         let cacheKey = "observers-\(cacheNamespace)"

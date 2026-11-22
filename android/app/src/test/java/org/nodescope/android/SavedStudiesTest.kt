@@ -121,6 +121,8 @@ class SavedStudiesTest {
 
         val reopened = coverageModel(root)
         reopened.restore(inputsOnly)
+        reopened.initializeRadio(PlannerRadioDefault.resolve(emptyList(), "AU", "US"))
+        assertNull(reopened.radioDefaultOrigin)
         assertTrue(reopened.usesSavedCatalog)
         assertEquals(model.fields, reopened.fields)
         assertEquals(model.radiusMeters, reopened.radiusMeters)
@@ -274,6 +276,9 @@ class SavedStudiesTest {
         calls.clear()
         val reopened = LinkProfileViewModel(terrain, SavedStateHandle())
         reopened.restore(stored)
+        reopened.initializeRadio(PlannerRadioDefault.resolve(emptyList(), "AU", "US"))
+        assertEquals(stored.linkProfile?.frequencyMHz, reopened.state.value.fields["Frequency (MHz)"]?.toDoubleOrNull())
+        assertNull(reopened.state.value.radioDefaultLabel)
         advanceUntilIdle()
         assertTrue(calls.isEmpty())
         val restored = requireNotNull(reopened.state.value.result)

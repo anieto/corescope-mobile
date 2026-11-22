@@ -85,6 +85,19 @@ private fun percentile(sorted: List<Double>, fraction: Double): Double {
     return lower + (upper - lower) * (position - position.toInt())
 }
 
+internal data class ObserverRadio(val frequencyMHz: Double, val bandwidthKHz: Double, val spreadingFactor: Int)
+
+internal fun observerRadio(radio: String?): ObserverRadio? {
+    val fields = radio?.split(',')?.map(String::trim) ?: return null
+    if (fields.size != 4) return null
+    val frequency = fields[0].toDoubleOrNull()?.takeIf { it.isFinite() && it > 0 } ?: return null
+    val bandwidth = fields[1].toDoubleOrNull()?.takeIf { it.isFinite() && it > 0 } ?: return null
+    val sf = spreadingFactor(radio) ?: return null
+    val codingRate = fields[3].toIntOrNull() ?: return null
+    if (codingRate !in 5..8) return null
+    return ObserverRadio(frequency, bandwidth, sf)
+}
+
 /** Observer `radio` is "frequency,bandwidth,spreadingFactor,codingRate", e.g. "910.525,62.5,7,5". */
 fun spreadingFactor(radio: String?): Int? = radio?.split(',')?.getOrNull(2)?.trim()?.toIntOrNull()?.takeIf { it in 5..12 }
 

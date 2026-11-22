@@ -10,7 +10,7 @@ internal class AnalyzerSourceChoices(
 ) {
     data class CountrySection(val country: String?, val name: String?, val sources: List<AnalyzerSource>)
 
-    private val userCountry = countryCode(userCountry)
+    val userCountry = countryCode(userCountry)
     private val localSources = this.userCountry?.let { code -> sources.filter { countryCode(it.country) == code } }.orEmpty()
 
     val userCountryName: String? get() = userCountry?.let(::countryName)

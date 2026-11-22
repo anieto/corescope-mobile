@@ -26,6 +26,55 @@ class EstimatedCoverageViewModelTest {
         finally { root.deleteRecursively(); Dispatchers.resetMain() }
     }
 
+    @Test fun observerRadioDefaultsUseTheFrequencyMajorityAndSnapToMeshCore() {
+        val result = PlannerRadioDefault.resolve(listOf(
+            "910.525,62.5,7,5", "917.25,62.5,7,5", "917.250024,125,8,6", null, "bad",
+        ), "US", "DE")
+        assertEquals("meshcore-nz-narrow", result.preset.id)
+        assertEquals(PlannerRadioDefault.Origin.OBSERVERS, result.origin)
+        val atLimit = PlannerRadioDefault.resolve(listOf("911.525,62.5,7,5"), "NZ", null)
+        assertEquals("meshcore-us-ca", atLimit.preset.id)
+        val outside = PlannerRadioDefault.resolve(listOf(
+            "911.526,62.5,7,5", "911.526,62.5,7,5", "910.525,62.5,7,5",
+            "910.525,62.5,7", "910.525,NaN,7,5", "910.525,62.5,7,garbage",
+        ), "NZ", "US")
+        assertEquals("meshcore-nz-narrow", outside.preset.id)
+        assertEquals(PlannerRadioDefault.Origin.ANALYZER_COUNTRY, outside.origin)
+    }
+
+    @Test fun sourceCountryOverridesDeviceAndOnlySpecifiedCountriesAreMapped() {
+        val groups = mapOf(
+            "meshcore-us-ca" to listOf("US", "CA"),
+            "meshcore-eu-uk-narrow" to listOf("AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI",
+                "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO",
+                "SK", "SI", "ES", "SE", "GB", "CH", "NO", "IS", "LI"),
+            "meshcore-au-narrow" to listOf("AU"),
+            "meshcore-nz-narrow" to listOf("NZ"),
+        )
+        for ((id, countries) in groups) for (country in countries) {
+            val resolved = PlannerRadioDefault.resolve(listOf(null, "invalid"), country, "JP")
+            assertEquals(PlannerRadioDefault.Origin.ANALYZER_COUNTRY, resolved.origin)
+            assertEquals(id, resolved.preset.id)
+        }
+        val device = PlannerRadioDefault.resolve(emptyList(), "BR", "GB")
+        assertEquals(PlannerRadioDefault.Origin.DEVICE_REGION, device.origin)
+        assertEquals("meshcore-eu-uk-narrow", device.preset.id)
+        val fallback = PlannerRadioDefault.resolve(emptyList(), "BR", "JP")
+        assertEquals(PlannerRadioDefault.Origin.FALLBACK, fallback.origin)
+        assertEquals(CoverageRadioPreset.standard, fallback.preset)
+    }
+
+    @Test fun reopeningTheSameEditorDoesNotReplaceUserChoices() = model { model ->
+        val regional = PlannerRadioDefault.resolve(emptyList(), "GB", "US")
+        model.initializeRadio(regional)
+        assertEquals(regional.preset, model.radioPreset)
+        assertEquals(regional.origin, model.radioDefaultOrigin)
+        model.set("power", "20")
+        model.initializeRadio(regional)
+        assertEquals(20.0, model.number("power"))
+        assertNull(model.radioDefaultOrigin)
+    }
+
     @Test fun metricDefaultsProduceValidStudyInputs() = model { model ->
         assertEquals(CoverageSetupProblem.NoTransmitter, model.setupProblem)
         model.place(Coordinate(50.5, -115.5), null)

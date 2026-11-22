@@ -456,7 +456,9 @@ private fun readyHint(model: EstimatedCoverageViewModel, problem: CoverageSetupP
     val preset = model.radioPreset
     val summary = listOfNotNull("${model.displayNumber("frequency")} MHz", preset?.modemSummary(),
         "${model.displayNumber("power")} dBm", stringResource(R.string.coverage_radio_sensitivity_summary, model.displayNumber("sensitivity"))).joinToString(" · ")
-    CoverageDisclosure(stringResource(R.string.coverage_radio_settings), listOf(summary, stringResource(R.string.coverage_radio_reserve_summary, model.displayNumber("reserve"))), expanded, { expanded = !expanded }) {
+    val radioNotes = listOfNotNull(summary, model.radioDefaultOrigin?.let { stringResource(it.label) },
+        stringResource(R.string.coverage_radio_reserve_summary, model.displayNumber("reserve")))
+    CoverageDisclosure(stringResource(R.string.coverage_radio_settings), radioNotes, expanded, { expanded = !expanded }) {
         CoverageRadioPresetMenu(preset, model::applyRadioPreset)
         TextButton(onClick = { customizing = !customizing }, contentPadding = PaddingValues(0.dp)) {
             Text(if (customizing) stringResource(R.string.coverage_hide_radio_values) else if (preset == null) stringResource(R.string.coverage_customize_radio_edited) else stringResource(R.string.coverage_customize_radio))

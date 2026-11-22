@@ -75,6 +75,9 @@ import org.nodescope.android.core.model.AnalyzerSelection
 import org.nodescope.android.core.network.BrowseRepository
 import org.nodescope.android.core.storage.MonitoredChannelStore
 import org.nodescope.android.feature.channels.*
+import org.nodescope.android.core.model.AnalyzerSourceChoices
+import org.nodescope.android.core.network.normalizeHost
+import org.nodescope.android.feature.coverage.PlannerRadioDefault
 import org.nodescope.android.feature.observers.*
 import org.nodescope.android.feature.nodes.*
 
@@ -207,18 +210,17 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
                         }
                     })
             }
+            val selectedSource = sources.firstOrNull { source ->
+                runCatching { normalizeHost(source.host) }.getOrNull().equals(preferences.host, true)
+            }
             AppShell(preferences, state, model::setRegion, { model.refresh(); model.reconnectLive() }, model::setAppearance, model::selectDestination,
                 sourceScreen = { onDone -> SourceScreen(sources, preferences.host, saving, error?.asString(), { host -> model.selectSource(host, onDone) }, model.sourceIcons) },
                 feed = live, onReconnect = model::reconnectLive, browse = model.browse, monitoredChannels = { model.monitoredChannels },
                 onLiveFeedDemand = model::setLiveFeedDemand,
                 diagnostics = model.diagnostics, cacheStorage = model.cacheStorage, myNodesRepositories = model::myNodesRepositories, myNodesSnapshots = model.myNodesSnapshots, sourceChangedAt = sourceChangedAt,
                 pendingLink = pendingLink, onLinkHandled = model::linkHandled, onDistanceUnit = model::setDistanceUnit, onBackgroundTexture = model::setBackgroundTexture,
-                sourceName = sources.firstOrNull { source ->
-                    runCatching { org.nodescope.android.core.network.normalizeHost(source.host) }.getOrNull().equals(preferences.host, true)
-                }?.name,
-                sourceViewport = sources.firstOrNull { source ->
-                    runCatching { org.nodescope.android.core.network.normalizeHost(source.host) }.getOrNull().equals(preferences.host, true)
-                }?.viewport)
+                sourceName = selectedSource?.name, sourceViewport = selectedSource?.viewport,
+                sourceCountry = selectedSource?.country)
         } }
     }
 }
@@ -258,6 +260,7 @@ internal fun AppShell(
     browse: BrowseRepository? = null, monitoredChannels: () -> MonitoredChannelStore? = { null },
     sourceViewport: org.nodescope.android.core.model.RegionCoordinate? = null,
     sourceName: String? = null,
+    sourceCountry: String? = null,
     diagnostics: org.nodescope.android.core.network.AnalyzerDiagnostics? = null,
     cacheStorage: org.nodescope.android.core.storage.CacheStorage? = null, sourceChangedAt: Long? = null,
     myNodesRepositories: (() -> org.nodescope.android.core.storage.MyNodesRepositories)? = null,
@@ -273,6 +276,15 @@ internal fun AppShell(
     // packet recomposes only the screens that show packets: rebuilding the shell (and with it the
     // navigation graph, which is keyed on its builder) on every packet made the map's animation hitch.
     val feedProvider by rememberUpdatedState(feed)
+    val currentSourceCountry by rememberUpdatedState(sourceCountry)
+    val currentAnalyzerHost by rememberUpdatedState(preferences.host)
+
+    fun plannerRadioDefault(feed: LiveFeedState): PlannerRadioDefault {
+        val radios = feed.takeIf { it.selection?.host.equals(currentAnalyzerHost, ignoreCase = true) }
+            ?.observers.orEmpty().map { it.radio }
+        val region = AnalyzerSourceChoices(emptyList()).userCountry
+        return PlannerRadioDefault.resolve(radios, currentSourceCountry, region)
+    }
     val liveFeed = remember { derivedStateOf { feedProvider() } }
     val library = nodeLibrary ?: remember(preferences.host) { NodeLibrary.forAnalyzer(context, preferences.host) }
     val nav = rememberNavController()
@@ -747,7 +759,10 @@ internal fun AppShell(
                                         val resuming = draftId ?: backStack.savedStateHandle.get<String>("draftID")
                                         val draft = resuming?.let { id -> org.nodescope.android.feature.candidatesites.StudyDraftStore.application(context.filesDir).resume(id, library) }
                                         if (draft != null) model.restoreDraft(draft.draft, draft.study, draft.result)
-                                        else if (linkSeed == null) model.markClean()
+                                        else if (linkSeed == null) {
+                                            if (studyId == null && resuming == null) model.initializeRadio(plannerRadioDefault(currentFeed))
+                                            model.markClean()
+                                        }
                                         linkSeed?.let { encoded ->
                                             val seed = kotlinx.serialization.json.Json.decodeFromString<org.nodescope.android.feature.coverage.LinkCoverageSeed>(encoded)
                                             model.applyLinkSeed(seed)
@@ -786,7 +801,11 @@ internal fun AppShell(
                                         // A resumed draft, or after process death the entry's own draft session.
                                         val resuming = backStack.toRoute<LinkProfileRoute>().draftId ?: backStack.savedStateHandle.get<String>("draftID")
                                         val draft = resuming?.let { id -> org.nodescope.android.feature.candidatesites.StudyDraftStore.application(context.filesDir).resume(id, library) }
-                                        if (draft != null) model.restoreDraft(draft.draft, draft.study, draft.result) else model.markClean()
+                                        if (draft != null) model.restoreDraft(draft.draft, draft.study, draft.result)
+                                        else {
+                                            if (studyId == null && resuming == null) model.initializeRadio(plannerRadioDefault(currentFeed))
+                                            model.markClean()
+                                        }
                                     }
                             }
                             org.nodescope.android.feature.candidatesites.StudyDraftAutosave(rememberDraftSession(backStack, org.nodescope.android.feature.candidatesites.SavedStudy.Kind.LINK_PROFILE,

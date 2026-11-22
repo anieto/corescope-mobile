@@ -17,6 +17,9 @@ struct LinkCoverageSeed: Identifiable {
 
 struct EstimatedCoverageScreen: View {
     @Environment(AnalyzerSettings.self) private var settings
+    @Environment(AnalyzerSourceRegistry.self) private var sourceRegistry
+    @Environment(ObserverRegionLookup.self) private var observerLookup
+    private let opensFresh: Bool
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -32,6 +35,7 @@ struct EstimatedCoverageScreen: View {
 
     /// `draft` resumes unsaved work, which stays unsaved.
     init(savedStudy: SavedStudy? = nil, seed: LinkCoverageSeed? = nil, planID: String? = nil, draft: ResumedDraft? = nil) {
+        opensFresh = savedStudy == nil && draft == nil && seed == nil
         let model = EstimatedCoverageModel()
         model.suggestedPlanID = seed?.planID ?? planID
         if let savedStudy { model.restore(savedStudy) }
@@ -116,6 +120,11 @@ struct EstimatedCoverageScreen: View {
         // editor pane carries the heading.
         .navigationTitle(usesSystemBar ? "" : "Estimated Coverage")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            guard opensFresh, !model.hasInitializedRadio else { return }
+            model.initializeRadio(.current(settings: settings, registry: sourceRegistry, observers: observerLookup))
+            model.markClean()
+        }
         .studyDraftAutosave(draftSession, source: model, host: settings.host, region: regionFilter.selectedRegion)
         .toolbar(usesSystemBar ? .visible : .hidden, for: .navigationBar)
         .toolbarBackground(.hidden, for: .navigationBar)
@@ -262,6 +271,8 @@ final class EstimatedCoverageModel {
     }
 
     func restore(_ study: SavedStudy) {
+        hasInitializedRadio = true
+        radioDefaultOrigin = nil
         guard (try? study.validate()) != nil, let coverage = study.coverage else { return }
         invalidate()
         savedStudy = study
@@ -328,6 +339,16 @@ final class EstimatedCoverageModel {
     var undo: CoverageUndo?
 
     // Radio. The preset is nil once a value it sets is edited.
+    private(set) var hasInitializedRadio = false
+    private(set) var radioDefaultOrigin: PlannerRadioDefault.Origin?
+
+    func initializeRadio(_ resolution: PlannerRadioDefault) {
+        guard !hasInitializedRadio else { return }
+        hasInitializedRadio = true
+        applyRadioPreset(resolution.preset)
+        radioDefaultOrigin = resolution.origin
+    }
+
     var radioPresetID: String? = CoverageRadioPreset.standard.id
     var frequencyMHz = CoverageRadioPreset.standard.frequencyMHz
     var transmitPowerDbm = CoverageRadioPreset.standard.transmitPowerDbm
@@ -481,6 +502,7 @@ final class EstimatedCoverageModel {
     // MARK: Presets
 
     func applyRadioPreset(_ preset: CoverageRadioPreset) {
+        radioDefaultOrigin = nil
         radioPresetID = preset.id
         frequencyMHz = preset.frequencyMHz
         transmitPowerDbm = preset.transmitPowerDbm
@@ -494,6 +516,7 @@ final class EstimatedCoverageModel {
             set: {
                 self[keyPath: keyPath] = $0
                 self.radioPresetID = nil
+                self.radioDefaultOrigin = nil
             }
         )
     }
@@ -1507,6 +1530,9 @@ private struct CoverageRadioCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Radio settings").font(.monaspace(.headline))
                     Text(summary).font(.caption).foregroundStyle(.secondary)
+                    if let origin = model.radioDefaultOrigin {
+                        Text(origin.label).font(.caption).foregroundStyle(.secondary)
+                    }
                     Text("Reserve: \(model.reserveDb.formatted()) dB")
                         .font(.caption).foregroundStyle(.secondary)
                 }
@@ -2051,6 +2077,8 @@ extension EstimatedCoverageModel: StudyDraftSource {
     /// Resumes a recovery draft: its setup, its captured catalog, the saved study it edits (`study`, at the
     /// draft's revision) and, if it's for these inputs, its result. Nothing is downloaded or calculated.
     func restore(draft: StudyDraft, study: SavedStudy?, result data: Data?) {
+        hasInitializedRadio = true
+        radioDefaultOrigin = nil
         let editor = draft.editor
         func number(_ key: String) -> Double? { editor[key].flatMap(Double.init) }
         let transmitter = SavedAntenna(heightMeters: number("transmitHeightMeters") ?? transmitHeightMeters,

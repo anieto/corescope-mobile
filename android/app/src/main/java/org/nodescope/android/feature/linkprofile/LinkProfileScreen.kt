@@ -346,6 +346,13 @@ private fun LinkDetails(model: LinkProfileViewModel, state: LinkProfileViewModel
                         FilterChip(selected = state.preset == key, onClick = { model.preset(key) }, label = { Text(stringResource(label)) })
                     }
                 }
+                org.nodescope.android.feature.coverage.CoverageRadioPreset.preset(state.preset)?.let { preset ->
+                    Text(preset.title.asString(), style = MaterialTheme.typography.titleSmall)
+                }
+                state.radioDefaultLabel?.let { label ->
+                    Text(stringResource(label), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 TextButton(onClick = { customizing = !customizing }) {
                     Text(when {
                         customizing -> stringResource(R.string.link_profile_hide_radio_values)

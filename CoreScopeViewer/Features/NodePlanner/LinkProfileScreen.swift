@@ -4,6 +4,9 @@ import SwiftUI
 
 struct LinkProfileScreen: View {
     @Environment(AnalyzerSettings.self) private var settings
+    @Environment(AnalyzerSourceRegistry.self) private var sourceRegistry
+    @Environment(ObserverRegionLookup.self) private var observerLookup
+    private let opensFresh: Bool
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -21,6 +24,7 @@ struct LinkProfileScreen: View {
     /// `planID` is the plan this tool was opened from: the suggested place to save a new study.
     /// `draft` resumes unsaved work, which stays unsaved.
     init(savedStudy: SavedStudy? = nil, planID: String? = nil, draft: ResumedDraft? = nil) {
+        opensFresh = savedStudy == nil && draft == nil
         let model = LinkProfileModel()
         model.suggestedPlanID = planID
         if let savedStudy { model.restore(savedStudy) }
@@ -116,6 +120,11 @@ struct LinkProfileScreen: View {
             if let seed = model.coverageSeed { EstimatedCoverageScreen(seed: seed) }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            guard opensFresh, !model.hasInitializedRadio else { return }
+            model.initializeRadio(.current(settings: settings, registry: sourceRegistry, observers: observerLookup))
+            model.markClean()
+        }
         .studyDraftAutosave(draftSession, source: model, host: settings.host, region: regionFilter.selectedRegion)
         .toolbar(usesSystemBar ? .visible : .hidden, for: .navigationBar)
         .toolbarBackground(.hidden, for: .navigationBar)
@@ -798,7 +807,25 @@ enum LinkProfileEndpoint: String, Identifiable {
 enum LinkProfileRadioPreset: String, CaseIterable, Identifiable {
     case unitedStatesNarrow
     case europeNarrow
+    case europe433Narrow
+    case australiaNarrow
+    case newZealandNarrow
     case custom
+
+    init(planningPreset: CoverageRadioPreset) {
+        switch planningPreset.id {
+        case "meshcore-us-ca": self = .unitedStatesNarrow
+        case "meshcore-eu-uk-narrow": self = .europeNarrow
+        case "meshcore-eu-433-narrow": self = .europe433Narrow
+        case "meshcore-au-narrow": self = .australiaNarrow
+        case "meshcore-nz-narrow": self = .newZealandNarrow
+        default: self = .custom
+        }
+    }
+
+    private var planningPreset: CoverageRadioPreset? {
+        CoverageRadioPreset.presets(in: .meshCore).first { Self(planningPreset: $0) == self }
+    }
 
     var id: String { rawValue }
 
@@ -806,31 +833,22 @@ enum LinkProfileRadioPreset: String, CaseIterable, Identifiable {
         switch self {
         case .unitedStatesNarrow: "US/Canada Narrow"
         case .europeNarrow: "EU/UK Narrow"
+        case .europe433Narrow: "EU 433 MHz (Narrow)"
+        case .australiaNarrow: "Australia (Narrow)"
+        case .newZealandNarrow: "New Zealand (Narrow)"
         case .custom: "Custom"
         }
     }
 
-    var frequencyMHz: Double? {
-        switch self {
-        case .unitedStatesNarrow: 910.525
-        case .europeNarrow: 869.618
-        case .custom: nil
-        }
-    }
+    var frequencyMHz: Double? { planningPreset?.frequencyMHz }
 
-    var transmitPowerDBm: Double? {
-        switch self {
-        case .unitedStatesNarrow: 22
-        case .europeNarrow: 14
-        case .custom: nil
-        }
-    }
+    var transmitPowerDBm: Double? { planningPreset?.transmitPowerDbm }
 
     var receiverSensitivityDBm: Double? {
         switch self {
         case .unitedStatesNarrow: -128
         case .europeNarrow: -130
-        case .custom: nil
+        default: planningPreset?.sensitivityDbm
         }
     }
 }
@@ -883,6 +901,8 @@ final class LinkProfileModel {
 
     /// Assign values directly: placement helpers intentionally fetch elevation and analyze.
     func restore(_ study: SavedStudy) {
+        hasInitializedRadio = true
+        radioDefaultOrigin = nil
         guard (try? study.validate()) != nil, let inputs = study.linkProfile else { return }
         analysisTask?.cancel()
         elevationTaskA?.cancel()
@@ -958,12 +978,24 @@ final class LinkProfileModel {
     }
 
     var radioPreset = LinkProfileRadioPreset.unitedStatesNarrow
+    private var defaultRadio = LinkProfileRadioPreset.unitedStatesNarrow
+    private(set) var hasInitializedRadio = false
+    private(set) var radioDefaultOrigin: PlannerRadioDefault.Origin?
+
+    func initializeRadio(_ resolution: PlannerRadioDefault) {
+        guard !hasInitializedRadio else { return }
+        hasInitializedRadio = true
+        defaultRadio = LinkProfileRadioPreset(planningPreset: resolution.preset)
+        applyRadioPreset(defaultRadio)
+        radioDefaultOrigin = resolution.origin
+    }
+
     private var defaultAntennaHeight = 6.096
     var usesDefaultEquipment: Bool {
         abs(heightA - defaultAntennaHeight) < 0.0001 && abs(heightB - defaultAntennaHeight) < 0.0001
-            && frequencyMHz == 910.525 && transmitPowerDBm == 22
+            && frequencyMHz == defaultRadio.frequencyMHz && transmitPowerDBm == defaultRadio.transmitPowerDBm
             && gainADB == 2.15 && gainBDB == 2.15 && lossADB == 1 && lossBDB == 1
-            && receiverSensitivityDBm == -128
+            && receiverSensitivityDBm == defaultRadio.receiverSensitivityDBm
     }
     var frequencyMHz = 910.525
     var transmitPowerDBm = 22.0
@@ -1195,6 +1227,7 @@ final class LinkProfileModel {
     }
 
     func applyRadioPreset(_ preset: LinkProfileRadioPreset) {
+        radioDefaultOrigin = nil
         radioPreset = preset
         if let value = preset.frequencyMHz { frequencyMHz = value }
         if let value = preset.transmitPowerDBm { transmitPowerDBm = value }
@@ -1626,6 +1659,12 @@ private struct LinkProfileRadioSettings: View {
                 HStack(spacing: 8) { presets }
                 VStack(alignment: .leading, spacing: 8) { presets }
             }
+            if ![LinkProfileRadioPreset.unitedStatesNarrow, .europeNarrow, .custom].contains(model.radioPreset) {
+                Text(model.radioPreset.title).font(.monaspace(.subheadline))
+            }
+            if let origin = model.radioDefaultOrigin {
+                Text(origin.label).font(.caption).foregroundStyle(.secondary)
+            }
             Button {
                 withAnimation(.easeInOut) { isCustomizing.toggle() }
             } label: {
@@ -1672,8 +1711,7 @@ private struct LinkProfileRadioSettings: View {
             get: { model[keyPath: keyPath] },
             set: {
                 model[keyPath: keyPath] = $0
-                model.radioPreset = .custom
-                model.configurationChanged()
+                model.applyRadioPreset(.custom)
             }
         )
     }
@@ -2273,6 +2311,8 @@ extension LinkProfileModel: StudyDraftSource {
     /// Resumes a recovery draft: its values, the saved study it edits (`study`, at the draft's revision)
     /// and, if it's for these inputs, its result. Nothing is fetched or analyzed until Calculate.
     func restore(draft: StudyDraft, study: SavedStudy?, result data: Data?) {
+        hasInitializedRadio = true
+        radioDefaultOrigin = nil
         let editor = draft.editor
         func number(_ key: String) -> Double? { editor[key].flatMap(Double.init) }
         func name(_ key: String) -> String? { editor[key].flatMap { $0.isEmpty ? nil : $0 } }

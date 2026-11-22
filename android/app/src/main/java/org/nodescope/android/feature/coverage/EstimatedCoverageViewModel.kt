@@ -62,6 +62,15 @@ internal class EstimatedCoverageViewModel(
 
     /** Radio, antenna and reserve fields, keyed as [CoverageSetupValidation] expects. */
     var values by mutableStateOf(defaultValues(heightInFeet)); private set
+    private var hasInitializedRadio = false
+    internal var radioDefaultOrigin by mutableStateOf<PlannerRadioDefault.Origin?>(null); private set
+
+    internal fun initializeRadio(resolution: PlannerRadioDefault) {
+        if (hasInitializedRadio) return
+        hasInitializedRadio = true
+        applyRadioPreset(resolution.preset)
+        radioDefaultOrigin = resolution.origin
+    }
     var radiusMeters by mutableIntStateOf(if (distanceUnit.usesMiles) 16_093 else 20_000); private set
     var spacingMeters by mutableIntStateOf(if (distanceUnit.usesMiles) 1609 else 1000); private set
     var acceptsScenario by mutableStateOf(preferences.getBoolean(ASSUMPTIONS_KEY, false)); private set
@@ -151,6 +160,8 @@ internal class EstimatedCoverageViewModel(
      * Nothing is downloaded or calculated.
      */
     fun restoreDraft(draft: org.nodescope.android.feature.candidatesites.StudyDraft, study: org.nodescope.android.feature.candidatesites.SavedStudy?, result: ByteArray?) {
+        hasInitializedRadio = true
+        radioDefaultOrigin = null
         invalidate()
         savedStudy = study
         suggestedPlanID = draft.planID
@@ -273,6 +284,8 @@ internal class EstimatedCoverageViewModel(
     var fromLinkProfile = false; private set
 
     fun applyLinkSeed(seed: LinkCoverageSeed) {
+        hasInitializedRadio = true
+        radioDefaultOrigin = null
         latitudeText = seed.point.latitude.toString()
         longitudeText = seed.point.longitude.toString()
         transmitterName = seed.point.name
@@ -289,9 +302,13 @@ internal class EstimatedCoverageViewModel(
     private fun heightEditorText(meters: Double): String =
         if (heightInFeet) String.format(java.util.Locale.US, "%.2f", meters / 0.3048).trimEnd('0').trimEnd('.') else meters.editorText()
 
-    fun set(field: String, text: String) { values = values + (field to text) }
+    fun set(field: String, text: String) {
+        if (field == "frequency" || field == "power" || field == "sensitivity") radioDefaultOrigin = null
+        values = values + (field to text)
+    }
 
     fun applyRadioPreset(preset: CoverageRadioPreset) {
+        radioDefaultOrigin = null
         values = values + mapOf("frequency" to preset.frequencyMHz.editorText(), "power" to preset.transmitPowerDbm.editorText(),
             "sensitivity" to preset.sensitivityDbm.editorText())
     }
@@ -564,6 +581,8 @@ internal class EstimatedCoverageViewModel(
 
     /** Reopens a saved study: its inputs, its node locations and, when it checks out, its result. Nothing is downloaded or calculated. */
     fun restore(study: org.nodescope.android.feature.candidatesites.SavedStudy) {
+        hasInitializedRadio = true
+        radioDefaultOrigin = null
         val coverage = study.coverage?.takeIf { runCatching { study.validate() }.isSuccess } ?: return
         invalidate()
         savedStudy = study

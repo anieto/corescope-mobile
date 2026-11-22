@@ -4,6 +4,9 @@ import java.util.Locale
 import org.nodescope.android.core.design.formatDisplayDecimal
 import org.nodescope.android.R
 import org.nodescope.android.core.design.UiText
+import org.nodescope.android.core.model.AnalyzerSourceChoices
+import org.nodescope.android.feature.nodes.ObserverRadio
+import org.nodescope.android.feature.nodes.observerRadio
 
 import kotlin.math.abs
 import kotlin.math.log10
@@ -53,7 +56,7 @@ data class CoverageRadioPreset(
             CoverageRadioPreset("meshtastic-eu-868-long-fast", Family.MESHTASTIC, UiText.Resource(R.string.coverage_radio_preset_meshtastic_eu_868_long_fast), 869.525, 11, 250.0, 27.0),
         )
 
-        /** The opening preset, matching Link Profile's. */
+        /** Last-resort planning preset. */
         val standard: CoverageRadioPreset get() = all[0]
 
         fun preset(id: String?): CoverageRadioPreset? = id?.let { wanted -> all.firstOrNull { it.id == wanted } }
@@ -63,6 +66,57 @@ data class CoverageRadioPreset(
         /** The preset these radio values came from, or null once any of them has been edited (a custom radio). */
         fun matching(frequencyMHz: Double?, transmitPowerDbm: Double?, sensitivityDbm: Double?): CoverageRadioPreset? =
             all.firstOrNull { it.frequencyMHz == frequencyMHz && it.transmitPowerDbm == transmitPowerDbm && it.sensitivityDbm == sensitivityDbm }
+    }
+}
+
+/** The radio defaults shown when a new planner opens. */
+internal data class PlannerRadioDefault(val preset: CoverageRadioPreset, val origin: Origin) {
+    enum class Origin(val label: Int) {
+        OBSERVERS(R.string.planner_radio_origin_observers),
+        ANALYZER_COUNTRY(R.string.planner_radio_origin_country),
+        DEVICE_REGION(R.string.planner_radio_origin_region),
+        FALLBACK(R.string.planner_radio_origin_fallback),
+    }
+
+    companion object {
+        private val europeanCountries = setOf(
+            "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE",
+            "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE",
+            "GB", "CH", "NO", "IS", "LI",
+        )
+
+        fun resolve(observerRadios: List<String?>, sourceCountry: String?, deviceRegion: String?): PlannerRadioDefault {
+            val reports = observerRadios.mapNotNull(::observerRadio)
+            // Group observer reports at 1 kHz precision to absorb firmware float noise.
+            fun frequencyKHz(radio: ObserverRadio): Double = kotlin.math.floor(radio.frequencyMHz * 1000 + 0.5)
+            val frequency = mostCommon(reports.map(::frequencyKHz))
+            val modem = mostCommon(reports.filter { frequencyKHz(it) == frequency })
+            modem?.let(::nearest)?.let { return PlannerRadioDefault(it, Origin.OBSERVERS) }
+            countryPreset(sourceCountry)?.let { return PlannerRadioDefault(it, Origin.ANALYZER_COUNTRY) }
+            countryPreset(deviceRegion)?.let { return PlannerRadioDefault(it, Origin.DEVICE_REGION) }
+            return PlannerRadioDefault(CoverageRadioPreset.standard, Origin.FALLBACK)
+        }
+
+        private fun countryPreset(country: String?): CoverageRadioPreset? {
+            val code = AnalyzerSourceChoices.countryCode(country) ?: return null
+            return when (code) {
+                "US", "CA" -> CoverageRadioPreset.standard
+                "AU" -> CoverageRadioPreset.preset("meshcore-au-narrow")
+                "NZ" -> CoverageRadioPreset.preset("meshcore-nz-narrow")
+                in europeanCountries -> CoverageRadioPreset.preset("meshcore-eu-uk-narrow")
+                else -> null
+            }
+        }
+
+        private fun nearest(radio: ObserverRadio): CoverageRadioPreset? =
+            CoverageRadioPreset.presets(CoverageRadioPreset.Family.MESHCORE)
+                .filter { abs(it.frequencyMHz - radio.frequencyMHz) <= 1 }
+                .minWithOrNull(compareBy<CoverageRadioPreset> { abs(it.frequencyMHz - radio.frequencyMHz) }
+                    .thenBy { abs(it.spreadingFactor - radio.spreadingFactor) }
+                    .thenBy { abs(it.bandwidthKHz - radio.bandwidthKHz) })
+
+        /** Break equal vote counts by first occurrence in the analyzer's observer list. */
+        private fun <T> mostCommon(values: List<T>): T? = values.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key
     }
 }
 
