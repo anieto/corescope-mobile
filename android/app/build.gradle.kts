@@ -119,7 +119,7 @@ androidComponents {
         variant.outputs.forEach { it.versionCode.set(30) }
     }
     onVariants(selector().withBuildType("release")) { variant ->
-        variant.outputs.forEach { it.versionCode.set(32) }
+        variant.outputs.forEach { it.versionCode.set(34) }
     }
 }
 
