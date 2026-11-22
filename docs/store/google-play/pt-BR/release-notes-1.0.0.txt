@@ -1,4 +1,4 @@
-Encontre nós próximos com a câmera no NodeVision.
+Novo: NodeVision. Aponte a câmera para ver a direção dos nós próximos.
 Monitore nós e receba alertas se deixarem de ser ouvidos ou voltarem a ser ouvidos em analisadores com NodeScope Push. Veja os detalhes informados e gerencie seus repetidores pela conta do CoreScope.
 Encontre analisadores por país ou ordene por proximidade. Perfil do enlace e Cobertura estimada usam configurações de rádio para sua malha, com uma predefinição do MeshCore para o Brasil.
 Canais favoritos têm uma seção própria.

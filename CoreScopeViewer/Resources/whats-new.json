@@ -8,7 +8,7 @@
           "id": "nodevision",
           "title": "NodeVision",
           "detail": "Use your camera to see which way nearby mesh nodes are, or open NodeVision from a node’s details to find that node.",
-          "icon": "sparkles"
+          "icon": "nodeVision"
         },
         {
           "id": "watched-node-alerts",

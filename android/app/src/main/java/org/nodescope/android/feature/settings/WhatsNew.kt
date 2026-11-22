@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Keyboard
@@ -157,5 +158,6 @@ private fun String.vector(): ImageVector = when (this) {
     "share" -> Icons.Outlined.Share
     "drafts" -> Icons.Outlined.EditNote
     "notifications" -> Icons.Outlined.NotificationsNone
+    "nodeVision" -> Icons.Outlined.CameraAlt
     else -> Icons.Outlined.AutoAwesome
 }

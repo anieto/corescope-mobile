@@ -39,6 +39,7 @@ struct WhatsNewItem: Decodable, Identifiable {
         case "share": "square.and.arrow.up"
         case "drafts": "doc.badge.clock"
         case "notifications": "bell"
+        case "nodeVision": "camera"
         default: "sparkles"
         }
     }
