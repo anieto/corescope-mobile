@@ -34,7 +34,7 @@ data class CoreScopeWatchedNode(val pubkey: String, val name: String)
 
 @Serializable
 data class CoreScopeAccountNotifications(
-    val enabled: Boolean, val watches: List<CoreScopeWatchedNode>, val nodeScopePush: StagingPushCapability? = null,
+    val enabled: Boolean, val watches: List<CoreScopeWatchedNode>, val pushRelay: StagingPushCapability? = null,
 )
 
 class AccountException(val kind: Kind) : Exception(when (kind) {
@@ -180,14 +180,25 @@ class CoreScopeAccountClient(
     }
 
     suspend fun notifications(): CoreScopeAccountNotifications =
-        json.decodeFromString(request("api/account/notifications"))
+        decodeNotifications(request("api/account/notifications"))
 
     suspend fun setWatch(pubkey: String, watched: Boolean, csrf: String): CoreScopeAccountNotifications {
         val key = pubkey.lowercase()
         require(Regex("[0-9a-f]{64}").matches(key))
         val method = if (watched) "PUT" else "DELETE"
-        return json.decodeFromString(request("api/account/notifications/watches/$key", method, csrf = csrf))
+        return decodeNotifications(request("api/account/notifications/watches/$key", method, csrf = csrf))
     }
+
+    private fun decodeNotifications(body: String): CoreScopeAccountNotifications {
+        val response = json.parseToJsonElement(body).jsonObject
+        val relay = response.pushRelayValue()
+        val normalized = if (relay != null && "pushRelay" !in response) {
+            JsonObject(response + ("pushRelay" to relay))
+        } else response
+        return json.decodeFromJsonElement(normalized)
+    }
+
+    private fun JsonObject.pushRelayValue(): JsonElement? = this["pushRelay"] ?: this["nodeScopePush"]
 
     suspend fun login(email: String, password: String): CoreScopeAccountUser {
         val result = request("api/auth/login", "POST", buildJsonObject {
@@ -218,7 +229,7 @@ class CoreScopeAccountClient(
     }
 
     suspend fun pushCapability(): StagingPushCapability? =
-        json.parseToJsonElement(request("api/account/notifications")).jsonObject["nodeScopePush"]
+        json.parseToJsonElement(request("api/account/notifications")).jsonObject.pushRelayValue()
             ?.takeUnless { it == JsonNull }?.let { json.decodeFromJsonElement<StagingPushCapability>(it) }
 
     suspend fun linkPushDevice(installation: String, proof: String, csrf: String): StagingPushLink =
@@ -305,10 +316,10 @@ class CoreScopeAccountClient(
 
 object CoreScopeFavoriteMerge {
     private val json = Json { ignoreUnknownKeys = true }
-    data class Selection(val favorites: List<String>, val claimed: Map<String, String>) {
-        val keys: Set<String> get() = favorites.map { it.lowercase() }.toSet() + claimed.keys
+    data class Selection(val favorites: List<String>, val myNodes: Map<String, String>) {
+        val keys: Set<String> get() = favorites.map { it.lowercase() }.toSet() + myNodes.keys
     }
-    @Serializable private data class Claimed(val pubkey: String, val name: String? = null)
+    @Serializable private data class MyNode(val pubkey: String, val name: String? = null)
 
     fun validKey(key: String): Boolean = key.length == 64 && key.all { it in '0'..'9' || it.lowercaseChar() in 'a'..'f' }
 
@@ -316,7 +327,7 @@ object CoreScopeFavoriteMerge {
         if (!settings.supportsNodeFavorites || !settings.supportsOwnNodes) throw AccountException(AccountException.Kind.UNSUPPORTED)
         val values = settings.doc?.keys.orEmpty()
         val favorites = json.decodeFromString<List<String>>(values["meshcore-favorites"] ?: "[]")
-        val owned = json.decodeFromString<List<Claimed>>(values["meshcore-my-nodes"] ?: "[]")
+        val owned = json.decodeFromString<List<MyNode>>(values["meshcore-my-nodes"] ?: "[]")
         if (!(favorites + owned.map { it.pubkey }).all(::validKey)) throw AccountException(AccountException.Kind.RESPONSE)
         return Selection(favorites, owned.associate { it.pubkey.lowercase() to (it.name ?: "") })
     }
@@ -324,15 +335,26 @@ object CoreScopeFavoriteMerge {
     fun merge(base: Set<String>?, local: Set<String>, remote: Set<String>): Set<String> =
         if (base == null) local + remote else (local - base) + (remote - base) + (base intersect local intersect remote)
 
-    fun document(base: CoreScopeAccountSettings?, local: Set<String>, remote: CoreScopeAccountSettings): Pair<AccountSettingsDocument, Selection> {
+    fun document(
+        base: CoreScopeAccountSettings?, local: Set<String>, remote: CoreScopeAccountSettings,
+        removingMyNodes: Set<String> = emptySet(),
+    ): Pair<AccountSettingsDocument, Selection> {
         if (base != null && base.generation != remote.generation) throw AccountException(AccountException.Kind.RESET)
         val current = selection(remote)
         val previous = base?.let(::selection)
         val merged = merge(previous?.favorites?.map { it.lowercase() }?.toSet(), local.map { it.lowercase() }.toSet(), current.favorites.map { it.lowercase() }.toSet())
         val raw = current.favorites.filter { it.lowercase() in merged }
         val additions = (merged - raw.map { it.lowercase() }.toSet()).sorted()
-        val values = remote.doc?.keys.orEmpty() + ("meshcore-favorites" to json.encodeToString(raw + additions))
-        return AccountSettingsDocument(1, values) to Selection(raw + additions, current.claimed)
+        val values = remote.doc?.keys.orEmpty().toMutableMap()
+        if (raw + additions != current.favorites) values["meshcore-favorites"] = json.encodeToString(raw + additions)
+        val myNodes = current.myNodes - removingMyNodes
+        if (myNodes.size != current.myNodes.size) {
+            val entries = json.parseToJsonElement(values.getValue("meshcore-my-nodes")).jsonArray
+            values["meshcore-my-nodes"] = JsonArray(entries.filterNot {
+                it.jsonObject.getValue("pubkey").jsonPrimitive.content.lowercase() in removingMyNodes
+            }).toString()
+        }
+        return AccountSettingsDocument(1, values) to Selection(raw + additions, myNodes)
     }
 }
 

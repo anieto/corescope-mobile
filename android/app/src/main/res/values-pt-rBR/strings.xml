@@ -2034,6 +2034,7 @@
     <string name="nodevision_power_battery">Alimentação: Bateria</string>
     <string name="nodevision_power_solar">Alimentação: Solar</string>
     <string name="nodevision_owner_decommissioned">O proprietário informou que foi desativado</string>
+    <string name="repeater_check_failed">Não foi possível verificar o gerenciamento de repetidores</string>
     <string name="repeater_my_repeaters">Meus repetidores</string>
     <string name="repeater_manage">Gerenciar repetidor</string>
     <string name="repeater_request_failed">Não foi possível concluir a solicitação. Verifique a conexão e se você está conectado ao CoreScope.</string>
@@ -2061,4 +2062,28 @@
     <string name="onboarding_location_is_optional_and_is_only_used_when">A localização é opcional e só é usada quando você escolhe centralizar o mapa em você.</string>
     <string name="onboarding_us_community_sources">Fontes da comunidade nos EUA</string>
     <string name="settings_this_app_has_no_backend_of_its_own">Este app não tem um back-end próprio. Tudo o que aparece aqui vem do host do analisador configurado em Ajustes, e ele não é afiliado aos projetos CoreScope ou MeshCore.</string>
+    <string name="account_your_nodes">Seus nós</string>
+    <string name="account_claimed_repeaters">Repetidores reivindicados</string>
+    <string name="account_favorites">Favoritos</string>
+    <string name="account_device_favorites">Favoritos salvos neste dispositivo</string>
+    <string name="account_no_favorites">Ainda não há favoritos.</string>
+    <string name="account_add_favorites">Adicionar</string>
+    <string name="account_favorites_not_now">Agora não</string>
+    <string name="account_sync">Sincronizar</string>
+    <string name="account_keep_favorites_on_sign_out">Seus favoritos atuais ficarão neste dispositivo.</string>
+    <string name="account_signed_out_favorites_kept">Você saiu. Seus favoritos foram mantidos neste dispositivo.</string>
+    <string name="account_favorites_refreshed">Os favoritos da conta foram atualizados.</string>
+    <string name="account_node_summary">%1$s · %2$s</string>
+    <plurals name="account_favorites_count">
+        <item quantity="one">%d favorito</item>
+        <item quantity="other">%d favoritos</item>
+    </plurals>
+    <plurals name="account_claimed_repeaters_count">
+        <item quantity="one">%d repetidor reivindicado</item>
+        <item quantity="other">%d repetidores reivindicados</item>
+    </plurals>
+    <plurals name="account_offer_device_favorites">
+        <item quantity="one">Adicionar %d favorito deste dispositivo à sua conta?</item>
+        <item quantity="other">Adicionar %d favoritos deste dispositivo à sua conta?</item>
+    </plurals>
 </resources>

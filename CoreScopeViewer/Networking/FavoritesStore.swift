@@ -40,61 +40,62 @@ final class FavoritesStore {
         load()
     }
 
-    /// Account membership is projected for display and never serialized as a device favorite.
     var items: [FavoriteItem] {
-        var result = deviceItems
+        var result = deviceItems.filter { $0.kind != .node || !accountStore.isActive(source: $0.source) }
         for source in accountStore.sources {
-            guard let state = accountStore.visibleState(source: source),
-                  let selection = try? CoreScopeFavoriteMerge.selection(state.baseline) else { continue }
-            let localKeys = Set(deviceItems.filter { $0.source == source && $0.kind == .node }.map { $0.entityID.lowercased() })
-            let keys = state.favorites.union(selection.claimed.keys).subtracting(localKeys)
-            let added = keys.map { key -> FavoriteItem in
-                let claimedName = selection.claimed[key].flatMap { $0.isEmpty ? nil : $0 }
-                let node = accountSnapshots["\(source)|\(key)"] ?? MeshNode(publicKey: key, name: claimedName,
-                    role: "unknown", lat: nil, lon: nil, lastSeen: nil, firstSeen: nil, advertCount: nil,
-                    hashSize: nil, hashSizeInconsistent: nil, lastHeard: nil, defaultScope: nil)
-                return FavoriteItem(source: source, kind: .node, entityID: key,
-                    title: node.name ?? String(key.prefix(12)), subtitle: key, favoritedAt: .distantPast,
-                    node: node, observer: nil, channel: nil)
-            }.sorted {
-                let comparison = $0.title.localizedStandardCompare($1.title)
-                return comparison == .orderedSame ? $0.entityID < $1.entityID : comparison == .orderedAscending
-            }
-            result.append(contentsOf: added)
+            guard let state = accountStore.visibleState(source: source) else { continue }
+            result.append(contentsOf: accountItems(state, source: source))
         }
         return result
     }
 
-    func isDeviceFavorite(_ item: FavoriteItem) -> Bool {
-        deviceItems.contains { $0.source == item.source && $0.kind == item.kind && $0.entityID.lowercased() == item.entityID.lowercased() }
-    }
-
-    func isAccountFavorite(_ item: FavoriteItem) -> Bool {
-        item.kind == .node && accountStore.visibleState(source: item.source)?.favorites.contains(item.entityID.lowercased()) == true
-    }
-
-    func membershipLabel(_ item: FavoriteItem) -> String {
-        var labels: [String] = []
-        if isDeviceFavorite(item) { labels.append(String(localized: "Device")) }
-        if isAccountFavorite(item) { labels.append(String(localized: "Account")) }
-        if let state = accountStore.visibleState(source: item.source),
-           let remote = try? CoreScopeFavoriteMerge.selection(state.baseline), remote.claimed[item.entityID.lowercased()] != nil {
-            labels.append(String(localized: "Claimed"))
+    private func accountItems(_ state: CoreScopeAccountSelectionState, source: String) -> [FavoriteItem] {
+        let deviceNodes = Dictionary(deviceItems.filter { $0.source == source && $0.kind == .node }
+            .map { ($0.entityID.lowercased(), $0) }, uniquingKeysWith: { first, _ in first })
+        let names = state.myNodeNames
+        return state.favorites.union(names.keys).map { key in
+            let name = names[key].flatMap { $0.isEmpty ? nil : $0 }
+            let saved = deviceNodes[key]
+            let node = accountSnapshots["\(source)|\(key)"] ?? saved?.node ?? MeshNode(publicKey: key, name: name,
+                role: "unknown", lat: nil, lon: nil, lastSeen: nil, firstSeen: nil, advertCount: nil,
+                hashSize: nil, hashSizeInconsistent: nil, lastHeard: nil, defaultScope: nil)
+            return FavoriteItem(source: source, kind: .node, entityID: key,
+                title: name ?? node.name ?? String(key.prefix(12)), subtitle: key, favoritedAt: saved?.favoritedAt ?? .distantPast,
+                node: node, observer: nil, channel: nil)
+        }.sorted {
+            let comparison = $0.title.localizedStandardCompare($1.title)
+            return comparison == .orderedSame ? $0.entityID < $1.entityID : comparison == .orderedAscending
         }
-        return labels.joined(separator: " · ")
     }
 
-    func removeAccountFavorite(_ item: FavoriteItem) {
-        try? accountStore.removeFavorite(item.entityID, source: item.source)
+    func keepAccountFavoritesOnDevice(_ state: CoreScopeAccountSelectionState, source: String) {
+        let current = accountItems(state, source: source)
+        deviceItems.removeAll { $0.source == source && $0.kind == .node }
+        deviceItems.append(contentsOf: current)
+        persist()
+    }
+
+    func isDeviceFavorite(_ item: FavoriteItem) -> Bool {
+        guard item.kind != .node || !accountStore.isActive(source: item.source) else { return false }
+        return deviceItems.contains { $0.source == item.source && $0.kind == item.kind && $0.entityID.lowercased() == item.entityID.lowercased() }
     }
 
     func contains(kind: FavoriteKind, entityID: String, source: String) -> Bool {
-        deviceItems.contains { item in
-            item.kind == kind && item.entityID == entityID && item.source == source
+        if kind == .node && accountStore.isActive(source: source) {
+            return accountStore.visibleState(source: source)?.favoriteKeys.contains(entityID.lowercased()) == true
+        }
+        return deviceItems.contains { item in
+            item.kind == kind && item.source == source &&
+                (kind == .node ? item.entityID.caseInsensitiveCompare(entityID) == .orderedSame : item.entityID == entityID)
         }
     }
 
     func toggle(node: MeshNode, source: String) {
+        if accountStore.isActive(source: source) {
+            accountSnapshots["\(source)|\(node.publicKey.lowercased())"] = node
+            accountStore.toggleFavorite(node.publicKey, source: source)
+            return
+        }
         toggle(
             kind: .node,
             entityID: node.publicKey,
@@ -128,6 +129,10 @@ final class FavoritesStore {
     }
 
     func remove(_ item: FavoriteItem) {
+        if item.kind == .node && accountStore.isActive(source: item.source) {
+            try? accountStore.removeFavorite(item.entityID, source: item.source)
+            return
+        }
         deviceItems.removeAll { $0.id == item.id }
         persist()
     }

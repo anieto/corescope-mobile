@@ -23,7 +23,28 @@ struct CoreScopeWatchedNode: Decodable, Identifiable, Sendable {
 struct CoreScopeAccountNotifications: Decodable, Sendable {
     let enabled: Bool
     let watches: [CoreScopeWatchedNode]
-    let nodeScopePush: StagingPushCapability?
+    let pushRelay: StagingPushCapability?
+
+    private enum CodingKeys: String, CodingKey { case enabled, watches }
+
+    init(from decoder: Decoder) throws {
+        let fields = try decoder.container(keyedBy: CodingKeys.self)
+        enabled = try fields.decode(Bool.self, forKey: .enabled)
+        watches = try fields.decode([CoreScopeWatchedNode].self, forKey: .watches)
+        pushRelay = try AccountPushRelay(from: decoder).pushRelay
+    }
+}
+
+private struct AccountPushRelay: Decodable {
+    let pushRelay: StagingPushCapability?
+
+    private enum CodingKeys: String, CodingKey { case pushRelay, nodeScopePush }
+
+    init(from decoder: Decoder) throws {
+        let fields = try decoder.container(keyedBy: CodingKeys.self)
+        let key: CodingKeys = fields.contains(.pushRelay) ? .pushRelay : .nodeScopePush
+        pushRelay = try fields.decodeIfPresent(StagingPushCapability.self, forKey: key)
+    }
 }
 
 enum CoreScopeAccountError: Error, LocalizedError {
@@ -269,9 +290,8 @@ actor CoreScopeAccountClient {
 
     #if NODESCOPE_PUSH_STAGING || NODESCOPE_PUSH_PRODUCTION
     func pushCapability() async throws -> StagingPushCapability? {
-        struct Notifications: Decodable { let nodeScopePush: StagingPushCapability? }
         let data = try await request("api/account/notifications")
-        return try JSONDecoder().decode(Notifications.self, from: data).nodeScopePush
+        return try JSONDecoder().decode(AccountPushRelay.self, from: data).pushRelay
     }
 
     func linkPushDevice(_ installationID: String, proof: String, csrf: String) async throws -> StagingPushLink {
@@ -346,18 +366,18 @@ actor CoreScopeAccountClient {
 enum CoreScopeFavoriteMerge {
     struct Selection {
         let favorites: [String]
-        let claimed: [String: String]
-        var keys: Set<String> { Set(favorites.map { $0.lowercased() }).union(claimed.keys) }
+        let myNodes: [String: String]
+        var keys: Set<String> { Set(favorites.map { $0.lowercased() }).union(myNodes.keys) }
     }
 
     static func selection(_ settings: CoreScopeAccountSettings) throws -> Selection {
         guard settings.supportsNodeFavorites, settings.supportsOwnNodes else { throw CoreScopeAccountError.unsupported }
         let values = settings.doc?.keys ?? [:]
         let favorites = try JSONDecoder().decode([String].self, from: Data((values["meshcore-favorites"] ?? "[]").utf8))
-        struct Claimed: Decodable { let pubkey: String; let name: String? }
-        let owned = try JSONDecoder().decode([Claimed].self, from: Data((values["meshcore-my-nodes"] ?? "[]").utf8))
+        struct MyNode: Decodable { let pubkey: String; let name: String? }
+        let owned = try JSONDecoder().decode([MyNode].self, from: Data((values["meshcore-my-nodes"] ?? "[]").utf8))
         guard (favorites + owned.map(\.pubkey)).allSatisfy(validKey) else { throw CoreScopeAccountError.response }
-        return Selection(favorites: favorites, claimed: Dictionary(owned.map {
+        return Selection(favorites: favorites, myNodes: Dictionary(owned.map {
             ($0.pubkey.lowercased(), $0.name ?? "")
         }, uniquingKeysWith: { first, _ in first }))
     }
@@ -372,7 +392,7 @@ enum CoreScopeFavoriteMerge {
     }
 
     static func document(base: CoreScopeAccountSettings?, local: Set<String>,
-                         remote: CoreScopeAccountSettings) throws -> (CoreScopeAccountSettings.Document, Selection) {
+                         remote: CoreScopeAccountSettings, removingMyNodes: Set<String> = []) throws -> (CoreScopeAccountSettings.Document, Selection) {
         if let base, base.generation != remote.generation { throw CoreScopeAccountError.reset }
         let current = try selection(remote)
         let previous = try base.map(selection)
@@ -383,8 +403,21 @@ enum CoreScopeFavoriteMerge {
         let raw = current.favorites.filter { merged.contains($0.lowercased()) }
         let present = Set(raw.map { $0.lowercased() })
         let additions = merged.subtracting(present).sorted()
-        values["meshcore-favorites"] = String(decoding: try JSONEncoder().encode(raw + additions), as: UTF8.self)
-        return (.init(v: 1, keys: values), Selection(favorites: raw + additions, claimed: current.claimed))
+        if raw + additions != current.favorites {
+            values["meshcore-favorites"] = String(decoding: try JSONEncoder().encode(raw + additions), as: UTF8.self)
+        }
+        let myNodes = current.myNodes.filter { !removingMyNodes.contains($0.key) }
+        if myNodes.count != current.myNodes.count, let stored = values["meshcore-my-nodes"] {
+            guard let entries = try JSONSerialization.jsonObject(with: Data(stored.utf8)) as? [[String: Any]] else {
+                throw CoreScopeAccountError.response
+            }
+            let kept = entries.filter { entry in
+                guard let key = entry["pubkey"] as? String else { return true }
+                return !removingMyNodes.contains(key.lowercased())
+            }
+            values["meshcore-my-nodes"] = String(decoding: try JSONSerialization.data(withJSONObject: kept), as: UTF8.self)
+        }
+        return (.init(v: 1, keys: values), Selection(favorites: raw + additions, myNodes: myNodes))
     }
 }
 

@@ -1,3 +1,4 @@
+import OSLog
 import SwiftUI
 
 @MainActor @Observable
@@ -17,6 +18,7 @@ final class CoreScopeAccountModel {
     private var origin = ""
     private var source = ""
     private let store: CoreScopeAccountSelectionStore
+    private var favoritesStore: FavoritesStore?
     // Serialize account operations across windows, including logout and local edits.
     private static var activeOrigins: Set<String> = []
     private static var epochs: [String: UUID] = [:]
@@ -24,23 +26,30 @@ final class CoreScopeAccountModel {
 
     init(store: CoreScopeAccountSelectionStore = .shared,
          client: CoreScopeAccountClient? = nil, origin: String = "", source: String = "",
-         user: CoreScopeAccountUser? = nil) {
+         user: CoreScopeAccountUser? = nil, favorites: FavoritesStore? = nil) {
         self.store = store
+        self.favoritesStore = favorites
         self.client = client
         self.origin = origin
-        self.source = source
+        self.source = source.isEmpty ? AnalyzerSettings.normalizedHost(origin) : source
         self.user = user
         self.epoch = Self.epochs[origin]
     }
 
-    var favoriteKeys: [String] { selection?.favorites.sorted() ?? [] }
-    var claimed: [String: String] {
-        guard let selection else { return [:] }
-        return (try? CoreScopeFavoriteMerge.selection(selection.baseline).claimed) ?? [:]
+    var currentSelection: CoreScopeAccountSelectionState? {
+        guard user != nil else { return nil }
+        return store.visibleState(source: source)
+    }
+
+    var deviceFavoritesOffer: Set<String> {
+        guard let user, let state = currentSelection, let favoritesStore, resetDocument == nil else { return [] }
+        return store.offeredDeviceFavorites(favoritesStore.nodeKeys(source: source), state: state,
+            origin: origin, userID: user.id)
     }
 
     func open(settings: AnalyzerSettings, favorites: FavoritesStore) async {
         guard !busy else { return }
+        favoritesStore = favorites
         origin = settings.baseURL.absoluteString
         source = AnalyzerSettings.normalizedHost(settings.host)
         epoch = Self.epochs[origin]
@@ -59,12 +68,17 @@ final class CoreScopeAccountModel {
                 user = try await client.me()
                 try await reconcile(upload: false)
             } else {
+                keepFavoritesOnDevice()
                 store.deactivate(origin: origin)
+                user = nil
+                selection = nil
+                resetDocument = nil
             }
         }
     }
 
     func login(email: String, password: String, favorites: FavoritesStore) async {
+        favoritesStore = favorites
         await action {
             guard let client, supported else { throw CoreScopeAccountError.unsupported }
             user = try await client.login(email: email.trimmingCharacters(in: .whitespacesAndNewlines), password: password)
@@ -80,11 +94,7 @@ final class CoreScopeAccountModel {
         await action {
             guard let client, let previousUser = user else { throw CoreScopeAccountError.signedOut }
             let authenticated = try await client.me()
-            guard authenticated.id == previousUser.id else {
-                user = nil
-                selection = nil
-                throw CoreScopeAccountError.signedOut
-            }
+            guard authenticated.id == previousUser.id else { throw CoreScopeAccountError.signedOut }
             user = authenticated
             try await reconcile(upload: upload)
         }
@@ -107,8 +117,11 @@ final class CoreScopeAccountModel {
         try next.refresh(remote)
         // Persist rebased edits before IO: failures and conflicts leave them pending for retry.
         try persist(next)
+        if favoritesStore != nil && deviceFavoritesOffer.isEmpty {
+            store.finishDeviceFavoritesOffer(origin: origin, userID: user.id)
+        }
         if upload && next.hasPendingEdits {
-            let (document, _) = try CoreScopeFavoriteMerge.document(base: next.baseline, local: next.favorites, remote: remote)
+            let (document, _) = try CoreScopeFavoriteMerge.document(base: next.baseline, local: next.favorites, remote: remote, removingMyNodes: next.removedMyNodes ?? [])
             if document.keys != (remote.doc?.keys ?? [:]) {
                 // A conflict remains pending. No immediate write retry can bypass the minute limit.
                 let accepted = try await client.put(document, base: remote, csrf: user.csrfToken)
@@ -121,7 +134,7 @@ final class CoreScopeAccountModel {
         if upload && selection?.hasPendingEdits == true {
             message = String(localized: "Earlier changes synced. Newer edits are saved on this device; sync again after one minute.")
         } else {
-            message = upload ? String(localized: "Account favorites synced.") : String(localized: "Account favorites refreshed. Device favorites are unchanged.")
+            message = upload ? String(localized: "Account favorites synced.") : String(localized: "Account favorites refreshed.")
         }
     }
 
@@ -131,16 +144,21 @@ final class CoreScopeAccountModel {
         selection = state
     }
 
-    func importDeviceFavorites(_ favorites: FavoritesStore) async {
-        await edit { state in
-            let keys = favorites.nodeKeys(source: source)
-            guard keys.allSatisfy(CoreScopeFavoriteMerge.validKey) else { throw CoreScopeAccountError.response }
-            state.favorites.formUnion(keys)
+    func answerDeviceFavoritesOffer(add: Bool) async {
+        await action {
+            guard let user, resetDocument == nil, var state = try store.load(origin: origin, userID: user.id) else { return }
+            let keys = deviceFavoritesOffer
+            if add && !keys.isEmpty {
+                state.favorites.formUnion(keys)
+                try persist(state)
+            }
+            store.finishDeviceFavoritesOffer(origin: origin, userID: user.id)
+            if add && !keys.isEmpty { try await reconcile(upload: true) }
         }
     }
 
     func removeFavorite(_ key: String) async {
-        await edit { $0.favorites.remove(key) }
+        await edit { $0.removeFavorite(key) }
     }
 
     private func edit(_ update: (inout CoreScopeAccountSelectionState) throws -> Void) async {
@@ -165,16 +183,10 @@ final class CoreScopeAccountModel {
         }
     }
 
-    func copyToDevice(_ favorites: FavoritesStore) async {
-        await action { try copy(favorites) }
-    }
-
-    private func copy(_ favorites: FavoritesStore) throws {
-        guard let user, let state = try store.load(origin: origin, userID: user.id) else { return }
-        let claimed = try CoreScopeFavoriteMerge.selection(state.baseline).claimed
-        favorites.applyAccountNodes(favorites.nodeKeys(source: source).union(state.favorites).union(claimed.keys),
-            names: claimed, source: source)
-        message = String(localized: "Account selections copied to device favorites.")
+    private func keepFavoritesOnDevice() {
+        guard let state = store.visibleState(source: source)
+                ?? user.flatMap({ try? store.load(origin: origin, userID: $0.id) }) else { return }
+        favoritesStore?.keepAccountFavoritesOnDevice(state, source: source)
     }
 
     func loadNotifications() async {
@@ -192,12 +204,13 @@ final class CoreScopeAccountModel {
             notifications = current
             notificationStatus = .ready
             #if NODESCOPE_PUSH_STAGING || NODESCOPE_PUSH_PRODUCTION
-            if let capability = current.nodeScopePush {
+            if let capability = current.pushRelay {
                 await StagingPush.shared.renew(client: client, user: user, capability: capability)
             }
             #endif
         } catch CoreScopeAccountError.signedOut {
             guard !Task.isCancelled, self.user?.id == user.id else { return }
+            keepFavoritesOnDevice()
             store.deactivate(origin: origin)
             self.user = nil
             selection = nil
@@ -220,7 +233,7 @@ final class CoreScopeAccountModel {
     func setPush(_ enable: Bool) async {
         await action {
             guard let client, let user else { return }
-            if enable, let pushCapability = notifications?.nodeScopePush {
+            if enable, let pushCapability = notifications?.pushRelay {
                 try await StagingPush.shared.enable(client: client, user: user, capability: pushCapability)
                 message = String(localized: "Watched-node alerts enabled on this device.")
             } else {
@@ -231,10 +244,9 @@ final class CoreScopeAccountModel {
     }
     #endif
 
-    func logout(copyTo favorites: FavoritesStore? = nil) async {
+    func logout() async {
         await action {
             guard let client, let user else { return }
-            if let favorites { try copy(favorites) }
             #if NODESCOPE_PUSH_STAGING || NODESCOPE_PUSH_PRODUCTION
             try? await StagingPush.shared.disable(origin: client.origin, account: user.id, client: client, csrf: user.csrfToken)
             #endif
@@ -245,6 +257,7 @@ final class CoreScopeAccountModel {
             catch { revocationFailed = true }
             epoch = UUID()
             Self.epochs[origin] = epoch
+            keepFavoritesOnDevice()
             store.remove(origin: origin, userID: user.id)
             selection = nil
             resetDocument = nil
@@ -253,7 +266,7 @@ final class CoreScopeAccountModel {
             notificationStatus = .checking
             message = revocationFailed
                 ? String(localized: "Signed out on this device. Server revocation was not confirmed; the session may remain active until revoked on CoreScope or expired.")
-                : String(localized: "Signed out. Device favorites are unchanged.")
+                : String(localized: "Signed out. Favorites were kept on this device.")
         }
     }
 
@@ -275,6 +288,7 @@ final class CoreScopeAccountModel {
         do { try await work() }
         catch {
             if case CoreScopeAccountError.signedOut = error {
+                keepFavoritesOnDevice()
                 store.deactivate(origin: origin)
                 user = nil; selection = nil; resetDocument = nil
             }
@@ -331,7 +345,36 @@ struct CoreScopeAccountScreen: View {
                 }
                 if let user = model.user {
                     AccountIdentityCard(user: user)
-                    AccountRepeatersLink().id(user.id)
+                }
+                let source = AnalyzerSettings.normalizedHost(settings.host)
+                let favoriteKeys = model.user != nil
+                    ? model.currentSelection?.favoriteKeys ?? []
+                    : favorites.nodeKeys(source: source)
+                AccountNodesCard(keys: favoriteKeys.sorted(), myNodeNames: model.currentSelection?.myNodeNames ?? [:],
+                    userID: model.user?.id, paused: model.resetDocument != nil) { key in
+                    if model.user != nil {
+                        run { await model.removeFavorite(key) }
+                    } else if let item = favorites.deviceItems.first(where: {
+                        $0.source == source && $0.kind == .node && $0.entityID.lowercased() == key
+                    }) {
+                        favorites.remove(item)
+                    }
+                }
+                .id(model.user?.id)
+                if let user = model.user {
+                    let offer = model.deviceFavoritesOffer
+                    if !offer.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Add \(offer.count) favorites from this device to your account?")
+                            HStack {
+                                Button("Add") { run { await model.answerDeviceFavoritesOffer(add: true) } }
+                                    .buttonStyle(.borderedProminent)
+                                Button("Not now") { run { await model.answerDeviceFavoritesOffer(add: false) } }
+                                    .buttonStyle(.bordered)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(16).instrumentCard()
+                    }
                     notificationCard(user)
                     if model.resetDocument != nil {
                         AccountResetCard { restore in
@@ -340,13 +383,7 @@ struct CoreScopeAccountScreen: View {
                     }
                     AccountSyncCard(paused: model.resetDocument != nil,
                         sync: { run { await model.sync(upload: true) } },
-                        refresh: { run { await model.sync(upload: false) } },
-                        importFavorites: { run { await model.importDeviceFavorites(favorites) } },
-                        copy: { run { await model.copyToDevice(favorites) } })
-                    AccountSelectionsCard(keys: model.favoriteKeys, claimed: model.claimed,
-                        paused: model.resetDocument != nil) { key in
-                        run { await model.removeFavorite(key) }
-                    }
+                        refresh: { run { await model.sync(upload: false) } })
                     Button(role: .destructive) {
                         showsSignOut = true
                     } label: {
@@ -355,9 +392,8 @@ struct CoreScopeAccountScreen: View {
                     .buttonStyle(StandaloneActionButtonStyle())
                     .confirmationDialog("Sign out of CoreScope?", isPresented: $showsSignOut, titleVisibility: .visible) {
                         Button("Sign out", role: .destructive) { run { await model.logout() } }
-                        Button("Copy selections and sign out") { run { await model.logout(copyTo: favorites) } }
                     } message: {
-                        Text("Downloaded account selections and pending account edits will be removed from this device. Existing device favorites are preserved.")
+                        Text("Your current favorites will stay on this device.")
                     }
                 } else if model.supported {
                     AccountSignInCard(email: $email, password: $password, website: settings.baseURL) {
@@ -472,17 +508,17 @@ struct CoreScopeAccountScreen: View {
                     }
                     #if NODESCOPE_PUSH_STAGING || NODESCOPE_PUSH_PRODUCTION
                     let linked = StagingPush.shared.enabled(origin: settings.baseURL, account: user.id)
-                    if linked || notifications.nodeScopePush?.supports("ios") == true {
+                    if linked || notifications.pushRelay?.supports("ios") == true {
                         Button(linked ? "Disable push on this device" : "Enable push on this device") {
                             run { await model.setPush(!linked) }
                         }
                         .buttonStyle(.bordered)
                     }
-                    if notifications.nodeScopePush == nil {
+                    if notifications.pushRelay == nil {
                         Text("Push alerts aren’t available on this analyzer. Ask your CoreScope administrator to enable NodeScope Push. You can still watch nodes. To receive email alerts, your administrator must have set up email delivery, and email alerts must be on in your CoreScope account.")
                             .font(.subheadline).foregroundStyle(.secondary)
                         Button("View push setup guide") { showsPushGuide = true }
-                    } else if notifications.nodeScopePush?.supports("ios") != true {
+                    } else if notifications.pushRelay?.supports("ios") != true {
                         Text("This analyzer’s push relay isn’t supported by this NodeScope build.")
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
@@ -544,8 +580,6 @@ private struct AccountSourceCard: View {
                 .font(.caption.weight(.bold)).foregroundStyle(NodeScopeStyle.signal)
                 .accessibilityAddTraits(.isHeader)
             FavoriteSourceIdentity(host: host)
-            Text("Manage account node selections separately from favorites saved on this device.")
-                .font(.subheadline).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading).padding(16).instrumentCard()
     }
@@ -583,28 +617,15 @@ private struct AccountSyncCard: View {
     let paused: Bool
     let sync: () -> Void
     let refresh: () -> Void
-    let importFavorites: () -> Void
-    let copy: () -> Void
-    @State private var showsImport = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Sync & device favorites", systemImage: "arrow.triangle.2.circlepath").font(.monaspace(.headline))
+            Label("Sync", systemImage: "arrow.triangle.2.circlepath").font(.monaspace(.headline))
             .accessibilityAddTraits(.isHeader)
-            Text("Sync uploads only account edits. Device favorites stay local unless you import them.")
-                .font(.subheadline).foregroundStyle(.secondary)
             Button("Sync now", systemImage: "arrow.triangle.2.circlepath", action: sync)
                 .buttonStyle(.borderedProminent).disabled(paused)
             Button("Refresh from account", systemImage: "arrow.clockwise", action: refresh).buttonStyle(.bordered)
-            Divider()
-            Button("Import device node favorites", systemImage: "arrow.up.circle") { showsImport = true }
-                .disabled(paused)
-                .confirmationDialog("Import device favorites into this account?", isPresented: $showsImport, titleVisibility: .visible) {
-                    Button("Import node favorites", action: importFavorites)
-                } message: {
-                    Text("This adds device node favorites to this account’s pending selections. Choose Sync now to upload. Observer and channel favorites stay local.")
-                }
-            Button("Copy account selections to device", systemImage: "arrow.down.circle", action: copy)
+
         }
         .frame(maxWidth: .infinity, alignment: .leading).padding(16).instrumentCard()
     }
@@ -625,9 +646,10 @@ private struct AccountResetCard: View {
     }
 }
 
-private struct AccountSelectionsCard: View {
+private struct AccountNodesCard: View {
     let keys: [String]
-    let claimed: [String: String]
+    let myNodeNames: [String: String]
+    let userID: Int64?
     let paused: Bool
     let remove: (String) -> Void
     @Environment(AnalyzerSettings.self) private var settings
@@ -635,12 +657,33 @@ private struct AccountSelectionsCard: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var resolvedNames: [String: String] = [:]
+    @State private var repeaterClient: CoreScopeAccountClient?
+    @State private var repeaters: [AccountRepeater]?
+    @State private var selectedRepeater: AccountRepeater?
+    @State private var checkFailed = false
+    @State private var listError: String?
+    @State private var retry = 0
+    private static let logger = Logger(subsystem: "com.btdev.nodescope", category: "account")
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Account nodes", systemImage: "star").font(.monaspace(.headline))
+            Label("Your nodes", systemImage: "star").font(.monaspace(.headline))
             .accessibilityAddTraits(.isHeader)
-            Text("\(keys.count) favorites · \(claimed.count) claimed nodes").font(.subheadline).foregroundStyle(.secondary)
+            let favoritesCount = String(localized: "\(keys.count) favorites")
+            let summary = repeaters.map {
+                let claimedCount = String(localized: "\($0.count) claimed repeaters")
+                return String(localized: "\(claimedCount) · \(favoritesCount)")
+            } ?? favoritesCount
+            Text(summary).font(.monaspace(.subheadline)).foregroundStyle(.secondary)
+            repeaterSection
+            if userID == nil {
+                Text("Favorites saved on this device").font(.monaspace(.subheadline).weight(.semibold))
+                    .accessibilityAddTraits(.isHeader)
+            } else {
+                Text("Favorites").font(.monaspace(.subheadline).weight(.semibold))
+                    .accessibilityAddTraits(.isHeader)
+            }
+            if keys.isEmpty { Text("No favorites yet.").font(.footnote).foregroundStyle(.secondary) }
             ForEach(keys, id: \.self) { key in
                 let layout = dynamicTypeSize.isAccessibilitySize
                     ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
@@ -649,27 +692,112 @@ private struct AccountSelectionsCard: View {
                     AccountNodeIdentity(name: name(for: key), publicKey: key)
                     if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 8) }
                     Button("Remove", role: .destructive) { remove(key) }.disabled(paused)
-                        .accessibilityLabel("Remove account favorite \(name(for: key) ?? key)")
-                }
-            }
-            if !claimed.isEmpty {
-                Divider()
-                Text("Claimed nodes are managed on CoreScope. Removing an account favorite does not unclaim a node.")
-                    .font(.footnote).foregroundStyle(.secondary)
-                ForEach(claimed.keys.sorted(), id: \.self) { key in
-                    HStack(alignment: .top) {
-                        Image(systemName: "checkmark.seal").foregroundStyle(NodeScopeStyle.signal)
-                            .accessibilityLabel("Claimed node")
-                        AccountNodeIdentity(name: name(for: key), publicKey: key)
-                    }
+                        .accessibilityLabel("Remove favorite \(name(for: key) ?? key)")
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading).padding(16).instrumentCard()
         .task(id: NameLoadIdentity(session: settings.sourceSession.id,
-                                  keys: Array(Set(keys).union(claimed.keys)).sorted(),
+                                  keys: keys,
                                   active: scenePhase == .active)) {
             await loadNames()
+        }
+        .task(id: "\(settings.sourceSession.id)|\(settings.sourceIsReady)|\(userID ?? 0)|\(retry)") {
+            await checkRepeaters()
+        }
+        .sheet(item: $selectedRepeater, onDismiss: {
+            if let repeaterClient { Task { await loadRepeaters(repeaterClient) } }
+        }) { repeater in
+            if let repeaterClient {
+                AccountRepeaterManagementSheet(client: repeaterClient, publicKey: repeater.pubkey, name: repeater.title)
+            }
+        }
+    }
+
+    @ViewBuilder private var repeaterSection: some View {
+        if checkFailed {
+            HStack {
+                Text("Couldn't check repeater management").font(.footnote).foregroundStyle(.secondary)
+                Spacer(minLength: 8)
+                Button("Retry") { retry += 1 }.buttonStyle(.bordered)
+            }
+            Divider()
+        } else if repeaterClient != nil {
+            Text("Claimed Repeaters").font(.monaspace(.subheadline).weight(.semibold))
+                .accessibilityAddTraits(.isHeader)
+            if let listError {
+                Text(listError)
+                Button("Try Again") {
+                    if let repeaterClient { Task { await loadRepeaters(repeaterClient) } }
+                }
+            } else if let repeaters {
+                if repeaters.isEmpty { Text("You haven’t claimed any repeaters.") }
+                ForEach(repeaters) { repeater in
+                    Button {
+                        selectedRepeater = repeater
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(repeater.title).font(.monaspace(.headline))
+                            if !repeater.known || repeater.inactive == true {
+                                Text("No longer in the node list")
+                            }
+                            if let lastHeard = repeater.lastHeard {
+                                Text("Last heard \(lastHeard, style: .relative) ago")
+                            } else {
+                                Text("Never heard")
+                            }
+                            if let status = repeater.status {
+                                Text("Reported status: \(status.capitalized)")
+                            }
+                            if !repeater.comaintainers.isEmpty {
+                                Text("Also maintained by \(repeater.comaintainers.formatted(.list(type: .and)))")
+                            }
+                        }
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            } else {
+                ProgressView()
+            }
+            Divider()
+        }
+    }
+
+    private func checkRepeaters() async {
+        repeaterClient = nil
+        repeaters = nil
+        listError = nil
+        checkFailed = false
+        guard userID != nil, settings.sourceIsReady else { return }
+
+        var step = "restore account session"
+        do {
+            guard let restored = try CoreScopeAccountClient.restoredRepeaterClient(settings: settings) else { return }
+            step = "check repeater capability"
+            guard try await restored.supportsRepeaterManagement(), !Task.isCancelled else { return }
+            repeaterClient = restored
+            await loadRepeaters(restored)
+        } catch {
+            guard !Task.isCancelled, !(error is CancellationError) else { return }
+            let failure = error as NSError
+            Self.logger.error("My Repeaters: \(step, privacy: .public) failed (\(failure.domain, privacy: .public) \(failure.code)): \(error, privacy: .private)")
+            checkFailed = true
+        }
+    }
+
+    private func loadRepeaters(_ client: CoreScopeAccountClient) async {
+        listError = nil
+        do {
+            let rows = try await client.repeaters()
+            try Task.checkCancellation()
+            repeaters = rows
+        } catch {
+            guard !Task.isCancelled, !(error is CancellationError) else { return }
+            listError = error.localizedDescription
         }
     }
 
@@ -680,13 +808,13 @@ private struct AccountSelectionsCard: View {
     }
 
     private func name(for key: String) -> String? {
-        if let name = nonempty(claimed[key]) { return name }
+        if let name = nonempty(myNodeNames[key]) { return name }
         if let name = resolvedNames[key] { return name }
         let source = AnalyzerSettings.normalizedHost(settings.host)
         let local = favorites.items.first {
             $0.source == source && $0.kind == .node && $0.entityID.lowercased() == key
         }
-        return nonempty(local?.node?.name)
+        return nonempty(userID == nil ? local?.title : local?.node?.name)
     }
 
     private func nonempty(_ value: String?) -> String? {
@@ -695,9 +823,9 @@ private struct AccountSelectionsCard: View {
     }
 
     @MainActor private func loadNames() async {
-        guard scenePhase == .active, settings.sourceIsReady else { return }
+        guard userID != nil, !keys.isEmpty, scenePhase == .active, settings.sourceIsReady else { return }
         let session = settings.sourceSession
-        let allKeys = Array(Set(keys).union(claimed.keys)).sorted()
+        let allKeys = keys
         do {
             let repositories = try await CacheStorageService.shared.myNodesCoreScope(
                 client: APIClient(baseURL: settings.baseURL), session: session)
@@ -758,99 +886,6 @@ private struct AccountSignInCard: View {
             Link("Open CoreScope", destination: website).font(.subheadline)
         }
         .frame(maxWidth: .infinity, alignment: .leading).padding(16).instrumentCard()
-    }
-}
-
-private struct AccountRepeatersLink: View {
-    @Environment(AnalyzerSettings.self) private var settings
-    @State private var client: CoreScopeAccountClient?
-
-    var body: some View {
-        Group {
-            if let client {
-                NavigationLink {
-                    AccountRepeatersScreen(client: client)
-                } label: {
-                    Label("My Repeaters", systemImage: "antenna.radiowaves.left.and.right")
-                        .font(.monaspace(.headline))
-                }
-                .buttonStyle(.bordered)
-            }
-        }
-        .task(id: settings.sourceSession.id) {
-            client = nil
-            guard let restored = try? CoreScopeAccountClient.restoredRepeaterClient(settings: settings),
-                  (try? await restored.supportsRepeaterManagement()) == true, !Task.isCancelled else { return }
-            client = restored
-        }
-    }
-}
-
-private struct AccountRepeatersScreen: View {
-    let client: CoreScopeAccountClient
-    @State private var repeaters: [AccountRepeater]?
-    @State private var selected: AccountRepeater?
-    @State private var error: String?
-
-    var body: some View {
-        List {
-            Section {
-                if let error {
-                    Text(error)
-                    Button("Try Again") { Task { await reload() } }
-                } else if let repeaters {
-                    if repeaters.isEmpty { Text("You haven’t claimed any repeaters.") }
-                    ForEach(repeaters) { repeater in
-                        Button {
-                            selected = repeater
-                        } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(repeater.title).font(.monaspace(.headline))
-                                if !repeater.known || repeater.inactive == true {
-                                    Text("No longer in the node list")
-                                }
-                                if let lastHeard = repeater.lastHeard {
-                                    Text("Last heard \(lastHeard, style: .relative) ago")
-                                } else {
-                                    Text("Never heard")
-                                }
-                                if let status = repeater.status {
-                                    Text("Reported status: \(status.capitalized)")
-                                }
-                                if !repeater.comaintainers.isEmpty {
-                                    Text("Also maintained by \(repeater.comaintainers.formatted(.list(type: .and)))")
-                                }
-                            }
-                            .font(.subheadline)
-                            .foregroundStyle(.primary)
-                        }
-                    }
-                } else {
-                    ProgressView()
-                }
-            }
-            .instrumentListRows()
-        }
-        .meshPageBackground()
-        .navigationTitle("My Repeaters")
-        .task { await reload() }
-        .refreshable { await reload() }
-        .sheet(item: $selected, onDismiss: {
-            repeaters = nil
-            Task { await reload() }
-        }) { repeater in
-            AccountRepeaterManagementSheet(client: client, publicKey: repeater.pubkey, name: repeater.title)
-        }
-    }
-
-    private func reload() async {
-        do {
-            repeaters = try await client.repeaters()
-            error = nil
-        } catch is CancellationError {
-        } catch {
-            self.error = error.localizedDescription
-        }
     }
 }
 

@@ -9,6 +9,25 @@ struct CoreScopeAccountSyncTests {
     private let c = String(repeating: "c", count: 64)
     private let d = String(repeating: "d", count: 64)
 
+    @Test func notificationsDecodePushRelayWithLegacyFallback() throws {
+        let current = #"{"relayOrigin":"https://push.nodescope.app","analyzerId":"current","contractVersion":1,"platforms":["ios"]}"#
+        let legacy = #"{"relayOrigin":"https://push.nodescope.app","analyzerId":"legacy","contractVersion":1,"platforms":["ios"]}"#
+        let cases: [(String, String?)] = [
+            (#","pushRelay":"# + current, "current"),
+            (#","nodeScopePush":"# + legacy, "legacy"),
+            (#","pushRelay":"# + current + #","nodeScopePush":"# + legacy, "current"),
+            ("", nil),
+            (#","pushRelay":null,"nodeScopePush":"# + legacy, nil),
+        ]
+        for (fields, expected) in cases {
+            let body = #"{"enabled":true,"watches":[{"pubkey":"abc","name":"Roof"}]"# + fields + "}"
+            let notifications = try JSONDecoder().decode(CoreScopeAccountNotifications.self, from: Data(body.utf8))
+            #expect(notifications.enabled)
+            #expect(notifications.watches.map(\.name) == ["Roof"])
+            #expect(notifications.pushRelay?.analyzerId == expected, "Fields: \(fields)")
+        }
+    }
+
     private func settings(_ keys: [String], claimed: [String] = []) throws -> CoreScopeAccountSettings {
         let own = claimed.map { ["pubkey": $0, "name": "Roof", "future": "preserve"] }
         return CoreScopeAccountSettings(revision: 1, generation: "g", doc: .init(v: 1, keys: [
@@ -65,14 +84,27 @@ struct CoreScopeAccountSyncTests {
         #expect(state.favorites == [c, d])
     }
 
-    @Test func claimedMembershipDoesNotForceFavoriteMembership() throws {
-        let remote = try settings([a], claimed: [a, b])
-        let (document, selection) = try CoreScopeFavoriteMerge.document(base: remote, local: [], remote: remote)
-        #expect(selection.favorites.isEmpty)
-        #expect(selection.keys == [a, b])
-        #expect(document.keys["meshcore-my-nodes"] == remote.doc?.keys["meshcore-my-nodes"])
-        let (_, imported) = try CoreScopeFavoriteMerge.document(base: remote, local: [b], remote: remote)
-        #expect(imported.favorites == [b])
+    @Test func removingAFavoriteFiltersBothKeysAndPreservesOtherMyNodeFields() throws {
+        let remote = try settings([a, c], claimed: [a, b])
+        var state = try CoreScopeAccountSelectionState(remote: remote)
+        #expect(state.favoriteKeys == [a, b, c])
+        #expect(state.myNodeNames[b] == "Roof")
+        state.removeFavorite(a.uppercased())
+        #expect(state.favoriteKeys == [b, c])
+        #expect(state.hasPendingEdits)
+        try state.refresh(remote)
+        let (document, selection) = try CoreScopeFavoriteMerge.document(base: state.baseline, local: state.favorites,
+            remote: remote, removingMyNodes: state.removedMyNodes ?? [])
+        #expect(selection.favorites == [c])
+        #expect(selection.myNodes == [b: "Roof"])
+        let kept = try #require(document.keys["meshcore-my-nodes"])
+        let rows = try JSONDecoder().decode([[String: String]].self, from: Data(kept.utf8))
+        #expect(rows == [["pubkey": b, "name": "Roof", "future": "preserve"]])
+        #expect(document.keys["meshcore-theme"] == "dark")
+        let accepted = CoreScopeAccountSettings(revision: 2, generation: remote.generation,
+            doc: document, allowlist: remote.allowlist)
+        try state.acknowledge(accepted, sentFavorites: state.favorites)
+        #expect(!state.hasPendingEdits)
     }
 
     @Test func writesAreThrottledAcrossClientsIncludingFailedAttempts() async throws {
@@ -137,58 +169,69 @@ struct CoreScopeAccountSyncTests {
         #expect(model.user == nil)
     }
 
-    @Test @MainActor func combinedFavoritesPreserveMembershipAndNeverPersistAccountNodesAsDeviceFavorites() throws {
-        let suite = "combined-favorites-\(UUID())"
+    @Test @MainActor func accountFavoritesReplaceDeviceMembershipAndStayOnSignOut() async throws {
+        let suite = "unified-favorites-\(UUID())"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let accounts = CoreScopeAccountSelectionStore(defaults: defaults)
         let favorites = FavoritesStore(defaults: defaults, accountStore: accounts)
-        let origin = "https://one.fixture/"
-        let source = "one.fixture"
-        let local = MeshNode(publicKey: a.uppercased(), name: "Device node", role: "repeater", lat: nil, lon: nil,
-            lastSeen: nil, firstSeen: nil, advertCount: nil, hashSize: nil, hashSizeInconsistent: nil, lastHeard: nil, defaultScope: nil)
-        favorites.toggle(node: local, source: source)
-        try accounts.save(CoreScopeAccountSelectionState(remote: settings([a, b], claimed: [b, c])), origin: origin, userID: 7)
-        accounts.activate(origin: origin, userID: 7)
-        #expect(favorites.items.count == 3)
-        #expect(favorites.items.first?.node == local)
+        let origin = try #require(URL(string: "https://unified-\(UUID().uuidString.lowercased()).fixture/"))
+        let source = try #require(origin.host)
+        favorites.applyAccountNodes([a], names: [a: "Device node"], source: source)
+        favorites.applyAccountNodes([a], names: [:], source: "another.fixture")
+        try accounts.save(CoreScopeAccountSelectionState(remote: settings([b], claimed: [b, c])),
+            origin: origin.absoluteString, userID: 7)
+        accounts.activate(origin: origin.absoluteString, userID: 7)
+        #expect(Set(favorites.items.filter { $0.source == source }.map(\.entityID)) == [b, c])
+        #expect(favorites.items.first { $0.entityID == c }?.title == "Roof")
+        let shared = try #require(favorites.items.first { $0.entityID == b })
+        favorites.remove(shared)
+        #expect(!favorites.contains(kind: .node, entityID: b, source: source))
+        let added = MeshNode(publicKey: d, name: "Added in app", role: "unknown", lat: nil, lon: nil,
+            lastSeen: nil, firstSeen: nil, advertCount: nil, hashSize: nil, hashSizeInconsistent: nil,
+            lastHeard: nil, defaultScope: nil)
+        favorites.toggle(node: added, source: source)
+        #expect(try accounts.load(origin: origin.absoluteString, userID: 7)?.favorites == [d])
         #expect(favorites.nodeKeys(source: source) == [a])
-        let localRow = try #require(favorites.items.first)
-        #expect(favorites.membershipLabel(localRow) == "Device · Account")
-        favorites.remove(localRow)
-        #expect(favorites.items.count == 3)
-        #expect(favorites.nodeKeys(source: source).isEmpty)
-        let shared = try #require(favorites.items.first { $0.entityID.lowercased() == b })
-        favorites.removeAccountFavorite(shared)
-        #expect(favorites.items.contains { $0.entityID == b })
-        #expect(favorites.membershipLabel(shared) == "Claimed")
-        let restartedAccounts = CoreScopeAccountSelectionStore(defaults: defaults)
-        let restarted = FavoritesStore(defaults: defaults, accountStore: restartedAccounts)
-        #expect(restarted.items.count == 3)
-        #expect(restarted.deviceItems.isEmpty)
-        accounts.remove(origin: origin, userID: 7)
-        #expect(favorites.items.isEmpty)
+
+        let fixture = AccountFixture()
+        AccountFixtureProtocol.fixture = fixture
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [AccountFixtureProtocol.self]
+        let client = try CoreScopeAccountClient(origin: origin, configuration: config, cookie: "synthetic")
+        let user = CoreScopeAccountUser(id: 7, email: "fixture@example.test", displayName: "Test", csrfToken: "csrf-fixture")
+        let model = CoreScopeAccountModel(store: accounts, client: client, origin: origin.absoluteString,
+            source: source, user: user, favorites: favorites)
+        await model.logout()
+
+        #expect(model.user == nil)
+        #expect(favorites.nodeKeys(source: source) == [c, d])
+        #expect(favorites.nodeKeys(source: "another.fixture") == [a])
+        let restarted = FavoritesStore(defaults: defaults, accountStore: CoreScopeAccountSelectionStore(defaults: defaults))
+        #expect(restarted.nodeKeys(source: source) == [c, d])
+        #expect(restarted.items.first { $0.entityID == c }?.title == "Roof")
     }
 
-    @Test @MainActor func switchingAccountAndRemoteRemovalNeverDeleteDeviceMembership() throws {
-        let suite = "switch-projection-\(UUID())"
+    @Test @MainActor func signInOfferIsRememberedPerAccountAndSource() throws {
+        let suite = "favorites-offer-\(UUID())"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let accounts = CoreScopeAccountSelectionStore(defaults: defaults)
-        let favorites = FavoritesStore(defaults: defaults, accountStore: accounts)
-        favorites.applyAccountNodes([a], names: [a: "Device"], source: "one.fixture")
-        try accounts.save(CoreScopeAccountSelectionState(remote: settings([a, b])), origin: "https://one.fixture/", userID: 1)
-        accounts.activate(origin: "https://one.fixture/", userID: 1)
-        #expect(favorites.items.count == 2)
-        try accounts.save(CoreScopeAccountSelectionState(remote: settings([])), origin: "https://one.fixture/", userID: 1)
-        #expect(favorites.items.map(\.entityID) == [a])
-        try accounts.save(CoreScopeAccountSelectionState(remote: settings([c])), origin: "https://one.fixture/", userID: 2)
-        accounts.activate(origin: "https://one.fixture/", userID: 2)
-        #expect(Set(favorites.items.map(\.entityID)) == [a, c])
-        accounts.remove(origin: "https://one.fixture/", userID: 1)
-        #expect(Set(favorites.items.map(\.entityID)) == [a, c])
-        accounts.deactivate(origin: "https://one.fixture/")
-        #expect(favorites.items.map(\.entityID) == [a])
+        let origin = "https://offer.fixture/"
+        var state = try CoreScopeAccountSelectionState(remote: settings([a], claimed: [b]))
+        let device: Set<String> = [a, b, c]
+        let offer = accounts.offeredDeviceFavorites(device, state: state, origin: origin, userID: 7)
+        #expect(offer == [c])
+        state.favorites.formUnion(offer)
+        #expect(state.favorites == [a, c])
+        #expect(state.myNodeNames == [b: "Roof"])
+        accounts.finishDeviceFavoritesOffer(origin: origin, userID: 7)
+        accounts.finishDeviceFavoritesOffer(origin: origin, userID: 8)
+        let restarted = CoreScopeAccountSelectionStore(defaults: defaults)
+        #expect(restarted.offeredDeviceFavorites([d], state: state, origin: origin, userID: 7).isEmpty)
+        #expect(restarted.offeredDeviceFavorites([d], state: state, origin: origin, userID: 8).isEmpty)
+        #expect(restarted.offeredDeviceFavorites([d], state: state, origin: origin, userID: 9) == [d])
+        #expect(restarted.offeredDeviceFavorites([d], state: state, origin: "https://other.fixture/", userID: 7) == [d])
     }
 
     @Test @MainActor func editsDuringSettingsReadAndWriteRemainPending() async throws {

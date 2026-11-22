@@ -2034,6 +2034,7 @@
     <string name="nodevision_power_battery">Alimentación: Batería</string>
     <string name="nodevision_power_solar">Alimentación: Solar</string>
     <string name="nodevision_owner_decommissioned">El propietario indica que está fuera de servicio</string>
+    <string name="repeater_check_failed">No se pudo comprobar la gestión de repetidores</string>
     <string name="repeater_my_repeaters">Mis repetidores</string>
     <string name="repeater_manage">Gestionar repetidor</string>
     <string name="repeater_request_failed">No se pudo completar la solicitud. Comprueba la conexión y tu sesión de CoreScope.</string>
@@ -2061,4 +2062,28 @@
     <string name="onboarding_location_is_optional_and_is_only_used_when">La ubicación es opcional y solo se usa cuando eliges centrar el mapa en ti.</string>
     <string name="onboarding_us_community_sources">Fuentes de la comunidad en EE. UU.</string>
     <string name="settings_this_app_has_no_backend_of_its_own">Esta app no tiene un backend propio. Todo lo que se muestra aquí viene del host del analizador configurado en Ajustes, y no está afiliada a los proyectos CoreScope ni MeshCore.</string>
+    <string name="account_your_nodes">Tus nodos</string>
+    <string name="account_claimed_repeaters">Repetidores reclamados</string>
+    <string name="account_favorites">Favoritos</string>
+    <string name="account_device_favorites">Favoritos guardados en este dispositivo</string>
+    <string name="account_no_favorites">Todavía no hay favoritos.</string>
+    <string name="account_add_favorites">Agregar</string>
+    <string name="account_favorites_not_now">Ahora no</string>
+    <string name="account_sync">Sincronizar</string>
+    <string name="account_keep_favorites_on_sign_out">Tus favoritos actuales se quedarán en este dispositivo.</string>
+    <string name="account_signed_out_favorites_kept">Cerraste sesión. Tus favoritos se guardaron en este dispositivo.</string>
+    <string name="account_favorites_refreshed">Se actualizaron los favoritos de la cuenta.</string>
+    <string name="account_node_summary">%1$s · %2$s</string>
+    <plurals name="account_favorites_count">
+        <item quantity="one">%d favorito</item>
+        <item quantity="other">%d favoritos</item>
+    </plurals>
+    <plurals name="account_claimed_repeaters_count">
+        <item quantity="one">%d repetidor reclamado</item>
+        <item quantity="other">%d repetidores reclamados</item>
+    </plurals>
+    <plurals name="account_offer_device_favorites">
+        <item quantity="one">¿Agregar %d favorito de este dispositivo a tu cuenta?</item>
+        <item quantity="other">¿Agregar %d favoritos de este dispositivo a tu cuenta?</item>
+    </plurals>
 </resources>

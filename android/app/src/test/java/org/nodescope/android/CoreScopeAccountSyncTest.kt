@@ -26,6 +26,33 @@ class CoreScopeAccountSyncTest {
         )), listOf(AccountAllowedKey("meshcore-favorites", "set"), AccountAllowedKey("meshcore-my-nodes", "set", "pubkey"))
     )
 
+    @Test fun notificationsDecodePushRelayWithLegacyFallback() = runBlocking {
+        val current = """{"relayOrigin":"https://push.nodescope.app","analyzerId":"current","contractVersion":1,"platforms":["android"]}"""
+        val legacy = """{"relayOrigin":"https://push.nodescope.app","analyzerId":"legacy","contractVersion":1,"platforms":["android"]}"""
+        val cases = listOf(
+            ""","pushRelay":$current""" to "current",
+            ""","nodeScopePush":$legacy""" to "legacy",
+            ""","pushRelay":$current,"nodeScopePush":$legacy""" to "current",
+            "" to null,
+            ""","pushRelay":null,"nodeScopePush":$legacy""" to null,
+        )
+        for ((fields, expected) in cases) {
+            val body = """{"enabled":true,"watches":[{"pubkey":"$a","name":"Roof"}]$fields}"""
+            val http = OkHttpClient.Builder().addInterceptor { chain ->
+                Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1)
+                    .code(200).message("Fixture").body(body.toResponseBody("application/json".toMediaType())).build()
+            }.build()
+            val client = CoreScopeAccountClient("https://notifications.fixture/".toHttpUrl(),
+                cookie = "test-session", http = http)
+            val notifications = client.notifications()
+            assertTrue(notifications.enabled)
+            assertEquals(listOf("Roof"), notifications.watches.map { it.name })
+            assertEquals(fields, expected, notifications.pushRelay?.analyzerId)
+            assertEquals(fields, expected, client.setWatch(a, watched = true, csrf = "test-csrf").pushRelay?.analyzerId)
+            assertEquals(fields, expected, client.pushCapability()?.analyzerId)
+        }
+    }
+
     @Test fun repeaterManagementUsesAccountSessionAndConditionalWrites() = runBlocking {
         val requests = mutableListOf<Request>()
         val http = OkHttpClient.Builder().addInterceptor { chain ->
@@ -92,13 +119,20 @@ class CoreScopeAccountSyncTest {
         assertEquals(setOf(c, d), state.refresh(settings(listOf(a, c))).favorites)
     }
 
-    @Test fun claimedMembershipDoesNotForceFavoriteMembership() {
-        val remote = settings(listOf(a), listOf(a, b))
-        val (document, selection) = CoreScopeFavoriteMerge.document(remote, emptySet(), remote)
-        assertTrue(selection.favorites.isEmpty())
-        assertEquals(setOf(a, b), selection.keys)
-        assertEquals(remote.doc?.keys?.get("meshcore-my-nodes"), document.keys["meshcore-my-nodes"])
-        assertEquals(listOf(b), CoreScopeFavoriteMerge.document(remote, setOf(b), remote).second.favorites)
+    @Test fun removingAFavoriteFiltersBothKeysAndPreservesOtherMyNodeFields() {
+        val remote = settings(listOf(a, c), listOf(a, b))
+        val initial = CoreScopeAccountSelectionState.from(remote)
+        assertEquals(setOf(a, b, c), initial.favoriteKeys)
+        val state = initial.removeFavorite(a.uppercase()).refresh(remote)
+        assertEquals(setOf(b, c), state.favoriteKeys)
+        assertTrue(state.hasPendingEdits)
+        val (document, selection) = CoreScopeFavoriteMerge.document(state.baseline, state.favorites, remote, state.removedMyNodes)
+        assertEquals(listOf(c), selection.favorites)
+        assertEquals(mapOf(b to "Roof"), selection.myNodes)
+        val rows = Json.decodeFromString<List<Map<String, String>>>(document.keys.getValue("meshcore-my-nodes"))
+        assertEquals(listOf(mapOf("pubkey" to b, "name" to "Roof", "future" to "preserve")), rows)
+        assertEquals("dark", document.keys["meshcore-theme"])
+        assertFalse(state.acknowledge(remote.copy(revision = 2, doc = document), state.favorites).hasPendingEdits)
     }
 
     @Test fun failedWriteAttemptsStillConsumeTheMinute() {
@@ -109,51 +143,52 @@ class CoreScopeAccountSyncTest {
         CoreScopeAccountWriteGate.reserve(origin, 160_000)
     }
 
-    @Test fun combinedFavoritesPreserveMembershipWithoutPersistingAccountNodes() {
+    @Test fun accountFavoritesReplaceDeviceMembershipAndStayOnSignOut() {
         val storage = mutableMapOf<String, String>()
-        val accounts = AccountSelectionStore({ storage[it] }, { key, value -> if (value == null) storage.remove(key) else storage[key] = value })
+        val accounts = AccountSelectionStore({ storage[it] }, { key, value ->
+            if (value == null) storage.remove(key) else storage[key] = value
+        })
         var document: String? = null
         val library = NodeLibrary(accountStore = accounts, host = "one.fixture") { document = it }
-        library.toggle(MeshNode(a.uppercase(), "Device node", "repeater", lastSeen = ""))
+        library.toggle(MeshNode(a, "Device node", "repeater", lastSeen = ""))
         val origin = "https://one.fixture/"
-        accounts.save(origin, 7, CoreScopeAccountSelectionState.from(settings(listOf(a, b), listOf(b, c))))
+        accounts.save(origin, 7, CoreScopeAccountSelectionState.from(settings(listOf(b), listOf(b, c))))
         accounts.activate(origin, 7)
-        assertEquals(3, library.favorites.size)
+        assertEquals(setOf(b, c), library.favorites.map { it.entityId }.toSet())
+        assertEquals("Roof", library.favorites.first { it.entityId == c }.title)
+        library.removeFavorite(library.favorites.first { it.entityId == b })
+        assertFalse(library.isFavorite(SavedKind.NODE, b))
+        library.toggle(MeshNode(d, "Added in app", "repeater", lastSeen = ""))
+        val account = checkNotNull(accounts.load(origin, 7))
+        assertEquals(setOf(d), account.favorites)
         assertEquals(setOf(a), library.nodeKeys())
-        assertEquals("Device · Account", library.membershipLabel(library.favorites.first()))
-        library.removeFavorite(library.favorites.first())
-        assertEquals(3, library.favorites.size)
-        assertTrue(library.nodeKeys().isEmpty())
-        val shared = library.favorites.first { it.entityId == b }
-        library.removeAccountFavorite(shared)
-        assertEquals("Claimed", library.membershipLabel(shared))
-        assertEquals(3, library.favorites.size)
-        val restoredAccounts = AccountSelectionStore({ storage[it] }, { key, value -> if (value == null) storage.remove(key) else storage[key] = value })
-        val restarted = NodeLibrary(document, accountStore = restoredAccounts, host = "one.fixture")
-        assertEquals(3, restarted.favorites.size)
-        assertTrue(restarted.state.favorites.isEmpty())
+        library.keepAccountFavoritesOnDevice(account)
         accounts.remove(origin, 7)
-        assertTrue(library.favorites.isEmpty())
+        val restarted = NodeLibrary(document, accountStore = accounts, host = "one.fixture")
+        assertEquals(setOf(c, d), restarted.nodeKeys())
+        assertEquals("Roof", restarted.favorites.first { it.entityId == c }.title)
     }
 
-    @Test fun switchingAccountsAndRemoteRemovalPreserveDeviceFavorites() {
+    @Test fun signInOfferIsRememberedPerAccountAndSource() {
         val storage = mutableMapOf<String, String>()
-        val accounts = AccountSelectionStore({ storage[it] }, { key, value -> if (value == null) storage.remove(key) else storage[key] = value })
-        val library = NodeLibrary(accountStore = accounts, host = "one.fixture")
-        library.toggle(MeshNode(a, "Device", "repeater", lastSeen = ""))
-        val origin = "https://one.fixture/"
-        accounts.save(origin, 1, CoreScopeAccountSelectionState.from(settings(listOf(a, b))))
-        accounts.activate(origin, 1)
-        assertEquals(2, library.favorites.size)
-        accounts.save(origin, 1, CoreScopeAccountSelectionState.from(settings(emptyList())))
-        assertEquals(listOf(a), library.favorites.map { it.entityId })
-        accounts.save(origin, 2, CoreScopeAccountSelectionState.from(settings(listOf(c))))
-        accounts.activate(origin, 2)
-        assertEquals(setOf(a, c), library.favorites.map { it.entityId }.toSet())
-        accounts.remove(origin, 1)
-        assertEquals(setOf(a, c), library.favorites.map { it.entityId }.toSet())
-        accounts.deactivate(origin)
-        assertEquals(listOf(a), library.favorites.map { it.entityId })
+        fun store() = AccountSelectionStore({ storage[it] }, { key, value ->
+            if (value == null) storage.remove(key) else storage[key] = value
+        })
+        val accounts = store()
+        val origin = "https://offer.fixture/"
+        val initial = CoreScopeAccountSelectionState.from(settings(listOf(a), listOf(b)))
+        val offer = accounts.offeredDeviceFavorites(setOf(a, b, c), initial, origin, 7)
+        assertEquals(setOf(c), offer)
+        val state = initial.copy(favorites = initial.favorites + offer)
+        assertEquals(setOf(a, c), state.favorites)
+        assertEquals(mapOf(b to "Roof"), state.myNodeNames)
+        accounts.finishDeviceFavoritesOffer(origin, 7)
+        accounts.finishDeviceFavoritesOffer(origin, 8)
+        val restarted = store()
+        assertTrue(restarted.offeredDeviceFavorites(setOf(d), state, origin, 7).isEmpty())
+        assertTrue(restarted.offeredDeviceFavorites(setOf(d), state, origin, 8).isEmpty())
+        assertEquals(setOf(d), restarted.offeredDeviceFavorites(setOf(d), state, origin, 9))
+        assertEquals(setOf(d), restarted.offeredDeviceFavorites(setOf(d), state, "https://other.fixture/", 7))
     }
 
     @Test fun acknowledgmentKeepsEditsMadeDuringUpload() {

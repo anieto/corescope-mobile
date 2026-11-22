@@ -168,7 +168,7 @@ internal class FavoriteChangesModel {
 @Composable
 fun FavoriteChangesScreen(host: String, sourceName: String?, library: NodeLibrary,
                           store: MyNodesSnapshotStore, acquire: () -> MyNodesRepositories) {
-    val items = library.state.favorites.filter { it.kind == SavedKind.NODE || it.kind == SavedKind.OBSERVER }
+    val items = library.favorites.filter { it.kind == SavedKind.NODE || it.kind == SavedKind.OBSERVER }
     val model = remember(host) { FavoriteChangesModel() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val currentAcquire by rememberUpdatedState(acquire)

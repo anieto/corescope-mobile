@@ -1,20 +1,24 @@
 package org.nodescope.android.feature.explore
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.nodescope.android.R
 import org.nodescope.android.core.design.MeshModalBottomSheet
+import org.nodescope.android.core.design.MonaspaceNeon
 import org.nodescope.android.core.design.parseDecimalInput
 import org.nodescope.android.core.design.relativeTime
 import org.nodescope.android.core.model.parseInstant
@@ -25,39 +29,54 @@ import org.nodescope.android.core.network.AccountRepeaterEdit
 import org.nodescope.android.core.network.CoreScopeAccountClient
 
 @Composable
-internal fun rememberRepeaterManagementClient(host: String, enabled: Boolean, accountId: Long? = null): CoreScopeAccountClient? {
+internal fun rememberRepeaterManagementClient(
+    host: String, enabled: Boolean, accountId: Long? = null, retry: Int = 0,
+    onFailure: ((String, Exception) -> Unit)? = null,
+): CoreScopeAccountClient? {
     val context = LocalContext.current
-    var client by remember(host, enabled, accountId) { mutableStateOf<CoreScopeAccountClient?>(null) }
-    LaunchedEffect(host, enabled, accountId) {
+    var client by remember(host, enabled, accountId, retry) { mutableStateOf<CoreScopeAccountClient?>(null) }
+    LaunchedEffect(host, enabled, accountId, retry) {
         if (!enabled) return@LaunchedEffect
+        var step = "restore account session"
         try {
             val restored = CoreScopeAccountClient.forSource(context.applicationContext, host)
-            if (restored.hasSession && restored.supportsRepeaterManagement()) client = restored
+            if (!restored.hasSession) return@LaunchedEffect
+            step = "check repeater capability"
+            if (restored.supportsRepeaterManagement()) client = restored
         } catch (error: CancellationException) {
             throw error
-        } catch (_: Exception) {
-            // The website remains available when account support cannot be confirmed.
+        } catch (error: Exception) {
+            onFailure?.invoke(step, error)
         }
     }
     return client
 }
 
 @Composable
-internal fun AccountRepeatersLink(host: String, accountId: Long) {
-    val client = rememberRepeaterManagementClient(host, enabled = true, accountId = accountId) ?: return
-    var open by remember(host, accountId) { mutableStateOf(false) }
-    OutlinedButton(onClick = { open = true }) { Text(stringResource(R.string.repeater_my_repeaters)) }
-    if (open) AccountRepeatersSheet(client) { open = false }
+internal fun AccountNodeSummary(favoriteCount: Int, repeaterCount: Int? = null) {
+    val favorites = pluralStringResource(R.plurals.account_favorites_count, favoriteCount, favoriteCount)
+    val summary = if (repeaterCount == null) favorites else {
+        val claims = pluralStringResource(R.plurals.account_claimed_repeaters_count, repeaterCount, repeaterCount)
+        stringResource(R.string.account_node_summary, claims, favorites)
+    }
+    Text(summary, style = MaterialTheme.typography.bodyMedium, fontFamily = MonaspaceNeon,
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AccountRepeatersSheet(client: CoreScopeAccountClient, dismiss: () -> Unit) {
-    var repeaters by remember { mutableStateOf<List<AccountRepeater>?>(null) }
-    var selected by remember { mutableStateOf<AccountRepeater?>(null) }
-    var reload by remember { mutableIntStateOf(0) }
-    var failed by remember { mutableStateOf(false) }
+internal fun AccountRepeatersSection(host: String, accountId: Long, favoriteCount: Int) {
+    var retry by remember(host, accountId) { mutableIntStateOf(0) }
+    var checkFailed by remember(host, accountId, retry) { mutableStateOf(false) }
+    val client = rememberRepeaterManagementClient(host, enabled = true, accountId = accountId, retry = retry) { step, error ->
+        Log.w("NodeScopeAccount", "My Repeaters: $step failed", error)
+        checkFailed = true
+    }
+    var repeaters by remember(client) { mutableStateOf<List<AccountRepeater>?>(null) }
+    var selected by remember(client) { mutableStateOf<AccountRepeater?>(null) }
+    var reload by remember(client) { mutableIntStateOf(0) }
+    var failed by remember(client) { mutableStateOf(false) }
     LaunchedEffect(client, reload) {
+        if (client == null) return@LaunchedEffect
         failed = false
         try {
             repeaters = client.repeaters()
@@ -67,43 +86,49 @@ private fun AccountRepeatersSheet(client: CoreScopeAccountClient, dismiss: () ->
             failed = true
         }
     }
-    MeshModalBottomSheet(onDismissRequest = dismiss) {
-        LazyColumn(
-            Modifier.fillMaxWidth().heightIn(max = 640.dp),
-            contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            item { Text(stringResource(R.string.repeater_my_repeaters), style = MaterialTheme.typography.titleLarge) }
-            if (failed) item {
-                Text(stringResource(R.string.repeater_request_failed))
-                TextButton(onClick = { reload++ }) { Text(stringResource(R.string.repeater_retry)) }
-            } else if (repeaters == null) item {
-                LinearProgressIndicator(Modifier.fillMaxWidth())
-            } else if (repeaters.orEmpty().isEmpty()) item {
-                Text(stringResource(R.string.repeater_no_claims))
-            } else {
-                items(repeaters.orEmpty(), key = { it.pubkey }) { repeater ->
-                    Card(onClick = { selected = repeater }) {
-                        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(repeater.title, style = MaterialTheme.typography.titleMedium)
-                            if (!repeater.known || repeater.inactive) Text(stringResource(R.string.repeater_no_longer_listed))
-                            val lastHeard = parseInstant(repeater.lastHeard)
-                            Text(if (lastHeard == null) stringResource(R.string.repeater_never_heard)
-                                else stringResource(R.string.repeater_last_heard, relativeTime(lastHeard)))
-                            repeater.status?.let { Text(stringResource(R.string.repeater_list_status, it)) }
-                            if (repeater.comaintainers.isNotEmpty()) Text(
-                                stringResource(R.string.repeater_comaintainers, repeater.comaintainers.joinToString()),
-                            )
-                        }
+    AccountNodeSummary(favoriteCount, repeaters?.size)
+    if (checkFailed) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.repeater_check_failed), Modifier.weight(1f),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton(onClick = { retry++ }) { Text(stringResource(R.string.retry)) }
+        }
+        HorizontalDivider()
+    } else if (client != null) {
+        Text(stringResource(R.string.account_claimed_repeaters), Modifier.semantics { heading() },
+            style = MaterialTheme.typography.titleSmall)
+        val rows = repeaters
+        if (failed) {
+            Text(stringResource(R.string.repeater_request_failed))
+            TextButton(onClick = { reload++ }) { Text(stringResource(R.string.repeater_retry)) }
+        } else if (rows == null) {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+        } else if (rows.isEmpty()) {
+            Text(stringResource(R.string.repeater_no_claims))
+        } else {
+            rows.forEach { repeater ->
+                Card(onClick = { selected = repeater }, modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(repeater.title, style = MaterialTheme.typography.titleMedium)
+                        if (!repeater.known || repeater.inactive) Text(stringResource(R.string.repeater_no_longer_listed))
+                        val lastHeard = parseInstant(repeater.lastHeard)
+                        Text(if (lastHeard == null) stringResource(R.string.repeater_never_heard)
+                            else stringResource(R.string.repeater_last_heard, relativeTime(lastHeard)))
+                        repeater.status?.let { Text(stringResource(R.string.repeater_list_status, it)) }
+                        if (repeater.comaintainers.isNotEmpty()) Text(
+                            stringResource(R.string.repeater_comaintainers, repeater.comaintainers.joinToString()),
+                        )
                     }
                 }
             }
         }
-    }
-    selected?.let { repeater ->
-        AccountRepeaterManagementDialog(client, repeater.pubkey, repeater.title) {
-            repeaters = null
-            selected = null
-            reload++
+        HorizontalDivider()
+        selected?.let { repeater ->
+            AccountRepeaterManagementDialog(client, repeater.pubkey, repeater.title) {
+                repeaters = null
+                selected = null
+                reload++
+            }
         }
     }
 }

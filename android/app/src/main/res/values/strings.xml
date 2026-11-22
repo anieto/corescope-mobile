@@ -2020,6 +2020,7 @@
     <string name="nodevision_power_battery">Power: Battery</string>
     <string name="nodevision_power_solar">Power: Solar</string>
     <string name="nodevision_owner_decommissioned">Owner reported: Decommissioned</string>
+    <string name="repeater_check_failed">Couldn\'t check repeater management</string>
     <string name="repeater_my_repeaters">My Repeaters</string>
     <string name="repeater_manage">Manage Repeater</string>
     <string name="repeater_request_failed">Couldn’t complete the repeater request. Check your connection and CoreScope sign-in.</string>
@@ -2047,4 +2048,28 @@
     <string name="onboarding_location_is_optional_and_is_only_used_when">Location is optional and is only used when you choose to center the map on yourself.</string>
     <string name="onboarding_us_community_sources">US community sources</string>
     <string name="settings_this_app_has_no_backend_of_its_own">This app has no backend of its own. Everything shown here comes from whatever analyzer host is configured in Settings, and it\'s not affiliated with the CoreScope or MeshCore projects.</string>
+    <string name="account_your_nodes">Your nodes</string>
+    <string name="account_claimed_repeaters">Claimed Repeaters</string>
+    <string name="account_favorites">Favorites</string>
+    <string name="account_device_favorites">Favorites saved on this device</string>
+    <string name="account_no_favorites">No favorites yet.</string>
+    <string name="account_add_favorites">Add</string>
+    <string name="account_favorites_not_now">Not now</string>
+    <string name="account_sync">Sync</string>
+    <string name="account_keep_favorites_on_sign_out">Your current favorites will stay on this device.</string>
+    <string name="account_signed_out_favorites_kept">Signed out. Favorites were kept on this device.</string>
+    <string name="account_favorites_refreshed">Account favorites refreshed.</string>
+    <string name="account_node_summary">%1$s · %2$s</string>
+    <plurals name="account_favorites_count">
+        <item quantity="one">%d favorite</item>
+        <item quantity="other">%d favorites</item>
+    </plurals>
+    <plurals name="account_claimed_repeaters_count">
+        <item quantity="one">%d claimed repeater</item>
+        <item quantity="other">%d claimed repeaters</item>
+    </plurals>
+    <plurals name="account_offer_device_favorites">
+        <item quantity="one">Add %d favorite from this device to your account?</item>
+        <item quantity="other">Add %d favorites from this device to your account?</item>
+    </plurals>
 </resources>

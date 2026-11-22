@@ -1,6 +1,7 @@
 package org.nodescope.android.feature.explore
 
 import org.nodescope.android.core.design.UiText
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import org.nodescope.android.R
 import org.nodescope.android.core.design.withDescription
@@ -56,9 +57,10 @@ import org.nodescope.android.core.model.CoreScopeAccountSettings
 import org.nodescope.android.core.model.CoreScopeAccountSelectionState
 import org.nodescope.android.core.network.*
 import org.nodescope.android.core.storage.NodeLibrary
+import org.nodescope.android.core.storage.SavedKind
 import org.nodescope.android.core.storage.AccountSelectionStore
 
-internal class CoreScopeAccountModel(private val context: Context, private val host: String) {
+internal class CoreScopeAccountModel(private val context: Context, private val host: String, private val library: NodeLibrary) {
     enum class NotificationStatus { Checking, Unavailable, Failed, Ready }
 
     var notificationStatus by mutableStateOf(NotificationStatus.Checking)
@@ -79,14 +81,21 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
         private set
     var resetDocument by mutableStateOf<CoreScopeAccountSettings?>(null)
         private set
-    val claimed: Map<String, String> get() = selection?.let { CoreScopeFavoriteMerge.selection(it.baseline).claimed }.orEmpty()
+    val currentSelection: CoreScopeAccountSelectionState? get() =
+        if (user != null) store.visible(host) else null
+    val deviceFavoritesOffer: Set<String> get() {
+        val id = user?.id ?: return emptySet()
+        val state = currentSelection ?: return emptySet()
+        if (resetDocument != null) return emptySet()
+        return store.offeredDeviceFavorites(library.nodeKeys(), state, origin, id)
+    }
     private var client: CoreScopeAccountClient? = null
     private var epoch: String? = epochs["https://${normalizeHost(host)}/"]
     private val json = Json { ignoreUnknownKeys = true }
     private val store = AccountSelectionStore.shared(context)
     private val origin get() = client?.origin?.toString() ?: "https://${normalizeHost(host)}/"
 
-    suspend fun open(library: NodeLibrary) = action {
+    suspend fun open() = action {
         val client = CoreScopeAccountClient.forSource(context, host)
         this.client = client
         val capabilities = client.accountCapabilities()
@@ -97,10 +106,16 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
         if (client.hasSession) {
             user = client.me()
             reconcile(false)
-        } else store.deactivate(origin)
+        } else {
+            keepFavoritesOnDevice()
+            store.deactivate(origin)
+            user = null
+            selection = null
+            resetDocument = null
+        }
     }
 
-    suspend fun login(email: String, password: String, library: NodeLibrary) = action {
+    suspend fun login(email: String, password: String) = action {
         val client = client ?: return@action
         check(supported)
         user = client.login(email.trim(), password)
@@ -145,8 +160,9 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
         resetDocument = null
         val next = (saved ?: CoreScopeAccountSelectionState.from(remote)).refresh(remote)
         persist(next)
+        if (deviceFavoritesOffer.isEmpty()) store.finishDeviceFavoritesOffer(origin, user.id)
         if (upload && next.hasPendingEdits) {
-            val (document, _) = CoreScopeFavoriteMerge.document(next.baseline, next.favorites, remote)
+            val (document, _) = CoreScopeFavoriteMerge.document(next.baseline, next.favorites, remote, next.removedMyNodes)
             if (document.keys != remote.doc?.keys.orEmpty()) {
                 val accepted = client.put(document, remote, user.csrfToken)
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
@@ -155,22 +171,23 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
         }
         message = if (upload && selection?.hasPendingEdits == true)
             UiText.Resource(R.string.explore_earlier_changes_synced_newer_edits_are_saved_on)
-        else if (upload) UiText.Resource(R.string.explore_account_favorites_synced) else UiText.Resource(R.string.explore_account_favorites_refreshed_device_favorites_are_unchanged)
+        else if (upload) UiText.Resource(R.string.explore_account_favorites_synced) else UiText.Resource(R.string.account_favorites_refreshed)
     }
 
-    suspend fun importDeviceFavorites(library: NodeLibrary) = action {
-        if (resetDocument != null) throw AccountException(AccountException.Kind.RESET)
-        val state = load() ?: throw AccountException(AccountException.Kind.RESPONSE)
-        val keys = library.nodeKeys()
-        if (!keys.all(CoreScopeFavoriteMerge::validKey)) throw AccountException(AccountException.Kind.RESPONSE)
-        persist(state.copy(favorites = state.favorites + keys))
-        message = UiText.Resource(R.string.explore_account_edits_saved_on_this_device_choose_sync)
+    suspend fun answerDeviceFavoritesOffer(add: Boolean) = action {
+        val id = user?.id ?: return@action
+        if (resetDocument != null) return@action
+        val state = load() ?: return@action
+        val keys = deviceFavoritesOffer
+        if (add && keys.isNotEmpty()) persist(state.copy(favorites = state.favorites + keys))
+        store.finishDeviceFavoritesOffer(origin, id)
+        if (add && keys.isNotEmpty()) reconcile(true)
     }
 
     suspend fun removeFavorite(key: String) = action {
         if (resetDocument != null) throw AccountException(AccountException.Kind.RESET)
         val state = load() ?: throw AccountException(AccountException.Kind.RESPONSE)
-        persist(state.copy(favorites = state.favorites - key))
+        persist(state.removeFavorite(key))
         message = UiText.Resource(R.string.explore_account_edits_saved_on_this_device_choose_sync)
     }
 
@@ -182,14 +199,10 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
         message = if (restore) UiText.Resource(R.string.explore_selections_restored_locally_choose_sync_now_to_upload) else UiText.Resource(R.string.explore_using_the_server_s_selections)
     }
 
-    private fun copy(library: NodeLibrary) {
-        val state = load() ?: return
-        val claimed = CoreScopeFavoriteMerge.selection(state.baseline).claimed
-        library.applyAccountNodes(library.nodeKeys() + state.favorites + claimed.keys, claimed)
-        message = UiText.Resource(R.string.explore_account_selections_copied_to_device_favorites)
+    private fun keepFavoritesOnDevice() {
+        val state = store.visible(host) ?: user?.id?.let { store.load(origin, it) } ?: return
+        library.keepAccountFavoritesOnDevice(state)
     }
-
-    suspend fun copyToDevice(library: NodeLibrary) = action { copy(library) }
 
     val push = StagingPush.get(context)
 
@@ -208,13 +221,14 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
             notifications = current
             notificationStatus = NotificationStatus.Ready
             if (PushPlatform.enabled) StagingPush.attempt {
-                current.nodeScopePush?.let { push.renew(context, currentClient, currentUser, it) }
+                current.pushRelay?.let { push.renew(context, currentClient, currentUser, it) }
             }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: AccountException) {
             if (client !== currentClient || user?.id != currentUser.id) return
             if (error.kind == AccountException.Kind.SIGNED_OUT) {
+                keepFavoritesOnDevice()
                 store.deactivate(origin)
                 user = null
                 selection = null
@@ -240,7 +254,7 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
         val currentClient = client ?: return@action
         val currentUser = user ?: return@action
         if (enabled) {
-            val capability = notifications?.nodeScopePush ?: return@action
+            val capability = notifications?.pushRelay ?: return@action
             push.enable(context, currentClient, currentUser, capability)
             message = UiText.Resource(R.string.staging_push_enabled)
         } else {
@@ -249,9 +263,8 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
         }
     }
 
-    suspend fun logout(copyTo: NodeLibrary? = null) = action {
+    suspend fun logout() = action {
         val id = user?.id ?: return@action
-        if (copyTo != null) copy(copyTo)
         if (PushPlatform.enabled) StagingPush.attempt { push.disable(origin, id, client, user?.csrfToken) }
         var failed = false
         try { client?.logout() }
@@ -259,6 +272,7 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
             if (error is AccountException && error.kind == AccountException.Kind.STORAGE) throw error
             failed = true
         }
+        keepFavoritesOnDevice()
         store.remove(origin, id)
         epoch = java.util.UUID.randomUUID().toString()
         epochs[origin] = checkNotNull(epoch)
@@ -266,7 +280,7 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
         selection = null
         resetDocument = null
         message = if (failed) UiText.Resource(R.string.explore_signed_out_on_this_device_server_revocation_was)
-            else UiText.Resource(R.string.explore_signed_out_device_favorites_are_unchanged)
+            else UiText.Resource(R.string.account_signed_out_favorites_kept)
     }
 
     private suspend fun action(block: suspend () -> Unit) {
@@ -284,6 +298,7 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
         catch (cancelled: CancellationException) { throw cancelled }
         catch (error: Exception) {
             if (error is AccountException && error.kind == AccountException.Kind.SIGNED_OUT) {
+                keepFavoritesOnDevice()
                 store.deactivate(origin)
                 user = null; selection = null; resetDocument = null
             }
@@ -308,18 +323,20 @@ fun CoreScopeAccountScreen(
     watchKey: String? = null, watchName: String? = null,
 ) {
     val context = LocalContext.current
-    val model = remember(host) { CoreScopeAccountModel(context.applicationContext, host) }
+    val model = remember(host) { CoreScopeAccountModel(context.applicationContext, host, library) }
     val scope = rememberCoroutineScope()
     val uri = LocalUriHandler.current
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var resolvedNames by remember(host) { mutableStateOf<Map<String, String>>(emptyMap()) }
-    val accountKeys = (model.selection?.favorites.orEmpty() + model.claimed.keys).sorted()
+    val account = model.currentSelection
+    val myNodeNames = account?.myNodeNames.orEmpty()
+    val accountKeys = account?.favoriteKeys.orEmpty().sorted()
     val lifecycleForNames = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(host, accountKeys, lifecycleForNames) {
         lifecycleForNames.repeatOnLifecycle(Lifecycle.State.STARTED) {
             val missing = accountKeys.filter { key ->
-                model.claimed[key].isNullOrBlank() && library.node(key)?.name.isNullOrBlank() && resolvedNames[key].isNullOrBlank()
+                myNodeNames[key].isNullOrBlank() && library.node(key)?.name.isNullOrBlank() && resolvedNames[key].isNullOrBlank()
             }
             if (missing.isNotEmpty()) try {
                 val repository = acquire?.invoke() ?: return@repeatOnLifecycle
@@ -333,13 +350,12 @@ fun CoreScopeAccountScreen(
             catch (_: Exception) { /* Keep stable public keys when metadata is unavailable. */ }
         }
     }
-    var showsImport by remember { mutableStateOf(false) }
     var showsSignOut by remember { mutableStateOf(false) }
     var showsPushGuide by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(host, lifecycle) {
-        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { model.open(library) }
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { model.open() }
     }
     DisposableEffect(lifecycle, host) {
         val observer = LifecycleEventObserver { _, event ->
@@ -348,18 +364,14 @@ fun CoreScopeAccountScreen(
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer); scope.coroutineContext.cancelChildren(); password = "" }
     }
-    if (showsImport) AlertDialog(onDismissRequest = { showsImport = false },
-        title = { Text(stringResource(R.string.explore_import_device_favorites)) },
-        text = { Text(stringResource(R.string.explore_add_device_node_favorites_to_this_account_s)) },
-        confirmButton = { TextButton(onClick = { showsImport = false; scope.launch { model.importDeviceFavorites(library) } }) { Text(stringResource(R.string.explore_import)) } },
-        dismissButton = { TextButton(onClick = { showsImport = false }) { Text(stringResource(R.string.common_cancel)) } })
     if (showsSignOut) AlertDialog(onDismissRequest = { showsSignOut = false },
         title = { Text(stringResource(R.string.explore_sign_out_of_corescope)) },
-        text = { Text(stringResource(R.string.explore_downloaded_account_selections_and_pending_account_edits_will)) },
-        confirmButton = { Column {
-            TextButton(onClick = { showsSignOut = false; scope.launch { model.logout() } }) { Text(stringResource(R.string.explore_sign_out), color = MaterialTheme.colorScheme.error) }
-            TextButton(onClick = { showsSignOut = false; scope.launch { model.logout(library) } }) { Text(stringResource(R.string.explore_copy_selections_and_sign_out)) }
-        } },
+        text = { Text(stringResource(R.string.account_keep_favorites_on_sign_out)) },
+        confirmButton = {
+            TextButton(onClick = { showsSignOut = false; scope.launch { model.logout() } }) {
+                Text(stringResource(R.string.explore_sign_out), color = MaterialTheme.colorScheme.error)
+            }
+        },
         dismissButton = { TextButton(onClick = { showsSignOut = false }) { Text(stringResource(R.string.common_cancel)) } })
     val grantPush = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) scope.launch { model.setPush(true) }
@@ -425,8 +437,6 @@ fun CoreScopeAccountScreen(
         item {
             AccountCard(stringResource(R.string.explore_account_connection), Icons.Outlined.AccountCircle) {
                 FavoriteSourceIdentity(host, sourceName)
-                Text(stringResource(R.string.explore_manage_account_node_selections_separately_from_favorites_saved),
-                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         if (model.busy || model.message != null) item {
@@ -437,8 +447,52 @@ fun CoreScopeAccountScreen(
         }
         val user = model.user
         val paused = model.resetDocument != null
+        item {
+            AccountCard(stringResource(R.string.account_your_nodes), Icons.Outlined.StarBorder) {
+                val keys = if (user != null) accountKeys else library.nodeKeys().sorted()
+                if (user != null) {
+                    AccountRepeatersSection(host, user.id, keys.size)
+                } else {
+                    AccountNodeSummary(keys.size)
+                }
+                Text(stringResource(if (user == null) R.string.account_device_favorites else R.string.account_favorites),
+                    style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
+                if (keys.isEmpty()) Text(stringResource(R.string.account_no_favorites),
+                    style = MaterialTheme.typography.bodySmall)
+                keys.forEach { key ->
+                    val device = if (user == null) library.state.favorites.firstOrNull {
+                        it.kind == SavedKind.NODE && it.entityId.equals(key, ignoreCase = true)
+                    } else null
+                    val name = myNodeNames[key]?.takeIf { it.isNotBlank() }
+                        ?: device?.title ?: resolvedNames[key] ?: library.node(key)?.name?.takeIf { it.isNotBlank() }
+                    AccountNodeRow(name, key) {
+                        TextButton(onClick = {
+                            if (user != null) scope.launch { model.removeFavorite(key) }
+                            else if (device != null) library.removeFavorite(device)
+                        }, enabled = !model.busy && !paused,
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                            modifier = Modifier.withDescription(stringResource(R.string.explore_remove_favorite, name ?: key)) { description -> contentDescription = description }) {
+                            Text(stringResource(R.string.explore_remove))
+                        }
+                    }
+                }
+            }
+        }
         if (user != null) {
-            item { AccountRepeatersLink(host, user.id) }
+            val offerCount = model.deviceFavoritesOffer.size
+            if (offerCount > 0) item {
+                AccountCard(null, null) {
+                    Text(pluralStringResource(R.plurals.account_offer_device_favorites, offerCount, offerCount))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { scope.launch { model.answerDeviceFavoritesOffer(true) } }, enabled = !model.busy) {
+                            Text(stringResource(R.string.account_add_favorites))
+                        }
+                        TextButton(onClick = { scope.launch { model.answerDeviceFavoritesOffer(false) } }, enabled = !model.busy) {
+                            Text(stringResource(R.string.account_favorites_not_now))
+                        }
+                    }
+                }
+            }
             item {
                 AccountCard(stringResource(R.string.explore_signed_in), Icons.Outlined.CheckCircle) {
                     Text(user.displayName.ifBlank { user.email }, style = MaterialTheme.typography.titleMedium)
@@ -476,7 +530,7 @@ fun CoreScopeAccountScreen(
                             }
                             if (!alerts.enabled) Text(stringResource(R.string.account_email_alerts_off), style = MaterialTheme.typography.bodySmall)
                             if (PushPlatform.enabled) {
-                                if (pushEnabled || alerts.nodeScopePush?.supported() == true) {
+                                if (pushEnabled || alerts.pushRelay?.supported() == true) {
                                     OutlinedButton(enabled = !model.busy, onClick = {
                                         if (!pushEnabled && Build.VERSION.SDK_INT >= 33 &&
                                             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -488,12 +542,12 @@ fun CoreScopeAccountScreen(
                                         Text(stringResource(if (pushEnabled) R.string.account_disable_push_device else R.string.account_enable_push_device))
                                     }
                                 }
-                                if (alerts.nodeScopePush == null) {
+                                if (alerts.pushRelay == null) {
                                     Text(stringResource(R.string.account_push_unavailable), style = MaterialTheme.typography.bodySmall)
                                     TextButton(onClick = { showsPushGuide = true }) {
                                         Text(stringResource(R.string.account_push_guide_open))
                                     }
-                                } else if (!alerts.nodeScopePush.supported()) {
+                                } else if (!alerts.pushRelay.supported()) {
                                     Text(stringResource(R.string.account_push_relay_unsupported), style = MaterialTheme.typography.bodySmall)
                                 }
                             }
@@ -511,34 +565,9 @@ fun CoreScopeAccountScreen(
                 }
             }
             item {
-                AccountCard(stringResource(R.string.explore_sync_device_favorites), Icons.Outlined.Sync) {
-                    Text(stringResource(R.string.explore_sync_uploads_only_account_edits_device_favorites_stay),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                AccountCard(stringResource(R.string.account_sync), Icons.Outlined.Sync) {
                     Button(onClick = { scope.launch { model.sync(true) } }, enabled = !model.busy && !paused, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.explore_sync_now)) }
                     OutlinedButton(onClick = { scope.launch { model.sync(false) } }, enabled = !model.busy, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.explore_refresh_from_account)) }
-                    TextButton(onClick = { showsImport = true }, enabled = !model.busy && !paused) { Text(stringResource(R.string.explore_import_device_node_favorites)) }
-                    TextButton(onClick = { scope.launch { model.copyToDevice(library) } }, enabled = !model.busy) { Text(stringResource(R.string.explore_copy_account_selections_to_device)) }
-                }
-            }
-            item {
-                AccountCard(stringResource(R.string.explore_account_nodes), Icons.Outlined.StarBorder) {
-                    Text(stringResource(R.string.explore_favorites_claimed_nodes, model.selection?.favorites?.size ?: 0, model.claimed.size),
-                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    model.selection?.favorites?.sorted()?.forEach { key ->
-                        val name = resolvedNames[key] ?: library.node(key)?.name?.takeIf { it.isNotBlank() }
-                        AccountNodeRow(name, key) {
-                            TextButton(onClick = { scope.launch { model.removeFavorite(key) } }, enabled = !model.busy && !paused,
-                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                                modifier = Modifier.withDescription(stringResource(R.string.explore_remove_account_favorite, name ?: key)) { description -> contentDescription = description }) { Text(stringResource(R.string.explore_remove)) }
-                        }
-                    }
-                    if (model.claimed.isNotEmpty()) {
-                        Text(stringResource(R.string.explore_claimed_nodes_are_managed_on_corescope_removing_an),
-                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        model.claimed.toSortedMap().forEach { (key, name) ->
-                            AccountNodeRow(name.ifBlank { resolvedNames[key] ?: library.node(key)?.name ?: "" }.takeIf { it.isNotBlank() }, key) {}
-                        }
-                    }
                 }
             }
             item {
@@ -559,7 +588,7 @@ fun CoreScopeAccountScreen(
                 Button(onClick = {
                     val secret = password
                     password = ""
-                    scope.launch { model.login(email, secret, library) }
+                    scope.launch { model.login(email, secret) }
                 }, enabled = !model.busy && email.isNotBlank() && password.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.explore_sign_in)) }
                 Text(stringResource(R.string.explore_use_an_existing_account_on_this_source_your),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -570,7 +599,7 @@ fun CoreScopeAccountScreen(
                 }
             }
         } else if (!model.busy) item {
-            OutlinedButton(onClick = { scope.launch { model.open(library) } }) {
+            OutlinedButton(onClick = { scope.launch { model.open() } }) {
                 Icon(Icons.Outlined.Refresh, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.explore_try_again))

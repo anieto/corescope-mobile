@@ -292,36 +292,16 @@ fun FavoritesScreen(model: ExploreViewModel?, host: String, snapshot: AnalyzerSn
                 }
                 items(items, key = { "favorite-${it.key}" }) { item ->
                     val device = library.isDeviceFavorite(item)
-                    val account = library.isAccountFavorite(item)
                     SavedRow(item, now = null, current = currentNode(item, nodes), onOpen = { open(item, actions) },
-                        detail = if (item.kind == SavedKind.NODE) library.membershipLabel(item).takeIf { it.isNotEmpty() } else null,
-                        trailing = {
+                        useSavedTitle = !device && item.kind == SavedKind.NODE, trailing = {
                             if (editing && device) {
                                 val deviceItems = items.filter { library.isDeviceFavorite(it) }
                                 val index = deviceItems.indexOf(item)
                                 IconButton(onClick = { library.moveFavorite(item, -1) }, enabled = index > 0) { Icon(Icons.Outlined.KeyboardArrowUp, stringResource(R.string.explore_move_up, item.title)) }
                                 IconButton(onClick = { library.moveFavorite(item, 1) }, enabled = index < deviceItems.lastIndex) { Icon(Icons.Outlined.KeyboardArrowDown, stringResource(R.string.explore_move_down, item.title)) }
-                            } else if (device || account) {
-                                // One membership removes directly, like the star elsewhere; both ask which to remove.
-                                var choosing by remember { mutableStateOf(false) }
-                                Box {
-                                    IconButton(onClick = {
-                                        when {
-                                            device && account -> choosing = true
-                                            device -> library.removeFavorite(item)
-                                            else -> library.removeAccountFavorite(item)
-                                        }
-                                    }) {
-                                        Icon(Icons.Outlined.Star, when {
-                                            device && account -> stringResource(R.string.explore_remove_favorite_from_device_or_account, item.title)
-                                            device -> stringResource(R.string.explore_remove_favorite, item.title)
-                                            else -> stringResource(R.string.explore_remove_account_favorite_2, item.title)
-                                        }, tint = Color(0xFFE0A100))
-                                    }
-                                    DropdownMenu(expanded = choosing, onDismissRequest = { choosing = false }) {
-                                        DropdownMenuItem(text = { Text(stringResource(R.string.explore_remove_from_device)) }, onClick = { choosing = false; library.removeFavorite(item) })
-                                        DropdownMenuItem(text = { Text(stringResource(R.string.explore_remove_from_account)) }, onClick = { choosing = false; library.removeAccountFavorite(item) })
-                                    }
+                            } else {
+                                IconButton(onClick = { library.removeFavorite(item) }) {
+                                    Icon(Icons.Outlined.Star, stringResource(R.string.explore_remove_favorite, item.title), tint = Color(0xFFE0A100))
                                 }
                             }
                         })
@@ -413,14 +393,14 @@ internal fun KindIcon(kind: SavedKind, node: MeshNode?) {
 }
 
 @Composable
-private fun SavedRow(item: SavedItem, now: Long?, current: MeshNode?, onOpen: () -> Unit, detail: String? = null,
+private fun SavedRow(item: SavedItem, now: Long?, current: MeshNode?, onOpen: () -> Unit, detail: String? = null, useSavedTitle: Boolean = false,
     trailing: @Composable RowScope.() -> Unit) {
     Surface(onClick = onOpen, shape = MaterialTheme.shapes.medium, color = meshCardColor(), contentColor = MaterialTheme.colorScheme.onSurface) {
         Row(Modifier.fillMaxWidth().padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             KindIcon(item.kind, current ?: item.node)
             Column(Modifier.weight(1f)) {
-                Text(current?.displayName?.takeIf { current.name != null } ?: item.title, style = MaterialTheme.typography.titleSmall)
+                Text(current?.displayName?.takeIf { current.name != null && !useSavedTitle } ?: item.title, style = MaterialTheme.typography.titleSmall)
                 // Without a time this is the favorites list, whose subtitle is a key, observer code or sender: data, in Neon.
                 Text(listOfNotNull(item.subtitleText?.asString(), now?.let { relativeTime(java.time.Instant.ofEpochMilli(item.at), it) }).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,

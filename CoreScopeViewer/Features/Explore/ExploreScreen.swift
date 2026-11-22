@@ -539,20 +539,12 @@ private struct FavoritesScreen: View {
     private func favoriteRow(_ item: FavoriteItem) -> some View {
         if let node = item.node {
             NavigationLink(value: node) {
-                VStack(alignment: .leading, spacing: 4) {
-                    FavoriteRow(item: item)
-                    Text(favoritesStore.membershipLabel(item)).font(.caption).foregroundStyle(.secondary)
-                }
+                FavoriteRow(item: item)
             }
             .buttonStyle(.plain)
             .favoritesListRow()
             .swipeActions {
-                if favoritesStore.isDeviceFavorite(item) {
-                    Button("Remove from device", role: .destructive) { favoritesStore.remove(item) }
-                }
-                if favoritesStore.isAccountFavorite(item) {
-                    Button("Remove from account", role: .destructive) { favoritesStore.removeAccountFavorite(item) }
-                }
+                Button("Remove", role: .destructive) { favoritesStore.remove(item) }
             }
             .nodeQuickActions(node)
         } else if let observer = item.observer {
