@@ -400,6 +400,26 @@ Audit (2026-11-17): iOS is mostly ready, Android is not.
 which community sources are listed. Every new feature from Phase 2 on must add strings through the
 catalog / `strings.xml`, never hardcoded.
 
+### Analyzer Source picker: countries and nearest first (planned)
+
+The picker shows the community registry as one flat list in file order. That works for a handful
+of US sources, but not once communities in other countries are listed. Until this ships, the
+registry file is kept in geographic order by hand (MeshTexas first, neighbours together).
+
+- **Country sections.** Each registry entry carries `country` (ISO 3166-1 alpha-2, e.g. `US`).
+  Group the picker into one section per country, the device's own region first, then the rest
+  alphabetically. Within a section keep file order. Needs no permission.
+- **Sort by nearest (optional).** A button on the picker that sorts by distance to each entry's
+  `location` ([lat, lon] of the community's home area). Ask for location only when the user taps
+  it; never on first run or when the picker opens. If location is already granted (e.g. from the
+  map), sort nearest first automatically. On denial keep the country order and don't ask again.
+  Approximate location is enough. No IP geolocation.
+- `location` is for sorting only. `mapCenter`/`mapRadiusKm` stay as they are: they frame the map's
+  All regions view, so they must not be added just to enable sorting.
+- Both fields are already in `CommunitySources/sources-v2.json` for every entry; shipped builds
+  ignore them. Every new community source needs both.
+- Android to match.
+
 ## 1.0.0 — Investigation depth and product maturity
 
 Complete the core read-only investigation workflow and prepare NodeScope for a
