@@ -25,7 +25,9 @@ import kotlin.coroutines.resumeWithException
 data class CoreScopeAccountUser(val id: Long, val email: String, val displayName: String, val csrfToken: String)
 
 @Serializable
-data class CoreScopeAccountCapabilities(val enabled: Boolean, val notifications: Boolean? = null)
+data class CoreScopeAccountCapabilities(
+    val enabled: Boolean, val notifications: Boolean? = null, val repeaterTokens: Boolean? = null,
+)
 
 @Serializable
 data class CoreScopeWatchedNode(val pubkey: String, val name: String)
@@ -79,6 +81,47 @@ class AccountSessionStore(context: Context) {
 }
 
 /** No shared cookies/cache/interceptors or redirects: credentials never accompany public requests. */
+@Serializable
+data class AccountRepeater(
+    val pubkey: String,
+    val name: String,
+    val known: Boolean,
+    val inactive: Boolean = false,
+    val lastHeard: String? = null,
+    val status: String? = null,
+    val comaintainers: List<String> = emptyList(),
+) {
+    val title get() = name.ifBlank { pubkey.take(12) }
+}
+
+@Serializable
+data class AccountRepeaterDetails(
+    val pubkey: String,
+    val revision: Long,
+    val heightM: Double? = null,
+    val gainDbi: Double,
+    val status: String? = null,
+    val power: String? = null,
+    val notes: String,
+    val claimedByMe: Boolean,
+    val canEdit: Boolean,
+    val claimers: List<JsonObject>,
+)
+
+@Serializable
+data class AccountRepeaterEdit(
+    val baseRevision: Long,
+    val heightM: Double?,
+    val gainDbi: Double,
+    val status: String,
+    val power: String,
+    val notes: String,
+)
+
+@Serializable
+private data class AccountRepeatersResponse(val repeaters: List<AccountRepeater>)
+
+/** No shared cookies/cache/interceptors or redirects: credentials never accompany public requests. */
 class CoreScopeAccountClient(
     val origin: HttpUrl,
     cookie: String? = null,
@@ -96,6 +139,37 @@ class CoreScopeAccountClient(
 
     /** Whether a session was restored or created; without one there is nothing to validate. */
     val hasSession: Boolean get() = cookie != null
+
+    suspend fun supportsRepeaterManagement(): Boolean {
+        val capabilities = accountCapabilities()
+        return capabilities?.enabled == true && capabilities.repeaterTokens == true
+    }
+
+    suspend fun repeaters(): List<AccountRepeater> =
+        json.decodeFromString<AccountRepeatersResponse>(request("api/account/repeaters")).repeaters
+
+    suspend fun repeaterDetails(key: String): AccountRepeaterDetails =
+        decodeRepeater(request("${repeaterPath(key)}/info"), key)
+
+    suspend fun setRepeaterClaim(key: String, claimed: Boolean) {
+        val path = "${repeaterPath(key)}/claim"
+        request(path, if (claimed) "POST" else "DELETE", csrf = me().csrfToken)
+    }
+
+    suspend fun saveRepeater(key: String, edit: AccountRepeaterEdit): AccountRepeaterDetails =
+        decodeRepeater(request("${repeaterPath(key)}/info", "PUT", json.encodeToString(edit), me().csrfToken), key)
+
+    private fun repeaterPath(key: String): String {
+        if (!key.matches(Regex("[0-9a-fA-F]{64}"))) throw AccountException(AccountException.Kind.REJECTED)
+        return "api/repeaters/${key.lowercase()}"
+    }
+
+    private fun decodeRepeater(body: String, key: String): AccountRepeaterDetails =
+        json.decodeFromString<AccountRepeaterDetails>(body).also {
+            if (!it.pubkey.equals(key, ignoreCase = true) || it.revision < 0) {
+                throw AccountException(AccountException.Kind.RESPONSE)
+            }
+        }
 
     suspend fun supportsAccounts(): Boolean = accountCapabilities()?.enabled == true
 

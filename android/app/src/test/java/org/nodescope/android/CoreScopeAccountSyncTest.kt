@@ -26,6 +26,42 @@ class CoreScopeAccountSyncTest {
         )), listOf(AccountAllowedKey("meshcore-favorites", "set"), AccountAllowedKey("meshcore-my-nodes", "set", "pubkey"))
     )
 
+    @Test fun repeaterManagementUsesAccountSessionAndConditionalWrites() = runBlocking {
+        val requests = mutableListOf<Request>()
+        val http = OkHttpClient.Builder().addInterceptor { chain ->
+            val request = chain.request()
+            requests += request
+            val (code, body) = when (request.url.encodedPath) {
+                "/api/config/client" -> 200 to """{"userManagement":{"enabled":true,"repeaterTokens":true}}"""
+                "/api/account/repeaters" -> 200 to """{"repeaters":[{"pubkey":"$a","name":"Roof","known":true,"inactive":true}]}"""
+                "/api/auth/me" -> 200 to """{"id":7,"email":"fixture@example.test","displayName":"Test","csrfToken":"test-csrf"}"""
+                "/api/repeaters/$a/claim" -> 200 to "{}"
+                else -> 409 to "{}"
+            }
+            Response.Builder().request(request).protocol(Protocol.HTTP_1_1)
+                .code(code).message("Fixture").body(body.toResponseBody("application/json".toMediaType())).build()
+        }.build()
+        val client = CoreScopeAccountClient("https://repeaters.fixture/".toHttpUrl(), cookie = "test-session", http = http)
+        assertTrue(client.supportsRepeaterManagement())
+        assertNull(requests.first().header("Cookie"))
+        assertTrue(client.repeaters().single().inactive)
+        client.setRepeaterClaim(a, claimed = false)
+        assertEquals("DELETE", requests.last().method)
+        assertEquals("cs_session=test-session", requests.last().header("Cookie"))
+        assertEquals("test-csrf", requests.last().header("X-CS-CSRF"))
+        try {
+            client.saveRepeater(a, AccountRepeaterEdit(3, null, 4.0, "", "", ""))
+            fail("Expected a stale edit to be refused")
+        } catch (error: AccountException) {
+            assertEquals(AccountException.Kind.CONFLICT, error.kind)
+        }
+        val request = requests.last()
+        assertEquals("PUT", request.method)
+        val body = okio.Buffer()
+        request.body!!.writeTo(body)
+        assertTrue(body.readUtf8().contains("\"baseRevision\":3"))
+    }
+
     @Test fun accountNamespacesSeparateUsersAndSources() {
         val one = CoreScopeAccountSelectionState.key("https://one/", 1)
         val two = CoreScopeAccountSelectionState.key("https://one/", 2)

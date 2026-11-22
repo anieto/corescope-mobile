@@ -438,6 +438,7 @@ fun CoreScopeAccountScreen(
         val user = model.user
         val paused = model.resetDocument != null
         if (user != null) {
+            item { AccountRepeatersLink(host, user.id) }
             item {
                 AccountCard(stringResource(R.string.explore_signed_in), Icons.Outlined.CheckCircle) {
                     Text(user.displayName.ifBlank { user.email }, style = MaterialTheme.typography.titleMedium)

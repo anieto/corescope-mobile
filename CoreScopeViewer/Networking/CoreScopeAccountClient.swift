@@ -11,6 +11,7 @@ struct CoreScopeAccountUser: Codable, Sendable {
 struct CoreScopeAccountCapabilities: Decodable, Sendable {
     let enabled: Bool
     let notifications: Bool?
+    let repeaterTokens: Bool?
 }
 
 struct CoreScopeWatchedNode: Decodable, Identifiable, Sendable {
@@ -83,6 +84,48 @@ enum AccountSessionKeychain {
     }
 }
 
+struct AccountRepeater: Decodable, Identifiable, Sendable {
+    let pubkey: String
+    let name: String
+    let known: Bool
+    let inactive: Bool?
+    let lastHeard: Date?
+    let status: String?
+    let comaintainers: [String]
+    var id: String { pubkey }
+    var title: String { name.isEmpty ? String(pubkey.prefix(12)) : name }
+}
+
+struct AccountRepeaterDetails: Decodable, Sendable {
+    let pubkey: String
+    let revision: Int64
+    let heightM: Double?
+    let gainDbi: Double
+    let status: String?
+    let power: String?
+    let notes: String
+    let claimedByMe: Bool
+    let canEdit: Bool
+    let claimers: [RepeaterMetadata.Claim]
+}
+
+struct AccountRepeaterEdit: Encodable, Sendable {
+    let baseRevision: Int64
+    let heightM: Double?
+    let gainDbi: Double
+    let status: String
+    let power: String
+    let notes: String
+}
+
+enum AccountRepeaterError: Error, LocalizedError {
+    case staleRevision
+
+    var errorDescription: String? {
+        String(localized: "The repeater details changed. Reload the latest report before saving again.")
+    }
+}
+
 actor CoreScopeAccountClient {
     let origin: URL
     private let session: URLSession
@@ -104,6 +147,66 @@ actor CoreScopeAccountClient {
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         configuration.timeoutIntervalForRequest = 30
         session = URLSession(configuration: configuration, delegate: AccountRedirectPolicy(), delegateQueue: nil)
+    }
+
+    @MainActor
+    static func restoredRepeaterClient(settings: AnalyzerSettings) throws -> CoreScopeAccountClient? {
+        guard settings.sourceIsReady, settings.beaconBackend == nil else { return nil }
+        let url = settings.baseURL
+        let origin = url.absoluteString
+        guard let cookie = try AccountSessionKeychain.load(origin: origin) else { return nil }
+        return try CoreScopeAccountClient(origin: url, cookie: cookie, lifetime: settings.sourceSession,
+            save: { try AccountSessionKeychain.save($0, origin: origin) })
+    }
+
+    func supportsRepeaterManagement() async throws -> Bool {
+        let capabilities = try await accountCapabilities()
+        return capabilities?.enabled == true && capabilities?.repeaterTokens == true
+    }
+
+    func repeaters() async throws -> [AccountRepeater] {
+        struct Response: Decodable { let repeaters: [AccountRepeater] }
+        return try APIClient.makeDecoder().decode(Response.self, from: await request("api/account/repeaters")).repeaters
+    }
+
+    func repeaterDetails(_ key: String) async throws -> AccountRepeaterDetails {
+        let path = try repeaterPath(key)
+        return try decodeRepeater(await request(path + "/info"), key: key)
+    }
+
+    func setRepeaterClaim(_ key: String, claimed: Bool) async throws {
+        let path = try repeaterPath(key)
+        let user = try await me()
+        _ = try await request(path + "/claim", method: claimed ? "POST" : "DELETE", csrf: user.csrfToken)
+    }
+
+    func saveRepeater(_ key: String, edit: AccountRepeaterEdit) async throws -> AccountRepeaterDetails {
+        let path = try repeaterPath(key)
+        let user = try await me()
+        do {
+            let data = try await request(path + "/info", method: "PUT",
+                body: JSONEncoder().encode(edit), csrf: user.csrfToken)
+            return try decodeRepeater(data, key: key)
+        } catch CoreScopeAccountError.conflict {
+            throw AccountRepeaterError.staleRevision
+        }
+    }
+
+    private func repeaterPath(_ key: String) throws -> String {
+        let normalized = key.lowercased()
+        guard normalized.utf8.count == 64,
+              normalized.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }) else {
+            throw CoreScopeAccountError.rejected
+        }
+        return "api/repeaters/\(normalized)"
+    }
+
+    private func decodeRepeater(_ data: Data, key: String) throws -> AccountRepeaterDetails {
+        let details = try JSONDecoder().decode(AccountRepeaterDetails.self, from: data)
+        guard details.pubkey.caseInsensitiveCompare(key) == .orderedSame, details.revision >= 0 else {
+            throw CoreScopeAccountError.response
+        }
+        return details
     }
 
     func supportsAccounts() async throws -> Bool { try await accountCapabilities()?.enabled == true }

@@ -339,6 +339,35 @@ struct CoreScopeAccountSyncTests {
         lifetime.invalidate()
         await #expect(throws: CancellationError.self) { try await client.me() }
     }
+    @Test func repeaterManagementUsesCurrentAccountAndRejectsStaleEdits() async throws {
+        let fixture = AccountFixture()
+        AccountFixtureProtocol.fixture = fixture
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [AccountFixtureProtocol.self]
+        let client = try CoreScopeAccountClient(origin: #require(URL(string: "https://repeater.fixture")),
+            configuration: configuration, cookie: "session")
+        #expect(try await client.supportsRepeaterManagement() == false)
+        fixture.repeaterTokens = true
+        #expect(try await client.supportsRepeaterManagement())
+        fixture.response = Data("""
+            {"repeaters":[{"pubkey":"\(a)","name":"Roof","known":true,"inactive":true,
+            "lastHeard":"2026-11-20T05:00:00Z","comaintainers":["Operator"]}]}
+            """.utf8)
+        let repeater = try #require(try await client.repeaters().first)
+        #expect(repeater.inactive == true)
+        #expect(repeater.lastHeard != nil)
+        try await client.setRepeaterClaim(a, claimed: false)
+        let removal = try #require(fixture.requests.last)
+        #expect(removal.httpMethod == "DELETE")
+        #expect(removal.url?.path == "/api/repeaters/\(a)/claim")
+        #expect(removal.value(forHTTPHeaderField: "X-CS-CSRF") == "csrf-fixture")
+        fixture.putCode = 409
+        await #expect(throws: AccountRepeaterError.staleRevision) {
+            try await client.saveRepeater(a, edit: .init(baseRevision: 3, heightM: nil, gainDbi: 4, status: "", power: "", notes: ""))
+        }
+        #expect(fixture.requests.last?.httpMethod == "PUT")
+    }
+
 }
 
 private final class AccountFixture: @unchecked Sendable {
@@ -348,6 +377,7 @@ private final class AccountFixture: @unchecked Sendable {
     var requests: [URLRequest] = []
     var code = 200
     var putCode: Int?
+    var repeaterTokens = false
     var meCode: Int?
     var putResponse: Data?
     var beforeResponse: (@Sendable (URLRequest) async -> Void)?
@@ -356,7 +386,11 @@ private final class AccountFixture: @unchecked Sendable {
     func answer(_ request: URLRequest) -> (Int, [String: String], Data) {
         lock.withLock {
             requests.append(request)
-            if request.url?.path == "/api/config/client" { return (200, [:], Data(#"{"userManagement":{"enabled":true}}"#.utf8)) }
+            if request.url?.path == "/api/config/client" {
+                return (200, [:], Data(
+                    "{\"userManagement\":{\"enabled\":true,\"repeaterTokens\":\(repeaterTokens)}}".utf8
+                ))
+            }
             if request.url?.path == "/api/auth/me", let meCode { return (meCode, [:], Data()) }
             if request.url?.path == "/api/auth/login" || request.url?.path == "/api/auth/me" {
                 let token = request.url?.path == "/api/auth/login" ? "initial" : "renewed"

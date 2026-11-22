@@ -239,6 +239,16 @@ fun NodeDetailScreen(
             }.getOrNull()
         } else null
     }
+    val repeaterClient = org.nodescope.android.feature.explore.rememberRepeaterManagementClient(host, coreScopeUrl != null)
+    var manageRepeater by remember(coreScopeUrl) { mutableStateOf(false) }
+    if (manageRepeater && repeaterClient != null) {
+        org.nodescope.android.feature.explore.AccountRepeaterManagementDialog(
+            repeaterClient, publicKey, node?.displayName ?: publicKey,
+        ) {
+            manageRepeater = false
+            if (model != null) scope.launch { metadata.value = model.repeaterMetadata(host, publicKey, force = true) }
+        }
+    }
     var canClaim by remember(coreScopeUrl) { mutableStateOf(false) }
     var confirmClaim by remember(coreScopeUrl) { mutableStateOf(false) }
     val uri = LocalUriHandler.current
@@ -299,7 +309,12 @@ fun NodeDetailScreen(
             }
         }
         metadata.value?.let { item(key = "repeater-metadata:$host:$publicKey") { RepeaterMetadataCard(it, coreScopeUrl) } }
-        if (canClaim && coreScopeUrl != null) item {
+        if (repeaterClient != null) item {
+            OutlinedButton(onClick = { manageRepeater = true }) {
+                Text(stringResource(R.string.repeater_manage))
+            }
+        } else if (canClaim && coreScopeUrl != null) item {
+
             Button(
                 onClick = { confirmClaim = true },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),

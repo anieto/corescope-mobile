@@ -331,6 +331,7 @@ struct CoreScopeAccountScreen: View {
                 }
                 if let user = model.user {
                     AccountIdentityCard(user: user)
+                    AccountRepeatersLink().id(user.id)
                     notificationCard(user)
                     if model.resetDocument != nil {
                         AccountResetCard { restore in
@@ -757,5 +758,245 @@ private struct AccountSignInCard: View {
             Link("Open CoreScope", destination: website).font(.subheadline)
         }
         .frame(maxWidth: .infinity, alignment: .leading).padding(16).instrumentCard()
+    }
+}
+
+private struct AccountRepeatersLink: View {
+    @Environment(AnalyzerSettings.self) private var settings
+    @State private var client: CoreScopeAccountClient?
+
+    var body: some View {
+        Group {
+            if let client {
+                NavigationLink {
+                    AccountRepeatersScreen(client: client)
+                } label: {
+                    Label("My Repeaters", systemImage: "antenna.radiowaves.left.and.right")
+                        .font(.monaspace(.headline))
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .task(id: settings.sourceSession.id) {
+            client = nil
+            guard let restored = try? CoreScopeAccountClient.restoredRepeaterClient(settings: settings),
+                  (try? await restored.supportsRepeaterManagement()) == true, !Task.isCancelled else { return }
+            client = restored
+        }
+    }
+}
+
+private struct AccountRepeatersScreen: View {
+    let client: CoreScopeAccountClient
+    @State private var repeaters: [AccountRepeater]?
+    @State private var selected: AccountRepeater?
+    @State private var error: String?
+
+    var body: some View {
+        List {
+            Section {
+                if let error {
+                    Text(error)
+                    Button("Try Again") { Task { await reload() } }
+                } else if let repeaters {
+                    if repeaters.isEmpty { Text("You haven’t claimed any repeaters.") }
+                    ForEach(repeaters) { repeater in
+                        Button {
+                            selected = repeater
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(repeater.title).font(.monaspace(.headline))
+                                if !repeater.known || repeater.inactive == true {
+                                    Text("No longer in the node list")
+                                }
+                                if let lastHeard = repeater.lastHeard {
+                                    Text("Last heard \(lastHeard, style: .relative) ago")
+                                } else {
+                                    Text("Never heard")
+                                }
+                                if let status = repeater.status {
+                                    Text("Reported status: \(status.capitalized)")
+                                }
+                                if !repeater.comaintainers.isEmpty {
+                                    Text("Also maintained by \(repeater.comaintainers.formatted(.list(type: .and)))")
+                                }
+                            }
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                        }
+                    }
+                } else {
+                    ProgressView()
+                }
+            }
+            .instrumentListRows()
+        }
+        .meshPageBackground()
+        .navigationTitle("My Repeaters")
+        .task { await reload() }
+        .refreshable { await reload() }
+        .sheet(item: $selected, onDismiss: {
+            repeaters = nil
+            Task { await reload() }
+        }) { repeater in
+            AccountRepeaterManagementSheet(client: client, publicKey: repeater.pubkey, name: repeater.title)
+        }
+    }
+
+    private func reload() async {
+        do {
+            repeaters = try await client.repeaters()
+            error = nil
+        } catch is CancellationError {
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+}
+
+struct AccountRepeaterManagementSheet: View {
+    let client: CoreScopeAccountClient
+    let publicKey: String
+    let name: String
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var details: AccountRepeaterDetails?
+    @State private var height: Double?
+    @State private var gain = 0.0
+    @State private var status = ""
+    @State private var power = ""
+    @State private var notes = ""
+    @State private var busy = false
+    @State private var conflict = false
+    @State private var error: String?
+    @State private var showClaimConfirmation = false
+
+    private var canSave: Bool {
+        (height.map { (0...300).contains($0) } ?? true) &&
+            (-10...30).contains(gain) && notes.unicodeScalars.count <= 500
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if busy || error != nil {
+                    Section {
+                        if busy { ProgressView() }
+                        if let error { Text(error) }
+                        if conflict || details == nil {
+                            Button(conflict ? "Reload Latest Details" : "Try Again") {
+                                Task { await perform { try await reload() } }
+                            }
+                        }
+                    }
+                    .instrumentListRows()
+                }
+                if let details {
+                    if details.claimedByMe || details.claimers.isEmpty {
+                        Section {
+                            Button(details.claimedByMe ? "Unclaim Repeater" : "Claim Repeater",
+                                role: details.claimedByMe ? .destructive : nil
+                            ) { showClaimConfirmation = true }
+                            .confirmationDialog(details.claimedByMe ? "Remove your claim?" : "Claim this repeater?",
+                                isPresented: $showClaimConfirmation, titleVisibility: .visible
+                            ) {
+                                Button(details.claimedByMe ? "Unclaim Repeater" : "Claim Repeater",
+                                    role: details.claimedByMe ? .destructive : nil
+                                ) {
+                                    Task {
+                                        await perform {
+                                            try await client.setRepeaterClaim(publicKey, claimed: !details.claimedByMe)
+                                            try await reload()
+                                        }
+                                    }
+                                }
+                            } message: {
+                                if !details.claimedByMe {
+                                    Text("Only claim repeaters you run and maintain. Site admins can remove an incorrect claim.")
+                                }
+                            }
+                        }
+                        .instrumentListRows()
+                    }
+
+                    if details.canEdit {
+                        Section("Reported Details") {
+                            TextField("Antenna height above ground (m)", value: $height, format: .number)
+                                .keyboardType(.numbersAndPunctuation)
+                            TextField("Antenna gain (dBi)", value: $gain, format: .number)
+                                .keyboardType(.numbersAndPunctuation)
+                            Picker("Reported status", selection: $status) {
+                                Text("Unspecified").tag("")
+                                Text("Active").tag("active")
+                                Text("Maintenance").tag("maintenance")
+                                Text("Decommissioned").tag("decommissioned")
+                            }
+                            Picker("Power source", selection: $power) {
+                                Text("Unspecified").tag("")
+                                Text("Mains").tag("mains")
+                                Text("Battery").tag("battery")
+                                Text("Solar").tag("solar")
+                            }
+                            TextField("Notes", text: $notes, axis: .vertical)
+                            Button("Save Details") {
+                                Task {
+                                    await perform {
+                                        let draft = AccountRepeaterEdit(baseRevision: details.revision, heightM: height,
+                                            gainDbi: gain, status: status, power: power, notes: notes)
+                                        update(try await client.saveRepeater(publicKey, edit: draft))
+                                    }
+                                }
+                            }
+                            .disabled(conflict || !canSave)
+                            if !canSave {
+                                Text("Height must be 0–300 m, gain must be −10–30 dBi, and notes can contain up to 500 characters.")
+                                    .font(.caption)
+                            }
+                        }
+                        .instrumentListRows()
+                    } else {
+                        Section {
+                            Text("This account doesn’t have permission to edit the repeater’s details.")
+                        }
+                        .instrumentListRows()
+                    }
+                }
+            }
+            .disabled(busy)
+            .meshPageBackground()
+            .navigationTitle(name)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.disabled(busy) }
+            }
+            .task { await perform { try await reload() } }
+        }
+        .interactiveDismissDisabled(busy)
+    }
+
+    private func reload() async throws {
+        update(try await client.repeaterDetails(publicKey))
+    }
+
+    private func update(_ value: AccountRepeaterDetails) {
+        details = value
+        height = value.heightM
+        gain = value.gainDbi
+        status = value.status ?? ""
+        power = value.power ?? ""
+        notes = value.notes
+        conflict = false
+    }
+
+    private func perform(_ work: () async throws -> Void) async {
+        guard !busy else { return }
+        busy = true
+        error = nil
+        defer { busy = false }
+        do { try await work() }
+        catch is CancellationError {}
+        catch {
+            if error is AccountRepeaterError { conflict = true }
+            self.error = error.localizedDescription
+        }
     }
 }

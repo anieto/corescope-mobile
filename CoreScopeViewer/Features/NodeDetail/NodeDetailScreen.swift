@@ -23,6 +23,8 @@ struct NodeDetailScreen: View {
     @State private var meshCoreContact: MeshCoreContactLink?
     @State private var browserLink: BrowserLink?
     @State private var unclaimedRepeaterURL: URL?
+    @State private var repeaterClient: CoreScopeAccountClient?
+    @State private var showsRepeaterManagement = false
     @State private var showsClaimConfirmation = false
     @State private var repeaterMetadata: RepeaterMetadata?
     @State private var metadataSourceID: UUID?
@@ -109,7 +111,12 @@ struct NodeDetailScreen: View {
                     })
                 }
 
-                if let unclaimedRepeaterURL, unclaimedRepeaterURL == coreScopeRepeaterURL {
+                if repeaterClient != nil, coreScopeRepeaterURL != nil {
+                    Button("Manage Repeater", systemImage: "antenna.radiowaves.left.and.right") {
+                        showsRepeaterManagement = true
+                    }
+                    .buttonStyle(.bordered)
+                } else if let unclaimedRepeaterURL, unclaimedRepeaterURL == coreScopeRepeaterURL {
                     Button {
                         showsClaimConfirmation = true
                     } label: {
@@ -267,7 +274,23 @@ struct NodeDetailScreen: View {
             Text("Only claim repeaters you run and maintain. Site admins can remove an incorrect claim. Sign in to CoreScope and choose Claim to finish.")
         }
         .task(id: coreScopeRepeaterURL) {
-            await refreshRepeaterClaim()
+            repeaterClient = nil
+            if let url = coreScopeRepeaterURL,
+               let client = try? CoreScopeAccountClient.restoredRepeaterClient(settings: settings),
+               (try? await client.supportsRepeaterManagement()) == true,
+               url == coreScopeRepeaterURL, !Task.isCancelled {
+                repeaterClient = client
+            } else {
+                await refreshRepeaterClaim()
+            }
+        }
+        .sheet(isPresented: $showsRepeaterManagement, onDismiss: {
+            Task { await refreshRepeaterMetadata(force: true) }
+        }) {
+            if let repeaterClient {
+                AccountRepeaterManagementSheet(client: repeaterClient, publicKey: displayedNode.publicKey,
+                    name: displayedNode.name ?? displayedNode.publicKey)
+            }
         }
         .sheet(item: $browserLink, onDismiss: {
             Task {
