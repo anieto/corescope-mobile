@@ -88,5 +88,19 @@ struct StagingPushRoutingTests {
         #expect(StagingPush.isInactiveAnalyzer(status: 404, data: unknown, linkProof: true))
         #expect(!StagingPush.isInactiveAnalyzer(status: 404, data: unknown, linkProof: false))
     }
+    @Test func unknownInstallationRequiresExactRelayError() {
+        func body(_ code: String) -> Data {
+            Data(#"{"error":{"code":"\#(code)"}}"#.utf8)
+        }
+        #expect(StagingPush.isUnknownInstallation(status: 404, data: body("unknown_installation")))
+        for code in ["unknown_analyzer", "unknown_subscription", "unknown_proof"] {
+            #expect(!StagingPush.isUnknownInstallation(status: 404, data: body(code)))
+        }
+        #expect(!StagingPush.isUnknownInstallation(status: 401, data: body("invalid_credential")))
+        #expect(!StagingPush.isUnknownInstallation(status: 401, data: body("unknown_installation")))
+        #expect(!StagingPush.isUnknownInstallation(status: 404, data: Data()))
+        #expect(!StagingPush.isUnknownInstallation(status: 404, data: Data("{".utf8)))
+    }
+
 }
 #endif

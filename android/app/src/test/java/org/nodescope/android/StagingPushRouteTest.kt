@@ -2,6 +2,8 @@ package org.nodescope.android
 
 import org.nodescope.android.core.network.StagingPushBinding
 import org.nodescope.android.core.network.inactivePushAnalyzer
+import org.nodescope.android.core.network.pushRelayErrorCode
+import org.nodescope.android.core.network.unknownPushInstallation
 import org.nodescope.android.core.network.matchingPushOrigin
 import org.nodescope.android.core.network.StagingPushCapability
 import org.nodescope.android.core.network.StagingPushRoute
@@ -60,4 +62,17 @@ class StagingPushRouteTest {
         assertTrue(inactivePushAnalyzer(404, "unknown_analyzer", linkProof = true))
         assertFalse(inactivePushAnalyzer(404, "unknown_analyzer", linkProof = false))
     }
+    @Test
+    fun unknownInstallationRequiresExactRelayError() {
+        fun body(code: String) = """{"error":{"code":"$code"}}"""
+        assertTrue(unknownPushInstallation(404, pushRelayErrorCode(body("unknown_installation"))))
+        for (code in listOf("unknown_analyzer", "unknown_subscription", "unknown_proof")) {
+            assertFalse(unknownPushInstallation(404, pushRelayErrorCode(body(code))))
+        }
+        assertFalse(unknownPushInstallation(401, pushRelayErrorCode(body("invalid_credential"))))
+        assertFalse(unknownPushInstallation(401, pushRelayErrorCode(body("unknown_installation"))))
+        assertFalse(unknownPushInstallation(404, pushRelayErrorCode("")))
+        assertFalse(unknownPushInstallation(404, pushRelayErrorCode("{")))
+    }
+
 }

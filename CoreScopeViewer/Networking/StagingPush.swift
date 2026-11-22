@@ -116,6 +116,10 @@ final class StagingPush {
             || (linkProof && status == 404 && code == "unknown_analyzer")
     }
 
+    static func isUnknownInstallation(status: Int, data: Data) -> Bool {
+        status == 404 && (try? JSONDecoder().decode(RelayError.self, from: data))?.error.code == "unknown_installation"
+    }
+
     private struct Saved: Codable {
         var installation: Installation?
         var bindings: [String: Binding] = [:]
@@ -123,12 +127,12 @@ final class StagingPush {
     }
 
     private enum Failure: LocalizedError {
-        case permission, registration, relay, inactiveAnalyzer
+        case permission, registration, relay, inactiveAnalyzer, unknownInstallation
         var errorDescription: String? {
             switch self {
             case .permission: "Allow notifications in iOS Settings to enable watched-node alerts."
             case .registration: "Couldn’t register this device for Apple push notifications."
-            case .relay, .inactiveAnalyzer: "Couldn’t update watched-node alerts. Check the relay and try again."
+            case .relay, .inactiveAnalyzer, .unknownInstallation: "Couldn’t update watched-node alerts. Check the relay and try again."
             }
         }
     }
@@ -183,27 +187,13 @@ final class StagingPush {
             guard try await center.requestAuthorization(options: [.alert, .sound, .badge]) else { throw Failure.permission }
         }
         let token = try await register()
-        var state = try load()
-        let installation: Installation
-        if let saved = state.installation {
-            installation = saved
-            try await updateToken(token, installation: installation)
-        } else {
-            let data = try await request("v1/installations", "POST", body: [
-                "provider": "apns", "environment": Self.environment, "token": token
-            ])
-            installation = try JSONDecoder().decode(Installation.self, from: data)
-            guard Self.validID(installation.installationID), Self.validID(installation.credential) else { throw Failure.relay }
-            state.installation = installation
-            try save(state)
-        }
+        var installation = try await prepareInstallation(token)
         try await flushRevocations(installation)
         let origin = client.origin.absoluteString
-        let existing = try load().bindings[origin]
-        let proofPath = "v1/installations/\(installation.installationID)/link-proofs"
-        func linkProof() async throws -> Data {
+        func linkProof(for installation: Installation) async throws -> Data {
+            let existing = try load().bindings[origin]
             do {
-                return try await request(proofPath, "POST", credential: installation.credential,
+                return try await request("v1/installations/\(installation.installationID)/link-proofs", "POST", credential: installation.credential,
                                          body: ["analyzer_id": capability.analyzerId])
             } catch Failure.inactiveAnalyzer {
                 if let existing, existing.analyzer == capability.analyzerId, existing.account == user.id {
@@ -213,7 +203,14 @@ final class StagingPush {
                 throw Failure.inactiveAnalyzer
             }
         }
-        let proofData = try await linkProof()
+        let proofData: Data
+        do {
+            proofData = try await linkProof(for: installation)
+        } catch Failure.unknownInstallation {
+            installation = try await replaceInstallation(token)
+            try await flushRevocations(installation)
+            proofData = try await linkProof(for: installation)
+        }
         struct Proof: Decodable { let proof: String }
         let proof = try JSONDecoder().decode(Proof.self, from: proofData).proof
         let link: StagingPushLink
@@ -221,7 +218,7 @@ final class StagingPush {
             link = try await client.linkPushDevice(installation.installationID, proof: proof, csrf: user.csrfToken)
         } catch CoreScopeAccountError.pushLinkGone {
             // CoreScope forwards 410 without the relay's error code. Check the analyzer directly.
-            _ = try await linkProof()
+            _ = try await linkProof(for: installation)
             throw CoreScopeAccountError.pushLinkGone
         }
         guard Self.validID(link.subscriptionID), link.status == "active" else { throw Failure.relay }
@@ -268,7 +265,7 @@ final class StagingPush {
         guard !working, !refreshing else { return }
         refreshing = true
         defer { refreshing = false }
-        guard let initial = try? load(), let installation = initial.installation else { return }
+        guard let initial = try? load(), initial.installation != nil || !initial.bindings.isEmpty else { return }
         let settings = await UNUserNotificationCenter.current().notificationSettings()
         if settings.authorizationStatus == .denied {
             for (origin, binding) in initial.bindings {
@@ -280,10 +277,10 @@ final class StagingPush {
                 try? await validateBinding(origin: origin, binding: binding)
             }
             if (try? load().bindings.isEmpty) == false, let token = try? await register() {
-                try? await updateToken(token, installation: installation)
+                _ = try? await prepareInstallation(token)
             }
         }
-        try? await flushRevocations(installation)
+        if let installation = try? load().installation { try? await flushRevocations(installation) }
     }
 
     func receive(_ result: Result<String, Error>) {
@@ -438,6 +435,39 @@ final class StagingPush {
         return false
     }
 
+    private func prepareInstallation(_ token: String) async throws -> Installation {
+        guard let saved = try load().installation else { return try await createInstallation(token) }
+        do {
+            try await updateToken(token, installation: saved)
+            return saved
+        } catch Failure.unknownInstallation {
+            return try await replaceInstallation(token)
+        }
+    }
+
+    private func replaceInstallation(_ token: String) async throws -> Installation {
+        var state = try load()
+        state.installation = nil
+        state.revocations.formUnion(state.bindings.values.map(\.subscription))
+        state.bindings = state.bindings.mapValues {
+            Binding(analyzer: $0.analyzer, account: $0.account, subscription: $0.subscription, expiresAt: nil)
+        }
+        try save(state)
+        return try await createInstallation(token)
+    }
+
+    private func createInstallation(_ token: String) async throws -> Installation {
+        let data = try await request("v1/installations", "POST", body: [
+            "provider": "apns", "environment": Self.environment, "token": token
+        ])
+        let installation = try JSONDecoder().decode(Installation.self, from: data)
+        guard Self.validID(installation.installationID), Self.validID(installation.credential) else { throw Failure.relay }
+        var state = try load()
+        state.installation = installation
+        try save(state)
+        return installation
+    }
+
     private func updateToken(_ token: String, installation: Installation) async throws {
         _ = try await request("v1/installations/\(installation.installationID)/token", "PUT",
                               credential: installation.credential, body: ["token": token])
@@ -469,6 +499,7 @@ final class StagingPush {
             if Self.isInactiveAnalyzer(status: response.statusCode, data: data, linkProof: path.hasSuffix("/link-proofs")) {
                 throw Failure.inactiveAnalyzer
             }
+            if Self.isUnknownInstallation(status: response.statusCode, data: data) { throw Failure.unknownInstallation }
             throw Failure.relay
         }
         return data

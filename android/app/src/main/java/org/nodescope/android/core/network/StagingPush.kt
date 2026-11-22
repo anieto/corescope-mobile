@@ -63,6 +63,19 @@ internal fun matchingPushOrigin(route: StagingPushRoute, selected: String?, bind
 internal fun inactivePushAnalyzer(status: Int, code: String?, linkProof: Boolean) =
     status == 410 && code == "analyzer_inactive" || linkProof && status == 404 && code == "unknown_analyzer"
 
+internal fun unknownPushInstallation(status: Int, code: String?) =
+    status == 404 && code == "unknown_installation"
+
+private val pushJson = Json { ignoreUnknownKeys = true }
+
+@Serializable
+private data class RelayError(val error: Detail) {
+    @Serializable data class Detail(val code: String)
+}
+
+internal fun pushRelayErrorCode(body: String): String? =
+    runCatching { pushJson.decodeFromString<RelayError>(body).error.code }.getOrNull()
+
 class StagingPush private constructor(context: Context) {
     @Serializable private data class Installation(
         @SerialName("installation_id") val id: String, @SerialName("installation_credential") val credential: String,
@@ -72,23 +85,21 @@ class StagingPush private constructor(context: Context) {
         val revocations: Set<String> = emptySet(),
     )
     @Serializable private data class Proof(val proof: String)
-    @Serializable private data class RelayError(val error: Detail) {
-        @Serializable data class Detail(val code: String)
-    }
     private class InactiveAnalyzer : IllegalStateException("The push analyzer is inactive.")
 
+    private class UnknownInstallation : IllegalStateException("Push relay rejected the request.")
+
     private val secrets = AccountSessionStore(context)
-    private val json = Json { ignoreUnknownKeys = true }
     private val lock = Mutex()
     private val version = MutableStateFlow(0)
     val changes = version.asStateFlow()
     private val http = OkHttpClient.Builder().followRedirects(false).followSslRedirects(false)
         .retryOnConnectionFailure(false).callTimeout(12, TimeUnit.SECONDS).build()
 
-    private fun load(): Saved = secrets.load(STORAGE_KEY)?.let { json.decodeFromString<Saved>(it) } ?: Saved()
+    private fun load(): Saved = secrets.load(STORAGE_KEY)?.let { pushJson.decodeFromString<Saved>(it) } ?: Saved()
 
     private fun save(state: Saved) {
-        secrets.save(STORAGE_KEY, json.encodeToString(Saved.serializer(), state))
+        secrets.save(STORAGE_KEY, pushJson.encodeToString(Saved.serializer(), state))
         version.value += 1
     }
 
@@ -107,21 +118,13 @@ class StagingPush private constructor(context: Context) {
                        capability: StagingPushCapability) = lock.withLock {
         check(capability.supported() && PushPlatform.canNotify(context))
         val token = PushPlatform.token(context)
-        val saved = load()
-        val installation = saved.installation?.also { updateToken(it, token) } ?: run {
-            val created = json.decodeFromString<Installation>(request("v1/installations", "POST", body = buildJsonObject {
-                put("provider", "fcm"); put("environment", PushPlatform.environment); put("token", token)
-            }))
-            check(pushID.matches(created.id) && pushID.matches(created.credential))
-            save(saved.copy(installation = created))
-            created
-        }
+        var installation = prepareInstallation(token)
         flushRevocations(installation)
         val origin = client.origin.toString()
-        val existing = load().bindings[origin]
-        suspend fun linkProof(): Proof {
+        suspend fun linkProof(installation: Installation): Proof {
+            val existing = load().bindings[origin]
             try {
-                return json.decodeFromString(request("v1/installations/" + installation.id + "/link-proofs", "POST",
+                return pushJson.decodeFromString(request("v1/installations/" + installation.id + "/link-proofs", "POST",
                     installation.credential, buildJsonObject { put("analyzer_id", capability.analyzerId) }))
             } catch (inactive: InactiveAnalyzer) {
                 if (existing != null && existing.analyzer == capability.analyzerId && existing.account == user.id) {
@@ -131,13 +134,19 @@ class StagingPush private constructor(context: Context) {
                 throw inactive
             }
         }
-        val proof = linkProof()
+        val proof = try {
+            linkProof(installation)
+        } catch (_: UnknownInstallation) {
+            installation = replaceInstallation(token)
+            flushRevocations(installation)
+            linkProof(installation)
+        }
         val link = try {
             client.linkPushDevice(installation.id, proof.proof, user.csrfToken)
         } catch (error: AccountException) {
             if (error.kind == AccountException.Kind.PUSH_LINK_GONE) {
                 // CoreScope forwards 410 without the relay's error code. Check the analyzer directly.
-                linkProof()
+                linkProof(installation)
             }
             throw error
         }
@@ -172,14 +181,18 @@ class StagingPush private constructor(context: Context) {
 
     suspend fun refresh(context: Context, replacement: String? = null) = lock.withLock {
         val saved = load()
-        val installation = saved.installation ?: return@withLock
+        val installation = saved.installation
+        if (installation == null && saved.bindings.isEmpty()) return@withLock
         if (!PushPlatform.canNotify(context) && saved.bindings.isNotEmpty()) {
             save(saved.copy(bindings = emptyMap(), revocations = saved.revocations + saved.bindings.values.map { it.subscription }))
         } else {
             for ((origin, binding) in saved.bindings) attempt { validateBinding(origin, binding) }
         }
-        attempt { flushRevocations(installation) }
-        if (load().bindings.isNotEmpty()) updateToken(installation, replacement ?: PushPlatform.token(context))
+        if (installation != null) attempt { flushRevocations(installation) }
+        if (load().bindings.isNotEmpty()) {
+            val prepared = prepareInstallation(replacement ?: PushPlatform.token(context))
+            if (prepared != installation) attempt { flushRevocations(prepared) }
+        }
     }
 
     fun originForRoute(route: StagingPushRoute, selected: String?): String? {
@@ -204,6 +217,35 @@ class StagingPush private constructor(context: Context) {
     fun ownsRoute(route: StagingPushRoute): Boolean = runCatching {
         load().bindings.values.any { it.matches(route) }
     }.getOrDefault(false)
+
+    private suspend fun prepareInstallation(token: String): Installation {
+        val saved = load().installation ?: return createInstallation(token)
+        return try {
+            updateToken(saved, token)
+            saved
+        } catch (_: UnknownInstallation) {
+            replaceInstallation(token)
+        }
+    }
+
+    private suspend fun replaceInstallation(token: String): Installation {
+        val saved = load()
+        save(saved.copy(
+            installation = null,
+            bindings = saved.bindings.mapValues { (_, binding) -> binding.copy(expiresAt = null) },
+            revocations = saved.revocations + saved.bindings.values.map { it.subscription },
+        ))
+        return createInstallation(token)
+    }
+
+    private suspend fun createInstallation(token: String): Installation {
+        val created = pushJson.decodeFromString<Installation>(request("v1/installations", "POST", body = buildJsonObject {
+            put("provider", "fcm"); put("environment", PushPlatform.environment); put("token", token)
+        }))
+        check(pushID.matches(created.id) && pushID.matches(created.credential))
+        save(load().copy(installation = created))
+        return created
+    }
 
     private suspend fun updateToken(installation: Installation, token: String) {
         request("v1/installations/" + installation.id + "/token", "PUT", installation.credential,
@@ -231,8 +273,9 @@ class StagingPush private constructor(context: Context) {
                 source.readUtf8()
             }.orEmpty()
             if (!response.isSuccessful && !(revoking && response.code in listOf(404, 410))) {
-                val code = runCatching { json.decodeFromString<RelayError>(data).error.code }.getOrNull()
+                val code = pushRelayErrorCode(data)
                 if (inactivePushAnalyzer(response.code, code, path.endsWith("/link-proofs"))) throw InactiveAnalyzer()
+                if (unknownPushInstallation(response.code, code)) throw UnknownInstallation()
                 error("Push relay rejected the request.")
             }
             data
