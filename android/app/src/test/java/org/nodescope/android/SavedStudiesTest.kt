@@ -295,6 +295,41 @@ class SavedStudiesTest {
         assertTrue(calls.isEmpty())
     }
 
+    @Test fun previousCoveragePresetRestoresWithItsOldValues() = withMain { root ->
+        val original = placedModel(root)
+        val preset = requireNotNull(CoverageRadioPreset.preset("meshcore-nz-narrow"))
+        original.applyRadioPreset(preset)
+        val saved = requireNotNull(original.savedSnapshot())
+        val reopened = coverageModel(root)
+        reopened.restore(saved)
+        assertEquals("meshcore-nz-narrow", reopened.radioPreset?.id)
+        assertEquals(saved.coverage?.frequencyMHz, reopened.savedSnapshot()?.coverage?.frequencyMHz)
+        assertEquals(preset.transmitPowerDbm, reopened.number("power"))
+        assertEquals(preset.sensitivityDbm, reopened.number("sensitivity"))
+    }
+
+    @Test fun savedBrazilProfileIsRecognizedByItsExactRadioValues() = withMain { _ ->
+        val terrain = LinkTerrainProviding { points ->
+            TerrainProfile(points.mapIndexed { index, _ -> ElevationPoint(index * 100.0, 100.0) }, 1000, "cache", points)
+        }
+        val model = LinkProfileViewModel(terrain, SavedStateHandle())
+        model.edit("Latitude A", "40")
+        model.edit("Longitude A", "-90")
+        model.edit("Latitude B", "40.1")
+        model.edit("Longitude B", "-90.1")
+        model.edit("Frequency (MHz)", "923.125")
+        model.edit("Transmit power (dBm)", "22")
+        model.edit("Sensitivity (dBm)", "-130")
+        val saved = requireNotNull(model.savedSnapshot())
+        advanceUntilIdle()
+        val reopened = LinkProfileViewModel(terrain, SavedStateHandle())
+        reopened.restore(saved)
+        assertEquals("meshcore-br-narrow", reopened.state.value.preset)
+        assertEquals(saved.linkProfile, reopened.savedSnapshot()?.linkProfile)
+        val brazil = requireNotNull(CoverageRadioPreset.preset("meshcore-br-narrow"))
+        assertEquals(-130.0, brazil.sensitivityDbm, 0.0)
+    }
+
     @Test fun linkProfileSavesOncePlacedAndReopensWithoutAnalyzing() = withMain { _ ->
         val calls = mutableListOf<List<ProfileCoordinate>>()
         val terrain = LinkTerrainProviding { calls += it; TerrainProfile(it.mapIndexed { index, _ -> ElevationPoint(index * 100.0, 100.0) }, 1000, "cache", it) }

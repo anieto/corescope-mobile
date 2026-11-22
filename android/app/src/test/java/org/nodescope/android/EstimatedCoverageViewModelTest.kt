@@ -42,6 +42,19 @@ class EstimatedCoverageViewModelTest {
         assertEquals(PlannerRadioDefault.Origin.ANALYZER_COUNTRY, outside.origin)
     }
 
+    @Test fun brazilObserversDoNotDisplaceAustralianOrNewZealandPresets() {
+        val expected = listOf(
+            "923.125,62.5,8,8" to "meshcore-br-narrow",
+            "916.575,62.5,7,7" to "meshcore-au-narrow",
+            "917.375,62.5,7,5" to "meshcore-nz-narrow",
+        )
+        for ((report, id) in expected) {
+            val resolved = PlannerRadioDefault.resolve(listOf(report), "US", "GB")
+            assertEquals(PlannerRadioDefault.Origin.OBSERVERS, resolved.origin)
+            assertEquals(id, resolved.preset.id)
+        }
+    }
+
     @Test fun sourceCountryOverridesDeviceAndOnlySpecifiedCountriesAreMapped() {
         val groups = mapOf(
             "meshcore-us-ca" to listOf("US", "CA"),
@@ -50,16 +63,17 @@ class EstimatedCoverageViewModelTest {
                 "SK", "SI", "ES", "SE", "GB", "CH", "NO", "IS", "LI"),
             "meshcore-au-narrow" to listOf("AU"),
             "meshcore-nz-narrow" to listOf("NZ"),
+            "meshcore-br-narrow" to listOf("BR"),
         )
         for ((id, countries) in groups) for (country in countries) {
             val resolved = PlannerRadioDefault.resolve(listOf(null, "invalid"), country, "JP")
             assertEquals(PlannerRadioDefault.Origin.ANALYZER_COUNTRY, resolved.origin)
             assertEquals(id, resolved.preset.id)
         }
-        val device = PlannerRadioDefault.resolve(emptyList(), "BR", "GB")
+        val device = PlannerRadioDefault.resolve(emptyList(), "CR", "GB")
         assertEquals(PlannerRadioDefault.Origin.DEVICE_REGION, device.origin)
         assertEquals("meshcore-eu-uk-narrow", device.preset.id)
-        val fallback = PlannerRadioDefault.resolve(emptyList(), "BR", "JP")
+        val fallback = PlannerRadioDefault.resolve(emptyList(), "CR", "JP")
         assertEquals(PlannerRadioDefault.Origin.FALLBACK, fallback.origin)
         assertEquals(CoverageRadioPreset.standard, fallback.preset)
     }

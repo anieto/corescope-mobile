@@ -94,8 +94,11 @@ Node Planner ships in steps. Its full scope:
 
 New Link Profiles and Estimated Coverage studies start with a MeshCore radio preset based on
 the current analyzer’s observer reports when available. The planners fall back to the analyzer’s
-country, the device region, then USA/Canada. Saved and shared studies keep their recorded radio
-values. The setup shows which signal supplied the default until the user edits or selects a radio.
+country, the device region, then USA/Canada. Country defaults cover US, CA, the EU/EEA, GB, CH,
+AU, NZ, and BR. Brazil uses MeshCore’s narrow modem settings and the
+[MeshCore Brasil reference power of 22 dBm](https://meshcore.com.br/valores-de-referencia/).
+Saved and shared studies keep their recorded radio values. The setup shows which signal supplied
+the default until the user edits or selects a radio.
 
 ### 0.10.1 — Link Profile (first public release)
 

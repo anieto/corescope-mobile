@@ -6246,6 +6246,22 @@
         }
       }
     },
+    "Brazil (Narrow)" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brasil (estrecho)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brasil (estreito)"
+          }
+        }
+      }
+    },
     "Browse Channels" : {
       "localizations" : {
         "es" : {

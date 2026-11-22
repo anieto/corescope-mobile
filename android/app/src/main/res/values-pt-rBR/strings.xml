@@ -1830,6 +1830,7 @@
     <string name="coverage_radio_preset_meshcore_eu_433_narrow">EU 433 MHz (estreito)</string>
     <string name="coverage_radio_preset_meshcore_au_narrow">Austrália (estreito)</string>
     <string name="coverage_radio_preset_meshcore_nz_narrow">Nova Zelândia (estreito)</string>
+    <string name="coverage_radio_preset_meshcore_br_narrow">Brasil (estreito)</string>
     <string name="coverage_radio_preset_meshtastic_us_long_fast">US Long Fast</string>
     <string name="coverage_radio_preset_meshtastic_eu_868_long_fast">EU 868 Long Fast</string>
     <string name="coverage_antenna_preset_quarter_wave">Plano de terra de 1/4 de onda</string>

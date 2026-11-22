@@ -52,6 +52,7 @@ data class CoverageRadioPreset(
             CoverageRadioPreset("meshcore-eu-433-narrow", Family.MESHCORE, UiText.Resource(R.string.coverage_radio_preset_meshcore_eu_433_narrow), 433.65, 8, 62.5, 10.0),
             CoverageRadioPreset("meshcore-au-narrow", Family.MESHCORE, UiText.Resource(R.string.coverage_radio_preset_meshcore_au_narrow), 916.575, 7, 62.5, 22.0),
             CoverageRadioPreset("meshcore-nz-narrow", Family.MESHCORE, UiText.Resource(R.string.coverage_radio_preset_meshcore_nz_narrow), 917.375, 7, 62.5, 22.0),
+            CoverageRadioPreset("meshcore-br-narrow", Family.MESHCORE, UiText.Resource(R.string.coverage_radio_preset_meshcore_br_narrow), 923.125, 8, 62.5, 22.0),
             CoverageRadioPreset("meshtastic-us-long-fast", Family.MESHTASTIC, UiText.Resource(R.string.coverage_radio_preset_meshtastic_us_long_fast), 906.875, 11, 250.0, 22.0),
             CoverageRadioPreset("meshtastic-eu-868-long-fast", Family.MESHTASTIC, UiText.Resource(R.string.coverage_radio_preset_meshtastic_eu_868_long_fast), 869.525, 11, 250.0, 27.0),
         )
@@ -103,6 +104,7 @@ internal data class PlannerRadioDefault(val preset: CoverageRadioPreset, val ori
                 "US", "CA" -> CoverageRadioPreset.standard
                 "AU" -> CoverageRadioPreset.preset("meshcore-au-narrow")
                 "NZ" -> CoverageRadioPreset.preset("meshcore-nz-narrow")
+                "BR" -> CoverageRadioPreset.preset("meshcore-br-narrow")
                 in europeanCountries -> CoverageRadioPreset.preset("meshcore-eu-uk-narrow")
                 else -> null
             }

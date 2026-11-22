@@ -40,6 +40,55 @@ struct SavedStudyRestorationTests {
         #expect(outside.origin == .analyzerCountry)
     }
 
+    @Test func brazilObserversDoNotDisplaceAustralianOrNewZealandPresets() {
+        let expected = [
+            ("923.125,62.5,8,8", "meshcore-br-narrow"),
+            ("916.575,62.5,7,7", "meshcore-au-narrow"),
+            ("917.375,62.5,7,5", "meshcore-nz-narrow")
+        ]
+        for (report, id) in expected {
+            let resolved = PlannerRadioDefault.resolve(observerRadios: [report], sourceCountry: "US", deviceRegion: "GB")
+            #expect(resolved.origin == .observers)
+            #expect(resolved.preset.id == id)
+        }
+    }
+
+    @Test func savedBrazilProfileIsRecognizedByItsExactRadioValues() throws {
+        let model = LinkProfileModel()
+        model.latitudeA = 50.5
+        model.longitudeA = -115.5
+        model.latitudeB = 50.51
+        model.longitudeB = -115.52
+        model.frequencyMHz = 923.125
+        model.transmitPowerDBm = 22
+        model.receiverSensitivityDBm = -130
+        let study = try #require(model.savedSnapshot())
+        let reopened = LinkProfileModel()
+        reopened.restore(study)
+        #expect(reopened.radioPreset == .brazilNarrow)
+        #expect(reopened.savedSnapshot()?.linkProfile == study.linkProfile)
+        #expect(LinkProfileRadioPreset.brazilNarrow.receiverSensitivityDBm == -130)
+        #expect(LinkProfileRadioPreset.matching(frequencyMHz: 923.125, powerDBm: 21, sensitivityDBm: -130) == .custom)
+    }
+
+    @Test func previousCoveragePresetIDRestoresWithoutChangingRadioValues() throws {
+        let preset = try #require(CoverageRadioPreset.preset(id: "meshcore-nz-narrow"))
+        let original = EstimatedCoverageModel(distanceUnit: .metric)
+        original.latitude = 50.5
+        original.longitude = -115.5
+        original.applyRadioPreset(preset)
+        let saved = try #require(original.savedSnapshot())
+        let draft = StudyDraft(id: UUID().uuidString.lowercased(), kind: .coverage,
+            createdAtMilliseconds: 1, updatedAtMilliseconds: 1, title: "Saved Coverage",
+            host: "analyzer.example", region: nil, editor: original.draftEditor())
+        let reopened = EstimatedCoverageModel(distanceUnit: .metric)
+        reopened.restore(draft: draft, study: saved, result: nil)
+        #expect(reopened.radioPresetID == "meshcore-nz-narrow")
+        #expect(reopened.savedSnapshot()?.coverage?.frequencyMHz == saved.coverage?.frequencyMHz)
+        #expect(reopened.transmitPowerDbm == preset.transmitPowerDbm)
+        #expect(reopened.sensitivityDbm == preset.sensitivityDbm)
+    }
+
     @Test func sourceCountryOverridesDeviceAndOnlySpecifiedCountriesAreMapped() {
         let groups = [
             "meshcore-us-ca": ["US", "CA"],
@@ -47,7 +96,8 @@ struct SavedStudyRestorationTests {
                 "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO",
                 "SK", "SI", "ES", "SE", "GB", "CH", "NO", "IS", "LI"],
             "meshcore-au-narrow": ["AU"],
-            "meshcore-nz-narrow": ["NZ"]
+            "meshcore-nz-narrow": ["NZ"],
+            "meshcore-br-narrow": ["BR"]
         ]
         for (id, countries) in groups {
             for country in countries {
@@ -56,9 +106,9 @@ struct SavedStudyRestorationTests {
                 #expect(resolved.preset.id == id)
             }
         }
-        let device = PlannerRadioDefault.resolve(observerRadios: [], sourceCountry: "BR", deviceRegion: "GB")
+        let device = PlannerRadioDefault.resolve(observerRadios: [], sourceCountry: "CR", deviceRegion: "GB")
         #expect(device.origin == .deviceRegion && device.preset.id == "meshcore-eu-uk-narrow")
-        let fallback = PlannerRadioDefault.resolve(observerRadios: [], sourceCountry: "BR", deviceRegion: "JP")
+        let fallback = PlannerRadioDefault.resolve(observerRadios: [], sourceCountry: "CR", deviceRegion: "JP")
         #expect(fallback.origin == .fallback && fallback.preset == .standard)
     }
 

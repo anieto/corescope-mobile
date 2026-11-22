@@ -26,6 +26,12 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         private const val US_PRESET = "US/Canada Narrow"
         private const val EU_PRESET = "EU/UK Narrow"
 
+        internal val selectablePresets = listOf(
+            US_PRESET to R.string.link_profile_preset_us,
+            EU_PRESET to R.string.link_profile_preset_eu,
+            "meshcore-br-narrow" to R.string.coverage_radio_preset_meshcore_br_narrow,
+        )
+
         val defaults = linkedMapOf(
             "Latitude A" to "", "Longitude A" to "", "Height A (m)" to "10",
             "Latitude B" to "", "Longitude B" to "", "Height B (m)" to "10",

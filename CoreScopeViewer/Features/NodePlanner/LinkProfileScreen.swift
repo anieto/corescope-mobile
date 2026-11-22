@@ -810,7 +810,17 @@ enum LinkProfileRadioPreset: String, CaseIterable, Identifiable {
     case europe433Narrow
     case australiaNarrow
     case newZealandNarrow
+    case brazilNarrow
     case custom
+
+    static let selectable: [Self] = [.unitedStatesNarrow, .europeNarrow, .brazilNarrow]
+
+    static func matching(frequencyMHz: Double, powerDBm: Double, sensitivityDBm: Double) -> Self {
+        allCases.first {
+            $0.frequencyMHz == frequencyMHz && $0.transmitPowerDBm == powerDBm &&
+                $0.receiverSensitivityDBm == sensitivityDBm
+        } ?? .custom
+    }
 
     init(planningPreset: CoverageRadioPreset) {
         switch planningPreset.id {
@@ -819,6 +829,7 @@ enum LinkProfileRadioPreset: String, CaseIterable, Identifiable {
         case "meshcore-eu-433-narrow": self = .europe433Narrow
         case "meshcore-au-narrow": self = .australiaNarrow
         case "meshcore-nz-narrow": self = .newZealandNarrow
+        case "meshcore-br-narrow": self = .brazilNarrow
         default: self = .custom
         }
     }
@@ -836,6 +847,7 @@ enum LinkProfileRadioPreset: String, CaseIterable, Identifiable {
         case .europe433Narrow: "EU 433 MHz (Narrow)"
         case .australiaNarrow: "Australia (Narrow)"
         case .newZealandNarrow: "New Zealand (Narrow)"
+        case .brazilNarrow: "Brazil (Narrow)"
         case .custom: "Custom"
         }
     }
@@ -926,7 +938,8 @@ final class LinkProfileModel {
         receiverSensitivityDBm = inputs.sensitivityDbm
         refractionK = inputs.refractionK
         sampleCount = inputs.sampleCount
-        radioPreset = .custom
+        radioPreset = .matching(frequencyMHz: frequencyMHz, powerDBm: transmitPowerDBm,
+                                sensitivityDBm: receiverSensitivityDBm)
         // A saved result opens as it was, without fetching terrain; edits clear it and wait for Calculate.
         result = study.linkProfileResult.flatMap { try? PortableLinkProfileResult.decode($0, inputs: inputs) }
         savedResultNote = switch (result, study.resultStatus) {
@@ -1645,8 +1658,7 @@ private struct LinkProfilePointCard: View {
     }
 }
 
-/// The two presets, then the three values a preset sets. Editing one makes the radio custom,
-/// and neither preset is then selected.
+/// Preset choices and the radio values they set. Editing a value makes the radio custom.
 private struct LinkProfileRadioSettings: View {
     @Bindable var model: LinkProfileModel
     @State private var isCustomizing = false
@@ -1659,7 +1671,7 @@ private struct LinkProfileRadioSettings: View {
                 HStack(spacing: 8) { presets }
                 VStack(alignment: .leading, spacing: 8) { presets }
             }
-            if ![LinkProfileRadioPreset.unitedStatesNarrow, .europeNarrow, .custom].contains(model.radioPreset) {
+            if model.radioPreset != .custom && !LinkProfileRadioPreset.selectable.contains(model.radioPreset) {
                 Text(model.radioPreset.title).font(.monaspace(.subheadline))
             }
             if let origin = model.radioDefaultOrigin {
@@ -1690,7 +1702,7 @@ private struct LinkProfileRadioSettings: View {
 
     @ViewBuilder
     private var presets: some View {
-        ForEach([LinkProfileRadioPreset.unitedStatesNarrow, .europeNarrow]) { preset in
+        ForEach(LinkProfileRadioPreset.selectable) { preset in
             if model.radioPreset == preset {
                 Button { model.applyRadioPreset(preset) } label: { Text(preset.title) }
                     .buttonStyle(.borderedProminent)

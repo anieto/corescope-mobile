@@ -340,14 +340,16 @@ private fun LinkDetails(model: LinkProfileViewModel, state: LinkProfileViewModel
         Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.link_profile_radio_settings), style = MaterialTheme.typography.titleMedium)
-                // Editing a value below makes the radio custom; neither preset is then selected.
+                // Editing a value below clears the selected preset.
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("US/Canada Narrow" to R.string.link_profile_preset_us, "EU/UK Narrow" to R.string.link_profile_preset_eu).forEach { (key, label) ->
+                    LinkProfileViewModel.selectablePresets.forEach { (key, label) ->
                         FilterChip(selected = state.preset == key, onClick = { model.preset(key) }, label = { Text(stringResource(label)) })
                     }
                 }
-                org.nodescope.android.feature.coverage.CoverageRadioPreset.preset(state.preset)?.let { preset ->
-                    Text(preset.title.asString(), style = MaterialTheme.typography.titleSmall)
+                if (LinkProfileViewModel.selectablePresets.none { (key, _) -> key == state.preset }) {
+                    org.nodescope.android.feature.coverage.CoverageRadioPreset.preset(state.preset)?.let { preset ->
+                        Text(preset.title.asString(), style = MaterialTheme.typography.titleSmall)
+                    }
                 }
                 state.radioDefaultLabel?.let { label ->
                     Text(stringResource(label), style = MaterialTheme.typography.bodySmall,

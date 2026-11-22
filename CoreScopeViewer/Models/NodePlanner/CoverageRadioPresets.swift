@@ -56,6 +56,8 @@ struct CoverageRadioPreset: Identifiable, Hashable, Sendable {
              frequencyMHz: 916.575, spreadingFactor: 7, bandwidthKHz: 62.5, transmitPowerDbm: 22),
         Self(id: "meshcore-nz-narrow", family: .meshCore, title: String(localized: "New Zealand (Narrow)"),
              frequencyMHz: 917.375, spreadingFactor: 7, bandwidthKHz: 62.5, transmitPowerDbm: 22),
+        Self(id: "meshcore-br-narrow", family: .meshCore, title: String(localized: "Brazil (Narrow)"),
+             frequencyMHz: 923.125, spreadingFactor: 8, bandwidthKHz: 62.5, transmitPowerDbm: 22),
         Self(id: "meshtastic-us-long-fast", family: .meshtastic, title: String(localized: "US Long Fast"),
              frequencyMHz: 906.875, spreadingFactor: 11, bandwidthKHz: 250, transmitPowerDbm: 22),
         Self(id: "meshtastic-eu-868-long-fast", family: .meshtastic, title: String(localized: "EU 868 Long Fast"),
@@ -137,6 +139,7 @@ struct PlannerRadioDefault: Equatable {
         case "US", "CA": return .standard
         case "AU": return CoverageRadioPreset.preset(id: "meshcore-au-narrow")
         case "NZ": return CoverageRadioPreset.preset(id: "meshcore-nz-narrow")
+        case "BR": return CoverageRadioPreset.preset(id: "meshcore-br-narrow")
         case _ where europeanCountries.contains(country): return CoverageRadioPreset.preset(id: "meshcore-eu-uk-narrow")
         default: return nil
         }
