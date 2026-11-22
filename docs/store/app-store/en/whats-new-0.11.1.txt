@@ -1,0 +1,4 @@
+New: Watched-node alerts. Tap the bell on a node to get a push alert when it goes quiet or is heard again. Needs a CoreScope account on an analyzer with NodeScope Push.
+New: Reported repeater details, with antenna values you can use in coverage and link studies. Favorite channels get their own section.
+Fixed: clearer Node Check wording in Spanish and Portuguese.
+From 0.11.0: Saved Plans, Estimated Coverage (beta), Spanish and Brazilian Portuguese.

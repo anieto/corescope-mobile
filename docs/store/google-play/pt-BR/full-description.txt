@@ -30,11 +30,11 @@ Avalie um local antes de instalar o equipamento. O Perfil de enlace mostra o ter
 
 BOM SABER
 
-Use seu próprio analisador. O NodeScope não tem back-end próprio. Escolha uma fonte da comunidade, como a MeshTexas, ou conecte-o a qualquer host compatível com o CoreScope ou o Beacon.
+Use seu próprio analisador. O NodeScope mostra os dados diretamente do analisador que você escolher: uma fonte da comunidade, como a MeshTexas, ou qualquer host compatível com o CoreScope ou o Beacon.
 
 Funciona com conexão instável. Os dados carregados recentemente continuam disponíveis e são marcados claramente como não ao vivo.
 
-Privacidade desde a concepção. Sem conta, sem anúncios, sem análises. Sua localização é usada só no seu dispositivo, só quando você pede para centralizar o mapa, e nunca é enviada a lugar nenhum. O Perfil de enlace envia os dois pontos que você escolhe ao Open-Meteo para obter a elevação, e a Cobertura estimada baixa blocos de terreno da Amazon Web Services.
+Privacidade desde a concepção. Sem anúncios, sem análises. Entrar é opcional e é feito diretamente com o seu analisador. Os alertas de nós monitorados também são opcionais: ao ativá-los, o token push do seu dispositivo, do Firebase Cloud Messaging, é registrado no relay push do NodeScope, que nós operamos e que não guarda dados de conta, localizações nem mensagens. Sua localização é usada no seu dispositivo para centralizar o mapa e nunca é enviada a um analisador. O Perfil de enlace envia os dois pontos que você escolhe ao Open-Meteo para obter a elevação, e a Cobertura estimada baixa blocos de terreno da Amazon Web Services.
 
 Não é afiliado ao CoreScope, ao Beacon, à MeshTexas nem ao MeshCore. O NodeScope é um visualizador independente e não oficial.
 

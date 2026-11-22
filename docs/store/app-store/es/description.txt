@@ -36,6 +36,6 @@ ANALIZADORES DE LA COMUNIDAD
 Elige una fuente CoreScope o Beacon de la comunidad, o ingresa el nombre de host de un analizador compatible.
 
 PRIVACIDAD DESDE EL DISEÑO
-Sin cuenta, sin backend propio y sin publicidad, rastreo ni SDK de análisis. NodeScope se conecta directamente al analizador que elijas. Perfil de enlace envía los dos puntos que elijas a Open-Meteo para obtener la elevación, y Cobertura estimada descarga teselas de terreno de Amazon Web Services. Tu ubicación y tus claves de canal nunca se transmiten.
+Sin publicidad, rastreo ni SDK de análisis. NodeScope se conecta directamente al analizador que elijas. Iniciar sesión es opcional y se hace directamente con ese analizador. Las alertas de nodos seguidos también son opcionales: al activarlas, el token push de tu dispositivo se registra en el relé push de NodeScope, que operamos nosotros y que no guarda datos de cuenta, ubicaciones ni mensajes. Perfil de enlace envía los dos puntos que elijas a Open-Meteo para obtener la elevación, y Cobertura estimada descarga teselas de terreno de Amazon Web Services. Tus claves de canal nunca salen de tu dispositivo y tu ubicación nunca se envía a un analizador.
 
 NodeScope es un proyecto independiente y no está afiliado a CoreScope, Beacon, MeshTexas ni MeshCore.
