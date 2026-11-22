@@ -1,8 +1,9 @@
 # NodeScope Roadmap
 
-NodeScope should remain a fast, native, read-only mesh observability tool. New
-features should make live and historical network behavior easier to understand
-without reproducing every desktop or operator control from CoreScope.
+NodeScope is a fast, native app for understanding live and historical mesh
+activity. It keeps the mobile experience focused on observability and planning.
+Signed-in users can manage watched nodes and the repeaters they claim through
+their CoreScope account.
 
 Every feature and release closeout must be verified on iPhone, iPhone Duo and iPad,
 including navigation, safe areas, adaptive layout, popovers/sheets, and toolbar
@@ -432,10 +433,45 @@ catalog / `strings.xml`, never hardcoded.
   Tools in English, Spanish, and Brazilian Portuguese.
 - Deferred: distance labels in source rows.
 
-## 1.0.0 — Investigation depth and product maturity
+## 1.0.0 — Release candidate
 
-Complete the core read-only investigation workflow and prepare NodeScope for a
-stable long-term public release.
+1.0 builds on the live map, Node Analytics, Saved Plans, Link Profile, and
+Estimated Coverage shipped through 0.11.0. It includes:
+
+- Watched nodes with a bell on node details and optional push alerts when a node
+  goes quiet or is heard again on an analyzer with NodeScope Push enabled.
+- Community-reported repeater status and equipment, with antenna height and gain
+  available in both planners. Signed-in maintainers can claim repeaters, update
+  their reports, and remove claims from the app.
+- Country-grouped Analyzer Source picker, a country-aware onboarding default,
+  and Sort by nearest when location is available.
+- Radio defaults for new Link Profile and Estimated Coverage studies based on
+  observer reports, analyzer country, or device region, including the MeshCore
+  preset for Brazil. Saved studies keep their recorded radio settings.
+- NodeVision camera guidance for discovering nearby mesh nodes or finding a
+  selected node.
+- A dedicated section for favorite channels and clearer Spanish and Brazilian
+  Portuguese Node Check wording.
+
+## 1.0 release candidate checklist
+
+- [ ] Raise the staging push relay's memory limit before restarting it. Staging
+  stopped on 2026-11-20 after running out of memory.
+- [ ] Fix the dark-mode Link Profile route bug.
+- [ ] Complete the Brazilian Portuguese (pt-BR) native-speaker review.
+- [ ] Address the 11 pre-existing Android unit test failures and the iOS
+  `BeaconAPITests.nodeSummaryPreservesUnknownDatesAndUsesNewestRegion` failure
+  (`NSURLErrorDomain -1000`).
+- [ ] Test iPhone, iPhone Duo, iPad, and Android phone, tablet, and foldable in
+  light and dark mode. Cover onboarding, the Analyzer Source picker (including
+  Android's relocated custom analyzer card), Sort by nearest, NodeVision,
+  repeater management, watched-node push, Link Profile, and Estimated Coverage.
+- [ ] Verify App Store and Google Play privacy answers for location used in
+  nearest-source sorting and NodeVision guidance, camera use in NodeVision,
+  account-based writes, and the push relay.
+- [ ] Prepare the 1.0 store screenshots and listings.
+
+## After 1.0
 
 - Expand packet details with raw hex, decoded fields, propagation timing, and a
   clearer per-observer observation timeline.
@@ -449,9 +485,6 @@ stable long-term public release.
   unsupported endpoints.
 - Complete large-network, long-running live-feed, offline-cache, accessibility,
   and performance regression passes.
-- Localization infrastructure and first language: see [Localization](#localization-planned).
-- Finalize onboarding, privacy documentation, App Store materials, and the 1.0
-  release checklist.
 
 ## Deliberately deferred
 
@@ -471,11 +504,11 @@ These may be revisited after 1.0 if user demand justifies them.
 
 ## Out of scope
 
-These CoreScope features do not fit NodeScope's focused, read-only mobile role.
+CoreScope account writes for personal selections, watched nodes, and claimed
+repeaters are in scope. The following remain outside NodeScope's mobile role:
 
 - MQTT broker, ingestion, retention, and server administration.
-- Operator/API-key-protected write operations or packet injection. Optional
-  personal account-selection sync is in scope for 0.9.0.
+- Operator/API-key-protected writes and packet injection.
 - Theme designers, Matrix mode, and other desktop visual-effect modes.
 - Desktop-style resizable packet tables.
 - Uploading mobile RF telemetry or location tracks.
@@ -489,7 +522,6 @@ and 3 are at parity. See [implementation progress](docs/android/progress.md).
 
 ## Current priority
 
-0.10.2 (Learn layer, Monaspace Neon, Settings refresh, foldable fixes) is uploaded to the App Store
-and Google Play. 0.10.4 (the 0.10.3 live map options plus Beacon 2.2 support) and 0.10.5 (Node Check) are the next
-releases; then 0.10.6: Candidate Sites and the iPad two-pane map layout. Android touch &
-hold still needs a device test.
+Validate the 1.0.0 release candidate on iOS and Android and close the
+[release candidate checklist](#10-release-candidate-checklist). The last public
+release is 0.11.0.
