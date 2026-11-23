@@ -43,6 +43,8 @@ data class LivePacket(
     val advertKey: String? = null,
     /** 0 and 1 are flood, 2 and 3 direct (how a zero-hop advert travels). */
     val routeType: Int? = null,
+    /** An explicit path, including an empty one, disables prefix guessing. */
+    val hasResolvedPath: Boolean = resolvedPath.isNotEmpty(),
 ) {
     // Same transmission can have different observers and routes; retain those observations.
     // Built once per packet: the feed compares keys against every stored packet on each arrival.
@@ -73,8 +75,13 @@ fun parseLivePacket(data: JsonObject, live: Boolean, now: Long = System.currentT
         is JsonObject -> value.text("pubkey") ?: value.text("hash")
         else -> null
     } }
-    val resolved = (data["resolved_path"] as? JsonArray ?: decoded?.get("resolved_path") as? JsonArray)
-        .orEmpty().map { (it as? JsonPrimitive)?.contentOrNull }
+    val resolvedField = data["resolved_path"]?.takeUnless { it is JsonNull }
+        ?: decoded?.get("resolved_path")?.takeUnless { it is JsonNull }
+    val resolvedArray = resolvedField as? JsonArray
+        ?: (resolvedField as? JsonPrimitive)?.takeIf { it.isString }?.content?.let {
+            runCatching { protocolJson.parseToJsonElement(it) as? JsonArray }.getOrNull()
+        }
+    val resolved = resolvedArray.orEmpty().map { (it as? JsonPrimitive)?.contentOrNull }
     return LivePacket(id, data.text("hash").orEmpty(), type, name, data.text("observer_id"), data.text("observer_name"),
         data.text("observer_iata"), data.number("snr"), data.number("rssi"), hops, resolved,
         data.text("timestamp") ?: data.text("first_seen"), now, live, data.number("observation_count")?.toInt() ?: 1,
@@ -82,7 +89,8 @@ fun parseLivePacket(data: JsonObject, live: Boolean, now: Long = System.currentT
         payload?.text("channel")?.takeIf(String::isNotBlank), header?.number("payloadVersion")?.toInt(),
         (data.text("raw_hex") ?: data.text("raw"))?.takeIf(String::isNotBlank),
         payload?.text("pubKey")?.takeIf(String::isNotBlank)?.lowercase(),
-        (data.number("route_type") ?: header?.number("routeType"))?.toInt())
+        (data.number("route_type") ?: header?.number("routeType"))?.toInt(),
+        hasResolvedPath = resolvedField != null)
 }
 private fun JsonObject.text(key: String) = (this[key] as? JsonPrimitive)?.contentOrNull
 private fun JsonObject.number(key: String) = (this[key] as? JsonPrimitive)?.doubleOrNull

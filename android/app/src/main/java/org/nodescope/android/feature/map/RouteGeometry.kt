@@ -71,6 +71,7 @@ internal fun nodeLookup(nodes: List<org.nodescope.android.core.model.MeshNode>) 
 internal fun resolvedRouteNodes(packet: org.nodescope.android.core.model.LivePacket,
     nodes: List<org.nodescope.android.core.model.MeshNode>,
     lookup: Map<String, org.nodescope.android.core.model.MeshNode> = nodeLookup(nodes)): List<org.nodescope.android.core.model.MeshNode?> {
+    val canResolvePrefixes = !packet.hasResolvedPath && (packet.hops.firstOrNull()?.length ?: 0) > 2
     return (0 until maxOf(packet.hops.size, packet.resolvedPath.size)).map { index ->
         val resolved = packet.resolvedPath.getOrNull(index)
         if (!resolved.isNullOrBlank()) lookup[resolved.lowercase()]
@@ -78,7 +79,7 @@ internal fun resolvedRouteNodes(packet: org.nodescope.android.core.model.LivePac
         else if (index < packet.resolvedPath.size) null
         // Without the analyzer's resolution, only multi-byte hops are matched (iOS): a 1-byte hop
         // fits about five nodes here, so a unique-looking match is usually a wrong guess.
-        else if (packet.resolvedPath.isNotEmpty() || packet.hops.none { (it?.length ?: 0) > 2 }) null
+        else if (!canResolvePrefixes) null
         else packet.hops.getOrNull(index)?.takeIf { it.isNotBlank() }?.lowercase()?.let { prefix ->
             lookup[prefix] ?: nodes.filter { it.publicKey.startsWith(prefix, true) }.singleOrNull()
         }
