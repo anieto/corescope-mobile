@@ -132,10 +132,39 @@ struct AnalyzerSourceChoices {
             }
             return (index: index, source: source, distance: distance ?? .infinity)
         }
-        return ranked.sorted { first, second in
+        var sorted = ranked.sorted { first, second in
             if first.distance == second.distance { return first.index < second.index }
             return first.distance < second.distance
         }.map(\.source)
+        if let meshTexas = sorted.firstIndex(where: { $0.id == "meshtexas" }), meshTexas > 0,
+           Self.isInTexas(coordinate) {
+            let preferred = sorted.remove(at: meshTexas)
+            sorted.insert(preferred, at: 0)
+        }
+        return sorted
+    }
+
+    // U.S. Census Bureau TIGERweb ACS 2024, States 500K (WGS 84).
+    private static let texasBoundary: [[[[Double]]]] = {
+        guard let url = Bundle.main.url(forResource: "texas-boundary", withExtension: "json"),
+              let data = try? Data(contentsOf: url) else { return [] }
+        return (try? JSONDecoder().decode([[[[Double]]]].self, from: data)) ?? []
+    }()
+
+    private static func isInTexas(_ coordinate: CLLocationCoordinate2D) -> Bool {
+        guard CLLocationCoordinate2DIsValid(coordinate) else { return false }
+        return texasBoundary.contains { polygon in
+            var inside = false
+            for ring in polygon {
+                for (start, end) in zip(ring, ring.dropFirst()) {
+                    guard (start[1] > coordinate.latitude) != (end[1] > coordinate.latitude) else { continue }
+                    let crossing = start[0] + (end[0] - start[0]) *
+                        (coordinate.latitude - start[1]) / (end[1] - start[1])
+                    if coordinate.longitude < crossing { inside.toggle() }
+                }
+            }
+            return inside
+        }
     }
 }
 

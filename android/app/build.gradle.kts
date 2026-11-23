@@ -110,6 +110,7 @@ android {
     // The bundled registry holds only the default source (as on iOS), so any other source can be
     // delisted from the live registry without an app update; its icon ships in assets/icons.
     sourceSets["main"].assets.srcDir("../../shared/rf-engine/licenses")
+    sourceSets["main"].assets.srcDir("../../shared/analyzer-sources")
     sourceSets["main"].java.srcDirs("../../shared/rf-engine/vendor/kp1812/commonMain/kotlin", "../../shared/rf-engine/src/commonMain/kotlin")
     sourceSets["test"].java.srcDirs("../../shared/rf-engine/vendor/kp1812/commonTest/kotlin", "../../shared/rf-engine/src/commonTest/kotlin")
     sourceSets["test"].resources.srcDir("../../shared/fixtures")

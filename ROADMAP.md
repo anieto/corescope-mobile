@@ -415,11 +415,12 @@ catalog / `strings.xml`, never hardcoded.
   when it has a listing. Other countries are alphabetical, source order is preserved within each
   country, and entries without a country go under Other. When there is no local listing, Custom
   Analyzer and the source request appear first.
-- Country grouping uses the device region without location permission. The shared Settings
-  and onboarding pickers ask for permission only when the user taps Sort by nearest. They
-  sort on open if permission was already granted. Denial or an unavailable fix leaves
-  country grouping in place without another prompt. Entries without a valid location follow
-  the sorted sources in registry order.
+- The shared Settings and onboarding pickers open grouped by country. They request a
+  location fix only when the user taps Sort by nearest, even if permission is already granted.
+  Denial or an unavailable fix leaves country grouping in place without another prompt.
+  Within Texas, MeshTexas appears first. Other sources remain distance-sorted, with
+  unlocated sources last in registry order. The Texas check uses a bundled
+  [U.S. Census Bureau boundary](https://tigerweb.geo.census.gov/arcgis/rest/services/Generalized_ACS2024/State_County/MapServer/7).
 - First-run onboarding prefers the country's default, then its first listed source. Countries
   without a listing start with an empty selection. The bundled offline registry lists MeshTexas
   for the US. Source request emails include the device country, home area, description, region

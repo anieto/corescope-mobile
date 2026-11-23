@@ -42,6 +42,7 @@ import org.nodescope.android.core.design.MonaspaceNeon
 import org.nodescope.android.core.design.SectionLabel
 import org.nodescope.android.core.model.AnalyzerSource
 import org.nodescope.android.core.model.AnalyzerSourceChoices
+import org.nodescope.android.core.model.TexasBoundary
 import org.nodescope.android.core.model.AnalyzerSourceType
 import org.nodescope.android.core.model.Coordinate
 import org.nodescope.android.feature.map.LocationResult
@@ -69,7 +70,14 @@ fun SourceScreen(
     var permissionRequested by remember {
         mutableStateOf(permissionHistory.getBoolean("location_requested", false))
     }
-    var locate by remember { mutableStateOf(hasLocationPermission(context)) }
+    val texasBoundary = remember(context) {
+        lazy {
+            runCatching {
+                context.assets.open("texas-boundary.json").bufferedReader().use { TexasBoundary(it.readText()) }
+            }.getOrNull()
+        }
+    }
+    var locate by remember { mutableStateOf(false) }
     var location by remember { mutableStateOf<Coordinate?>(null) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         locate = granted
@@ -94,7 +102,7 @@ fun SourceScreen(
                     permission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
                 }
             },
-            enabled = !locate && !permissionRequested,
+            enabled = !locate && (hasLocationPermission(context) || !permissionRequested),
             modifier = Modifier.align(Alignment.End).padding(horizontal = 16.dp),
         ) {
             Icon(Icons.Outlined.MyLocation, null, Modifier.size(18.dp))
@@ -109,9 +117,9 @@ fun SourceScreen(
             val origin = location
             if (origin != null) {
                 item("nearest_header") {
-                    SectionLabel(stringResource(R.string.onboarding_community_sources), Modifier.padding(horizontal = 4.dp))
+                    SectionLabel(stringResource(R.string.onboarding_nearest_to_you), Modifier.padding(horizontal = 4.dp))
                 }
-                items(choices.nearest(origin), key = { "source_${it.id}" }) {
+                items(choices.nearest(origin, texasBoundary.value), key = { "source_${it.id}" }) {
                     CommunitySourceRow(it, currentHost, saving, onSave, icons)
                 }
             } else {

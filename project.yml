@@ -21,6 +21,8 @@ targets:
     deploymentTarget: "18.0"
     sources:
       - path: CoreScopeViewer
+      - path: shared/analyzer-sources/texas-boundary.json
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: NodeScope

@@ -112,6 +112,20 @@ struct AnalyzerSourceLogoTests {
                 ["near1", "near2", "far", "missing", "invalid", "incomplete", "nonfinite"])
     }
 
+    @Test func nearestSortPrefersMeshTexasOnlyInsideTexas() {
+        let sources = [source("meshtexas", "US", location: [30.6, -96.9]),
+                       source("comchan", "US", location: [30.27, -97.74]),
+                       source("nearby", "US", location: [30.28, -97.74]),
+                       source("arkansas", "US", location: [33.45, -94.02])]
+        let choices = AnalyzerSourceChoices(sources: sources)
+        #expect(choices.nearest(to: .init(latitude: 30.27, longitude: -97.74)).map(\.id) ==
+                ["meshtexas", "comchan", "nearby", "arkansas"])
+        #expect(choices.nearest(to: .init(latitude: 33.45, longitude: -94.02)).first?.id == "arkansas")
+        let withoutMeshTexas = AnalyzerSourceChoices(sources: Array(sources.dropFirst()))
+        #expect(withoutMeshTexas.nearest(to: .init(latitude: 30.27, longitude: -97.74)).map(\.id) ==
+                ["comchan", "nearby", "arkansas"])
+    }
+
     @Test func onboardingRespectsCountryDefaultsAndSavedHosts() {
         let sources = [source("us", "US", isDefault: true), source("ca1", "CA"),
                        source("ca2", "CA", isDefault: true), source("br1", "BR"), source("br2", "BR")]

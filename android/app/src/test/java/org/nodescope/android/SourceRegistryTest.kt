@@ -8,6 +8,7 @@ import org.nodescope.android.core.model.AnalyzerSource
 import org.nodescope.android.core.model.AnalyzerSourceChoices
 import org.nodescope.android.core.model.AnalyzerSourceType
 import org.nodescope.android.core.model.Coordinate
+import org.nodescope.android.core.model.TexasBoundary
 import org.nodescope.android.core.network.decodeSourceRegistry
 import org.nodescope.android.core.network.decodeSourceRegistryV2
 
@@ -63,6 +64,20 @@ class SourceRegistryTest {
             source("nonfinite", location = listOf(Double.POSITIVE_INFINITY, 0.0)))
         assertEquals(listOf("near1", "near2", "far", "missing", "invalid", "incomplete", "nonfinite"),
             AnalyzerSourceChoices(sources).nearest(Coordinate(0.0, 0.0)).map { it.id })
+    }
+
+    @Test fun nearestSortPrefersMeshTexasOnlyInsideTexas() {
+        val boundary = TexasBoundary(File("../../shared/analyzer-sources/texas-boundary.json").readText())
+        val sources = listOf(source("meshtexas", "US", listOf(30.6, -96.9)),
+            source("comchan", "US", listOf(30.27, -97.74)),
+            source("nearby", "US", listOf(30.28, -97.74)),
+            source("arkansas", "US", listOf(33.45, -94.02)))
+        val choices = AnalyzerSourceChoices(sources)
+        assertEquals(listOf("meshtexas", "comchan", "nearby", "arkansas"),
+            choices.nearest(Coordinate(30.27, -97.74), boundary).map { it.id })
+        assertEquals("arkansas", choices.nearest(Coordinate(33.45, -94.02), boundary).first().id)
+        assertEquals(listOf("comchan", "nearby", "arkansas"),
+            AnalyzerSourceChoices(sources.drop(1)).nearest(Coordinate(30.27, -97.74), boundary).map { it.id })
     }
 
     @Test fun onboardingRespectsCountryDefaultsAndSavedHosts() {

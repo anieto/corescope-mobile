@@ -60,7 +60,7 @@ struct AnalyzerSourcePickerScreen: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        sortByNearest(allowsAuthorizationPrompt: true)
+                        sortByNearest()
                     } label: {
                         Label("Sort by nearest", systemImage: "location")
                     }
@@ -73,9 +73,6 @@ struct AnalyzerSourcePickerScreen: View {
                 location = nil
             }
             .task {
-                if locationManager.isAuthorized {
-                    sortByNearest(allowsAuthorizationPrompt: false)
-                }
                 await sourceRegistry.refresh()
             }
         }
@@ -84,7 +81,7 @@ struct AnalyzerSourcePickerScreen: View {
     @ViewBuilder
     private var communitySections: some View {
         if let location {
-            communitySection(choices.nearest(to: location), title: String(localized: "Community Sources"),
+            communitySection(choices.nearest(to: location), title: String(localized: "Nearest to you"),
                              showsFooter: true)
         } else {
             let sections = choices.countrySections
@@ -209,10 +206,10 @@ struct AnalyzerSourcePickerScreen: View {
         .instrumentListRows()
     }
 
-    private func sortByNearest(allowsAuthorizationPrompt: Bool) {
+    private func sortByNearest() {
         guard !locationAttempted else { return }
         locationAttempted = true
-        locationManager.requestCurrentLocation(allowsAuthorizationPrompt: allowsAuthorizationPrompt) {
+        locationManager.requestCurrentLocation {
             location = $0
         } failure: {}
     }
