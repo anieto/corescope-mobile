@@ -28,11 +28,6 @@ final class MapLocationManager: NSObject, @preconcurrency CLLocationManagerDeleg
         self.completion = completion
         self.failure = failure
 
-        guard CLLocationManager.locationServicesEnabled() else {
-            finishWithFailure()
-            return
-        }
-
         switch locationManager.authorizationStatus {
         case .notDetermined:
             if allowsAuthorizationPrompt {

@@ -67,11 +67,6 @@ final class FieldLocationSession: NSObject, @preconcurrency CLLocationManagerDel
 
     func start() {
         wantsUpdates = true
-        guard CLLocationManager.locationServicesEnabled() else {
-            status = .unavailable
-            return
-        }
-
         switch manager.authorizationStatus {
         case .notDetermined:
             status = .requestingPermission
