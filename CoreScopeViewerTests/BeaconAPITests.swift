@@ -1209,7 +1209,7 @@ struct BeaconAPITests {
     }
 
     @Test func nodeSummaryPreservesUnknownDatesAndUsesNewestRegion() async throws {
-        let session = Self.session(targets: ["/api/v1/nodes?limit=2000"], fixture: "node-by-pubkey")
+        let session = Self.session(targets: ["/api/v1/nodes?limit=1000"], fixture: "node-by-pubkey")
         defer { session.invalidateAndCancel() }
         let reader = try BeaconNodeReader(client: Self.client(session), verifiedServerInfo: .init(serverVersion: "2.0.3"))
         let page = try await reader.nodePage(region: nil, pageSize: 1000)

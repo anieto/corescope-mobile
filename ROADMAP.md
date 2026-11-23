@@ -459,9 +459,8 @@ Estimated Coverage shipped through 0.11.0. It includes:
   stopped on 2026-11-20 after running out of memory.
 - [ ] Fix the dark-mode Link Profile route bug.
 - [ ] Complete the Brazilian Portuguese (pt-BR) native-speaker review.
-- [ ] Address the 11 pre-existing Android unit test failures and the iOS
-  `BeaconAPITests.nodeSummaryPreservesUnknownDatesAndUsesNewestRegion` failure
-  (`NSURLErrorDomain -1000`).
+- [x] Resolve the 11 pre-existing Android unit test failures and the iOS Beacon
+  node summary fixture failure. Verify both full unit test suites pass.
 - [ ] Test iPhone, iPhone Duo, iPad, and Android phone, tablet, and foldable in
   light and dark mode. Cover onboarding, the Analyzer Source picker (including
   Android's relocated custom analyzer card), Sort by nearest, NodeVision,
