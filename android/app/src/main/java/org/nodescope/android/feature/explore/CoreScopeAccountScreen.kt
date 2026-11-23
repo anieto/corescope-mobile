@@ -184,10 +184,17 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
         if (add && keys.isNotEmpty()) reconcile(true)
     }
 
-    suspend fun removeFavorite(key: String) = action {
+    suspend fun addFavorite(key: String) = editFavorite {
+        if (!CoreScopeFavoriteMerge.validKey(key)) throw AccountException(AccountException.Kind.RESPONSE)
+        it.copy(favorites = it.favorites + key.lowercase())
+    }
+
+    suspend fun removeFavorite(key: String) = editFavorite { it.removeFavorite(key) }
+
+    private suspend fun editFavorite(update: (CoreScopeAccountSelectionState) -> CoreScopeAccountSelectionState) = action {
         if (resetDocument != null) throw AccountException(AccountException.Kind.RESET)
         val state = load() ?: throw AccountException(AccountException.Kind.RESPONSE)
-        persist(state.removeFavorite(key))
+        persist(update(state))
         message = UiText.Resource(R.string.explore_account_edits_saved_on_this_device_choose_sync)
     }
 
@@ -316,6 +323,8 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
     }
 }
 
+private data class FavoriteRemoval(val key: String, val name: String, val isClaimedRepeater: Boolean)
+
 @Composable
 fun CoreScopeAccountScreen(
     host: String, sourceName: String?, library: NodeLibrary,
@@ -351,6 +360,7 @@ fun CoreScopeAccountScreen(
         }
     }
     var showsSignOut by remember { mutableStateOf(false) }
+    var favoriteToRemove by remember(host, model.user?.id) { mutableStateOf<FavoriteRemoval?>(null) }
     var showsPushGuide by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -363,6 +373,30 @@ fun CoreScopeAccountScreen(
         }
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer); scope.coroutineContext.cancelChildren(); password = "" }
+    }
+    favoriteToRemove?.let { favorite ->
+        AlertDialog(
+            onDismissRequest = { favoriteToRemove = null },
+            title = { Text(stringResource(R.string.account_confirm_remove_favorite)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(favorite.name, fontFamily = MonaspaceNeon)
+                    if (favorite.isClaimedRepeater) Text(stringResource(R.string.account_repeater_stays_claimed))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    favoriteToRemove = null
+                    if (model.user != null) scope.launch { model.removeFavorite(favorite.key) }
+                    else library.favorites.firstOrNull {
+                        it.kind == SavedKind.NODE && it.entityId.equals(favorite.key, ignoreCase = true)
+                    }?.let(library::removeFavorite)
+                }) {
+                    Text(stringResource(R.string.node_detail_remove_favorite), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { favoriteToRemove = null }) { Text(stringResource(R.string.common_cancel)) } },
+        )
     }
     if (showsSignOut) AlertDialog(onDismissRequest = { showsSignOut = false },
         title = { Text(stringResource(R.string.explore_sign_out_of_corescope)) },
@@ -448,33 +482,38 @@ fun CoreScopeAccountScreen(
         val user = model.user
         val paused = model.resetDocument != null
         item {
-            AccountCard(stringResource(R.string.account_your_nodes), Icons.Outlined.StarBorder) {
+            AccountCard(stringResource(R.string.account_my_nodes), Icons.Outlined.StarBorder) {
                 val keys = if (user != null) accountKeys else library.nodeKeys().sorted()
-                if (user != null) {
-                    AccountRepeatersSection(host, user.id, keys.size)
-                } else {
-                    AccountNodeSummary(keys.size)
-                }
-                Text(stringResource(if (user == null) R.string.account_device_favorites else R.string.account_favorites),
-                    style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
-                if (keys.isEmpty()) Text(stringResource(R.string.account_no_favorites),
-                    style = MaterialTheme.typography.bodySmall)
-                keys.forEach { key ->
-                    val device = if (user == null) library.state.favorites.firstOrNull {
-                        it.kind == SavedKind.NODE && it.entityId.equals(key, ignoreCase = true)
-                    } else null
-                    val name = myNodeNames[key]?.takeIf { it.isNotBlank() }
-                        ?: device?.title ?: resolvedNames[key] ?: library.node(key)?.name?.takeIf { it.isNotBlank() }
-                    AccountNodeRow(name, key) {
-                        TextButton(onClick = {
-                            if (user != null) scope.launch { model.removeFavorite(key) }
-                            else if (device != null) library.removeFavorite(device)
-                        }, enabled = !model.busy && !paused,
-                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                            modifier = Modifier.withDescription(stringResource(R.string.explore_remove_favorite, name ?: key)) { description -> contentDescription = description }) {
-                            Text(stringResource(R.string.explore_remove))
+                val favoriteRows: @Composable (Set<String>) -> Unit = { claimedKeys ->
+                    Text(stringResource(if (user == null) R.string.account_device_favorites else R.string.account_favorites),
+                        style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
+                    if (keys.isEmpty()) Text(stringResource(R.string.account_no_favorites),
+                        style = MaterialTheme.typography.bodySmall)
+                    keys.filterNot { it in claimedKeys }.forEach { key ->
+                        val device = if (user == null) library.state.favorites.firstOrNull {
+                            it.kind == SavedKind.NODE && it.entityId.equals(key, ignoreCase = true)
+                        } else null
+                        val name = myNodeNames[key]?.takeIf { it.isNotBlank() }
+                            ?: device?.title ?: resolvedNames[key] ?: library.node(key)?.name?.takeIf { it.isNotBlank() }
+                        AccountNodeRow(name, key) {
+                            TextButton(onClick = {
+                                favoriteToRemove = FavoriteRemoval(key, name ?: key, isClaimedRepeater = false)
+                            }, enabled = !model.busy && !paused,
+                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                                modifier = Modifier.withDescription(stringResource(R.string.explore_remove_favorite, name ?: key)) { description -> contentDescription = description }) {
+                                Text(stringResource(R.string.explore_remove))
+                            }
                         }
                     }
+                }
+                if (user != null) {
+                    AccountRepeatersSection(host, user.id, keys.toSet(), canEditFavorite = !model.busy && !paused,
+                        onAddFavorite = { key -> scope.launch { model.addFavorite(key) } },
+                        onRemoveFavorite = { key, name -> favoriteToRemove = FavoriteRemoval(key, name, isClaimedRepeater = true) },
+                        favoriteRows = favoriteRows)
+                } else {
+                    AccountNodeSummary(keys.size)
+                    favoriteRows(emptySet())
                 }
             }
         }

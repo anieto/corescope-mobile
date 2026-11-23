@@ -4,6 +4,10 @@ import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -64,7 +68,11 @@ internal fun AccountNodeSummary(favoriteCount: Int, repeaterCount: Int? = null) 
 }
 
 @Composable
-internal fun AccountRepeatersSection(host: String, accountId: Long, favoriteCount: Int) {
+internal fun AccountRepeatersSection(
+    host: String, accountId: Long, favoriteKeys: Set<String>, canEditFavorite: Boolean,
+    onAddFavorite: (String) -> Unit,
+    onRemoveFavorite: (String, String) -> Unit, favoriteRows: @Composable (Set<String>) -> Unit,
+) {
     var retry by remember(host, accountId) { mutableIntStateOf(0) }
     var checkFailed by remember(host, accountId, retry) { mutableStateOf(false) }
     val client = rememberRepeaterManagementClient(host, enabled = true, accountId = accountId, retry = retry) { step, error ->
@@ -86,7 +94,10 @@ internal fun AccountRepeatersSection(host: String, accountId: Long, favoriteCoun
             failed = true
         }
     }
-    AccountNodeSummary(favoriteCount, repeaters?.size)
+    val visibleRepeaters = if (failed) null else repeaters
+    val claimedKeys = visibleRepeaters?.mapTo(mutableSetOf()) { it.pubkey.lowercase() }.orEmpty()
+    val showFavoriteRows = favoriteKeys.isEmpty() || favoriteKeys.any { it !in claimedKeys }
+    AccountNodeSummary(favoriteKeys.size, repeaters?.size)
     if (checkFailed) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.repeater_check_failed), Modifier.weight(1f),
@@ -108,29 +119,51 @@ internal fun AccountRepeatersSection(host: String, accountId: Long, favoriteCoun
         } else {
             rows.forEach { repeater ->
                 Card(onClick = { selected = repeater }, modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(repeater.title, style = MaterialTheme.typography.titleMedium)
-                        if (!repeater.known || repeater.inactive) Text(stringResource(R.string.repeater_no_longer_listed))
-                        val lastHeard = parseInstant(repeater.lastHeard)
-                        Text(if (lastHeard == null) stringResource(R.string.repeater_never_heard)
-                            else stringResource(R.string.repeater_last_heard, relativeTime(lastHeard)))
-                        repeater.status?.let { Text(stringResource(R.string.repeater_list_status, it)) }
-                        if (repeater.comaintainers.isNotEmpty()) Text(
-                            stringResource(R.string.repeater_comaintainers, repeater.comaintainers.joinToString()),
-                        )
+                    Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(repeater.title, style = MaterialTheme.typography.titleMedium)
+                            if (!repeater.known || repeater.inactive) Text(stringResource(R.string.repeater_no_longer_listed))
+                            val lastHeard = parseInstant(repeater.lastHeard)
+                            Text(if (lastHeard == null) stringResource(R.string.repeater_never_heard)
+                                else stringResource(R.string.repeater_last_heard, relativeTime(lastHeard)))
+                            repeater.status?.let { Text(stringResource(R.string.repeater_list_status, it)) }
+                            if (repeater.comaintainers.isNotEmpty()) Text(
+                                stringResource(R.string.repeater_comaintainers, repeater.comaintainers.joinToString()),
+                            )
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                val color = MaterialTheme.colorScheme.primary
+                                Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(16.dp), tint = color)
+                                Text(stringResource(R.string.planner_edit), style = MaterialTheme.typography.labelLarge, color = color)
+                            }
+                            val key = repeater.pubkey.lowercase()
+                            val isFavorite = key in favoriteKeys
+                            IconButton(
+                                onClick = { if (isFavorite) onRemoveFavorite(key, repeater.title) else onAddFavorite(key) },
+                                enabled = canEditFavorite,
+                                colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                            ) {
+                                Icon(
+                                    if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                                    contentDescription = if (isFavorite) stringResource(R.string.explore_remove_favorite, repeater.title)
+                                        else stringResource(R.string.explore_add_favorite_node),
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
-        HorizontalDivider()
+        if (showFavoriteRows) HorizontalDivider()
         selected?.let { repeater ->
             AccountRepeaterManagementDialog(client, repeater.pubkey, repeater.title) {
-                repeaters = null
                 selected = null
                 reload++
             }
         }
     }
+    if (showFavoriteRows) favoriteRows(claimedKeys)
 }
 
 @Composable
@@ -245,6 +278,11 @@ internal fun AccountRepeaterManagementDialog(
                         } else {
                             Text(stringResource(R.string.repeater_edit_denied))
                         }
+                        Text(
+                            stringResource(R.string.repeater_details_footer),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             },

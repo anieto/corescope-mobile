@@ -280,19 +280,23 @@ struct AdaptiveSidebarSection<Content: View, Header: View>: View {
 
 /// An opaque surface for secondary actions placed directly on the page background.
 struct StandaloneActionButtonStyle: ButtonStyle {
+    var accent: Color = NodeScopeStyle.signal
+    var lightModeFill = 0.13
+
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.colorScheme) private var colorScheme
 
     private var labelColor: Color {
         guard isEnabled else { return .secondary }
         return colorScheme == .dark
-            ? NodeScopeStyle.signal
-            : NodeScopeStyle.signal.mix(with: NodeScopeStyle.deepNavy, by: 0.45)
+            ? accent
+            : accent.mix(with: NodeScopeStyle.deepNavy, by: 0.45)
     }
 
     func makeBody(configuration: Configuration) -> some View {
         let surface = Color(uiColor: .secondarySystemGroupedBackground)
-        let fill = surface.mix(with: NodeScopeStyle.signal, by: configuration.isPressed ? 0.23 : 0.13)
+        let fillAmount = colorScheme == .dark ? 0.13 : lightModeFill
+        let fill = surface.mix(with: accent, by: fillAmount + (configuration.isPressed ? 0.10 : 0))
         return configuration.label
             .font(.body.weight(.medium))
             .foregroundStyle(labelColor)

@@ -317,6 +317,22 @@
         }
       }
     },
+    "%@ · %@" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %@"
+          }
+        }
+      }
+    },
     "%@ · %@ dBi" : {
       "localizations" : {
         "en" : {
@@ -1122,6 +1138,64 @@
         }
       }
     },
+    "%lld claimed repeaters" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld claimed repeater"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld claimed repeaters"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld repetidor reclamado"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld repetidores reclamados"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld repetidor reivindicado"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld repetidores reivindicados"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld Coverage studies" : {
       "localizations" : {
         "en" : {
@@ -1370,7 +1444,66 @@
         }
       }
     },
+    "%lld favorites" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld favorite"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld favorites"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld favorito"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld favoritos"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld favorito"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld favoritos"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld favorites · %lld claimed nodes" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4126,22 +4259,6 @@
         }
       }
     },
-    "ADDITIONAL DETAILS" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "INFORMACIÓN ADICIONAL"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "DETALHES ADICIONAIS"
-          }
-        }
-      }
-    },
     "About" : {
       "localizations" : {
         "es" : {
@@ -4289,6 +4406,7 @@
       }
     },
     "Account" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4352,7 +4470,24 @@
         }
       }
     },
+    "Account favorites refreshed." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se actualizaron los favoritos de la cuenta."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Os favoritos da conta foram atualizados."
+          }
+        }
+      }
+    },
     "Account favorites refreshed. Device favorites are unchanged." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4385,6 +4520,7 @@
       }
     },
     "Account nodes" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4401,6 +4537,7 @@
       }
     },
     "Account selections copied to device favorites." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -4708,6 +4845,22 @@
         }
       }
     },
+    "Add" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agregar"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicionar"
+          }
+        }
+      }
+    },
     "Add %@ to your CoreScope watch list." : {
       "comment" : "A confirmation dialog that appears when the user opts to watch a node.",
       "isCommentAutoGenerated" : true,
@@ -4722,6 +4875,64 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Adicione %@ à sua lista de monitoramento do CoreScope."
+          }
+        }
+      }
+    },
+    "Add %lld favorites from this device to your account?" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Add %lld favorite from this device to your account?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Add %lld favorites from this device to your account?"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "¿Agregar %lld favorito de este dispositivo a tu cuenta?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "¿Agregar %lld favoritos de este dispositivo a tu cuenta?"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Adicionar %lld favorito deste dispositivo à sua conta?"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Adicionar %lld favoritos deste dispositivo à sua conta?"
+                }
+              }
+            }
           }
         }
       }
@@ -5014,6 +5225,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Altura adicional da antena"
+          }
+        }
+      }
+    },
+    "ADDITIONAL DETAILS" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "INFORMACIÓN ADICIONAL"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DETALHES ADICIONAIS"
           }
         }
       }
@@ -8101,6 +8328,7 @@
       }
     },
     "Claimed" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -8133,6 +8361,7 @@
       }
     },
     "Claimed node" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -8149,6 +8378,7 @@
       }
     },
     "Claimed nodes are managed on CoreScope. Removing an account favorite does not unclaim a node." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -8160,6 +8390,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Os nós reivindicados são gerenciados no CoreScope. Remover um favorito da conta não cancela a reivindicação de um nó."
+          }
+        }
+      }
+    },
+    "Claimed Repeaters" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repetidores reclamados"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repetidores reivindicados"
           }
         }
       }
@@ -8618,6 +8864,7 @@
       }
     },
     "Community Sources" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -9002,6 +9249,7 @@
       }
     },
     "Copy account selections to device" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -9114,6 +9362,7 @@
       }
     },
     "Copy selections and sign out" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -10126,6 +10375,7 @@
       }
     },
     "Device" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -10487,6 +10737,7 @@
       }
     },
     "Downloaded account selections and pending account edits will be removed from this device. Existing device favorites are preserved." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -11346,22 +11597,6 @@
         }
       }
     },
-    "Everything shown here comes from the analyzer host configured in Settings. NodeScope's only service of its own is the optional push relay for watched-node alerts, which stores no account details, locations or messages. NodeScope isn't affiliated with the CoreScope or MeshCore projects." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Todo lo que se muestra aquí viene del host del analizador configurado en Ajustes. El único servicio propio de NodeScope es el relé push opcional para las alertas de nodos seguidos, que no guarda datos de cuenta, ubicaciones ni mensajes. NodeScope no está afiliado a los proyectos CoreScope ni MeshCore."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tudo o que aparece aqui vem do host do analisador configurado em Ajustes. O único serviço próprio do NodeScope é o relay push opcional para os alertas de nós monitorados, que não guarda dados de conta, localizações nem mensagens. O NodeScope não é afiliado aos projetos CoreScope ou MeshCore."
-          }
-        }
-      }
-    },
     "Everything selected is already in your library." : {
       "localizations" : {
         "es" : {
@@ -11374,6 +11609,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tudo o que foi selecionado já está na sua biblioteca."
+          }
+        }
+      }
+    },
+    "Everything shown here comes from the analyzer host configured in Settings. NodeScope's only service of its own is the optional push relay for watched-node alerts, which stores no account details, locations or messages. NodeScope isn't affiliated with the CoreScope or MeshCore projects." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todo lo que se muestra aquí viene del host del analizador configurado en Ajustes. El único servicio propio de NodeScope es el relé push opcional para las alertas de nodos seguidos, que no guarda datos de cuenta, ubicaciones ni mensajes. NodeScope no está afiliado a los proyectos CoreScope ni MeshCore."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tudo o que aparece aqui vem do host do analisador configurado em Ajustes. O único serviço próprio do NodeScope é o relay push opcional para os alertas de nós monitorados, que não guarda dados de conta, localizações nem mensagens. O NodeScope não é afiliado aos projetos CoreScope ou MeshCore."
           }
         }
       }
@@ -11663,6 +11914,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Não foi possível apagar os instantâneos de atividade dos Favoritos. Tente de novo."
+          }
+        }
+      }
+    },
+    "Favorites saved on this device" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Favoritos guardados en este dispositivo"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Favoritos salvos neste dispositivo"
           }
         }
       }
@@ -13553,6 +13820,22 @@
         }
       }
     },
+    "I’d like to request that the following community source be added." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Me gustaría solicitar que se añada la siguiente fuente comunitaria."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gostaria de solicitar a inclusão da seguinte fonte comunitária."
+          }
+        }
+      }
+    },
     "If NodeScope has been useful, you can leave an optional tip to support its continued development." : {
       "localizations" : {
         "es" : {
@@ -13618,6 +13901,7 @@
       }
     },
     "Import device favorites into this account?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -13634,6 +13918,7 @@
       }
     },
     "Import device node favorites" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -13650,6 +13935,7 @@
       }
     },
     "Import node favorites" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -14265,22 +14551,6 @@
         }
       }
     },
-    "I’d like to request that the following community source be added." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Me gustaría solicitar que se añada la siguiente fuente comunitaria."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gostaria de solicitar a inclusão da seguinte fonte comunitária."
-          }
-        }
-      }
-    },
     "Keep editing" : {
       "localizations" : {
         "es" : {
@@ -14509,22 +14779,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ouvido pela última vez"
-          }
-        }
-      }
-    },
-    "LOGO" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "LOGOTIPO"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "LOGOTIPO"
           }
         }
       }
@@ -15690,6 +15944,7 @@
       }
     },
     "Location is optional and is only used when you choose to center the map on yourself." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -15701,22 +15956,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A localização é opcional e só é usada quando você escolhe centralizar o mapa em você."
-          }
-        }
-      }
-    },
-    "Location privacy" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Privacidad de la ubicación"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Privacidade da localização"
           }
         }
       }
@@ -15733,6 +15972,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A localização é opcional. Ela permite centralizar o mapa na sua posição e ordenar as fontes de analisadores por distância."
+          }
+        }
+      }
+    },
+    "Location privacy" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacidad de la ubicación"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacidade da localização"
           }
         }
       }
@@ -15781,6 +16036,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "As localizações não são ocultadas: um estudo sem elas não poderia ser calculado de novo. Estudos não concluídos, caches e configurações nunca são incluídos."
+          }
+        }
+      }
+    },
+    "LOGO" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LOGOTIPO"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LOGOTIPO"
           }
         }
       }
@@ -15955,6 +16226,7 @@
       }
     },
     "Manage account node selections separately from favorites saved on this device." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -17018,7 +17290,24 @@
         }
       }
     },
+    "My Nodes" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mis nodos"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meus nós"
+          }
+        }
+      }
+    },
     "My Repeaters" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -17274,6 +17563,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O observador mais próximo está a %@"
+          }
+        }
+      }
+    },
+    "Nearest to you" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Más cerca de ti"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mais perto de você"
           }
         }
       }
@@ -17772,6 +18077,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ainda não há favoritos"
+          }
+        }
+      }
+    },
+    "No favorites yet." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todavía no hay favoritos."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ainda não há favoritos."
           }
         }
       }
@@ -19156,6 +19477,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Não ouvido há %@"
+          }
+        }
+      }
+    },
+    "Not now" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ahora no"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agora não"
           }
         }
       }
@@ -20611,6 +20948,22 @@
         }
       }
     },
+    "Owner or operator contact:" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contacto del propietario u operador:"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contato do proprietário ou operador:"
+          }
+        }
+      }
+    },
     "Owner reported" : {
       "comment" : "A label for the owner's reported details about a node.",
       "isCommentAutoGenerated" : true,
@@ -20657,38 +21010,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O proprietário informou que está em manutenção"
-          }
-        }
-      }
-    },
-    "Owner or operator contact:" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Contacto del propietario u operador:"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Contato do proprietário ou operador:"
-          }
-        }
-      }
-    },
-    "PERMISSION" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PERMISO"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PERMISSÃO"
           }
         }
       }
@@ -21185,6 +21506,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Interações com pares"
+          }
+        }
+      }
+    },
+    "PERMISSION" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PERMISO"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PERMISSÃO"
           }
         }
       }
@@ -22727,22 +23064,6 @@
         }
       }
     },
-    "Region Filter" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Filtro de región"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Filtro de região"
-          }
-        }
-      }
-    },
     "Region code(s), if you use any (e.g. LFT):" : {
       "localizations" : {
         "es" : {
@@ -22755,6 +23076,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Códigos de região, se você usar algum (ex.: LFT):"
+          }
+        }
+      }
+    },
+    "Region Filter" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filtro de región"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filtro de região"
           }
         }
       }
@@ -22952,6 +23289,7 @@
       }
     },
     "Remove account favorite %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -22999,7 +23337,24 @@
         }
       }
     },
+    "Remove favorite %@" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar el favorito %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remover o favorito %@"
+          }
+        }
+      }
+    },
     "Remove from account" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -23016,6 +23371,7 @@
       }
     },
     "Remove from device" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -26869,6 +27225,7 @@
       }
     },
     "Signed out. Device favorites are unchanged." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -26880,6 +27237,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Você saiu. Os favoritos do dispositivo não mudaram."
+          }
+        }
+      }
+    },
+    "Signed out. Favorites were kept on this device." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cerraste sesión. Tus favoritos se guardaron en este dispositivo."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Você saiu. Seus favoritos foram mantidos neste dispositivo."
           }
         }
       }
@@ -27176,6 +27549,22 @@
         }
       }
     },
+    "SOURCE DETAILS" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DATOS DE LA FUENTE"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DADOS DA FONTE"
+          }
+        }
+      }
+    },
     "Source detection was interrupted. Retry to continue." : {
       "localizations" : {
         "es" : {
@@ -27254,22 +27643,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nós espalhados"
-          }
-        }
-      }
-    },
-    "SOURCE DETAILS" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "DATOS DE LA FUENTE"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "DADOS DA FONTE"
           }
         }
       }
@@ -27917,7 +28290,24 @@
         }
       }
     },
+    "Sync" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sincronizar"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sincronizar"
+          }
+        }
+      }
+    },
     "Sync & device favorites" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -27982,6 +28372,7 @@
       }
     },
     "Sync uploads only account edits. Device favorites stay local unless you import them." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -29341,6 +29732,22 @@
         }
       }
     },
+    "These details describe this repeater to other mesh users. Changes are saved on the selected CoreScope analyzer." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estos datos describen este repetidor a otros usuarios de la malla. Los cambios se guardan en el analizador de CoreScope seleccionado."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esses detalhes descrevem este repetidor para outros usuários da malha. As alterações são salvas no analisador CoreScope selecionado."
+          }
+        }
+      }
+    },
     "These studies are left out unless you import their inputs only." : {
       "localizations" : {
         "es" : {
@@ -29408,6 +29815,7 @@
       }
     },
     "This adds device node favorites to this account’s pending selections. Choose Sync now to upload. Observer and channel favorites stay local." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -29562,6 +29970,7 @@
       }
     },
     "This app has no backend of its own. Everything shown here comes from whatever analyzer host is configured in Settings, and it's not affiliated with the CoreScope or MeshCore projects." : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -31446,6 +31855,7 @@
       }
     },
     "US Community Sources" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -31849,22 +32259,6 @@
         }
       }
     },
-    "Using the USA/Canada default" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Se usa el ajuste predeterminado de EE. UU. y Canadá"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Usando a configuração padrão dos EUA e do Canadá"
-          }
-        }
-      }
-    },
     "Using the server’s selections." : {
       "localizations" : {
         "es" : {
@@ -31877,6 +32271,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Usando as seleções do servidor."
+          }
+        }
+      }
+    },
+    "Using the USA/Canada default" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se usa el ajuste predeterminado de EE. UU. y Canadá"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usando a configuração padrão dos EUA e do Canadá"
           }
         }
       }
@@ -32760,6 +33170,22 @@
         }
       }
     },
+    "Your current favorites will stay on this device." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tus favoritos actuales se quedarán en este dispositivo."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seus favoritos atuais ficarão neste dispositivo."
+          }
+        }
+      }
+    },
     "Your first coverage study" : {
       "localizations" : {
         "es" : {
@@ -32841,20 +33267,8 @@
       }
     },
     "Your nodes" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tus nodos"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Seus nós"
-          }
-        }
-      }
+      "comment" : "A label displayed above the user's saved nodes.",
+      "isCommentAutoGenerated" : true
     },
     "Zone end" : {
       "localizations" : {
@@ -32888,352 +33302,34 @@
         }
       }
     },
-    "Claimed Repeaters" : {
+    "Remove from Favorites?" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Repetidores reclamados"
+            "value" : "¿Quitar de Favoritos?"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Repetidores reivindicados"
+            "value" : "Remover dos Favoritos?"
           }
         }
       }
     },
-    "Favorites saved on this device" : {
+    "The repeater will stay claimed." : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Favoritos guardados en este dispositivo"
+            "value" : "El repetidor seguirá reclamado."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Favoritos salvos neste dispositivo"
-          }
-        }
-      }
-    },
-    "No favorites yet." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Todavía no hay favoritos."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ainda não há favoritos."
-          }
-        }
-      }
-    },
-    "Add" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Agregar"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Adicionar"
-          }
-        }
-      }
-    },
-    "Not now" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ahora no"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Agora não"
-          }
-        }
-      }
-    },
-    "Sync" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sincronizar"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sincronizar"
-          }
-        }
-      }
-    },
-    "Your current favorites will stay on this device." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tus favoritos actuales se quedarán en este dispositivo."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Seus favoritos atuais ficarão neste dispositivo."
-          }
-        }
-      }
-    },
-    "Signed out. Favorites were kept on this device." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cerraste sesión. Tus favoritos se guardaron en este dispositivo."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Você saiu. Seus favoritos foram mantidos neste dispositivo."
-          }
-        }
-      }
-    },
-    "Account favorites refreshed." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Se actualizaron los favoritos de la cuenta."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Os favoritos da conta foram atualizados."
-          }
-        }
-      }
-    },
-    "%@ · %@" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ · %@"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ · %@"
-          }
-        }
-      }
-    },
-    "Remove favorite %@" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quitar el favorito %@"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Remover o favorito %@"
-          }
-        }
-      }
-    },
-    "%lld favorites" : {
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld favorite"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld favorites"
-                }
-              }
-            }
-          }
-        },
-        "es" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld favorito"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld favoritos"
-                }
-              }
-            }
-          }
-        },
-        "pt-BR" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld favorito"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld favoritos"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld claimed repeaters" : {
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld claimed repeater"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld claimed repeaters"
-                }
-              }
-            }
-          }
-        },
-        "es" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld repetidor reclamado"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld repetidores reclamados"
-                }
-              }
-            }
-          }
-        },
-        "pt-BR" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld repetidor reivindicado"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld repetidores reivindicados"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "Add %lld favorites from this device to your account?" : {
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Add %lld favorite from this device to your account?"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Add %lld favorites from this device to your account?"
-                }
-              }
-            }
-          }
-        },
-        "es" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "¿Agregar %lld favorito de este dispositivo a tu cuenta?"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "¿Agregar %lld favoritos de este dispositivo a tu cuenta?"
-                }
-              }
-            }
-          }
-        },
-        "pt-BR" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Adicionar %lld favorito deste dispositivo à sua conta?"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Adicionar %lld favoritos deste dispositivo à sua conta?"
-                }
-              }
-            }
+            "value" : "O repetidor continuará reivindicado."
           }
         }
       }

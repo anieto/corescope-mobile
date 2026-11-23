@@ -59,7 +59,7 @@ struct NodeDetailScreen: View {
                 Button { showsNodeVision = true } label: {
                     Label("Open in NodeVision", systemImage: "camera")
                 }
-                .buttonStyle(StandaloneActionButtonStyle())
+                .buttonStyle(StandaloneActionButtonStyle(accent: NodeScopeStyle.activity, lightModeFill: 0.28))
             }
 
             if LegacyFieldGuidance.isEnabled {
@@ -112,10 +112,12 @@ struct NodeDetailScreen: View {
                 }
 
                 if repeaterClient != nil, coreScopeRepeaterURL != nil {
-                    Button("Manage Repeater", systemImage: "antenna.radiowaves.left.and.right") {
+                    Button {
                         showsRepeaterManagement = true
+                    } label: {
+                        Label("Manage Repeater", systemImage: "antenna.radiowaves.left.and.right")
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(StandaloneActionButtonStyle())
                 } else if let unclaimedRepeaterURL, unclaimedRepeaterURL == coreScopeRepeaterURL {
                     Button {
                         showsClaimConfirmation = true

@@ -1778,6 +1778,7 @@
     <string name="onboarding_no_community_for_country">Ainda não há comunidades listadas para %1$s. Escolha uma para explorar, informe seu próprio analisador ou solicite a inclusão do seu.</string>
     <string name="onboarding_no_community_for_region">Ainda não há comunidades listadas para a sua região. Escolha uma para explorar, informe seu próprio analisador ou solicite a inclusão do seu.</string>
     <string name="onboarding_analyzer_hostname_example">analyzer.example.org</string>
+    <string name="onboarding_nearest_to_you">Mais perto de você</string>
     <string name="onboarding_community_sources">Fontes comunitárias</string>
     <string name="onboarding_use_custom_analyzer">Usar analisador personalizado</string>
     <string name="onboarding_watch_packet_routes">Ver rotas de pacotes</string>
@@ -2059,10 +2060,11 @@
     <string name="repeater_save_details">Salvar dados</string>
     <string name="repeater_done">Concluir</string>
     <string name="repeater_edit_denied">Esta conta não tem permissão para editar os dados do repetidor.</string>
+    <string name="repeater_details_footer">Esses detalhes descrevem este repetidor para outros usuários da malha. As alterações são salvas no analisador CoreScope selecionado.</string>
     <string name="onboarding_location_is_optional_and_is_only_used_when">A localização é opcional e só é usada quando você escolhe centralizar o mapa em você.</string>
     <string name="onboarding_us_community_sources">Fontes da comunidade nos EUA</string>
     <string name="settings_this_app_has_no_backend_of_its_own">Este app não tem um back-end próprio. Tudo o que aparece aqui vem do host do analisador configurado em Ajustes, e ele não é afiliado aos projetos CoreScope ou MeshCore.</string>
-    <string name="account_your_nodes">Seus nós</string>
+    <string name="account_my_nodes">Meus nós</string>
     <string name="account_claimed_repeaters">Repetidores reivindicados</string>
     <string name="account_favorites">Favoritos</string>
     <string name="account_device_favorites">Favoritos salvos neste dispositivo</string>
@@ -2086,4 +2088,6 @@
         <item quantity="one">Adicionar %d favorito deste dispositivo à sua conta?</item>
         <item quantity="other">Adicionar %d favoritos deste dispositivo à sua conta?</item>
     </plurals>
+    <string name="account_confirm_remove_favorite">Remover dos Favoritos?</string>
+    <string name="account_repeater_stays_claimed">O repetidor continuará reivindicado.</string>
 </resources>

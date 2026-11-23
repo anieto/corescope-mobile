@@ -1761,6 +1761,7 @@
     <string name="onboarding_no_community_for_country">No community is listed for %1$s yet. Pick one to look around, enter your own analyzer, or request a listing for yours.</string>
     <string name="onboarding_no_community_for_region">No community is listed for your region yet. Pick one to look around, enter your own analyzer, or request a listing for yours.</string>
     <string name="onboarding_analyzer_hostname_example">analyzer.example.org</string>
+    <string name="onboarding_nearest_to_you">Nearest to you</string>
     <string name="onboarding_community_sources">Community Sources</string>
     <string name="onboarding_use_custom_analyzer">Use custom analyzer</string>
     <string name="onboarding_watch_packet_routes">Watch packet routes</string>
@@ -2045,10 +2046,11 @@
     <string name="repeater_save_details">Save Details</string>
     <string name="repeater_done">Done</string>
     <string name="repeater_edit_denied">This account doesn’t have permission to edit the repeater’s details.</string>
+    <string name="repeater_details_footer">These details describe this repeater to other mesh users. Changes are saved on the selected CoreScope analyzer.</string>
     <string name="onboarding_location_is_optional_and_is_only_used_when">Location is optional and is only used when you choose to center the map on yourself.</string>
     <string name="onboarding_us_community_sources">US community sources</string>
     <string name="settings_this_app_has_no_backend_of_its_own">This app has no backend of its own. Everything shown here comes from whatever analyzer host is configured in Settings, and it\'s not affiliated with the CoreScope or MeshCore projects.</string>
-    <string name="account_your_nodes">Your nodes</string>
+    <string name="account_my_nodes">My Nodes</string>
     <string name="account_claimed_repeaters">Claimed Repeaters</string>
     <string name="account_favorites">Favorites</string>
     <string name="account_device_favorites">Favorites saved on this device</string>
@@ -2072,4 +2074,6 @@
         <item quantity="one">Add %d favorite from this device to your account?</item>
         <item quantity="other">Add %d favorites from this device to your account?</item>
     </plurals>
+    <string name="account_confirm_remove_favorite">Remove from Favorites?</string>
+    <string name="account_repeater_stays_claimed">The repeater will stay claimed.</string>
 </resources>

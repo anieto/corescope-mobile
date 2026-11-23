@@ -1169,7 +1169,7 @@ private struct FieldGuidancePanel: View {
                 Button(action: openNodeVision) {
                     Label("Open in NodeVision", systemImage: "camera")
                 }
-                .buttonStyle(StandaloneActionButtonStyle())
+                .buttonStyle(StandaloneActionButtonStyle(accent: NodeScopeStyle.activity, lightModeFill: 0.28))
                 Divider()
                 Button(action: showDetails) {
                     HStack {

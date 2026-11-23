@@ -157,6 +157,13 @@ final class CoreScopeAccountModel {
         }
     }
 
+    func addFavorite(_ key: String) async {
+        await edit {
+            guard CoreScopeFavoriteMerge.validKey(key) else { throw CoreScopeAccountError.response }
+            $0.favorites.insert(key.lowercased())
+        }
+    }
+
     func removeFavorite(_ key: String) async {
         await edit { $0.removeFavorite(key) }
     }
@@ -351,7 +358,8 @@ struct CoreScopeAccountScreen: View {
                     ? model.currentSelection?.favoriteKeys ?? []
                     : favorites.nodeKeys(source: source)
                 AccountNodesCard(keys: favoriteKeys.sorted(), myNodeNames: model.currentSelection?.myNodeNames ?? [:],
-                    userID: model.user?.id, paused: model.resetDocument != nil) { key in
+                    userID: model.user?.id, paused: model.resetDocument != nil,
+                    add: { key in run { await model.addFavorite(key) } }) { key in
                     if model.user != nil {
                         run { await model.removeFavorite(key) }
                     } else if let item = favorites.deviceItems.first(where: {
@@ -651,6 +659,7 @@ private struct AccountNodesCard: View {
     let myNodeNames: [String: String]
     let userID: Int64?
     let paused: Bool
+    let add: (String) -> Void
     let remove: (String) -> Void
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(FavoritesStore.self) private var favorites
@@ -660,6 +669,13 @@ private struct AccountNodesCard: View {
     @State private var repeaterClient: CoreScopeAccountClient?
     @State private var repeaters: [AccountRepeater]?
     @State private var selectedRepeater: AccountRepeater?
+    @State private var favoriteToRemove: FavoriteRemoval?
+
+    private struct FavoriteRemoval {
+        let key: String
+        let name: String
+        let isClaimedRepeater: Bool
+    }
     @State private var checkFailed = false
     @State private var listError: String?
     @State private var retry = 0
@@ -667,7 +683,7 @@ private struct AccountNodesCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Your nodes", systemImage: "star").font(.monaspace(.headline))
+            Label("My Nodes", systemImage: "star").font(.monaspace(.headline))
             .accessibilityAddTraits(.isHeader)
             let favoritesCount = String(localized: "\(keys.count) favorites")
             let summary = repeaters.map {
@@ -676,23 +692,32 @@ private struct AccountNodesCard: View {
             } ?? favoritesCount
             Text(summary).font(.monaspace(.subheadline)).foregroundStyle(.secondary)
             repeaterSection
-            if userID == nil {
-                Text("Favorites saved on this device").font(.monaspace(.subheadline).weight(.semibold))
-                    .accessibilityAddTraits(.isHeader)
-            } else {
-                Text("Favorites").font(.monaspace(.subheadline).weight(.semibold))
-                    .accessibilityAddTraits(.isHeader)
-            }
-            if keys.isEmpty { Text("No favorites yet.").font(.footnote).foregroundStyle(.secondary) }
-            ForEach(keys, id: \.self) { key in
-                let layout = dynamicTypeSize.isAccessibilitySize
-                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-                    : AnyLayout(HStackLayout(alignment: .top, spacing: 8))
-                layout {
-                    AccountNodeIdentity(name: name(for: key), publicKey: key)
-                    if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 8) }
-                    Button("Remove", role: .destructive) { remove(key) }.disabled(paused)
+            let visibleRepeaters = listError == nil ? repeaters : nil
+            let claimedKeys = Set(visibleRepeaters?.map { $0.pubkey.lowercased() } ?? [])
+            let otherFavorites = keys.filter { !claimedKeys.contains($0) }
+            if keys.isEmpty || !otherFavorites.isEmpty {
+                if visibleRepeaters?.isEmpty == false { Divider() }
+                if userID == nil {
+                    Text("Favorites saved on this device").font(.monaspace(.subheadline).weight(.semibold))
+                        .accessibilityAddTraits(.isHeader)
+                } else {
+                    Text("Favorites").font(.monaspace(.subheadline).weight(.semibold))
+                        .accessibilityAddTraits(.isHeader)
+                }
+                if keys.isEmpty { Text("No favorites yet.").font(.footnote).foregroundStyle(.secondary) }
+                ForEach(otherFavorites, id: \.self) { key in
+                    let layout = dynamicTypeSize.isAccessibilitySize
+                        ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                        : AnyLayout(HStackLayout(alignment: .top, spacing: 8))
+                    layout {
+                        AccountNodeIdentity(name: name(for: key), publicKey: key)
+                        if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 8) }
+                        Button("Remove", role: .destructive) {
+                            favoriteToRemove = FavoriteRemoval(key: key, name: name(for: key) ?? key, isClaimedRepeater: false)
+                        }
+                        .disabled(paused)
                         .accessibilityLabel("Remove favorite \(name(for: key) ?? key)")
+                    }
                 }
             }
         }
@@ -704,6 +729,19 @@ private struct AccountNodesCard: View {
         }
         .task(id: "\(settings.sourceSession.id)|\(settings.sourceIsReady)|\(userID ?? 0)|\(retry)") {
             await checkRepeaters()
+        }
+        .alert("Remove from Favorites?", isPresented: Binding(
+            get: { favoriteToRemove != nil },
+            set: { if !$0 { favoriteToRemove = nil } }
+        ), presenting: favoriteToRemove) { favorite in
+            Button("Remove Favorite", role: .destructive) { remove(favorite.key) }
+            Button("Cancel", role: .cancel) {}
+        } message: { favorite in
+            if favorite.isClaimedRepeater {
+                Text(verbatim: favorite.name + "\n\n" + String(localized: "The repeater will stay claimed."))
+            } else {
+                Text(verbatim: favorite.name)
+            }
         }
         .sheet(item: $selectedRepeater, onDismiss: {
             if let repeaterClient { Task { await loadRepeaters(repeaterClient) } }
@@ -733,9 +771,12 @@ private struct AccountNodesCard: View {
             } else if let repeaters {
                 if repeaters.isEmpty { Text("You haven’t claimed any repeaters.") }
                 ForEach(repeaters) { repeater in
-                    Button {
-                        selectedRepeater = repeater
-                    } label: {
+                    let key = repeater.pubkey.lowercased()
+                    let rowLayout = dynamicTypeSize.isAccessibilitySize
+                        ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+                        : AnyLayout(HStackLayout(alignment: .top, spacing: 8))
+                    let isFavorite = keys.contains(key)
+                    rowLayout {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(repeater.title).font(.monaspace(.headline))
                             if !repeater.known || repeater.inactive == true {
@@ -757,13 +798,40 @@ private struct AccountNodesCard: View {
                         .foregroundStyle(.primary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .contentShape(Rectangle())
+                        .onTapGesture { selectedRepeater = repeater }
+                        HStack(alignment: .center, spacing: 4) {
+                            Button {
+                                selectedRepeater = repeater
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.tint)
+                                    .frame(minHeight: 44)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            Button {
+                                if isFavorite {
+                                    favoriteToRemove = FavoriteRemoval(key: key, name: repeater.title, isClaimedRepeater: true)
+                                } else {
+                                    add(key)
+                                }
+                            } label: {
+                                Image(systemName: isFavorite ? "star.fill" : "star")
+                                    .foregroundStyle(paused ? Color.secondary : NodeScopeStyle.signal)
+                                    .frame(minWidth: 44, minHeight: 44)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(paused)
+                            .accessibilityLabel(isFavorite
+                                ? Text("Remove favorite \(repeater.title)") : Text("Add favorite node"))
+                        }
                     }
-                    .buttonStyle(.plain)
                 }
             } else {
                 ProgressView()
             }
-            Divider()
         }
     }
 
@@ -913,22 +981,90 @@ struct AccountRepeaterManagementSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                if busy || error != nil {
-                    Section {
-                        if busy { ProgressView() }
-                        if let error { Text(error) }
-                        if conflict || details == nil {
-                            Button(conflict ? "Reload Latest Details" : "Try Again") {
-                                Task { await perform { try await reload() } }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    repeaterIdentityCard
+                    if busy || error != nil {
+                        VStack(alignment: .leading, spacing: 8) {
+                            if busy { ProgressView() }
+                            if let error { Text(error) }
+                            if conflict || details == nil {
+                                Button(conflict ? "Reload Latest Details" : "Try Again") {
+                                    Task { await perform { try await reload() } }
+                                }
                             }
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                        .instrumentCard()
                     }
-                    .instrumentListRows()
-                }
-                if let details {
-                    if details.claimedByMe || details.claimers.isEmpty {
-                        Section {
+                    if let details {
+                        VStack(alignment: .leading, spacing: 14) {
+                            Text("Reported Details").font(.monaspace(.headline))
+                                .accessibilityAddTraits(.isHeader)
+                            if details.canEdit {
+                                labeledField("Antenna height above ground (m)") {
+                                    TextField("", value: $height, format: .number, prompt: Text("Optional"))
+                                        .font(.monaspace(.body))
+                                        .keyboardType(.numbersAndPunctuation)
+                                }
+                                labeledField("Antenna gain (dBi)") {
+                                    TextField("", value: $gain, format: .number)
+                                        .font(.monaspace(.body))
+                                        .keyboardType(.numbersAndPunctuation)
+                                }
+                                LabeledContent("Reported status") {
+                                    Picker("Reported status", selection: $status) {
+                                        Text("Unspecified").tag("")
+                                        Text("Active").tag("active")
+                                        Text("Maintenance").tag("maintenance")
+                                        Text("Decommissioned").tag("decommissioned")
+                                    }
+                                    .pickerStyle(.menu)
+                                    .labelsHidden()
+                                }
+                                LabeledContent("Power source") {
+                                    Picker("Power source", selection: $power) {
+                                        Text("Unspecified").tag("")
+                                        Text("Mains").tag("mains")
+                                        Text("Battery").tag("battery")
+                                        Text("Solar").tag("solar")
+                                    }
+                                    .pickerStyle(.menu)
+                                    .labelsHidden()
+                                }
+                                labeledField("Notes") {
+                                    TextField("", text: $notes, prompt: Text("Optional"), axis: .vertical)
+                                }
+                                Button {
+                                    Task {
+                                        await perform {
+                                            let draft = AccountRepeaterEdit(baseRevision: details.revision, heightM: height,
+                                                gainDbi: gain, status: status, power: power, notes: notes)
+                                            update(try await client.saveRepeater(publicKey, edit: draft))
+                                        }
+                                    }
+                                } label: {
+                                    Text("Save Details").frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.large)
+                                .disabled(conflict || !canSave)
+                                if !canSave {
+                                    Text("Height must be 0–300 m, gain must be −10–30 dBi, and notes can contain up to 500 characters.")
+                                        .font(.caption)
+                                }
+                            } else {
+                                Text("This account doesn’t have permission to edit the repeater’s details.")
+                            }
+                            Text("These details describe this repeater to other mesh users. Changes are saved on the selected CoreScope analyzer.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                        .instrumentCard()
+                        if details.claimedByMe || details.claimers.isEmpty {
                             Button(details.claimedByMe ? "Unclaim Repeater" : "Claim Repeater",
                                 role: details.claimedByMe ? .destructive : nil
                             ) { showClaimConfirmation = true }
@@ -951,61 +1087,68 @@ struct AccountRepeaterManagementSheet: View {
                                 }
                             }
                         }
-                        .instrumentListRows()
-                    }
-
-                    if details.canEdit {
-                        Section("Reported Details") {
-                            TextField("Antenna height above ground (m)", value: $height, format: .number)
-                                .keyboardType(.numbersAndPunctuation)
-                            TextField("Antenna gain (dBi)", value: $gain, format: .number)
-                                .keyboardType(.numbersAndPunctuation)
-                            Picker("Reported status", selection: $status) {
-                                Text("Unspecified").tag("")
-                                Text("Active").tag("active")
-                                Text("Maintenance").tag("maintenance")
-                                Text("Decommissioned").tag("decommissioned")
-                            }
-                            Picker("Power source", selection: $power) {
-                                Text("Unspecified").tag("")
-                                Text("Mains").tag("mains")
-                                Text("Battery").tag("battery")
-                                Text("Solar").tag("solar")
-                            }
-                            TextField("Notes", text: $notes, axis: .vertical)
-                            Button("Save Details") {
-                                Task {
-                                    await perform {
-                                        let draft = AccountRepeaterEdit(baseRevision: details.revision, heightM: height,
-                                            gainDbi: gain, status: status, power: power, notes: notes)
-                                        update(try await client.saveRepeater(publicKey, edit: draft))
-                                    }
-                                }
-                            }
-                            .disabled(conflict || !canSave)
-                            if !canSave {
-                                Text("Height must be 0–300 m, gain must be −10–30 dBi, and notes can contain up to 500 characters.")
-                                    .font(.caption)
-                            }
-                        }
-                        .instrumentListRows()
-                    } else {
-                        Section {
-                            Text("This account doesn’t have permission to edit the repeater’s details.")
-                        }
-                        .instrumentListRows()
                     }
                 }
+                .padding(16)
+                .adaptiveContentWidth()
             }
+            .scrollDismissesKeyboard(.interactively)
             .disabled(busy)
             .meshPageBackground()
-            .navigationTitle(name)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.disabled(busy) }
             }
             .task { await perform { try await reload() } }
         }
         .interactiveDismissDisabled(busy)
+    }
+
+    private var repeaterIdentityCard: some View {
+        let color = NodeRoleStyle.color(for: "repeater")
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 12) {
+                Image(systemName: NodeRoleStyle.symbolName(for: "repeater"))
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 50, height: 50)
+                    .background(color, in: Circle())
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(name)
+                        .font(.monaspace(.title2).bold())
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
+                    Text(NodeRoleStyle.label(for: "repeater"))
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(color)
+                }
+            }
+            Divider().opacity(0.35)
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Public Key").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+                Text(publicKey.uppercased())
+                    .font(.monaspace(.caption))
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .instrumentCard()
+    }
+
+    private func labeledField<Field: View>(_ title: LocalizedStringKey, @ViewBuilder field: () -> Field) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .accessibilityHidden(true)
+            field()
+                .accessibilityLabel(Text(title))
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(NodeScopeStyle.signal.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+        }
     }
 
     private func reload() async throws {

@@ -38,6 +38,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -304,13 +306,25 @@ fun NodeDetailScreen(
             else Text(stringResource(R.string.node_detail_this_node_is_not_in_the_loaded_results, host), style = MaterialTheme.typography.bodyMedium)
         }
         if (!openedFromNodeVision && visionCoordinate != null) item {
-            Button(onClick = { showsNodeVision = true }, modifier = Modifier.fillMaxWidth()) {
+            val surface = MaterialTheme.colorScheme.surface
+            val dark = surface.luminance() < 0.5f
+            val foreground = if (dark) ActivityAmber else Color(0xFF743500)
+            FilledTonalButton(
+                onClick = { showsNodeVision = true },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = ActivityAmber.copy(alpha = if (dark) 0.18f else 0.30f).compositeOver(surface),
+                    contentColor = foreground,
+                ),
+            ) {
+                Icon(Icons.Outlined.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.nodevision_open))
             }
         }
         metadata.value?.let { item(key = "repeater-metadata:$host:$publicKey") { RepeaterMetadataCard(it, coreScopeUrl) } }
         if (repeaterClient != null) item {
-            OutlinedButton(onClick = { manageRepeater = true }) {
+            Button(onClick = { manageRepeater = true }, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.repeater_manage))
             }
         } else if (canClaim && coreScopeUrl != null) item {
