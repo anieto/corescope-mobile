@@ -48,10 +48,19 @@ class MyNodesRepositoryTest {
             assertEquals(maxOf(0, size - 20), first.count { it.state == MyNodesAnalyticsState.DEFERRED })
             assertEquals(minOf(size, 20), server.calls.get())
             assertTrue(server.peak.get() <= 2)
+            val firstFetched = first.filter { it.state == MyNodesAnalyticsState.FETCHED }
+            val firstStamp = clock.getAndIncrement()
+            assertTrue(firstFetched.all { it.snapshot?.evidence?.fetchedAt == firstStamp })
+
             val second = repository.load(keys)
-            assertEquals(minOf(size, 20), second.count { it.state == MyNodesAnalyticsState.CACHED })
+            assertEquals(keys, second.map { it.publicKey })
+            val cached = second.filter { it.state == MyNodesAnalyticsState.CACHED }
+            assertEquals(firstFetched.map { it.publicKey }, cached.map { it.publicKey })
+            assertTrue(cached.all { it.snapshot?.evidence?.fetchedAt == firstStamp })
+            val nextFetched = second.filter { it.state == MyNodesAnalyticsState.FETCHED }
+            assertEquals((size - 20).coerceIn(0, 20), nextFetched.size)
+            assertTrue(nextFetched.all { it.snapshot?.evidence?.fetchedAt == clock.get() })
             assertEquals(minOf(size, 40), server.calls.get())
-            assertTrue(second.take(minOf(size, 20)).all { it.snapshot?.evidence?.fetchedAt == clock.get() })
         }
     }
 

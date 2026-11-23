@@ -79,11 +79,21 @@ struct MyNodesRepositoryTests {
             #expect(first.filter { $0.state == .deferred }.count == max(0, size - 20))
             #expect(await server.calls == min(size, 20))
             #expect(await server.peak <= 2)
+            let firstFetched = first.filter { $0.state == .fetched }
+            let firstStamp = clock.read()
+            #expect(firstFetched.allSatisfy { $0.snapshot?.evidence.fetchedAt == firstStamp })
+            clock.advance(1)
+
             let second = try await repository.load(publicKeys: keys)
-            #expect(second.filter { $0.state == .cached }.count == min(size, 20))
+            #expect(second.map(\.publicKey) == keys)
+            let cached = second.filter { $0.state == .cached }
+            #expect(cached.map(\.publicKey) == firstFetched.map(\.publicKey))
+            #expect(cached.allSatisfy { $0.snapshot?.evidence.fetchedAt == firstStamp })
+            let nextFetched = second.filter { $0.state == .fetched }
+            #expect(nextFetched.count == min(max(0, size - 20), 20))
+            #expect(nextFetched.allSatisfy { $0.snapshot?.evidence.fetchedAt == clock.read() })
             #expect(await server.calls == min(size, 40))
-            #expect(second.prefix(min(size, 20)).allSatisfy { $0.snapshot?.evidence.fetchedAt == clock.read() })
-            }
+        }
     }
 
     @Test func freshnessRetainsTimestampAndFailedRefreshRetainsStaleData() async throws {
