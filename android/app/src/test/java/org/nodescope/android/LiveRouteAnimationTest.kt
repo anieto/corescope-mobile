@@ -16,12 +16,12 @@ class LiveRouteAnimationTest {
 
     @Test fun hopsTravelInSequenceAndDrawProgressively() {
         val route = route(listOf(a, b, c))
-        assertEquals(listOf(1_000L, 1_660L), route.hops.map { it.startsAt })
-        val halfway = routeFrame(listOf(route), 1_330, animate = true)
+        assertEquals(listOf(1_000L, 2_000L), route.hops.map { it.startsAt })
+        val halfway = routeFrame(listOf(route), 1_500, animate = true)
         assertEquals(1, halfway.lines.size) // second hop has not started
         assertEquals(-96.5, halfway.lines.single().points.last().longitude, 0.001)
         assertEquals(1, halfway.heads.size)
-        val second = routeFrame(listOf(route), 1_700, animate = true)
+        val second = routeFrame(listOf(route), 2_040, animate = true)
         assertEquals(listOf(1f, 1f), second.lines.map { it.opacity }) // first hop complete, second drawing
         assertEquals(1, second.rings.size) // arrival ring at the first hop's end
         assertEquals(b, second.rings.single().center)
@@ -30,7 +30,7 @@ class LiveRouteAnimationTest {
     @Test fun linesKeepTheirHopWhileEarlierHopsFadeAway() {
         // Google Maps reuses a line object per route and hop; the hop must not shift as others leave.
         val route = route(listOf(a, b, c))
-        assertEquals(listOf(0, 1), routeFrame(listOf(route), 1_700, animate = true).lines.map { it.hop })
+        assertEquals(listOf(0, 1), routeFrame(listOf(route), 2_040, animate = true).lines.map { it.hop })
         val firstGone = route.hops[0].fadeStartsAt + route.hops[0].fadeDuration
         val late = routeFrame(listOf(route), firstGone + 1, animate = true)
         assertEquals(listOf(1), late.lines.map { it.hop })
@@ -39,26 +39,34 @@ class LiveRouteAnimationTest {
 
     @Test fun completedHopsHoldThenFade() {
         val route = route(listOf(a, b))
-        assertEquals(1f, routeFrame(listOf(route), 1_000 + 660 + 450, true).lines.single().opacity, 0.001f)
-        assertEquals(0.5f, routeFrame(listOf(route), 1_000 + 660 + 450 + 275, true).lines.single().opacity, 0.01f)
-        assertTrue(routeFrame(listOf(route), 1_000 + 660 + 450 + 550, true).lines.isEmpty())
-        assertEquals(1_000L + 660 + 450 + 550, route.endsAt)
+        assertEquals(1f, routeFrame(listOf(route), 2_000 + 450, true).lines.single().opacity, 0.001f)
+        assertEquals(0.5f, routeFrame(listOf(route), 2_000 + 450 + 275, true).lines.single().opacity, 0.01f)
+        assertTrue(routeFrame(listOf(route), 2_000 + 450 + 550, true).lines.isEmpty())
+        assertEquals(2_000L + 450 + 550, route.endsAt)
         assertFalse(route.isActive(route.endsAt))
         assertFalse(route.isActive(999))
     }
 
-    @Test fun separateSubchainsStartTogetherAndIsolatedPointsPulse() {
-        val route = route(listOf(a, b), listOf(c, Coordinate(31.0, -95.0)), listOf(Coordinate(29.0, -98.0)))
-        assertEquals(listOf(1_000L, 1_000L), route.hops.map { it.startsAt })
+    @Test fun separateSubchainsFollowDashedBridgesAndIsolatedPointsPulse() {
+        val isolated = Coordinate(29.0, -98.0)
+        val route = route(listOf(a, b), listOf(c, Coordinate(31.0, -95.0)), listOf(isolated))
+        assertEquals(listOf(1_000L, 2_000L, 2_200L, 3_200L), route.hops.map { it.startsAt })
+        assertEquals(listOf(false, true, false, true), route.hops.map { it.dashed })
         val frame = routeFrame(listOf(route), 1_100, true)
-        assertEquals(2, frame.heads.size)
-        assertEquals(2, frame.rings.size) // outer and inner solo pulse rings
-        assertEquals(4_000L, route.endsAt)
+        assertEquals(1, frame.heads.size)
+        assertEquals(listOf(isolated, isolated), frame.rings.map { it.center })
+        val bridgeArrival = routeFrame(listOf(route), 2_200, true)
+        assertTrue(bridgeArrival.lines[1].dashed)
+        assertFalse(bridgeArrival.rings.any { it.center == c })
+        assertEquals(4_400L, route.endsAt)
     }
 
     @Test fun reducedMotionShowsCompleteHopsWithoutMovement() {
         val frame = routeFrame(listOf(route(listOf(a, b, c))), 1_100, animate = false)
-        assertEquals(listOf(listOf(a, b)), frame.lines.map { it.points })
+        val points = frame.lines.single().points
+        assertEndpoints(a, b, points)
+        assertTrue(points.size > 2)
+        assertTrue(points[points.size / 2].latitude > a.latitude)
         assertTrue(frame.heads.isEmpty())
         assertTrue(frame.rings.isEmpty())
     }
@@ -96,16 +104,28 @@ class LiveRouteAnimationTest {
 
     @Test fun historyRoutesAppearArrivedAndFadeOverTwelveSeconds() {
         val arrivedAt = 10_000L
-        val route = LiveRoute("h", arrivedAt, "#66B9FF", emptyList(), listOf(listOf(a, b, c), listOf(Coordinate(29.0, -98.0))), historical = true)
+        val isolated = Coordinate(29.0, -98.0)
+        val route = LiveRoute("h", arrivedAt, "#66B9FF", emptyList(), listOf(listOf(a, b, c), listOf(isolated)), historical = true)
         assertTrue(route.pulses.isEmpty()) // isolated points do not pulse for history
         assertEquals(arrivedAt - 660 + 12_000, route.endsAt)
         val soon = routeFrame(listOf(route), arrivedAt + 1_000, animate = true)
-        assertEquals(listOf(listOf(a, b), listOf(b, c)), soon.lines.map { it.points }) // complete, not replayed
+        assertEquals(listOf(false, false, true), soon.lines.map { it.dashed })
+        assertEndpoints(a, b, soon.lines[0].points)
+        assertEndpoints(b, c, soon.lines[1].points)
+        assertEndpoints(c, isolated, soon.lines[2].points)
         assertTrue(soon.heads.isEmpty())
         assertEquals(1f - 1_660f / 12_000f, soon.lines.first().opacity, 0.001f)
-        assertEquals(soon.lines[0].opacity, soon.lines[1].opacity, 0.0001f) // hops fade together
+        assertEquals(soon.lines[0].opacity, soon.lines[1].opacity, 0.0001f)
+        assertEquals(soon.lines[0].opacity * 0.6f, soon.lines[2].opacity, 0.0001f)
         assertFalse(route.isActive(route.endsAt))
         assertTrue(routeFrame(listOf(route), route.endsAt, true).lines.isEmpty())
+    }
+
+    private fun assertEndpoints(start: Coordinate, end: Coordinate, points: List<Coordinate>) {
+        assertEquals(start.latitude, points.first().latitude, 1e-9)
+        assertEquals(start.longitude, points.first().longitude, 1e-9)
+        assertEquals(end.latitude, points.last().latitude, 1e-9)
+        assertEquals(end.longitude, points.last().longitude, 1e-9)
     }
 
     @Test
