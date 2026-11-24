@@ -856,7 +856,7 @@ struct NodeVisionScreen: View {
     private func markerSurface(approximate: Bool, emphasized: Bool, spotlight: Bool = false) -> some View {
         let shape = NodeVisionMarkerShape()
         let width: CGFloat = emphasized ? 3 : 2
-        let borderColor = spotlight && colorScheme == .dark ? NodeScopeStyle.activity : nodeNameColor
+        let borderColor = spotlight ? NodeScopeStyle.activity : nodeNameColor
         let backing = colorScheme == .dark ? NodeScopeStyle.deepNavy : Color(uiColor: .systemBackground)
         return overlaySurface(shape, drawsBorder: false)
             .overlay { shape.stroke(backing, lineWidth: width + 2) }

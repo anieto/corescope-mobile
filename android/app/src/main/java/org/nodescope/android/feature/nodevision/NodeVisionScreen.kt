@@ -278,7 +278,6 @@ internal fun NodeVisionScreen(
     }
     val blue = MaterialTheme.colorScheme.primary
     val markerInk = if (lightOverlay) lerp(blue, onSurface, 0.25f) else blue
-    val spotlightInk = if (lightOverlay) markerInk else accent
     val overlayTint = if (lightOverlay) {
         Brush.verticalGradient(listOf(blue.copy(alpha = 0.16f), blue.copy(alpha = 0.07f)))
     } else {
@@ -465,7 +464,7 @@ internal fun NodeVisionScreen(
                             shadowElevation = 4.dp,
                         ) {
                             Column(Modifier.background(overlayTint)
-                                .visionMarkerBorder(markerShape, spotlightInk, surface, approximate, emphasized = true)
+                                .visionMarkerBorder(markerShape, accent, surface, approximate, emphasized = true)
                                 .padding(bottom = 9.dp).padding(horizontal = 9.dp, vertical = 5.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(visionName, style = MaterialTheme.typography.titleSmall, fontFamily = MonaspaceNeon,
