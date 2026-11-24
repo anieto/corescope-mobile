@@ -156,7 +156,12 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
         // Side and lower panels: the header stays put while everything under it scrolls.
         val panel: @Composable (Modifier) -> Unit = { modifier ->
             Column(modifier.meshPageBackground()) {
-                Box(Modifier.padding(16.dp)) { header() }
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (!BuildConfig.MAPS_CONFIGURED) {
+                        Text(stringResource(R.string.map_unavailable), style = MaterialTheme.typography.bodySmall)
+                    }
+                    header()
+                }
                 Column(Modifier.weight(1f).verticalScroll(scroll).padding(horizontal = 16.dp).padding(bottom = 16.dp)) { details() }
             }
         }
