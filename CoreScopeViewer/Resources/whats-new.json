@@ -23,6 +23,12 @@
           "icon": "coverage"
         },
         {
+          "id": "repeater-management",
+          "title": "Manage your repeaters",
+          "detail": "Sign in to CoreScope to claim repeaters you maintain, update their reported equipment and status, or remove a claim.",
+          "icon": "coverage"
+        },
+        {
           "id": "channel-favorites",
           "title": "Favorite channels",
           "detail": "Find your favorite channels together at the top of the Channels list.",
@@ -38,12 +44,6 @@
           "id": "planner-radio-defaults",
           "title": "Radio settings for your mesh",
           "detail": "New Link Profile and Estimated Coverage studies start with radio settings for your mesh. The MeshCore preset for Brazil is also available.",
-          "icon": "coverage"
-        },
-        {
-          "id": "repeater-management",
-          "title": "Manage your repeaters",
-          "detail": "Sign in to CoreScope to claim repeaters you maintain, update their reported equipment and status, or remove a claim.",
           "icon": "coverage"
         }
       ]
