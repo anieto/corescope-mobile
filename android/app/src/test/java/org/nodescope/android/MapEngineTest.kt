@@ -56,10 +56,15 @@ class MapEngineTest {
         assertEquals(21.0, fitCamera(CameraTarget.Bounds(30.0, -97.0, 30.0, -97.0), 500, 500, FramingInsets(0, 0, 0, 0), density).zoom, 1e-9)
     }
 
-    @Test fun savedGoogleChoiceFallsBackToCartoWithoutAKey() {
-        val google = MapProviderChoice(MapProvider.GOOGLE, GoogleMapType.SATELLITE)
-        assertEquals(MapProvider.CARTO, google.available(false).provider)
-        assertEquals(google, google.available(true))
+    @Test fun googleIsTheDefaultWhenAvailable() {
+        assertEquals(MapProvider.GOOGLE, resolveMapProvider(null, googleAvailable = true))
+        assertEquals(MapProvider.CARTO, resolveMapProvider(null, googleAvailable = false))
+    }
+
+    @Test fun savedProviderIsHonoredWhenAvailable() {
+        assertEquals(MapProvider.CARTO, resolveMapProvider(MapProvider.CARTO, googleAvailable = true))
+        assertEquals(MapProvider.GOOGLE, resolveMapProvider(MapProvider.GOOGLE, googleAvailable = true))
+        assertEquals(MapProvider.CARTO, resolveMapProvider(MapProvider.GOOGLE, googleAvailable = false))
     }
 
     @Test fun mapLoadErrorsSayWhyTheMapFailed() {

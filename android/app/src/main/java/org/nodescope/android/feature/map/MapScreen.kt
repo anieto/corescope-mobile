@@ -80,7 +80,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     var search by remember { mutableStateOf(false) }
     var layersOpen by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    // CARTO, or Google Maps when this build has a key; remembered across launches.
+    // Google Maps when supported, with the user’s map selection remembered across launches.
     var providerChoice by remember { mutableStateOf(loadMapProvider(context)) }
     fun choose(choice: MapProviderChoice) { providerChoice = choice; saveMapProvider(context, choice) }
     // A picked CARTO style sticks; until then it follows the app theme.
@@ -840,7 +840,7 @@ internal fun MapLayersMenu(expanded: Boolean, onDismiss: () -> Unit, choice: Map
     onChoose: (MapProviderChoice) -> Unit) {
     val mode = choice.cartoStyle(darkTheme)
     DropdownMenu(expanded, onDismiss) {
-        val google = BuildConfig.GOOGLE_MAPS_CONFIGURED
+        val google = googleMapsAvailable(LocalContext.current)
         // Grouped by provider when there is more than one.
         if (google) MenuSectionHeader(stringResource(R.string.map_provider_carto))
         listOf(R.string.standard, R.string.light, R.string.dark).forEachIndexed { index, label ->
