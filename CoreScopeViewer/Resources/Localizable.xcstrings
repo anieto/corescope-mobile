@@ -23452,6 +23452,22 @@
         }
       }
     },
+    "Remove from Favorites?" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Quitar de Favoritos?"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remover dos Favoritos?"
+          }
+        }
+      }
+    },
     "Remove from Recent" : {
       "localizations" : {
         "es" : {
@@ -29485,6 +29501,22 @@
         }
       }
     },
+    "The repeater will stay claimed." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El repetidor seguirá reclamado."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O repetidor continuará reivindicado."
+          }
+        }
+      }
+    },
     "The request was rejected. Check your credentials or try again later." : {
       "localizations" : {
         "es" : {
@@ -33421,38 +33453,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Início da zona"
-          }
-        }
-      }
-    },
-    "Remove from Favorites?" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "¿Quitar de Favoritos?"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Remover dos Favoritos?"
-          }
-        }
-      }
-    },
-    "The repeater will stay claimed." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "El repetidor seguirá reclamado."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O repetidor continuará reivindicado."
           }
         }
       }
