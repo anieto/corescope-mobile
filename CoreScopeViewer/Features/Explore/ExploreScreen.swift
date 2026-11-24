@@ -354,6 +354,9 @@ struct ExploreScreen: View {
             }) else { return }
             navigationPath = NavigationPath()
             navigationPath.append(node)
+        case .myNodes:
+            navigationPath = NavigationPath()
+            navigationPath.append(ExploreDestination.activity)
         case .watchedNode(let publicKey, let sourceSessionID):
             guard sourceSessionID == settings.sourceSession.id else { return }
             // A verified push can refer to a node outside the currently loaded catalog.

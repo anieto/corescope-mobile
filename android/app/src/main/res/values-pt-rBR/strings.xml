@@ -2091,4 +2091,17 @@
     </plurals>
     <string name="account_confirm_remove_favorite">Remover dos Favoritos?</string>
     <string name="account_repeater_stays_claimed">O repetidor continuará reivindicado.</string>
+    <string name="widget_my_nodes">Meus nós</string>
+    <string name="widget_choose_node">Toque para escolher um nó.</string>
+    <string name="widget_save_or_watch">Salve ou monitore um nó no NodeScope e toque para escolhê-lo.</string>
+    <string name="widget_waiting">Aguardando dados</string>
+    <string name="widget_last_heard">Última atividade</string>
+    <string name="widget_last_heard_value">Última atividade %1$s</string>
+    <string name="widget_unknown">Desconhecida</string>
+    <string name="widget_checked">Verificado %1$s</string>
+    <string name="widget_open_app">Abrir NodeScope</string>
+    <string name="widget_unavailable">O nó deste widget não está mais disponível.</string>
+    <string name="widget_choose_nodes_title">Escolha os nós</string>
+    <string name="widget_choose_nodes_description">Selecione até três nós. O widget compacto mostra o primeiro. Aumente a altura para ver mais nós.</string>
+    <string name="widget_save_selection">Salvar seleção</string>
 </resources>

@@ -290,6 +290,15 @@
 		F880AFD88BBD5C97812E65C7 /* Packet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA006DDF6B3AF7AC55C16467 /* Packet.swift */; };
 		E3012C128B6FEAFAF7062223 /* MyNodesPrototype.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E4B452149BEAF7E22ED8F50 /* MyNodesPrototype.swift */; };
 		D79F9CE0955F4B2FAF7ECA9A /* MyNodesPrototype.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 9E01A8063F9F595EE12BD051 /* MyNodesPrototype.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A1C0DEAA0000000000000002 /* MyNodesWidgetCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DEAA0000000000000001; };
+		A1C0DEAA0000000000000003 /* MyNodesWidgetCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DEAA0000000000000001; };
+		A1C0DEAA0000000000000004 /* AppFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = E583994A85C1799754185206; };
+		A1C0DEAA0000000000000005 /* MonaspaceNeon-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = 3F21B6371EF991370D1D03DF; };
+		A1C0DEAA0000000000000006 /* MonaspaceNeon-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 13D380B1339F9747DE599399; };
+		A1C0DEAA0000000000000007 /* Monaspace-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = CCC3EF3BCC40156BFEC23CAA; };
+		A1C0DEAA0000000000000009 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A1C0DEAA000000000000000A /* PrivacyInfo.xcprivacy */; };
+		A1C0DEAA000000000000000B /* MeshBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA801308F9D3400B8C681 /* MeshBackground.swift */; };
+		A1C0DEAA000000000000000C /* AppearanceSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78E6E9CACE3528A4828C2A2D /* AppearanceSettings.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -612,6 +621,8 @@
 		FF13FD215F4B08F58FE9D5B0 /* LearnButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnButton.swift; sourceTree = "<group>"; };
 		2E4B452149BEAF7E22ED8F50 /* MyNodesPrototype.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyNodesPrototype.swift; sourceTree = "<group>"; };
 		9E01A8063F9F595EE12BD051 /* MyNodesPrototype.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = MyNodesPrototype.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1C0DEAA0000000000000001 /* MyNodesWidgetCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = shared/widget/MyNodesWidgetCatalog.swift; sourceTree = SOURCE_ROOT; };
+		A1C0DEAA000000000000000A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1123,7 +1134,9 @@
 		BBDBFB453CFB3A30E1C603F3 /* MyNodesPrototype */ = {
 			isa = PBXGroup;
 			children = (
+				A1C0DEAA0000000000000001 /* MyNodesWidgetCatalog.swift */,
 				2E4B452149BEAF7E22ED8F50 /* MyNodesPrototype.swift */,
+				A1C0DEAA000000000000000A /* PrivacyInfo.xcprivacy */,
 			);
 			path = MyNodesPrototype;
 			sourceTree = "<group>";
@@ -1175,6 +1188,7 @@
 			buildConfigurationList = F540D43C19F18D17FCAB8A3C /* Build configuration list for PBXNativeTarget "MyNodesPrototype" */;
 			buildPhases = (
 				BF8C0E7A42034CF571E2D9FF /* Sources */,
+				A1C0DEAA0000000000000008 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -1250,6 +1264,17 @@
 				A1C0DE5901000000000000C4 /* whats-new.es.json in Resources */,
 				A1C0DE5701000000000000A2 /* Localizable.xcstrings in Resources */,
 				A1C0DE5701000000000000A4 /* InfoPlist.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A1C0DEAA0000000000000008 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1C0DEAA0000000000000005 /* MonaspaceNeon-Regular.otf in Resources */,
+				A1C0DEAA0000000000000006 /* MonaspaceNeon-SemiBold.otf in Resources */,
+				A1C0DEAA0000000000000007 /* Monaspace-OFL.txt in Resources */,
+				A1C0DEAA0000000000000009 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1410,6 +1435,7 @@
 				31DFA802308F9D3400B8C681 /* MeshBackground.swift in Sources */,
 				31DFA7EB308E9F4E00B8C681 /* NodePlannerRFEngine.swift in Sources */,
 				31A2B0043070000100FBA3B4 /* RoutePicker.swift in Sources */,
+				A1C0DEAA0000000000000002 /* MyNodesWidgetCatalog.swift in Sources */,
 				DB9DEC9ABF59879D2D850970 /* AppFont.swift in Sources */,
 				DB9F44BFCC24A15FC2881340 /* LearnButton.swift in Sources */,
 				16CC334CE0E2AE894A6E2811 /* ChannelMessagesCache.swift in Sources */,
@@ -1534,6 +1560,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1C0DEAA0000000000000003 /* MyNodesWidgetCatalog.swift in Sources */,
+				A1C0DEAA0000000000000004 /* AppFont.swift in Sources */,
+				A1C0DEAA000000000000000B /* MeshBackground.swift in Sources */,
+				A1C0DEAA000000000000000C /* AppearanceSettings.swift in Sources */,
 				E3012C128B6FEAFAF7062223 /* MyNodesPrototype.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1805,6 +1835,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = CW335GEDYX;
 				GENERATE_INFOPLIST_FILE = YES;
+				CODE_SIGN_ENTITLEMENTS = MyNodesPrototype/MyNodesPrototype.entitlements;
 				INFOPLIST_FILE = MyNodesPrototype/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1828,6 +1859,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = CW335GEDYX;
 				GENERATE_INFOPLIST_FILE = YES;
+				CODE_SIGN_ENTITLEMENTS = MyNodesPrototype/MyNodesPrototype.entitlements;
 				INFOPLIST_FILE = MyNodesPrototype/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (

@@ -143,7 +143,7 @@ struct RootTabView: View {
                 selectedTab = .map
             case .observer, .activeObservers:
                 selectedTab = .observers
-            case .node, .watchedNode, .channel, .packet, .feature:
+            case .myNodes, .node, .watchedNode, .channel, .packet, .feature:
                 selectedTab = .explore
             case nil:
                 break
@@ -152,6 +152,10 @@ struct RootTabView: View {
         .onAppear {
             if case .watchedNode(_, let sourceSessionID) = appNavigationStore.destination,
                sourceSessionID == settings.sourceSession.id {
+                selectedTab = .explore
+            } else if case .myNodes = appNavigationStore.destination {
+                selectedTab = .explore
+            } else if case .feature(.nodeCheck) = appNavigationStore.destination {
                 selectedTab = .explore
             } else if lastSelectedTabRawValue == "favorites" {
                 selectedTab = .explore

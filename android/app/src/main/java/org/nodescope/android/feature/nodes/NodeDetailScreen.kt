@@ -207,6 +207,9 @@ fun NodeDetailScreen(
                                 } else {
                                     val user = client.me()
                                     val notifications = client.setWatch(watchKey, shouldWatch, user.csrfToken)
+                                    org.nodescope.android.widget.MyNodesWidgetStore.publishWatches(
+                                        context, host, user.id, notifications.watches,
+                                    )
                                     isWatched = notifications.watches.any { it.pubkey == watchKey }
                                     if (shouldWatch && isWatched) watchFeedback = UiText.Resource(
                                         R.string.account_watch_confirmation, node.name?.takeIf { it.isNotBlank() }

@@ -14,6 +14,8 @@ extension View {
 /// A fixed, decorative network pattern that stays still as the list scrolls.
 struct MeshBackground: View {
     var subdued = false
+    var compact = false
+    var textureEnabled: Bool?
 
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage(AppearanceSettings.backgroundTextureDefaultsKey) private var backgroundTextureEnabled = true
@@ -52,11 +54,12 @@ struct MeshBackground: View {
         )
         .overlay {
             Canvas { context, size in
-                guard backgroundTextureEnabled else { return }
+                guard textureEnabled ?? backgroundTextureEnabled else { return }
                 // Repeat at a consistent scale on large windows without stretching the links.
                 let tileWidth = min(size.width, 520)
-                let tileHeight: CGFloat = 760
-                guard tileWidth > 0 else { return }
+                let tileHeight = compact ? size.height : 760
+                let dotSize: CGFloat = compact ? 3 : 5
+                guard tileWidth > 0, tileHeight > 0 else { return }
 
                 for x in stride(from: CGFloat.zero, to: size.width, by: tileWidth) {
                     for y in stride(from: CGFloat.zero, to: size.height, by: tileHeight) {
@@ -72,7 +75,8 @@ struct MeshBackground: View {
 
                         for point in points {
                             let dot = Path(ellipseIn: CGRect(
-                                x: point.x - 2.5, y: point.y - 2.5, width: 5, height: 5
+                                x: point.x - dotSize / 2, y: point.y - dotSize / 2,
+                                width: dotSize, height: dotSize
                             ))
                             context.fill(dot, with: .color(nodeColor.opacity(isDark ? 0.45 : 0.50)))
                         }

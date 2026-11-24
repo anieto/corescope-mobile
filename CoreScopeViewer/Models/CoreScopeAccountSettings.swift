@@ -105,6 +105,7 @@ final class CoreScopeAccountSelectionStore {
     static let shared = CoreScopeAccountSelectionStore()
     private let defaults: UserDefaults
     private(set) var revision = 0
+    private(set) var widgetWatchRevision = 0
     private(set) var activeAccounts: [String: Int64]
 
     init(defaults: UserDefaults = .standard) {
@@ -116,6 +117,7 @@ final class CoreScopeAccountSelectionStore {
     func activate(origin: String, userID: Int64) {
         // Only one identity per source, even if the URL spelling changes.
         let source = AnalyzerSettings.normalizedHost(origin)
+        guard activeAccounts[origin] != userID else { return }
         activeAccounts = activeAccounts.filter { AnalyzerSettings.normalizedHost($0.key) != source }
         activeAccounts[origin] = userID
         persistActiveAccounts()
@@ -173,7 +175,12 @@ final class CoreScopeAccountSelectionStore {
         "corescope-device-favorites-offer|\(AnalyzerSettings.normalizedHost(origin).lowercased())|\(userID)"
     }
 
+    func widgetWatchesChanged() {
+        widgetWatchRevision += 1
+    }
+
     private func persistActiveAccounts() {
+        widgetWatchesChanged()
         defaults.set(try? JSONEncoder().encode(activeAccounts), forKey: "corescope-active-accounts-v2")
     }
 

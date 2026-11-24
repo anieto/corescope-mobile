@@ -9,6 +9,7 @@ enum AppFeature: String, Decodable, Sendable {
 enum AppNavigationDestination: Sendable {
     case feature(AppFeature)
     case mapNode(MeshNode)
+    case myNodes
     case activeNodes
     case node(String)
     case watchedNode(String, sourceSessionID: UUID)
@@ -31,6 +32,11 @@ final class AppNavigationStore {
 
     func openWatchedNode(publicKey: String, sourceSessionID: UUID) {
         destination = .watchedNode(publicKey, sourceSessionID: sourceSessionID)
+        requestID = UUID()
+    }
+
+    func openMyNodes() {
+        destination = .myNodes
         requestID = UUID()
     }
 

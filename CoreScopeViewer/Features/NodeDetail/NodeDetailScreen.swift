@@ -425,6 +425,7 @@ struct NodeDetailScreen: View {
                     let user = try await client.me()
                     try Task.checkCancellation()
                     notifications = try await client.setWatch(key, watched: watched, csrf: user.csrfToken)
+                    CoreScopeAccountSelectionStore.shared.widgetWatchesChanged()
                 }
                 try Task.checkCancellation()
                 try sourceSession.check()
