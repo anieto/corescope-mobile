@@ -128,7 +128,7 @@ struct NodeVisionScreen: View {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("The compass shows where the camera is pointing. Markers show node names and distances from you. Smaller markers follow the node’s direction and may stagger vertically to keep labels readable.")
                         Text("Tap a marker to preview a node. Choose Spotlight node to highlight it as you pan. Choosing a node from Nearby spotlights it immediately. Edge arrows show which way to turn or tilt when the highlighted node is outside the camera view.")
-                        Text("When the phone’s altitude is accurate enough, NodeVision places markers by estimated antenna elevation. Without a reported height, it assumes a typical rooftop or handheld height.")
+                        Text("When the phone’s altitude is accurate enough, NodeVision places markers by estimated antenna elevation. Without a reported height, it assumes a typical rooftop or handheld height. A dashed outline marks an approximate placement based on a default height or a less precise phone altitude.")
                         Divider()
                         VStack(alignment: .leading, spacing: 8) {
                             Label("Location privacy", systemImage: "info.circle")

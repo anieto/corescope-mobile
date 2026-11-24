@@ -33013,18 +33013,18 @@
         }
       }
     },
-    "When the phone’s altitude is accurate enough, NodeVision places markers by estimated antenna elevation. Without a reported height, it assumes a typical rooftop or handheld height." : {
+    "When the phone’s altitude is accurate enough, NodeVision places markers by estimated antenna elevation. Without a reported height, it assumes a typical rooftop or handheld height. A dashed outline marks an approximate placement based on a default height or a less precise phone altitude." : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cuando la altitud del teléfono es lo bastante precisa, NodeVision coloca los marcadores según la elevación estimada de la antena. Si no se ha indicado la altura, usa una altura típica de azotea o de dispositivo de mano."
+            "value" : "Cuando la altitud del teléfono es lo bastante precisa, NodeVision coloca los marcadores según la elevación estimada de la antena. Si no se ha indicado la altura, usa una altura típica de azotea o de dispositivo de mano. Un contorno discontinuo indica una posición aproximada basada en una altura predeterminada o en una altitud del teléfono menos precisa."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quando a altitude do celular é precisa o suficiente, o NodeVision posiciona os marcadores pela elevação estimada da antena. Sem uma altura informada, usa uma altura típica de telhado ou de dispositivo portátil."
+            "value" : "Quando a altitude do celular é precisa o suficiente, o NodeVision posiciona os marcadores pela elevação estimada da antena. Sem uma altura informada, usa uma altura típica de telhado ou de dispositivo portátil. Um contorno tracejado indica uma posição aproximada baseada em uma altura padrão ou em uma altitude do celular menos precisa."
           }
         }
       }

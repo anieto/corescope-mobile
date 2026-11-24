@@ -2004,7 +2004,7 @@
     <string name="nodevision_no_nearby">No nearby nodes found.</string>
     <string name="nodevision_help_markers">The compass shows where the camera is pointing. Markers show node names and distances from you. Smaller markers follow the node’s direction and may stagger vertically to keep labels readable.</string>
     <string name="nodevision_help_focus">Tap a marker to preview a node. Choose Spotlight node to highlight it as you pan. Choosing a node from Nearby spotlights it immediately. Edge arrows show which way to turn or tilt when the highlighted node is outside the camera view.</string>
-    <string name="nodevision_help_elevation">When the phone’s altitude is accurate enough, NodeVision places markers by estimated antenna elevation. Without a reported height, it assumes a typical rooftop or handheld height.</string>
+    <string name="nodevision_help_elevation">When the phone’s altitude is accurate enough, NodeVision places markers by estimated antenna elevation. Without a reported height, it assumes a typical rooftop or handheld height. A dimmer label marks an approximate placement based on a default height or a less precise phone altitude.</string>
     <string name="nodevision_nearby_range_miles">Nodes within 10 mi of you</string>
     <string name="nodevision_nearby_range_km">Nodes within 10 km of you</string>
     <string name="nodevision_focus">Spotlight node</string>
