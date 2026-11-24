@@ -2018,7 +2018,7 @@
     <string name="nodevision_no_nearby">Nenhum nó próximo foi encontrado.</string>
     <string name="nodevision_help_markers">A bússola mostra para onde a câmera aponta. Os marcadores mostram o nome de cada nó e a distância até ele. Os marcadores menores seguem a direção do nó e podem aparecer em alturas diferentes para facilitar a leitura.</string>
     <string name="nodevision_help_focus">Toque em um marcador para ver uma prévia do nó. Escolha “Destacar nó” para realçá-lo ao girar a câmera. Ao escolher um nó em Próximos, ele é destacado na hora. Quando o nó destacado sai da área visível, as setas nas bordas indicam para onde girar ou inclinar a câmera.</string>
-    <string name="nodevision_help_elevation">Quando há dados de elevação suficientes, o NodeVision os usa para posicionar o marcador destacado na vertical. “Elevação incerta” indica que a altura na tela é apenas uma referência.</string>
+    <string name="nodevision_help_elevation">Quando a altitude do celular é precisa o suficiente, o NodeVision posiciona os marcadores pela elevação estimada da antena. Sem uma altura informada, usa uma altura típica de telhado ou de dispositivo portátil.</string>
     <string name="nodevision_nearby_range_miles">Nós a até 10 mi de você</string>
     <string name="nodevision_nearby_range_km">Nós a até 10 km de você</string>
     <string name="nodevision_focus">Destacar nó</string>

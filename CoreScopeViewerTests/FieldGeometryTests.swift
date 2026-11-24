@@ -1,3 +1,4 @@
+import Foundation
 import simd
 import Testing
 @testable import CoreScopeViewer
@@ -158,5 +159,74 @@ struct FieldGeometryTests {
     @Test func cannotTellMatrixLayoutWhileFlat() {
         let turned: [SIMD3<Double>] = [SIMD3(0, -1, 0), SIMD3(1, 0, 0), SIMD3(0, 0, 1)]
         #expect(FieldGeometry.deviceAxesUseMatrixRows(rows: turned, gravity: SIMD3(0, 0, -1)) == nil)
+    }
+}
+
+
+struct NodeVisionElevationTests {
+    @Test func reportedAndDefaultHeights() {
+        #expect(VisionAntennaHeight(role: "repeater", reported: 12).meters == 12)
+        #expect(!VisionAntennaHeight(role: "repeater", reported: 12).approximate)
+        for role in ["repeater", "room", "room-server"] {
+            #expect(VisionAntennaHeight(role: role, reported: nil).meters == CoverageHeightPreset.rooftop.meters)
+            #expect(VisionAntennaHeight(role: role, reported: nil).approximate)
+        }
+        #expect(VisionAntennaHeight(role: "companion", reported: 12).meters == CoverageHeightPreset.handheld.meters)
+    }
+
+    @Test func placementModeAppliesToEveryMarker() {
+        let distances = [30.0, 500]
+        for mode in [
+            VisionElevationMode(altitude: nil, accuracy: 2, distances: distances, nearDistance: 5),
+            VisionElevationMode(altitude: 100, accuracy: 10, distances: distances, nearDistance: 5)
+        ] {
+            #expect(mode == .guide)
+            #expect(mode.offset(distance: 30, antenna: nil, pitch: 2, tangent: 0.5) ==
+                    mode.offset(distance: 500, antenna: 150, pitch: 2, tangent: 0.5))
+        }
+        let mode = VisionElevationMode(altitude: 100, accuracy: 2, distances: [500], nearDistance: 5)
+        #expect(mode == .elevation(altitude: 100, accuracy: 2))
+        #expect(mode.offset(distance: 500, antenna: nil, pitch: 2, tangent: 0.5) == nil)
+        #expect(mode.offset(distance: 500, antenna: 150, pitch: 2, tangent: 0.5) != nil)
+    }
+
+    @Test func altitudeDeadbandAccumulatesChanges() {
+        let stable = stableVisionAltitude(previous: 100, current: 100.2, distance: 100)
+        #expect(stable == 100)
+        #expect(stableVisionAltitude(previous: stable, current: 100.3, distance: 100) == 100.3)
+        #expect(stableVisionAltitude(previous: stable, current: nil, distance: 100) == nil)
+    }
+
+    @Test func terrainBatchesCacheByNodeAndCoordinateAndKeepSuccessfulBatches() async throws {
+        let provider = VisionTestTerrainProvider()
+        let cache = VisionTerrainCache(provider: provider)
+        let points = try Set((0..<101).map { index in
+            let coordinate = try #require(FieldCoordinate(latitude: Double(index) / 100, longitude: 0))
+            return try #require(VisionTerrainPoint(key: String(format: "%03d", index), coordinate: coordinate))
+        })
+        let first = await cache.resolve(points)
+        #expect(first.count == 100)
+        #expect(await provider.requests.map(\.count) == [100, 2])
+        let cachedPoints = Set(first.keys)
+        _ = await cache.resolve(points)
+        #expect(await provider.requests.count == 2)
+        let coordinate = try #require(FieldCoordinate(latitude: 2, longitude: 0))
+        let moved = try #require(VisionTerrainPoint(key: "000", coordinate: coordinate))
+        let updated = await cache.resolve(cachedPoints.union([moved]))
+        #expect(updated[moved] == 42)
+        #expect(await provider.requests.last == [moved.coordinate, moved.coordinate])
+    }
+}
+
+private actor VisionTestTerrainProvider: NodePlannerElevationProviding {
+    private(set) var requests: [[NodePlannerCoordinate]] = []
+
+    func elevations(for coordinates: [NodePlannerCoordinate]) async throws -> NodePlannerTerrainProfile {
+        requests.append(coordinates)
+        if requests.count == 2 { throw NodePlannerElevationError.unavailable }
+        return NodePlannerTerrainProfile(
+            samples: coordinates.map { NodePlannerTerrainSample(coordinate: $0, elevationMeters: 42) },
+            provenance: NodePlannerElevationProvenance(fetchedAt: .now, origin: .network)
+        )
     }
 }

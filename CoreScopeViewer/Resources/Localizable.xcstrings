@@ -33013,18 +33013,18 @@
         }
       }
     },
-    "When enough elevation data is available, NodeVision uses it to place the focused marker vertically. “Elevation Uncertain” means its height on screen is a rough guide." : {
+    "When the phone’s altitude is accurate enough, NodeVision places markers by estimated antenna elevation. Without a reported height, it assumes a typical rooftop or handheld height." : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cuando hay suficientes datos de elevación, NodeVision los usa para colocar el marcador destacado en el eje vertical. «Elevación incierta» significa que su altura en pantalla es orientativa."
+            "value" : "Cuando la altitud del teléfono es lo bastante precisa, NodeVision coloca los marcadores según la elevación estimada de la antena. Si no se ha indicado la altura, usa una altura típica de azotea o de dispositivo de mano."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quando há dados de elevação suficientes, o NodeVision os usa para posicionar o marcador destacado na vertical. “Elevação incerta” indica que a altura na tela é apenas uma referência."
+            "value" : "Quando a altitude do celular é precisa o suficiente, o NodeVision posiciona os marcadores pela elevação estimada da antena. Sem uma altura informada, usa uma altura típica de telhado ou de dispositivo portátil."
           }
         }
       }

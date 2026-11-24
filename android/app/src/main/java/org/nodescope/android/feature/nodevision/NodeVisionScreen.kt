@@ -43,9 +43,13 @@ import android.net.Uri
 import android.os.SystemClock
 import android.os.Build
 import android.location.altitude.AltitudeConverter
+import androidx.compose.ui.draw.alpha
+import org.nodescope.android.feature.coverage.CoverageHeightPreset
+import org.nodescope.android.feature.linkprofile.LinkTerrainProviding
 import java.io.File
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import org.nodescope.android.feature.linkprofile.LinkTerrainProvider
 import org.nodescope.android.feature.linkprofile.ProfileCoordinate
@@ -123,6 +127,7 @@ internal fun NodeVisionScreen(
     target: FieldCoordinate? = null,
     antennaHeight: Double? = null,
     initialStatus: String? = null,
+    targetRole: String? = null,
     catalog: List<MeshNode> = emptyList(),
     catalogIsLoading: Boolean = false,
     loadMetadata: suspend () -> Map<String, RepeaterMetadata> = { emptyMap() },
@@ -152,7 +157,8 @@ internal fun NodeVisionScreen(
     val focusedNode = catalog.firstOrNull { it.publicKey == focusedKey }
     val visionTarget = focusedNode?.visionCoordinate() ?: target
     val visionName = focusedNode?.displayName ?: name.orEmpty()
-    val visionHeight = focusedNode?.let { repeaterMetadata[it.publicKey.lowercase()]?.applicableHeightMeters() } ?: antennaHeight
+    val reportedHeight = focusedNode?.let { repeaterMetadata[it.publicKey.lowercase()]?.applicableHeightMeters() } ?: antennaHeight
+    val visionHeight = visionAntennaHeight(focusedNode?.role ?: targetRole, reportedHeight)
     val ownerStatus = when (focusedNode?.let { repeaterMetadata[it.publicKey.lowercase()]?.status } ?: initialStatus) {
         "maintenance" -> R.string.nodevision_owner_maintenance
         "decommissioned" -> R.string.nodevision_owner_decommissioned
@@ -214,22 +220,23 @@ internal fun NodeVisionScreen(
     }
     val trueHeading = if (heading != null && declination != null) heading.degrees + declination else null
 
-    var antennaElevation by remember(visionTarget, visionHeight) { mutableStateOf<Double?>(null) }
-    LaunchedEffect(visionTarget, visionHeight) {
-        if (visionHeight == null || visionTarget == null) return@LaunchedEffect
-        val point = ProfileCoordinate(visionTarget.latitude, visionTarget.longitude)
-        val provider = LinkTerrainProvider(File(context.cacheDir, "nodevision-elevation.json"))
-        antennaElevation = try {
-            provider.profile(listOf(point, point)).points.firstOrNull()?.elevationMeters?.plus(visionHeight)
-        } catch (_: IOException) {
-            null
-        } catch (_: IllegalArgumentException) {
-            null
+    val spotlightPoint = visionTarget?.let { VisionTerrainPoint(focusedNode?.publicKey.orEmpty().lowercase(), it) }
+    val terrainPoints = remember(nearby, spotlightPoint) {
+        buildSet {
+            nearby.mapNotNullTo(this) { it.node.terrainPoint() }
+            spotlightPoint?.let { add(it) }
         }
     }
+    val terrain = remember(context) {
+        VisionTerrainCache(LinkTerrainProvider(File(context.cacheDir, "nodevision-elevation.json")))
+    }
+    var ground by remember(terrain) { mutableStateOf<Map<VisionTerrainPoint, Double>>(emptyMap()) }
+    LaunchedEffect(terrain, terrainPoints) { ground = terrain.resolve(terrainPoints) }
+    val antennaElevation = spotlightPoint?.let(ground::get)?.plus(visionHeight.meters)
+
     var altitude by remember { mutableStateOf<VisionAltitude?>(null) }
-    LaunchedEffect(fix, active, antennaElevation) {
-        if (fix == null || !active || antennaElevation == null || Build.VERSION.SDK_INT < 34) {
+    LaunchedEffect(fix, active) {
+        if (fix == null || !active || Build.VERSION.SDK_INT < 34) {
             altitude = null
             return@LaunchedEffect
         }
@@ -245,6 +252,7 @@ internal fun NodeVisionScreen(
         }
     }
 
+    var displayedAltitude by remember { mutableStateOf<Double?>(null) }
     var optics by remember { mutableStateOf<VisionOptics?>(null) }
     var cameraFailed by remember { mutableStateOf(false) }
     var showsDiagnostics by rememberSaveable { mutableStateOf(false) }
@@ -314,16 +322,18 @@ internal fun NodeVisionScreen(
             val verticalTangent = projection?.halfHeightTangent
             val targetElevation = antennaElevation
             val phoneAltitude = altitude?.takeIf { now - it.fixTime <= 3_000 }
-            val verticalOffset = if (geometry != null && targetElevation != null && phoneAltitude != null &&
-                heading != null && verticalTangent != null) {
-                FieldGeometry.cameraVerticalOffset(geometry.distanceMeters, targetElevation,
-                    phoneAltitude.meters, phoneAltitude.accuracy, heading.pitch, verticalTangent)
+            val nearDistance = maxOf(5.0, fix?.accuracy?.toDouble() ?: 0.0)
+            val distances = nearby.map { it.geometry.distanceMeters } + listOfNotNull(geometry?.distanceMeters)
+            val closestDistance = distances.filter { it > nearDistance }.minOrNull()
+            val stableAltitude = stableVisionAltitude(displayedAltitude, phoneAltitude?.meters, closestDistance)
+            SideEffect { displayedAltitude = stableAltitude }
+            val mode = visionElevationMode(stableAltitude, phoneAltitude?.accuracy, distances, nearDistance)
+            val markerOffset = if (geometry != null && heading != null && verticalTangent != null && verticalTangent > 0) {
+                mode.offset(geometry.distanceMeters, targetElevation, heading.pitch, verticalTangent)
             } else null
-            val approximate = verticalOffset != null && phoneAltitude != null && geometry != null &&
-                FieldGeometry.cameraElevationUncertainty(geometry.distanceMeters, phoneAltitude.accuracy) > 8
-            val markerOffset = verticalOffset ?: if (heading != null && verticalTangent != null && verticalTangent > 0) {
-                FieldGeometry.cameraBearingGuideOffset(heading.pitch, verticalTangent)
-            } else null
+            val verticalOffset = markerOffset.takeUnless { mode == VisionElevationMode.Guide }
+            val approximate = markerOffset != null && geometry != null &&
+                mode.isApproximate(geometry.distanceMeters, visionHeight)
             val safeTop = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
             val safeBottom = WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()
             val minimumY = safeTop + 166.dp
@@ -340,21 +350,25 @@ internal fun NodeVisionScreen(
                 else -> null
             }
             val useVerticalArrow = verticalEdge != null && (!offscreen || abs(verticalOffset ?: 0.0) > abs(offset ?: 0.0))
-            val markerVisible = showCamera && offset != null && !offscreen && verticalEdge == null
+            val markerVisible = markerOffset != null && showCamera && offset != null && !offscreen && verticalEdge == null
             val discoveryMarkers = if (discovery && showCamera && fix != null && projection != null &&
                 trueHeading != null && heading != null && verticalTangent != null && maximumY >= minimumY) {
-                val guide = FieldGeometry.cameraBearingGuideOffset(heading.pitch, verticalTangent)
-                val y = maxHeight.value * (projection.centerY - guide / 2)
                 discoveryMarkers(discoveryNodes, inspectedKey, focusedKey, fix.accuracy.toDouble(),
-                    trueHeading, projection, paneWidth.value.toDouble(), y,
+                    trueHeading, projection, paneWidth.value.toDouble(), maxHeight.value.toDouble(),
+                    heading.pitch, mode,
+                    antenna = { node ->
+                        val height = visionAntennaHeight(node.role,
+                            repeaterMetadata[node.publicKey.lowercase()]?.applicableHeightMeters())
+                        node.terrainPoint()?.let(ground::get)?.plus(height.meters) to height
+                    },
                     if (markerVisible) paneWidth.value / 2 + pixel else null, markerY.value.toDouble(),
                     markerWidth.value.toDouble(), minimumY.value.toDouble(), maximumY.value.toDouble())
             } else emptyList()
-            val retainedMarkers = remember { mutableStateMapOf<String, DiscoveryMarker>() }
+            val retainedMarkers = remember(mode == VisionElevationMode.Guide) { mutableStateMapOf<String, DiscoveryMarker>() }
             val visibleMarkers = discoveryMarkers.associateBy { it.node.publicKey }
             SideEffect { retainedMarkers.putAll(visibleMarkers) }
             (retainedMarkers.keys + visibleMarkers.keys).forEach { markerKey ->
-                key(markerKey) {
+                key(markerKey, mode == VisionElevationMode.Guide) {
                     val marker = visibleMarkers[markerKey] ?: retainedMarkers.getValue(markerKey)
                     val visible = markerKey in visibleMarkers
                     val visibility = remember { MutableTransitionState(false) }
@@ -382,6 +396,7 @@ internal fun NodeVisionScreen(
                                 shadowElevation = 4.dp,
                             ) {
                                 Column(Modifier.background(overlayTint)
+                                    .alpha(if (marker.approximate) 0.84f else 1f)
                                     .padding(bottom = 9.dp).padding(horizontal = 6.dp, vertical = 4.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text(marker.node.displayName, fontFamily = MonaspaceNeon,
@@ -397,7 +412,7 @@ internal fun NodeVisionScreen(
                 }
             }
             val showsTargetCard = visionTarget != null && inspectedNode == null &&
-                (!markerVisible || truncatedName || status != null || showSettings || visionHeight != null || ownerStatus != null)
+                (!markerVisible || truncatedName || status != null || showSettings || reportedHeight != null || ownerStatus != null)
             var targetCardTop by remember { mutableStateOf<Dp?>(null) }
             var discoveryControlsTop by remember { mutableStateOf<Dp?>(null) }
             SideEffect { verticalArrowShown = showCamera && offset != null && verticalEdge != null }
@@ -434,7 +449,7 @@ internal fun NodeVisionScreen(
                     ) {
                         Icon(icon, stringResource(label), Modifier.size(48.dp).padding(8.dp), tint = accent)
                     }
-                } else {
+                } else if (markerVisible) {
                     // The bottom of the tip stays on the bearing band when the label wraps.
                     Box(Modifier.offset(x = maxWidth / 2 + pixel.dp - markerWidth / 2, y = markerY - 88.dp)
                         .width(markerWidth).height(88.dp), contentAlignment = Alignment.BottomCenter) {
@@ -448,7 +463,7 @@ internal fun NodeVisionScreen(
                                     overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
                                     onTextLayout = { truncatedName = it.hasVisualOverflow })
                                 geometry?.let { Text(stringResource(R.string.nodevision_distance_away, formatDistance(it.distanceMeters / 1000, distanceUnit)), style = MaterialTheme.typography.labelSmall, fontFamily = MonaspaceNeon) }
-                                if (approximate || verticalOffset == null) Text(stringResource(
+                                if (approximate || mode == VisionElevationMode.Guide) Text(stringResource(
                                     if (approximate) R.string.nodevision_approx_elevation else R.string.nodevision_elevation_uncertain),
                                     style = MaterialTheme.typography.labelSmall, fontFamily = androidx.compose.ui.text.font.FontFamily.Default, color = supportingText)
                             }
@@ -508,14 +523,9 @@ internal fun NodeVisionScreen(
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
                     if (BuildConfig.DEBUG && showsDiagnostics) {
-                        val decision = when {
-                            heading == null || verticalTangent == null -> "Guide: waiting for pitch or camera"
-                            targetElevation == null -> "Guide: antenna elevation unavailable"
-                            phoneAltitude == null -> "Guide: phone altitude unavailable"
-                            verticalOffset == null -> "Guide: accuracy or viewing angle"
-                            approximate -> "Approximate estimate"
-                            else -> "Elevation estimate"
-                        }
+                        val decision = if (mode == VisionElevationMode.Guide) "All markers: pitch guide"
+                            else if (targetElevation == null) "All markers: elevation · spotlight unplaced"
+                            else "All markers: elevation"
                         val readout = "Phone ${debugMeters(phoneAltitude?.meters)} ±${debugMeters(phoneAltitude?.accuracy)} · " +
                             "Antenna ${debugMeters(targetElevation)}\n$decision"
                         Text(readout, Modifier.padding(5.dp), style = MaterialTheme.typography.labelSmall)
@@ -561,8 +571,8 @@ internal fun NodeVisionScreen(
                             Text(stringResource(R.string.nodevision_distance_away, formatDistance(it.distanceMeters / 1000, distanceUnit)),
                                 style = MaterialTheme.typography.labelSmall, fontFamily = MonaspaceNeon)
                         }
-                        if (visionHeight != null) {
-                            val height = if (distanceUnit.usesFeet) visionHeight * 3.28084 else visionHeight
+                        if (reportedHeight != null) {
+                            val height = if (distanceUnit.usesFeet) reportedHeight * 3.28084 else reportedHeight
                             val formattedHeight = java.text.NumberFormat.getNumberInstance().apply { maximumFractionDigits = 1 }.format(height)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.ArrowUpward, contentDescription = null, Modifier.size(14.dp),
@@ -575,7 +585,8 @@ internal fun NodeVisionScreen(
                             }
                         }
                         ownerStatus?.let { Text(stringResource(it), style = MaterialTheme.typography.bodySmall) }
-                        if (!markerVisible && approximate) Text(stringResource(R.string.nodevision_approx_elevation),
+                        if (!markerVisible && (approximate || mode == VisionElevationMode.Guide)) Text(stringResource(
+                            if (approximate) R.string.nodevision_approx_elevation else R.string.nodevision_elevation_uncertain),
                             style = MaterialTheme.typography.bodySmall)
                         status?.let { Text(stringResource(it)) }
                         if (showSettings) TextButton(onClick = {
@@ -781,23 +792,21 @@ internal fun NodeVisionScreen(
 
 private data class NearbyVisionNode(val node: MeshNode, val geometry: FieldGeometryResult)
 private data class DiscoveryMarker(
-    val node: MeshNode, val distance: Double, val x: Double, val y: Double, val width: Double, val tier: Int,
+    val node: MeshNode, val distance: Double, val x: Double, val y: Double, val width: Double, val tier: Int, val approximate: Boolean,
 )
 
 private fun discoveryMarkers(
     nearby: List<NearbyVisionNode>, inspectedKey: String?, focusedKey: String?, horizontalAccuracy: Double,
-    heading: Double, projection: VisionOptics, paneWidth: Double, y: Double,
+    heading: Double, projection: VisionOptics, paneWidth: Double, paneHeight: Double,
+    pitch: Double, mode: VisionElevationMode, antenna: (MeshNode) -> Pair<Double?, VisionAntennaHeight>,
     focusedX: Double?, focusedY: Double, focusedWidth: Double, minimumY: Double, maximumY: Double,
 ): List<DiscoveryMarker> {
-    if (y !in minimumY..maximumY) return emptyList()
     val available = if (focusedX == null) 5 else 4
     data class Bounds(val left: Double, val right: Double, val top: Double, val bottom: Double) {
         fun overlaps(other: Bounds): Boolean =
             left < other.right && right > other.left && top < other.bottom && bottom > other.top
     }
 
-    val rowSpacing = 92.0
-    val rowYs = listOf(y, if (y + rowSpacing <= maximumY) y + rowSpacing else y - rowSpacing)
     val occupied = mutableListOf<Bounds>()
     if (focusedX != null) {
         occupied.add(Bounds(focusedX - focusedWidth / 2, focusedX + focusedWidth / 2, focusedY - 88, focusedY))
@@ -818,13 +827,19 @@ private fun discoveryMarkers(
         val left = x - width / 2 - 5
         val right = x + width / 2 + 5
         if (left < 0 || right > paneWidth) return
-        // Stagger labels vertically without changing the projected bearing.
-        for (rowY in rowYs) {
-            if (rowY < minimumY) continue
+        val (elevation, height) = antenna(candidate.node)
+        val distance = candidate.geometry.distanceMeters
+        val vertical = mode.offset(distance, elevation, pitch, projection.halfHeightTangent) ?: return
+        val y = (paneHeight * (projection.centerY - vertical / 2)).coerceIn(minimumY, maximumY)
+        val approximate = mode.isApproximate(distance, height)
+        val nudges = if (mode == VisionElevationMode.Guide) listOf(0.0, if (y + 92 <= maximumY) 92.0 else -92.0)
+            else listOf(0.0, 24.0, -24.0, 48.0, -48.0, 72.0, -72.0, 92.0, -92.0)
+        for (nudge in nudges) {
+            val rowY = (y + nudge).coerceIn(minimumY, maximumY)
             val bounds = Bounds(left, right, rowY - 84, rowY + 4)
             if (occupied.any { it.overlaps(bounds) }) continue
             occupied.add(bounds)
-            markers.add(DiscoveryMarker(candidate.node, candidate.geometry.distanceMeters, x, rowY, width, tier))
+            markers.add(DiscoveryMarker(candidate.node, candidate.geometry.distanceMeters, x, rowY, width, tier, approximate))
             break
         }
     }
@@ -1108,4 +1123,86 @@ private fun VisionCamera(modifier: Modifier, update: (VisionOptics?, Boolean) ->
             updateNow(null, false)
         }
     }
+}
+
+
+internal data class VisionAntennaHeight(val meters: Double, val approximate: Boolean)
+
+internal fun visionAntennaHeight(role: String?, reported: Double?): VisionAntennaHeight {
+    val normalized = role?.lowercase()
+    val height = reported.takeIf { normalized == "repeater" }
+    val preset = when (normalized) {
+        "repeater", "room", "room server", "room_server", "roomserver", "room-server" -> CoverageHeightPreset.ROOFTOP
+        else -> CoverageHeightPreset.HANDHELD
+    }
+    return VisionAntennaHeight(height ?: preset.meters, height == null)
+}
+
+internal sealed interface VisionElevationMode {
+    data object Guide : VisionElevationMode
+    data class Elevation(val altitude: Double, val accuracy: Double) : VisionElevationMode
+
+    fun offset(distance: Double, antenna: Double?, pitch: Double, tangent: Double): Double? = when (this) {
+        Guide -> FieldGeometry.cameraBearingGuideOffset(pitch, tangent)
+        is Elevation -> antenna?.let {
+            FieldGeometry.cameraVerticalOffset(distance, it, altitude, accuracy, pitch, tangent, clampAngle = true)
+        }
+    }
+
+    fun isApproximate(distance: Double, height: VisionAntennaHeight): Boolean =
+        this is Elevation && (height.approximate || FieldGeometry.cameraElevationUncertainty(distance, accuracy) > 8)
+}
+
+internal fun visionElevationMode(
+    altitude: Double?, accuracy: Double?, distances: List<Double>, nearDistance: Double,
+): VisionElevationMode {
+    if (altitude == null || !altitude.isFinite() || accuracy == null || !accuracy.isFinite() || accuracy <= 0 ||
+        distances.any { it > nearDistance && FieldGeometry.cameraElevationUncertainty(it, accuracy) > 30 }) {
+        return VisionElevationMode.Guide
+    }
+    return VisionElevationMode.Elevation(altitude, accuracy)
+}
+
+internal data class VisionTerrainPoint(val key: String, val coordinate: ProfileCoordinate) {
+    constructor(key: String, coordinate: FieldCoordinate) :
+        this(key, ProfileCoordinate(coordinate.latitude, coordinate.longitude))
+}
+
+private fun MeshNode.terrainPoint(): VisionTerrainPoint? =
+    visionCoordinate()?.let { VisionTerrainPoint(publicKey.lowercase(), it) }
+
+internal class VisionTerrainCache(private val provider: LinkTerrainProviding) {
+    private val elevations = mutableMapOf<VisionTerrainPoint, Double>()
+    private val attempted = mutableSetOf<VisionTerrainPoint>()
+
+    suspend fun resolve(points: Set<VisionTerrainPoint>): Map<VisionTerrainPoint, Double> {
+        val missing = points.filterNot(attempted::contains)
+            .sortedWith(compareBy({ it.key }, { it.coordinate.latitude }, { it.coordinate.longitude }))
+        for (batch in missing.chunked(100)) {
+            val coordinates = batch.map { it.coordinate }.distinct()
+            val request = if (coordinates.size == 1) coordinates + coordinates else coordinates
+            val profile = try {
+                provider.profile(request)
+            } catch (_: IOException) {
+                null
+            } catch (_: IllegalArgumentException) {
+                null
+            }
+            kotlin.coroutines.coroutineContext.ensureActive()
+            attempted.addAll(batch)
+            if (profile == null) continue
+            val ground = request.zip(profile.points).associate { (coordinate, point) -> coordinate to point.elevationMeters }
+            for (point in batch) {
+                ground[point.coordinate]?.takeIf(Double::isFinite)?.let { elevations[point] = it }
+            }
+        }
+        return elevations.toMap()
+    }
+}
+
+/** Ignore altitude changes that move even the closest eligible marker less than 0.15°. */
+internal fun stableVisionAltitude(previous: Double?, current: Double?, distance: Double?): Double? {
+    if (current == null || !current.isFinite()) return null
+    if (previous == null || distance == null) return current
+    return if (kotlin.math.atan2(abs(current - previous), distance) < Math.toRadians(0.15)) previous else current
 }

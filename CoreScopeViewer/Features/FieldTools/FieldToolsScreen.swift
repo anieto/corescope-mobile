@@ -571,6 +571,9 @@ struct FieldToolsScreen: View {
                 NodeVisionScreen(name: target.name, target: coordinate, repeaterKey: {
                     if case .node(let node) = target { return node.publicKey }
                     return nil
+                }(), role: {
+                    if case .node(let node) = target { return node.role }
+                    return nil
                 }())
             }
         }

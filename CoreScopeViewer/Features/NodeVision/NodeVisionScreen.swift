@@ -6,6 +6,7 @@ struct NodeVisionScreen: View {
     private let initialName: String?
     private let initialTarget: FieldCoordinate?
     private let initialRepeaterKey: String?
+    private let initialRole: String?
     private let catalog: [MeshNode]
     private let discoveryRegion: String?
     private let catalogIsLoading: Bool
@@ -32,11 +33,12 @@ struct NodeVisionScreen: View {
     @State private var showsDiagnostics = false
     #endif
 
-    init(name: String? = nil, target: FieldCoordinate? = nil, repeaterKey: String? = nil, catalog: [MeshNode] = [], discoveryRegion: String? = nil,
+    init(name: String? = nil, target: FieldCoordinate? = nil, repeaterKey: String? = nil, role: String? = nil, catalog: [MeshNode] = [], discoveryRegion: String? = nil,
          catalogIsLoading: Bool = false) {
         initialName = name
         initialTarget = target
         initialRepeaterKey = repeaterKey
+        initialRole = role
         self.catalog = catalog
         self.discoveryRegion = discoveryRegion
         self.catalogIsLoading = catalogIsLoading
@@ -47,12 +49,35 @@ struct NodeVisionScreen: View {
     private var target: FieldCoordinate? { focusedNode.flatMap { FieldCatalogItem.node($0).coordinate } ?? initialTarget }
     private var repeaterKey: String? { focusedNode?.publicKey ?? initialRepeaterKey }
     @Environment(AnalyzerSettings.self) private var settings
-    @State private var antennaElevation: Double?
+    @State private var displayedAltitude: Double?
+    @State private var ground: [VisionTerrainPoint: Double] = [:]
+    @State private var terrain = VisionTerrainCache(provider: OpenMeteoElevationProvider())
+
+    private var spotlightPoint: VisionTerrainPoint? {
+        target.flatMap { VisionTerrainPoint(key: repeaterKey ?? "", coordinate: $0) }
+    }
+
+    private var terrainPoints: Set<VisionTerrainPoint> {
+        var points = Set(nearbyNodes.compactMap { terrainPoint(for: $0.node) })
+        if let spotlightPoint { points.insert(spotlightPoint) }
+        return points
+    }
+
+    private func terrainPoint(for node: MeshNode) -> VisionTerrainPoint? {
+        FieldCatalogItem.node(node).coordinate.flatMap { VisionTerrainPoint(key: node.publicKey, coordinate: $0) }
+    }
+
+    private var spotlightHeight: VisionAntennaHeight {
+        VisionAntennaHeight(role: focusedNode?.role ?? initialRole, reported: installHeight)
+    }
+
+    private var antennaElevation: Double? {
+        spotlightPoint.flatMap { ground[$0] }.map { $0 + spotlightHeight.meters }
+    }
     @State private var installHeight: Double?
     @State private var targetStatus: String?
     @State private var verticalArrowShown = false
     @State private var bottomOverlayHeight: CGFloat = 0
-    @State private var elevationProvider = OpenMeteoElevationProvider()
     @Environment(\.isHingedDevice) private var isHingedDevice
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
@@ -103,7 +128,7 @@ struct NodeVisionScreen: View {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("The compass shows where the camera is pointing. Markers show node names and distances from you. Smaller markers follow the node’s direction and may stagger vertically to keep labels readable.")
                         Text("Tap a marker to preview a node. Choose Spotlight node to highlight it as you pan. Choosing a node from Nearby spotlights it immediately. Edge arrows show which way to turn or tilt when the highlighted node is outside the camera view.")
-                        Text("When enough elevation data is available, NodeVision uses it to place the focused marker vertically. “Elevation Uncertain” means its height on screen is a rough guide.")
+                        Text("When the phone’s altitude is accurate enough, NodeVision places markers by estimated antenna elevation. Without a reported height, it assumes a typical rooftop or handheld height.")
                         Divider()
                         VStack(alignment: .leading, spacing: 8) {
                             Label("Location privacy", systemImage: "info.circle")
@@ -193,22 +218,20 @@ struct NodeVisionScreen: View {
             if backend.sourceSession.isCurrent, !Task.isCancelled { repeaterMetadata = metadata }
         }
         .task(id: "\(settings.sourceSession.id)|\(repeaterKey ?? "")") {
-            antennaElevation = nil
             installHeight = nil
             targetStatus = nil
-            guard let repeaterKey, let target, settings.sourceIsReady else { return }
+            guard let repeaterKey, settings.sourceIsReady else { return }
             let backend = AnalyzerBackendFactory.make(settings: settings)
             let metadata = await FieldCatalogRepository.shared.repeaterMetadata(for: backend)
             guard backend.sourceSession.isCurrent, !Task.isCancelled else { return }
             let reported = metadata[repeaterKey]
             targetStatus = reported?.status
-            guard let height = reported?.applicableHeightMeters(),
-                  let point = try? NodePlannerCoordinate(latitude: target.latitude, longitude: target.longitude) else { return }
-            installHeight = height
-            let terrain = try? await elevationProvider.elevations(for: [point, point])
-            guard backend.sourceSession.isCurrent, !Task.isCancelled,
-                  let ground = terrain?.samples.first?.elevationMeters else { return }
-            antennaElevation = ground + height
+            installHeight = reported?.applicableHeightMeters()
+        }
+        .task(id: terrainPoints) {
+            let resolved = await terrain.resolve(terrainPoints)
+            guard !Task.isCancelled else { return }
+            ground = resolved
         }
         .task(id: needsLocation) {
             if needsLocation { location.start() } else { location.stop() }
@@ -238,7 +261,13 @@ struct NodeVisionScreen: View {
             regionalCatalog.configure(settings: settings)
             await regionalCatalog.loadNodes(region: discoveryRegion)
         }
-        .onChange(of: discoveryCatalog) { refreshDiscoveryNodes() }
+        .onChange(of: discoveryCatalog) {
+            if let key = focusedNode?.publicKey,
+               let updated = discoveryCatalog.first(where: { $0.publicKey == key }) {
+                focusedNode = updated
+            }
+            refreshDiscoveryNodes()
+        }
         .onChange(of: repeaterMetadata.reportedStatuses) { refreshDiscoveryNodes() }
         .onChange(of: showsLiveCamera && cameraAvailable, initial: true) { _, keepsScreenAwake in
             if keepsScreenAwake {
@@ -329,18 +358,25 @@ struct NodeVisionScreen: View {
                 let offscreen = offset.map { abs($0 * pane.size.width / 2) > max(0, edge + (arrowShown ? -6 : 6)) } ?? false
                 let showSettings = location.status == .denied || AVCaptureDevice.authorizationStatus(for: .video) == .denied
                 let truncatedName = fullNameHeight > markerNameHeight + 1
+                let nearDistance = max(5, fix?.horizontalAccuracyMeters ?? 0)
+                let distances = nearbyNodes.map(\.geometry.distanceMeters) + [geometry?.distanceMeters].compactMap { $0 }
+                let closestDistance = distances.filter { $0 > nearDistance }.min()
+                let altitude = stableVisionAltitude(previous: displayedAltitude, current: fix?.altitudeMeters,
+                                                     distance: closestDistance)
+                let mode = VisionElevationMode(altitude: altitude, accuracy: fix?.verticalAccuracyMeters,
+                                               distances: distances, nearDistance: nearDistance)
                 let placement = markerHeight(size: pane.size, insets: insets, distance: geometry?.distanceMeters,
-                                           fix: fix, pitch: heading?.pitchDegrees)
+                                           mode: mode, pitch: heading?.pitchDegrees)
                 let verticalEdge = placement.edge
                 let useVerticalArrow = verticalEdge != nil &&
                     (!offscreen || abs(placement.offset ?? 0) > abs(offset ?? 0))
                 let showsBottomArrow = cameraAvailable && !near && offset != nil &&
                     useVerticalArrow && verticalEdge == .below
-                let markerVisible = cameraAvailable && !near && offset != nil && !offscreen && verticalEdge == nil
+                let markerVisible = placement.y != nil && cameraAvailable && !near && offset != nil && !offscreen && verticalEdge == nil
                 let discoveryMarkers = discoveryMarkers(size: pane.size, insets: insets, fix: fix,
-                                                        heading: heading, tangent: tangent,
+                                                        heading: heading, tangent: tangent, mode: mode,
                                                         focusedX: markerVisible ? offset.map { pane.size.width * (1 + $0) / 2 } : nil,
-                                                        focusedY: placement.y, focusedWidth: markerWidth)
+                                                        focusedY: placement.y ?? 0, focusedWidth: markerWidth)
                 ZStack {
                     Rectangle().fill(.background)
                     if cameraAvailable {
@@ -357,9 +393,10 @@ struct NodeVisionScreen: View {
                     }
                     .animation(reduceMotion ? nil : .easeInOut(duration: 0.24),
                                value: Set(discoveryMarkers.map(\.id)))
-                    if cameraAvailable, !near, !showsBottomArrow, let offset {
+                    .id(mode == .guide)
+                    if cameraAvailable, !near, !showsBottomArrow, let offset, placement.y != nil || offscreen {
                         direction(offset, offscreen: offscreen, verticalEdge: useVerticalArrow ? verticalEdge : nil,
-                                  markerWidth: markerWidth, markerY: placement.y, estimated: placement.offset != nil,
+                                  markerWidth: markerWidth, markerY: placement.y ?? pane.size.height * 0.43, estimated: mode != .guide,
                                   approximate: placement.approximate, size: pane.size, geometry: geometry)
                     }
                     VStack(spacing: 0) {
@@ -488,8 +525,12 @@ struct NodeVisionScreen: View {
                                     } else if targetStatus == "decommissioned" {
                                         Text("Owner reported: Decommissioned").font(.caption)
                                     }
-                                    if !markerVisible, placement.approximate {
-                                        Text("Approx. elevation").font(.caption)
+                                    if !markerVisible {
+                                        if placement.approximate {
+                                            Text("Approx. elevation").font(.caption)
+                                        } else if mode == .guide {
+                                            Text("Elevation Uncertain").font(.caption)
+                                        }
                                     }
                                     if cameraFailed {
                                         Text("Camera unavailable. You can return to the guide.")
@@ -543,6 +584,7 @@ struct NodeVisionScreen: View {
                 }
                 .clipped()
                 .onChange(of: verticalEdge != nil, initial: true) { _, value in verticalArrowShown = value }
+                .onChange(of: altitude, initial: true) { displayedAltitude = altitude }
             }
         }
     }
@@ -569,6 +611,7 @@ struct NodeVisionScreen: View {
         let candidate: NearbyNode
         let x: CGFloat
         let y: CGFloat
+        let approximate: Bool
         let rowOffset: CGFloat
         let width: CGFloat
         let tier: Int
@@ -577,20 +620,15 @@ struct NodeVisionScreen: View {
     }
 
     private func discoveryMarkers(size: CGSize, insets: EdgeInsets, fix: FieldLocationSample?,
-                                  heading: FieldHeadingSample?, tangent: Double?,
+                                  heading: FieldHeadingSample?, tangent: Double?, mode: VisionElevationMode,
                                   focusedX: CGFloat?, focusedY: CGFloat, focusedWidth: CGFloat) -> [DiscoveryMarker] {
         guard isDiscovery, cameraAvailable, let fix, let heading, let tangent, tangent > 0,
               let pitch = heading.pitchDegrees, let verticalTangent = optics?.halfHeightTangent(size),
               verticalTangent > 0 else { return [] }
-        let minY = insets.top + 130
+        let minY = insets.top + 166
         let maxY = size.height - insets.bottom - 100
         guard minY < maxY else { return [] }
-        let vertical = FieldGeometry.cameraBearingGuideOffset(pitch: pitch, halfHeightTangent: verticalTangent)
-        let y = size.height * (1 - vertical) / 2
-        guard (minY...maxY).contains(y) else { return [] }
         let selectedID = inspectedNode?.publicKey
-        let rowSpacing: CGFloat = 92
-        let rowYs = [y, y + rowSpacing <= maxY ? y + rowSpacing : y - rowSpacing]
         var occupied: [CGRect] = []
         if let focusedX {
             occupied.append(CGRect(x: focusedX - focusedWidth / 2, y: focusedY - 88,
@@ -611,12 +649,21 @@ struct NodeVisionScreen: View {
             let left = x - width / 2 - 5
             let paddedWidth = width + 10
             guard left >= insets.leading, left + paddedWidth <= size.width - insets.trailing else { return }
-            // Stagger labels vertically without changing the projected bearing.
-            for rowY in rowYs where rowY >= minY {
+            let height = VisionAntennaHeight(role: candidate.node.role,
+                reported: repeaterMetadata[candidate.node.publicKey]?.applicableHeightMeters())
+            let antenna = terrainPoint(for: candidate.node).flatMap { ground[$0] }.map { $0 + height.meters }
+            let distance = candidate.geometry.distanceMeters
+            guard let vertical = mode.offset(distance: distance, antenna: antenna, pitch: pitch,
+                                             tangent: verticalTangent) else { return }
+            let y = min(max(size.height * CGFloat(1 - vertical) / 2, minY), maxY)
+            let approximate = mode.isApproximate(distance: distance, height: height)
+            let nudges: [CGFloat] = mode == .guide ? [0, y + 92 <= maxY ? 92 : -92] : [0, 24, -24, 48, -48, 72, -72, 92, -92]
+            for nudge in nudges {
+                let rowY = min(max(y + nudge, minY), maxY)
                 let bounds = CGRect(x: left, y: rowY - 84, width: paddedWidth, height: 88)
                 guard !occupied.contains(where: { $0.intersects(bounds) }) else { continue }
                 occupied.append(bounds)
-                markers.append(DiscoveryMarker(candidate: candidate, x: x, y: y,
+                markers.append(DiscoveryMarker(candidate: candidate, x: x, y: y, approximate: approximate,
                                                rowOffset: rowY - y, width: width, tier: tier))
                 break
             }
@@ -651,7 +698,10 @@ struct NodeVisionScreen: View {
             .padding(.bottom, 9)
             .background { overlaySurface(NodeVisionMarkerShape()) }
             .overlay {
-                if selected { NodeVisionMarkerShape().stroke(nodeNameColor, lineWidth: 2) }
+                if selected || marker.approximate {
+                    NodeVisionMarkerShape().stroke(nodeNameColor, style: StrokeStyle(
+                        lineWidth: selected ? 2 : 1, dash: marker.approximate ? [4, 3] : []))
+                }
             }
             .contentShape(Rectangle())
             .opacity(marker.tier == 2 && !selected ? 0.90 : 1)
@@ -849,31 +899,21 @@ struct NodeVisionScreen: View {
     }
 
     private func markerHeight(size: CGSize, insets: EdgeInsets, distance: Double?,
-                              fix: FieldLocationSample?, pitch: Double?) -> (y: CGFloat, approximate: Bool, decision: String, offset: Double?, edge: VerticalEdge?) {
+                              mode: VisionElevationMode, pitch: Double?) -> (y: CGFloat?, approximate: Bool, decision: String, offset: Double?, edge: VerticalEdge?) {
         let fallback = size.height * 0.43
+        let modeName = mode == .guide ? "All markers: pitch guide" : "All markers: elevation"
         guard let pitch, let tangent = optics?.halfHeightTangent(size), tangent > 0 else {
-            return (fallback, false, "Guide: waiting for pitch or camera", nil, nil)
+            return (nil, false, modeName + " · waiting for pitch or camera", nil, nil)
         }
-        let estimatedOffset: Double?
-        let decision: String
-        var approximate = false
-        if let distance, let antennaElevation, let altitude = fix?.altitudeMeters,
-           let accuracy = fix?.verticalAccuracyMeters {
-            estimatedOffset = FieldGeometry.cameraVerticalOffset(
-                distance: distance, antennaElevation: antennaElevation, phoneElevation: altitude,
-                phoneAccuracy: accuracy, pitch: pitch, halfHeightTangent: tangent
-            )
-            let uncertainty = FieldGeometry.cameraElevationUncertainty(distance: distance, phoneAccuracy: accuracy)
-            approximate = estimatedOffset != nil && uncertainty > 8
-            decision = estimatedOffset == nil ? "Guide: accuracy or viewing angle" : approximate ? "Approximate estimate" : "Elevation estimate"
-        } else {
-            estimatedOffset = nil
-            decision = antennaElevation == nil ? "Guide: antenna elevation unavailable" : "Guide: phone altitude unavailable"
+        guard let distance, let offset = mode.offset(distance: distance, antenna: antennaElevation,
+                                                     pitch: pitch, tangent: tangent) else {
+            return (nil, false, modeName + " · spotlight unplaced", nil, nil)
         }
-        let offset = estimatedOffset ?? FieldGeometry.cameraBearingGuideOffset(pitch: pitch, halfHeightTangent: tangent)
+        let approximate = mode.isApproximate(distance: distance, height: spotlightHeight)
+        let estimatedOffset = mode == .guide ? nil : offset
         let minimumY = insets.top + 166
         let maximumY = size.height - insets.bottom - 100
-        guard maximumY >= minimumY else { return (fallback, false, "Guide: short viewfinder", nil, nil) }
+        guard maximumY >= minimumY else { return (fallback, approximate, modeName + " · short viewfinder", nil, nil) }
         let projectedY = size.height * (1 - offset) / 2
         let buffer: CGFloat = verticalArrowShown ? -6 : 6
         let edge: VerticalEdge?
@@ -881,7 +921,7 @@ struct NodeVisionScreen: View {
         else if projectedY < minimumY - buffer { edge = .above }
         else if projectedY > maximumY + buffer { edge = .below }
         else { edge = nil }
-        return (min(max(projectedY, minimumY), maximumY), approximate, decision, estimatedOffset, edge)
+        return (min(max(projectedY, minimumY), maximumY), approximate, modeName, estimatedOffset, edge)
     }
 
     #if DEBUG
@@ -1087,4 +1127,106 @@ private struct NodeVisionPreview: UIViewRepresentable {
             Task { @MainActor [weak self] in self?.update?(optics) }
         }
     }
+}
+
+
+struct VisionAntennaHeight {
+    let meters: Double
+    let approximate: Bool
+
+    init(role: String?, reported: Double?) {
+        let role = role == "room-server" ? GlossaryTerm.roomServer : role.flatMap { GlossaryTerm(role: $0) }
+        let reported = role == .repeater ? reported : nil
+        let preset: CoverageHeightPreset = role == .repeater || role == .roomServer ? .rooftop : .handheld
+        meters = reported ?? preset.meters
+        approximate = reported == nil
+    }
+}
+
+enum VisionElevationMode: Equatable {
+    case guide
+    case elevation(altitude: Double, accuracy: Double)
+
+    init(altitude: Double?, accuracy: Double?, distances: [Double], nearDistance: Double) {
+        guard let altitude, altitude.isFinite, let accuracy, accuracy.isFinite, accuracy > 0,
+              distances.filter({ $0 > nearDistance }).allSatisfy({
+                  FieldGeometry.cameraElevationUncertainty(distance: $0, phoneAccuracy: accuracy) <= 30
+              }) else {
+            self = .guide
+            return
+        }
+        self = .elevation(altitude: altitude, accuracy: accuracy)
+    }
+
+    func offset(distance: Double, antenna: Double?, pitch: Double, tangent: Double) -> Double? {
+        switch self {
+        case .guide:
+            FieldGeometry.cameraBearingGuideOffset(pitch: pitch, halfHeightTangent: tangent)
+        case let .elevation(altitude, accuracy):
+            antenna.flatMap {
+                FieldGeometry.cameraVerticalOffset(distance: distance, antennaElevation: $0, phoneElevation: altitude,
+                    phoneAccuracy: accuracy, pitch: pitch, halfHeightTangent: tangent, clampAngle: true)
+            }
+        }
+    }
+
+    func isApproximate(distance: Double, height: VisionAntennaHeight) -> Bool {
+        guard case let .elevation(_, accuracy) = self else { return false }
+        return height.approximate || FieldGeometry.cameraElevationUncertainty(distance: distance, phoneAccuracy: accuracy) > 8
+    }
+}
+
+struct VisionTerrainPoint: Hashable, Sendable {
+    let key: String
+    let coordinate: NodePlannerCoordinate
+
+    init?(key: String, coordinate: FieldCoordinate) {
+        guard let point = try? NodePlannerCoordinate(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        else { return nil }
+        self.key = key.lowercased()
+        self.coordinate = point
+    }
+}
+
+actor VisionTerrainCache {
+    private let provider: any NodePlannerElevationProviding
+    private var elevations: [VisionTerrainPoint: Double] = [:]
+    private var attempted: Set<VisionTerrainPoint> = []
+
+    init(provider: any NodePlannerElevationProviding) {
+        self.provider = provider
+    }
+
+    func resolve(_ points: Set<VisionTerrainPoint>) async -> [VisionTerrainPoint: Double] {
+        let missing = points.subtracting(attempted).sorted {
+            ($0.key, $0.coordinate.latitude, $0.coordinate.longitude) <
+                ($1.key, $1.coordinate.latitude, $1.coordinate.longitude)
+        }
+        for start in stride(from: 0, to: missing.count, by: OpenMeteoElevationProvider.maximumBatchSize) {
+            guard !Task.isCancelled else { break }
+            let batch = missing[start..<min(start + OpenMeteoElevationProvider.maximumBatchSize, missing.count)]
+            var seen: Set<NodePlannerCoordinate> = []
+            let coordinates = batch.map(\.coordinate).filter { seen.insert($0).inserted }
+            let request = coordinates.count == 1 ? coordinates + coordinates : coordinates
+            let profile = try? await provider.elevations(for: request)
+            guard !Task.isCancelled else { break }
+            attempted.formUnion(batch)
+            guard let profile else { continue }
+            var ground: [NodePlannerCoordinate: Double] = [:]
+            for sample in profile.samples where sample.elevationMeters.isFinite {
+                ground[sample.coordinate] = sample.elevationMeters
+            }
+            for point in batch {
+                elevations[point] = ground[point.coordinate]
+            }
+        }
+        return elevations
+    }
+}
+
+/// Ignore altitude changes that move even the closest eligible marker less than 0.15°.
+func stableVisionAltitude(previous: Double?, current: Double?, distance: Double?) -> Double? {
+    guard let current, current.isFinite else { return nil }
+    guard let previous, let distance else { return current }
+    return atan2(abs(current - previous), distance) < 0.15 * .pi / 180 ? previous : current
 }

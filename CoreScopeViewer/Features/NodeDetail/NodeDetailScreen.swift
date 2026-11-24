@@ -76,7 +76,7 @@ struct NodeDetailScreen: View {
         let item = FieldCatalogItem.node(displayedNode)
         if let coordinate = item.coordinate {
             NodeVisionScreen(name: item.name, target: coordinate,
-                             repeaterKey: displayedNode.publicKey)
+                             repeaterKey: displayedNode.publicKey, role: displayedNode.role)
         }
     }
 
