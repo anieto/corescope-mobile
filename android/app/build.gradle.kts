@@ -67,6 +67,8 @@ android {
 kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
 
 dependencies {
+    implementation("androidx.glance:glance-appwidget:1.1.1")
+    implementation("androidx.work:work-runtime:2.10.5")
     implementation(platform("androidx.compose:compose-bom:2025.09.01"))
     implementation("androidx.compose.material3:material3")
     // Adaptive panes and fold/hinge information; matches the existing Compose generation.

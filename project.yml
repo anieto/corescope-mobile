@@ -21,6 +21,8 @@ targets:
     deploymentTarget: "18.0"
     sources:
       - path: CoreScopeViewer
+    dependencies:
+      - target: MyNodesPrototype
     settings:
       base:
         PRODUCT_NAME: NodeScope
@@ -39,11 +41,31 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         INFOPLIST_KEY_UIRequiresFullScreen: YES
-        MARKETING_VERSION: "0.10.1"
-        CURRENT_PROJECT_VERSION: "8"
+        MARKETING_VERSION: "0.11.0"
+        CURRENT_PROJECT_VERSION: "2"
         TARGETED_DEVICE_FAMILY: "1,2"
         SWIFT_STRICT_CONCURRENCY: complete
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+
+  MyNodesPrototype:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: MyNodesPrototype
+        excludes: [Info.plist]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.btdev.nodescope.MyNodesPrototype
+        DEVELOPMENT_TEAM: CW335GEDYX
+        CODE_SIGN_STYLE: Automatic
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: MyNodesPrototype/Info.plist
+        MARKETING_VERSION: "0.11.0"
+        CURRENT_PROJECT_VERSION: "2"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        APPLICATION_EXTENSION_API_ONLY: YES
 
   CoreScopeViewerTests:
     type: bundle.unit-test
