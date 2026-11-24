@@ -473,6 +473,13 @@ Estimated Coverage shipped through 0.11.0. It includes:
 
 ## After 1.0
 
+- Evaluate Core Motion absolute altitude in NodeVision on supported iPhones.
+  First, log `CMAbsoluteAltitudeData` altitude and uncertainty alongside Core
+  Location readings in DEBUG. Compare stationary jitter, the response to a
+  known stair climb, and time spent in direction-only mode. Verify the altitude
+  reference matches the terrain data before using the Core Motion reading for
+  placement. Keep Core Location and the existing direction-only fallback for
+  unavailable, stale, or uncertain readings.
 - Expand packet details with raw hex, decoded fields, propagation timing, and a
   clearer per-observer observation timeline.
 - Add grouped and observation-level packet views where they improve diagnosis.
