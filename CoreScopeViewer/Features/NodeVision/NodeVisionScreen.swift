@@ -354,7 +354,8 @@ struct NodeVisionScreen: View {
                         }
                     }
                 }
-                let markerWidth = min(Self.markerWidth(tier: Self.markerTier(distance: geometry?.distanceMeters ?? 0)),
+                let markerTier = Self.markerTier(distance: geometry?.distanceMeters ?? 0)
+                let markerWidth = min(Self.markerWidth(tier: markerTier),
                                       max(0, pane.size.width - 32))
                 let edge = max(0, pane.size.width / 2 - markerWidth / 2 - 8)
                 let offscreen = offset.map { abs($0 * pane.size.width / 2) > max(0, edge + (arrowShown ? -6 : 6)) } ?? false
@@ -398,7 +399,7 @@ struct NodeVisionScreen: View {
                     .id(mode == .guide)
                     if cameraAvailable, !near, !showsBottomArrow, let offset, placement.y != nil || offscreen {
                         direction(offset, offscreen: offscreen, verticalEdge: useVerticalArrow ? verticalEdge : nil,
-                                  markerWidth: markerWidth, markerY: placement.y ?? pane.size.height * 0.43, estimated: mode != .guide,
+                                  markerWidth: markerWidth, markerTier: markerTier, markerY: placement.y ?? pane.size.height * 0.43, estimated: mode != .guide,
                                   approximate: placement.approximate, size: pane.size, geometry: geometry)
                     }
                     VStack(spacing: 0) {
@@ -623,6 +624,10 @@ struct NodeVisionScreen: View {
         [132, 112, 96][tier]
     }
 
+    private static func markerNameFont(tier: Int) -> Font {
+        .monaspace(tier == 0 ? .subheadline : .caption).weight(.semibold)
+    }
+
     private struct DiscoveryMarker: Identifiable {
         let candidate: NearbyNode
         let x: CGFloat
@@ -703,7 +708,7 @@ struct NodeVisionScreen: View {
         } label: {
             VStack(spacing: 2) {
                 Text(FieldCatalogItem.node(node).name)
-                    .font(.monaspace(marker.tier == 0 ? .subheadline : .caption).weight(.semibold))
+                    .font(Self.markerNameFont(tier: marker.tier))
                     .foregroundStyle(nodeNameColor)
                     .lineLimit(2)
                 distance(marker.candidate.geometry, style: .caption2)
@@ -973,7 +978,7 @@ struct NodeVisionScreen: View {
             .accessibilityLabel(edge == .above ? "Target above the view" : "Target below the view")
     }
 
-    private func direction(_ offset: Double, offscreen: Bool, verticalEdge: VerticalEdge?, markerWidth: CGFloat,
+    private func direction(_ offset: Double, offscreen: Bool, verticalEdge: VerticalEdge?, markerWidth: CGFloat, markerTier: Int,
                            markerY: CGFloat, estimated: Bool, approximate: Bool, size: CGSize,
                            geometry: FieldGeometryResult?) -> some View {
         let pixel = offset * size.width / 2
@@ -1005,16 +1010,16 @@ struct NodeVisionScreen: View {
                                     .hidden()
                                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { fullNameHeight = $0 }
                             }
-                            .font(.monaspace(.subheadline).weight(.semibold))
+                            .font(Self.markerNameFont(tier: markerTier))
                             .foregroundStyle(nodeNameColor)
-                        if let geometry { distance(geometry, style: .caption) }
+                        if let geometry { distance(geometry, style: .caption2) }
                         if approximate {
                             Text("Approx. elevation").font(.caption2).foregroundStyle(supportingTextColor)
                         }
                     }
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 4)
                     .frame(width: markerWidth)
                     .padding(.bottom, 9)
                     .background { markerSurface(approximate: approximate, emphasized: true, spotlight: true) }

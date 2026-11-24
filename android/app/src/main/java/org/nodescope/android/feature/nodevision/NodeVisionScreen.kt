@@ -277,6 +277,8 @@ internal fun NodeVisionScreen(
         with(density) { visionMarkerShape(10.dp.toPx(), 9.dp.toPx(), 8.dp.toPx()) }
     }
     val blue = MaterialTheme.colorScheme.primary
+    val typography = MaterialTheme.typography
+    fun markerNameStyle(tier: Int) = if (tier == 0) typography.titleSmall else typography.labelMedium
     val markerInk = if (lightOverlay) lerp(blue, onSurface, 0.25f) else blue
     val overlayTint = if (lightOverlay) {
         Brush.verticalGradient(listOf(blue.copy(alpha = 0.16f), blue.copy(alpha = 0.07f)))
@@ -311,7 +313,8 @@ internal fun NodeVisionScreen(
             val offset = if (!near && bearing != null && trueHeading != null && tangent != null && projection != null) {
                 FieldGeometry.cameraHorizontalOffset(bearing, trueHeading, tangent)?.plus(projection.centerX * 2 - 1)
             } else null
-            val markerWidth = minOf(visionMarkerWidth(visionMarkerTier(geometry?.distanceMeters ?: 0.0)).dp,
+            val markerTier = visionMarkerTier(geometry?.distanceMeters ?: 0.0)
+            val markerWidth = minOf(visionMarkerWidth(markerTier).dp,
                 (paneWidth - 32.dp).coerceAtLeast(0.dp))
             val pixel = (offset ?: 0.0) * paneWidth.value / 2
             val limit = (paneWidth.value / 2 - markerWidth.value / 2 - 8).coerceAtLeast(0f)
@@ -408,7 +411,7 @@ internal fun NodeVisionScreen(
                                     .padding(bottom = 9.dp).padding(horizontal = 6.dp, vertical = 4.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text(marker.node.displayName, fontFamily = MonaspaceNeon,
-                                        style = if (marker.tier == 0) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium,
+                                        style = markerNameStyle(marker.tier),
                                         color = blue, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
                                     Text(stringResource(R.string.nodevision_distance_away, formatDistance(marker.distance / 1000, distanceUnit)),
                                         style = MaterialTheme.typography.labelSmall, fontFamily = MonaspaceNeon,
@@ -468,9 +471,9 @@ internal fun NodeVisionScreen(
                         ) {
                             Column(Modifier.background(overlayTint)
                                 .visionMarkerBorder(markerShape, accent, surface, approximate, emphasized = true)
-                                .padding(bottom = 9.dp).padding(horizontal = 9.dp, vertical = 5.dp),
+                                .padding(bottom = 9.dp).padding(horizontal = 6.dp, vertical = 4.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(visionName, style = MaterialTheme.typography.titleSmall, fontFamily = MonaspaceNeon,
+                                Text(visionName, style = markerNameStyle(markerTier), fontFamily = MonaspaceNeon,
                                     color = MaterialTheme.colorScheme.primary, maxLines = 2,
                                     overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
                                     onTextLayout = { truncatedName = it.hasVisualOverflow })
