@@ -147,15 +147,15 @@ enum FieldGeometry {
     /// Project a height estimate only when combined vertical uncertainty is small enough to be useful.
     static func cameraVerticalOffset(
         distance: Double, antennaElevation: Double, phoneElevation: Double,
-        phoneAccuracy: Double, pitch: Double, halfHeightTangent: Double
+        phoneAccuracy: Double, pitch: Double, halfHeightTangent: Double, clampAngle: Bool = false
     ) -> Double? {
         guard [distance, antennaElevation, phoneElevation, phoneAccuracy, pitch, halfHeightTangent].allSatisfy(\.isFinite),
               distance > 0, phoneAccuracy > 0, halfHeightTangent > 0,
               cameraElevationUncertainty(distance: distance, phoneAccuracy: phoneAccuracy) <= 30 else { return nil }
         let curvature = distance * distance / (2 * earthRadiusMeters)
         let angle = atan2(antennaElevation - phoneElevation - curvature, distance).degrees - pitch
-        guard abs(angle) < 89 else { return nil }
-        return tan(angle.radians) / halfHeightTangent
+        guard clampAngle || abs(angle) < 89 else { return nil }
+        return tan(min(max(angle, -89), 89).radians) / halfHeightTangent
     }
 
     /// Core Motion true-north coordinates are X north, Y west, Z up.

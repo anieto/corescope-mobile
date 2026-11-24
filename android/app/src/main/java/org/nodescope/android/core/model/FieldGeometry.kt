@@ -109,14 +109,14 @@ object FieldGeometry {
     /** Project a height estimate only when combined vertical uncertainty is small enough to be useful. */
     fun cameraVerticalOffset(
         distance: Double, antennaElevation: Double, phoneElevation: Double,
-        phoneAccuracy: Double, pitch: Double, halfHeightTangent: Double,
+        phoneAccuracy: Double, pitch: Double, halfHeightTangent: Double, clampAngle: Boolean = false,
     ): Double? {
         if (!listOf(distance, antennaElevation, phoneElevation, phoneAccuracy, pitch, halfHeightTangent).all(Double::isFinite) ||
             distance <= 0 || phoneAccuracy <= 0 || halfHeightTangent <= 0 ||
             cameraElevationUncertainty(distance, phoneAccuracy) > 30) return null
         val curvature = distance * distance / (2 * EARTH_RADIUS_METERS)
         val angle = Math.toDegrees(atan2(antennaElevation - phoneElevation - curvature, distance)) - pitch
-        if (kotlin.math.abs(angle) >= 89) return null
-        return kotlin.math.tan(Math.toRadians(angle)) / halfHeightTangent
+        if (!clampAngle && kotlin.math.abs(angle) >= 89) return null
+        return kotlin.math.tan(Math.toRadians(angle.coerceIn(-89.0, 89.0))) / halfHeightTangent
     }
 }

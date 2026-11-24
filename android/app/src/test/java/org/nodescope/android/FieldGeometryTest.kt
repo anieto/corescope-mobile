@@ -4,6 +4,21 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.IOException
+import kotlinx.coroutines.runBlocking
+import org.nodescope.android.feature.nodevision.VisionAntennaHeight
+import org.nodescope.android.feature.nodevision.VisionElevationMode
+import org.nodescope.android.feature.nodevision.VisionTerrainCache
+import org.nodescope.android.feature.nodevision.VisionTerrainPoint
+import org.nodescope.android.feature.nodevision.discoveryMarkerY
+import org.nodescope.android.feature.nodevision.stableVisionAltitude
+import org.nodescope.android.feature.nodevision.visionAntennaHeight
+import org.nodescope.android.feature.nodevision.visionElevationMode
+import org.nodescope.android.feature.coverage.CoverageHeightPreset
+import org.nodescope.android.feature.linkprofile.ElevationPoint
+import org.nodescope.android.feature.linkprofile.LinkTerrainProviding
+import org.nodescope.android.feature.linkprofile.ProfileCoordinate
+import org.nodescope.android.feature.linkprofile.TerrainProfile
 import org.nodescope.android.feature.nodevision.VisionHeadingWarmup
 import org.nodescope.android.core.model.FieldCardinalDirection
 import org.nodescope.android.core.model.FieldCoordinate
@@ -108,5 +123,61 @@ class FieldGeometryTest {
         assertNull(warmup.settledHeading(20.0, 700))
         warmup.reset()
         assertNull(warmup.settledHeading(20.0, 770))
+    }
+}
+
+
+class NodeVisionElevationTest {
+    @Test fun discoveryMarkersLeaveTheEdgesWhenTiltedFartherAway() {
+        assertEquals(166.0, discoveryMarkerY(-24.0, 800.0, 166.0, 700.0))
+        assertEquals(700.0, discoveryMarkerY(824.0, 800.0, 166.0, 700.0))
+        assertNull(discoveryMarkerY(-25.0, 800.0, 166.0, 700.0))
+        assertNull(discoveryMarkerY(825.0, 800.0, 166.0, 700.0))
+    }
+
+    @Test fun reportedAndDefaultHeights() {
+        assertEquals(VisionAntennaHeight(12.0, false), visionAntennaHeight("repeater", 12.0))
+        for (role in listOf("repeater", "room", "room-server")) {
+            assertEquals(VisionAntennaHeight(CoverageHeightPreset.ROOFTOP.meters, true), visionAntennaHeight(role, null))
+        }
+        assertEquals(VisionAntennaHeight(CoverageHeightPreset.HANDHELD.meters, true), visionAntennaHeight("companion", 12.0))
+    }
+
+    @Test fun placementModeAppliesToEveryMarker() {
+        val distances = listOf(30.0, 500.0)
+        for (mode in listOf(visionElevationMode(null, 2.0, distances, 5.0),
+            visionElevationMode(100.0, 10.0, distances, 5.0))) {
+            assertEquals(VisionElevationMode.Guide, mode)
+            assertEquals(mode.offset(30.0, null, 2.0, 0.5), mode.offset(500.0, 150.0, 2.0, 0.5))
+        }
+        val mode = visionElevationMode(100.0, 2.0, listOf(500.0), 5.0)
+        assertEquals(VisionElevationMode.Elevation(100.0, 2.0), mode)
+        assertNull(mode.offset(500.0, null, 2.0, 0.5))
+        assertTrue(mode.offset(500.0, 150.0, 2.0, 0.5) != null)
+    }
+
+    @Test fun altitudeDeadbandAccumulatesChanges() {
+        val stable = stableVisionAltitude(100.0, 100.2, 100.0)
+        assertEquals(100.0, stable)
+        assertEquals(100.3, stableVisionAltitude(stable, 100.3, 100.0))
+        assertNull(stableVisionAltitude(stable, null, 100.0))
+    }
+
+    @Test fun terrainBatchesCacheByNodeAndCoordinateAndKeepSuccessfulBatches() = runBlocking {
+        val requests = mutableListOf<List<ProfileCoordinate>>()
+        val cache = VisionTerrainCache(LinkTerrainProviding { coordinates ->
+            requests.add(coordinates)
+            if (requests.size == 2) throw IOException()
+            TerrainProfile(coordinates.map { ElevationPoint(0.0, 42.0) }, 0, "network", coordinates)
+        })
+        val points = (0..100).map { VisionTerrainPoint(it.toString().padStart(3, '0'), ProfileCoordinate(it / 100.0, 0.0)) }.toSet()
+        val first = cache.resolve(points)
+        assertEquals(100, first.size)
+        assertEquals(listOf(100, 2), requests.map { it.size })
+        cache.resolve(points)
+        assertEquals(2, requests.size)
+        val moved = VisionTerrainPoint("000", ProfileCoordinate(2.0, 0.0))
+        assertEquals(42.0, cache.resolve(first.keys + moved)[moved])
+        assertEquals(listOf(moved.coordinate, moved.coordinate), requests.last())
     }
 }

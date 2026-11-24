@@ -133,6 +133,7 @@ fun NodeDetailScreen(
             target = visionCoordinate,
             antennaHeight = metadata.value?.applicableHeightMeters(),
             initialStatus = metadata.value?.status,
+            targetRole = node?.role,
         ) {
             showsNodeVision = false
         }
