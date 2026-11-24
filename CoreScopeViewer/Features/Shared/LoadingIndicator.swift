@@ -170,12 +170,14 @@ private struct AdaptiveSidebarListModifier: ViewModifier {
                 .contentMargins(.horizontal, isFloatingSidebar ? 0 : nil, for: .scrollContent)
                 .background {
                     if meshBackground {
+                        // Down past the home indicator too: on iPadOS 27 the sidebar runs the
+                        // full height, and stopping above it left a strip of the screen behind.
                         MeshBackground(subdued: true)
-                            .ignoresSafeArea(.container, edges: isHingedDevice ? .all : .top)
+                            .ignoresSafeArea(.container, edges: isHingedDevice ? .all : .vertical)
                     } else {
                         Rectangle()
                             .fill(.thinMaterial)
-                            .ignoresSafeArea(.container, edges: .top)
+                            .ignoresSafeArea(.container, edges: .vertical)
                     }
                 }
         } else {

@@ -72,7 +72,7 @@ extension EnvironmentValues {
 
 extension View {
     /// Marks a split view's sidebar column as the floating iPad sidebar: sets
-    /// `isFloatingSidebar` and starts the column's bar and content at the top of the panel.
+    /// `isFloatingSidebar` and keeps the column's bar and content below the status bar.
     @ViewBuilder
     func floatingSidebarColumn(_ isFloating: Bool) -> some View {
         if isFloating {
@@ -86,8 +86,8 @@ extension View {
 
 /// iPadOS 26 floats the sidebar panel below the top tab bar, yet still gives its column a
 /// top inset as if the bar were above it, which left an empty band over the sidebar's title
-/// and content. This removes that inset from the column's navigation controller, so its
-/// bar, list and any screen pushed in the sidebar start at the top of the panel.
+/// and content. Remove the extra inset while keeping any part of the window's top safe
+/// area that actually overlaps the sidebar column.
 private struct FloatingSidebarInsetCorrection: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> Probe { Probe() }
     func updateUIViewController(_ controller: Probe, context: Context) {}
@@ -110,10 +110,23 @@ private struct FloatingSidebarInsetCorrection: UIViewControllerRepresentable {
         }
 
         private func correct() {
-            guard let navigation = navigationController else { return }
-            let inherited = navigation.view.safeAreaInsets.top - navigation.additionalSafeAreaInsets.top
-            let correction = -max(0, inherited)
-            if abs(navigation.additionalSafeAreaInsets.top - correction) > 0.5 {
+            guard let navigation = navigationController,
+                  let window = navigation.view.window else { return }
+            let columnTop = navigation.view.convert(navigation.view.bounds, to: window).minY
+            let windowSafeTop = window.bounds.minY + window.safeAreaInsets.top
+            let requiredInset = max(0, windowSafeTop - columnTop)
+            let safeTop = navigation.view.safeAreaInsets.top
+            let additional = navigation.additionalSafeAreaInsets.top
+            // UIKit clamps the safe area at zero, so a zero here can hide how much the column
+            // still inherits (the split view later drops the status bar from it, which left the
+            // bar under the clock). Clear the correction and measure again on the next pass.
+            if safeTop < 0.5, additional < -0.5, requiredInset > 0.5 {
+                navigation.additionalSafeAreaInsets.top = 0
+                return
+            }
+            let inherited = safeTop - additional
+            let correction = requiredInset - max(0, inherited)
+            if abs(additional - correction) > 0.5 {
                 navigation.additionalSafeAreaInsets.top = correction
             }
         }

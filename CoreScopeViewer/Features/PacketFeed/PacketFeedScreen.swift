@@ -178,10 +178,11 @@ struct MapPacketWorkspaceScreen: View {
                     : nil,
                 extendsMapBehindSidebar: true
             )
+            // On the map only: on the whole split view it also stopped the full-height
+            // sidebar short of the bottom edge.
+            .safeAreaPadding(.bottom, 12)
         }
         .navigationSplitViewStyle(.balanced)
-        // Inset native sidebar chrome without shrinking the full-screen background.
-        .safeAreaPadding(.bottom, 12)
         .ignoresSafeArea(.container, edges: .top)
         .onAppear { updateRegularColumns() }
         .onChange(of: columnVisibility) { _, visibility in
