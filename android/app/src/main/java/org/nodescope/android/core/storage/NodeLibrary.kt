@@ -283,6 +283,8 @@ class AccountSelectionStore(
     private fun activeAccount(host: String) =
         active.entries.firstOrNull { normalizeHost(it.key) == normalizeHost(host) }
 
+    fun activeId(host: String): Long? = activeAccount(host)?.value
+
     fun isActive(host: String) = activeAccount(host) != null
 
     fun visible(host: String): CoreScopeAccountSelectionState? {

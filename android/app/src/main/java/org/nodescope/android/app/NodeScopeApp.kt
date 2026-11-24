@@ -1,5 +1,7 @@
 package org.nodescope.android.app
 
+import androidx.glance.appwidget.updateAll
+
 import org.nodescope.android.core.design.UiText
 
 import org.nodescope.android.feature.learn.*
@@ -177,6 +179,18 @@ fun NodeScopeApp(model: AppViewModel, preferences: AppPreferences) {
         val sourceStatus by model.sourceStatus.collectAsStateWithLifecycle()
         val selectedHost = runCatching { org.nodescope.android.core.network.normalizeHost(preferences.host).lowercase() }
             .getOrDefault(preferences.host.lowercase())
+        val widgetContext = LocalContext.current.applicationContext
+        val widgetAccount = org.nodescope.android.core.storage.AccountSelectionStore.shared(widgetContext).activeId(selectedHost)
+        LaunchedEffect(selectedHost, sourceStatus.host, sourceStatus.ready, sourceStatus.beacon != null, widgetAccount) {
+            val widgetStore = org.nodescope.android.widget.MyNodesWidgetStore(widgetContext)
+            widgetStore.invalidateAccess()
+            if (sourceStatus.host == selectedHost && sourceStatus.ready) {
+                widgetStore.verifySource(selectedHost.takeIf { sourceStatus.beacon == null })
+            }
+            if (org.nodescope.android.widget.MyNodesWidgetStore.widgetIds(widgetContext).isNotEmpty()) {
+                org.nodescope.android.widget.MyNodesPrototypeWidget().updateAll(widgetContext)
+            }
+        }
         if (!(sourceStatus.host == selectedHost && sourceStatus.ready)) {
             SourceCheck(sourceStatus.error.takeIf { sourceStatus.host == selectedHost },
                 onRetry = model::retrySourceDetection, onChooseAnother = model::chooseAnotherSource)
@@ -293,6 +307,14 @@ internal fun AppShell(
     }
     val liveFeed = remember { derivedStateOf { feedProvider() } }
     val library = nodeLibrary ?: remember(preferences.host) { NodeLibrary.forAnalyzer(context, preferences.host) }
+    LaunchedEffect(preferences.host, library.state.favorites) {
+        org.nodescope.android.widget.MyNodesWidgetStore(context).invalidateAccess()
+    }
+    LaunchedEffect(preferences.host, preferences.backgroundTexture, library.state.favorites) {
+        if (org.nodescope.android.widget.MyNodesWidgetStore.widgetIds(context).isNotEmpty()) {
+            org.nodescope.android.widget.MyNodesPrototypeWidget().updateAll(context)
+        }
+    }
     val nav = rememberNavController()
     fun navigateToNode(key: String, watchedNode: Boolean, openedFromNodeVision: Boolean = false) {
         (state.snapshot?.nodes?.firstOrNull { it.publicKey == key } ?: library.node(key))?.let(library::viewed)
@@ -522,6 +544,10 @@ internal fun AppShell(
             }
             NodeScopeLink.Kind.CHANNEL -> { selectTab(Destination.CHANNELS); nav.navigate(ChannelRoute(id, id.removePrefix("user:"))) }
             NodeScopeLink.Kind.PACKET -> { selectTab(Destination.EXPLORE); nav.navigate(MessagePacketRoute(id)) }
+            NodeScopeLink.Kind.NODE_CHECK -> {
+                selectTab(Destination.EXPLORE)
+                nav.navigate(NodeCheckRoute()) { launchSingleTop = true }
+            }
         }
         onLinkHandled(pending.id)
     }

@@ -21,8 +21,11 @@ targets:
     deploymentTarget: "18.0"
     sources:
       - path: CoreScopeViewer
+      - path: shared/widget/MyNodesWidgetCatalog.swift
       - path: shared/analyzer-sources/texas-boundary.json
         buildPhase: resources
+    dependencies:
+      - target: MyNodesPrototype
     settings:
       base:
         PRODUCT_NAME: NodeScope
@@ -54,6 +57,37 @@ targets:
         Release:
           CODE_SIGN_ENTITLEMENTS: CoreScopeViewer/NodeScopeProduction.entitlements
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) NODESCOPE_PUSH_PRODUCTION"
+
+  MyNodesPrototype:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: MyNodesPrototype
+        excludes: [Info.plist, MyNodesPrototype.entitlements]
+      - path: shared/widget/MyNodesWidgetCatalog.swift
+      - path: CoreScopeViewer/Features/Shared/AppFont.swift
+      - path: CoreScopeViewer/Features/Shared/MeshBackground.swift
+      - path: CoreScopeViewer/Features/Settings/AppearanceSettings.swift
+      - path: CoreScopeViewer/Resources/MonaspaceNeon-Regular.otf
+        buildPhase: resources
+      - path: CoreScopeViewer/Resources/MonaspaceNeon-SemiBold.otf
+        buildPhase: resources
+      - path: CoreScopeViewer/Resources/Monaspace-OFL.txt
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.btdev.nodescope.MyNodesPrototype
+        DEVELOPMENT_TEAM: CW335GEDYX
+        CODE_SIGN_STYLE: Automatic
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_ENTITLEMENTS: MyNodesPrototype/MyNodesPrototype.entitlements
+        INFOPLIST_FILE: MyNodesPrototype/Info.plist
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        APPLICATION_EXTENSION_API_ONLY: YES
 
   CoreScopeViewerTests:
     type: bundle.unit-test

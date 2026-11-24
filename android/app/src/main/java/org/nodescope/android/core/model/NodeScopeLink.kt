@@ -8,12 +8,13 @@ import java.net.URLDecoder
  * parses. Links carry no analyzer, so they open against the one currently selected.
  */
 data class NodeScopeLink(val kind: Kind, val identifier: String) {
-    enum class Kind(val host: String) { NODE("node"), OBSERVER("observer"), CHANNEL("channel"), PACKET("packet") }
+    enum class Kind(val host: String) { NODE("node"), OBSERVER("observer"), CHANNEL("channel"), PACKET("packet"), NODE_CHECK("node-check") }
 
     /** Percent-encodes reserved characters (a channel such as `#test` becomes `%23test`). */
-    val url: String get() = URI("nodescope", kind.host, "/$identifier", null).toASCIIString()
+    val url: String get() = URI("nodescope", kind.host, if (kind == Kind.NODE_CHECK) "" else "/$identifier", null).toASCIIString()
 
     companion object {
+        fun nodeCheck() = NodeScopeLink(Kind.NODE_CHECK, "")
         fun node(publicKey: String) = NodeScopeLink(Kind.NODE, publicKey)
         fun observer(id: String) = NodeScopeLink(Kind.OBSERVER, id)
         fun channel(identifier: String) = NodeScopeLink(Kind.CHANNEL, identifier)
@@ -28,6 +29,7 @@ data class NodeScopeLink(val kind: Kind, val identifier: String) {
                 .let { runCatching { URLDecoder.decode(it.replace("+", "%2B"), "UTF-8") }.getOrNull() } ?: return null
             // An unencoded `#` (e.g. a hand-typed `nodescope://channel/#test`) arrives as the fragment.
             val identifier = (path + (uri.rawFragment?.let { "#" + (runCatching { URLDecoder.decode(it.replace("+", "%2B"), "UTF-8") }.getOrNull() ?: it) } ?: "")).trim()
+            if (kind == Kind.NODE_CHECK) return nodeCheck().takeIf { identifier.isEmpty() }
             return identifier.takeIf { it.isNotEmpty() }?.let { NodeScopeLink(kind, it) }
         }
     }

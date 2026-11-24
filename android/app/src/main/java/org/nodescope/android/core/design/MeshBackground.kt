@@ -31,16 +31,20 @@ import androidx.compose.ui.unit.dp
 
 val LocalBackgroundTexture = staticCompositionLocalOf { true }
 
-private val meshNodes = listOf(
+internal val meshNodes = listOf(
     Offset(-0.08f, 0.12f), Offset(0.18f, 0.07f), Offset(0.34f, 0.25f),
     Offset(0.08f, 0.43f), Offset(0.25f, 0.68f), Offset(-0.06f, 0.84f),
     Offset(0.48f, 0.91f), Offset(0.73f, 0.76f), Offset(0.94f, 0.94f),
     Offset(1.06f, 0.58f), Offset(0.78f, 0.44f), Offset(0.92f, 0.19f), Offset(0.68f, 0.06f),
 )
-private val meshLinks = listOf(
+internal val meshLinks = listOf(
     0 to 1, 0 to 3, 1 to 2, 2 to 3, 3 to 4, 4 to 5, 4 to 6, 5 to 6,
     6 to 7, 7 to 8, 7 to 9, 8 to 9, 9 to 10, 10 to 11, 11 to 12, 10 to 12,
 )
+
+internal fun meshGradientColors(dark: Boolean): List<Color> =
+    if (dark) listOf(Color(0.065f, 0.10f, 0.16f), Color(0.035f, 0.085f, 0.10f))
+    else listOf(Color(0.97f, 0.965f, 0.95f), Color(0.87f, 0.94f, 0.96f))
 
 /** Where a mesh piece sits in its window, so separate pieces draw one continuous pattern. */
 private class MeshPlacement {
@@ -79,8 +83,7 @@ fun Modifier.meshPageBackground(
     return placed.drawWithCache {
         val area = placement.window.takeIf { anchored && it.width > 0f } ?: size
         val gradient = Brush.linearGradient(
-            if (dark) listOf(Color(0.065f, 0.10f, 0.16f), Color(0.035f, 0.085f, 0.10f))
-            else listOf(Color(0.97f, 0.965f, 0.95f), Color(0.87f, 0.94f, 0.96f)),
+            meshGradientColors(dark),
             start = Offset.Zero, end = Offset(area.width, area.height),
         )
         val strength = if (subdued) 0.5f else 1f

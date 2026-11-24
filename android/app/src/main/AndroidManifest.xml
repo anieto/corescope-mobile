@@ -7,6 +7,22 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <application
         android:localeConfig="@xml/locales_config" android:name=".app.NodeScopeApplication" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:dataExtractionRules="@xml/data_extraction_rules" android:label="@string/app_name" android:theme="@style/Theme.NodeScope" android:allowBackup="true" android:fullBackupContent="@xml/backup_rules" android:usesCleartextTraffic="false" android:supportsRtl="true">
+        <receiver android:name=".widget.MyNodesPrototypeReceiver"
+            android:exported="false"
+            android:label="@string/widget_my_nodes">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/my_nodes_prototype" />
+        </receiver>
+        <activity android:name=".widget.MyNodesWidgetConfigurationActivity"
+            android:exported="true"
+            android:label="@string/widget_choose_nodes_title">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
         <!-- Google Maps; the key is restricted to this app's package and signing certificates. -->
         <meta-data android:name="com.google.android.geo.API_KEY" android:value="${googleMapsApiKey}" />
         <!-- singleTop: a link opened while the app is running reaches onNewIntent instead of a second copy. -->
@@ -25,6 +41,7 @@
                 <data android:host="observer" />
                 <data android:host="channel" />
                 <data android:host="packet" />
+                <data android:host="node-check" />
             </intent-filter>
             <!-- .nodescope saved-plans files: opened from a file manager or attachment, or shared to NodeScope. -->
             <intent-filter>

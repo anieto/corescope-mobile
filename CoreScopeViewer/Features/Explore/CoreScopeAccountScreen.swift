@@ -233,6 +233,7 @@ final class CoreScopeAccountModel {
         await action {
             guard let client, let user, notificationStatus == .ready else { return }
             notifications = try await client.setWatch(key, watched: watched, csrf: user.csrfToken)
+            store.widgetWatchesChanged()
         }
     }
 

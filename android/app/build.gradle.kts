@@ -136,6 +136,8 @@ tasks.matching { it.name == "bundleRelease" }.configureEach {
 kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
 
 dependencies {
+    implementation("androidx.glance:glance-appwidget:1.1.1")
+    implementation("androidx.work:work-runtime:2.10.5")
     add("stagingImplementation", "com.google.firebase:firebase-messaging:25.0.1")
     add("releaseImplementation", "com.google.firebase:firebase-messaging:25.0.1")
     implementation(platform("androidx.compose:compose-bom:2025.09.01"))
