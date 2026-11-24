@@ -101,18 +101,21 @@ class LinkProfileUiTest {
 
     @Test fun settingsUnitIsUsedWhenOpeningPlanner() {
         val preferences = mutableStateOf(org.nodescope.android.core.storage.AppPreferences(
-            onboarded = true, destination = "SETTINGS", distanceUnit = DistanceUnit.METRIC))
+            onboarded = true, destination = "SETTINGS", storedDistanceUnit = DistanceUnit.METRIC))
         compose.setContent {
-            CompositionLocalProvider(LocalDensity provides Density(3f, 1f)) {
+            CompositionLocalProvider(
+                LocalDensity provides Density(3f, 1f),
+                LocalDistanceUnit provides preferences.value.distanceUnit,
+            ) {
                 NodeScopeTheme(Appearance.LIGHT) {
                     org.nodescope.android.app.AppShell(preferences.value,
                         org.nodescope.android.core.network.SessionState(), {}, {}, {}, {}, {},
                         nodeLibrary = org.nodescope.android.core.storage.NodeLibrary(),
-                        onDistanceUnit = { preferences.value = preferences.value.copy(distanceUnit = it) })
+                        onDistanceUnit = { preferences.value = preferences.value.copy(storedDistanceUnit = it) })
                 }
             }
         }
-        compose.onNodeWithText("Imperial (mi)").performScrollTo().performClick()
+        compose.onNodeWithText("US (mi, ft)").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(DistanceUnit.IMPERIAL, preferences.value.distanceUnit) }
         compose.onNodeWithText("Explore").performClick()
         compose.onNodeWithText("Node Planner").performScrollTo().performClick()

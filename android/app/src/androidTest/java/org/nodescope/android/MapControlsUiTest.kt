@@ -16,7 +16,7 @@ import org.junit.Test
 import org.nodescope.android.core.design.NodeScopeTheme
 import org.nodescope.android.core.model.MeshNode
 import org.nodescope.android.core.storage.Appearance
-import org.nodescope.android.feature.map.MapNodeSelectionSheet
+import org.nodescope.android.feature.map.MapNodePreview
 import org.nodescope.android.feature.map.ReplayControls
 import org.nodescope.android.feature.map.ReplayRoute
 import java.io.File
@@ -28,7 +28,7 @@ class MapControlsUiTest {
         var opened = false
         var visible by mutableStateOf(true)
         compose.setContent { NodeScopeTheme(Appearance.LIGHT) {
-            if (visible) MapNodeSelectionSheet(
+            if (visible) MapNodePreview(
                 MeshNode("test-node", "A long repeater name in the neighborhood", "repeater", lastSeen = "2026-09-26T12:00:00Z"),
                 onDetails = { opened = true; visible = false }, onDismiss = { visible = false })
         } }

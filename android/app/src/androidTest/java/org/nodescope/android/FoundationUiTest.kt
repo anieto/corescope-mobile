@@ -221,7 +221,7 @@ class FoundationUiTest {
             var preferences by remember { mutableStateOf(AppPreferences()) }
             NodeScopeTheme(preferences.appearance) {
                 SettingsScreen(preferences, LiveConnection.LIVE, null, null, { selected = it; preferences = preferences.copy(appearance = it) },
-                    {}, {}, {}, {}, {})
+                    {}, {}, {}, {}, {}, onMapLab = {})
             }
         }
         compose.onNodeWithText("Dark").performClick().assertIsSelected()
@@ -234,7 +234,7 @@ class FoundationUiTest {
             MeshNode("one", "North", "repeater", lastSeen = "2026-01-01T00:00:00Z"),
             MeshNode("two", "South", "sensor", lastSeen = "2026-01-01T00:00:00Z"),
         )
-        compose.setContent { NodeScopeTheme(Appearance.SYSTEM) { NodeBrowser(nodes, 2, { selected = it }) } }
+        compose.setContent { NodeScopeTheme(Appearance.SYSTEM) { NodeBrowser(nodes, 2, onNode = { selected = it }) } }
         compose.onNodeWithText("Search name, public key, or role").performTextInput("SENSOR")
         compose.onNodeWithText("North").assertDoesNotExist()
         compose.onNodeWithText("South").performClick()

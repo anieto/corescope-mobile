@@ -49,7 +49,7 @@ class ConsistencyUiTest {
     @Test fun pausedSettingsUsesAccurateStatusAndConsistentHeadings() {
         compose.setContent { NodeScopeTheme(Appearance.DARK) {
             Surface(Modifier.fillMaxSize().systemBarsPadding()) {
-                SettingsScreen(AppPreferences(), LiveConnection.PAUSED, null, null, {}, {}, {}, {}, {}, {})
+                SettingsScreen(AppPreferences(), LiveConnection.PAUSED, null, null, {}, {}, {}, {}, {}, {}, onMapLab = {})
             }
         } }
         compose.onNodeWithText("Appearance").assertIsDisplayed()
