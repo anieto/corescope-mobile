@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.core.content.edit
 import org.nodescope.android.BuildConfig
 
-/** Who draws the map: CARTO (the default) or, when the build has a key, Google Maps (beta). */
+/** Who draws the map: CARTO (the default) or, when the build has a key, Google Maps. */
 enum class MapProvider { CARTO, GOOGLE }
 
 /**

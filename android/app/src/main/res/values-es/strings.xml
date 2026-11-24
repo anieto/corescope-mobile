@@ -29,7 +29,7 @@
     <string name="map_unavailable_description">Aún puedes explorar nodos en Explorar y elegir tu analizador en Ajustes.</string>
     <string name="standard">Estándar</string>
     <string name="map_provider_carto">CARTO</string>
-    <string name="map_provider_google">Google Maps · Beta</string>
+    <string name="map_provider_google">Google Maps</string>
     <string name="google_map">Mapa</string>
     <string name="google_satellite">Satélite</string>
     <string name="google_terrain">Terreno</string>

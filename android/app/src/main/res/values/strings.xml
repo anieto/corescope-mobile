@@ -29,7 +29,7 @@
     <string name="map_unavailable_description">You can still browse nodes in Explore and choose your analyzer in Settings.</string>
     <string name="standard">Standard</string>
     <string name="map_provider_carto">CARTO</string>
-    <string name="map_provider_google">Google Maps · Beta</string>
+    <string name="map_provider_google">Google Maps</string>
     <string name="google_map">Map</string>
     <string name="google_satellite">Satellite</string>
     <string name="google_terrain">Terrain</string>

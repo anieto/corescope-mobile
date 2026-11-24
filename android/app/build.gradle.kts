@@ -12,7 +12,7 @@ val localProperties = Properties().apply {
 }
 val cartoKey = providers.environmentVariable("CARTO_API_KEY")
     .orElse(localProperties.getProperty("CARTO_API_KEY", "")).get()
-/** Optional Google Maps (beta) provider; without a key only CARTO is offered. */
+/** Optional Google Maps provider; without a key only CARTO is offered. */
 val googleMapsKey = providers.environmentVariable("GOOGLE_MAPS_API_KEY")
     .orElse(localProperties.getProperty("GOOGLE_MAPS_API_KEY", "")).get()
 /** Release signing comes only from the git-ignored local.properties; without it, release builds are unsigned. */
@@ -160,7 +160,7 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     // OpenGL supports the full API 26+ device range, including non-Vulkan GPUs.
     implementation("org.maplibre.gl:android-sdk-opengl:13.6.1")
-    // Google Maps (beta): the native SDK with ordinary markers and no map ID (the free Maps SDK SKU).
+    // Google Maps: the native SDK with ordinary markers and no map ID (the free Maps SDK SKU).
     implementation("com.google.android.gms:play-services-maps:20.0.0")
     implementation("com.google.maps.android:android-maps-utils:4.0.0")
     // QR encoding for MeshCore contact codes (iOS uses Core Image's built-in generator).

@@ -80,7 +80,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
     var search by remember { mutableStateOf(false) }
     var layersOpen by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    // CARTO, or Google Maps (beta) when this build has a key; remembered across launches.
+    // CARTO, or Google Maps when this build has a key; remembered across launches.
     var providerChoice by remember { mutableStateOf(loadMapProvider(context)) }
     fun choose(choice: MapProviderChoice) { providerChoice = choice; saveMapProvider(context, choice) }
     // A picked CARTO style sticks; until then it follows the app theme.

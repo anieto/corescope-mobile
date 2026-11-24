@@ -42,7 +42,7 @@ import kotlin.coroutines.resume
 import kotlin.math.hypot
 
 /*
- * Google Maps (beta), the native Maps SDK: ordinary markers and no map ID, so map loads stay in
+ * Google Maps, the native Maps SDK: ordinary markers and no map ID, so map loads stay in
  * the free Maps SDK SKU. A map ID, cloud styling or advanced markers would bill as Dynamic Maps.
  */
 
