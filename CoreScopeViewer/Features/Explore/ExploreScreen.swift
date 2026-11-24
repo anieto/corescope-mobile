@@ -2,6 +2,11 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
+private struct WatchedNodeDestination: Hashable {
+    let node: MeshNode
+    let requestID: UUID
+}
+
 struct ExploreScreen: View {
     let resetID: UUID
     let isTabActive: Bool
@@ -10,9 +15,12 @@ struct ExploreScreen: View {
     let openObservers: () -> Void
 
     @Environment(AnalyzerSettings.self) private var settings
+    @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(FavoritesStore.self) private var favoritesStore
     @Environment(RecentItemsStore.self) private var recentItemsStore
     @Environment(AppNavigationStore.self) private var appNavigationStore
+    @State private var showsNodeVision = false
+    @State private var initialNodeLoadFinished = false
     @State private var navigationPath = NavigationPath()
     @State private var visibleItems: [FavoriteItem] = []
     @State private var visibleRecentItems: [RecentItem] = []
@@ -55,6 +63,31 @@ struct ExploreScreen: View {
                 FieldToolsExploreCard {
                     navigationPath.append(ExploreDestination.nodePlanner)
                 }
+                .favoritesListRow(top: 0, bottom: 8)
+
+                Button { showsNodeVision = true } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "camera")
+                            .font(.monaspace(.title3).weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 44, height: 44)
+                            .background(NodeScopeStyle.activity, in: Circle())
+                            .accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("NodeVision").font(.monaspace(.headline)).foregroundStyle(.primary)
+                            Text("Use your camera to find nearby nodes").font(.subheadline).foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                            .accessibilityHidden(true)
+                    }
+                    .padding(16)
+                    .instrumentCard()
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
                 .favoritesListRow(top: 0, bottom: 8)
 
                 NodeCheckExploreCard {
@@ -119,8 +152,18 @@ struct ExploreScreen: View {
             }
             .keyboardCommand(.search) { isSearchPresented = true }
             .toolbar(.hidden, for: .navigationBar)
+            .fullScreenCover(isPresented: $showsNodeVision) {
+                NodeVisionScreen(catalog: nodeViewModel.nodes, discoveryRegion: regionFilter.selectedRegion,
+                                 catalogIsLoading: !initialNodeLoadFinished || nodeViewModel.isLoading)
+                    .id(regionFilter.selectedRegion)
+            }
             .navigationDestination(for: MeshNode.self) { node in
                 NodeDetailScreen(node: node)
+                    .id(node.publicKey)
+            }
+            .navigationDestination(for: WatchedNodeDestination.self) { destination in
+                NodeDetailScreen(node: destination.node)
+                    .id(destination.requestID)
             }
             .navigationDestination(for: MeshObserver.self) { observer in
                 ObserverDetailScreen(observer: observer)
@@ -184,6 +227,7 @@ struct ExploreScreen: View {
         .onAppear { openRequestedDeepLinkIfAvailable() }
         .task(id: settings.sourceSession.id) {
             updateVisibleItems()
+            initialNodeLoadFinished = false
             nodeViewModel.resetForAnalyzerSource()
             nodeViewModel.configure(settings: settings)
             observerViewModel.configure(settings: settings)
@@ -193,7 +237,9 @@ struct ExploreScreen: View {
             async let observers: Void = observerViewModel.loadObservers()
             async let channels: Void = channelViewModel.loadChannels(region: nil)
             async let packets: Void = loadSearchPackets()
-            _ = await (nodes, observers, channels, packets)
+            await nodes
+            if !Task.isCancelled { initialNodeLoadFinished = true }
+            _ = await (observers, channels, packets)
             refreshFavoriteNodeSnapshots()
             openRequestedDeepLinkIfAvailable()
         }
@@ -308,6 +354,18 @@ struct ExploreScreen: View {
             }) else { return }
             navigationPath = NavigationPath()
             navigationPath.append(node)
+        case .watchedNode(let publicKey, let sourceSessionID):
+            guard sourceSessionID == settings.sourceSession.id else { return }
+            // A verified push can refer to a node outside the currently loaded catalog.
+            let node = nodeViewModel.nodes.first { $0.publicKey.caseInsensitiveCompare(publicKey) == .orderedSame }
+                ?? MeshNode(publicKey: publicKey, name: nil, role: "unknown", lat: nil, lon: nil,
+                            lastSeen: nil, firstSeen: nil, advertCount: nil, hashSize: nil,
+                            hashSizeInconsistent: nil, lastHeard: nil, defaultScope: nil)
+            // Each alert opens a fresh detail, including a repeat alert for the same node.
+            let destination = WatchedNodeDestination(node: node, requestID: appNavigationStore.requestID)
+            var path = NavigationPath()
+            path.append(destination)
+            navigationPath = path
         case .channel(let hash):
             guard let channel = channelViewModel.channels.first(where: {
                 $0.hash.caseInsensitiveCompare(hash) == .orderedSame
@@ -420,15 +478,13 @@ private struct FavoritesScreen: View {
         List {
             Section {
                 FavoriteSourceIdentity(host: settings.host)
-                Text("Device favorites and account nodes on this source. Account removals are uploaded with Sync now.")
-                    .font(.subheadline).foregroundStyle(.secondary)
-                if settings.beaconBackend == nil {
-                    NavigationLink { CoreScopeAccountScreen().id(settings.sourceSession.id) } label: {
-                        Label("CoreScope account", systemImage: "person.crop.circle")
-                    }
-                }
                 NavigationLink(value: ExploreDestination.activity) {
                     Label("Activity", systemImage: "waveform.path")
+                }
+                if settings.beaconBackend == nil {
+                    NavigationLink { CoreScopeAccountScreen().id(settings.sourceSession.id) } label: {
+                        Label("Manage account favorites", systemImage: "person.crop.circle")
+                    }
                 }
             }
             .instrumentListRows()
@@ -483,20 +539,12 @@ private struct FavoritesScreen: View {
     private func favoriteRow(_ item: FavoriteItem) -> some View {
         if let node = item.node {
             NavigationLink(value: node) {
-                VStack(alignment: .leading, spacing: 4) {
-                    FavoriteRow(item: item)
-                    Text(favoritesStore.membershipLabel(item)).font(.caption).foregroundStyle(.secondary)
-                }
+                FavoriteRow(item: item)
             }
             .buttonStyle(.plain)
             .favoritesListRow()
             .swipeActions {
-                if favoritesStore.isDeviceFavorite(item) {
-                    Button("Remove from device", role: .destructive) { favoritesStore.remove(item) }
-                }
-                if favoritesStore.isAccountFavorite(item) {
-                    Button("Remove from account", role: .destructive) { favoritesStore.removeAccountFavorite(item) }
-                }
+                Button("Remove", role: .destructive) { favoritesStore.remove(item) }
             }
             .nodeQuickActions(node)
         } else if let observer = item.observer {

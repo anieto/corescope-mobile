@@ -1,0 +1,4 @@
+<resources>
+    <!-- SignalBlue from the NodeScope theme. -->
+    <color name="staging_push_accent">#299EFF</color>
+</resources>

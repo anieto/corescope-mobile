@@ -30,11 +30,11 @@ Check a site before you install hardware. Link Profile shows the terrain between
 
 GOOD TO KNOW
 
-Bring your own analyzer. NodeScope has no backend of its own. Pick a community source such as MeshTexas, or point it at any CoreScope- or Beacon-compatible host.
+Bring your own analyzer. NodeScope shows data straight from the analyzer you pick: a community source such as MeshTexas, or any CoreScope- or Beacon-compatible host.
 
 Works on a flaky connection. Recently loaded data stays available and is clearly marked as not live.
 
-Private by design. No account, no ads, no analytics. Your location is used only on your device, only when you ask to center the map, and is never sent anywhere. Link Profile sends the two points you pick to Open-Meteo for elevation, and Estimated Coverage downloads terrain tiles from Amazon Web Services.
+Private by design. No ads, no analytics. Signing in is optional and goes straight to your analyzer. Watched-node alerts are optional too: turning them on registers your device's push token, from Firebase Cloud Messaging, with the NodeScope push relay, which we operate and which stores no account details, locations or messages. Your location is used on your device to center the map and is never sent to an analyzer. Link Profile sends the two points you pick to Open-Meteo for elevation, and Estimated Coverage downloads terrain tiles from Amazon Web Services.
 
 Not affiliated with CoreScope, Beacon, MeshTexas or MeshCore. NodeScope is an independent, unofficial viewer.
 

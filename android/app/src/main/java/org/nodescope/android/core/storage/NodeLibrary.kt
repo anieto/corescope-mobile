@@ -11,7 +11,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.nodescope.android.core.model.CoreScopeAccountSelectionState
-import org.nodescope.android.core.model.CoreScopeAccountSettings
 import org.nodescope.android.core.network.CoreScopeFavoriteMerge
 import org.nodescope.android.core.network.normalizeHost
 import org.nodescope.android.core.model.MeshChannel
@@ -70,17 +69,9 @@ class NodeLibrary(document: String? = null, private val clock: () -> Long = Syst
     val favorites: List<SavedItem> get() = accountStore?.overlay(state.favorites, host).orEmpty().let {
         if (accountStore == null) state.favorites else it
     }
-    fun isDeviceFavorite(item: SavedItem) = state.favorites.any { it.key.equals(item.key, true) }
-    fun isAccountFavorite(item: SavedItem) = item.kind == SavedKind.NODE &&
-        accountStore?.visible(host)?.favorites?.contains(item.entityId.lowercase()) == true
-    fun membershipLabel(item: SavedItem): String {
-        val labels = mutableListOf<String>()
-        if (isDeviceFavorite(item)) labels += "Device"
-        if (isAccountFavorite(item)) labels += "Account"
-        if (item.kind == SavedKind.NODE && accountStore?.claimed(host)?.containsKey(item.entityId.lowercase()) == true) labels += "Claimed"
-        return labels.joinToString(" · ")
-    }
-    fun removeAccountFavorite(item: SavedItem) { accountStore?.removeFavorite(host, item.entityId) }
+    fun isDeviceFavorite(item: SavedItem): Boolean =
+        (item.kind != SavedKind.NODE || accountStore?.isActive(host) != true) &&
+            state.favorites.any { it.key.equals(item.key, true) }
 
     private fun load(document: String?): NodeLibraryState {
         if (document == null) return NodeLibraryState()
@@ -102,20 +93,44 @@ class NodeLibrary(document: String? = null, private val clock: () -> Long = Syst
         update(state.copy(favorites = kept + added))
     }
 
+    fun keepAccountFavoritesOnDevice(account: CoreScopeAccountSelectionState) {
+        val store = accountStore
+        if (store == null) {
+            applyAccountNodes(account.favoriteKeys, account.myNodeNames)
+            return
+        }
+        val current = store.accountItems(account, state.favorites, host)
+        update(state.copy(favorites = state.favorites.filter { it.kind != SavedKind.NODE } + current))
+    }
+
     // region Favorites
 
-    fun isFavorite(kind: SavedKind, id: String) = state.favorites.any { it.kind == kind && it.entityId.equals(id, ignoreCase = true) }
+    fun isFavorite(kind: SavedKind, id: String): Boolean {
+        if (kind == SavedKind.NODE && accountStore?.isActive(host) == true) {
+            return id.lowercase() in accountStore.visible(host)?.favoriteKeys.orEmpty()
+        }
+        return state.favorites.any { it.kind == kind && it.entityId.equals(id, ignoreCase = true) }
+    }
     fun toggle(node: MeshNode) = toggle(nodeItem(node))
     fun toggle(observer: MeshObserver) = toggle(observerItem(observer))
     fun toggle(channel: MeshChannel) = toggle(channelItem(channel))
 
     private fun toggle(item: SavedItem) {
+        if (item.kind == SavedKind.NODE && accountStore?.isActive(host) == true) {
+            item.node?.let { accountStore.refreshNodes(host, listOf(it)) }
+            accountStore.toggleFavorite(host, item.entityId)
+            return
+        }
         val saved = state.favorites
         update(state.copy(favorites = if (saved.any { it.key.equals(item.key, true) }) saved.filterNot { it.key.equals(item.key, true) }
             else listOf(item.copy(at = clock())) + saved))
     }
 
-    fun removeFavorite(item: SavedItem) = update(state.copy(favorites = state.favorites.filterNot { it.key == item.key }))
+    fun removeFavorite(item: SavedItem) {
+        if (item.kind == SavedKind.NODE && accountStore?.isActive(host) == true) {
+            accountStore.removeFavorite(host, item.entityId)
+        } else update(state.copy(favorites = state.favorites.filterNot { it.key == item.key }))
+    }
 
     /** Moves an item up (-1) or down (+1) among favorites of its own kind. */
     fun moveFavorite(item: SavedItem, delta: Int) {
@@ -216,7 +231,7 @@ class NodeLibrary(document: String? = null, private val clock: () -> Long = Syst
 }
 
 
-/** Separate account storage plus a read-only projection; device favorites are never rewritten. */
+/** Per-account node selections and their projection into the analyzer’s favorites. */
 class AccountSelectionStore(
     private val read: (String) -> String?,
     private val write: (String, String?) -> Unit,
@@ -229,7 +244,6 @@ class AccountSelectionStore(
     private var snapshots by mutableStateOf<Map<String, MeshNode>>(emptyMap())
     // Favorites rows read the active selection several times per recomposition; decode it once per save.
     private val decoded = mutableMapOf<String, CoreScopeAccountSelectionState>()
-    private var claimedCache: Pair<CoreScopeAccountSettings, Map<String, String>>? = null
 
     fun load(origin: String, id: Long): CoreScopeAccountSelectionState? {
         val key = CoreScopeAccountSelectionState.key(origin, id)
@@ -244,15 +258,6 @@ class AccountSelectionStore(
         write(key, json.encodeToString(state))
         synchronized(decoded) { decoded[key] = state }
         revision++
-    }
-
-    /** Claimed nodes of the visible account, by lowercase key. */
-    fun claimed(host: String): Map<String, String> {
-        val baseline = visible(host)?.baseline ?: return emptyMap()
-        claimedCache?.let { (settings, claimed) -> if (settings === baseline) return claimed }
-        val claimed = runCatching { CoreScopeFavoriteMerge.selection(baseline).claimed }.getOrDefault(emptyMap())
-        claimedCache = baseline to claimed
-        return claimed
     }
 
     fun activate(origin: String, id: Long) {
@@ -275,32 +280,64 @@ class AccountSelectionStore(
         revision++
     }
 
+    private fun activeAccount(host: String) =
+        active.entries.firstOrNull { normalizeHost(it.key) == normalizeHost(host) }
+
+    fun isActive(host: String) = activeAccount(host) != null
+
     fun visible(host: String): CoreScopeAccountSelectionState? {
         revision // Observe saves, including pending membership edits.
-        val entry = active.entries.firstOrNull { normalizeHost(it.key) == normalizeHost(host) } ?: return null
+        val entry = activeAccount(host) ?: return null
         return runCatching { load(entry.key, entry.value) }.getOrNull()
     }
 
     fun removeFavorite(host: String, key: String) {
-        val entry = active.entries.firstOrNull { normalizeHost(it.key) == normalizeHost(host) } ?: return
+        val entry = activeAccount(host) ?: return
         val state = load(entry.key, entry.value) ?: return
-        save(entry.key, entry.value, state.copy(favorites = state.favorites - key.lowercase()))
+        save(entry.key, entry.value, state.removeFavorite(key))
     }
+
+    fun toggleFavorite(host: String, key: String) {
+        if (!CoreScopeFavoriteMerge.validKey(key)) return
+        val entry = activeAccount(host) ?: return
+        val state = load(entry.key, entry.value) ?: return
+        val normalized = key.lowercase()
+        val next = if (normalized in state.favoriteKeys) state.removeFavorite(normalized)
+            else state.copy(favorites = state.favorites + normalized)
+        save(entry.key, entry.value, next)
+    }
+
+    fun offeredDeviceFavorites(keys: Set<String>, state: CoreScopeAccountSelectionState, origin: String, id: Long): Set<String> {
+        if (read(offerKey(origin, id)) != null) return emptySet()
+        return keys.filter(CoreScopeFavoriteMerge::validKey).toSet() - state.favoriteKeys
+    }
+
+    fun finishDeviceFavoritesOffer(origin: String, id: Long) {
+        val key = offerKey(origin, id)
+        if (read(key) == null) write(key, "answered")
+    }
+
+    private fun offerKey(origin: String, id: Long) = "device-favorites-offer|${normalizeHost(origin).lowercase()}|$id"
 
     fun refreshNodes(host: String, nodes: List<MeshNode>) {
         snapshots = snapshots + nodes.associateBy { "${normalizeHost(host)}|${it.publicKey.lowercase()}" }
     }
 
     fun overlay(device: List<SavedItem>, host: String): List<SavedItem> {
-        val state = visible(host) ?: return device
-        val claimed = claimed(host)
-        val local = device.filter { it.kind == SavedKind.NODE }.map { it.entityId.lowercase() }.toSet()
-        val extra = (state.favorites + claimed.keys - local).map { key ->
-            val node = snapshots["${normalizeHost(host)}|$key"] ?: MeshNode(key,
-                claimed[key]?.takeIf { it.isNotBlank() }, "unknown", lastSeen = "")
-            NodeLibrary.nodeItem(node).copy(title = node.name?.takeIf { it.isNotBlank() } ?: key.take(12))
+        if (!isActive(host)) return device
+        val account = visible(host)
+        return device.filter { it.kind != SavedKind.NODE } + (account?.let { accountItems(it, device, host) }).orEmpty()
+    }
+
+    internal fun accountItems(state: CoreScopeAccountSelectionState, device: List<SavedItem>, host: String): List<SavedItem> {
+        val saved = device.filter { it.kind == SavedKind.NODE }.associateBy { it.entityId.lowercase() }
+        val names = state.myNodeNames
+        return (state.favorites + names.keys).map { key ->
+            val name = names[key]?.takeIf { it.isNotBlank() }
+            val node = snapshots["${normalizeHost(host)}|$key"] ?: saved[key]?.node
+                ?: MeshNode(key, name, "unknown", lastSeen = "")
+            NodeLibrary.nodeItem(node).copy(entityId = key, title = name ?: node.name?.takeIf { it.isNotBlank() } ?: key.take(12))
         }.sortedWith(compareBy<SavedItem> { it.title.lowercase() }.thenBy { it.entityId })
-        return device + extra
     }
 
     companion object {

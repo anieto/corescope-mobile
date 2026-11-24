@@ -44,10 +44,27 @@ struct CoreScopeAccountSettings: Codable, Sendable {
     }
 }
 
-/// Personal edits are scoped to one source/account; device favorites never seed this state.
+/// Edits are scoped to one source and account. Device favorites enter only through the sign-in offer.
 struct CoreScopeAccountSelectionState: Codable, Sendable {
     var baseline: CoreScopeAccountSettings
     var favorites: Set<String>
+    // Optional so account selections saved by earlier builds still decode.
+    var removedMyNodes: Set<String>?
+
+    var myNodeNames: [String: String] {
+        let names = (try? CoreScopeFavoriteMerge.selection(baseline).myNodes) ?? [:]
+        return names.filter { removedMyNodes?.contains($0.key) != true }
+    }
+
+    var favoriteKeys: Set<String> { favorites.union(myNodeNames.keys) }
+
+    mutating func removeFavorite(_ publicKey: String) {
+        let key = publicKey.lowercased()
+        favorites.remove(key)
+        if myNodeNames[key] != nil {
+            removedMyNodes = (removedMyNodes ?? []).union([key])
+        }
+    }
 
     init(remote: CoreScopeAccountSettings) throws {
         baseline = remote
@@ -58,12 +75,13 @@ struct CoreScopeAccountSelectionState: Codable, Sendable {
         guard baseline.generation == remote.generation else { throw CoreScopeAccountError.reset }
         let (_, selection) = try CoreScopeFavoriteMerge.document(base: baseline, local: favorites, remote: remote)
         favorites = Set(selection.favorites.map { $0.lowercased() })
+        removedMyNodes = removedMyNodes?.intersection(selection.myNodes.keys)
         baseline = remote
     }
 
     var hasPendingEdits: Bool {
         guard let remote = try? CoreScopeFavoriteMerge.selection(baseline) else { return true }
-        return favorites != Set(remote.favorites.map { $0.lowercased() })
+        return favorites != Set(remote.favorites.map { $0.lowercased() }) || removedMyNodes?.isEmpty == false
     }
 
     /// Preserve edits made after the uploaded snapshot was captured.
@@ -71,11 +89,12 @@ struct CoreScopeAccountSelectionState: Codable, Sendable {
         let remote = try CoreScopeFavoriteMerge.selection(accepted)
         favorites = CoreScopeFavoriteMerge.merge(base: sentFavorites, local: favorites,
             remote: Set(remote.favorites.map { $0.lowercased() }))
+        removedMyNodes = removedMyNodes?.intersection(remote.myNodes.keys)
         baseline = accepted
     }
 
     mutating func restore(onto remote: CoreScopeAccountSettings) throws {
-        let previous = favorites
+        let previous = favoriteKeys
         self = try Self(remote: remote)
         favorites.formUnion(previous)
     }
@@ -121,8 +140,37 @@ final class CoreScopeAccountSelectionStore {
         guard let (origin, userID) = activeAccounts.first(where: {
             AnalyzerSettings.normalizedHost($0.key) == source
         }), var state = try load(origin: origin, userID: userID) else { return }
-        state.favorites.remove(key.lowercased())
+        state.removeFavorite(key)
         try save(state, origin: origin, userID: userID)
+    }
+
+    func isActive(source: String) -> Bool {
+        activeAccounts.keys.contains { AnalyzerSettings.normalizedHost($0) == source }
+    }
+
+    func toggleFavorite(_ key: String, source: String) {
+        guard CoreScopeFavoriteMerge.validKey(key),
+              let (origin, userID) = activeAccounts.first(where: { AnalyzerSettings.normalizedHost($0.key) == source }),
+              var state = try? load(origin: origin, userID: userID) else { return }
+        let normalizedKey = key.lowercased()
+        if state.favoriteKeys.contains(normalizedKey) { state.removeFavorite(normalizedKey) }
+        else { state.favorites.insert(normalizedKey) }
+        try? save(state, origin: origin, userID: userID)
+    }
+
+    func offeredDeviceFavorites(_ keys: Set<String>, state: CoreScopeAccountSelectionState,
+                                origin: String, userID: Int64) -> Set<String> {
+        guard !defaults.bool(forKey: offerKey(origin: origin, userID: userID)) else { return [] }
+        return keys.filter(CoreScopeFavoriteMerge.validKey).subtracting(state.favoriteKeys)
+    }
+
+    func finishDeviceFavoritesOffer(origin: String, userID: Int64) {
+        let key = offerKey(origin: origin, userID: userID)
+        if !defaults.bool(forKey: key) { defaults.set(true, forKey: key) }
+    }
+
+    private func offerKey(origin: String, userID: Int64) -> String {
+        "corescope-device-favorites-offer|\(AnalyzerSettings.normalizedHost(origin).lowercased())|\(userID)"
     }
 
     private func persistActiveAccounts() {

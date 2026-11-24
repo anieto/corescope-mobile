@@ -21,6 +21,8 @@ targets:
     deploymentTarget: "18.0"
     sources:
       - path: CoreScopeViewer
+      - path: shared/analyzer-sources/texas-boundary.json
+        buildPhase: resources
     dependencies:
       - target: MyNodesPrototype
     settings:
@@ -34,18 +36,26 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: Your location centers maps and provides a foreground reference for Field Tools guidance.
+        INFOPLIST_KEY_NSCameraUsageDescription: NodeVision uses the camera to show the direction of nearby mesh nodes.
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: Your location helps center maps, sort analyzer sources by distance, and guide you in Field Tools and NodeVision while you use the app.
         INFOPLIST_KEY_CFBundleDisplayName: NodeScope
         INFOPLIST_KEY_CFBundleIconName: AppIcon
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         INFOPLIST_KEY_UIRequiresFullScreen: YES
-        MARKETING_VERSION: "0.11.0"
-        CURRENT_PROJECT_VERSION: "2"
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1,2"
         SWIFT_STRICT_CONCURRENCY: complete
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      configs:
+        Debug:
+          CODE_SIGN_ENTITLEMENTS: CoreScopeViewer/NodeScopeStaging.entitlements
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) NODESCOPE_PUSH_STAGING"
+        Release:
+          CODE_SIGN_ENTITLEMENTS: CoreScopeViewer/NodeScopeProduction.entitlements
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) NODESCOPE_PUSH_PRODUCTION"
 
   MyNodesPrototype:
     type: app-extension
@@ -62,8 +72,8 @@ targets:
         SWIFT_VERSION: "6.0"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_FILE: MyNodesPrototype/Info.plist
-        MARKETING_VERSION: "0.11.0"
-        CURRENT_PROJECT_VERSION: "2"
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1,2"
         APPLICATION_EXTENSION_API_ONLY: YES
 

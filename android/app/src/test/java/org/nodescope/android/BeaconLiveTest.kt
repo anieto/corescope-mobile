@@ -102,7 +102,12 @@ class BeaconLiveTest {
 
     @Test fun liveLaggedNoticesRequestRecoveryAndUnknownEventsAreIgnored() {
         assertEquals(Incoming.RecoveryRequired, BeaconLiveProtocol.decode("""{"v":1,"type":"lagged","dropped":4}"""))
-        assertEquals(Incoming.Ignored, BeaconLiveProtocol.decode("""{"v":1,"type":"event","event":"channelMessage","data":{}}"""))
+        assertEquals(Incoming.Ignored, BeaconLiveProtocol.decode("""{"v":1,"type":"event","event":"futureEvent","data":{}}"""))
+        assertThrows(BeaconApiException.InvalidResponse::class.java) {
+            BeaconLiveProtocol.decode("""{"v":1,"type":"event","event":"channelMessage","data":{}}""")
+        }
+        assertEquals(Incoming.ChannelMessage(7, 2),
+            BeaconLiveProtocol.decode("""{"v":1,"type":"event","event":"channelMessage","data":{"id":7,"channelId":2}}"""))
         assertEquals(Incoming.Ignored, BeaconLiveProtocol.decode("""{"v":1,"type":"future"}"""))
         assertThrows(BeaconApiException.InvalidResponse::class.java) { BeaconLiveProtocol.decode("""{"v":2,"type":"hello"}""") }
         assertThrows(BeaconApiException.InvalidResponse::class.java) { BeaconLiveProtocol.decode("""{"v":1,"type":"pong"}""") }

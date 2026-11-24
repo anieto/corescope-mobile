@@ -2,6 +2,7 @@ package org.nodescope.android.feature.onboarding
 
 import org.nodescope.android.core.network.analyzerErrorText
 
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.shadow
@@ -26,7 +27,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.nodescope.android.R
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import kotlinx.coroutines.CancellationException
+import org.nodescope.android.core.model.AnalyzerSourceType
+import org.nodescope.android.core.network.CoreScopeAccountClient
+import org.nodescope.android.core.design.MonaspaceNeon
 import org.nodescope.android.core.model.AnalyzerSource
+import org.nodescope.android.core.model.AnalyzerSourceChoices
 import org.nodescope.android.core.network.normalizeHost
 import org.nodescope.android.core.storage.SourceIcons
 
@@ -40,12 +47,14 @@ private enum class OnboardingStep { SOURCE, OVERVIEW }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OnboardingScreen(
-    sources: List<AnalyzerSource>, initialHost: String, saving: Boolean, error: String?,
+    sources: List<AnalyzerSource>, savedHost: String?, saving: Boolean, error: String?,
     onFinish: (String) -> Unit, icons: SourceIcons? = null,
 ) {
     val resources = LocalResources.current
     var step by rememberSaveable { mutableStateOf(OnboardingStep.SOURCE) }
-    var host by rememberSaveable { mutableStateOf(initialHost) }
+    var chosenHost by rememberSaveable { mutableStateOf<String?>(null) }
+    val choices = AnalyzerSourceChoices(sources, displayLocale = LocalConfiguration.current.locales[0])
+    val host = chosenHost ?: choices.onboardingHost(savedHost, isOnboarded = false).orEmpty()
     var picking by rememberSaveable { mutableStateOf(false) }
     var pickError by remember { mutableStateOf<String?>(null) }
     BackHandler(enabled = picking || step == OnboardingStep.OVERVIEW) {
@@ -58,33 +67,59 @@ fun OnboardingScreen(
             })
             SourceScreen(sources, host, saving = false, error = pickError, onSave = { chosen ->
                 runCatching { normalizeHost(chosen) }
-                    .onSuccess { host = it; pickError = null; picking = false }
+                    .onSuccess { chosenHost = it; pickError = null; picking = false }
                     .onFailure { pickError = it.analyzerErrorText(R.string.onboarding_enter_a_valid_analyzer_hostname).resolve(resources) }
             }, icons = icons)
         }
         return
     }
     val source = sources.firstOrNull { runCatching { normalizeHost(it.host) }.getOrNull().equals(host, true) }
+    var accountSupported by remember(host) { mutableStateOf(false) }
+    LaunchedEffect(step, host, source?.backendType) {
+        accountSupported = false
+        if (step != OnboardingStep.OVERVIEW || host.isBlank() || source?.backendType == AnalyzerSourceType.BEACON) return@LaunchedEffect
+        try {
+            val origin = "https://${normalizeHost(host)}/".toHttpUrlOrNull() ?: return@LaunchedEffect
+            accountSupported = CoreScopeAccountClient(origin).supportsAccounts()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            // Account discovery is optional and never blocks first launch.
+        }
+    }
     when (step) {
         OnboardingStep.SOURCE -> OnboardingPage(
             icon = null, title = stringResource(R.string.welcome),
             description = stringResource(R.string.onboarding_choose_a_community_analyzer_to_explore_its_live),
             primary = stringResource(R.string.continue_label), primaryEnabled = host.isNotBlank(),
-            onPrimary = { step = OnboardingStep.OVERVIEW },
+            onPrimary = { chosenHost = host; step = OnboardingStep.OVERVIEW },
         ) {
             Card(onClick = { picking = true }, modifier = Modifier.fillMaxWidth()) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (source != null) SourceLogo(source, icons)
                     else Icon(Icons.Outlined.SettingsInputAntenna, null, Modifier.size(40.dp).padding(8.dp), tint = MaterialTheme.colorScheme.primary)
                     Column(Modifier.weight(1f)) {
-                        Text(source?.name ?: stringResource(R.string.onboarding_custom_analyzer_2), style = MaterialTheme.typography.titleMedium)
-                        Text(host.ifBlank { stringResource(R.string.onboarding_choose_an_analyzer) }, style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        val name = when {
+                            host.isBlank() -> stringResource(R.string.onboarding_choose_an_analyzer)
+                            source != null -> source.name
+                            else -> stringResource(R.string.onboarding_custom_analyzer_2)
+                        }
+                        Text(name, style = MaterialTheme.typography.titleMedium)
+                        if (host.isNotBlank()) {
+                            Text(host, style = MaterialTheme.typography.bodySmall, fontFamily = MonaspaceNeon,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                     Icon(Icons.Outlined.ChevronRight, stringResource(R.string.onboarding_choose_analyzer), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            Text(stringResource(R.string.onboarding_you_can_change_sources_anytime_in_settings_or), textAlign = TextAlign.Center,
+            val note = if (host.isBlank()) {
+                choices.userCountryName?.let { stringResource(R.string.onboarding_no_community_for_country, it) }
+                    ?: stringResource(R.string.onboarding_no_community_for_region)
+            } else {
+                stringResource(R.string.onboarding_you_can_change_sources_anytime_in_settings_or)
+            }
+            Text(note, textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         OnboardingStep.OVERVIEW -> OnboardingPage(
@@ -101,7 +136,11 @@ fun OnboardingScreen(
                     FeatureRow(Icons.Outlined.FilterList, stringResource(R.string.onboarding_focus_your_view), stringResource(R.string.onboarding_choose_a_region_on_the_map_to_narrow))
                 }
             }
-            Text(stringResource(R.string.onboarding_location_is_optional_and_is_only_used_when), textAlign = TextAlign.Center,
+            if (accountSupported) {
+                Text(stringResource(R.string.onboarding_optional_corescope_account), textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text(stringResource(R.string.onboarding_location_uses), textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (error != null) Text(error, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
         }

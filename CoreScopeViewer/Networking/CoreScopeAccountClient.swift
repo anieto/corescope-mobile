@@ -8,15 +8,56 @@ struct CoreScopeAccountUser: Codable, Sendable {
     let csrfToken: String
 }
 
+struct CoreScopeAccountCapabilities: Decodable, Sendable {
+    let enabled: Bool
+    let notifications: Bool?
+    let repeaterTokens: Bool?
+}
+
+struct CoreScopeWatchedNode: Decodable, Identifiable, Sendable {
+    let pubkey: String
+    let name: String
+    var id: String { pubkey }
+}
+
+struct CoreScopeAccountNotifications: Decodable, Sendable {
+    let enabled: Bool
+    let watches: [CoreScopeWatchedNode]
+    let pushRelay: StagingPushCapability?
+
+    private enum CodingKeys: String, CodingKey { case enabled, watches }
+
+    init(from decoder: Decoder) throws {
+        let fields = try decoder.container(keyedBy: CodingKeys.self)
+        enabled = try fields.decode(Bool.self, forKey: .enabled)
+        watches = try fields.decode([CoreScopeWatchedNode].self, forKey: .watches)
+        pushRelay = try AccountPushRelay(from: decoder).pushRelay
+    }
+}
+
+private struct AccountPushRelay: Decodable {
+    let pushRelay: StagingPushCapability?
+
+    private enum CodingKeys: String, CodingKey { case pushRelay, nodeScopePush }
+
+    init(from decoder: Decoder) throws {
+        let fields = try decoder.container(keyedBy: CodingKeys.self)
+        let key: CodingKeys = fields.contains(.pushRelay) ? .pushRelay : .nodeScopePush
+        pushRelay = try fields.decodeIfPresent(StagingPushCapability.self, forKey: key)
+    }
+}
+
 enum CoreScopeAccountError: Error, LocalizedError {
-    case unsupported, signedOut, rejected, conflict, storage, response, reset, throttled
+    case unsupported, signedOut, rejected, conflict, storage, response, reset, throttled, pushLinkGone, watchLimit, watchUnknown
     var errorDescription: String? {
         switch self {
         case .reset: String(localized: "Account settings were reset on the server. Choose how to continue before syncing.")
         case .throttled: String(localized: "Account writes are limited to once a minute. Your changes are saved; try Sync now later.")
         case .unsupported: String(localized: "This source does not support compatible CoreScope accounts.")
         case .signedOut: String(localized: "Sign in again to access this account.")
-        case .rejected: String(localized: "The request was rejected. Check your credentials or try again later.")
+        case .rejected, .pushLinkGone: String(localized: "The request was rejected. Check your credentials or try again later.")
+        case .watchLimit: String(localized: "This account reached its watch limit. Stop watching a node before adding another.")
+        case .watchUnknown: String(localized: "This analyzer doesn’t know that node yet.")
         case .conflict: String(localized: "Account favorites changed during sync. Try Sync now again.")
         case .storage: String(localized: "The account session could not be saved securely.")
         case .response: String(localized: "The account response could not be read. No favorites were changed.")
@@ -64,6 +105,48 @@ enum AccountSessionKeychain {
     }
 }
 
+struct AccountRepeater: Decodable, Identifiable, Sendable {
+    let pubkey: String
+    let name: String
+    let known: Bool
+    let inactive: Bool?
+    let lastHeard: Date?
+    let status: String?
+    let comaintainers: [String]
+    var id: String { pubkey }
+    var title: String { name.isEmpty ? String(pubkey.prefix(12)) : name }
+}
+
+struct AccountRepeaterDetails: Decodable, Sendable {
+    let pubkey: String
+    let revision: Int64
+    let heightM: Double?
+    let gainDbi: Double
+    let status: String?
+    let power: String?
+    let notes: String
+    let claimedByMe: Bool
+    let canEdit: Bool
+    let claimers: [RepeaterMetadata.Claim]
+}
+
+struct AccountRepeaterEdit: Encodable, Sendable {
+    let baseRevision: Int64
+    let heightM: Double?
+    let gainDbi: Double
+    let status: String
+    let power: String
+    let notes: String
+}
+
+enum AccountRepeaterError: Error, LocalizedError {
+    case staleRevision
+
+    var errorDescription: String? {
+        String(localized: "The repeater details changed. Reload the latest report before saving again.")
+    }
+}
+
 actor CoreScopeAccountClient {
     let origin: URL
     private let session: URLSession
@@ -87,10 +170,87 @@ actor CoreScopeAccountClient {
         session = URLSession(configuration: configuration, delegate: AccountRedirectPolicy(), delegateQueue: nil)
     }
 
-    func supportsAccounts() async throws -> Bool {
-        struct Config: Decodable { struct Management: Decodable { let enabled: Bool }; let userManagement: Management? }
+    @MainActor
+    static func restoredRepeaterClient(settings: AnalyzerSettings) throws -> CoreScopeAccountClient? {
+        guard settings.sourceIsReady, settings.beaconBackend == nil else { return nil }
+        let url = settings.baseURL
+        let origin = url.absoluteString
+        guard let cookie = try AccountSessionKeychain.load(origin: origin) else { return nil }
+        return try CoreScopeAccountClient(origin: url, cookie: cookie, lifetime: settings.sourceSession,
+            save: { try AccountSessionKeychain.save($0, origin: origin) })
+    }
+
+    func supportsRepeaterManagement() async throws -> Bool {
+        let capabilities = try await accountCapabilities()
+        return capabilities?.enabled == true && capabilities?.repeaterTokens == true
+    }
+
+    func repeaters() async throws -> [AccountRepeater] {
+        struct Response: Decodable { let repeaters: [AccountRepeater] }
+        return try APIClient.makeDecoder().decode(Response.self, from: await request("api/account/repeaters")).repeaters
+    }
+
+    func repeaterDetails(_ key: String) async throws -> AccountRepeaterDetails {
+        let path = try repeaterPath(key)
+        return try decodeRepeater(await request(path + "/info"), key: key)
+    }
+
+    func setRepeaterClaim(_ key: String, claimed: Bool) async throws {
+        let path = try repeaterPath(key)
+        let user = try await me()
+        _ = try await request(path + "/claim", method: claimed ? "POST" : "DELETE", csrf: user.csrfToken)
+    }
+
+    func saveRepeater(_ key: String, edit: AccountRepeaterEdit) async throws -> AccountRepeaterDetails {
+        let path = try repeaterPath(key)
+        let user = try await me()
+        do {
+            let data = try await request(path + "/info", method: "PUT",
+                body: JSONEncoder().encode(edit), csrf: user.csrfToken)
+            return try decodeRepeater(data, key: key)
+        } catch CoreScopeAccountError.conflict {
+            throw AccountRepeaterError.staleRevision
+        }
+    }
+
+    private func repeaterPath(_ key: String) throws -> String {
+        let normalized = key.lowercased()
+        guard normalized.utf8.count == 64,
+              normalized.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }) else {
+            throw CoreScopeAccountError.rejected
+        }
+        return "api/repeaters/\(normalized)"
+    }
+
+    private func decodeRepeater(_ data: Data, key: String) throws -> AccountRepeaterDetails {
+        let details = try JSONDecoder().decode(AccountRepeaterDetails.self, from: data)
+        guard details.pubkey.caseInsensitiveCompare(key) == .orderedSame, details.revision >= 0 else {
+            throw CoreScopeAccountError.response
+        }
+        return details
+    }
+
+    func supportsAccounts() async throws -> Bool { try await accountCapabilities()?.enabled == true }
+
+    func accountCapabilities() async throws -> CoreScopeAccountCapabilities? {
+        struct Config: Decodable { let userManagement: CoreScopeAccountCapabilities? }
         let data = try await request("api/config/client", authenticated: false)
-        return try JSONDecoder().decode(Config.self, from: data).userManagement?.enabled == true
+        return try JSONDecoder().decode(Config.self, from: data).userManagement
+    }
+
+    func notifications() async throws -> CoreScopeAccountNotifications {
+        let data = try await request("api/account/notifications")
+        return try JSONDecoder().decode(CoreScopeAccountNotifications.self, from: data)
+    }
+
+    func setWatch(_ pubkey: String, watched: Bool, csrf: String) async throws -> CoreScopeAccountNotifications {
+        let key = pubkey.lowercased()
+        guard key.range(of: "^[0-9a-f]{64}$", options: .regularExpression) != nil else {
+            throw CoreScopeAccountError.rejected
+        }
+        let data = try await request("api/account/notifications/watches/\(key)",
+                                     method: watched ? "PUT" : "DELETE", csrf: csrf)
+        return try JSONDecoder().decode(CoreScopeAccountNotifications.self, from: data)
     }
 
     func login(email: String, password: String) async throws -> CoreScopeAccountUser {
@@ -127,6 +287,22 @@ actor CoreScopeAccountClient {
         let ack = try JSONDecoder().decode(Ack.self, from: data)
         return CoreScopeAccountSettings(revision: ack.revision, generation: ack.generation, doc: document, allowlist: base.allowlist)
     }
+
+    #if NODESCOPE_PUSH_STAGING || NODESCOPE_PUSH_PRODUCTION
+    func pushCapability() async throws -> StagingPushCapability? {
+        let data = try await request("api/account/notifications")
+        return try JSONDecoder().decode(AccountPushRelay.self, from: data).pushRelay
+    }
+
+    func linkPushDevice(_ installationID: String, proof: String, csrf: String) async throws -> StagingPushLink {
+        let data = try await request("api/account/notifications/devices/\(installationID)", method: "PUT",
+                                     body: JSONEncoder().encode(["proof": proof]), csrf: csrf)
+        return try JSONDecoder().decode(StagingPushLink.self, from: data)
+    }
+    func unlinkPushDevice(_ installationID: String, csrf: String) async throws {
+        _ = try await request("api/account/notifications/devices/\(installationID)", method: "DELETE", csrf: csrf)
+    }
+    #endif
 
     func logout() async throws {
         // Always forget the local token, including when server revocation is unavailable.
@@ -174,6 +350,13 @@ actor CoreScopeAccountClient {
                 retryAfter: http.value(forHTTPHeaderField: "Retry-After"), now: .now)
             throw BeaconAPIError.rateLimited(until: until)
         }
+        if http.statusCode == 410 && method == "PUT" && path.hasPrefix("api/account/notifications/devices/") {
+            throw CoreScopeAccountError.pushLinkGone
+        }
+        if method == "PUT", path.hasPrefix("api/account/notifications/watches/") {
+            if http.statusCode == 409 { throw CoreScopeAccountError.watchLimit }
+            if http.statusCode == 404 { throw CoreScopeAccountError.watchUnknown }
+        }
         if http.statusCode == 409 { throw CoreScopeAccountError.conflict }
         guard (200..<300).contains(http.statusCode) else { throw CoreScopeAccountError.rejected }
         return data
@@ -183,18 +366,18 @@ actor CoreScopeAccountClient {
 enum CoreScopeFavoriteMerge {
     struct Selection {
         let favorites: [String]
-        let claimed: [String: String]
-        var keys: Set<String> { Set(favorites.map { $0.lowercased() }).union(claimed.keys) }
+        let myNodes: [String: String]
+        var keys: Set<String> { Set(favorites.map { $0.lowercased() }).union(myNodes.keys) }
     }
 
     static func selection(_ settings: CoreScopeAccountSettings) throws -> Selection {
         guard settings.supportsNodeFavorites, settings.supportsOwnNodes else { throw CoreScopeAccountError.unsupported }
         let values = settings.doc?.keys ?? [:]
         let favorites = try JSONDecoder().decode([String].self, from: Data((values["meshcore-favorites"] ?? "[]").utf8))
-        struct Claimed: Decodable { let pubkey: String; let name: String? }
-        let owned = try JSONDecoder().decode([Claimed].self, from: Data((values["meshcore-my-nodes"] ?? "[]").utf8))
+        struct MyNode: Decodable { let pubkey: String; let name: String? }
+        let owned = try JSONDecoder().decode([MyNode].self, from: Data((values["meshcore-my-nodes"] ?? "[]").utf8))
         guard (favorites + owned.map(\.pubkey)).allSatisfy(validKey) else { throw CoreScopeAccountError.response }
-        return Selection(favorites: favorites, claimed: Dictionary(owned.map {
+        return Selection(favorites: favorites, myNodes: Dictionary(owned.map {
             ($0.pubkey.lowercased(), $0.name ?? "")
         }, uniquingKeysWith: { first, _ in first }))
     }
@@ -209,7 +392,7 @@ enum CoreScopeFavoriteMerge {
     }
 
     static func document(base: CoreScopeAccountSettings?, local: Set<String>,
-                         remote: CoreScopeAccountSettings) throws -> (CoreScopeAccountSettings.Document, Selection) {
+                         remote: CoreScopeAccountSettings, removingMyNodes: Set<String> = []) throws -> (CoreScopeAccountSettings.Document, Selection) {
         if let base, base.generation != remote.generation { throw CoreScopeAccountError.reset }
         let current = try selection(remote)
         let previous = try base.map(selection)
@@ -220,8 +403,21 @@ enum CoreScopeFavoriteMerge {
         let raw = current.favorites.filter { merged.contains($0.lowercased()) }
         let present = Set(raw.map { $0.lowercased() })
         let additions = merged.subtracting(present).sorted()
-        values["meshcore-favorites"] = String(decoding: try JSONEncoder().encode(raw + additions), as: UTF8.self)
-        return (.init(v: 1, keys: values), Selection(favorites: raw + additions, claimed: current.claimed))
+        if raw + additions != current.favorites {
+            values["meshcore-favorites"] = String(decoding: try JSONEncoder().encode(raw + additions), as: UTF8.self)
+        }
+        let myNodes = current.myNodes.filter { !removingMyNodes.contains($0.key) }
+        if myNodes.count != current.myNodes.count, let stored = values["meshcore-my-nodes"] {
+            guard let entries = try JSONSerialization.jsonObject(with: Data(stored.utf8)) as? [[String: Any]] else {
+                throw CoreScopeAccountError.response
+            }
+            let kept = entries.filter { entry in
+                guard let key = entry["pubkey"] as? String else { return true }
+                return !removingMyNodes.contains(key.lowercased())
+            }
+            values["meshcore-my-nodes"] = String(decoding: try JSONSerialization.data(withJSONObject: kept), as: UTF8.self)
+        }
+        return (.init(v: 1, keys: values), Selection(favorites: raw + additions, myNodes: myNodes))
     }
 }
 

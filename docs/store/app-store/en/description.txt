@@ -36,6 +36,6 @@ COMMUNITY ANALYZERS
 Choose a community CoreScope or Beacon source, or enter a compatible analyzer hostname.
 
 PRIVACY BY DESIGN
-No account, no backend of its own, and no advertising, tracking, or analytics SDKs. NodeScope connects directly to the analyzer you choose. Link Profile sends the two points you pick to Open-Meteo for elevation, and Estimated Coverage downloads terrain tiles from Amazon Web Services. Your location and channel keys are never transmitted.
+No advertising, tracking, or analytics SDKs. NodeScope connects directly to the analyzer you choose. Signing in is optional and goes straight to that analyzer. Watched-node alerts are optional too: turning them on registers your device's push token with the NodeScope push relay, which we operate and which stores no account details, locations, or messages. Link Profile sends the two points you pick to Open-Meteo for elevation, and Estimated Coverage downloads terrain tiles from Amazon Web Services. Channel keys never leave your device, and your location is never sent to an analyzer.
 
 NodeScope is an independent project and is not affiliated with CoreScope, Beacon, MeshTexas, or MeshCore.

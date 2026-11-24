@@ -15,6 +15,7 @@ import org.nodescope.android.core.storage.MonitoredChannelStore
 class NodeScopeApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        PushPlatform.initialize(this)
         MapLibre.getInstance(this)
         // Do not log authenticated tile URLs. This client is separate from analyzer requests.
         HttpRequestUtil.setLogEnabled(false)

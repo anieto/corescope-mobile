@@ -23,6 +23,10 @@ enum FieldToolsActivity: String, CaseIterable, Identifiable {
     }
 }
 
+enum LegacyFieldGuidance {
+    static let isEnabled = false
+}
+
 enum FieldCatalogItem: Identifiable, Hashable {
     case node(MeshNode)
     case observer(MeshObserver)
@@ -399,6 +403,7 @@ struct FieldToolsScreen: View {
     private static let maximumMapAnnotations = 150
 
     let initialReference: FieldCoordinate?
+    @Environment(\.isHingedDevice) private var isHingedDevice
     let closeAction: (() -> Void)?
 
     @Environment(AnalyzerSettings.self) private var settings
@@ -419,6 +424,7 @@ struct FieldToolsScreen: View {
     @State private var activeSourceSessionID: UUID?
     @State private var showsNearbySheet = false
     @State private var showsTargetDetails = false
+    @State private var visionTarget: FieldCatalogItem?
     @State private var displayedMapItems: [FieldCatalogItem] = []
     @State private var visibleMapRect: MKMapRect?
     @State private var lastFramedReference: FieldCoordinate?
@@ -434,7 +440,7 @@ struct FieldToolsScreen: View {
         _model = State(initialValue: FieldToolsViewModel(reference: initialReference))
         let initialItem = initialNode.map(FieldCatalogItem.node) ?? initialObserver.map(FieldCatalogItem.observer)
         _selectedItem = State(initialValue: initialItem)
-        _pinnedItem = State(initialValue: initialItem)
+        _pinnedItem = State(initialValue: LegacyFieldGuidance.isEnabled ? initialItem : nil)
         // Without a starting point there is nothing else to frame, so open on the target itself
         // instead of letting the map fall back to a whole-continent view.
         if let coordinate = initialItem?.coordinate {
@@ -450,9 +456,26 @@ struct FieldToolsScreen: View {
         }
     }
 
+    private var usesSystemCloseButton: Bool {
+        if #available(iOS 27.1, *) {
+            return isHingedDevice && closeAction != nil
+        }
+        return false
+    }
+
     var body: some View {
         NavigationStack {
             canvas
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    if #available(iOS 27.1, *), usesSystemCloseButton, let closeAction {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Close Field Tools", systemImage: "xmark", action: closeAction)
+                                .labelStyle(.iconOnly)
+                        }
+                        .visibilityPriority(.high)
+                    }
+                }
         }
         .navigationTitle("Field Tools")
         .task(id: "\(settings.sourceSession.id)|\(regionFilter.selectedRegion ?? "")") {
@@ -465,13 +488,13 @@ struct FieldToolsScreen: View {
             model.configure(settings: settings)
             await model.load(region: regionFilter.selectedRegion)
         }
-        .task(id: "\(settings.sourceSession.id)|\(pinnedItem?.id ?? "none")") {
+        .task(id: "\(settings.sourceSession.id)|\((pinnedItem ?? selectedItem)?.id ?? "none")") {
             model.configure(settings: settings)
-            guard let pinnedItem else {
+            guard let target = pinnedItem ?? selectedItem else {
                 model.clearTargetEvidence()
                 return
             }
-            await model.loadEvidence(for: pinnedItem)
+            await model.loadEvidence(for: target)
         }
         .onChange(of: locationSession.sample) { _, sample in
             guard usesDeviceReference, let sample else { return }
@@ -508,7 +531,7 @@ struct FieldToolsScreen: View {
             }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active, usesDeviceReference {
+            if phase == .active, usesDeviceReference, visionTarget == nil {
                 locationSession.start()
             } else if phase != .active {
                 locationSession.stop()
@@ -539,6 +562,16 @@ struct FieldToolsScreen: View {
                             Button("Done") { showsNearbySheet = false }
                         }
                     }
+            }
+        }
+        .fullScreenCover(item: $visionTarget, onDismiss: {
+            if usesDeviceReference, scenePhase == .active { locationSession.start() }
+        }) { target in
+            if let coordinate = target.coordinate {
+                NodeVisionScreen(name: target.name, target: coordinate, repeaterKey: {
+                    if case .node(let node) = target { return node.publicKey }
+                    return nil
+                }())
             }
         }
         .sheet(isPresented: $showsTargetDetails) {
@@ -670,7 +703,7 @@ struct FieldToolsScreen: View {
                 ForEach(model.visibleItems) { item in
                     Button {
                         selectedItem = item
-                        pinnedItem = item
+                        if LegacyFieldGuidance.isEnabled { pinnedItem = item }
                         if let coordinate = item.coordinate {
                             position = .region(MKCoordinateRegion(
                                 center: coordinate.clLocationCoordinate,
@@ -798,10 +831,11 @@ struct FieldToolsScreen: View {
 
                     Spacer()
 
-                    if let closeAction {
+                    if !usesSystemCloseButton, let closeAction {
                         Button(action: closeAction) {
                             Image(systemName: "xmark")
                                 .frame(width: 44, height: 44)
+                                .contentShape(.rect(cornerRadius: 18))
                         }
                         .buttonStyle(.plain)
                         .nodeScopeFloatingGlass(cornerRadius: 18)
@@ -817,6 +851,7 @@ struct FieldToolsScreen: View {
                             .font(.subheadline.weight(.semibold))
                             .padding(.horizontal, 12)
                             .frame(minHeight: 44)
+                            .contentShape(.rect(cornerRadius: 16))
                             .nodeScopeFloatingGlass(cornerRadius: 16)
                     }
                     .buttonStyle(.plain)
@@ -852,7 +887,11 @@ struct FieldToolsScreen: View {
                         unpin: { pinnedItem = nil },
                         useMyLocation: { showsLocationExplanation = true },
                         enterCoordinates: { showsCoordinateEntry = true },
-                        showDetails: { showsTargetDetails = true }
+                        showDetails: { showsTargetDetails = true },
+                        openNodeVision: {
+                            locationSession.stop()
+                            visionTarget = target
+                        }
                     )
                     .padding(12)
                     .padding(.bottom, 24)
@@ -872,7 +911,7 @@ struct FieldToolsScreen: View {
                 }
             }
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .toolbar(usesSystemCloseButton ? .visible : .hidden, for: .navigationBar)
     }
 
     private func geometry(for item: FieldCatalogItem) -> FieldGeometryResult? {
@@ -1070,6 +1109,7 @@ private struct FieldGuidancePanel: View {
     let useMyLocation: () -> Void
     let enterCoordinates: () -> Void
     let showDetails: () -> Void
+    let openNodeVision: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -1127,7 +1167,11 @@ private struct FieldGuidancePanel: View {
                 }
             }
 
-            if isPinned {
+            if isPinned || !LegacyFieldGuidance.isEnabled {
+                Button(action: openNodeVision) {
+                    Label("Open in NodeVision", systemImage: "camera")
+                }
+                .buttonStyle(StandaloneActionButtonStyle(accent: NodeScopeStyle.activity, lightModeFill: 0.28))
                 Divider()
                 Button(action: showDetails) {
                     HStack {
@@ -1142,7 +1186,7 @@ private struct FieldGuidancePanel: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(NodeScopeStyle.signal)
-            } else {
+            } else if LegacyFieldGuidance.isEnabled {
                 Button(action: pin) {
                     Label("Guide Me", systemImage: "location.north")
                         .frame(maxWidth: .infinity)
@@ -1427,14 +1471,10 @@ private struct FieldTargetQuickActions: View {
     let analytics: FieldTargetAnalyticsEvidence?
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 8) { actions }
-            VStack(spacing: 8) { actions }
-        }
-        .buttonStyle(.bordered)
-        .controlSize(.large)
-        .frame(maxWidth: 520)
-        .frame(maxWidth: .infinity)
+        VStack(spacing: 8) { actions }
+            .buttonStyle(StandaloneActionButtonStyle())
+            .frame(maxWidth: 520)
+            .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
@@ -1443,6 +1483,7 @@ private struct FieldTargetQuickActions: View {
         case .node(let node):
             NavigationLink {
                 NodeDetailScreen(node: node)
+                    .id(node.publicKey)
             } label: {
                 Label("Node Details", systemImage: "info.circle")
             }

@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.0
+
+### Added
+
+- Watch nodes from their detail pages and receive push alerts on iOS and Android when your CoreScope administrator enables NodeScope Push.
+- View community-reported repeater details and use antenna values in coverage and link studies.
+- Find community analyzers by country or sort them by distance.
+- Start Link Profile and Estimated Coverage with radio settings for your mesh, including a MeshCore preset for Brazil.
+- Use NodeVision to find nearby nodes with your camera.
+- Claim and manage repeaters from your CoreScope account.
+- Find favorite channels in a dedicated section of the Channels tab.
+
+### Fixed
+
+- Clarified Brazilian Portuguese and Spanish Node Check wording about whether a node is active or being heard. Updated the matching store descriptions.
+
 ## 0.4.0 - 2026-09-18
 
 Release focused on clearer map exploration and deeper packet-route inspection.

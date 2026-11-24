@@ -96,8 +96,8 @@ internal fun distanceKm(a: Coordinate, b: Coordinate): Double {
 }
 
 /**
- * One observed packet. Hops within a resolved subchain travel one after another; separate
- * subchains (split by unresolved hops) start together, as on iOS. Isolated known positions pulse.
+ * One observed packet. Hops travel one after another, with dashed bridges between resolved
+ * subchains. Isolated known positions pulse.
  *
  * A [historical] packet from recent history has already arrived at [receivedAt] (its packet
  * timestamp): every hop is shown complete and fades together over [RouteTiming.HISTORY_FADE],
@@ -177,23 +177,25 @@ internal data class RouteFrame(val lines: List<RouteLine>, val heads: List<Pair<
  */
 private fun liveHops(subchains: List<List<Coordinate>>, startsAt: Long, historical: Boolean, zoom: Double?): List<RouteHop> {
     val hops = mutableListOf<RouteHop>()
+    val historyStart = startsAt - RouteTiming.HOP_TRAVEL
     var elapsed = 0L
     var previousEnd: Coordinate? = null
     for (chain in subchains) {
         val from = previousEnd; val to = chain.firstOrNull()
         if (from != null && to != null && from != to) {
-            hops += if (historical) RouteHop(from, to, startsAt - 200, startsAt - 200, RouteTiming.HISTORY_FADE, 200, HOP_CURVATURE, dashed = true)
+            hops += if (historical) RouteHop(from, to, historyStart, historyStart, RouteTiming.HISTORY_FADE, RouteTiming.HOP_TRAVEL, HOP_CURVATURE, dashed = true)
             else RouteHop(from, to, startsAt + elapsed, startsAt + elapsed + 200 + RouteTiming.HOLD, RouteTiming.FADE, 200, HOP_CURVATURE, dashed = true)
             elapsed += 200
         }
         previousEnd = chain.lastOrNull() ?: previousEnd
         for ((a, b) in chain.zipWithNext()) {
-            val travel = hopTravelMs(a, b, 300, 1_000, zoom)
-            hops += if (historical) {
-                val arrived = startsAt - travel
-                RouteHop(a, b, arrived, arrived, RouteTiming.HISTORY_FADE, travel, HOP_CURVATURE)
-            } else RouteHop(a, b, startsAt + elapsed, startsAt + elapsed + travel + RouteTiming.HOLD, RouteTiming.FADE, travel, HOP_CURVATURE)
-            elapsed += travel
+            if (historical) {
+                hops += RouteHop(a, b, historyStart, historyStart, RouteTiming.HISTORY_FADE, RouteTiming.HOP_TRAVEL, HOP_CURVATURE)
+            } else {
+                val travel = hopTravelMs(a, b, 300, 1_000, zoom)
+                hops += RouteHop(a, b, startsAt + elapsed, startsAt + elapsed + travel + RouteTiming.HOLD, RouteTiming.FADE, travel, HOP_CURVATURE)
+                elapsed += travel
+            }
         }
     }
     return hops

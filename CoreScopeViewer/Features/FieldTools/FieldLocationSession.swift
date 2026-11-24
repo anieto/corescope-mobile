@@ -7,12 +7,15 @@ struct FieldLocationSample: Equatable, Sendable {
     let coordinate: FieldCoordinate
     let timestamp: Date
     let horizontalAccuracyMeters: Double
+    let altitudeMeters: Double?
+    let verticalAccuracyMeters: Double?
 }
 
 struct FieldHeadingSample: Equatable, Sendable {
     let trueHeadingDegrees: Double
     let accuracyDegrees: Double
     let timestamp: Date
+    var pitchDegrees: Double? = nil
 }
 
 enum FieldHeadingStatus: Equatable, Sendable {
@@ -38,8 +41,11 @@ final class FieldLocationSession: NSObject, @preconcurrency CLLocationManagerDel
     private(set) var sample: FieldLocationSample?
     private(set) var status: FieldLocationStatus = .idle
     private(set) var headingSample: FieldHeadingSample?
+    private(set) var cameraHeadingSample: FieldHeadingSample?
+    private(set) var cameraPointsTowardHorizon: Bool?
     private(set) var headingStatus: FieldHeadingStatus = .idle
 
+    private let tracksCamera: Bool
     private let manager: CLLocationManager
     private let motion = CMMotionManager()
     private var wantsUpdates = false
@@ -49,22 +55,18 @@ final class FieldLocationSession: NSObject, @preconcurrency CLLocationManagerDel
     private var deviceAxesUseMatrixRows: Bool?
     private var motionProvidesHeading = false
 
-    init(manager: CLLocationManager = CLLocationManager()) {
+    init(manager: CLLocationManager = CLLocationManager(), tracksCamera: Bool = false) {
         self.manager = manager
+        self.tracksCamera = tracksCamera
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyBest
-        manager.distanceFilter = 5
+        manager.distanceFilter = tracksCamera ? kCLDistanceFilterNone : 5
         manager.headingFilter = 2
     }
 
     func start() {
         wantsUpdates = true
-        guard CLLocationManager.locationServicesEnabled() else {
-            status = .unavailable
-            return
-        }
-
         switch manager.authorizationStatus {
         case .notDetermined:
             status = .requestingPermission
@@ -84,6 +86,8 @@ final class FieldLocationSession: NSObject, @preconcurrency CLLocationManagerDel
         manager.stopUpdatingHeading()
         motion.stopDeviceMotionUpdates()
         headingSample = nil
+        cameraHeadingSample = nil
+        cameraPointsTowardHorizon = nil
         compassAccuracyDegrees = nil
         motionProvidesHeading = false
         headingStatus = .idle
@@ -115,10 +119,21 @@ final class FieldLocationSession: NSObject, @preconcurrency CLLocationManagerDel
                 longitude: location.coordinate.longitude
               ) else { return }
 
+        let validAltitude = location.verticalAccuracy > 0 && location.altitude.isFinite
+        var altitude = validAltitude ? location.altitude : nil
+        if tracksCamera, let current = altitude, let previous = sample,
+           let last = previous.altitudeMeters, let lastAccuracy = previous.verticalAccuracyMeters,
+           lastAccuracy <= 15, location.verticalAccuracy <= 15,
+           (0...5).contains(location.timestamp.timeIntervalSince(previous.timestamp)) {
+            altitude = last + (current - last) * 0.3
+        }
+
         sample = FieldLocationSample(
             coordinate: coordinate,
             timestamp: location.timestamp,
-            horizontalAccuracyMeters: location.horizontalAccuracy
+            horizontalAccuracyMeters: location.horizontalAccuracy,
+            altitudeMeters: altitude,
+            verticalAccuracyMeters: location.verticalAccuracy > 0 ? location.verticalAccuracy : nil
         )
         status = .active
     }
@@ -167,7 +182,7 @@ final class FieldLocationSession: NSObject, @preconcurrency CLLocationManagerDel
         guard motion.isDeviceMotionAvailable,
               !motion.isDeviceMotionActive,
               CMMotionManager.availableAttitudeReferenceFrames().contains(.xTrueNorthZVertical) else { return }
-        motion.deviceMotionUpdateInterval = 1.0 / 15
+        motion.deviceMotionUpdateInterval = 1.0 / (tracksCamera ? 30 : 15)
         motion.startDeviceMotionUpdates(using: .xTrueNorthZVertical, to: .main) { [weak self] deviceMotion, _ in
             guard let deviceMotion else { return }
             let matrix = deviceMotion.attitude.rotationMatrix
@@ -189,7 +204,19 @@ final class FieldLocationSession: NSObject, @preconcurrency CLLocationManagerDel
         if deviceAxesUseMatrixRows == nil {
             deviceAxesUseMatrixRows = FieldGeometry.deviceAxesUseMatrixRows(rows: rows, gravity: gravity)
         }
-        // Until the phone has tilted enough to tell the matrix layout apart, keep Core Location's heading.
+        if tracksCamera {
+            let pointsTowardHorizon = hypot(gravity.x, gravity.y) >= 0.35
+            if cameraPointsTowardHorizon != pointsTowardHorizon {
+                cameraPointsTowardHorizon = pointsTowardHorizon
+            }
+            if let compassAccuracyDegrees {
+                let screen = FieldGeometry.cameraScreenAxis(rows: rows, useRows: deviceAxesUseMatrixRows)
+                cameraHeadingSample = FieldGeometry.rearCameraHeadingDegrees(deviceScreenAxis: screen).map {
+                    FieldHeadingSample(trueHeadingDegrees: $0, accuracyDegrees: compassAccuracyDegrees, timestamp: timestamp,
+                                       pitchDegrees: atan2(-screen.z, hypot(screen.x, screen.y)) * 180 / .pi)
+                }
+            }
+        }
         guard let useRows = deviceAxesUseMatrixRows, let compassAccuracyDegrees else { return }
         let axes = useRows
             ? rows

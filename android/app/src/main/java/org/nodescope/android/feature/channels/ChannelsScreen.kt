@@ -35,6 +35,7 @@ fun ChannelsScreen(
     onChannel: (ChannelRow) -> Unit, onAdd: () -> Unit,
     selectedId: String? = null,
     resetRequest: Int = 0,
+    favoriteIds: Set<String> = emptySet(),
 ) {
     val channelState by model.channels.state.collectAsStateWithLifecycle()
     val packetState by model.packets.state.collectAsStateWithLifecycle()
@@ -82,6 +83,15 @@ fun ChannelsScreen(
     val filters = ChannelFilters(source, activity, sort, query)
     val sections = remember(server, monitored, summaries, filters, now) { channelSections(server, monitored, summaries, filters, now) }
 
+    val normalizedFavoriteIds = remember(favoriteIds) { favoriteIds.mapTo(mutableSetOf()) { it.lowercase() } }
+    val (favoriteMonitored, otherMonitored) = remember(sections.monitored, normalizedFavoriteIds) {
+        sections.monitored.partition { it.id.lowercase() in normalizedFavoriteIds }
+    }
+    val (favoriteServer, otherServer) = remember(sections.server, normalizedFavoriteIds) {
+        sections.server.partition { it.id.lowercase() in normalizedFavoriteIds }
+    }
+    val favorites = favoriteMonitored + favoriteServer
+
     if (showFilters) FilterSheet(stringResource(R.string.channels_channel_filters), regionControl, listOf(
         FilterGroup(stringResource(R.string.channels_source), ChannelSource.entries, source, { stringResource(it.titleRes) }) { source = it },
         FilterGroup(stringResource(R.string.channels_activity), ChannelActivity.entries, activity, { stringResource(it.titleRes) }) { activity = it },
@@ -108,18 +118,22 @@ fun ChannelsScreen(
             }
             item { LoadStatus(channelState, server.isNotEmpty(), now, ::refresh) }
             if (beacon) item { BeaconFeatureNotice(BackendCapability.CHANNEL_DECRYPT_ON_PHONE) }
-            if (sections.monitored.isNotEmpty()) {
-                item { SectionLabel(stringResource(R.string.channels_monitoring_on_this_device, sections.monitored.size)) }
-                items(sections.monitored, key = { it.id }) { ChannelCard(it, now, it.id == selectedId) { onChannel(it) } }
+            if (favorites.isNotEmpty()) {
+                item { SectionLabel(stringResource(R.string.explore_favorites)) }
+                items(favorites, key = { it.id }) { ChannelCard(it, now, it.id == selectedId) { onChannel(it) } }
             }
-            if (sections.server.isNotEmpty()) {
+            if (otherMonitored.isNotEmpty()) {
+                item { SectionLabel(stringResource(R.string.channels_monitoring_on_this_device, otherMonitored.size)) }
+                items(otherMonitored, key = { it.id }) { ChannelCard(it, now, it.id == selectedId) { onChannel(it) } }
+            }
+            if (otherServer.isNotEmpty()) {
                 item {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         SectionLabel(stringResource(R.string.channels_server_monitored_channels))
                         LearnButton(GlossaryTerm.CHANNEL, Modifier.padding(top = 8.dp))
                     }
                 }
-                items(sections.server, key = { it.id }) { ChannelCard(it, now, it.id == selectedId) { onChannel(it) } }
+                items(otherServer, key = { it.id }) { ChannelCard(it, now, it.id == selectedId) { onChannel(it) } }
             }
             // Only once a load has finished: before the first load starts nothing is "loading" yet,
             // and "No channels yet" flashed on every visit.

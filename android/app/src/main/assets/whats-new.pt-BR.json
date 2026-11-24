@@ -2,6 +2,34 @@
   "version": 1,
   "language": "pt-BR",
   "items": {
+    "nodevision": {
+      "title": "NodeVision",
+      "detail": "Use a câmera para ver em que direção estão os nós próximos da malha ou abra o NodeVision nos detalhes de um nó para encontrá-lo."
+    },
+    "watched-node-alerts": {
+      "title": "Alertas de nós monitorados",
+      "detail": "Toque no sino na página de detalhes de um nó para monitorá-lo. Se o administrador do CoreScope ativou o NodeScope Push, você pode receber alertas quando o nó deixar de ser ouvido ou voltar a ser ouvido. Ative os alertas push para este dispositivo nas configurações da sua conta do CoreScope."
+    },
+    "repeater-details": {
+      "title": "Detalhes informados dos repetidores",
+      "detail": "Veja o estado e os equipamentos informados pela comunidade em analisadores CoreScope compatíveis. Use a altura e o ganho de antena informados na Cobertura estimada e no Perfil do enlace."
+    },
+    "channel-favorites": {
+      "title": "Canais favoritos",
+      "detail": "Encontre seus canais favoritos reunidos no topo da lista de Canais."
+    },
+    "analyzer-source-picker": {
+      "title": "Encontre um analisador",
+      "detail": "Explore os analisadores da comunidade agrupados por país ou escolha Ordenar por proximidade para ver as fontes mais próximas."
+    },
+    "planner-radio-defaults": {
+      "title": "Configurações de rádio para sua malha",
+      "detail": "Novos estudos de Perfil do enlace e Cobertura estimada começam com configurações de rádio para sua malha. A predefinição do MeshCore para o Brasil também está disponível."
+    },
+    "repeater-management": {
+      "title": "Gerencie seus repetidores",
+      "detail": "Entre no CoreScope para reivindicar os repetidores que você mantém, atualizar os equipamentos e o estado informados ou remover uma reivindicação."
+    },
     "saved-plans": {
       "title": "Planos salvos",
       "detail": "Agrupe perfis de enlace e estudos de cobertura em planos com nome e notas. Os resultados são salvos junto e abrem do mesmo jeito no iPhone, no iPad e no Android, sem calcular de novo.",

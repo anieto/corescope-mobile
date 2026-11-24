@@ -7,6 +7,13 @@ final class MapLocationManager: NSObject, @preconcurrency CLLocationManagerDeleg
     private var failure: (() -> Void)?
     private var timeoutTask: Task<Void, Never>?
 
+    var isAuthorized: Bool {
+        switch locationManager.authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse: true
+        default: false
+        }
+    }
+
     override init() {
         super.init()
         locationManager.delegate = self
@@ -14,20 +21,20 @@ final class MapLocationManager: NSObject, @preconcurrency CLLocationManagerDeleg
     }
 
     func requestCurrentLocation(
+        allowsAuthorizationPrompt: Bool = true,
         completion: @escaping (CLLocationCoordinate2D) -> Void,
         failure: @escaping () -> Void
     ) {
         self.completion = completion
         self.failure = failure
 
-        guard CLLocationManager.locationServicesEnabled() else {
-            finishWithFailure()
-            return
-        }
-
         switch locationManager.authorizationStatus {
         case .notDetermined:
-            locationManager.requestWhenInUseAuthorization()
+            if allowsAuthorizationPrompt {
+                locationManager.requestWhenInUseAuthorization()
+            } else {
+                finishWithFailure()
+            }
         case .authorizedAlways, .authorizedWhenInUse:
             if let cachedLocation = locationManager.location, isUsable(cachedLocation) {
                 finish(with: cachedLocation.coordinate)

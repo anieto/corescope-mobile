@@ -41,10 +41,42 @@ struct SavedStudy: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
+struct ReportedAntennaSource: Codable, Equatable, Sendable {
+    let analyzerHost: String
+    let publicKey: String
+    let updatedAtMilliseconds: Int64?
+    let updatedBy: String?
+
+    func isFromDifferentRepeater(than previous: Self?) -> Bool {
+        previous?.analyzerHost != analyzerHost || previous?.publicKey != publicKey
+    }
+
+    var draftValue: String? {
+        (try? JSONEncoder().encode(self)).flatMap { String(data: $0, encoding: .utf8) }
+    }
+
+    static func fromDraft(_ text: String?) -> Self? {
+        guard let text else { return nil }
+        return try? JSONDecoder().decode(Self.self, from: Data(text.utf8))
+    }
+}
+
+extension RepeaterMetadata {
+    func antennaSource(host: String) -> ReportedAntennaSource {
+        ReportedAntennaSource(
+            analyzerHost: AnalyzerSettings.normalizedHost(host), publicKey: pubkey,
+            updatedAtMilliseconds: updatedAt.flatMap { Int64(exactly: ($0.timeIntervalSince1970 * 1000).rounded()) },
+            updatedBy: updatedBy
+        )
+    }
+}
+
 struct SavedAntenna: Codable, Equatable, Sendable {
     var heightMeters: Double
     var gainDbi: Double
     var lossDb: Double
+    var reportedGainSource: ReportedAntennaSource? = nil
+    var reportedHeightSource: ReportedAntennaSource? = nil
 
     func validate() throws {
         guard heightMeters.isFinite, (0...10_000).contains(heightMeters),

@@ -1,3 +1,4 @@
+import groovy.json.JsonSlurper
 import java.util.Properties
 
 plugins {
@@ -17,16 +18,49 @@ val googleMapsKey = providers.environmentVariable("GOOGLE_MAPS_API_KEY")
 /** Release signing comes only from the git-ignored local.properties; without it, release builds are unsigned. */
 fun signingValue(name: String): String? = localProperties.getProperty(name)?.takeIf { it.isNotBlank() }
 val releaseStore = signingValue("RELEASE_STORE_FILE")?.let(::file)?.takeIf { it.exists() }
+fun quoted(value: String): String =
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+fun stagingFirebaseValue(name: String): String =
+    providers.environmentVariable(name).orElse(localProperties.getProperty(name, "")).get()
+
+val appPackage = "org.nodescope.android"
+val productionFirebaseFile = file("src/release/google-services.json")
+val productionFirebase = if (productionFirebaseFile.isFile) {
+    val config = JsonSlurper().parse(productionFirebaseFile) as Map<*, *>
+    val project = config["project_info"] as Map<*, *>
+    val client = (config["client"] as List<*>).filterIsInstance<Map<*, *>>().single {
+        val info = it["client_info"] as Map<*, *>
+        (info["android_client_info"] as Map<*, *>)["package_name"] == appPackage
+    }
+    require(project["project_id"] == "nodescope-production") { "Release requires the nodescope-production Firebase project." }
+    mapOf(
+        "APP_ID" to ((client["client_info"] as Map<*, *>)["mobilesdk_app_id"] as String),
+        "API_KEY" to (((client["api_key"] as List<*>).first() as Map<*, *>)["current_key"] as String),
+        "SENDER" to (project["project_number"] as String),
+        "PROJECT" to (project["project_id"] as String),
+    )
+} else emptyMap()
+
+fun com.android.build.api.dsl.ApplicationBuildType.configurePush(
+    origin: String, environment: String, firebaseValue: (String) -> String,
+) {
+    buildConfigField("String", "PUSH_RELAY_ORIGIN", quoted(origin))
+    buildConfigField("String", "PUSH_ENVIRONMENT", quoted(environment))
+    for (field in listOf("APP_ID", "API_KEY", "SENDER", "PROJECT")) {
+        buildConfigField("String", "PUSH_FIREBASE_$field", quoted(firebaseValue(field)))
+    }
+}
 
 android {
     namespace = "org.nodescope.android"
     compileSdk = 36
     defaultConfig {
-        applicationId = "org.nodescope.android"
+        applicationId = appPackage
         minSdk = 26
         targetSdk = 36
-        versionCode = 29
-        versionName = "0.11.0"
+        versionCode = 35
+        versionName = "1.0.0"
         buildConfigField("String", "CARTO_API_KEY", "\"" + cartoKey.replace("\\", "\\\\").replace("\"", "\\\"") + "\"")
         buildConfigField("boolean", "MAPS_CONFIGURED", cartoKey.isNotBlank().toString())
         buildConfigField("boolean", "GOOGLE_MAPS_CONFIGURED", googleMapsKey.isNotBlank().toString())
@@ -43,6 +77,13 @@ android {
     }
     buildTypes {
         debug { isPseudoLocalesEnabled = true }
+        create("staging") {
+            initWith(getByName("debug"))
+            matchingFallbacks += "debug"
+            configurePush("https://push-staging.nodescope.app", "staging") { field ->
+                stagingFirebaseValue("STAGING_FIREBASE_$field")
+            }
+        }
         release {
             signingConfigs.findByName("release")?.let { signingConfig = it }
             // R8: shrink, optimize and obfuscate (Play flags unoptimized DEX); the mapping file
@@ -50,6 +91,9 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            configurePush("https://push.nodescope.app", "production") { field ->
+                productionFirebase[field].orEmpty()
+            }
         }
     }
     buildFeatures { compose = true; buildConfig = true }
@@ -57,18 +101,45 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    sourceSets["debug"].java.srcDir("src/withoutPush/java")
+    sourceSets["release"].apply {
+        java.srcDir("src/staging/java")
+        res.srcDir("src/staging/res")
+        manifest.srcFile("src/staging/AndroidManifest.xml")
+    }
     // The bundled registry holds only the default source (as on iOS), so any other source can be
     // delisted from the live registry without an app update; its icon ships in assets/icons.
     sourceSets["main"].assets.srcDir("../../shared/rf-engine/licenses")
+    sourceSets["main"].assets.srcDir("../../shared/analyzer-sources")
     sourceSets["main"].java.srcDirs("../../shared/rf-engine/vendor/kp1812/commonMain/kotlin", "../../shared/rf-engine/src/commonMain/kotlin")
     sourceSets["test"].java.srcDirs("../../shared/rf-engine/vendor/kp1812/commonTest/kotlin", "../../shared/rf-engine/src/commonTest/kotlin")
     sourceSets["test"].resources.srcDir("../../shared/fixtures")
 }
+androidComponents {
+    onVariants(selector().withBuildType("release")) { variant ->
+        variant.outputs.forEach { it.versionCode.set(36) }
+    }
+}
+
+tasks.matching { it.name == "bundleRelease" }.configureEach {
+    doFirst {
+        check(productionFirebase.size == 4 && productionFirebase.values.all { it.isNotBlank() }) {
+            "Provide android/app/src/release/google-services.json for the production release."
+        }
+        check(releaseStore != null && listOf("RELEASE_STORE_PASSWORD", "RELEASE_KEY_ALIAS", "RELEASE_KEY_PASSWORD")
+            .all { signingValue(it) != null }) {
+            "Configure the Play upload key in android/local.properties before bundling Release."
+        }
+    }
+}
+
 kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
 
 dependencies {
     implementation("androidx.glance:glance-appwidget:1.1.1")
     implementation("androidx.work:work-runtime:2.10.5")
+    add("stagingImplementation", "com.google.firebase:firebase-messaging:25.0.1")
+    add("releaseImplementation", "com.google.firebase:firebase-messaging:25.0.1")
     implementation(platform("androidx.compose:compose-bom:2025.09.01"))
     implementation("androidx.compose.material3:material3")
     // Adaptive panes and fold/hinge information; matches the existing Compose generation.
@@ -77,6 +148,9 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended:1.7.8")
     // Keep app and instrumentation classpaths aligned with AndroidX Test.
     implementation("androidx.concurrent:concurrent-futures:1.2.0")
+    implementation("androidx.camera:camera-camera2:1.4.2")
+    implementation("androidx.camera:camera-lifecycle:1.4.2")
+    implementation("androidx.camera:camera-view:1.4.2")
     implementation("androidx.activity:activity-compose:1.10.1")
     // Web links open in a Custom Tab inside the app (iOS uses SFSafariViewController).
     implementation("androidx.browser:browser:1.10.0")

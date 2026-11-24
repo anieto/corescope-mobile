@@ -20,14 +20,23 @@ import org.nodescope.android.feature.linkprofile.*
 class SavedStudiesTest {
     private val nodes = listOf(MeshNode("n1", "Ridge", "repeater", 10.01, 20.01, ""), MeshNode("n2", "Valley", "companion", 10.02, 19.99, ""))
 
+    private val coverageModels = mutableListOf<EstimatedCoverageViewModel>()
+
     private fun withMain(test: suspend TestScope.(File) -> Unit) = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val root = Files.createTempDirectory("saved-studies").toFile()
-        try { test(root) } finally { root.deleteRecursively(); Dispatchers.resetMain() }
+        try {
+            test(root)
+        } finally {
+            closeCoverageModels(coverageModels)
+            root.deleteRecursively()
+            Dispatchers.resetMain()
+        }
     }
 
     private fun coverageModel(root: File) =
         EstimatedCoverageViewModel(File(root, "terrain"), CoverageMemoryPreferences(), DistanceUnit.METRIC)
+            .also(coverageModels::add)
 
     /** A completed result for the model's current setup: every sample 120 dB of loss, every node predicted. */
     private fun result(model: EstimatedCoverageViewModel): CoverageStudyResult {
@@ -121,6 +130,8 @@ class SavedStudiesTest {
 
         val reopened = coverageModel(root)
         reopened.restore(inputsOnly)
+        reopened.initializeRadio(PlannerRadioDefault.resolve(emptyList(), "AU", "US"))
+        assertNull(reopened.radioDefaultOrigin)
         assertTrue(reopened.usesSavedCatalog)
         assertEquals(model.fields, reopened.fields)
         assertEquals(model.radiusMeters, reopened.radiusMeters)
@@ -149,6 +160,7 @@ class SavedStudiesTest {
     @Test fun linkProfileHandoffFillsCoverageLikeAReopenedStudy() = withMain { root ->
         val seed = LinkCoverageSeed(SavedEndpoint("Site B", 41.0, -91.0, SavedAntenna(10.0, 9.0, 2.0)), 910.525, 22.0, -128.0)
         val imperial = EstimatedCoverageViewModel(File(root, "terrain"), CoverageMemoryPreferences(), DistanceUnit.IMPERIAL)
+            .also(coverageModels::add)
         imperial.applyLinkSeed(seed)
         assertEquals("32.81", imperial.fields["txHeight"])
         assertEquals("22", imperial.fields["power"])
@@ -274,6 +286,9 @@ class SavedStudiesTest {
         calls.clear()
         val reopened = LinkProfileViewModel(terrain, SavedStateHandle())
         reopened.restore(stored)
+        reopened.initializeRadio(PlannerRadioDefault.resolve(emptyList(), "AU", "US"))
+        assertEquals(stored.linkProfile?.frequencyMHz, reopened.state.value.fields["Frequency (MHz)"]?.toDoubleOrNull())
+        assertNull(reopened.state.value.radioDefaultLabel)
         advanceUntilIdle()
         assertTrue(calls.isEmpty())
         val restored = requireNotNull(reopened.state.value.result)
@@ -288,6 +303,41 @@ class SavedStudiesTest {
         advanceUntilIdle()
         assertNull(reopened.state.value.result)
         assertTrue(calls.isEmpty())
+    }
+
+    @Test fun previousCoveragePresetRestoresWithItsOldValues() = withMain { root ->
+        val original = placedModel(root)
+        val preset = requireNotNull(CoverageRadioPreset.preset("meshcore-nz-narrow"))
+        original.applyRadioPreset(preset)
+        val saved = requireNotNull(original.savedSnapshot())
+        val reopened = coverageModel(root)
+        reopened.restore(saved)
+        assertEquals("meshcore-nz-narrow", reopened.radioPreset?.id)
+        assertEquals(saved.coverage?.frequencyMHz, reopened.savedSnapshot()?.coverage?.frequencyMHz)
+        assertEquals(preset.transmitPowerDbm, reopened.number("power"))
+        assertEquals(preset.sensitivityDbm, reopened.number("sensitivity"))
+    }
+
+    @Test fun savedBrazilProfileIsRecognizedByItsExactRadioValues() = withMain { _ ->
+        val terrain = LinkTerrainProviding { points ->
+            TerrainProfile(points.mapIndexed { index, _ -> ElevationPoint(index * 100.0, 100.0) }, 1000, "cache", points)
+        }
+        val model = LinkProfileViewModel(terrain, SavedStateHandle())
+        model.edit("Latitude A", "40")
+        model.edit("Longitude A", "-90")
+        model.edit("Latitude B", "40.1")
+        model.edit("Longitude B", "-90.1")
+        model.edit("Frequency (MHz)", "923.125")
+        model.edit("Transmit power (dBm)", "22")
+        model.edit("Sensitivity (dBm)", "-130")
+        val saved = requireNotNull(model.savedSnapshot())
+        advanceUntilIdle()
+        val reopened = LinkProfileViewModel(terrain, SavedStateHandle())
+        reopened.restore(saved)
+        assertEquals("meshcore-br-narrow", reopened.state.value.preset)
+        assertEquals(saved.linkProfile, reopened.savedSnapshot()?.linkProfile)
+        val brazil = requireNotNull(CoverageRadioPreset.preset("meshcore-br-narrow"))
+        assertEquals(-130.0, brazil.sensitivityDbm, 0.0)
     }
 
     @Test fun linkProfileSavesOncePlacedAndReopensWithoutAnalyzing() = withMain { _ ->

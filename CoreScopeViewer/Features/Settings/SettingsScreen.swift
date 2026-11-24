@@ -21,6 +21,13 @@ struct SettingsScreen: View {
     @State private var sourceSaveID = UUID()
     @State private var navigationPath = NavigationPath()
 
+    private var accountAction: String {
+        if (try? AccountSessionKeychain.load(origin: settings.baseURL.absoluteString)) != nil {
+            return String(localized: "Manage account")
+        }
+        return String(localized: "Sign in")
+    }
+
     fileprivate enum SourceSaveStatus: Equatable {
         case connecting
         case connected
@@ -33,7 +40,7 @@ struct SettingsScreen: View {
         NavigationStack(path: $navigationPath) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    SettingsHeader(isConnected: liveFeed.isConnected)
+                    SettingsHeader()
 
                     SettingsPanel(title: "Display", symbol: "circle.lefthalf.filled") {
                         SettingsPickerCaption("Appearance")
@@ -73,7 +80,7 @@ struct SettingsScreen: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    SettingsPanel(title: "Analyzer", symbol: "server.rack") {
+                    SettingsPanel(title: "Analyzer", symbol: "server.rack", learnTerm: .analyzer) {
                         NavigationLink {
                             AnalyzerSourcePickerScreen(
                                 selectedHost: $hostInput,
@@ -83,22 +90,28 @@ struct SettingsScreen: View {
                         } label: {
                             SettingsNavigationRow(
                                 title: "Choose Source",
-                                value: settings.host,
-                                symbol: "point.3.connected.trianglepath.dotted"
+                                value: nil,
+                                symbol: "point.3.connected.trianglepath.dotted",
+                                sourceName: settings.host,
+                                isConnected: liveFeed.isConnected,
+                                connectionError: liveFeed.lastError
                             )
                         }
                         .buttonStyle(.plain)
 
-                        ConnectionStatusRow(
-                            isConnected: liveFeed.isConnected,
-                            error: liveFeed.lastError
-                        )
+                        if settings.beaconBackend == nil {
+                            Divider()
 
-                        HStack(alignment: .firstTextBaseline, spacing: 4) {
-                            Text("Every screen uses the selected analyzer’s supported features and regions.")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                            LearnButton(term: .analyzer)
+                            NavigationLink {
+                                CoreScopeAccountScreen().id(settings.sourceSession.id)
+                            } label: {
+                                SettingsNavigationRow(
+                                    title: "CoreScope Account",
+                                    value: accountAction,
+                                    symbol: "person.crop.circle"
+                                )
+                            }
+                            .buttonStyle(.plain)
                         }
 
                         Divider()
@@ -129,7 +142,8 @@ struct SettingsScreen: View {
                     }
 
                     SettingsPanel(title: "Help & Support", symbol: "questionmark.circle") {
-                        if let latest = WhatsNew.latest {
+                        let releaseHistory = WhatsNew.history
+                        if let latest = releaseHistory.first {
                             Button { showsWhatsNew = true } label: {
                                 SettingsNavigationRow(
                                     title: "What's New",
@@ -138,7 +152,7 @@ struct SettingsScreen: View {
                                 )
                             }
                             .buttonStyle(.plain)
-                            .sheet(isPresented: $showsWhatsNew) { WhatsNewSheet(releases: [latest], showsSettingsHint: false) }
+                            .sheet(isPresented: $showsWhatsNew) { WhatsNewSheet(releases: releaseHistory, showsSettingsHint: false) }
 
                             Divider()
                         }
@@ -267,23 +281,11 @@ struct SettingsScreen: View {
 }
 
 private struct SettingsHeader: View {
-    let isConnected: Bool
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 10) {
-                Text("Settings")
-                    .font(.monaspace(.largeTitle).bold())
-                MeshNodeMotif(color: NodeScopeStyle.signal)
-            }
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
-                    .frame(width: 7, height: 7)
-                Text(isConnected ? "Analyzer connected" : "Analyzer offline")
-            }
-            .font(.caption.weight(.medium))
-            .foregroundStyle(.secondary)
+        HStack(spacing: 10) {
+            Text("Settings")
+                .font(.monaspace(.largeTitle).bold())
+            MeshNodeMotif(color: NodeScopeStyle.signal)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -292,20 +294,26 @@ private struct SettingsHeader: View {
 private struct SettingsPanel<Content: View>: View {
     let title: LocalizedStringKey
     let symbol: String
+    let learnTerm: GlossaryTerm?
     @ViewBuilder let content: Content
 
-    init(title: LocalizedStringKey, symbol: String, @ViewBuilder content: () -> Content) {
+    init(title: LocalizedStringKey, symbol: String, learnTerm: GlossaryTerm? = nil,
+         @ViewBuilder content: () -> Content) {
         self.title = title
         self.symbol = symbol
+        self.learnTerm = learnTerm
         self.content = content()
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label(title, systemImage: symbol)
-                .font(.monaspace(.caption).weight(.bold))
-                .foregroundStyle(NodeScopeStyle.signal)
-                .textCase(.uppercase)
+            HStack(spacing: 8) {
+                Label(title, systemImage: symbol)
+                    .font(.monaspace(.caption).weight(.bold))
+                    .foregroundStyle(NodeScopeStyle.signal)
+                    .textCase(.uppercase)
+                if let learnTerm { LearnButton(term: learnTerm) }
+            }
             content
         }
         .padding(16)
@@ -315,8 +323,11 @@ private struct SettingsPanel<Content: View>: View {
 
 private struct SettingsNavigationRow: View {
     let title: LocalizedStringKey
-    let value: String
+    let value: String?
     let symbol: String
+    var sourceName: String? = nil
+    var isConnected: Bool? = nil
+    var connectionError: String? = nil
 
     var body: some View {
         HStack(spacing: 12) {
@@ -327,10 +338,22 @@ private struct SettingsNavigationRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.subheadline.weight(.semibold))
-                Text(value)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                if let sourceName {
+                    Text(sourceName)
+                        .font(.monaspace(.caption))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                if let value {
+                    Text(value)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                if let isConnected {
+                    ConnectionStatusRow(isConnected: isConnected, error: connectionError)
+                        .padding(.top, 2)
+                }
             }
             Spacer()
             Image(systemName: "chevron.right")
@@ -362,7 +385,7 @@ private struct ConnectionStatusRow: View {
     let error: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 3) {
             connectionStatus
             if let error {
                 Label(error, systemImage: "exclamationmark.triangle.fill")
@@ -376,11 +399,12 @@ private struct ConnectionStatusRow: View {
         HStack(spacing: 7) {
             Circle()
                 .fill(isConnected ? NodeScopeStyle.healthy : NodeScopeStyle.activity)
-                .frame(width: 9, height: 9)
+                .frame(width: 7, height: 7)
+                .accessibilityHidden(true)
             Text(isConnected ? "Connected" : "Disconnected")
-                .font(.subheadline.weight(.semibold))
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
         }
-        .fixedSize(horizontal: true, vertical: false)
     }
 }
 

@@ -15,7 +15,7 @@ import org.nodescope.android.feature.map.packetRoute
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LiveFeedTest {
-    private fun packet(id: Long = 1, observer: String = "obs", hops: String = "[]", resolved: String = "[]") = parseLivePacket(
+    private fun packet(id: Long = 1, observer: String = "obs", hops: String = "[]", resolved: String = "null") = parseLivePacket(
         protocolJson.parseToJsonElement("""{"id":$id,"hash":"h$id","payload_type":8,"observer_id":"$observer","path_json":$hops,"resolved_path":$resolved} """).jsonObject, true, id)!!
 
     @Test fun decodesCurrentAndLegacyPacketsWithNullableHops() {
@@ -49,12 +49,27 @@ class LiveFeedTest {
     }
 
     @Test fun explicitUnresolvedHopsAndAmbiguousPrefixesNeverJoinRoutes() {
-        val nodes = listOf(node("aa11", 30.0), node("aa22", 31.0), node("bb11", 32.0))
+        val nodes = listOf(node("aa1101", 30.0), node("aa1102", 31.0), node("bb1101", 32.0))
         val observers = listOf(MeshObserver("obs", lat = 33.0, lon = -97.0))
-        assertEquals(listOf(listOf(Coordinate(32.0, -97.0), Coordinate(33.0, -97.0))), packetRoute(packet(hops = "[\"aa\",\"bb\"]"), nodes, observers))
-        val segments = packetRoute(packet(hops = "[\"aa11\",\"bb11\"]", resolved = "[\"aa11\",null]"), nodes, observers)
+        assertEquals(listOf(listOf(Coordinate(32.0, -97.0), Coordinate(33.0, -97.0))), packetRoute(packet(hops = "[\"aa11\",\"bb11\"]"), nodes, observers))
+        val segments = packetRoute(packet(hops = "[\"aa\",\"bb\"]", resolved = "[\"aa1101\",null]"), nodes, observers)
         assertEquals(listOf(listOf(Coordinate(30.0, -97.0)), listOf(Coordinate(33.0, -97.0))), segments)
     }
+    @Test fun prefixFallbackRequiresAnAbsentResolvedPathAndMultibyteHops() {
+        val nodes = listOf(node("aa1101", 30.0), node("bb1101", 32.0))
+        val observers = listOf(MeshObserver("obs", lat = 33.0, lon = -97.0))
+        val hops = "[\"aa11\",\"bb11\"]"
+        val observerOnly = listOf(listOf(Coordinate(33.0, -97.0)))
+        assertEquals(listOf(listOf(Coordinate(30.0, -97.0), Coordinate(32.0, -97.0), Coordinate(33.0, -97.0))),
+            packetRoute(packet(hops = hops), nodes, observers))
+        assertEquals(observerOnly, packetRoute(packet(hops = hops, resolved = "[]"), nodes, observers))
+        assertEquals(observerOnly, packetRoute(packet(hops = hops, resolved = "\"[]\""), nodes, observers))
+        assertEquals(observerOnly, packetRoute(packet(hops = "[\"aa\",\"bb11\"]"), nodes, observers))
+        val resolved = packet(hops = "[\"aa\",\"bb\"]", resolved = "\"[\\\"aa1101\\\",null]\"")
+        assertEquals(listOf(listOf(Coordinate(30.0, -97.0)), listOf(Coordinate(33.0, -97.0))),
+            packetRoute(resolved, nodes, observers))
+    }
+
     @Test fun regionFilteringFailsClosedWithoutObserverRoster() {
         val state = LiveFeedState(AnalyzerSelection("a.example", "DFW"), packets = listOf(packet(observer = "one"), packet(2, "two")))
         assertTrue(state.visiblePackets.isEmpty())

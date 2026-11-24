@@ -12,7 +12,12 @@ import org.nodescope.android.core.network.Loaded
  * A Beacon source has none of them; it loads neighbors and Beacon's cut-down health instead
  * (iOS loads them only for Beacon).
  */
-class NodeDetailViewModel(repository: BrowseRepository) : ViewModel() {
+class NodeDetailViewModel(private val repository: BrowseRepository) : ViewModel() {
+    suspend fun repeaterIsUnclaimed(host: String, publicKey: String) = repository.repeaterIsUnclaimed(host, publicKey)
+
+    suspend fun repeaterMetadata(host: String, publicKey: String, force: Boolean = false) =
+        repository.repeaterMetadata(host, force)[publicKey.lowercase(java.util.Locale.ROOT)]
+
     val health = KeyedLoader(viewModelScope, 60_000, restore = { key: Pair<String, String> -> repository.saved(ResponseCache.DETAIL_LIFETIME) { nodeHealth(key.first, key.second) } }) { key -> repository.nodeHealth(key.first, key.second) }
     val reach = KeyedLoader(viewModelScope, 5 * 60_000, restore = { key: Pair<String, String> -> repository.saved(ResponseCache.DETAIL_LIFETIME) { nodeReach(key.first, key.second) } }) { key -> repository.nodeReach(key.first, key.second) }
     val paths = KeyedLoader(viewModelScope, 5 * 60_000, restore = { key: Pair<String, String> -> repository.saved(ResponseCache.DETAIL_LIFETIME) { nodePaths(key.first, key.second) } }) { key -> repository.nodePaths(key.first, key.second) }

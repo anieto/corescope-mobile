@@ -77,8 +77,12 @@ import java.util.Date
 fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = LocalDistanceUnit.current, nodes: List<org.nodescope.android.core.model.MeshNode> = emptyList(),
     snapshot: org.nodescope.android.core.model.AnalyzerSnapshot? = null, selectedRegion: String? = null,
     sourceViewport: org.nodescope.android.core.model.RegionCoordinate? = null, onOpenSaved: () -> Unit = {},
-    onCoverage: (org.nodescope.android.feature.coverage.LinkCoverageSeed) -> Unit = {}) {
+    onCoverage: (org.nodescope.android.feature.coverage.LinkCoverageSeed) -> Unit = {},
+    analyzerHost: String? = null) {
     val state by model.state.collectAsStateWithLifecycle()
+    LaunchedEffect(model, analyzerHost, state.selections) {
+        model.applySelectedReportedDefaults(analyzerHost)
+    }
     // A point chosen anew from its card or pin; otherwise the next touch & hold places the first
     // missing point, so a new profile needs no arming at all.
     var selecting by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
@@ -111,8 +115,10 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
         movableContentOf { modifier: Modifier ->
             LinkProfileMap(currentPlacing, coordinate("A"), coordinate("B"), currentNodes, modifier, mapState,
                 currentSnapshot, currentRegion, currentViewport, currentAnalysis, mapInset, currentNames, currentUndo,
-                onPlace = { endpoint, point, name ->
-                    model.place(endpoint, point, name)
+                onPlace = { endpoint, point, name, publicKey ->
+                    val selection = if (analyzerHost != null && publicKey != null)
+                        org.nodescope.android.core.model.ReportedRepeaterSelection(analyzerHost, publicKey) else null
+                    model.place(endpoint, point, name, selection)
                     selecting = null
                     if (!hasPlacedPoint) { hasPlacedPoint = true; preferences.edit { putBoolean("placed-point", true) } }
                 },
@@ -138,7 +144,7 @@ fun LinkProfileScreen(model: LinkProfileViewModel, distanceUnit: DistanceUnit = 
             })
     }
     val details: @Composable () -> Unit = {
-        LinkDetails(model, state, distanceUnit, onMove = ::choose, onOpenSaved = onOpenSaved, onCoverage = { endpoint -> model.coverageSeed(endpoint)?.let(onCoverage) })
+        LinkDetails(model, state, distanceUnit, analyzerHost, onMove = ::choose, onOpenSaved = onOpenSaved, onCoverage = { endpoint -> model.coverageSeed(endpoint)?.let(onCoverage) })
     }
     val fold = rememberFoldSplit()
     val tabletop = rememberTabletopSplit()
@@ -328,7 +334,7 @@ private val ClearanceStatus.pathClearance get() = when (this) {
 
 /** Everything under the header: the two points, the radio and the full result. */
 @Composable
-private fun LinkDetails(model: LinkProfileViewModel, state: LinkProfileViewModel.State, distanceUnit: DistanceUnit,
+private fun LinkDetails(model: LinkProfileViewModel, state: LinkProfileViewModel.State, distanceUnit: DistanceUnit, analyzerHost: String?,
     onMove: (String) -> Unit, onOpenSaved: () -> Unit, onCoverage: (String) -> Unit) {
     var customizing by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -336,15 +342,24 @@ private fun LinkDetails(model: LinkProfileViewModel, state: LinkProfileViewModel
         org.nodescope.android.feature.candidatesites.SavedStudyActions(
             snapshot = { state.fields.let { model.savedSnapshot() } }, didSave = { model.savedStudy = it; model.markClean() }, onOpen = onOpenSaved,
             suggestedPlanID = model.suggestedPlanID)
-        listOf("A", "B").forEach { endpoint -> PointCard(model, state, endpoint, distanceUnit, onMove, onCoverage) }
+        listOf("A", "B").forEach { endpoint -> PointCard(model, state, endpoint, distanceUnit, analyzerHost, onMove, onCoverage) }
         Card(Modifier.fillMaxWidth(), colors = meshCardColors()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.link_profile_radio_settings), style = MaterialTheme.typography.titleMedium)
-                // Editing a value below makes the radio custom; neither preset is then selected.
+                // Editing a value below clears the selected preset.
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("US/Canada Narrow" to R.string.link_profile_preset_us, "EU/UK Narrow" to R.string.link_profile_preset_eu).forEach { (key, label) ->
+                    LinkProfileViewModel.selectablePresets.forEach { (key, label) ->
                         FilterChip(selected = state.preset == key, onClick = { model.preset(key) }, label = { Text(stringResource(label)) })
                     }
+                }
+                if (LinkProfileViewModel.selectablePresets.none { (key, _) -> key == state.preset }) {
+                    org.nodescope.android.feature.coverage.CoverageRadioPreset.preset(state.preset)?.let { preset ->
+                        Text(preset.title.asString(), style = MaterialTheme.typography.titleSmall)
+                    }
+                }
+                state.radioDefaultLabel?.let { label ->
+                    Text(stringResource(label), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 TextButton(onClick = { customizing = !customizing }) {
                     Text(when {
@@ -367,7 +382,7 @@ private fun LinkDetails(model: LinkProfileViewModel, state: LinkProfileViewModel
  * Tapping opens the antenna settings, moving the point, and typed coordinates.
  */
 @Composable
-private fun PointCard(model: LinkProfileViewModel, state: LinkProfileViewModel.State, endpoint: String, distanceUnit: DistanceUnit, onMove: (String) -> Unit, onCoverage: (String) -> Unit) {
+private fun PointCard(model: LinkProfileViewModel, state: LinkProfileViewModel.State, endpoint: String, distanceUnit: DistanceUnit, analyzerHost: String?, onMove: (String) -> Unit, onCoverage: (String) -> Unit) {
     var expanded by androidx.compose.runtime.saveable.rememberSaveable(endpoint) { mutableStateOf(false) }
     // Without a map, typing is the only way to place a point.
     var coordinatesShown by androidx.compose.runtime.saveable.rememberSaveable(endpoint) { mutableStateOf(!BuildConfig.MAPS_CONFIGURED) }
@@ -398,6 +413,9 @@ private fun PointCard(model: LinkProfileViewModel, state: LinkProfileViewModel.S
                     }
                     Text(listOfNotNull(ground, stringResource(R.string.link_profile_antenna, formatProfileHeight(meters, distanceUnit))).joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall, color = secondary)
+                    org.nodescope.android.core.design.reportedAntennaSourceText(
+                        height = endpoint in state.reportedHeights, gain = endpoint in state.reportedGains,
+                    )?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = secondary) }
                 }
                 Icon(if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null)
             }
@@ -409,6 +427,12 @@ private fun PointCard(model: LinkProfileViewModel, state: LinkProfileViewModel.S
                 AntennaPresetMenu(state.fields.getValue("Gain $endpoint (dBi)").parseDecimalInput()) {
                     model.edit("Gain $endpoint (dBi)", it.toString())
                 }
+                org.nodescope.android.core.design.ReportedRepeaterAntennaControl(
+                    state.selections[endpoint]?.takeIf { it.analyzerHost == analyzerHost },
+                    load = model::repeaterMetadata,
+                    applyHeight = { height, source -> model.applyReportedHeight(endpoint, height, source) },
+                    applyGain = { gain, source -> model.applyReportedGain(endpoint, gain, source) },
+                )
                 listOf("Gain $endpoint (dBi)", "Loss $endpoint (dB)").forEach { key -> ProfileField(key, state.fields.getValue(key)) { model.edit(key, it) } }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (BuildConfig.MAPS_CONFIGURED) Button(onClick = { onMove(endpoint) }) { Text(if (placed) stringResource(R.string.link_profile_choose_new_point_3) else stringResource(R.string.link_profile_choose_on_map)) }

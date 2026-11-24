@@ -4,7 +4,10 @@ import org.nodescope.android.core.storage.DistanceUnit
 import android.content.SharedPreferences
 import java.io.File
 import java.nio.file.Files
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -22,8 +25,136 @@ class EstimatedCoverageViewModelTest {
     private fun model(unit: DistanceUnit = DistanceUnit.METRIC, test: (EstimatedCoverageViewModel) -> Unit) = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val root = Files.createTempDirectory("coverage").toFile()
-        try { test(EstimatedCoverageViewModel(File(root, "terrain"), CoverageMemoryPreferences(), unit)) }
-        finally { root.deleteRecursively(); Dispatchers.resetMain() }
+        val model = EstimatedCoverageViewModel(File(root, "terrain"), CoverageMemoryPreferences(), unit)
+        try {
+            test(model)
+        } finally {
+            closeCoverageModels(listOf(model))
+            root.deleteRecursively()
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test fun reportedDefaultsPreserveManualValuesAndPreviouslyAppliedReports() = model(DistanceUnit.IMPERIAL) { model ->
+        model.place(Coordinate(50.5, -115.5), null)
+        val metadata = org.nodescope.android.core.model.RepeaterMetadata(
+            "a".repeat(64), 7.6, 5.0, null, null, null,
+            listOf(org.nodescope.android.core.model.RepeaterMetadata.Claim("Operator", null)), null, null,
+        )
+        model.set("txGain", "3")
+        model.applyReportedDefaults(metadata, "test.invalid")
+        assertEquals(7.6, model.inputs()!!.transmitHeightMeters, 1e-9)
+        assertEquals(3.0, model.inputs()!!.budget.transmitGainDbi, 0.0)
+        assertNotNull(model.reportedTransmitHeight)
+        assertNull(model.reportedTransmitGain)
+        model.applyReportedDefaults(metadata.copy(heightMeters = 9.0), "test.invalid")
+        assertEquals(7.6, model.inputs()!!.transmitHeightMeters, 1e-9)
+        model.set("txHeight", "25")
+        model.applyReportedDefaults(metadata, "test.invalid")
+        assertEquals(7.62, model.inputs()!!.transmitHeightMeters, 1e-9)
+        assertNull(model.reportedTransmitHeight)
+    }
+
+    @Test fun reportedHeightInImperialRetainsMetersAndProvenanceWhenReopened() = model(DistanceUnit.IMPERIAL) { model ->
+        model.place(Coordinate(50.5, -115.5), null)
+        val source = org.nodescope.android.core.model.ReportedAntennaSource("test.invalid", "a".repeat(64), 1, "Editor")
+        val initial = model.inputs()!!.transmitHeightMeters
+        model.applyReportedHeight(0.0, source)
+        assertEquals(initial, model.inputs()!!.transmitHeightMeters, 0.0)
+        model.applyReportedHeight(1.0, source)
+        assertEquals(1.0, model.inputs()!!.transmitHeightMeters, 1e-9)
+        model.applyReportedHeight(7.6, source)
+        assertEquals(7.6, model.inputs()!!.transmitHeightMeters, 1e-9)
+        val saved = requireNotNull(model.savedSnapshot())
+        model.set("txHeight", "26")
+        assertNull(model.reportedTransmitHeight)
+        model.restore(saved)
+        assertEquals(7.6, model.inputs()!!.transmitHeightMeters, 1e-9)
+        assertEquals(source, model.reportedTransmitHeight)
+    }
+
+    @Test fun applyingReportedGainRetainsOtherInputsAndRoundTrips() = model(DistanceUnit.IMPERIAL) { model ->
+        model.place(Coordinate(50.5, -115.5), null)
+        val before = requireNotNull(model.inputs())
+        val source = org.nodescope.android.core.model.ReportedAntennaSource("test.invalid", "a".repeat(64), 1, "Editor")
+        model.applyReportedGain(31.0, source)
+        assertEquals(before.budget.transmitGainDbi, model.inputs()!!.budget.transmitGainDbi, 0.0)
+        assertNull(model.reportedTransmitGain)
+        model.applyReportedGain(8.5, source)
+        val after = requireNotNull(model.inputs())
+        assertEquals(8.5, after.budget.transmitGainDbi, 0.0)
+        assertEquals(before.transmitHeightMeters, after.transmitHeightMeters, 0.0)
+        assertEquals(before.budget.transmitPowerDbm, after.budget.transmitPowerDbm, 0.0)
+        assertEquals(before.budget.receiveGainDbi, after.budget.receiveGainDbi, 0.0)
+        val saved = requireNotNull(model.savedSnapshot())
+        model.set("txGain", "4")
+        assertNull(model.reportedTransmitGain)
+        model.restore(saved)
+        assertEquals(8.5, model.number("txGain")!!, 0.0)
+        assertEquals(source, model.reportedTransmitGain)
+    }
+
+    @Test fun observerRadioDefaultsUseTheFrequencyMajorityAndSnapToMeshCore() {
+        val result = PlannerRadioDefault.resolve(listOf(
+            "910.525,62.5,7,5", "917.25,62.5,7,5", "917.250024,125,8,6", null, "bad",
+        ), "US", "DE")
+        assertEquals("meshcore-nz-narrow", result.preset.id)
+        assertEquals(PlannerRadioDefault.Origin.OBSERVERS, result.origin)
+        val atLimit = PlannerRadioDefault.resolve(listOf("911.525,62.5,7,5"), "NZ", null)
+        assertEquals("meshcore-us-ca", atLimit.preset.id)
+        val outside = PlannerRadioDefault.resolve(listOf(
+            "911.526,62.5,7,5", "911.526,62.5,7,5", "910.525,62.5,7,5",
+            "910.525,62.5,7", "910.525,NaN,7,5", "910.525,62.5,7,garbage",
+        ), "NZ", "US")
+        assertEquals("meshcore-nz-narrow", outside.preset.id)
+        assertEquals(PlannerRadioDefault.Origin.ANALYZER_COUNTRY, outside.origin)
+    }
+
+    @Test fun brazilObserversDoNotDisplaceAustralianOrNewZealandPresets() {
+        val expected = listOf(
+            "923.125,62.5,8,8" to "meshcore-br-narrow",
+            "916.575,62.5,7,7" to "meshcore-au-narrow",
+            "917.375,62.5,7,5" to "meshcore-nz-narrow",
+        )
+        for ((report, id) in expected) {
+            val resolved = PlannerRadioDefault.resolve(listOf(report), "US", "GB")
+            assertEquals(PlannerRadioDefault.Origin.OBSERVERS, resolved.origin)
+            assertEquals(id, resolved.preset.id)
+        }
+    }
+
+    @Test fun sourceCountryOverridesDeviceAndOnlySpecifiedCountriesAreMapped() {
+        val groups = mapOf(
+            "meshcore-us-ca" to listOf("US", "CA"),
+            "meshcore-eu-uk-narrow" to listOf("AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI",
+                "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO",
+                "SK", "SI", "ES", "SE", "GB", "CH", "NO", "IS", "LI"),
+            "meshcore-au-narrow" to listOf("AU"),
+            "meshcore-nz-narrow" to listOf("NZ"),
+            "meshcore-br-narrow" to listOf("BR"),
+        )
+        for ((id, countries) in groups) for (country in countries) {
+            val resolved = PlannerRadioDefault.resolve(listOf(null, "invalid"), country, "JP")
+            assertEquals(PlannerRadioDefault.Origin.ANALYZER_COUNTRY, resolved.origin)
+            assertEquals(id, resolved.preset.id)
+        }
+        val device = PlannerRadioDefault.resolve(emptyList(), "CR", "GB")
+        assertEquals(PlannerRadioDefault.Origin.DEVICE_REGION, device.origin)
+        assertEquals("meshcore-eu-uk-narrow", device.preset.id)
+        val fallback = PlannerRadioDefault.resolve(emptyList(), "CR", "JP")
+        assertEquals(PlannerRadioDefault.Origin.FALLBACK, fallback.origin)
+        assertEquals(CoverageRadioPreset.standard, fallback.preset)
+    }
+
+    @Test fun reopeningTheSameEditorDoesNotReplaceUserChoices() = model { model ->
+        val regional = PlannerRadioDefault.resolve(emptyList(), "GB", "US")
+        model.initializeRadio(regional)
+        assertEquals(regional.preset, model.radioPreset)
+        assertEquals(regional.origin, model.radioDefaultOrigin)
+        model.set("power", "20")
+        model.initializeRadio(regional)
+        assertEquals(20.0, model.number("power"))
+        assertNull(model.radioDefaultOrigin)
     }
 
     @Test fun metricDefaultsProduceValidStudyInputs() = model { model ->
@@ -127,11 +258,20 @@ class EstimatedCoverageViewModelTest {
     @Test fun acceptingTheAssumptionsIsRemembered() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val root = Files.createTempDirectory("coverage").toFile()
+        val models = mutableListOf<EstimatedCoverageViewModel>()
+        val preferences = CoverageMemoryPreferences()
         try {
-            val preferences = CoverageMemoryPreferences()
-            EstimatedCoverageViewModel(File(root, "terrain"), preferences, DistanceUnit.METRIC).updateAcceptsScenario(true)
-            assertTrue(EstimatedCoverageViewModel(File(root, "terrain"), preferences, DistanceUnit.METRIC).acceptsScenario)
-        } finally { root.deleteRecursively(); Dispatchers.resetMain() }
+            val initial = EstimatedCoverageViewModel(File(root, "terrain"), preferences, DistanceUnit.METRIC)
+            models += initial
+            initial.updateAcceptsScenario(true)
+            val reopened = EstimatedCoverageViewModel(File(root, "terrain"), preferences, DistanceUnit.METRIC)
+            models += reopened
+            assertTrue(reopened.acceptsScenario)
+        } finally {
+            closeCoverageModels(models)
+            root.deleteRecursively()
+            Dispatchers.resetMain()
+        }
     }
 }
 
@@ -165,4 +305,12 @@ internal class CoverageMemoryPreferences : SharedPreferences {
             pending.forEach { (key, value) -> if (value == null) values.remove(key) else values[key] = value }
         }
     }
+}
+
+
+// Coverage models can be reading diagnostics on Dispatchers.IO while a test finishes.
+internal suspend fun closeCoverageModels(models: List<EstimatedCoverageViewModel>) {
+    val jobs = models.mapNotNull { it.viewModelScope.coroutineContext[Job] }
+    jobs.forEach { it.cancel() }
+    jobs.joinAll()
 }

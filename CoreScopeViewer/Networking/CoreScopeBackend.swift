@@ -16,6 +16,29 @@ struct CoreScopeBackend: AnalyzerBackend {
         .observerAnalytics, .channelDecryptOnPhone, .serverChannels, .mapDefaults, .nodeCheck
     ]
 
+    func repeaterIsUnclaimed(publicKey: String) async throws -> Bool {
+        struct ClaimState: Decodable, Sendable {
+            struct Claim: Decodable, Sendable {
+                let displayName: String
+            }
+            let pubkey: String
+            let claimers: [Claim]
+        }
+        let info: ClaimState = try await get("/api/repeaters/\(publicKey.urlPathComponentEncoded)/info")
+        return info.pubkey.caseInsensitiveCompare(publicKey) == .orderedSame && info.claimers.isEmpty
+    }
+
+    func repeaterMetadata() async throws -> RepeaterMetadataCatalog {
+        do {
+            return try await get("/api/repeaters/info")
+        } catch APIError.http(404) {
+            return .empty
+        } catch APIError.decoding {
+            // Older servers can serve their HTML application for an unknown endpoint.
+            return .empty
+        }
+    }
+
     func nodes(region: String?) async throws -> NodesResponse {
         try await get("/api/nodes", query: Self.listQuery(limit: 5000, region: region))
     }

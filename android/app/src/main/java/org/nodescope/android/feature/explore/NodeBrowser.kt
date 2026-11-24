@@ -30,13 +30,17 @@ import org.nodescope.android.R
 import org.nodescope.android.core.model.MeshNode
 
 @Composable
-fun NodeBrowser(nodes: List<MeshNode>, total: Int, onNode: (String) -> Unit) {
+fun NodeBrowser(nodes: List<MeshNode>, total: Int, statuses: Map<String, String> = emptyMap(),
+    savedNodeKeys: Set<String> = emptySet(), onNode: (String) -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     // iOS map search: role chips, multi-select; none selected means every role.
     var roles by rememberSaveable { mutableStateOf(listOf<String>()) }
-    val filtered = remember(nodes, query, roles) {
+    var reportedStatus by remember { mutableStateOf<String?>(null) }
+    val filtered = remember(nodes, query, roles, statuses, reportedStatus, savedNodeKeys) {
         nodes.filter {
-            (roles.isEmpty() || it.role.lowercase() in roles) &&
+            val key = it.publicKey.lowercase(java.util.Locale.ROOT)
+            (reportedStatus == null || statuses.isEmpty() || statuses[key] == reportedStatus || key in savedNodeKeys) &&
+                (roles.isEmpty() || it.role.lowercase() in roles) &&
                 "${it.displayName} ${it.publicKey} ${it.role}".contains(query.trim(), ignoreCase = true)
         }
     }
@@ -51,7 +55,10 @@ fun NodeBrowser(nodes: List<MeshNode>, total: Int, onNode: (String) -> Unit) {
                     leadingIcon = { Box(Modifier.size(10.dp).background(roleColor(role), CircleShape)) })
             }
         }
-        Text(stringResource(R.string.nodes_count, nodes.size, total), style = MaterialTheme.typography.labelMedium)
+        if (statuses.isNotEmpty()) {
+            org.nodescope.android.core.design.ReportedStatusFilter(reportedStatus) { reportedStatus = it }
+        }
+        Text(stringResource(R.string.nodes_count, filtered.size, total), style = MaterialTheme.typography.labelMedium)
         if (filtered.isEmpty()) Text(stringResource(R.string.no_nodes), modifier = Modifier.padding(vertical = 24.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(0.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
             items(filtered, key = { it.publicKey }) { node ->
@@ -63,6 +70,13 @@ fun NodeBrowser(nodes: List<MeshNode>, total: Int, onNode: (String) -> Unit) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                             Text(node.displayName, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(nodeRoleLabel(node.role), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+                            statuses[node.publicKey.lowercase(java.util.Locale.ROOT)]?.let { status ->
+                                Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.secondaryContainer) {
+                                    Text(stringResource(org.nodescope.android.core.design.reportedStatusLabel(status)),
+                                        Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                        style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
                             Text(stringResource(R.string.last_seen, readableTime(node.lastSeen)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))

@@ -199,7 +199,7 @@ struct FavoriteChangesScreen: View {
                     }
                     if !items.isEmpty {
                         Button("Load More", systemImage: "arrow.down.circle") { model.refresh(force: false) }
-                            .buttonStyle(.bordered).disabled(model.loading)
+                            .buttonStyle(StandaloneActionButtonStyle()).disabled(model.loading)
                     }
                 }
                 .padding(16)

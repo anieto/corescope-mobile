@@ -1,6 +1,9 @@
 package org.nodescope.android.core.network
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import okhttp3.HttpUrl
@@ -43,6 +46,8 @@ interface BrowseRepository {
     /** Beacon only: one observer's server record (CoreScope screens use the observer list). */
     suspend fun observerDetail(host: String, id: String): MeshObserver =
         throw UnsupportedOperationException("Observer detail is not available on this server.")
+    suspend fun repeaterIsUnclaimed(host: String, publicKey: String): Boolean = false
+    suspend fun repeaterMetadata(host: String, force: Boolean = false): Map<String, RepeaterMetadata> = emptyMap()
     suspend fun allNodes(host: String): List<MeshNode>
     /** The analyzer's latest packets (no region), for Explore's search and dashboard. */
     suspend fun recentPackets(host: String, limit: Int = 1_000): List<LivePacket>
@@ -90,6 +95,65 @@ fun nodeAnalyticsUrl(host: String, publicKey: String, days: Int): HttpUrl =
 class HttpBrowseRepository(private val client: BodySource, private val ephemeral: BodySource = client,
     private val cache: ResponseCache? = null) : BrowseRepository {
     constructor(client: OkHttpClient, cache: ResponseCache? = null) : this(client.saving(cache), client.saving(null), cache)
+
+    private data class RepeaterCatalogAttempt(
+        val url: HttpUrl,
+        val snapshot: Cached<Map<String, RepeaterMetadata>>?,
+        val attemptedAt: Long,
+    )
+
+    private val repeaterMutex = Mutex()
+    private var repeaterAttempt: RepeaterCatalogAttempt? = null
+
+    override suspend fun repeaterIsUnclaimed(host: String, publicKey: String): Boolean {
+        val url = endpoint(host, "api", "repeaters", publicKey, "info")
+        return try {
+            val info = protocolJson.parseToJsonElement(ephemeral.read(url)).jsonObject
+            val key = info["pubkey"] as? JsonPrimitive
+            key?.isString == true && key.content.equals(publicKey, ignoreCase = true) &&
+                (info["claimers"] as? JsonArray)?.isEmpty() == true
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    override suspend fun repeaterMetadata(host: String, force: Boolean): Map<String, RepeaterMetadata> =
+        repeaterMutex.withLock {
+            val url = endpoint(normalizeHost(host), "api", "repeaters", "info")
+            val now = System.currentTimeMillis()
+            val attempt = repeaterAttempt?.takeIf { it.url == url }
+            val previous = attempt?.snapshot?.takeIf { now - it.savedAt in 0..ResponseCache.STALE_LIFETIME }
+                ?: cache?.restore(ResponseCache.STALE_LIFETIME) { source -> parseRepeaterCatalog(source.read(url)) }
+            val lastAttempt = attempt?.attemptedAt ?: previous?.savedAt
+            if (!force && lastAttempt != null &&
+                now - lastAttempt in 0 until FieldRequestBudget.AUTOMATIC_CATALOG_REFRESH_INTERVAL_MILLIS
+            ) return@withLock previous?.value.orEmpty()
+
+            val snapshot = try {
+                val response = ephemeral.read(url)
+                // An old CoreScope server can return the HTML application for an unknown route.
+                val body = if (response.trimStart().startsWith("<")) EMPTY_REPEATER_CATALOG else response
+                val catalog = parseRepeaterCatalog(body)
+                cache?.write(url, body)
+                Cached(catalog, now)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: HttpFailure) {
+                if (error.status == 404) {
+                    cache?.write(url, EMPTY_REPEATER_CATALOG)
+                    Cached(emptyMap(), now)
+                } else previous
+            } catch (_: Exception) {
+                previous
+            }
+            repeaterAttempt = RepeaterCatalogAttempt(url, snapshot, now)
+            snapshot?.value.orEmpty()
+        }
+
+    private fun parseRepeaterCatalog(body: String) =
+        decodeRepeaterCatalog(protocolJson.parseToJsonElement(body).jsonObject)
 
     override suspend fun <T> saved(maxAgeMillis: Long, block: suspend BrowseRepository.() -> T): Cached<T>? =
         cache?.restore(maxAgeMillis) { HttpBrowseRepository(it).block() }
@@ -151,6 +215,8 @@ class HttpBrowseRepository(private val client: BodySource, private val ephemeral
 }
 
 /** `/api/nodes/search` lists nodes without a total. */
+private const val EMPTY_REPEATER_CATALOG = """{"repeaters":[]}"""
+
 @Serializable private data class NodeSearchResponse(val nodes: List<MeshNode> = emptyList())
 
 class NodeCheckAmbiguousKeyException : IllegalStateException("More than one node starts with that key. Enter more of it.")

@@ -51,3 +51,56 @@ struct CoreScopeAccountSettingsTests {
         return try JSONDecoder().decode(CoreScopeAccountSettings.self, from: Data(contentsOf: url))
     }
 }
+
+#if DEBUG
+@MainActor
+struct StagingPushRoutingTests {
+    private let origin = "https://analyzer.example.org"
+    private let other = "https://other.example.org"
+    private let binding = StagingPush.Binding(analyzer: "analyzer", account: 42, subscription: "sub", expiresAt: nil)
+
+    @Test func routeRequiresBothIDsAndFindsTheBoundSource() throws {
+        let payload = ["version": "1", "analyzer_id": "analyzer", "subscription_id": "sub",
+                       "node_pubkey": String(repeating: "a", count: 64)]
+        let route = try #require(StagingPushRoute(payload))
+        let otherBinding = StagingPush.Binding(analyzer: "analyzer", account: 42, subscription: "other", expiresAt: nil)
+        let bindings = [origin: binding, other: otherBinding]
+        #expect(StagingPush.matchingOrigin(for: route, selected: origin, bindings: bindings) == origin)
+        #expect(StagingPush.matchingOrigin(for: route, selected: other, bindings: bindings) == origin)
+        #expect(StagingPush.matchingOrigin(for: route, selected: other, bindings: [other: otherBinding]) == nil)
+        #expect(StagingPush.matchingOrigin(for: route, selected: "unrelated", bindings: [origin: binding, other: binding]) == nil)
+    }
+
+    @Test func staleBindingRequiresDefiniteEvidence() {
+        let current = StagingPushCapability(relayOrigin: StagingPush.origin, analyzerId: "analyzer",
+                                            contractVersion: 1, platforms: ["ios"])
+        let changed = StagingPushCapability(relayOrigin: StagingPush.origin, analyzerId: "replacement",
+                                            contractVersion: 1, platforms: ["ios"])
+        #expect(!StagingPush.isStale(binding, capability: current))
+        #expect(StagingPush.isStale(binding, capability: changed))
+        #expect(StagingPush.isStale(binding, capability: nil))
+        let inactive = Data(#"{"error":{"code":"analyzer_inactive"}}"#.utf8)
+        let expired = Data(#"{"error":{"code":"inactive_proof"}}"#.utf8)
+        let unknown = Data(#"{"error":{"code":"unknown_analyzer"}}"#.utf8)
+        #expect(StagingPush.isInactiveAnalyzer(status: 410, data: inactive, linkProof: false))
+        #expect(!StagingPush.isInactiveAnalyzer(status: 503, data: inactive, linkProof: false))
+        #expect(!StagingPush.isInactiveAnalyzer(status: 410, data: expired, linkProof: false))
+        #expect(StagingPush.isInactiveAnalyzer(status: 404, data: unknown, linkProof: true))
+        #expect(!StagingPush.isInactiveAnalyzer(status: 404, data: unknown, linkProof: false))
+    }
+    @Test func unknownInstallationRequiresExactRelayError() {
+        func body(_ code: String) -> Data {
+            Data(#"{"error":{"code":"\#(code)"}}"#.utf8)
+        }
+        #expect(StagingPush.isUnknownInstallation(status: 404, data: body("unknown_installation")))
+        for code in ["unknown_analyzer", "unknown_subscription", "unknown_proof"] {
+            #expect(!StagingPush.isUnknownInstallation(status: 404, data: body(code)))
+        }
+        #expect(!StagingPush.isUnknownInstallation(status: 401, data: body("invalid_credential")))
+        #expect(!StagingPush.isUnknownInstallation(status: 401, data: body("unknown_installation")))
+        #expect(!StagingPush.isUnknownInstallation(status: 404, data: Data()))
+        #expect(!StagingPush.isUnknownInstallation(status: 404, data: Data("{".utf8)))
+    }
+
+}
+#endif

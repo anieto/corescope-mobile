@@ -260,7 +260,7 @@ fun AboutScreen() {
         item {
             Section(stringResource(R.string.settings_what_this_is)) {
                 Text(stringResource(R.string.settings_nodescope_is_an_unofficial_read_only_companion_app))
-                Text(stringResource(R.string.settings_this_app_has_no_backend_of_its_own))
+                Text(stringResource(R.string.settings_about_data_sources))
             }
         }
         item {

@@ -15,6 +15,7 @@ struct MapScreen: View {
     /// map itself is not resized, so its nodes stay put; its controls move clear of the panel,
     /// and the camera pans alongside the panel's slide so the visible part stays centred.
     var trailingObscuredWidth: CGFloat = 0
+    var previewTrailingInset: CGFloat = 0
 
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(RegionFilterStore.self) private var regionFilter
@@ -33,6 +34,8 @@ struct MapScreen: View {
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var visibleRegion: MKCoordinateRegion?
     @State private var selectedNode: MeshNode?
+    @State private var previewNode: MeshNode?
+    @State private var replayChromeHeight: CGFloat = 0
     @State private var displayedNodes: [MeshNode] = []
     @State private var displayCoordinatesByNodeID: [String: CLLocationCoordinate2D] = [:]
     @State private var fanOriginsByNodeID: [String: CLLocationCoordinate2D] = [:]
@@ -44,6 +47,9 @@ struct MapScreen: View {
     @State private var iataCoordinates: [String: CLLocationCoordinate2D] = [:]
     @State private var iataRadiusKm: [String: Double] = [:]
     @State private var mapDisplayStyle = MapDisplayStyle.persisted
+    @Environment(FavoritesStore.self) private var favoritesStore
+    @State private var repeaterStatuses: [String: String] = [:]
+    @State private var repeaterStatusSource: UUID?
     @State private var nodeFilters = MapNodeFilterSelection()
     @State private var filteredNodeCount = 0
     @State private var locationManager = MapLocationManager()
@@ -129,6 +135,7 @@ struct MapScreen: View {
         let isRouteHop: Bool
         let leaderOffset: CGSize?
         let label: String?
+        let reportedStatus: String?
         let labelSide: LabelSide
         let colorScheme: ColorScheme
 
@@ -149,7 +156,7 @@ struct MapScreen: View {
                     }
                     .overlay(alignment: labelSide.alignment) {
                         if let label {
-                            MapNodeNameLabel(name: label, side: labelSide, colorScheme: colorScheme)
+                            MapNodeNameLabel(name: label, reportedStatus: reportedStatus, side: labelSide, colorScheme: colorScheme)
                         }
                     }
             }
@@ -158,12 +165,19 @@ struct MapScreen: View {
 
     private struct MapNodeNameLabel: View {
         let name: String
+        var reportedStatus: String? = nil
         let side: LabelSide
         let colorScheme: ColorScheme
 
         var body: some View {
-            Text(name)
-                .font(.monaspace(.caption2).weight(.semibold))
+            HStack(spacing: 4) {
+                Text(name).font(.monaspace(.caption2).weight(.semibold))
+                if let reportedStatus {
+                    Text(reportedRepeaterStatusLabel(reportedStatus))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
@@ -319,6 +333,7 @@ struct MapScreen: View {
                         Button(action: togglePacketSidebar) {
                             Image(systemName: "list.bullet.rectangle")
                                 .frame(width: 44, height: 44)
+                                .contentShape(.rect(cornerRadius: 18))
                         }
                         .buttonStyle(.plain)
                         .nodeScopeFloatingGlass(cornerRadius: 18)
@@ -326,9 +341,7 @@ struct MapScreen: View {
                     }
 
                     if let resumeLiveTraffic {
-                        LiveMapPausedButton(resume: resumeLiveTraffic)
-                            .padding(.horizontal, 14)
-                            .frame(height: 44)
+                        LiveMapPausedButton(resume: resumeLiveTraffic, usesFloatingGlass: true)
                             .nodeScopeFloatingGlass(cornerRadius: 18)
                     } else {
                         HStack(spacing: 7) {
@@ -353,6 +366,7 @@ struct MapScreen: View {
                     Button(action: retry) {
                         Image(systemName: "arrow.clockwise")
                             .frame(width: 44, height: 44)
+                            .contentShape(.rect)
                     }
                     .disabled(isRefreshing)
                     .keyboardCommand(.refresh, action: retry)
@@ -361,6 +375,7 @@ struct MapScreen: View {
                     Button(action: search) {
                         Image(systemName: "magnifyingglass")
                             .frame(width: 44, height: 44)
+                            .contentShape(.rect)
                     }
                     .keyboardCommand(.search, action: search)
                     .accessibilityLabel("Search nodes")
@@ -380,6 +395,7 @@ struct MapScreen: View {
                     } label: {
                         Image(systemName: "map")
                             .frame(width: 44, height: 44)
+                            .contentShape(.rect)
                     }
                     .accessibilityLabel("Map style")
                 }
@@ -495,6 +511,7 @@ struct MapScreen: View {
                 .toolbarVisibility(usesWideMapHeader ? .hidden : .automatic, for: .navigationBar)
                 .navigationDestination(item: $selectedNode) { node in
                     NodeDetailScreen(node: node)
+                        .id(node.publicKey)
                 }
                 .overlay(alignment: .top) {
                     if isTabActive && usesWideMapHeader {
@@ -550,6 +567,7 @@ struct MapScreen: View {
                                     .font(.monaspace(.title3).weight(.semibold))
                                     .foregroundStyle(colorScheme == .dark ? Color.white : Color.accentColor)
                                     .frame(width: 44, height: 44)
+                                    .contentShape(.rect(cornerRadius: 10))
                             }
                             .buttonStyle(.plain)
                             .nodeScopeFloatingGlass(cornerRadius: 10)
@@ -561,6 +579,7 @@ struct MapScreen: View {
                                 .font(.monaspace(.title3).weight(.semibold))
                                 .foregroundStyle(colorScheme == .dark ? Color.white : Color.accentColor)
                                 .frame(width: 44, height: 44)
+                                .contentShape(.rect(cornerRadius: 10))
                         }
                         .buttonStyle(.plain)
                         .nodeScopeFloatingGlass(cornerRadius: 10)
@@ -607,6 +626,7 @@ struct MapScreen: View {
                         }
                         .padding(.bottom, viewModel.nodes.isEmpty ? 12 : 44)
                         .padding(.trailing, trailingObscuredWidth)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { replayChromeHeight = $0 }
                     }
                 }
                 .overlay(alignment: .bottom) {
@@ -629,6 +649,22 @@ struct MapScreen: View {
                         }
                         .padding(.bottom, 12)
                         .padding(.trailing, trailingObscuredWidth)
+                    }
+                }
+                .overlay(alignment: .bottomLeading) {
+                    if isTabActive, bottomObscuredFraction == 0, let previewNode {
+                        ViewThatFits(in: .vertical) {
+                            nodePreviewCard(previewNode)
+                                .fixedSize(horizontal: false, vertical: true)
+                            ScrollView { nodePreviewCard(previewNode) }
+                        }
+                        .frame(maxWidth: 360)
+                        .frame(maxWidth: .infinity)
+                        // Leave 8 points beside the 44-point location and 36-point zoom controls.
+                        .padding(.leading, 64)
+                        .padding(.trailing, max(previewTrailingInset + 12, trailingObscuredWidth + 56))
+                        .padding(.bottom, packetReplayStore.isReplayActive || isReplayMode ? max(48, replayChromeHeight + 8) : 48)
+                        .padding(.top, 68)
                     }
                 }
                 .overlay {
@@ -678,7 +714,7 @@ struct MapScreen: View {
         }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { chromeTopInset = $0 }
         .sheet(isPresented: $isSearchPresented) {
-            MapNodeSearchSheet(nodes: viewModel.nodes, selectNode: focusOnSearchedNode)
+            MapNodeSearchSheet(nodes: viewModel.nodes, statuses: currentRepeaterStatuses, savedNodes: savedNodeKeys, selectNode: focusOnSearchedNode)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
@@ -698,7 +734,8 @@ struct MapScreen: View {
         .sheet(isPresented: $isMapFiltersPresented) {
             MapNodeFilterSheet(
                 filters: $nodeFilters,
-                observers: mapObserverOptions
+                observers: mapObserverOptions,
+                hasRepeaterStatuses: !currentRepeaterStatuses.isEmpty
             )
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
@@ -712,6 +749,7 @@ struct MapScreen: View {
             incomingEventTask?.cancel()
             incomingEventTask = nil
             selectedNode = nil
+            previewNode = nil
             pendingReplayRequestID = nil
             startedReplay = nil
             isReplayAwaitingCamera = false
@@ -746,6 +784,16 @@ struct MapScreen: View {
             processedEventIds = Set(liveFeed.recentEvents.map { liveEventKey(for: $0) })
             isInitialLoadComplete = true
         }
+        .task(id: "\(settings.sourceSession.id)|\(isTabActive)|\(settings.sourceIsReady)") {
+            guard isTabActive, settings.sourceIsReady else { return }
+            let backend = AnalyzerBackendFactory.make(settings: settings)
+            let catalog = await FieldCatalogRepository.shared.repeaterMetadata(for: backend)
+            guard backend.sourceSession.isCurrent, !Task.isCancelled else { return }
+            repeaterStatusSource = backend.sourceSession.id
+            repeaterStatuses = catalog.reportedStatuses
+            updateDisplayedNodes()
+        }
+        .onChange(of: mapLoadTaskID) { previewNode = nil }
         .task(id: mapLoadTaskID) {
             let sourceHost = settings.host
             let sourceSessionID = settings.sourceSession.id
@@ -967,6 +1015,7 @@ struct MapScreen: View {
     private func focusOnSearchedNode(_ node: MeshNode) {
         guard let coordinate = validCoordinate(node.coordinate) else { return }
         highlightedNodeID = node.id
+        updateDisplayedNodes()
         withAnimation(.easeInOut(duration: 0.35)) {
             cameraPosition = .region(
                 MKCoordinateRegion(
@@ -1002,6 +1051,7 @@ struct MapScreen: View {
         }
         lastHandledNavigationRequestID = appNavigationStore.requestID
         selectedNode = nil
+        previewNode = nil
         focusOnSearchedNode(node)
     }
 
@@ -1125,7 +1175,7 @@ struct MapScreen: View {
                     if let coordinate = node.coordinate, !observedNodeIDs.contains(node.id) {
                         let displayCoordinate = displayCoordinatesByNodeID[node.id] ?? coordinate
                         Annotation("", coordinate: displayCoordinate, anchor: .center) {
-                            let isHighlighted = node.id == highlightedNodeID
+                            let isHighlighted = node.id == highlightedNodeID || node.id == previewNode?.id
                             let isRouteHop = routeCoordinates.contains(CoordinateKey(coordinate))
                             MapNodeMarker(
                                 role: node.role,
@@ -1134,6 +1184,7 @@ struct MapScreen: View {
                                 leaderOffset: leaderOffsets[node.id],
                                 label: labeledIDs.contains(Self.nodeLabelID(node.id))
                                     ? node.name ?? shortKey(node.publicKey) : nil,
+                                reportedStatus: currentRepeaterStatuses[node.publicKey.lowercased()],
                                 labelSide: labelSides[node.id] ?? .below,
                                 colorScheme: colorScheme
                             )
@@ -1145,8 +1196,8 @@ struct MapScreen: View {
                             .accessibilityAddTraits(.isButton)
                             .accessibilityLabel(node.name ?? shortKey(node.publicKey))
                             .accessibilityValue(NodeRoleStyle.label(for: node.role))
-                            .accessibilityHint(isRouteHop ? "Opens details for this route hop" : "Opens node details")
-                            .accessibilityAction { selectedNode = node }
+                            .accessibilityHint("Shows node preview")
+                            .accessibilityAction { previewNode = node }
                         }
                     }
                 }
@@ -1260,8 +1311,30 @@ struct MapScreen: View {
         }
     }
 
+    private var currentRepeaterStatuses: [String: String] {
+        repeaterStatusSource == settings.sourceSession.id ? repeaterStatuses : [:]
+    }
+
+    private var savedNodeKeys: Set<String> {
+        let host = AnalyzerSettings.normalizedHost(settings.host)
+        return Set(favoritesStore.items.filter { $0.source == host && $0.kind == .node }.map { $0.entityID.lowercased() })
+    }
+
     private func updateDisplayedNodes(in region: MKCoordinateRegion? = nil) {
-        let nodes = viewModel.nodes
+        let statuses = currentRepeaterStatuses
+        let nodes: [MeshNode]
+        if let status = nodeFilters.reportedStatus, !statuses.isEmpty {
+            var retained = savedNodeKeys
+            if let highlightedNodeID { retained.insert(highlightedNodeID.lowercased()) }
+            if let selectedNode { retained.insert(selectedNode.publicKey.lowercased()) }
+            if let previewNode { retained.insert(previewNode.publicKey.lowercased()) }
+            nodes = viewModel.nodes.filter { node in
+                let key = node.publicKey.lowercased()
+                return retained.contains(key) || statuses[key] == status
+            }
+        } else {
+            nodes = viewModel.nodes
+        }
         let displayRegion = (region ?? visibleRegion).map(DisplayRegion.init)
         let selectedRoles = nodeFilters.selectedRoles
         let groupsNodes = groupsNodes
@@ -1716,6 +1789,7 @@ struct MapScreen: View {
                     .fixedSize()
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)
+                    .contentShape(.rect)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Show route nodes only")
@@ -1943,16 +2017,66 @@ struct MapScreen: View {
             // Only nodes near the tap are projected; projecting every node made taps lag on big meshes.
             let nodes = nodesNear(screenPoint, using: proxy, in: nodes)
             if let cluster = nearestCluster(to: screenPoint, using: proxy) {
+                previewNode = nil
                 zoomToCluster(cluster)
-            } else if let route = nearestRoute(to: screenPoint, using: proxy, at: date) {
-                selectedRouteDetails = route
             } else if case let stack = stackedNodes(at: screenPoint, using: proxy, nodes: nodes), !stack.isEmpty {
+                previewNode = nil
                 zoomToNodes(stack)
             } else if let node = nearestNode(to: screenPoint, using: proxy, nodes: nodes) {
-                selectedNode = node
+                previewNode = node
+            } else {
+                previewNode = nil
+                selectedRouteDetails = nearestRoute(to: screenPoint, using: proxy, at: date)
             }
             pendingMapTapTask = nil
         }
+    }
+
+    private func nodePreviewCard(_ node: MeshNode) -> some View {
+        let roleColor = NodeRoleStyle.color(for: node.role.lowercased())
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: NodeRoleStyle.symbolName(for: node.role.lowercased()))
+                    .foregroundStyle(roleColor)
+                    .frame(width: 36, height: 36)
+                    .background(roleColor.opacity(0.16), in: Circle())
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(node.name.flatMap { $0.isEmpty ? nil : $0 } ?? shortKey(node.publicKey))
+                        .font(.monaspace(.headline))
+                        .accessibilityAddTraits(.isHeader)
+                    Text(NodeRoleStyle.label(for: node.role))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    if let lastHeard = node.latestActivity {
+                        Text("Last heard \(RelativeTime.string(from: lastHeard))")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Button {
+                    previewNode = nil
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close")
+            }
+            Button {
+                previewNode = nil
+                selectedNode = node
+            } label: {
+                Text("View node details")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding(12)
+        .instrumentCard(fillOpacity: 1)
     }
 
     private func cancelPendingMapTap() {
@@ -2084,6 +2208,7 @@ struct MapScreen: View {
         // Already showing this request on this route: a repeat trigger, not a new replay.
         if isReplayMode, startedReplay == currentReplay { return }
         selectedNode = nil
+        previewNode = nil
         pendingReplayRequestID = packetReplayStore.requestID
         guard !isChangingRegion else { return }
         replayPendingPacketIfNeeded()
@@ -3932,6 +4057,7 @@ private struct MapRouteDetailsSheet: View {
                         if let node = hop.node {
                             NavigationLink {
                                 NodeDetailScreen(node: node)
+                                    .id(node.publicKey)
                             } label: {
                                 MapRouteHopRow(hop: hop, showsDisclosureIndicator: false)
                             }
@@ -4046,15 +4172,17 @@ private struct MapNodeFilterSelection: Codable, Equatable {
     var selectedRoles: Set<String> = []
     var activityFilter: MapNodeActivityFilter = .all
     var selectedObserverID: String?
+    var reportedStatus: String?
 
     var isFiltering: Bool {
-        !selectedRoles.isEmpty || activityFilter != .all || selectedObserverID != nil
+        !selectedRoles.isEmpty || activityFilter != .all || selectedObserverID != nil || reportedStatus != nil
     }
 
     var activeFilterCount: Int {
         (selectedRoles.isEmpty ? 0 : 1)
             + (activityFilter == .all ? 0 : 1)
             + (selectedObserverID == nil ? 0 : 1)
+            + (reportedStatus == nil ? 0 : 1)
     }
 
     static func persisted(for analyzerHost: String) -> Self {
@@ -4136,6 +4264,7 @@ private struct MapNodeFilterButton: View {
             .foregroundStyle(.primary)
             .frame(minWidth: 34, minHeight: 34)
             .padding(.horizontal, isFiltering ? 8 : 0)
+            .contentShape(.rect(cornerRadius: 20))
             .nodeScopeFloatingGlass(cornerRadius: 20)
         }
         .buttonStyle(.plain)
@@ -4153,6 +4282,7 @@ private struct MapKeyButton: View {
                 .font(.body.weight(.semibold))
                 .foregroundStyle(.primary)
                 .frame(minWidth: 34, minHeight: 34)
+                .contentShape(.rect(cornerRadius: 20))
                 .nodeScopeFloatingGlass(cornerRadius: 20)
         }
         .buttonStyle(.plain)
@@ -4310,6 +4440,7 @@ private struct MapKeyLinesSymbol: View {
 private struct MapNodeFilterSheet: View {
     @Binding var filters: MapNodeFilterSelection
     let observers: [MapObserverOption]
+    let hasRepeaterStatuses: Bool
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
@@ -4329,6 +4460,10 @@ private struct MapNodeFilterSheet: View {
             List {
                 MapNodesShownSection(selection: $filters.activityFilter)
                 MapRoleFilterSection(selectedRoles: $filters.selectedRoles)
+                if hasRepeaterStatuses || filters.reportedStatus != nil {
+                    Section { ReportedRepeaterStatusPicker(selection: $filters.reportedStatus) }
+                        .instrumentListRows()
+                }
                 MapObserverFilterSummarySection(
                     selectedObserverTitle: selectedObserverTitle,
                     action: { isObserverPickerPresented = true }
@@ -4638,12 +4773,15 @@ private struct MapObserverPickerSheet: View {
 
 private struct MapNodeSearchSheet: View {
     let nodes: [MeshNode]
+    let statuses: [String: String]
+    let savedNodes: Set<String>
     let selectNode: (MeshNode) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
     @State private var results: [MeshNode] = []
     @State private var selectedRoles: Set<String> = []
+    @State private var reportedStatus: String?
 
     private let roles = ["repeater", "room", "companion", "sensor"]
 
@@ -4675,7 +4813,12 @@ private struct MapNodeSearchSheet: View {
                     .padding(.horizontal, 16)
                 }
 
-                if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedRoles.isEmpty {
+                if !statuses.isEmpty {
+                    ReportedRepeaterStatusPicker(selection: $reportedStatus)
+                        .padding(.horizontal, 16)
+                }
+
+                if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedRoles.isEmpty && reportedStatus == nil {
                     ContentUnavailableView(
                         String(localized: "Find a Node"),
                         systemImage: "magnifyingglass",
@@ -4693,7 +4836,8 @@ private struct MapNodeSearchSheet: View {
                                 name: node.name ?? String(localized: "Unnamed Node"),
                                 role: node.role,
                                 publicKey: node.publicKey,
-                                lastSeen: node.latestActivity
+                                lastSeen: node.latestActivity,
+                                reportedStatus: statuses[node.publicKey.lowercased()]
                             )
                         }
                         .buttonStyle(.plain)
@@ -4717,15 +4861,15 @@ private struct MapNodeSearchSheet: View {
             .onChange(of: nodes) {
                 updateResults()
             }
-            .onChange(of: selectedRoles) {
-                updateResults()
-            }
+            .onChange(of: selectedRoles) { updateResults() }
+            .onChange(of: statuses) { updateResults() }
+            .onChange(of: reportedStatus) { updateResults() }
         }
     }
 
     private func updateResults() {
         let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !normalizedQuery.isEmpty || !selectedRoles.isEmpty else {
+        guard !normalizedQuery.isEmpty || !selectedRoles.isEmpty || reportedStatus != nil else {
             results = []
             return
         }
@@ -4741,6 +4885,10 @@ private struct MapNodeSearchSheet: View {
                 || node.role.localizedCaseInsensitiveContains(normalizedQuery)
         }
         .filter { selectedRoles.isEmpty || selectedRoles.contains($0.role) }
+        .filter { node in
+            reportedStatus == nil || savedNodes.contains(node.publicKey.lowercased())
+                || statuses[node.publicKey.lowercased()] == reportedStatus
+        }
         .sorted { lhs, rhs in
             let lhsName = lhs.name ?? lhs.publicKey
             let rhsName = rhs.name ?? rhs.publicKey
@@ -4782,6 +4930,7 @@ private struct MapNodeSearchRow: View {
     let role: String
     let publicKey: String
     let lastSeen: Date?
+    let reportedStatus: String?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -4803,6 +4952,13 @@ private struct MapNodeSearchRow: View {
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                if let reportedStatus {
+                    Text(reportedRepeaterStatusLabel(reportedStatus))
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.quaternary, in: Capsule())
+                }
             }
 
             Spacer()
@@ -4869,6 +5025,7 @@ private struct CompactLiveMapTitle: View {
 /// The map's title while live traffic is paused: says so, and resumes it when tapped.
 private struct LiveMapPausedButton: View {
     let resume: () -> Void
+    var usesFloatingGlass = false
 
     var body: some View {
         Button(action: resume) {
@@ -4881,6 +5038,9 @@ private struct LiveMapPausedButton: View {
                     .foregroundStyle(.primary)
                     .fixedSize()
             }
+            .padding(.horizontal, usesFloatingGlass ? 14 : 0)
+            .frame(height: usesFloatingGlass ? 44 : nil)
+            .contentShape(.rect(cornerRadius: usesFloatingGlass ? 18 : 0))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Live traffic paused")
@@ -5093,5 +5253,28 @@ private struct MapSidebarBackgroundExtension: ViewModifier {
 
     func body(content: Content) -> some View {
         content.ignoresSafeArea(.container, edges: isEnabled ? [.vertical, .leading] : [])
+    }
+}
+
+
+private struct ReportedRepeaterStatusPicker: View {
+    @Binding var selection: String?
+
+    var body: some View {
+        Picker("Reported status", selection: $selection) {
+            Text("Any status").tag(String?.none)
+            ForEach(["active", "maintenance", "decommissioned"], id: \.self) { status in
+                Text(reportedRepeaterStatusLabel(status)).tag(Optional(status))
+            }
+        }
+        .pickerStyle(.menu)
+    }
+}
+
+private func reportedRepeaterStatusLabel(_ status: String) -> String {
+    switch status {
+    case "active": String(localized: "Reported active")
+    case "maintenance": String(localized: "Reported maintenance")
+    default: String(localized: "Reported decommissioned")
     }
 }

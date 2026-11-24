@@ -33,7 +33,7 @@ private sealed interface LinkMapMenu {
     val x: Float
     val y: Float
     /** Both points are placed: move either one to [spot], the known node [name] if there is one. */
-    data class Move(val spot: ProfileCoordinate, val name: String?, override val x: Float, override val y: Float) : LinkMapMenu
+    data class Move(val spot: ProfileCoordinate, val name: String?, val publicKey: String?, override val x: Float, override val y: Float) : LinkMapMenu
     data class Pin(val endpoint: String, override val x: Float, override val y: Float) : LinkMapMenu
 }
 
@@ -60,7 +60,7 @@ internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, point
     snapshot: org.nodescope.android.core.model.AnalyzerSnapshot? = null, selectedRegion: String? = null,
     sourceViewport: org.nodescope.android.core.model.RegionCoordinate? = null, analysis: LinkAnalysis? = null,
     bottomInset: androidx.compose.ui.unit.Dp = 0.dp, names: Map<String, String> = emptyMap(),
-    undo: LinkProfileViewModel.Undo? = null, onPlace: (String, ProfileCoordinate, String?) -> Unit = { _, _, _ -> },
+    undo: LinkProfileViewModel.Undo? = null, onPlace: (String, ProfileCoordinate, String?, String?) -> Unit = { _, _, _, _ -> },
     onCoverage: (String) -> Unit = {}, onChooseNew: (String) -> Unit = {}, onRemove: (String) -> Unit = {}, onUndo: () -> Unit = {}, onUndoExpired: (Long) -> Unit = {}) {
     Box(modifier) {
         var camera by mapState.camera
@@ -150,9 +150,9 @@ internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, point
             val name = node?.name?.takeIf { it.isNotBlank() }
             if (spot != null) {
                 haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                if (endpoint != null) { menu = null; onPlace(endpoint, spot, name) }
+                if (endpoint != null) { menu = null; onPlace(endpoint, spot, name, node?.publicKey) }
                 else Coordinate.gps(spot.latitude, spot.longitude)?.let { engine.camera?.toScreen(it) }?.let { (x, y) ->
-                    menu = LinkMapMenu.Move(spot, name, x, y)
+                    menu = LinkMapMenu.Move(spot, name, node?.publicKey, x, y)
                 }
             }
         }
@@ -173,7 +173,7 @@ internal fun LinkProfileMap(endpoint: String?, pointA: ProfileCoordinate?, point
                             listOf("A", "B").forEach { letter ->
                                 DropdownMenuItem(text = { Text(stringResource(R.string.link_profile_move_here, letter)) }, leadingIcon = { EndpointDot(letter, dark) }, onClick = {
                                     menu = null
-                                    onPlace(letter, open.spot, open.name)
+                                    onPlace(letter, open.spot, open.name, open.publicKey)
                                 })
                             }
                         }

@@ -16,7 +16,7 @@ import org.nodescope.android.core.model.*
 import org.nodescope.android.core.network.*
 import org.nodescope.android.core.storage.*
 
-data class PendingLink(val id: Long, val link: NodeScopeLink)
+data class PendingLink(val id: Long, val link: NodeScopeLink, val watchedNodeSessionId: java.util.UUID? = null)
 
 class AppViewModel(private val container: AppContainer) : ViewModel() {
     val preferences = container.preferences.values.map<AppPreferences, AppPreferences?> { it }
@@ -56,6 +56,11 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     /** A `nodescope://` link waiting to be opened; kept until the app shell is ready (after onboarding). */
     val pendingLink = linkState.asStateFlow()
     fun openLink(data: String?) { NodeScopeLink.parse(data)?.let { linkState.value = PendingLink(System.nanoTime(), it) } }
+    fun openWatchedNode(publicKey: String, sourceSessionId: java.util.UUID) {
+        linkState.value = PendingLink(
+            System.nanoTime(), NodeScopeLink(NodeScopeLink.Kind.NODE, publicKey), watchedNodeSessionId = sourceSessionId,
+        )
+    }
     fun linkHandled(id: Long) { if (linkState.value?.id == id) linkState.value = null }
 
     /** A `.nodescope` file opened from another app or shared to NodeScope; the import sheet reads it. */

@@ -130,6 +130,10 @@ struct InstrumentRowBackground: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+        Self.fill(for: colorScheme)
+    }
+
+    static func fill(for colorScheme: ColorScheme) -> Color {
         colorScheme == .dark
             ? NodeScopeStyle.cardSlate.opacity(0.82)
             : Color.white.opacity(0.86)
@@ -170,12 +174,14 @@ private struct AdaptiveSidebarListModifier: ViewModifier {
                 .contentMargins(.horizontal, isFloatingSidebar ? 0 : nil, for: .scrollContent)
                 .background {
                     if meshBackground {
+                        // Down past the home indicator too: on iPadOS 27 the sidebar runs the
+                        // full height, and stopping above it left a strip of the screen behind.
                         MeshBackground(subdued: true)
-                            .ignoresSafeArea(.container, edges: isHingedDevice ? .all : .top)
+                            .ignoresSafeArea(.container, edges: isHingedDevice ? .all : .vertical)
                     } else {
                         Rectangle()
                             .fill(.thinMaterial)
-                            .ignoresSafeArea(.container, edges: .top)
+                            .ignoresSafeArea(.container, edges: .vertical)
                     }
                 }
         } else {
@@ -199,8 +205,13 @@ extension View {
     }
 
     /// Gives grouped List or Form rows the card surface. Apply to each Section.
-    func instrumentListRows() -> some View {
-        listRowBackground(InstrumentRowBackground())
+    @ViewBuilder
+    func instrumentListRows(colorScheme: ColorScheme? = nil) -> some View {
+        if let colorScheme {
+            listRowBackground(InstrumentRowBackground.fill(for: colorScheme))
+        } else {
+            listRowBackground(InstrumentRowBackground())
+        }
     }
 
     /// Keeps information-dense phone layouts readable on iPad while naturally
@@ -275,5 +286,39 @@ struct AdaptiveSidebarSection<Content: View, Header: View>: View {
         } else {
             Section { content } header: { header }
         }
+    }
+}
+
+/// An opaque surface for secondary actions placed directly on the page background.
+struct StandaloneActionButtonStyle: ButtonStyle {
+    var accent: Color = NodeScopeStyle.signal
+    var lightModeFill = 0.13
+
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var labelColor: Color {
+        guard isEnabled else { return .secondary }
+        return colorScheme == .dark
+            ? accent
+            : accent.mix(with: NodeScopeStyle.deepNavy, by: 0.45)
+    }
+
+    func makeBody(configuration: Configuration) -> some View {
+        let surface = Color(uiColor: .secondarySystemGroupedBackground)
+        let fillAmount = colorScheme == .dark ? 0.13 : lightModeFill
+        let fill = surface.mix(with: accent, by: fillAmount + (configuration.isPressed ? 0.10 : 0))
+        return configuration.label
+            .font(.body.weight(.medium))
+            .foregroundStyle(labelColor)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .background(isEnabled ? fill : surface, in: Capsule())
+            .overlay {
+                Capsule().strokeBorder(isEnabled ? labelColor.opacity(0.35) : Color(uiColor: .separator))
+            }
+            .contentShape(Capsule())
     }
 }

@@ -3,8 +3,16 @@ package org.nodescope.android.feature.linkprofile
 import org.nodescope.android.core.design.parseDecimalInput
 import org.nodescope.android.R
 import org.nodescope.android.core.design.UiText
+import org.nodescope.android.core.model.antennaSource
+import org.nodescope.android.core.model.RepeaterMetadata
+import org.nodescope.android.core.model.ReportedAntennaSource
+import org.nodescope.android.core.model.ReportedRepeaterSelection
+import org.nodescope.android.core.network.BrowseRepository
 import androidx.lifecycle.SavedStateHandle
 import org.nodescope.android.core.storage.DistanceUnit
+import org.nodescope.android.feature.coverage.CoverageRadioPreset
+import org.nodescope.android.feature.coverage.PlannerRadioDefault
+import org.nodescope.android.feature.coverage.editorText
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
@@ -18,15 +26,41 @@ import kotlin.coroutines.coroutineContext
 
 /** [distanceUnit] picks the default antenna height: 20 ft in imperial, 6 m in metric. */
 class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private val saved: SavedStateHandle,
-    distanceUnit: DistanceUnit = DistanceUnit.defaultUnit()) : ViewModel(), org.nodescope.android.feature.candidatesites.StudyDraftSource {
+    distanceUnit: DistanceUnit = DistanceUnit.defaultUnit(), private val browse: BrowseRepository? = null) : ViewModel(), org.nodescope.android.feature.candidatesites.StudyDraftSource {
     companion object {
+        private const val US_PRESET = "US/Canada Narrow"
+        private const val EU_PRESET = "EU/UK Narrow"
+
+        internal val selectablePresets = listOf(
+            US_PRESET to R.string.link_profile_preset_us,
+            EU_PRESET to R.string.link_profile_preset_eu,
+            "meshcore-br-narrow" to R.string.coverage_radio_preset_meshcore_br_narrow,
+        )
+
         val defaults = linkedMapOf(
             "Latitude A" to "", "Longitude A" to "", "Height A (m)" to "10",
             "Latitude B" to "", "Longitude B" to "", "Height B (m)" to "10",
-            "Frequency (MHz)" to "910.525",
-            "Transmit power (dBm)" to "22", "Gain A (dBi)" to "2.15", "Gain B (dBi)" to "2.15",
-            "Loss A (dB)" to "1", "Loss B (dB)" to "1", "Sensitivity (dBm)" to "-128",
-        )
+            "Gain A (dBi)" to "2.15", "Gain B (dBi)" to "2.15",
+            "Loss A (dB)" to "1", "Loss B (dB)" to "1",
+        ) + radioFields(CoverageRadioPreset.standard)
+
+        private fun presetKey(preset: CoverageRadioPreset): String = when (preset.id) {
+            "meshcore-us-ca" -> US_PRESET
+            "meshcore-eu-uk-narrow" -> EU_PRESET
+            else -> preset.id
+        }
+
+        private fun radioFields(preset: CoverageRadioPreset): Map<String, String> {
+            // Preserve the two original Link Profile presets' sensitivity assumptions.
+            val sensitivity = when (preset.id) {
+                "meshcore-us-ca" -> -128.0
+                "meshcore-eu-uk-narrow" -> -130.0
+                else -> preset.sensitivityDbm
+            }
+            return mapOf("Frequency (MHz)" to preset.frequencyMHz.editorText(),
+                "Transmit power (dBm)" to preset.transmitPowerDbm.editorText(),
+                "Sensitivity (dBm)" to sensitivity.editorText())
+        }
         /** The values a preset sets; editing one makes the radio custom. Gains and losses belong to each point. */
         val presetKeys = listOf("Frequency (MHz)", "Transmit power (dBm)", "Sensitivity (dBm)")
     }
@@ -36,27 +70,48 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         val elevations: Map<String, EndpointElevation> = emptyMap(),
         /** The known node each endpoint was placed on, by endpoint; absent for a dropped pin or typed coordinates. */
         val names: Map<String, String> = emptyMap(),
+        val selections: Map<String, ReportedRepeaterSelection> = emptyMap(),
+        val reportedGains: Map<String, ReportedAntennaSource> = emptyMap(),
+        val reportedHeights: Map<String, ReportedAntennaSource> = emptyMap(),
         /** The last placement, removal or reset, which Undo takes back for a few seconds. */
         val undo: Undo? = null,
         /** Reopened from Saved Plans: nothing is fetched or analyzed until Calculate, as on iOS. */
         val awaitingCalculation: Boolean = false,
         /** Why a reopened study's saved result isn't shown; null when there's none or it's shown. */
-        val savedResultNote: UiText? = null)
+        val savedResultNote: UiText? = null,
+        val radioDefaultLabel: Int? = null)
     /** Both endpoints' coordinate fields and node names, as they were before a change. */
-    data class Placement(val fields: Map<String, String>, val names: Map<String, String>)
+    data class Placement(val fields: Map<String, String>, val names: Map<String, String>, val selections: Map<String, ReportedRepeaterSelection>)
     data class Undo(val message: UiText, val before: Placement, val id: Long = System.nanoTime())
     private val defaultHeight = if (distanceUnit.usesFeet) "6.096" else "6"
+    private var defaultRadio = CoverageRadioPreset.preset(saved.get<String>("defaultRadio")) ?: CoverageRadioPreset.standard
     private val mutable = MutableStateFlow(State((defaults + mapOf("Height A (m)" to defaultHeight, "Height B (m)" to defaultHeight))
         .mapValues { (key, value) -> saved.get<String>(key) ?: value }, saved["preset"] ?: "US/Canada Narrow",
-        names = listOf("A", "B").mapNotNull { endpoint -> saved.get<String>("Name $endpoint")?.let { endpoint to it } }.toMap()))
+        names = listOf("A", "B").mapNotNull { endpoint -> saved.get<String>("Name $endpoint")?.let { endpoint to it } }.toMap(),
+        radioDefaultLabel = PlannerRadioDefault.Origin.entries.firstOrNull { it.name == saved.get<String>("radioDefaultLabel") }?.label))
     val state = mutable.asStateFlow()
     val usesDefaultEquipment: Boolean get() {
         val equipment = defaults.filterKeys { !it.startsWith("Latitude") && !it.startsWith("Longitude") } +
-            mapOf("Height A (m)" to defaultHeight, "Height B (m)" to defaultHeight)
+            mapOf("Height A (m)" to defaultHeight, "Height B (m)" to defaultHeight) + radioFields(defaultRadio)
         return equipment.all { (key, value) ->
             mutable.value.fields[key]?.parseDecimalInput()?.let { kotlin.math.abs(it - value.toDouble()) < 0.0001 } == true
         }
     }
+    internal fun initializeRadio(resolution: PlannerRadioDefault) {
+        if (saved.get<String>("defaultRadio") != null || savedStudy != null ||
+            presetKeys.any { saved.get<String>(it) != null }) return
+        defaultRadio = resolution.preset
+        saved["defaultRadio"] = resolution.preset.id
+        preset(presetKey(defaultRadio))
+        saved["radioDefaultLabel"] = resolution.origin.name
+        mutable.value = mutable.value.copy(radioDefaultLabel = resolution.origin.label)
+    }
+
+    private fun clearRadioDefaultLabel() {
+        saved.remove<String>("radioDefaultLabel")
+        mutable.value = mutable.value.copy(radioDefaultLabel = null)
+    }
+
     /** The saved study this profile came from, so Save replaces it rather than adding another. */
     var savedStudy: org.nodescope.android.feature.candidatesites.SavedStudy? = null
     /** The analyzer and region this tool is working against, for a study's `origin`. */
@@ -81,7 +136,9 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
 
     /** Everything the editor holds, as text: fields (including incomplete numbers), endpoint names and preset. */
     fun draftEditor(): Map<String, String> = mutable.value.let { state ->
-        state.fields + state.names.mapKeys { "Name ${it.key}" } + ("preset" to state.preset)
+        state.fields + state.names.mapKeys { "Name ${it.key}" } + ("preset" to state.preset) +
+            state.reportedGains.mapKeys { "Reported Gain ${it.key}" }.mapValues { it.value.draftValue() } +
+            state.reportedHeights.mapKeys { "Reported Height ${it.key}" }.mapValues { it.value.draftValue() }
     }
 
     /** What's open now counts as saved: on opening, and after a successful Save. */
@@ -93,6 +150,7 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
      * fetched or analyzed until Calculate. Applied once per back-stack entry, as [restore].
      */
     fun restoreDraft(draft: org.nodescope.android.feature.candidatesites.StudyDraft, study: org.nodescope.android.feature.candidatesites.SavedStudy?, result: ByteArray?) {
+        clearRadioDefaultLabel()
         savedStudy = study
         suggestedPlanID = draft.planID
         if (saved.get<String>("restoredDraft") == draft.id) return
@@ -108,7 +166,14 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         saved["awaitingCalculation"] = true
         saved["restoredDraft"] = draft.id
         mutable.value = mutable.value.copy(fields = mutable.value.fields + fields, names = names, preset = preset, loading = false,
+            selections = emptyMap(), reportedGains = listOf("A", "B").mapNotNull { endpoint ->
+                ReportedAntennaSource.fromDraft(draft.editor["Reported Gain $endpoint"])?.let { endpoint to it }
+            }.toMap(),
+            reportedHeights = listOf("A", "B").mapNotNull { endpoint ->
+                ReportedAntennaSource.fromDraft(draft.editor["Reported Height $endpoint"])?.let { endpoint to it }
+            }.toMap(),
             result = null, error = null, elevations = emptyMap(), undo = null, awaitingCalculation = true, savedResultNote = null)
+        protectAntennaInputs()
         val restored = result?.let { bytes ->
             savedSnapshot()?.linkProfile?.let { inputs -> runCatching { PortableLinkProfileResult.decode(bytes, inputs) }.getOrNull() }
         }
@@ -191,13 +256,69 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
             number("Latitude $endpoint") ?: return null, number("Longitude $endpoint") ?: return null,
             org.nodescope.android.feature.candidatesites.SavedAntenna(
                 number("Height $endpoint (m)") ?: return null, number("Gain $endpoint (dBi)") ?: return null,
-                number("Loss $endpoint (dB)") ?: return null))
+                number("Loss $endpoint (dB)") ?: return null, state.value.reportedGains[endpoint], state.value.reportedHeights[endpoint]))
         return org.nodescope.android.feature.coverage.LinkCoverageSeed(point,
             number("Frequency (MHz)") ?: return null, number("Transmit power (dBm)") ?: return null,
-            number("Sensitivity (dBm)") ?: return null)
+            number("Sensitivity (dBm)") ?: return null, repeaterSelection = state.value.selections[endpoint])
+    }
+
+    suspend fun repeaterMetadata(selection: ReportedRepeaterSelection) =
+        browse?.repeaterMetadata(selection.analyzerHost)?.get(selection.publicKey.lowercase(java.util.Locale.ROOT))
+
+    suspend fun applySelectedReportedDefaults(host: String?) {
+        for ((endpoint, selection) in state.value.selections) {
+            if (selection.analyzerHost != host) continue
+            val metadata = repeaterMetadata(selection) ?: continue
+            if (state.value.selections[endpoint] == selection) {
+                applyReportedDefaults(endpoint, metadata, selection.analyzerHost)
+            }
+        }
+    }
+
+    private fun protectAntennaInputs() {
+        for (endpoint in listOf("A", "B")) {
+            saved["Edited Height $endpoint"] = endpoint !in state.value.reportedHeights
+            saved["Edited Gain $endpoint"] = endpoint !in state.value.reportedGains
+        }
+    }
+
+    internal fun applyReportedDefaults(endpoint: String, metadata: RepeaterMetadata, host: String) {
+        val source = metadata.antennaSource(host)
+        if (saved.get<Boolean>("Edited Height $endpoint") != true &&
+            source.isFromDifferentRepeater(state.value.reportedHeights[endpoint])) {
+            metadata.applicableHeightMeters()?.let { applyReportedHeight(endpoint, it, source) }
+        }
+        if (saved.get<Boolean>("Edited Gain $endpoint") != true &&
+            source.isFromDifferentRepeater(state.value.reportedGains[endpoint])) {
+            metadata.applicableGainDbi?.let { applyReportedGain(endpoint, it, source) }
+        }
+    }
+
+    fun applyReportedHeight(endpoint: String, heightMeters: Double, source: ReportedAntennaSource) {
+        if (heightMeters !in 0.0..300.0) return
+        saved["Edited Height $endpoint"] = false
+        update("Height $endpoint (m)", heightMeters.toString())
+        mutable.value = mutable.value.copy(reportedHeights = mutable.value.reportedHeights + (endpoint to source))
+    }
+
+    fun applyReportedGain(endpoint: String, gain: Double, source: ReportedAntennaSource) {
+        if (!gain.isFinite() || gain !in -10.0..30.0 || gain == 0.0) return
+        saved["Edited Gain $endpoint"] = false
+        update("Gain $endpoint (dBi)", gain.toString())
+        mutable.value = mutable.value.copy(reportedGains = mutable.value.reportedGains + (endpoint to source))
     }
 
     fun edit(key: String, value: String) {
+        val gainEndpoint = listOf("A", "B").firstOrNull { key == "Gain $it (dBi)" }
+        if (gainEndpoint != null && value != mutable.value.fields[key]) {
+            saved["Edited Gain $gainEndpoint"] = true
+            mutable.value = mutable.value.copy(reportedGains = mutable.value.reportedGains - gainEndpoint)
+        }
+        val heightEndpoint = listOf("A", "B").firstOrNull { key == "Height $it (m)" }
+        if (heightEndpoint != null && value != mutable.value.fields[key]) {
+            saved["Edited Height $heightEndpoint"] = true
+            mutable.value = mutable.value.copy(reportedHeights = mutable.value.reportedHeights - heightEndpoint)
+        }
         if (key.startsWith("Latitude ") || key.startsWith("Longitude ")) mutable.value = mutable.value.copy(undo = null)
         update(key, value)
     }
@@ -207,10 +328,11 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         saved[key] = value
         // Typed coordinates are no longer the known node they were placed on.
         val endpoint = key.removePrefix("Latitude ").removePrefix("Longitude ").takeIf { it != key }
-        if (endpoint != null && endpoint in mutable.value.names) {
+        if (endpoint != null) {
             saved.remove<String>("Name $endpoint")
-            mutable.value = mutable.value.copy(names = mutable.value.names - endpoint)
+            mutable.value = mutable.value.copy(names = mutable.value.names - endpoint, selections = mutable.value.selections - endpoint)
         }
+        if (key in presetKeys) clearRadioDefaultLabel()
         val preset = if (key in presetKeys) "Custom" else mutable.value.preset
         saved["preset"] = preset
         mutable.value = mutable.value.copy(fields = mutable.value.fields + (key to value), preset = preset, loading = false, result = null, error = null)
@@ -219,11 +341,19 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         scheduleAnalysis()
     }
 
+    fun seedFromNodeVision(origin: ProfileCoordinate, target: ProfileCoordinate, name: String,
+                            selection: ReportedRepeaterSelection, originName: String) {
+        if (saved.get<Boolean>("nodeVisionSeedApplied") == true) return
+        setPoint("A", origin.latitude.toString(), origin.longitude.toString(), originName)
+        setPoint("B", target.latitude.toString(), target.longitude.toString(), name, selection)
+        saved["nodeVisionSeedApplied"] = true
+    }
+
     /** Places [endpoint] at [point], named after the known node it was chosen on, if any. */
-    fun place(endpoint: String, point: ProfileCoordinate, name: String?) {
+    fun place(endpoint: String, point: ProfileCoordinate, name: String?, selection: ReportedRepeaterSelection? = null) {
         val before = placement()
         val moved = coordinate(endpoint) != null
-        setPoint(endpoint, point.latitude.toString(), point.longitude.toString(), name)
+        setPoint(endpoint, point.latitude.toString(), point.longitude.toString(), name, selection)
         offerUndo(if (moved) UiText.Resource(R.string.link_profile_point_moved, endpoint) else UiText.Resource(R.string.link_profile_point_placed, endpoint), before)
     }
     fun remove(endpoint: String) {
@@ -242,7 +372,7 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         val undo = mutable.value.undo ?: return
         listOf("A", "B").forEach { endpoint ->
             setPoint(endpoint, undo.before.fields["Latitude $endpoint"].orEmpty(), undo.before.fields["Longitude $endpoint"].orEmpty(),
-                undo.before.names[endpoint])
+                undo.before.names[endpoint], undo.before.selections[endpoint])
         }
         mutable.value = mutable.value.copy(undo = null)
     }
@@ -251,25 +381,27 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         if (mutable.value.undo?.id == id) mutable.value = mutable.value.copy(undo = null)
     }
     private fun placement() = mutable.value.let { state ->
-        Placement(state.fields.filterKeys { it.startsWith("Latitude ") || it.startsWith("Longitude ") }, state.names)
+        Placement(state.fields.filterKeys { it.startsWith("Latitude ") || it.startsWith("Longitude ") }, state.names, state.selections)
     }
     private fun offerUndo(message: UiText, before: Placement) {
         mutable.value = mutable.value.copy(undo = Undo(message, before))
     }
-    private fun setPoint(endpoint: String, latitude: String, longitude: String, name: String?) {
+    private fun setPoint(endpoint: String, latitude: String, longitude: String, name: String?, selection: ReportedRepeaterSelection? = null) {
         update("Latitude $endpoint", latitude)
         update("Longitude $endpoint", longitude)
         if (name != null) {
             saved["Name $endpoint"] = name
             mutable.value = mutable.value.copy(names = mutable.value.names + (endpoint to name))
         }
+        if (selection != null) {
+            mutable.value = mutable.value.copy(selections = mutable.value.selections + (endpoint to selection))
+        }
     }
     fun preset(name: String) {
         job?.cancel()
-        val eu = name == "EU/UK Narrow"
-        val fields = mutable.value.fields + if (name == "Custom") emptyMap() else mapOf(
-            "Frequency (MHz)" to if (eu) "869.618" else "910.525",
-            "Transmit power (dBm)" to if (eu) "14" else "22", "Sensitivity (dBm)" to if (eu) "-130" else "-128")
+        clearRadioDefaultLabel()
+        val radio = CoverageRadioPreset.presets(CoverageRadioPreset.Family.MESHCORE).firstOrNull { presetKey(it) == name }
+        val fields = mutable.value.fields + (radio?.let(::radioFields) ?: emptyMap())
         fields.forEach { (key, value) -> saved[key] = value }
         saved["preset"] = name
         mutable.value = mutable.value.copy(fields = fields, preset = name, loading = false, result = null, error = null)
@@ -326,7 +458,7 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
         val b = coordinate("B") ?: return null
         fun endpoint(letter: String, point: ProfileCoordinate): org.nodescope.android.feature.candidatesites.SavedEndpoint? {
             val antenna = org.nodescope.android.feature.candidatesites.SavedAntenna(
-                number("Height $letter (m)") ?: return null, number("Gain $letter (dBi)") ?: return null, number("Loss $letter (dB)") ?: return null)
+                number("Height $letter (m)") ?: return null, number("Gain $letter (dBi)") ?: return null, number("Loss $letter (dB)") ?: return null, mutable.value.reportedGains[letter], mutable.value.reportedHeights[letter])
             return org.nodescope.android.feature.candidatesites.SavedEndpoint(mutable.value.names[letter], point.latitude, point.longitude, antenna)
         }
         val inputs = org.nodescope.android.feature.candidatesites.SavedLinkProfile(endpoint("A", a) ?: return null, endpoint("B", b) ?: return null,
@@ -349,6 +481,7 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
      * Applied once per back-stack entry, so a process restart keeps edits made after reopening.
      */
     fun restore(study: org.nodescope.android.feature.candidatesites.SavedStudy) {
+        clearRadioDefaultLabel()
         savedStudy = study
         if (saved.get<String>("restoredStudy") == study.id) return
         val inputs = study.linkProfile?.takeIf { runCatching { study.validate() }.isSuccess } ?: return
@@ -366,11 +499,9 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
             "Frequency (MHz)" to text(inputs.frequencyMHz), "Transmit power (dBm)" to text(inputs.transmitPowerDbm),
             "Sensitivity (dBm)" to text(inputs.sensitivityDbm))
         val names = listOfNotNull(inputs.pointA.name?.let { "A" to it }, inputs.pointB.name?.let { "B" to it }).toMap()
-        val preset = when (Triple(inputs.frequencyMHz, inputs.transmitPowerDbm, inputs.sensitivityDbm)) {
-            Triple(910.525, 22.0, -128.0) -> "US/Canada Narrow"
-            Triple(869.618, 14.0, -130.0) -> "EU/UK Narrow"
-            else -> "Custom"
-        }
+        val preset = CoverageRadioPreset.presets(CoverageRadioPreset.Family.MESHCORE).firstOrNull { radio ->
+            radioFields(radio).all { (key, value) -> values[key]?.toDoubleOrNull() == value.toDouble() }
+        }?.let(::presetKey) ?: "Custom"
         values.forEach { (key, value) -> saved[key] = value }
         listOf("A", "B").forEach { letter -> names[letter]?.let { saved["Name $letter"] = it } ?: saved.remove<String>("Name $letter") }
         saved["preset"] = preset
@@ -391,7 +522,13 @@ class LinkProfileViewModel(private val terrain: LinkTerrainProviding, private va
             org.nodescope.android.feature.candidatesites.SavedResultStatus.NONE -> null
         }
         mutable.value = mutable.value.copy(fields = mutable.value.fields + values, names = names, preset = preset, loading = false,
+            selections = emptyMap(),
+            reportedGains = listOfNotNull(inputs.pointA.antenna.reportedGainSource?.let { "A" to it },
+                inputs.pointB.antenna.reportedGainSource?.let { "B" to it }).toMap(),
+            reportedHeights = listOfNotNull(inputs.pointA.antenna.reportedHeightSource?.let { "A" to it },
+                inputs.pointB.antenna.reportedHeightSource?.let { "B" to it }).toMap(),
             result = restored, error = null, elevations = elevations, undo = null, awaitingCalculation = true, savedResultNote = note)
+        protectAntennaInputs()
     }
 }
 

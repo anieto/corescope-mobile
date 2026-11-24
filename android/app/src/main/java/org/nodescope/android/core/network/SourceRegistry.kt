@@ -1,12 +1,16 @@
 package org.nodescope.android.core.network
 
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.nodescope.android.core.model.AnalyzerSource
+import org.nodescope.android.core.model.AnalyzerSourceChoices
 import org.nodescope.android.core.model.AnalyzerSourceType
 import org.nodescope.android.core.model.SourceDocument
 
@@ -27,12 +31,24 @@ fun decodeSourceRegistry(raw: String): SourceDocument {
     for (entry in root.getValue("sources").jsonArray) {
         // A bad community entry must not hide otherwise valid sources.
         val source = runCatching {
-            val rawType = entry.jsonObject["type"]?.takeIf { it !is JsonNull }?.let {
+            val fields = entry.jsonObject
+            val rawType = fields["type"]?.takeIf { it !is JsonNull }?.let {
                 (it as? JsonPrimitive)?.takeIf { primitive -> primitive.isString }?.content
                     ?: throw IllegalArgumentException("A source type must be a string.")
             }
             if (rawType != null && AnalyzerSourceType.from(rawType) == null) null
-            else protocolJson.decodeFromJsonElement(AnalyzerSource.serializer(), entry)
+            else {
+                val country = (fields["country"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+                val coordinates = fields["location"] as? JsonArray
+                val location = coordinates?.mapNotNull {
+                    (it as? JsonPrimitive)?.takeUnless { number -> number.isString }?.doubleOrNull
+                }?.takeIf { it.size == coordinates.size }
+                val legacyFields = JsonObject(fields - "country" - "location")
+                protocolJson.decodeFromJsonElement(AnalyzerSource.serializer(), legacyFields).copy(
+                    country = AnalyzerSourceChoices.countryCode(country),
+                    location = location,
+                )
+            }
         }.getOrNull() ?: continue
         if (source.host.isBlank() || source.name.isBlank() || source.id.isEmpty() || !identifiers.add(source.id)) continue
         accepted += source

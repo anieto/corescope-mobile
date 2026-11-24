@@ -2,6 +2,53 @@
   "version": 1,
   "releases": [
     {
+      "version": "1.0.0",
+      "items": [
+        {
+          "id": "nodevision",
+          "title": "NodeVision",
+          "detail": "Use your camera to see which way nearby mesh nodes are, or open NodeVision from a node’s details to find that node.",
+          "icon": "nodeVision"
+        },
+        {
+          "id": "watched-node-alerts",
+          "title": "Watched-node alerts",
+          "detail": "Tap the bell on a node’s detail page to watch it. Get push alerts when the node goes quiet or is heard again if your CoreScope administrator has enabled NodeScope Push. Turn on push for this device in your CoreScope account settings.",
+          "icon": "notifications"
+        },
+        {
+          "id": "repeater-details",
+          "title": "Reported repeater details",
+          "detail": "See community-reported status and equipment on supported CoreScope analyzers. Use reported antenna height and gain in Estimated Coverage and Link Profile.",
+          "icon": "coverage"
+        },
+        {
+          "id": "repeater-management",
+          "title": "Manage your repeaters",
+          "detail": "Sign in to CoreScope to claim repeaters you maintain, update their reported equipment and status, or remove a claim.",
+          "icon": "coverage"
+        },
+        {
+          "id": "channel-favorites",
+          "title": "Favorite channels",
+          "detail": "Find your favorite channels together at the top of the Channels list.",
+          "icon": "sparkles"
+        },
+        {
+          "id": "analyzer-source-picker",
+          "title": "Find an analyzer",
+          "detail": "Browse community analyzers grouped by country, or choose Sort by nearest to find sources close to you.",
+          "icon": "savedPlans"
+        },
+        {
+          "id": "planner-radio-defaults",
+          "title": "Radio settings for your mesh",
+          "detail": "New Link Profile and Estimated Coverage studies start with radio settings for your mesh. The MeshCore preset for Brazil is also available.",
+          "icon": "coverage"
+        }
+      ]
+    },
+    {
       "version": "0.11.0",
       "items": [
         {

@@ -17,8 +17,9 @@ class WhatsNewTest {
         // iOS-only items stay off Android; every item has an icon and text.
         assertTrue(releases.flatMap { it.items }.none { it.id == "ipad-mac" })
         assertTrue(releases.flatMap { it.items }.all { it.title.isNotBlank() && it.detail.isNotBlank() && it.icon.isNotBlank() })
-        assertEquals(AppFeature.estimatedCoverage, current!!.items.first { it.id == "estimated-coverage" }.destination)
-        assertEquals(AppFeature.linkProfile, current.items.first { it.id == "link-profile" }.destination)
+        val plannerRelease = releases.single { it.version == "0.11.0" }
+        assertEquals(AppFeature.estimatedCoverage, plannerRelease.items.first { it.id == "estimated-coverage" }.destination)
+        assertEquals(AppFeature.linkProfile, plannerRelease.items.first { it.id == "link-profile" }.destination)
         // Anything that opens a feature also says where to find it again.
         assertTrue(releases.flatMap { it.items }.filter { it.destination != null }.all { !it.location.isNullOrBlank() })
     }
@@ -31,6 +32,8 @@ class WhatsNewTest {
             {"version":"0.10.7","items":[{"id":"ios","title":"I","detail":"i","icon":"keyboard","platforms":["ios"]}]}]}""")
         // A release with only iOS items isn't a release on Android.
         assertEquals(listOf("0.10.6", "0.10.8", "0.11.0"), releases.map { it.version })
+        assertEquals(listOf("0.11.0", "0.10.8", "0.10.6"), WhatsNew.history(releases, "1.0.0").map { it.version })
+        assertEquals(listOf("0.10.8", "0.10.6"), WhatsNew.history(releases, "0.10.9").map { it.version })
         // Updating from before this feature: only this build's highlights, not the whole history.
         assertEquals(listOf("0.10.8"), WhatsNew.pending(releases, null, "0.10.8").map { it.version })
         // Skipping versions shows everything missed, newest first; future releases never show.

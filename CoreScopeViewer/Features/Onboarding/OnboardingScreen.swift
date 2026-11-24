@@ -5,9 +5,19 @@ struct OnboardingScreen: View {
     @Environment(AnalyzerSettings.self) private var settings
     let onComplete: () -> Void
 
-    @State private var selectedHost = ""
+    @Environment(\.locale) private var locale
+    @State private var chosenHost: String?
+
+    private var choices: AnalyzerSourceChoices {
+        AnalyzerSourceChoices(sources: sourceRegistry.sources, displayLocale: locale)
+    }
+
+    private var selectedHost: String {
+        chosenHost ?? choices.onboardingHost(savedHost: settings.savedHost, isOnboarded: false) ?? ""
+    }
     @State private var showsSourcePicker = false
     @State private var step: Step = .source
+    @State private var accountSupportedHost: String?
 
     private enum Step {
         case source
@@ -21,7 +31,12 @@ struct OnboardingScreen: View {
                 case .source:
                     sourceSelection
                 case .overview:
-                    overview
+                    GeometryReader { viewport in
+                        ScrollView {
+                            overview.frame(minHeight: viewport.size.height)
+                        }
+                    }
+                    .task(id: selectedHost) { await checkAccountSupport(host: selectedHost) }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -41,20 +56,14 @@ struct OnboardingScreen: View {
             .sheet(isPresented: $showsSourcePicker) {
                 NavigationStack {
                     AnalyzerSourcePickerScreen(
-                        selectedHost: $selectedHost,
+                        selectedHost: Binding(get: { selectedHost }, set: { chosenHost = $0 }),
                         appliesSelectionImmediately: true,
                         onSelection: nil
                     )
                 }
             }
             .task {
-                if selectedHost.isEmpty {
-                    selectedHost = settings.host
-                }
                 await sourceRegistry.refresh()
-                if selectedHost.isEmpty {
-                    selectedHost = sourceRegistry.defaultSource?.host ?? ""
-                }
             }
         }
     }
@@ -101,33 +110,44 @@ struct OnboardingScreen: View {
                         Text(selectedSourceName)
                             .font(.monaspace(.headline))
                             .foregroundStyle(Color.primary)
-                        Text(selectedHost.isEmpty ? "Choose an analyzer" : selectedHost)
-                            .font(.caption)
-                            .foregroundStyle(Color.secondary)
+                        if !selectedHost.isEmpty {
+                            Text(selectedHost)
+                                .font(.monaspace(.caption))
+                                .foregroundStyle(Color.secondary)
+                        }
                     }
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(Color.secondary)
+                        .foregroundStyle(Color.accentColor)
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .instrumentCard(fillOpacity: 1)
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 24)
             .accessibilityLabel("Analyzer source: \(selectedSourceName)")
 
-            Text("You can change sources anytime in Settings, or add a custom analyzer.")
-                .font(.caption)
-                .foregroundStyle(Color.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
+            Group {
+                if selectedHost.isEmpty, let country = choices.userCountryName {
+                    Text("No community is listed for \(country) yet. Pick one to look around, enter your own analyzer, or request a listing for yours.")
+                } else if selectedHost.isEmpty {
+                    Text("No community is listed for your region yet. Pick one to look around, enter your own analyzer, or request a listing for yours.")
+                } else {
+                    Text("You can change sources anytime in Settings, or add a custom analyzer.")
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(Color.secondary)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 32)
 
             Spacer()
 
             Button("Continue") {
+                chosenHost = selectedHost
                 withAnimation {
                     step = .overview
                 }
@@ -179,7 +199,15 @@ struct OnboardingScreen: View {
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .padding(.horizontal, 24)
 
-            Text("Location is optional and is only used when you choose to center the map on yourself.")
+            if accountSupportedHost == selectedHost {
+                Text("You can browse without an account. To sync saved nodes, sign in under Settings → CoreScope Account.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 28)
+            }
+
+            Text("Location is optional. It lets you center the map on yourself and sort analyzer sources by distance.")
                 .font(.caption)
                 .foregroundStyle(Color.secondary)
                 .multilineTextAlignment(.center)
@@ -198,8 +226,24 @@ struct OnboardingScreen: View {
         .adaptiveContentWidth(720)
     }
 
+    private func checkAccountSupport(host: String) async {
+        accountSupportedHost = nil
+        let normalized = AnalyzerSettings.normalizedHost(host)
+        guard !normalized.isEmpty,
+              !sourceRegistry.sources.contains(where: {
+                  AnalyzerSettings.normalizedHost($0.host).caseInsensitiveCompare(normalized) == .orderedSame
+                      && $0.backendType == .beacon
+              }),
+              let origin = URL(string: "https://\(normalized)"),
+              let client = try? CoreScopeAccountClient(origin: origin),
+              (try? await client.supportsAccounts()) == true,
+              !Task.isCancelled, host == selectedHost else { return }
+        accountSupportedHost = host
+    }
+
     private var selectedSourceName: String {
-        sourceRegistry.sources.first {
+        guard !selectedHost.isEmpty else { return String(localized: "Choose an analyzer") }
+        return sourceRegistry.sources.first {
             $0.host.caseInsensitiveCompare(selectedHost) == .orderedSame
         }?.name ?? String(localized: "Custom Analyzer")
     }

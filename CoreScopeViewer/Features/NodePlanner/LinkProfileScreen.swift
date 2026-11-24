@@ -3,7 +3,20 @@ import MapKit
 import SwiftUI
 
 struct LinkProfileScreen: View {
+    struct NodeVisionSeed: Identifiable {
+        let id = UUID()
+        let origin: FieldCoordinate
+        let target: FieldCoordinate
+        let name: String
+        let selection: ReportedRepeaterSelection
+    }
+
+    private let nodeVisionSeed: NodeVisionSeed?
+    @State private var hasAppliedNodeVisionSeed = false
     @Environment(AnalyzerSettings.self) private var settings
+    @Environment(AnalyzerSourceRegistry.self) private var sourceRegistry
+    @Environment(ObserverRegionLookup.self) private var observerLookup
+    private let opensFresh: Bool
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -20,7 +33,10 @@ struct LinkProfileScreen: View {
 
     /// `planID` is the plan this tool was opened from: the suggested place to save a new study.
     /// `draft` resumes unsaved work, which stays unsaved.
-    init(savedStudy: SavedStudy? = nil, planID: String? = nil, draft: ResumedDraft? = nil) {
+    init(savedStudy: SavedStudy? = nil, planID: String? = nil, draft: ResumedDraft? = nil,
+         nodeVisionSeed: NodeVisionSeed? = nil) {
+        self.nodeVisionSeed = nodeVisionSeed
+        opensFresh = savedStudy == nil && draft == nil
         let model = LinkProfileModel()
         model.suggestedPlanID = planID
         if let savedStudy { model.restore(savedStudy) }
@@ -116,6 +132,11 @@ struct LinkProfileScreen: View {
             if let seed = model.coverageSeed { EstimatedCoverageScreen(seed: seed) }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            guard opensFresh, !model.hasInitializedRadio else { return }
+            model.initializeRadio(.current(settings: settings, registry: sourceRegistry, observers: observerLookup))
+            model.markClean()
+        }
         .studyDraftAutosave(draftSession, source: model, host: settings.host, region: regionFilter.selectedRegion)
         .toolbar(usesSystemBar ? .visible : .hidden, for: .navigationBar)
         .toolbarBackground(.hidden, for: .navigationBar)
@@ -136,11 +157,35 @@ struct LinkProfileScreen: View {
         .onChange(of: mapDisplayStyle) { _, style in
             UserDefaults.standard.set(style.rawValue, forKey: MapDisplayStyle.defaultsKey)
         }
+        .task {
+            guard let seed = nodeVisionSeed, !hasAppliedNodeVisionSeed else { return }
+            hasAppliedNodeVisionSeed = true
+            model.set(CLLocationCoordinate2D(latitude: seed.origin.latitude, longitude: seed.origin.longitude),
+                      for: .pointA, name: String(localized: "Your location"))
+            model.set(CLLocationCoordinate2D(latitude: seed.target.latitude, longitude: seed.target.longitude),
+                      for: .pointB, name: seed.name, selection: seed.selection)
+            model.markClean()
+        }
+        .task(id: settings.sourceIsReady ? model.reportedSelectionA : nil) {
+            await applyReportedDefaults(to: .pointA)
+        }
+        .task(id: settings.sourceIsReady ? model.reportedSelectionB : nil) {
+            await applyReportedDefaults(to: .pointB)
+        }
         .task(id: "\(settings.sourceSession.id)|\(regionFilter.selectedRegion ?? "")") {
             model.analyzerOrigin = StudyOrigin(host: settings.host, region: regionFilter.selectedRegion,
                                                capturedAtMilliseconds: Int64(Date().timeIntervalSince1970 * 1000))
             catalog.configure(settings: settings)
             await catalog.load(region: regionFilter.selectedRegion)
+        }
+    }
+
+    private func applyReportedDefaults(to endpoint: LinkProfileEndpoint) async {
+        let isA = endpoint == .pointA
+        let selection = isA ? model.reportedSelectionA : model.reportedSelectionB
+        if let metadata = await reportedRepeaterMetadata(for: selection, settings: settings),
+           selection == (isA ? model.reportedSelectionA : model.reportedSelectionB) {
+            model.applyReportedDefaults(metadata, host: settings.host, endpoint: endpoint)
         }
     }
 
@@ -593,14 +638,18 @@ private struct LinkProfilePersistentMap: View {
         guard let coordinate = known?.coordinate ?? proxy.convert(location, from: .local) else { return }
         holds += 1
         if let endpoint = placingEndpoint {
-            place(endpoint, at: coordinate, name: known?.node.name)
+            place(endpoint, at: coordinate, name: known?.node.name, selection: selection(for: known?.node))
         } else {
-            menu = LinkProfileMapMenu(kind: .move(coordinate: coordinate, name: known?.node.name), location: location)
+            menu = LinkProfileMapMenu(kind: .move(coordinate: coordinate, name: known?.node.name, selection: selection(for: known?.node)), location: location)
         }
     }
 
-    private func place(_ endpoint: LinkProfileEndpoint, at coordinate: CLLocationCoordinate2D, name: String?) {
-        model.place(coordinate, for: endpoint, name: name)
+    private func selection(for node: MeshNode?) -> ReportedRepeaterSelection? {
+        node.map { ReportedRepeaterSelection(publicKey: $0.publicKey, sourceID: settings.sourceSession.id) }
+    }
+
+    private func place(_ endpoint: LinkProfileEndpoint, at coordinate: CLLocationCoordinate2D, name: String?, selection: ReportedRepeaterSelection?) {
+        model.place(coordinate, for: endpoint, name: name, selection: selection)
         activeEndpoint = nil
         hasPlacedPoint = true
     }
@@ -615,7 +664,7 @@ private struct LinkProfilePersistentMap: View {
     private func menuContent(_ menu: LinkProfileMapMenu) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             switch menu.kind {
-            case let .move(coordinate, name):
+            case let .move(coordinate, name, selection):
                 menuTitle(name ?? String(localized: "Dropped pin"))
                 ForEach([LinkProfileEndpoint.pointA, .pointB]) { endpoint in
                     Divider()
@@ -627,7 +676,7 @@ private struct LinkProfilePersistentMap: View {
                                 .foregroundStyle(endpoint.color)
                         }
                     } action: {
-                        place(endpoint, at: coordinate, name: name)
+                        place(endpoint, at: coordinate, name: name, selection: selection)
                     }
                 }
             case let .pin(endpoint):
@@ -704,7 +753,7 @@ private struct LinkProfilePersistentMap: View {
 private struct LinkProfileMapMenu: Identifiable {
     enum Kind {
         /// Both points are placed: move either one to [coordinate], the known node [name] if any.
-        case move(coordinate: CLLocationCoordinate2D, name: String?)
+        case move(coordinate: CLLocationCoordinate2D, name: String?, selection: ReportedRepeaterSelection?)
         case pin(LinkProfileEndpoint)
     }
 
@@ -758,6 +807,7 @@ struct LinkProfilePlacement {
     struct Point {
         let coordinate: CLLocationCoordinate2D
         let name: String?
+        var selection: ReportedRepeaterSelection? = nil
     }
 
     let pointA: Point?
@@ -798,7 +848,36 @@ enum LinkProfileEndpoint: String, Identifiable {
 enum LinkProfileRadioPreset: String, CaseIterable, Identifiable {
     case unitedStatesNarrow
     case europeNarrow
+    case europe433Narrow
+    case australiaNarrow
+    case newZealandNarrow
+    case brazilNarrow
     case custom
+
+    static let selectable: [Self] = [.unitedStatesNarrow, .europeNarrow, .brazilNarrow]
+
+    static func matching(frequencyMHz: Double, powerDBm: Double, sensitivityDBm: Double) -> Self {
+        allCases.first {
+            $0.frequencyMHz == frequencyMHz && $0.transmitPowerDBm == powerDBm &&
+                $0.receiverSensitivityDBm == sensitivityDBm
+        } ?? .custom
+    }
+
+    init(planningPreset: CoverageRadioPreset) {
+        switch planningPreset.id {
+        case "meshcore-us-ca": self = .unitedStatesNarrow
+        case "meshcore-eu-uk-narrow": self = .europeNarrow
+        case "meshcore-eu-433-narrow": self = .europe433Narrow
+        case "meshcore-au-narrow": self = .australiaNarrow
+        case "meshcore-nz-narrow": self = .newZealandNarrow
+        case "meshcore-br-narrow": self = .brazilNarrow
+        default: self = .custom
+        }
+    }
+
+    private var planningPreset: CoverageRadioPreset? {
+        CoverageRadioPreset.presets(in: .meshCore).first { Self(planningPreset: $0) == self }
+    }
 
     var id: String { rawValue }
 
@@ -806,31 +885,23 @@ enum LinkProfileRadioPreset: String, CaseIterable, Identifiable {
         switch self {
         case .unitedStatesNarrow: "US/Canada Narrow"
         case .europeNarrow: "EU/UK Narrow"
+        case .europe433Narrow: "EU 433 MHz (Narrow)"
+        case .australiaNarrow: "Australia (Narrow)"
+        case .newZealandNarrow: "New Zealand (Narrow)"
+        case .brazilNarrow: "Brazil (Narrow)"
         case .custom: "Custom"
         }
     }
 
-    var frequencyMHz: Double? {
-        switch self {
-        case .unitedStatesNarrow: 910.525
-        case .europeNarrow: 869.618
-        case .custom: nil
-        }
-    }
+    var frequencyMHz: Double? { planningPreset?.frequencyMHz }
 
-    var transmitPowerDBm: Double? {
-        switch self {
-        case .unitedStatesNarrow: 22
-        case .europeNarrow: 14
-        case .custom: nil
-        }
-    }
+    var transmitPowerDBm: Double? { planningPreset?.transmitPowerDbm }
 
     var receiverSensitivityDBm: Double? {
         switch self {
         case .unitedStatesNarrow: -128
         case .europeNarrow: -130
-        case .custom: nil
+        default: planningPreset?.sensitivityDbm
         }
     }
 }
@@ -866,9 +937,9 @@ final class LinkProfileModel {
         guard let latitudeA, let longitudeA, let latitudeB, let longitudeB else { return nil }
         let inputs = SavedLinkProfile(
             pointA: SavedEndpoint(name: nameA, latitude: latitudeA, longitude: longitudeA,
-                antenna: SavedAntenna(heightMeters: heightA, gainDbi: gainADB, lossDb: lossADB)),
+                antenna: SavedAntenna(heightMeters: heightA, gainDbi: gainADB, lossDb: lossADB, reportedGainSource: reportedGainA, reportedHeightSource: reportedHeightA)),
             pointB: SavedEndpoint(name: nameB, latitude: latitudeB, longitude: longitudeB,
-                antenna: SavedAntenna(heightMeters: heightB, gainDbi: gainBDB, lossDb: lossBDB)),
+                antenna: SavedAntenna(heightMeters: heightB, gainDbi: gainBDB, lossDb: lossBDB, reportedGainSource: reportedGainB, reportedHeightSource: reportedHeightB)),
             frequencyMHz: frequencyMHz, transmitPowerDbm: transmitPowerDBm,
             sensitivityDbm: receiverSensitivityDBm, refractionK: refractionK, sampleCount: sampleCount)
         let now = Int64(Date().timeIntervalSince1970 * 1000)
@@ -883,6 +954,8 @@ final class LinkProfileModel {
 
     /// Assign values directly: placement helpers intentionally fetch elevation and analyze.
     func restore(_ study: SavedStudy) {
+        hasInitializedRadio = true
+        radioDefaultOrigin = nil
         guard (try? study.validate()) != nil, let inputs = study.linkProfile else { return }
         analysisTask?.cancel()
         elevationTaskA?.cancel()
@@ -896,9 +969,19 @@ final class LinkProfileModel {
         nameA = inputs.pointA.name
         nameB = inputs.pointB.name
         heightA = inputs.pointA.antenna.heightMeters
+        reportedHeightA = inputs.pointA.antenna.reportedHeightSource
+        editedHeightA = reportedHeightA == nil
         heightB = inputs.pointB.antenna.heightMeters
+        reportedHeightB = inputs.pointB.antenna.reportedHeightSource
+        editedHeightB = reportedHeightB == nil
         gainADB = inputs.pointA.antenna.gainDbi
+        reportedGainA = inputs.pointA.antenna.reportedGainSource
+        editedGainA = reportedGainA == nil
+        reportedSelectionA = nil
         gainBDB = inputs.pointB.antenna.gainDbi
+        reportedGainB = inputs.pointB.antenna.reportedGainSource
+        editedGainB = reportedGainB == nil
+        reportedSelectionB = nil
         lossADB = inputs.pointA.antenna.lossDb
         lossBDB = inputs.pointB.antenna.lossDb
         frequencyMHz = inputs.frequencyMHz
@@ -906,7 +989,8 @@ final class LinkProfileModel {
         receiverSensitivityDBm = inputs.sensitivityDbm
         refractionK = inputs.refractionK
         sampleCount = inputs.sampleCount
-        radioPreset = .custom
+        radioPreset = .matching(frequencyMHz: frequencyMHz, powerDBm: transmitPowerDBm,
+                                sensitivityDBm: receiverSensitivityDBm)
         // A saved result opens as it was, without fetching terrain; edits clear it and wait for Calculate.
         result = study.linkProfileResult.flatMap { try? PortableLinkProfileResult.decode($0, inputs: inputs) }
         savedResultNote = switch (result, study.resultStatus) {
@@ -926,8 +1010,26 @@ final class LinkProfileModel {
     var longitudeA: Double?
     var latitudeB: Double?
     var longitudeB: Double?
-    var heightA = 10.0
-    var heightB = 10.0
+    var reportedHeightA: ReportedAntennaSource?
+    private var editedHeightA = false
+    var heightA = 10.0 {
+        didSet {
+            if oldValue != heightA {
+                reportedHeightA = nil
+                editedHeightA = true
+            }
+        }
+    }
+    var reportedHeightB: ReportedAntennaSource?
+    private var editedHeightB = false
+    var heightB = 10.0 {
+        didSet {
+            if oldValue != heightB {
+                reportedHeightB = nil
+                editedHeightB = true
+            }
+        }
+    }
     /// The known node each endpoint was placed on; nil for a dropped pin or typed coordinates.
     var nameA: String?
     var nameB: String?
@@ -945,9 +1047,11 @@ final class LinkProfileModel {
             point: SavedEndpoint(name: name(for: endpoint) ?? String(localized: "Point \(endpoint.letter)"),
                 latitude: coordinate.latitude, longitude: coordinate.longitude,
                 antenna: SavedAntenna(heightMeters: isA ? heightA : heightB,
-                    gainDbi: isA ? gainADB : gainBDB, lossDb: isA ? lossADB : lossBDB)),
+                    gainDbi: isA ? gainADB : gainBDB, lossDb: isA ? lossADB : lossBDB, reportedGainSource: isA ? reportedGainA : reportedGainB,
+                    reportedHeightSource: isA ? reportedHeightA : reportedHeightB)),
             frequencyMHz: frequencyMHz, transmitPowerDbm: transmitPowerDBm,
-            sensitivityDbm: receiverSensitivityDBm, planID: coveragePlanID)
+            sensitivityDbm: receiverSensitivityDBm, planID: coveragePlanID,
+            repeaterSelection: isA ? reportedSelectionA : reportedSelectionB)
     }
 
     /// Coverage is saved where this Link Profile now is, or else where it was opened from.
@@ -958,17 +1062,49 @@ final class LinkProfileModel {
     }
 
     var radioPreset = LinkProfileRadioPreset.unitedStatesNarrow
+    private var defaultRadio = LinkProfileRadioPreset.unitedStatesNarrow
+    private(set) var hasInitializedRadio = false
+    private(set) var radioDefaultOrigin: PlannerRadioDefault.Origin?
+
+    func initializeRadio(_ resolution: PlannerRadioDefault) {
+        guard !hasInitializedRadio else { return }
+        hasInitializedRadio = true
+        defaultRadio = LinkProfileRadioPreset(planningPreset: resolution.preset)
+        applyRadioPreset(defaultRadio)
+        radioDefaultOrigin = resolution.origin
+    }
+
     private var defaultAntennaHeight = 6.096
     var usesDefaultEquipment: Bool {
         abs(heightA - defaultAntennaHeight) < 0.0001 && abs(heightB - defaultAntennaHeight) < 0.0001
-            && frequencyMHz == 910.525 && transmitPowerDBm == 22
+            && frequencyMHz == defaultRadio.frequencyMHz && transmitPowerDBm == defaultRadio.transmitPowerDBm
             && gainADB == 2.15 && gainBDB == 2.15 && lossADB == 1 && lossBDB == 1
-            && receiverSensitivityDBm == -128
+            && receiverSensitivityDBm == defaultRadio.receiverSensitivityDBm
     }
     var frequencyMHz = 910.525
     var transmitPowerDBm = 22.0
-    var gainADB = 2.15
-    var gainBDB = 2.15
+    var reportedSelectionA: ReportedRepeaterSelection?
+    var reportedGainA: ReportedAntennaSource?
+    private var editedGainA = false
+    var gainADB = 2.15 {
+        didSet {
+            if oldValue != gainADB {
+                reportedGainA = nil
+                editedGainA = true
+            }
+        }
+    }
+    var reportedSelectionB: ReportedRepeaterSelection?
+    var reportedGainB: ReportedAntennaSource?
+    private var editedGainB = false
+    var gainBDB = 2.15 {
+        didSet {
+            if oldValue != gainBDB {
+                reportedGainB = nil
+                editedGainB = true
+            }
+        }
+    }
     var lossADB = 1.0
     var lossBDB = 1.0
     var receiverSensitivityDBm = -128.0
@@ -1025,6 +1161,8 @@ final class LinkProfileModel {
         heightA = unit.usesFeet ? 6.096 : 6
         heightB = heightA
         defaultAntennaHeight = heightA
+        editedHeightA = false
+        editedHeightB = false
     }
 
     /// Any change clears the result; once both endpoints are set the link is analyzed on its own,
@@ -1099,16 +1237,18 @@ final class LinkProfileModel {
     }
 
     /// Places [endpoint], named after the known node it was chosen on, if any.
-    func set(_ coordinate: CLLocationCoordinate2D, for endpoint: LinkProfileEndpoint, name: String? = nil) {
+    func set(_ coordinate: CLLocationCoordinate2D, for endpoint: LinkProfileEndpoint, name: String? = nil, selection: ReportedRepeaterSelection? = nil) {
         switch endpoint {
         case .pointA:
             latitudeA = coordinate.latitude
             longitudeA = coordinate.longitude
             nameA = name
+            reportedSelectionA = selection
         case .pointB:
             latitudeB = coordinate.latitude
             longitudeB = coordinate.longitude
             nameB = name
+            reportedSelectionB = selection
         }
         scheduleElevationLookup(for: endpoint)
         scheduleAnalysis()
@@ -1121,6 +1261,7 @@ final class LinkProfileModel {
             latitudeA = nil
             longitudeA = nil
             nameA = nil
+            reportedSelectionA = nil
             groundElevationA = nil
             isLoadingElevationA = false
         case .pointB:
@@ -1128,6 +1269,7 @@ final class LinkProfileModel {
             latitudeB = nil
             longitudeB = nil
             nameB = nil
+            reportedSelectionB = nil
             groundElevationB = nil
             isLoadingElevationB = false
         }
@@ -1135,10 +1277,10 @@ final class LinkProfileModel {
     }
 
     /// Places or moves [endpoint] from the map, with Undo.
-    func place(_ coordinate: CLLocationCoordinate2D, for endpoint: LinkProfileEndpoint, name: String?) {
+    func place(_ coordinate: CLLocationCoordinate2D, for endpoint: LinkProfileEndpoint, name: String?, selection: ReportedRepeaterSelection? = nil) {
         let before = placement
         let moved = self.coordinate(for: endpoint) != nil
-        set(coordinate, for: endpoint, name: name)
+        set(coordinate, for: endpoint, name: name, selection: selection)
         undo = LinkProfileUndo(
             message: moved ? "Point \(endpoint.letter) moved" : "Point \(endpoint.letter) placed",
             before: before
@@ -1164,7 +1306,7 @@ final class LinkProfileModel {
         guard let undo else { return }
         for endpoint in [LinkProfileEndpoint.pointA, .pointB] {
             if let point = undo.before.point(for: endpoint) {
-                set(point.coordinate, for: endpoint, name: point.name)
+                set(point.coordinate, for: endpoint, name: point.name, selection: point.selection)
             } else {
                 clear(endpoint)
             }
@@ -1174,8 +1316,8 @@ final class LinkProfileModel {
 
     private var placement: LinkProfilePlacement {
         LinkProfilePlacement(
-            pointA: coordinateA.map { LinkProfilePlacement.Point(coordinate: $0, name: nameA) },
-            pointB: coordinateB.map { LinkProfilePlacement.Point(coordinate: $0, name: nameB) }
+            pointA: coordinateA.map { LinkProfilePlacement.Point(coordinate: $0, name: nameA, selection: reportedSelectionA) },
+            pointB: coordinateB.map { LinkProfilePlacement.Point(coordinate: $0, name: nameB, selection: reportedSelectionB) }
         )
     }
 
@@ -1183,11 +1325,60 @@ final class LinkProfileModel {
     func endpointCoordinatesChanged(_ endpoint: LinkProfileEndpoint) {
         undo = nil
         switch endpoint {
-        case .pointA: nameA = nil
-        case .pointB: nameB = nil
+        case .pointA:
+            nameA = nil
+            reportedSelectionA = nil
+        case .pointB:
+            nameB = nil
+            reportedSelectionB = nil
         }
         scheduleElevationLookup(for: endpoint)
         scheduleAnalysis()
+    }
+
+    func applyReportedDefaults(_ metadata: RepeaterMetadata, host: String, endpoint: LinkProfileEndpoint) {
+        let isA = endpoint == .pointA
+        let source = metadata.antennaSource(host: host)
+        if !(isA ? editedHeightA : editedHeightB),
+           source.isFromDifferentRepeater(than: isA ? reportedHeightA : reportedHeightB) {
+            applyReportedHeight(metadata, host: host, endpoint: endpoint)
+        }
+        if !(isA ? editedGainA : editedGainB),
+           source.isFromDifferentRepeater(than: isA ? reportedGainA : reportedGainB) {
+            applyReportedGain(metadata, host: host, endpoint: endpoint)
+        }
+    }
+
+    func applyReportedHeight(_ metadata: RepeaterMetadata?, host: String, endpoint: LinkProfileEndpoint) {
+        guard let metadata, let height = metadata.applicableHeightMeters() else { return }
+        let source = metadata.antennaSource(host: host)
+        switch endpoint {
+        case .pointA:
+            heightA = height
+            reportedHeightA = source
+            editedHeightA = false
+        case .pointB:
+            heightB = height
+            reportedHeightB = source
+            editedHeightB = false
+        }
+        configurationChanged()
+    }
+
+    func applyReportedGain(_ metadata: RepeaterMetadata?, host: String, endpoint: LinkProfileEndpoint) {
+        guard let metadata, let gain = metadata.applicableGainDbi else { return }
+        let source = metadata.antennaSource(host: host)
+        switch endpoint {
+        case .pointA:
+            gainADB = gain
+            reportedGainA = source
+            editedGainA = false
+        case .pointB:
+            gainBDB = gain
+            reportedGainB = source
+            editedGainB = false
+        }
+        configurationChanged()
     }
 
     func configurationChanged() {
@@ -1195,6 +1386,7 @@ final class LinkProfileModel {
     }
 
     func applyRadioPreset(_ preset: LinkProfileRadioPreset) {
+        radioDefaultOrigin = nil
         radioPreset = preset
         if let value = preset.frequencyMHz { frequencyMHz = value }
         if let value = preset.transmitPowerDBm { transmitPowerDBm = value }
@@ -1462,6 +1654,10 @@ private struct LinkProfilePointCard: View {
                         Text(summary)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
+                        ReportedAntennaSourceLabel(
+                            height: (endpoint == .pointA ? model.reportedHeightA : model.reportedHeightB) != nil,
+                            gain: (endpoint == .pointA ? model.reportedGainA : model.reportedGainB) != nil
+                        )
                     }
                     Spacer(minLength: 8)
                     Image(systemName: "chevron.down")
@@ -1497,6 +1693,12 @@ private struct LinkProfilePointCard: View {
                     }
                 }
                 CoverageAntennaSetting(gainDbi: budgetBinding(\.gainADB, \.gainBDB))
+                ReportedRepeaterAntennaControl(
+                    selection: endpoint == .pointA ? model.reportedSelectionA : model.reportedSelectionB
+                ) { metadata, host in
+                    model.applyReportedHeight(metadata, host: host, endpoint: endpoint)
+                    model.applyReportedGain(metadata, host: host, endpoint: endpoint)
+                }
                 LinkProfileNumericSetting(title: "System loss", value: budgetBinding(\.lossADB, \.lossBDB), unit: "dB")
                 ViewThatFits(in: .horizontal) {
                     HStack { actions }
@@ -1612,8 +1814,7 @@ private struct LinkProfilePointCard: View {
     }
 }
 
-/// The two presets, then the three values a preset sets. Editing one makes the radio custom,
-/// and neither preset is then selected.
+/// Preset choices and the radio values they set. Editing a value makes the radio custom.
 private struct LinkProfileRadioSettings: View {
     @Bindable var model: LinkProfileModel
     @State private var isCustomizing = false
@@ -1625,6 +1826,12 @@ private struct LinkProfileRadioSettings: View {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 8) { presets }
                 VStack(alignment: .leading, spacing: 8) { presets }
+            }
+            if model.radioPreset != .custom && !LinkProfileRadioPreset.selectable.contains(model.radioPreset) {
+                Text(model.radioPreset.title).font(.monaspace(.subheadline))
+            }
+            if let origin = model.radioDefaultOrigin {
+                Text(origin.label).font(.caption).foregroundStyle(.secondary)
             }
             Button {
                 withAnimation(.easeInOut) { isCustomizing.toggle() }
@@ -1651,7 +1858,7 @@ private struct LinkProfileRadioSettings: View {
 
     @ViewBuilder
     private var presets: some View {
-        ForEach([LinkProfileRadioPreset.unitedStatesNarrow, .europeNarrow]) { preset in
+        ForEach(LinkProfileRadioPreset.selectable) { preset in
             if model.radioPreset == preset {
                 Button { model.applyRadioPreset(preset) } label: { Text(preset.title) }
                     .buttonStyle(.borderedProminent)
@@ -1672,8 +1879,7 @@ private struct LinkProfileRadioSettings: View {
             get: { model[keyPath: keyPath] },
             set: {
                 model[keyPath: keyPath] = $0
-                model.radioPreset = .custom
-                model.configurationChanged()
+                model.applyRadioPreset(.custom)
             }
         )
     }
@@ -2264,7 +2470,9 @@ extension LinkProfileModel: StudyDraftSource {
                 "lossA": text(lossADB), "lossB": text(lossBDB), "frequencyMHz": text(frequencyMHz),
                 "transmitPowerDbm": text(transmitPowerDBm), "sensitivityDbm": text(receiverSensitivityDBm),
                 "refractionK": text(refractionK), "sampleCount": sampleCount.map(String.init) ?? "",
-                "radioPreset": String(describing: radioPreset)]
+                "radioPreset": String(describing: radioPreset),
+                "reportedGainA": reportedGainA?.draftValue ?? "", "reportedGainB": reportedGainB?.draftValue ?? "",
+                "reportedHeightA": reportedHeightA?.draftValue ?? "", "reportedHeightB": reportedHeightB?.draftValue ?? ""]
     }
 
     /// What's open now counts as saved: on opening, and after a successful Save.
@@ -2273,6 +2481,8 @@ extension LinkProfileModel: StudyDraftSource {
     /// Resumes a recovery draft: its values, the saved study it edits (`study`, at the draft's revision)
     /// and, if it's for these inputs, its result. Nothing is fetched or analyzed until Calculate.
     func restore(draft: StudyDraft, study: SavedStudy?, result data: Data?) {
+        hasInitializedRadio = true
+        radioDefaultOrigin = nil
         let editor = draft.editor
         func number(_ key: String) -> Double? { editor[key].flatMap(Double.init) }
         func name(_ key: String) -> String? { editor[key].flatMap { $0.isEmpty ? nil : $0 } }
@@ -2289,9 +2499,19 @@ extension LinkProfileModel: StudyDraftSource {
         nameA = name("nameA")
         nameB = name("nameB")
         heightA = number("heightA") ?? heightA
+        reportedHeightA = ReportedAntennaSource.fromDraft(editor["reportedHeightA"])
+        editedHeightA = reportedHeightA == nil
         heightB = number("heightB") ?? heightB
+        reportedHeightB = ReportedAntennaSource.fromDraft(editor["reportedHeightB"])
+        editedHeightB = reportedHeightB == nil
         gainADB = number("gainA") ?? gainADB
         gainBDB = number("gainB") ?? gainBDB
+        reportedGainA = ReportedAntennaSource.fromDraft(editor["reportedGainA"])
+        editedGainA = reportedGainA == nil
+        reportedGainB = ReportedAntennaSource.fromDraft(editor["reportedGainB"])
+        editedGainB = reportedGainB == nil
+        reportedSelectionA = nil
+        reportedSelectionB = nil
         lossADB = number("lossA") ?? lossADB
         lossBDB = number("lossB") ?? lossBDB
         frequencyMHz = number("frequencyMHz") ?? frequencyMHz

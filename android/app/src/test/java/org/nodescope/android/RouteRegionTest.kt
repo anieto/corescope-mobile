@@ -13,24 +13,24 @@ import kotlinx.serialization.json.jsonObject
 
 class RouteRegionTest {
     @Test fun routeMarkersPreserveIdentityAndDoNotInventAmbiguousHops() {
-        val nodes = listOf("aa01", "aa02", "bb01").mapIndexed { i, key -> MeshNode(key, key, "repeater", 30.0 + i, -97.0, "2026-09-22") }
-        val packet = parseLivePacket(protocolJson.parseToJsonElement("""{"id":1,"hash":"route","path_json":["aa","bb"],"observer_id":"obs"}""").jsonObject, true)!!
+        val nodes = listOf("aa0101", "aa0102", "bb0101").mapIndexed { i, key -> MeshNode(key, key, "repeater", 30.0 + i, -97.0, "2026-09-22") }
+        val packet = parseLivePacket(protocolJson.parseToJsonElement("""{"id":1,"hash":"route","path_json":["aa01","bb01"],"observer_id":"obs"}""").jsonObject, true)!!
         val markers = routeAnchors(packet, nodes, listOf(MeshObserver("obs", lat = 34.0, lon = -97.0)))
-        assertEquals(listOf("bb01"), markers.mapNotNull { it.publicKey })
+        assertEquals(listOf("bb0101"), markers.mapNotNull { it.publicKey })
         assertEquals(2, markers.size) // One resolved node plus the real observer endpoint.
     }
     @Test fun unsetGpsBreaksRoutesAndNeverCreatesMarkersOrObserverEndpoints() {
         val nodes = listOf(
-            MeshNode("aa", "Before", "repeater", 30.0, -97.0, "2026-09-22"),
-            MeshNode("bb", "Unset", "repeater", 0.0, 0.0, "2026-09-22"),
-            MeshNode("cc", "After", "repeater", 31.0, -97.0, "2026-09-22"),
+            MeshNode("aa01", "Before", "repeater", 30.0, -97.0, "2026-09-22"),
+            MeshNode("bb01", "Unset", "repeater", 0.0, 0.0, "2026-09-22"),
+            MeshNode("cc01", "After", "repeater", 31.0, -97.0, "2026-09-22"),
         )
-        val packet = parseLivePacket(protocolJson.parseToJsonElement("""{"id":1,"hash":"unset","path_json":["aa","bb","cc"],"observer_id":"obs"}""").jsonObject, true)!!
+        val packet = parseLivePacket(protocolJson.parseToJsonElement("""{"id":1,"hash":"unset","path_json":["aa","bb","cc"],"resolved_path":["aa01","bb01","cc01"],"observer_id":"obs"}""").jsonObject, true)!!
         val observers = listOf(MeshObserver("obs", lat = 0.0, lon = 0.0))
         assertNull(nodes[1].coordinate)
         assertNull(observers.single().coordinate)
         assertEquals(listOf(listOf(Coordinate(30.0, -97.0)), listOf(Coordinate(31.0, -97.0))), packetRoute(packet, nodes, observers))
-        assertEquals(listOf("aa", "cc"), routeAnchors(packet, nodes, observers).map { it.publicKey })
+        assertEquals(listOf("aa01", "cc01"), routeAnchors(packet, nodes, observers).map { it.publicKey })
         assertEquals(2, nodeMarkers(nodes).size)
     }
     @Test fun gpsAllowsEquatorAndPrimeMeridianExceptTheirUnsetIntersection() {

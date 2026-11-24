@@ -22,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -54,6 +55,7 @@ fun SettingsScreen(
     onBackgroundTexture: (Boolean) -> Unit = {},
     /** Shows this build's highlights again; null hides the row. */
     whatsNewVersion: String? = null, onWhatsNew: () -> Unit = {},
+    onAccount: (() -> Unit)? = null, accountSourceName: String? = null,
 ) {
     val resources = LocalResources.current
     // After an analyzer change, report whether the new source connects (as iOS does).
@@ -153,6 +155,15 @@ fun SettingsScreen(
             item {
                 Panel(stringResource(R.string.settings_analyzer), Icons.Outlined.Dns) {
                     NavigationRow(stringResource(R.string.settings_choose_source), preferences.host, Icons.Outlined.Hub, onSource)
+                    if (onAccount != null) {
+                        val context = LocalContext.current
+                        val hasSession = runCatching {
+                            org.nodescope.android.core.network.CoreScopeAccountClient.forSource(context, preferences.host).hasSession
+                        }.getOrDefault(false)
+                        NavigationRow(stringResource(R.string.app_corescope_account),
+                            stringResource(if (hasSession) R.string.settings_manage_corescope_account else R.string.explore_sign_in),
+                            Icons.Outlined.AccountCircle, onAccount, sourceName = accountSourceName ?: preferences.host)
+                    }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         val live = connection == LiveConnection.LIVE
                         Box(Modifier.size(32.dp).background((statusAccent(live)).copy(alpha = 0.14f), MaterialTheme.shapes.small),
@@ -250,11 +261,14 @@ private fun CardRow(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 fun NavigationRow(title: String, value: String, icon: ImageVector, onClick: () -> Unit, external: Boolean = false,
     /** A short tag after the title, such as "Beta", in a capsule as on iOS. */
-    badge: String? = null) {
+    badge: String? = null, sourceName: String? = null, iconBadgeColor: Color? = null) {
     Row(Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small).clickable(onClick = onClick).heightIn(min = 56.dp).padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box(Modifier.size(32.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.11f), MaterialTheme.shapes.small), contentAlignment = Alignment.Center) {
-            Icon(icon, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+        val iconBackground = iconBadgeColor ?: MaterialTheme.colorScheme.primary.copy(alpha = 0.11f)
+        val iconShape = if (iconBadgeColor == null) MaterialTheme.shapes.small else CircleShape
+        Box(Modifier.size(32.dp).background(iconBackground, iconShape), contentAlignment = Alignment.Center) {
+            Icon(icon, null, Modifier.size(18.dp),
+                tint = if (iconBadgeColor == null) MaterialTheme.colorScheme.primary else Color.White)
         }
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -264,6 +278,10 @@ fun NavigationRow(title: String, value: String, icon: ImageVector, onClick: () -
                         .padding(horizontal = 7.dp, vertical = 2.dp),
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            }
+            if (sourceName != null) {
+                Text(sourceName, style = MaterialTheme.typography.bodySmall.copy(fontFamily = MonaspaceNeon),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(value, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

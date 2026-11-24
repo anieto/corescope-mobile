@@ -133,6 +133,59 @@ enum FieldGeometry {
         return (atan2(east, north).degrees + 360).truncatingRemainder(dividingBy: 360)
     }
 
+    /// A tilt-responsive bearing guide. At zero pitch its tip sits at 43% of the preview.
+    static func cameraBearingGuideOffset(pitch: Double, halfHeightTangent: Double) -> Double {
+        let levelAngle = atan(0.14 * halfHeightTangent)
+        let angle = min(1.55, max(-1.55, levelAngle - pitch.radians))
+        return tan(angle) / halfHeightTangent
+    }
+
+    static func cameraElevationUncertainty(distance: Double, phoneAccuracy: Double) -> Double {
+        atan2(phoneAccuracy + 15, distance).degrees
+    }
+
+    /// Project a height estimate only when combined vertical uncertainty is small enough to be useful.
+    static func cameraVerticalOffset(
+        distance: Double, antennaElevation: Double, phoneElevation: Double,
+        phoneAccuracy: Double, pitch: Double, halfHeightTangent: Double
+    ) -> Double? {
+        guard [distance, antennaElevation, phoneElevation, phoneAccuracy, pitch, halfHeightTangent].allSatisfy(\.isFinite),
+              distance > 0, phoneAccuracy > 0, halfHeightTangent > 0,
+              cameraElevationUncertainty(distance: distance, phoneAccuracy: phoneAccuracy) <= 30 else { return nil }
+        let curvature = distance * distance / (2 * earthRadiusMeters)
+        let angle = atan2(antennaElevation - phoneElevation - curvature, distance).degrees - pitch
+        guard abs(angle) < 89 else { return nil }
+        return tan(angle.radians) / halfHeightTangent
+    }
+
+    /// Core Motion true-north coordinates are X north, Y west, Z up.
+    static func rearCameraHeadingDegrees(deviceScreenAxis screen: SIMD3<Double>) -> Double? {
+        let rear = -screen
+        guard hypot(rear.x, rear.y) >= 0.35 else { return nil }
+        return (atan2(-rear.y, rear.x).degrees + 360).truncatingRemainder(dividingBy: 360)
+    }
+
+    /// Position as a fraction of the camera pane's half width, with values outside ±1 offscreen.
+    static func cameraHorizontalOffset(bearing: Double, heading: Double, halfWidthTangent: Double) -> Double? {
+        guard halfWidthTangent.isFinite, halfWidthTangent > 0,
+              let clockwise = relativeHeadingRotation(trueBearingDegrees: bearing, deviceTrueHeadingDegrees: heading)
+        else { return nil }
+        let signed = clockwise > 180 ? clockwise - 360 : clockwise
+        if abs(signed) >= 89 { return signed < 0 ? -Double.infinity : Double.infinity }
+        return tan(signed.radians) / halfWidthTangent
+    }
+
+    static func cameraScreenAxis(rows: [SIMD3<Double>], useRows: Bool?) -> SIMD3<Double> {
+        let row = rows[2]
+        let column = SIMD3(rows[0].z, rows[1].z, rows[2].z)
+        // When gravity cannot distinguish the layouts, their screen axes are nearly identical.
+        switch useRows {
+        case true?: return row
+        case false?: return column
+        case nil: return (row + column) / 2
+        }
+    }
+
     /// Core Motion documents the attitude matrix only as the device's rotation relative to the
     /// reference frame, so work out from gravity (known in device coordinates) whether its rows or
     /// its columns hold the device axes. Returns nil while the phone is too close to flat to tell.

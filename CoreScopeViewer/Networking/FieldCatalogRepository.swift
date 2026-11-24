@@ -6,6 +6,11 @@ protocol FieldCatalogBackend: Sendable {
 
     func nodes(region: String?) async throws -> NodesResponse
     func observers() async throws -> ObserversResponse
+    func repeaterMetadata() async throws -> RepeaterMetadataCatalog
+}
+
+extension FieldCatalogBackend {
+    func repeaterMetadata() async throws -> RepeaterMetadataCatalog { .empty }
 }
 
 struct FieldCatalogValue<Value: Sendable>: Sendable {
@@ -25,6 +30,28 @@ actor FieldCatalogRepository {
     ) {
         self.cache = cache
         self.now = now
+    }
+
+    func repeaterMetadata(for backend: any FieldCatalogBackend, force: Bool = false) async -> RepeaterMetadataCatalog {
+        let key = "field-repeater-metadata-\(backend.cacheIdentifier)"
+        guard backend.sourceSession.isCurrent, !Task.isCancelled else { return .empty }
+        let cached: FieldCatalogValue<RepeaterMetadataCatalog>? = await cachedValue(
+            for: key, maximumAge: FieldRequestBudget.staleCatalogLifetime
+        )
+        let due = await refreshIsDue(for: key, force: force)
+        let result: RepeaterMetadataCatalog
+        if due {
+            do {
+                result = try await cache.refresh(for: key, session: backend.sourceSession) {
+                    try await backend.repeaterMetadata()
+                }
+            } catch {
+                result = cached?.value ?? .empty
+            }
+        } else {
+            result = cached?.value ?? .empty
+        }
+        return backend.sourceSession.isCurrent && !Task.isCancelled ? result : .empty
     }
 
     func cachedNodes(

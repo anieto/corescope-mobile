@@ -1,6 +1,10 @@
 package org.nodescope.android.feature.nodes
 
+import androidx.compose.runtime.saveable.rememberSaveable
+import org.nodescope.android.core.model.FieldCoordinate
+import org.nodescope.android.feature.nodevision.NodeVisionScreen
 import org.nodescope.android.core.design.nodeRoleLabel
+import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -26,6 +30,7 @@ import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.CallMade
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,16 +38,22 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
@@ -53,6 +64,10 @@ import java.time.format.DateTimeFormatter
 import org.nodescope.android.core.design.*
 import org.nodescope.android.core.model.*
 import org.nodescope.android.core.network.Loaded
+import org.nodescope.android.core.network.AccountException
+import org.nodescope.android.core.network.CoreScopeAccountClient
+import kotlinx.coroutines.CancellationException
+import org.nodescope.android.core.network.endpoint
 
 /** Role colors shared with the map markers. */
 fun roleColor(role: String?): Color = when (role?.lowercase()) {
@@ -81,6 +96,7 @@ fun NodeDetailScreen(
     favorite: Boolean, onFavorite: (MeshNode) -> Unit, onMap: (MeshNode) -> Unit,
     onObserver: (id: String, name: String) -> Unit, onNode: (String) -> Unit, onAnalytics: (() -> Unit)? = null,
     onViewed: (MeshNode) -> Unit = {}, onNodeCheck: (() -> Unit)? = null,
+    refreshOnOpen: Boolean = false, openedFromNodeVision: Boolean = false, onWatchNode: ((MeshNode?) -> Unit)? = null,
 ) {
     // Without a network layer (previews/tests) only the identity card is shown.
     val health = model?.health?.state?.collectAsStateWithLifecycle()?.value ?: Loaded()
@@ -92,7 +108,13 @@ fun NodeDetailScreen(
     val key = host to publicKey
     // Beacon has no health, reach or path statistics; it reports neighbors instead.
     val beacon = LocalBeaconSource.current
-    LaunchedEffect(model, key, beacon) { model?.load(host, publicKey, beacon = beacon) }
+    LaunchedEffect(model, key, beacon, refreshOnOpen) {
+        model?.load(host, publicKey, force = refreshOnOpen, beacon = beacon)
+    }
+    val metadata = remember(model, key, beacon) { mutableStateOf<RepeaterMetadata?>(null) }
+    LaunchedEffect(model, key, beacon) {
+        if (!beacon) metadata.value = model?.repeaterMetadata(host, publicKey)
+    }
     val now = rememberNow()
     // Never show another node's (or analyzer's) sections while this one loads.
     val sections = (if (beacon) listOf(neighbors, beaconHealth) else listOf(health, reach, paths))
@@ -103,6 +125,163 @@ fun NodeDetailScreen(
     val neighborsValue = neighbors.value?.takeIf { neighbors.key == key && beacon }
     val beaconHealthValue = beaconHealth.value?.takeIf { beaconHealth.key == key && beacon }
     val node = healthValue?.node ?: initial
+    val visionCoordinate = node?.coordinate?.let { FieldCoordinate.create(it.latitude, it.longitude) }
+    var showsNodeVision by rememberSaveable(host, publicKey) { mutableStateOf(false) }
+    if (!openedFromNodeVision && showsNodeVision && visionCoordinate != null) {
+        NodeVisionScreen(
+            name = node?.name?.takeIf { it.isNotBlank() } ?: publicKey,
+            target = visionCoordinate,
+            antennaHeight = metadata.value?.applicableHeightMeters(),
+            initialStatus = metadata.value?.status,
+        ) {
+            showsNodeVision = false
+        }
+    }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var addingWatch by remember(key) { mutableStateOf(false) }
+    var watchIntent by remember(key) { mutableStateOf<Boolean?>(null) }
+    var isWatched by remember(key) { mutableStateOf(false) }
+    var checkingWatch by remember(key) { mutableStateOf(false) }
+    val watchKey = publicKey.lowercase()
+    LifecycleResumeEffect(key, onWatchNode != null) {
+        val lookup = if (onWatchNode != null) scope.launch {
+            if (addingWatch) return@launch
+            checkingWatch = true
+            try {
+                val client = CoreScopeAccountClient.forSource(context, host)
+                isWatched = client.hasSession && client.notifications().watches.any { it.pubkey == watchKey }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: AccountException) {
+                if (error.kind == AccountException.Kind.SIGNED_OUT) isWatched = false
+            } catch (_: Exception) {
+                // Leave the last known state visible during a temporary failure.
+            } finally {
+                checkingWatch = false
+            }
+        } else null
+        onPauseOrDispose { lookup?.cancel() }
+    }
+    var watchFeedback by remember(key) { mutableStateOf<UiText?>(null) }
+    watchFeedback?.let { feedback ->
+        AlertDialog(
+            onDismissRequest = { watchFeedback = null },
+            title = { Text(stringResource(R.string.account_watch_node)) },
+            text = { Text(feedback.asString()) },
+            confirmButton = {
+                TextButton(onClick = { watchFeedback = null }) { Text(stringResource(android.R.string.ok)) }
+            },
+        )
+    }
+    val shouldWatch = watchIntent
+    if (shouldWatch != null && node != null && onWatchNode != null) {
+        val watch = onWatchNode
+        val name = node.name?.takeIf { it.isNotBlank() } ?: stringResource(R.string.account_watch_this_node)
+        AlertDialog(
+            onDismissRequest = { watchIntent = null },
+            title = {
+                Text(if (shouldWatch) stringResource(R.string.account_watch_confirm_title)
+                    else stringResource(R.string.account_watch_remove_title, name))
+            },
+            text = if (shouldWatch) {
+                { Text(stringResource(R.string.account_watch_confirm_message, name)) }
+            } else null,
+            dismissButton = {
+                TextButton(onClick = { watchIntent = null }) { Text(stringResource(android.R.string.cancel)) }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    watchIntent = null
+                    if (!addingWatch) {
+                        addingWatch = true
+                        scope.launch {
+                            try {
+                                val client = CoreScopeAccountClient.forSource(context, host)
+                                if (!client.hasSession) {
+                                    isWatched = false
+                                    if (shouldWatch) watch(node)
+                                    else watchFeedback = UiText.Resource(R.string.account_alerts_failed)
+                                } else if (client.accountCapabilities()?.notifications != true) {
+                                    watchFeedback = UiText.Resource(R.string.account_alerts_unavailable)
+                                } else {
+                                    val user = client.me()
+                                    val notifications = client.setWatch(watchKey, shouldWatch, user.csrfToken)
+                                    isWatched = notifications.watches.any { it.pubkey == watchKey }
+                                    if (shouldWatch && isWatched) watchFeedback = UiText.Resource(
+                                        R.string.account_watch_confirmation, node.name?.takeIf { it.isNotBlank() }
+                                            ?: context.getString(R.string.account_watch_this_node),
+                                    )
+                                }
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
+                            } catch (error: AccountException) {
+                                if (error.kind == AccountException.Kind.SIGNED_OUT) {
+                                    isWatched = false
+                                    if (shouldWatch) watch(node) else watchFeedback = error.displayText
+                                } else watchFeedback = error.displayText
+                            } catch (_: Exception) {
+                                watchFeedback = UiText.Resource(if (shouldWatch) R.string.account_watch_failed else R.string.account_watch_remove_failed)
+                            } finally {
+                                addingWatch = false
+                            }
+                        }
+                    }
+                }) { Text(stringResource(if (shouldWatch) R.string.account_watch_node else R.string.account_stop_watching)) }
+            },
+        )
+    }
+    val coreScopeUrl = remember(host, publicKey, node?.role, beacon) {
+        if (!beacon && node?.role.equals("repeater", ignoreCase = true) &&
+            publicKey.matches(Regex("[0-9a-fA-F]{64}"))) {
+            runCatching {
+                endpoint(host).newBuilder()
+                    .fragment("/nodes/${publicKey.lowercase()}?section=node-repeater-info")
+                    .build().toString()
+            }.getOrNull()
+        } else null
+    }
+    val repeaterClient = org.nodescope.android.feature.explore.rememberRepeaterManagementClient(host, coreScopeUrl != null)
+    var manageRepeater by remember(coreScopeUrl) { mutableStateOf(false) }
+    if (manageRepeater && repeaterClient != null) {
+        org.nodescope.android.feature.explore.AccountRepeaterManagementDialog(
+            repeaterClient, publicKey, node?.displayName ?: publicKey,
+        ) {
+            manageRepeater = false
+            if (model != null) scope.launch { metadata.value = model.repeaterMetadata(host, publicKey, force = true) }
+        }
+    }
+    var canClaim by remember(coreScopeUrl) { mutableStateOf(false) }
+    var confirmClaim by remember(coreScopeUrl) { mutableStateOf(false) }
+    val uri = LocalUriHandler.current
+    LifecycleResumeEffect(coreScopeUrl, model) {
+        val lookup = scope.launch {
+            val wasUnclaimed = canClaim
+            canClaim = false
+            if (coreScopeUrl != null && model != null) {
+                canClaim = model.repeaterIsUnclaimed(host, publicKey)
+                if (wasUnclaimed && !canClaim) {
+                    metadata.value = model.repeaterMetadata(host, publicKey, force = true)
+                }
+            }
+        }
+        onPauseOrDispose { lookup.cancel() }
+    }
+    if (confirmClaim && canClaim && coreScopeUrl != null) {
+        AlertDialog(
+            onDismissRequest = { confirmClaim = false },
+            title = { Text(stringResource(R.string.repeater_claim_confirmation)) },
+            text = { Text(stringResource(R.string.repeater_claim_guidance)) },
+            confirmButton = {
+                TextButton(onClick = { confirmClaim = false; uri.openUri(coreScopeUrl) }) {
+                    Text(stringResource(R.string.repeater_continue_to_corescope))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmClaim = false }) { Text(stringResource(android.R.string.cancel)) }
+            },
+        )
+    }
     // Nodes opened from links may only be known once health loads; record them for Recently Viewed.
     LaunchedEffect(node?.publicKey) { node?.let(onViewed) }
 
@@ -112,12 +291,53 @@ fun NodeDetailScreen(
                 hasContent = healthValue != null || reachValue != null || pathsValue != null || neighborsValue != null ||
                     beaconHealthValue != null, now) {
                 model.load(host, publicKey, force = true, beacon = beacon)
+                if (!beacon) scope.launch { metadata.value = model.repeaterMetadata(host, publicKey, force = true) }
             }
         }
         item {
-            if (node != null) IdentityCard(node, publicKey, favorite, now, onFavorite, onMap)
+            if (node != null) IdentityCard(
+                node, publicKey, favorite, now, onFavorite, onMap,
+                coreScopeUrl = coreScopeUrl,
+                watchBusy = addingWatch || checkingWatch,
+                isWatched = isWatched,
+                onWatch = onWatchNode?.let { { watchIntent = !isWatched } },
+            )
             else if (sections[0].loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             else Text(stringResource(R.string.node_detail_this_node_is_not_in_the_loaded_results, host), style = MaterialTheme.typography.bodyMedium)
+        }
+        if (!openedFromNodeVision && visionCoordinate != null) item {
+            val surface = MaterialTheme.colorScheme.surface
+            val dark = surface.luminance() < 0.5f
+            val foreground = if (dark) ActivityAmber else Color(0xFF743500)
+            FilledTonalButton(
+                onClick = { showsNodeVision = true },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = ActivityAmber.copy(alpha = if (dark) 0.18f else 0.30f).compositeOver(surface),
+                    contentColor = foreground,
+                ),
+            ) {
+                Icon(Icons.Outlined.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.nodevision_open))
+            }
+        }
+        metadata.value?.let { item(key = "repeater-metadata:$host:$publicKey") { RepeaterMetadataCard(it, coreScopeUrl) } }
+        if (repeaterClient != null) item {
+            Button(onClick = { manageRepeater = true }, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.repeater_manage))
+            }
+        } else if (canClaim && coreScopeUrl != null) item {
+
+            Button(
+                onClick = { confirmClaim = true },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = ActionBlue, contentColor = Color.White),
+            ) {
+                Icon(Icons.Outlined.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.repeater_claim))
+            }
         }
         if (!beacon) onNodeCheck?.let { open ->
             item {
@@ -141,7 +361,11 @@ fun NodeDetailScreen(
 }
 
 @Composable
-private fun IdentityCard(node: MeshNode, publicKey: String, favorite: Boolean, now: Long, onFavorite: (MeshNode) -> Unit, onMap: (MeshNode) -> Unit) {
+private fun IdentityCard(
+    node: MeshNode, publicKey: String, favorite: Boolean, now: Long,
+    onFavorite: (MeshNode) -> Unit, onMap: (MeshNode) -> Unit, coreScopeUrl: String?, watchBusy: Boolean, isWatched: Boolean, onWatch: (() -> Unit)?,
+) {
+    val uri = LocalUriHandler.current
     val resources = LocalResources.current
     val copy = rememberCopyAction()
     val context = LocalContext.current
@@ -166,6 +390,22 @@ private fun IdentityCard(node: MeshNode, publicKey: String, favorite: Boolean, n
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+            onWatch?.let {
+                val label = stringResource(if (isWatched) R.string.account_stop_watching else R.string.account_watch_node)
+                val watchedGreen = Color(0xFF146945)
+                IconButton(
+                    onClick = it,
+                    enabled = !watchBusy,
+                    colors = if (isWatched) IconButtonDefaults.iconButtonColors(
+                        containerColor = watchedGreen, contentColor = Color.White,
+                        disabledContainerColor = watchedGreen, disabledContentColor = Color.White,
+                    ) else IconButtonDefaults.iconButtonColors(),
+                    modifier = Modifier.withDescription(label) { description -> contentDescription = description },
+                ) {
+                    if (watchBusy) CircularProgressIndicator(Modifier.size(20.dp), color = LocalContentColor.current, strokeWidth = 2.dp)
+                    else Icon(if (isWatched) Icons.Filled.Notifications else Icons.Outlined.NotificationsNone, null)
+                }
+            }
             IconToggleButton(checked = favorite, onCheckedChange = { onFavorite(node) }) {
                 Icon(if (favorite) Icons.Outlined.Star else Icons.Outlined.StarBorder,
                     if (favorite) stringResource(R.string.node_detail_remove_favorite) else stringResource(R.string.node_detail_save_node))
@@ -178,6 +418,13 @@ private fun IdentityCard(node: MeshNode, publicKey: String, favorite: Boolean, n
                     MeshCoreContactLink.from(node.name, publicKey, node.role)?.let { contact ->
                         DropdownMenuItem(text = { Text(stringResource(R.string.node_detail_add_to_meshcore)) }, leadingIcon = { Icon(Icons.Outlined.QrCode2, null) },
                             onClick = { menuOpen = false; meshCoreContact = contact })
+                    }
+                    coreScopeUrl?.let { url ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.repeater_open_in_corescope)) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Outlined.OpenInNew, null) },
+                            onClick = { menuOpen = false; uri.openUri(url) },
+                        )
                     }
                     DropdownMenuItem(text = { Text(stringResource(R.string.common_share)) }, leadingIcon = { Icon(Icons.Outlined.Share, null) }, onClick = {
                         menuOpen = false
@@ -530,4 +777,91 @@ private fun meshCoreQrBitmap(text: String): Bitmap {
         if (matrix[i % matrix.width, i / matrix.width]) android.graphics.Color.BLACK else android.graphics.Color.WHITE
     }
     return Bitmap.createBitmap(pixels, matrix.width, matrix.height, Bitmap.Config.ARGB_8888)
+}
+
+
+@Composable
+private fun RepeaterMetadataCard(metadata: RepeaterMetadata, coreScopeUrl: String?) {
+    val uri = LocalUriHandler.current
+    var showsInfo by rememberSaveable { mutableStateOf(false) }
+    if (showsInfo) {
+        AlertDialog(
+            onDismissRequest = { showsInfo = false },
+            title = { Text(stringResource(R.string.repeater_about_details)) },
+            text = { Text(stringResource(R.string.repeater_about_details_body)) },
+            confirmButton = {
+                if (coreScopeUrl != null) TextButton(onClick = { showsInfo = false; uri.openUri(coreScopeUrl) }) {
+                    Text(stringResource(R.string.repeater_open_corescope))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showsInfo = false }) { Text(stringResource(android.R.string.ok)) }
+            },
+        )
+    }
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val status = metadata.status?.let(::reportedStatusLabel)
+    val disclosureState = stringResource(
+        if (expanded) R.string.coverage_disclosure_expanded else R.string.coverage_disclosure_collapsed,
+    )
+    DetailCard {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(
+                modifier = Modifier.weight(1f)
+                    .clickable(role = Role.Button) { expanded = !expanded }
+                    .semantics { stateDescription = disclosureState }
+                    .heightIn(min = 48.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(stringResource(R.string.repeater_details), style = MaterialTheme.typography.titleMedium)
+                    status?.let {
+                        Text(stringResource(it), style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null)
+            }
+
+            IconButton(onClick = { showsInfo = true }) {
+                Icon(Icons.Outlined.Info, stringResource(R.string.repeater_about_details),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        if (!expanded) return@DetailCard
+
+        val time = DateTimeFormatter.ofLocalizedDateTime(java.time.format.FormatStyle.MEDIUM)
+            .withZone(ZoneId.systemDefault())
+        val numbers = java.text.NumberFormat.getNumberInstance()
+        val power = when (metadata.power) {
+            "mains" -> R.string.repeater_mains
+            "battery" -> R.string.repeater_battery
+            "solar" -> R.string.repeater_solar
+            else -> null
+        }
+        power?.let { Text(stringResource(R.string.repeater_power, stringResource(it))) }
+        metadata.heightMeters?.let {
+            Text(stringResource(R.string.repeater_height))
+            val unit = LocalDistanceUnit.current
+            val height = org.nodescope.android.feature.linkprofile.profileDisplayHeight(it, unit)
+            Text(stringResource(if (unit.usesFeet) R.string.repeater_feet else R.string.repeater_meters, numbers.format(height)),
+                fontFamily = MonaspaceNeon)
+        }
+        metadata.gainDbi?.let {
+            Text(stringResource(R.string.repeater_gain))
+            if (it == 0.0) Text(stringResource(R.string.repeater_default_gain))
+            else Text(stringResource(R.string.repeater_dbi, numbers.format(it)), fontFamily = MonaspaceNeon)
+        }
+        metadata.claimers.forEach { claim ->
+            Text(stringResource(R.string.repeater_claimed_by, claim.displayName))
+            claim.claimedAt?.let { Text(time.format(it), style = MaterialTheme.typography.bodySmall) }
+        }
+        metadata.updatedBy?.let { Text(stringResource(R.string.repeater_edited_by, it)) }
+        metadata.updatedAt?.let { Text(stringResource(R.string.repeater_updated, time.format(it))) }
+        metadata.notes?.let {
+            Text(stringResource(R.string.repeater_notes), style = MaterialTheme.typography.titleSmall)
+            SelectionContainer { Text(it) }
+        }
+    }
 }

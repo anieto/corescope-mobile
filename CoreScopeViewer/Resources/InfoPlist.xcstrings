@@ -1,0 +1,79 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "Bundle display name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "NodeScope"
+          }
+        }
+      }
+    },
+    "CFBundleName" : {
+      "comment" : "Bundle name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "NodeScope"
+          }
+        }
+      }
+    },
+    "NodeScope Saved Plans" : {
+
+    },
+    "NSCameraUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NodeVision uses the camera to show the direction of nearby mesh nodes."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NodeVision usa la cámara para mostrar en qué dirección están los nodos cercanos de la malla."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O NodeVision usa a câmera para mostrar em que direção estão os nós próximos da malha."
+          }
+        }
+      }
+    },
+    "NSLocationWhenInUseUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your location helps center maps, sort analyzer sources by distance, and guide you in Field Tools and NodeVision while you use the app."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu ubicación ayuda a centrar los mapas, ordenar las fuentes de analizadores por distancia y orientarte en las herramientas de campo y en NodeVision mientras usas la app."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sua localização ajuda a centralizar os mapas, ordenar as fontes de analisadores por distância e orientar você nas ferramentas de campo e no NodeVision enquanto usa o app."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

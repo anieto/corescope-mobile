@@ -109,7 +109,8 @@ struct MapPacketWorkspaceScreen: View {
                 togglePacketSidebar: { setDuoPacketSidebarVisible(!isDuoPacketSidebarVisible) },
                 pinsPacketSidebarToggle: true,
                 centersBottomControlsInLeadingPane: !isDuoPacketSidebarVisible,
-                trailingObscuredWidth: isDuoPacketSidebarVisible ? duoSidebarWidth + duoCreaseMargin : 0
+                trailingObscuredWidth: isDuoPacketSidebarVisible ? duoSidebarWidth + duoCreaseMargin : 0,
+                previewTrailingInset: duoSidebarWidth + duoCreaseMargin
             )
 
             if isDuoPacketSidebarVisible {
@@ -178,10 +179,11 @@ struct MapPacketWorkspaceScreen: View {
                     : nil,
                 extendsMapBehindSidebar: true
             )
+            // On the map only: on the whole split view it also stopped the full-height
+            // sidebar short of the bottom edge.
+            .safeAreaPadding(.bottom, 12)
         }
         .navigationSplitViewStyle(.balanced)
-        // Inset native sidebar chrome without shrinking the full-screen background.
-        .safeAreaPadding(.bottom, 12)
         .ignoresSafeArea(.container, edges: .top)
         .onAppear { updateRegularColumns() }
         .onChange(of: columnVisibility) { _, visibility in
@@ -270,13 +272,14 @@ private struct BeaconPacketSidebar: View {
     @State private var detailRow: BeaconLiveRecovery.Row?
     /// The rows shown while the list is held (paused, a packet picked or a replay running).
     @State private var pausedSnapshot: LiveBrowseSnapshot?
+    @State private var isReadingOlderPackets = false
     /// Routes for the picked packet. Beacon's packet list carries no paths, so they come
     /// from that packet's detail, fetched when it is picked.
     @State private var selectedRoutes: BeaconPacketDetailViewModel?
     @State private var keepsSelectionWhenReplayStops = false
 
     private var shownSnapshot: LiveBrowseSnapshot? {
-        if isFeedHeld, let pausedSnapshot { return pausedSnapshot }
+        if (isFeedHeld || isReadingOlderPackets), let pausedSnapshot { return pausedSnapshot }
         return liveFeed.browseSnapshots[filter]
     }
 
@@ -319,6 +322,7 @@ private struct BeaconPacketSidebar: View {
                         : regionFilter.selectedRegion.map(regionFilter.label(for:)) ?? String(localized: "Entire network")
             )
             .packetFeedListRow(top: 8, bottom: 8)
+            .id(PacketReadingHold.top)
             Button {
                 if isFeedHeld { resumeLiveFeed() } else { livePause.pause() }
             } label: {
@@ -414,7 +418,15 @@ private struct BeaconPacketSidebar: View {
                 .presentationDragIndicator(.visible)
         }
         // Held, the rows stay as they were; resuming shows the latest again.
-        .onChange(of: isFeedHeld, initial: true) { _, isHeld in
+        .modifier(PacketReadingHold(
+            isReading: $isReadingOlderPackets, canHold: !isFeedHeld,
+            waitingCount: {
+                let shown = Set(pausedSnapshot?.rows.map(\.hash) ?? [])
+                return liveFeed.browseSnapshots[filter]?.rows.count { !shown.contains($0.hash) } ?? 0
+            },
+            resume: { pausedSnapshot = nil }
+        ))
+        .onChange(of: isFeedHeld || isReadingOlderPackets, initial: true) { _, isHeld in
             pausedSnapshot = isHeld ? pausedSnapshot ?? liveFeed.browseSnapshots[filter] : nil
         }
         .task(id: RouteKey(sessionID: settings.sourceSession.id, hash: selectedHash)) {
@@ -521,6 +533,8 @@ private struct BeaconPacketSidebar: View {
     }
 
     private func resumeLiveFeed() {
+        isReadingOlderPackets = false
+        pausedSnapshot = nil
         livePause.resume()
         keepsSelectionWhenReplayStops = false
         replayStore.stopReplay()
@@ -794,6 +808,7 @@ private struct CoreScopeMapLivePacketSidebar: View {
     @Environment(PacketReplayStore.self) private var replayStore
     @Environment(LiveTrafficPause.self) private var livePause
     @State private var feedModel = LiveObservationFeedModel()
+    @State private var isReadingOlderPackets = false
     @State private var filterType: Int?
     @State private var isFiltersPresented = false
     @State private var keepsSelectionWhenReplayStops = false
@@ -815,6 +830,7 @@ private struct CoreScopeMapLivePacketSidebar: View {
                         : regionFilter.selectedRegion.map(regionFilter.label(for:)) ?? String(localized: "Entire network")
             )
             .packetFeedListRow(top: 14, bottom: 10)
+            .id(PacketReadingHold.top)
 
             if isFeedPaused {
                 Button(action: resumeLiveFeed) {
@@ -938,7 +954,23 @@ private struct CoreScopeMapLivePacketSidebar: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
-        .task { rebuildGroups() }
+        .modifier(PacketReadingHold(
+            isReading: $isReadingOlderPackets, canHold: !isFeedPaused,
+            waitingCount: {
+                let shown = Set(feedModel.groups.map(\.id))
+                let newestShown = feedModel.groups.first?.latestReceivedAt
+                return Set(liveFeed.recentEvents.compactMap { event -> String? in
+                    guard newestShown.map({ event.receivedAt > $0 }) ?? true,
+                          let key = LiveObservationFeedModel.packetKey(
+                        event, filterType: filterType, selectedRegion: regionFilter.selectedRegion,
+                        regionByObserverID: observerRegionLookup.iataById
+                    ), !shown.contains(key) else { return nil }
+                    return key
+                }).count
+            },
+            resume: rebuildGroups
+        ))
+        .task { rebuildGroupsUnlessPaused() }
         .onChange(of: liveFeed.eventSequence) { rebuildGroupsUnlessPaused() }
         // Resumed from the map's "Paused" title: catch the list up at once.
         .onChange(of: livePause.isPaused) { rebuildGroupsUnlessPaused() }
@@ -952,7 +984,7 @@ private struct CoreScopeMapLivePacketSidebar: View {
                     return
                 }
                 selectedGroupID = nil
-                rebuildGroups()
+                rebuildGroupsUnlessPaused()
             }
         }
     }
@@ -961,7 +993,7 @@ private struct CoreScopeMapLivePacketSidebar: View {
         if selectedGroupID == group.id {
             replayStore.stopReplay()
             selectedGroupID = nil
-            rebuildGroups()
+            rebuildGroupsUnlessPaused()
             return
         }
 
@@ -1005,7 +1037,7 @@ private struct CoreScopeMapLivePacketSidebar: View {
     }
 
     private func rebuildGroupsUnlessPaused() {
-        guard !isFeedPaused else { return }
+        guard !isFeedPaused, !isReadingOlderPackets else { return }
         rebuildGroups()
     }
 
@@ -1020,6 +1052,7 @@ private struct CoreScopeMapLivePacketSidebar: View {
     }
 
     private func resumeLiveFeed() {
+        isReadingOlderPackets = false
         livePause.resume()
         keepsSelectionWhenReplayStops = false
         replayStore.stopReplay()
@@ -1149,10 +1182,66 @@ struct PacketFeedScreen: View {
     }
 }
 
+private struct PacketReadingHold: ViewModifier {
+    static let top = "live-packets-top"
+    @Binding var isReading: Bool
+    let canHold: Bool
+    let waitingCount: () -> Int
+    let resume: () -> Void
+
+    func body(content: Content) -> some View {
+        ScrollViewReader { scroll in
+            content
+                .onScrollGeometryChange(for: Bool.self) { geometry in
+                    geometry.contentOffset.y + geometry.contentInsets.top > 24
+                } action: { _, isAwayFromTop in
+                    if isAwayFromTop && canHold { isReading = true }
+                }
+                .overlay(alignment: .bottom) {
+                    if isReading && canHold {
+                        let count = waitingCount()
+                        Button {
+                            scroll.scrollTo(Self.top, anchor: .top)
+                            isReading = false
+                            resume()
+                        } label: {
+                            if count == 1 {
+                                Label("1 new packet", systemImage: "arrow.up")
+                            } else if count > 1 {
+                                Label("\(count) new packets", systemImage: "arrow.up")
+                            } else {
+                                Label("Back to latest", systemImage: "arrow.up")
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .accessibilityHint("Back to latest")
+                        .padding(.bottom, 12)
+                    }
+                }
+        }
+    }
+}
+
 @MainActor
 @Observable
 private final class LiveObservationFeedModel {
     private(set) var groups: [LiveObservationGroup] = []
+
+    static func packetKey(
+        _ event: LiveEnvelope, filterType: Int?, selectedRegion: String?,
+        regionByObserverID: [String: String]
+    ) -> String? {
+        guard event.type == "packet", let data = event.data else { return nil }
+        if let filterType, data.decoded?.header?.payloadType != filterType { return nil }
+        let region = data.observerId.flatMap { regionByObserverID[$0] }
+        if let selectedRegion, !selectedRegion.split(separator: ",").contains(where: {
+            $0.caseInsensitiveCompare(region ?? "") == .orderedSame
+        }) { return nil }
+        if let hash = data.hash?.trimmingCharacters(in: .whitespacesAndNewlines), !hash.isEmpty {
+            return hash
+        }
+        return "event-\(data.id)-\(event.receivedAt.timeIntervalSinceReferenceDate)"
+    }
 
     func rebuild(
         events: [LiveEnvelope],
@@ -1163,16 +1252,11 @@ private final class LiveObservationFeedModel {
         var rebuilt: [LiveObservationGroup] = []
 
         for event in events.reversed() {
-            guard event.type == "packet", let data = event.data else { continue }
-            if let filterType, data.decoded?.header?.payloadType != filterType { continue }
-
+            guard let data = event.data,
+                  let key = Self.packetKey(event, filterType: filterType, selectedRegion: selectedRegion,
+                                           regionByObserverID: regionByObserverID) else { continue }
             let region = data.observerId.flatMap { regionByObserverID[$0] }
-            // A quick pick selects several comma-separated codes.
-            if let selectedRegion, !selectedRegion.split(separator: ",").contains(where: { $0.caseInsensitiveCompare(region ?? "") == .orderedSame }) { continue }
-
-            let hash = data.hash?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let hasHash = !(hash?.isEmpty ?? true)
-            let key = hasHash ? hash! : "event-\(data.id)-\(event.receivedAt.timeIntervalSinceReferenceDate)"
+            let hasHash = data.hash?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
 
             if hasHash,
                let index = rebuilt.lastIndex(where: {

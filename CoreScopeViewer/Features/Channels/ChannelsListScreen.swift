@@ -4,6 +4,7 @@ struct ChannelsListScreen: View {
     let resetID: UUID
 
     @Environment(AnalyzerSettings.self) private var settings
+    @Environment(FavoritesStore.self) private var favoritesStore
     @Environment(RegionFilterStore.self) private var regionFilter
     @Environment(ChannelMonitorStore.self) private var monitorStore
     @Environment(LiveFeedService.self) private var liveFeed
@@ -26,6 +27,14 @@ struct ChannelsListScreen: View {
     @State private var sortOption = ChannelSortOption.recent
 
     var body: some View {
+        let source = AnalyzerSettings.normalizedHost(settings.host)
+        let favoriteIDs = Set(favoritesStore.deviceItems.lazy
+            .filter { $0.kind == .channel && $0.source == source }
+            .map(\.entityID))
+        let favorites = (visibleMonitoredChannels + visibleServerChannels).filter { favoriteIDs.contains($0.id) }
+        let monitored = visibleMonitoredChannels.filter { !favoriteIDs.contains($0.id) }
+        let server = visibleServerChannels.filter { !favoriteIDs.contains($0.id) }
+
         AdaptiveListDetailNavigation(
             preferredCompactColumn: $preferredCompactColumn,
             detailNavigationID: detailNavigationID
@@ -77,13 +86,26 @@ struct ChannelsListScreen: View {
                         .listRowSeparator(.hidden)
                 }
 
-                if !visibleMonitoredChannels.isEmpty {
+                if !favorites.isEmpty {
                     AdaptiveSidebarSection {
-                        ForEach(visibleMonitoredChannels) { channel in
+                        ForEach(favorites) { channel in
                             channelRow(channel)
                         }
                     } header: {
-                        MonitoringSectionHeader(count: visibleMonitoredChannels.count)
+                        Text("Favorites")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.secondary)
+                            .textCase(.uppercase)
+                    }
+                }
+
+                if !monitored.isEmpty {
+                    AdaptiveSidebarSection {
+                        ForEach(monitored) { channel in
+                            channelRow(channel)
+                        }
+                    } header: {
+                        MonitoringSectionHeader(count: monitored.count)
                             .textCase(nil)
                     }
                 }
@@ -97,9 +119,9 @@ struct ChannelsListScreen: View {
                                 .listRowSeparator(.hidden)
                         }
                     }
-                } else {
+                } else if !server.isEmpty {
                     AdaptiveSidebarSection {
-                        ForEach(visibleServerChannels) { channel in
+                        ForEach(server) { channel in
                             channelRow(channel)
                         }
                     } header: {

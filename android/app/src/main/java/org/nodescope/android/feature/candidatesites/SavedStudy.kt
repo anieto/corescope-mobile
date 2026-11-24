@@ -38,7 +38,10 @@ data class SavedStudy(
 }
 
 @Serializable
-data class SavedAntenna(val heightMeters: Double, val gainDbi: Double, val lossDb: Double) {
+data class SavedAntenna(val heightMeters: Double, val gainDbi: Double, val lossDb: Double,
+    val reportedGainSource: org.nodescope.android.core.model.ReportedAntennaSource? = null,
+    val reportedHeightSource: org.nodescope.android.core.model.ReportedAntennaSource? = null,
+) {
     fun validate() = planValid(heightMeters.isFinite() && heightMeters in 0.0..10_000.0 &&
         gainDbi.isFinite() && lossDb.isFinite() && lossDb >= 0)
 }

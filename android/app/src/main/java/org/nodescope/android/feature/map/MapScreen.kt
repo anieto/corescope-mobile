@@ -7,6 +7,9 @@ import org.nodescope.android.core.design.MeshModalBottomSheet
 import org.nodescope.android.core.design.meshPageBackground
 import org.nodescope.android.core.design.meshTopAppBarColors
 import kotlinx.coroutines.launch
+import androidx.activity.compose.BackHandler
+import org.nodescope.android.core.design.rememberFoldSplit
+import org.nodescope.android.core.design.rememberTabletopSplit
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
 import android.animation.ValueAnimator
@@ -61,7 +64,10 @@ import org.nodescope.android.core.model.*
 fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (String) -> Unit, sampleRoute: List<Coordinate> = emptyList(), feed: () -> LiveFeedState = { LiveFeedState() }, onRefresh: () -> Unit = {}, regionControl: @Composable () -> Unit = {}, focusedCoordinate: Coordinate? = null, selectedRegion: String? = null, sourceViewport: RegionCoordinate? = null, routeReplay: RouteReplay? = null, onExitReplay: () -> Unit = {}, host: String? = null, showActiveNodes: Boolean = false, onActiveNodesShown: () -> Unit = {}, onShowPackets: (() -> Unit)? = null, onShowPacketsSheet: (() -> Unit)? = null,
     /** Share of the map's height covered by the live packets sheet (iOS `bottomObscuredFraction`). */
     bottomObscuredFraction: Float = 0f, onLiveFeedDemand: (java.util.UUID, String, org.nodescope.android.core.network.LiveFeedDemand?) -> Unit = { _, _, _ -> },
-    resetRequest: Int = 0) {
+    resetRequest: Int = 0,
+    browse: org.nodescope.android.core.network.BrowseRepository? = null,
+    savedNodeKeys: Set<String> = emptySet(),
+) {
     val resources = LocalResources.current
     if (!BuildConfig.MAPS_CONFIGURED) {
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -107,11 +113,28 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         clock = System.currentTimeMillis()
         while (filters.activity != ActivityFilter.ALL) { delay(60_000); clock = System.currentTimeMillis() }
     }
-    val displayedNodes = remember(snapshot?.nodes, filters.roles, filters.activity, clock) {
-        snapshot?.nodes.orEmpty().filter { it.coordinate != null && filters.shows(it, clock) }
-    }
     var routeDetail by remember { mutableStateOf<RouteDetails?>(null) }
     var selectedNode by remember(host, selectedRegion) { mutableStateOf<MeshNode?>(null) }
+    val beacon = org.nodescope.android.core.design.LocalBeaconSource.current
+    var statuses by remember(host, beacon) { mutableStateOf<Map<String, String>>(emptyMap()) }
+    LaunchedEffect(host, browse, beacon, snapshot != null) {
+        if (host != null && !beacon && browse != null) {
+            statuses = browse.repeaterMetadata(host).mapNotNull { (key, metadata) ->
+                metadata.status?.let { key to it }
+            }.toMap()
+        }
+    }
+    val reportedStatus = filters.reportedStatus?.takeIf { statuses.isNotEmpty() }
+    val selectedKey = selectedNode?.publicKey
+    val displayedNodes = remember(snapshot?.nodes, filters.roles, filters.activity, clock, reportedStatus, statuses,
+        savedNodeKeys, focusedKey, selectedKey) {
+        snapshot?.nodes.orEmpty().filter { node ->
+            val key = node.publicKey.lowercase(java.util.Locale.ROOT)
+            node.coordinate != null && filters.shows(node, clock) &&
+                (reportedStatus == null || statuses[key] == reportedStatus ||
+                    key in savedNodeKeys || node.publicKey == focusedKey || node.publicKey == selectedKey)
+        }
+    }
     LaunchedEffect(routeReplay?.id) { selectedNode = null }
     // Reselecting the Map tab closes the selected node, route details, search and filters (iOS);
     // the shell ends any replay.
@@ -231,9 +254,16 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
         if (groupsNodes || routeOnlyReplay) mapNodes to emptyMap() else thinCoveredNodes(mapNodes, spreadZoom)
     }
     val coveredNodes = thinned.second
-    val nodes = remember(thinned, routeOnlyReplay, shownReplayRoutes) {
+    val nodes = remember(thinned, routeOnlyReplay, shownReplayRoutes, statuses, resources) {
         nodeMarkers(thinned.first, spreadCoincidentNodes(thinned.first, spreadZoom))
             .let { if (routeOnlyReplay) dimOutside(it, shownReplayRoutes) else it }
+            .map { marker ->
+                val status = marker.publicKey?.lowercase(java.util.Locale.ROOT)?.let(statuses::get)
+                if (status == null) marker else marker.copy(name = resources.getString(
+                    R.string.repeater_marker_status, marker.name,
+                    resources.getString(org.nodescope.android.core.design.reportedStatusLabel(status)),
+                ))
+            }
     }
     val progress = remember { Animatable(0f) }
     var replay by remember { mutableIntStateOf(0) }
@@ -342,7 +372,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             }
             route != null -> { selectedNode = null; routeDetail = routeDetails(route.packet!!, currentAllNodes, route.observedAt); true }
             tap.nodeKey != null -> { selectNode(tap.nodeKey); true }
-            else -> false
+            else -> { selectedNode = null; false }
         }
     }
     var replayPlaying by remember { mutableStateOf(false) }
@@ -471,17 +501,17 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             }
         }
     }
-    selectedNode?.let { node ->
-        MapNodeSelectionSheet(node, onDetails = { selectedNode = null; currentOnNode(node.publicKey) },
-            onDismiss = { selectedNode = null })
+    BackHandler(enabled = selectedNode != null && bottomObscuredFraction == 0f && !filtersOpen && !keyOpen && !search) {
+        selectedNode = null
     }
-    if (filtersOpen) MapFiltersSheet(filters, observerOptions, onChange = { filters = it }, onDismiss = { filtersOpen = false })
+    if (filtersOpen) MapFiltersSheet(filters, observerOptions, onChange = { filters = it },
+        onDismiss = { filtersOpen = false }, hasReportedStatuses = statuses.isNotEmpty())
     if (keyOpen) MapKeySheet(onDismiss = { keyOpen = false })
     routeDetail?.let { details -> RouteDetailsSheet(details, onNode = { routeDetail = null; currentOnNode(it) }, onDismiss = { routeDetail = null }) }
     if (search) MeshModalBottomSheet(onDismissRequest = { search = false }) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.8f)) {
             Text(stringResource(R.string.live_map_search_nodes), Modifier.padding(horizontal = 20.dp), style = MaterialTheme.typography.titleLarge)
-            NodeBrowser(snapshot?.nodes.orEmpty(), snapshot?.total ?: 0) { key ->
+            NodeBrowser(snapshot?.nodes.orEmpty(), snapshot?.total ?: 0, statuses, savedNodeKeys) { key ->
                 search = false
                 snapshot?.nodes?.firstOrNull { it.publicKey == key }?.coordinate?.let {
                     engine.camera?.animate(CameraMove.Center(it, 13.0))
@@ -517,7 +547,9 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                 MapLayersMenu(layersOpen, { layersOpen = false }, providerChoice, darkTheme) { choose(it); layersOpen = false }
             }
         })
-    Box(Modifier.weight(1f).fillMaxWidth()) {
+    val previewFold = rememberFoldSplit()
+    val previewTabletop = rememberTabletopSplit()
+    BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().then(previewFold.modifier).then(previewTabletop.modifier)) {
         val onCameraIdle: (SavedCamera) -> Unit = { cameraValues = it; settledZoom[0] = it[2]; resumeReplay(); refreshLabels(currentDisplayedNodes) }
         when (engine) {
             is MapLibreEngine -> MapLibreEngineHost(engine, styleMode = mode, retry = retry, bottomInset = controlsInset, savedCamera = cameraValues,
@@ -634,6 +666,28 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             } else Modifier.align(Alignment.BottomStart).offset { IntOffset(0, -controlsInset) }.padding(start = 8.dp, bottom = 34.dp)).onSizeChanged { countSize = it },
             shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)) {
             Text(pluralStringResource(R.plurals.live_map_nodes, mapNodes.size, mapNodes.size), Modifier.padding(horizontal = 14.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium)
+        }
+        val preview = selectedNode
+        if (preview != null && bottomObscuredFraction == 0f) {
+            val leftPane = previewFold.offset
+            val endClearance = if (leftPane == null) 64.dp else 12.dp
+            val availableWidth = (leftPane ?: maxWidth) - endClearance - 12.dp
+            val replayClearance = with(LocalDensity.current) { controlsInset.toDp() }
+            val bottomClearance = replayClearance + if (maxHeight < 340.dp) 42.dp else 76.dp
+            val availableHeight = (maxHeight - (previewTabletop.offset ?: 0.dp) - bottomClearance - 12.dp)
+                .coerceAtMost(maxHeight * 0.55f)
+            if (availableWidth > 0.dp && availableHeight > 0.dp) {
+                MapNodePreview(
+                    preview,
+                    onDetails = { selectedNode = null; currentOnNode(preview.publicKey) },
+                    onDismiss = { selectedNode = null },
+                    modifier = Modifier.align(if (leftPane == null) Alignment.BottomStart else androidx.compose.ui.AbsoluteAlignment.BottomLeft)
+                        .padding(horizontal = 12.dp)
+                        .padding(bottom = bottomClearance)
+                        .widthIn(max = minOf(360.dp, availableWidth))
+                        .heightIn(max = availableHeight),
+                )
+            }
         }
         // Kept while sliding away, after the replay itself has been cleared.
         var lastReplay by remember { mutableStateOf(routeReplay) }

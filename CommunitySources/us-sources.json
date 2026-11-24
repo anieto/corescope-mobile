@@ -10,24 +10,6 @@
       "isDefault": true
     },
     {
-      "id": "wcmesh",
-      "icon": "icons/wcmesh.png",
-      "name": "WCMesh",
-      "host": "corescope.wcmesh.com",
-      "subtitle": "West Coast, USA",
-      "isDefault": false
-    },
-    {
-      "id": "gulf-coast-mesh",
-      "icon": "icons/gulf-coast-mesh.png",
-      "name": "Gulf Coast Mesh",
-      "host": "analyzer.gulfcoastmesh.org",
-      "subtitle": "Comms that hold when the coast does not.",
-      "isDefault": false,
-      "mapCenter": [30.2, -90.5],
-      "mapRadiusKm": 300
-    },
-    {
       "id": "comchan",
       "icon": "icons/comchan.png",
       "name": "Comchan",
@@ -44,11 +26,37 @@
       "isDefault": false
     },
     {
+      "id": "gulf-coast-mesh",
+      "icon": "icons/gulf-coast-mesh.png",
+      "name": "Gulf Coast Mesh",
+      "host": "analyzer.gulfcoastmesh.org",
+      "subtitle": "Comms that hold when the coast does not.",
+      "isDefault": false,
+      "mapCenter": [30.2, -90.5],
+      "mapRadiusKm": 300
+    },
+    {
+      "id": "acadiana-mesh",
+      "icon": "icons/acadiana-mesh.png",
+      "name": "Acadiana Mesh",
+      "host": "analyzer.acadianamesh.com",
+      "subtitle": "Lafayette and the Acadiana Region",
+      "isDefault": false
+    },
+    {
       "id": "sacscope",
       "icon": "icons/sacscope.png",
       "name": "SacScope",
       "host": "scope.sacmesh.org",
       "subtitle": "Sacramento Valley and Surrounding Hills",
+      "isDefault": false
+    },
+    {
+      "id": "wcmesh",
+      "icon": "icons/wcmesh.png",
+      "name": "WCMesh",
+      "host": "corescope.wcmesh.com",
+      "subtitle": "West Coast, USA",
       "isDefault": false
     }
   ]

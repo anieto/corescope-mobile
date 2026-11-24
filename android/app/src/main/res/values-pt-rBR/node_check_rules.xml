@@ -61,7 +61,7 @@
     <string name="node_check_rule_fix_location">Defina uma localização nas configurações do nó se você estiver confortável em compartilhá-la.</string>
     <string name="node_check_rule_headline_bad">Este nó ficou em silêncio</string>
     <string name="node_check_rule_headline_warn">Ouvido, com algo para verificar</string>
-    <string name="node_check_rule_headline_good">Este nó está saindo</string>
+    <string name="node_check_rule_headline_good">Este nó está ativo</string>
     <string name="node_check_rule_headline_info">Já foi ouvido, mas não há nada recente</string>
     <string name="node_check_rule_not_found">Não ouvimos este nó</string>
     <string name="node_check_rule_not_found_without_key">Nenhum observador deste analisador o captou. Para testar um nó novo, insira a chave pública completa; depois você poderá fazer um teste ao vivo e esperar o primeiro anúncio.</string>

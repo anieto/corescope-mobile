@@ -61,7 +61,7 @@
     <string name="node_check_rule_fix_location">Define una ubicación en la configuración del nodo si te parece bien compartirla.</string>
     <string name="node_check_rule_headline_bad">Este nodo se quedó en silencio</string>
     <string name="node_check_rule_headline_warn">Escuchado, con algo por revisar</string>
-    <string name="node_check_rule_headline_good">Este nodo está saliendo</string>
+    <string name="node_check_rule_headline_good">Este nodo está activo</string>
     <string name="node_check_rule_headline_info">Se escuchó antes, pero no hay nada reciente</string>
     <string name="node_check_rule_not_found">No hemos escuchado este nodo</string>
     <string name="node_check_rule_not_found_without_key">Ningún observador de este analizador lo ha captado. Para probar un nodo nuevo, ingresa su clave pública completa; luego podrás hacer una prueba en vivo y esperar su primer anuncio.</string>

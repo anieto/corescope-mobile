@@ -46,16 +46,19 @@ class MapFiltersTest {
     }
 
     @Test fun routeDetailsListHopsThenTheObserverWithoutGuessing() {
-        val nodes = listOf(node("aa11", "repeater", 1).copy(name = "Hilltop"), node("bb22", "repeater", 1), node("bb23", "repeater", 1))
-        // "bb" matches two nodes, so it stays unresolved instead of being guessed.
-        val details = routeDetails(packet("obs1", listOf("aa", "bb")), nodes, now - 60_000)
-        assertEquals(listOf("Hilltop", "Unknown node (BB)", "North obs1"), details.stops.map { it.title })
-        assertEquals(listOf("aa11", null, null), details.stops.map { it.publicKey })
+        val nodes = listOf(node("aa1101", "repeater", 1).copy(name = "Hilltop"), node("bb2201", "repeater", 1), node("bb2202", "repeater", 1))
+        // "bb22" matches two nodes, so it stays unresolved instead of being guessed.
+        val details = routeDetails(packet("obs1", listOf("aa11", "bb22")), nodes, now - 60_000)
+        assertEquals(listOf("Hilltop", "Unknown node (BB22)", "North obs1"), details.stops.map { it.title })
+        assertEquals(listOf("aa1101", null, null), details.stops.map { it.publicKey })
+        val confirmed = routeDetails(packet("obs1", listOf("aa", "bb"), listOf("aa1101", null)), nodes, now)
+        assertEquals(listOf("Hilltop", "Unknown node (BB)", "North obs1"), confirmed.stops.map { it.title })
+        assertEquals(listOf("aa1101", null, null), confirmed.stops.map { it.publicKey })
         assertEquals(2, details.hopCount)
         assertTrue(details.stops.last().receiver)
         val share = details.shareText("1 minute ago")
         assertTrue(share.startsWith("NodeScope Route\nHops: 2\nObserved: 1 minute ago\nObserver: North obs1\nSNR: 9.5 dB\nRSSI: -88 dBm\nPacket: ABCDEF0123456789"))
         assertTrue(share.contains("Message:\nhello"))
-        assertTrue(share.endsWith("Route:\n1. Hilltop (aa11)\n2. Unknown node (BB)\n3. North obs1"))
+        assertTrue(share.endsWith("Route:\n1. Hilltop (aa1101)\n2. Unknown node (BB22)\n3. North obs1"))
     }
 }
