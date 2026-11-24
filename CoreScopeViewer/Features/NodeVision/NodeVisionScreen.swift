@@ -703,15 +703,8 @@ struct NodeVisionScreen: View {
             .frame(width: marker.width)
             .frame(minHeight: 44)
             .padding(.bottom, 9)
-            .background { overlaySurface(NodeVisionMarkerShape()) }
-            .overlay {
-                if selected || marker.approximate {
-                    NodeVisionMarkerShape().stroke(nodeNameColor, style: StrokeStyle(
-                        lineWidth: selected ? 2 : 1, dash: marker.approximate ? [4, 3] : []))
-                }
-            }
+            .background { markerSurface(approximate: marker.approximate, emphasized: selected) }
             .contentShape(Rectangle())
-            .opacity(marker.tier == 2 && !selected ? 0.90 : 1)
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])
@@ -860,15 +853,29 @@ struct NodeVisionScreen: View {
         .foregroundStyle(nodeNameColor)
     }
 
-    private func overlaySurface<S: Shape>(_ shape: S, pinned: Bool = false) -> some View {
+    private func markerSurface(approximate: Bool, emphasized: Bool, spotlight: Bool = false) -> some View {
+        let shape = NodeVisionMarkerShape()
+        let width: CGFloat = emphasized ? 3 : 2
+        let borderColor = spotlight && colorScheme == .dark ? NodeScopeStyle.activity : nodeNameColor
+        let backing = colorScheme == .dark ? NodeScopeStyle.deepNavy : Color(uiColor: .systemBackground)
+        return overlaySurface(shape, drawsBorder: false)
+            .overlay { shape.stroke(backing, lineWidth: width + 2) }
+            .overlay {
+                shape.stroke(borderColor, style: StrokeStyle(
+                    lineWidth: width, lineCap: .round, lineJoin: .round, dash: approximate ? [7, 6] : []))
+            }
+    }
+
+    private func overlaySurface<S: Shape>(_ shape: S, drawsBorder: Bool = true) -> some View {
         return shape.fill(.regularMaterial)
             .overlay {
                 shape.fill(colorScheme == .light ? Color(uiColor: .systemBackground).opacity(0.85) : .clear)
             }
             .overlay { shape.fill(overlayGradient) }
             .overlay {
-                shape.stroke(pinned ? NodeScopeStyle.activity : NodeScopeStyle.signal.opacity(0.4),
-                             lineWidth: pinned ? (colorScheme == .light ? 2 : 1.5) : 1)
+                if drawsBorder {
+                    shape.stroke(NodeScopeStyle.signal.opacity(0.4), lineWidth: 1)
+                }
             }
             .shadow(color: .black.opacity(0.24), radius: 5, x: 0, y: 2)
     }
@@ -999,7 +1006,7 @@ struct NodeVisionScreen: View {
                     .padding(.vertical, 5)
                     .frame(maxWidth: markerWidth)
                     .padding(.bottom, 9)
-                    .background { overlaySurface(NodeVisionMarkerShape(), pinned: true) }
+                    .background { markerSurface(approximate: approximate, emphasized: true, spotlight: true) }
                 }
                 .frame(width: markerWidth, height: 88, alignment: .bottom)
                 .position(x: size.width / 2 + pixel, y: markerY - 44)

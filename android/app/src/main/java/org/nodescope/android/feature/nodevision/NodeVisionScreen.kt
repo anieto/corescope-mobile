@@ -43,7 +43,14 @@ import android.net.Uri
 import android.os.SystemClock
 import android.os.Build
 import android.location.altitude.AltitudeConverter
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import org.nodescope.android.feature.coverage.CoverageHeightPreset
 import org.nodescope.android.feature.linkprofile.LinkTerrainProviding
 import java.io.File
@@ -265,12 +272,13 @@ internal fun NodeVisionScreen(
     val onSurface = MaterialTheme.colorScheme.onSurface
     val lightOverlay = surface.luminance() >= 0.5f
     val supportingText = lerp(onSurface, surface, if (lightOverlay) 0.10f else 0.22f)
-    val markerBorder = BorderStroke(if (lightOverlay) 2.dp else 1.5.dp, accent)
     val density = LocalDensity.current
     val markerShape = remember(density) {
         with(density) { visionMarkerShape(10.dp.toPx(), 9.dp.toPx(), 8.dp.toPx()) }
     }
     val blue = MaterialTheme.colorScheme.primary
+    val markerInk = if (lightOverlay) lerp(blue, onSurface, 0.25f) else blue
+    val spotlightInk = if (lightOverlay) markerInk else accent
     val overlayTint = if (lightOverlay) {
         Brush.verticalGradient(listOf(blue.copy(alpha = 0.16f), blue.copy(alpha = 0.07f)))
     } else {
@@ -391,12 +399,11 @@ internal fun NodeVisionScreen(
                                     expandsInspection = false
                                 },
                                 shape = markerShape,
-                                color = surface.copy(alpha = if (marker.tier == 2 && !selected) 0.90f else 0.98f),
-                                border = if (selected) BorderStroke(2.dp, blue) else overlayBorder,
+                                color = surface.copy(alpha = 0.98f),
                                 shadowElevation = 4.dp,
                             ) {
                                 Column(Modifier.background(overlayTint)
-                                    .alpha(if (marker.approximate) 0.84f else 1f)
+                                    .visionMarkerBorder(markerShape, markerInk, surface, marker.approximate, selected)
                                     .padding(bottom = 9.dp).padding(horizontal = 6.dp, vertical = 4.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text(marker.node.displayName, fontFamily = MonaspaceNeon,
@@ -455,9 +462,12 @@ internal fun NodeVisionScreen(
                         .width(markerWidth).height(88.dp), contentAlignment = Alignment.BottomCenter) {
                         Surface(
                             color = surface.copy(alpha = 0.98f), shape = markerShape,
-                            border = markerBorder, shadowElevation = 4.dp,
+                            shadowElevation = 4.dp,
                         ) {
-                            Column(Modifier.background(overlayTint).padding(bottom = 9.dp).padding(horizontal = 9.dp, vertical = 5.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Column(Modifier.background(overlayTint)
+                                .visionMarkerBorder(markerShape, spotlightInk, surface, approximate, emphasized = true)
+                                .padding(bottom = 9.dp).padding(horizontal = 9.dp, vertical = 5.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(visionName, style = MaterialTheme.typography.titleSmall, fontFamily = MonaspaceNeon,
                                     color = MaterialTheme.colorScheme.primary, maxLines = 2,
                                     overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
@@ -1217,4 +1227,20 @@ internal fun stableVisionAltitude(previous: Double?, current: Double?, distance:
 internal fun discoveryMarkerY(projectedY: Double, paneHeight: Double, minimumY: Double, maximumY: Double): Double? {
     if (projectedY !in -24.0..(paneHeight + 24)) return null
     return projectedY.coerceIn(minimumY, maximumY)
+}
+
+private fun Modifier.visionMarkerBorder(
+    shape: Shape, ink: Color, backing: Color, approximate: Boolean, emphasized: Boolean,
+): Modifier = drawWithCache {
+    // The marker shape is a GenericShape. Draw inside the clipped Surface so the full width stays visible.
+    val path = (shape.createOutline(size, layoutDirection, this) as Outline.Generic).path
+    val width = if (emphasized) 3.dp.toPx() else 2.dp.toPx()
+    val baseStroke = Stroke(width = 2 * (width + 1.dp.toPx()), join = StrokeJoin.Round)
+    val pattern = if (approximate) PathEffect.dashPathEffect(floatArrayOf(7.dp.toPx(), 6.dp.toPx())) else null
+    val stroke = Stroke(width = 2 * width, cap = StrokeCap.Butt, join = StrokeJoin.Round, pathEffect = pattern)
+    onDrawWithContent {
+        drawContent()
+        drawPath(path, backing, style = baseStroke)
+        drawPath(path, ink, style = stroke)
+    }
 }
