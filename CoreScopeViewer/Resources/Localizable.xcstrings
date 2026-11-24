@@ -2025,6 +2025,22 @@
         }
       }
     },
+    "%lld new packets" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld paquetes nuevos"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld pacotes novos"
+          }
+        }
+      }
+    },
     "%lld nodes" : {
       "localizations" : {
         "en" : {
@@ -3805,6 +3821,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "1 salto"
+          }
+        }
+      }
+    },
+    "1 new packet" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 paquete nuevo"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 pacote novo"
           }
         }
       }
@@ -6449,6 +6481,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Voltar"
+          }
+        }
+      }
+    },
+    "Back to latest" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volver a los más recientes"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voltar aos mais recentes"
           }
         }
       }
