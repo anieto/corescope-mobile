@@ -23,14 +23,14 @@ enum class DistanceUnit {
 
     companion object {
         fun defaultUnit(locale: Locale = Locale.getDefault()): DistanceUnit {
-            if (Build.VERSION.SDK_INT >= 24) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 return when (LocaleData.getMeasurementSystem(ULocale.forLocale(locale))) {
                     LocaleData.MeasurementSystem.US -> IMPERIAL
                     LocaleData.MeasurementSystem.UK -> UK
                     else -> METRIC
                 }
             }
-            // The host JVM has no Android ICU. Keep region mapping available to local unit tests.
+            // Older Android versions and the host JVM use the region mapping.
             return when (locale.country) {
                 "US", "LR" -> IMPERIAL
                 "GB", "MM" -> UK

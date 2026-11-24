@@ -88,7 +88,7 @@ sealed interface FieldQrCode {
         }
 
         private fun decode(value: String): String? = runCatching {
-            URLDecoder.decode(value, Charsets.UTF_8)
+            URLDecoder.decode(value, Charsets.UTF_8.name())
         }.getOrNull()
 
         private fun publicKey(value: String): String? = value.lowercase().takeIf { key ->
