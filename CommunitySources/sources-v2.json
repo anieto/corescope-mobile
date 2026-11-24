@@ -7,10 +7,54 @@
       "icon": "icons/meshtexas.png",
       "name": "MeshTexas",
       "host": "analyzer.meshtexas.org",
-      "location": [30.6, -96.9],
+      "location": [
+        30.6,
+        -96.9
+      ],
       "country": "US",
       "subtitle": "Connecting the Lone Star State",
-      "isDefault": true
+      "isDefault": true,
+      "serviceAreas": [
+        {
+          "country": "US",
+          "subdivision": "US-TX",
+          "subdivisionName": "Texas",
+          "metros": [
+            {
+              "id": "austin",
+              "name": "Austin",
+              "center": [
+                30.27,
+                -97.74
+              ]
+            },
+            {
+              "id": "dfw",
+              "name": "Dallas–Fort Worth",
+              "center": [
+                32.86,
+                -96.86
+              ]
+            },
+            {
+              "id": "houston",
+              "name": "Houston",
+              "center": [
+                29.76,
+                -95.37
+              ]
+            },
+            {
+              "id": "san-antonio",
+              "name": "San Antonio",
+              "center": [
+                29.42,
+                -98.49
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "comchan",
@@ -18,10 +62,30 @@
       "icon": "icons/comchan.png",
       "name": "Comchan",
       "host": "analyzer.comchan.net",
-      "location": [30.27, -97.74],
+      "location": [
+        30.27,
+        -97.74
+      ],
       "country": "US",
       "subtitle": "Central Texas Meshcore",
-      "isDefault": false
+      "isDefault": false,
+      "serviceAreas": [
+        {
+          "country": "US",
+          "subdivision": "US-TX",
+          "subdivisionName": "Texas",
+          "metros": [
+            {
+              "id": "austin",
+              "name": "Austin",
+              "center": [
+                30.27,
+                -97.74
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "ntxmesh",
@@ -29,10 +93,30 @@
       "icon": "icons/ntxmesh.png",
       "name": "NTXMesh",
       "host": "ntxmesh.dhovin.me",
-      "location": [32.86, -96.86],
+      "location": [
+        32.86,
+        -96.86
+      ],
       "country": "US",
       "subtitle": "DFW / North Texas Mesh",
-      "isDefault": false
+      "isDefault": false,
+      "serviceAreas": [
+        {
+          "country": "US",
+          "subdivision": "US-TX",
+          "subdivisionName": "Texas",
+          "metros": [
+            {
+              "id": "dfw",
+              "name": "Dallas–Fort Worth",
+              "center": [
+                32.86,
+                -96.86
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "gulf-coast-mesh",
@@ -40,7 +124,10 @@
       "icon": "icons/gulf-coast-mesh.png",
       "name": "Gulf Coast Mesh",
       "host": "analyzer.gulfcoastmesh.org",
-      "location": [30.2, -90.5],
+      "location": [
+        30.2,
+        -90.5
+      ],
       "country": "US",
       "subtitle": "Comms that hold when the coast does not.",
       "isDefault": false,
@@ -48,7 +135,39 @@
         30.2,
         -90.5
       ],
-      "mapRadiusKm": 300
+      "mapRadiusKm": 300,
+      "serviceAreas": [
+        {
+          "country": "US",
+          "subdivision": "US-LA",
+          "subdivisionName": "Louisiana",
+          "metros": [
+            {
+              "id": "new-orleans",
+              "name": "New Orleans",
+              "center": [
+                29.95,
+                -90.07
+              ]
+            }
+          ]
+        },
+        {
+          "country": "US",
+          "subdivision": "US-MS",
+          "subdivisionName": "Mississippi",
+          "metros": [
+            {
+              "id": "gulfport",
+              "name": "Gulfport",
+              "center": [
+                30.37,
+                -89.09
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "acadiana-mesh",
@@ -56,7 +175,10 @@
       "icon": "icons/acadiana-mesh.png",
       "name": "Acadiana Mesh",
       "host": "analyzer.acadianamesh.com",
-      "location": [30.22, -92.02],
+      "location": [
+        30.22,
+        -92.02
+      ],
       "country": "US",
       "subtitle": "Lafayette and the Acadiana Region",
       "isDefault": false,
@@ -64,7 +186,24 @@
         30.2,
         -92.0
       ],
-      "mapRadiusKm": 150
+      "mapRadiusKm": 150,
+      "serviceAreas": [
+        {
+          "country": "US",
+          "subdivision": "US-LA",
+          "subdivisionName": "Louisiana",
+          "metros": [
+            {
+              "id": "lafayette",
+              "name": "Lafayette",
+              "center": [
+                30.22,
+                -92.02
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "colorado-mesh",
@@ -72,12 +211,35 @@
       "icon": "icons/colorado-mesh.png",
       "name": "Colorado Mesh",
       "host": "map.meshcore.coloradomesh.org",
-      "location": [39.0, -105.5],
+      "location": [
+        39.0,
+        -105.5
+      ],
       "country": "US",
       "subtitle": "Colorado's Mesh Network Community",
-      "mapCenter": [39.0, -105.5],
+      "mapCenter": [
+        39.0,
+        -105.5
+      ],
       "mapRadiusKm": 400,
-      "isDefault": false
+      "isDefault": false,
+      "serviceAreas": [
+        {
+          "country": "US",
+          "subdivision": "US-CO",
+          "subdivisionName": "Colorado",
+          "metros": [
+            {
+              "id": "denver",
+              "name": "Denver",
+              "center": [
+                39.74,
+                -104.99
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "sacscope",
@@ -85,10 +247,30 @@
       "icon": "icons/sacscope.png",
       "name": "SacScope",
       "host": "scope.sacmesh.org",
-      "location": [38.64, -121.32],
+      "location": [
+        38.64,
+        -121.32
+      ],
       "country": "US",
       "subtitle": "Sacramento Valley and Surrounding Hills",
-      "isDefault": false
+      "isDefault": false,
+      "serviceAreas": [
+        {
+          "country": "US",
+          "subdivision": "US-CA",
+          "subdivisionName": "California",
+          "metros": [
+            {
+              "id": "sacramento",
+              "name": "Sacramento",
+              "center": [
+                38.58,
+                -121.49
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "wcmesh",
@@ -96,10 +278,69 @@
       "icon": "icons/wcmesh.png",
       "name": "WCMesh",
       "host": "corescope.wcmesh.com",
-      "location": [33.83, -117.77],
+      "location": [
+        33.83,
+        -117.77
+      ],
       "country": "US",
       "subtitle": "West Coast, USA",
-      "isDefault": false
+      "isDefault": false,
+      "serviceAreas": [
+        {
+          "country": "US",
+          "subdivision": "US-CA",
+          "subdivisionName": "California",
+          "metros": [
+            {
+              "id": "los-angeles",
+              "name": "Los Angeles",
+              "center": [
+                34.05,
+                -118.24
+              ]
+            },
+            {
+              "id": "san-diego",
+              "name": "San Diego",
+              "center": [
+                32.72,
+                -117.16
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "chicagoland-mesh",
+      "type": "corescope",
+      "icon": "icons/chicagoland-mesh.png",
+      "name": "Chicagoland Mesh",
+      "host": "corescope.chicagolandmesh.org",
+      "location": [
+        41.88,
+        -87.63
+      ],
+      "country": "US",
+      "subtitle": "Chicago and surrounding suburbs",
+      "isDefault": false,
+      "serviceAreas": [
+        {
+          "country": "US",
+          "subdivision": "US-IL",
+          "subdivisionName": "Illinois",
+          "metros": [
+            {
+              "id": "chicago",
+              "name": "Chicagoland",
+              "center": [
+                41.88,
+                -87.63
+              ]
+            }
+          ]
+        }
+      ]
     }
   ]
 }
