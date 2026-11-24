@@ -389,30 +389,43 @@ private fun SummaryRow(label: String, value: String, learn: GlossaryTerm? = null
     }
 }
 
-/** A quick map selection keeps the user in context until they choose full details. */
-@OptIn(ExperimentalMaterial3Api::class)
+/** A non-modal map card so the user can keep exploring the map. */
 @Composable
-internal fun MapNodeSelectionSheet(node: org.nodescope.android.core.model.MeshNode, onDetails: () -> Unit, onDismiss: () -> Unit) {
+internal fun MapNodePreview(
+    node: org.nodescope.android.core.model.MeshNode,
+    onDetails: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val now = rememberNow()
-    MeshModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
-                    Icon(org.nodescope.android.feature.nodes.roleIcon(node.role), null, Modifier.padding(12.dp),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer)
+    val roleAccent = roleColor(node.role)
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = org.nodescope.android.core.design.meshCardColor().copy(alpha = 1f),
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+    ) {
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Surface(shape = CircleShape, color = roleAccent.copy(alpha = 0.16f)) {
+                    Icon(org.nodescope.android.feature.nodes.roleIcon(node.role), null, Modifier.padding(8.dp),
+                        tint = roleAccent)
                 }
                 Column(Modifier.weight(1f)) {
-                    Text(node.displayName, style = MaterialTheme.typography.titleLarge)
+                    Text(node.displayName, style = MaterialTheme.typography.titleMedium)
                     Text(nodeRoleLabel(node.role), style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    org.nodescope.android.core.model.parseInstant(node.lastSeen)?.let { heard ->
+                        Text(stringResource(R.string.live_map_last_heard_2, relativeTime(heard, now)),
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
                 IconButton(onClick = onDismiss) { Icon(Icons.Outlined.Close, stringResource(R.string.live_map_dismiss_node_selection)) }
             }
-            Text(stringResource(R.string.live_map_last_heard_2, relativeTime(org.nodescope.android.core.model.parseInstant(node.lastSeen), now)),
-                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Button(onClick = onDetails, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.live_map_view_node_details)); Spacer(Modifier.width(8.dp)); Icon(Icons.Outlined.ChevronRight, null)
+                Text(stringResource(R.string.live_map_view_node_details))
             }
         }
     }

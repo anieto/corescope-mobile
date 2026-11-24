@@ -15,6 +15,7 @@ struct MapScreen: View {
     /// map itself is not resized, so its nodes stay put; its controls move clear of the panel,
     /// and the camera pans alongside the panel's slide so the visible part stays centred.
     var trailingObscuredWidth: CGFloat = 0
+    var previewTrailingInset: CGFloat = 0
 
     @Environment(AnalyzerSettings.self) private var settings
     @Environment(RegionFilterStore.self) private var regionFilter
@@ -33,6 +34,8 @@ struct MapScreen: View {
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var visibleRegion: MKCoordinateRegion?
     @State private var selectedNode: MeshNode?
+    @State private var previewNode: MeshNode?
+    @State private var replayChromeHeight: CGFloat = 0
     @State private var displayedNodes: [MeshNode] = []
     @State private var displayCoordinatesByNodeID: [String: CLLocationCoordinate2D] = [:]
     @State private var fanOriginsByNodeID: [String: CLLocationCoordinate2D] = [:]
@@ -623,6 +626,7 @@ struct MapScreen: View {
                         }
                         .padding(.bottom, viewModel.nodes.isEmpty ? 12 : 44)
                         .padding(.trailing, trailingObscuredWidth)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { replayChromeHeight = $0 }
                     }
                 }
                 .overlay(alignment: .bottom) {
@@ -645,6 +649,22 @@ struct MapScreen: View {
                         }
                         .padding(.bottom, 12)
                         .padding(.trailing, trailingObscuredWidth)
+                    }
+                }
+                .overlay(alignment: .bottomLeading) {
+                    if isTabActive, bottomObscuredFraction == 0, let previewNode {
+                        ViewThatFits(in: .vertical) {
+                            nodePreviewCard(previewNode)
+                                .fixedSize(horizontal: false, vertical: true)
+                            ScrollView { nodePreviewCard(previewNode) }
+                        }
+                        .frame(maxWidth: 360)
+                        .frame(maxWidth: .infinity)
+                        // Leave 8 points beside the 44-point location and 36-point zoom controls.
+                        .padding(.leading, 64)
+                        .padding(.trailing, max(previewTrailingInset + 12, trailingObscuredWidth + 56))
+                        .padding(.bottom, packetReplayStore.isReplayActive || isReplayMode ? max(48, replayChromeHeight + 8) : 48)
+                        .padding(.top, 68)
                     }
                 }
                 .overlay {
@@ -729,6 +749,7 @@ struct MapScreen: View {
             incomingEventTask?.cancel()
             incomingEventTask = nil
             selectedNode = nil
+            previewNode = nil
             pendingReplayRequestID = nil
             startedReplay = nil
             isReplayAwaitingCamera = false
@@ -772,6 +793,7 @@ struct MapScreen: View {
             repeaterStatuses = catalog.reportedStatuses
             updateDisplayedNodes()
         }
+        .onChange(of: mapLoadTaskID) { previewNode = nil }
         .task(id: mapLoadTaskID) {
             let sourceHost = settings.host
             let sourceSessionID = settings.sourceSession.id
@@ -1029,6 +1051,7 @@ struct MapScreen: View {
         }
         lastHandledNavigationRequestID = appNavigationStore.requestID
         selectedNode = nil
+        previewNode = nil
         focusOnSearchedNode(node)
     }
 
@@ -1152,7 +1175,7 @@ struct MapScreen: View {
                     if let coordinate = node.coordinate, !observedNodeIDs.contains(node.id) {
                         let displayCoordinate = displayCoordinatesByNodeID[node.id] ?? coordinate
                         Annotation("", coordinate: displayCoordinate, anchor: .center) {
-                            let isHighlighted = node.id == highlightedNodeID
+                            let isHighlighted = node.id == highlightedNodeID || node.id == previewNode?.id
                             let isRouteHop = routeCoordinates.contains(CoordinateKey(coordinate))
                             MapNodeMarker(
                                 role: node.role,
@@ -1173,8 +1196,8 @@ struct MapScreen: View {
                             .accessibilityAddTraits(.isButton)
                             .accessibilityLabel(node.name ?? shortKey(node.publicKey))
                             .accessibilityValue(NodeRoleStyle.label(for: node.role))
-                            .accessibilityHint(isRouteHop ? "Opens details for this route hop" : "Opens node details")
-                            .accessibilityAction { selectedNode = node }
+                            .accessibilityHint("Shows node preview")
+                            .accessibilityAction { previewNode = node }
                         }
                     }
                 }
@@ -1304,6 +1327,7 @@ struct MapScreen: View {
             var retained = savedNodeKeys
             if let highlightedNodeID { retained.insert(highlightedNodeID.lowercased()) }
             if let selectedNode { retained.insert(selectedNode.publicKey.lowercased()) }
+            if let previewNode { retained.insert(previewNode.publicKey.lowercased()) }
             nodes = viewModel.nodes.filter { node in
                 let key = node.publicKey.lowercased()
                 return retained.contains(key) || statuses[key] == status
@@ -1993,16 +2017,66 @@ struct MapScreen: View {
             // Only nodes near the tap are projected; projecting every node made taps lag on big meshes.
             let nodes = nodesNear(screenPoint, using: proxy, in: nodes)
             if let cluster = nearestCluster(to: screenPoint, using: proxy) {
+                previewNode = nil
                 zoomToCluster(cluster)
-            } else if let route = nearestRoute(to: screenPoint, using: proxy, at: date) {
-                selectedRouteDetails = route
             } else if case let stack = stackedNodes(at: screenPoint, using: proxy, nodes: nodes), !stack.isEmpty {
+                previewNode = nil
                 zoomToNodes(stack)
             } else if let node = nearestNode(to: screenPoint, using: proxy, nodes: nodes) {
-                selectedNode = node
+                previewNode = node
+            } else {
+                previewNode = nil
+                selectedRouteDetails = nearestRoute(to: screenPoint, using: proxy, at: date)
             }
             pendingMapTapTask = nil
         }
+    }
+
+    private func nodePreviewCard(_ node: MeshNode) -> some View {
+        let roleColor = NodeRoleStyle.color(for: node.role.lowercased())
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: NodeRoleStyle.symbolName(for: node.role.lowercased()))
+                    .foregroundStyle(roleColor)
+                    .frame(width: 36, height: 36)
+                    .background(roleColor.opacity(0.16), in: Circle())
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(node.name.flatMap { $0.isEmpty ? nil : $0 } ?? shortKey(node.publicKey))
+                        .font(.monaspace(.headline))
+                        .accessibilityAddTraits(.isHeader)
+                    Text(NodeRoleStyle.label(for: node.role))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    if let lastHeard = node.latestActivity {
+                        Text("Last heard \(RelativeTime.string(from: lastHeard))")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Button {
+                    previewNode = nil
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close")
+            }
+            Button {
+                previewNode = nil
+                selectedNode = node
+            } label: {
+                Text("View node details")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding(12)
+        .instrumentCard(fillOpacity: 1)
     }
 
     private func cancelPendingMapTap() {
@@ -2134,6 +2208,7 @@ struct MapScreen: View {
         // Already showing this request on this route: a repeat trigger, not a new replay.
         if isReplayMode, startedReplay == currentReplay { return }
         selectedNode = nil
+        previewNode = nil
         pendingReplayRequestID = packetReplayStore.requestID
         guard !isChangingRegion else { return }
         replayPendingPacketIfNeeded()

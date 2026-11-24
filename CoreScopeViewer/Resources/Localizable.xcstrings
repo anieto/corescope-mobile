@@ -20709,6 +20709,7 @@
       }
     },
     "Opens details for this route hop" : {
+      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -26998,6 +26999,22 @@
         }
       }
     },
+    "Shows node preview" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Muestra la vista previa del nodo"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostra a prévia do nó"
+          }
+        }
+      }
+    },
     "Shows only packets received by the chosen observer. Node markers follow the filters above." : {
       "localizations" : {
         "es" : {
@@ -32405,6 +32422,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ver licença GPLv3"
+          }
+        }
+      }
+    },
+    "View node details" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver detalles del nodo"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver detalhes do nó"
           }
         }
       }

@@ -7,6 +7,9 @@ import org.nodescope.android.core.design.MeshModalBottomSheet
 import org.nodescope.android.core.design.meshPageBackground
 import org.nodescope.android.core.design.meshTopAppBarColors
 import kotlinx.coroutines.launch
+import androidx.activity.compose.BackHandler
+import org.nodescope.android.core.design.rememberFoldSplit
+import org.nodescope.android.core.design.rememberTabletopSplit
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
 import android.animation.ValueAnimator
@@ -369,7 +372,7 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             }
             route != null -> { selectedNode = null; routeDetail = routeDetails(route.packet!!, currentAllNodes, route.observedAt); true }
             tap.nodeKey != null -> { selectNode(tap.nodeKey); true }
-            else -> false
+            else -> { selectedNode = null; false }
         }
     }
     var replayPlaying by remember { mutableStateOf(false) }
@@ -498,9 +501,8 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             }
         }
     }
-    selectedNode?.let { node ->
-        MapNodeSelectionSheet(node, onDetails = { selectedNode = null; currentOnNode(node.publicKey) },
-            onDismiss = { selectedNode = null })
+    BackHandler(enabled = selectedNode != null && bottomObscuredFraction == 0f && !filtersOpen && !keyOpen && !search) {
+        selectedNode = null
     }
     if (filtersOpen) MapFiltersSheet(filters, observerOptions, onChange = { filters = it },
         onDismiss = { filtersOpen = false }, hasReportedStatuses = statuses.isNotEmpty())
@@ -545,7 +547,9 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
                 MapLayersMenu(layersOpen, { layersOpen = false }, providerChoice, darkTheme) { choose(it); layersOpen = false }
             }
         })
-    Box(Modifier.weight(1f).fillMaxWidth()) {
+    val previewFold = rememberFoldSplit()
+    val previewTabletop = rememberTabletopSplit()
+    BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().then(previewFold.modifier).then(previewTabletop.modifier)) {
         val onCameraIdle: (SavedCamera) -> Unit = { cameraValues = it; settledZoom[0] = it[2]; resumeReplay(); refreshLabels(currentDisplayedNodes) }
         when (engine) {
             is MapLibreEngine -> MapLibreEngineHost(engine, styleMode = mode, retry = retry, bottomInset = controlsInset, savedCamera = cameraValues,
@@ -662,6 +666,28 @@ fun MapScreen(snapshot: AnalyzerSnapshot?, focusedKey: String? = null, onNode: (
             } else Modifier.align(Alignment.BottomStart).offset { IntOffset(0, -controlsInset) }.padding(start = 8.dp, bottom = 34.dp)).onSizeChanged { countSize = it },
             shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)) {
             Text(pluralStringResource(R.plurals.live_map_nodes, mapNodes.size, mapNodes.size), Modifier.padding(horizontal = 14.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium)
+        }
+        val preview = selectedNode
+        if (preview != null && bottomObscuredFraction == 0f) {
+            val leftPane = previewFold.offset
+            val endClearance = if (leftPane == null) 64.dp else 12.dp
+            val availableWidth = (leftPane ?: maxWidth) - endClearance - 12.dp
+            val replayClearance = with(LocalDensity.current) { controlsInset.toDp() }
+            val bottomClearance = replayClearance + if (maxHeight < 340.dp) 42.dp else 76.dp
+            val availableHeight = (maxHeight - (previewTabletop.offset ?: 0.dp) - bottomClearance - 12.dp)
+                .coerceAtMost(maxHeight * 0.55f)
+            if (availableWidth > 0.dp && availableHeight > 0.dp) {
+                MapNodePreview(
+                    preview,
+                    onDetails = { selectedNode = null; currentOnNode(preview.publicKey) },
+                    onDismiss = { selectedNode = null },
+                    modifier = Modifier.align(if (leftPane == null) Alignment.BottomStart else androidx.compose.ui.AbsoluteAlignment.BottomLeft)
+                        .padding(horizontal = 12.dp)
+                        .padding(bottom = bottomClearance)
+                        .widthIn(max = minOf(360.dp, availableWidth))
+                        .heightIn(max = availableHeight),
+                )
+            }
         }
         // Kept while sliding away, after the replay itself has been cleared.
         var lastReplay by remember { mutableStateOf(routeReplay) }

@@ -109,7 +109,8 @@ struct MapPacketWorkspaceScreen: View {
                 togglePacketSidebar: { setDuoPacketSidebarVisible(!isDuoPacketSidebarVisible) },
                 pinsPacketSidebarToggle: true,
                 centersBottomControlsInLeadingPane: !isDuoPacketSidebarVisible,
-                trailingObscuredWidth: isDuoPacketSidebarVisible ? duoSidebarWidth + duoCreaseMargin : 0
+                trailingObscuredWidth: isDuoPacketSidebarVisible ? duoSidebarWidth + duoCreaseMargin : 0,
+                previewTrailingInset: duoSidebarWidth + duoCreaseMargin
             )
 
             if isDuoPacketSidebarVisible {
