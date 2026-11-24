@@ -1995,6 +1995,7 @@
     <string name="nodevision_left">Alvo à esquerda</string>
     <string name="nodevision_right">Alvo à direita</string>
     <string name="nodevision_settings">Abrir ajustes</string>
+    <string name="nodevision_higher_confidence_elevation">Elevação mais confiável</string>
     <string name="nodevision_approx_elevation">Elevação aprox.</string>
     <string name="nodevision_location_info">Sobre o NodeVision</string>
     <string name="nodevision_location_privacy_title">Privacidade da localização</string>

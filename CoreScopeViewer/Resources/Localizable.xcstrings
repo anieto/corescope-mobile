@@ -13620,6 +13620,22 @@
         }
       }
     },
+    "Higher-confidence elevation" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elevación de mayor confianza"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elevação mais confiável"
+          }
+        }
+      }
+    },
     "Highlights in version %@" : {
       "localizations" : {
         "es" : {

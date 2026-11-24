@@ -130,6 +130,7 @@ struct NodeVisionScreen: View {
                         Text("Tap a marker to preview a node. Choose Spotlight node to highlight it as you pan. Choosing a node from Nearby spotlights it immediately. Edge arrows show which way to turn or tilt when the highlighted node is outside the camera view.")
                         Text("When your phone’s altitude is missing or too uncertain, markers show which way to turn. Their height on screen doesn’t indicate whether a node is above or below you.")
                         Text("When the phone’s altitude is accurate enough, NodeVision places markers by estimated antenna elevation. Without a reported height, it assumes a typical rooftop or handheld height. A dashed outline marks an approximate placement based on a default height or a less precise phone altitude.")
+                        markerStylePreview
                         Divider()
                         VStack(alignment: .leading, spacing: 8) {
                             Label("Location privacy", systemImage: "info.circle")
@@ -873,6 +874,32 @@ struct NodeVisionScreen: View {
         }
         .buttonStyle(.plain)
         .foregroundStyle(overlayInk)
+    }
+
+    private var markerStylePreview: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 24) {
+                markerStyleExample("Higher-confidence elevation", approximate: false)
+                markerStyleExample("Approx. elevation", approximate: true)
+            }
+            .fixedSize(horizontal: true, vertical: false)
+
+            VStack(alignment: .leading, spacing: 12) {
+                markerStyleExample("Higher-confidence elevation", approximate: false)
+                markerStyleExample("Approx. elevation", approximate: true)
+            }
+        }
+    }
+
+    private func markerStyleExample(_ label: LocalizedStringKey, approximate: Bool) -> some View {
+        HStack(spacing: 10) {
+            markerSurface(approximate: approximate, emphasized: false)
+                .frame(width: 38, height: 28)
+                .accessibilityHidden(true)
+            Text(label)
+                .font(.caption)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private func markerSurface(approximate: Bool, emphasized: Bool, spotlight: Bool = false) -> some View {

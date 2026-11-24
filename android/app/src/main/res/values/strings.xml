@@ -1981,6 +1981,7 @@
     <string name="nodevision_left">Target to the left</string>
     <string name="nodevision_right">Target to the right</string>
     <string name="nodevision_settings">Open Settings</string>
+    <string name="nodevision_higher_confidence_elevation">Higher-confidence elevation</string>
     <string name="nodevision_approx_elevation">Approx. elevation</string>
     <string name="nodevision_location_info">About NodeVision</string>
     <string name="nodevision_location_privacy_title">Location privacy</string>

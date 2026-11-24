@@ -778,6 +778,12 @@ internal fun NodeVisionScreen(
                             Text(stringResource(R.string.nodevision_help_focus))
                             Text(stringResource(R.string.nodevision_help_phone_altitude))
                             Text(stringResource(R.string.nodevision_help_elevation))
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                VisionMarkerStyleExample(R.string.nodevision_higher_confidence_elevation,
+                                    markerShape, markerInk, surface, overlayTint, approximate = false)
+                                VisionMarkerStyleExample(R.string.nodevision_approx_elevation,
+                                    markerShape, markerInk, surface, overlayTint, approximate = true)
+                            }
                             HorizontalDivider()
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1241,6 +1247,20 @@ internal fun stableVisionAltitude(previous: Double?, current: Double?, distance:
 internal fun discoveryMarkerY(projectedY: Double, paneHeight: Double, minimumY: Double, maximumY: Double): Double? {
     if (projectedY !in -24.0..(paneHeight + 24)) return null
     return projectedY.coerceIn(minimumY, maximumY)
+}
+
+@Composable
+private fun VisionMarkerStyleExample(
+    label: Int, shape: Shape, ink: Color, backing: Color, tint: Brush, approximate: Boolean,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Surface(shape = shape, color = backing) {
+            Box(Modifier.size(width = 38.dp, height = 28.dp)
+                .background(tint)
+                .visionMarkerBorder(shape, ink, backing, approximate, emphasized = false))
+        }
+        Text(stringResource(label), style = MaterialTheme.typography.bodySmall)
+    }
 }
 
 private fun Modifier.visionMarkerBorder(
