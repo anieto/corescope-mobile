@@ -835,6 +835,7 @@ struct FieldToolsScreen: View {
                         Button(action: closeAction) {
                             Image(systemName: "xmark")
                                 .frame(width: 44, height: 44)
+                                .contentShape(.rect(cornerRadius: 18))
                         }
                         .buttonStyle(.plain)
                         .nodeScopeFloatingGlass(cornerRadius: 18)
@@ -850,6 +851,7 @@ struct FieldToolsScreen: View {
                             .font(.subheadline.weight(.semibold))
                             .padding(.horizontal, 12)
                             .frame(minHeight: 44)
+                            .contentShape(.rect(cornerRadius: 16))
                             .nodeScopeFloatingGlass(cornerRadius: 16)
                     }
                     .buttonStyle(.plain)

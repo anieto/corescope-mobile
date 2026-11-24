@@ -330,6 +330,7 @@ struct MapScreen: View {
                         Button(action: togglePacketSidebar) {
                             Image(systemName: "list.bullet.rectangle")
                                 .frame(width: 44, height: 44)
+                                .contentShape(.rect(cornerRadius: 18))
                         }
                         .buttonStyle(.plain)
                         .nodeScopeFloatingGlass(cornerRadius: 18)
@@ -337,9 +338,7 @@ struct MapScreen: View {
                     }
 
                     if let resumeLiveTraffic {
-                        LiveMapPausedButton(resume: resumeLiveTraffic)
-                            .padding(.horizontal, 14)
-                            .frame(height: 44)
+                        LiveMapPausedButton(resume: resumeLiveTraffic, usesFloatingGlass: true)
                             .nodeScopeFloatingGlass(cornerRadius: 18)
                     } else {
                         HStack(spacing: 7) {
@@ -364,6 +363,7 @@ struct MapScreen: View {
                     Button(action: retry) {
                         Image(systemName: "arrow.clockwise")
                             .frame(width: 44, height: 44)
+                            .contentShape(.rect)
                     }
                     .disabled(isRefreshing)
                     .keyboardCommand(.refresh, action: retry)
@@ -372,6 +372,7 @@ struct MapScreen: View {
                     Button(action: search) {
                         Image(systemName: "magnifyingglass")
                             .frame(width: 44, height: 44)
+                            .contentShape(.rect)
                     }
                     .keyboardCommand(.search, action: search)
                     .accessibilityLabel("Search nodes")
@@ -391,6 +392,7 @@ struct MapScreen: View {
                     } label: {
                         Image(systemName: "map")
                             .frame(width: 44, height: 44)
+                            .contentShape(.rect)
                     }
                     .accessibilityLabel("Map style")
                 }
@@ -562,6 +564,7 @@ struct MapScreen: View {
                                     .font(.monaspace(.title3).weight(.semibold))
                                     .foregroundStyle(colorScheme == .dark ? Color.white : Color.accentColor)
                                     .frame(width: 44, height: 44)
+                                    .contentShape(.rect(cornerRadius: 10))
                             }
                             .buttonStyle(.plain)
                             .nodeScopeFloatingGlass(cornerRadius: 10)
@@ -573,6 +576,7 @@ struct MapScreen: View {
                                 .font(.monaspace(.title3).weight(.semibold))
                                 .foregroundStyle(colorScheme == .dark ? Color.white : Color.accentColor)
                                 .frame(width: 44, height: 44)
+                                .contentShape(.rect(cornerRadius: 10))
                         }
                         .buttonStyle(.plain)
                         .nodeScopeFloatingGlass(cornerRadius: 10)
@@ -1761,6 +1765,7 @@ struct MapScreen: View {
                     .fixedSize()
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)
+                    .contentShape(.rect)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Show route nodes only")
@@ -4184,6 +4189,7 @@ private struct MapNodeFilterButton: View {
             .foregroundStyle(.primary)
             .frame(minWidth: 34, minHeight: 34)
             .padding(.horizontal, isFiltering ? 8 : 0)
+            .contentShape(.rect(cornerRadius: 20))
             .nodeScopeFloatingGlass(cornerRadius: 20)
         }
         .buttonStyle(.plain)
@@ -4201,6 +4207,7 @@ private struct MapKeyButton: View {
                 .font(.body.weight(.semibold))
                 .foregroundStyle(.primary)
                 .frame(minWidth: 34, minHeight: 34)
+                .contentShape(.rect(cornerRadius: 20))
                 .nodeScopeFloatingGlass(cornerRadius: 20)
         }
         .buttonStyle(.plain)
@@ -4943,6 +4950,7 @@ private struct CompactLiveMapTitle: View {
 /// The map's title while live traffic is paused: says so, and resumes it when tapped.
 private struct LiveMapPausedButton: View {
     let resume: () -> Void
+    var usesFloatingGlass = false
 
     var body: some View {
         Button(action: resume) {
@@ -4955,6 +4963,9 @@ private struct LiveMapPausedButton: View {
                     .foregroundStyle(.primary)
                     .fixedSize()
             }
+            .padding(.horizontal, usesFloatingGlass ? 14 : 0)
+            .frame(height: usesFloatingGlass ? 44 : nil)
+            .contentShape(.rect(cornerRadius: usesFloatingGlass ? 18 : 0))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Live traffic paused")
