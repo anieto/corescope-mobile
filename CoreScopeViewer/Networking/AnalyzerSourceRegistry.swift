@@ -24,6 +24,7 @@ struct AnalyzerSource: Codable, Hashable, Identifiable {
     var subtitles: [String: String]? = nil
     var country: String? = nil
     var location: [Double]? = nil
+    var serviceAreas: [AnalyzerServiceArea]? = nil
 
     var locationCoordinate: CLLocationCoordinate2D? {
         guard let location, location.count == 2 else { return nil }
@@ -58,7 +59,21 @@ extension AnalyzerSource {
         subtitles = try fields.decodeIfPresent([String: String].self, forKey: .subtitles)
         country = AnalyzerSourceChoices.countryCode(try? fields.decode(String.self, forKey: .country))
         location = try? fields.decode([Double].self, forKey: .location)
+        serviceAreas = try? fields.decode([AnalyzerServiceArea].self, forKey: .serviceAreas)
     }
+}
+
+struct AnalyzerServiceArea: Codable, Hashable {
+    let country: String
+    var subdivision: String? = nil
+    var subdivisionName: String? = nil
+    var metros: [AnalyzerMetro]? = nil
+}
+
+struct AnalyzerMetro: Codable, Hashable, Identifiable {
+    let id: String
+    let name: String
+    var center: [Double]? = nil
 }
 
 struct AnalyzerSourceChoices {

@@ -13,7 +13,7 @@ struct AnalyzerSourcePickerScreen: View {
     @State private var customHost = ""
     @State private var locationManager = MapLocationManager()
     @State private var location: CLLocationCoordinate2D?
-    @State private var locationAttempted = false
+    @State private var isLocating = false
 
     private var choices: AnalyzerSourceChoices {
         AnalyzerSourceChoices(sources: sourceRegistry.sources, displayLocale: locale)
@@ -60,16 +60,24 @@ struct AnalyzerSourcePickerScreen: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        sortByNearest()
+                        if location == nil {
+                            sortByNearest()
+                        } else {
+                            location = nil
+                        }
                     } label: {
-                        Label("Sort by nearest", systemImage: "location")
+                        if location == nil {
+                            Label("Sort by nearest", systemImage: "location")
+                        } else {
+                            Label("Group by country", systemImage: "globe")
+                        }
                     }
-                    .disabled(locationAttempted)
+                    .disabled(isLocating)
                 }
             }
             .onDisappear {
                 locationManager.cancelRequest()
-                locationAttempted = false
+                isLocating = false
                 location = nil
             }
             .task {
@@ -103,11 +111,14 @@ struct AnalyzerSourcePickerScreen: View {
                     .foregroundStyle(metadataColor)
             }
         }
-        .instrumentListRows()
+        // Resolve the row fill from the picker so reused list backgrounds share the text's
+        // appearance when UIKit reattaches them after foregrounding.
+        .instrumentListRows(colorScheme: colorScheme)
     }
 
     private func sourceRow(_ source: AnalyzerSource) -> some View {
-        Button {
+        let area = serviceAreaLabel(for: source)
+        return Button {
             select(source.host)
         } label: {
             HStack(spacing: 12) {
@@ -120,12 +131,21 @@ struct AnalyzerSourcePickerScreen: View {
                             .foregroundStyle(Color.primary)
                         AnalyzerSourceTypeLabel(type: source.backendType, color: metadataColor)
                     }
-                    Text(source.displaySubtitle)
-                        .font(.caption)
-                        .foregroundStyle(metadataColor)
-                    Text(source.host)
-                        .font(.monaspace(.caption2))
-                        .foregroundStyle(metadataColor)
+                    if !source.displaySubtitle.isEmpty {
+                        Text(source.displaySubtitle)
+                            .font(.caption)
+                            .italic()
+                            .foregroundStyle(metadataColor)
+                    }
+                    if let area {
+                        Text(area)
+                            .font(.caption)
+                            .foregroundStyle(Color.primary)
+                    } else {
+                        Text(source.host)
+                            .font(.monaspace(.caption2))
+                            .foregroundStyle(metadataColor)
+                    }
                 }
 
                 Spacer()
@@ -139,13 +159,32 @@ struct AnalyzerSourcePickerScreen: View {
         }
         .accessibilityLabel(
             source.backendType == .beacon
-                ? "Use \(source.name), Beacon beta server, \(source.displaySubtitle)"
-                : "Use \(source.name), CoreScope server, \(source.displaySubtitle)"
+                ? "Use \(source.name), Beacon beta server, \(source.displaySubtitle), \(area ?? source.host)"
+                : "Use \(source.name), CoreScope server, \(source.displaySubtitle), \(area ?? source.host)"
         )
         .accessibilityValue(
             source.host.caseInsensitiveCompare(selectedHost) == .orderedSame ? "Selected" : ""
         )
         .buttonStyle(.plain)
+    }
+
+    private func serviceAreaLabel(for source: AnalyzerSource) -> String? {
+        let areas = source.serviceAreas ?? []
+        let countries = Array(Set(areas.map(\.country))).sorted()
+        let labels = countries.map { country in
+            let labels = areas.filter { $0.country == country }.compactMap { area -> String? in
+                let region = area.subdivisionName ?? area.subdivision
+                if let metros = area.metros, metros.count == 1, let metro = metros.first {
+                    return [metro.name, region].compactMap { $0 }.joined(separator: ", ")
+                }
+                return region
+            }
+            let countryName = locale.localizedString(forRegionCode: country) ?? country
+            if labels.isEmpty { return countryName }
+            let regions = ListFormatter.localizedString(byJoining: labels)
+            return country == "US" && countries.count == 1 ? regions : "\(regions), \(countryName)"
+        }
+        return labels.isEmpty ? nil : labels.joined(separator: " · ")
     }
 
     private var customSection: some View {
@@ -188,7 +227,7 @@ struct AnalyzerSourcePickerScreen: View {
             }
             .foregroundStyle(metadataColor)
         }
-        .instrumentListRows()
+        .instrumentListRows(colorScheme: colorScheme)
     }
 
     private var requestSection: some View {
@@ -203,15 +242,18 @@ struct AnalyzerSourcePickerScreen: View {
             Text("Suggest a public analyzer for the community list. Please confirm that its owner or operator permits it to be listed and used in NodeScope.")
                 .foregroundStyle(metadataColor)
         }
-        .instrumentListRows()
+        .instrumentListRows(colorScheme: colorScheme)
     }
 
     private func sortByNearest() {
-        guard !locationAttempted else { return }
-        locationAttempted = true
+        guard !isLocating, location == nil else { return }
+        isLocating = true
         locationManager.requestCurrentLocation {
             location = $0
-        } failure: {}
+            isLocating = false
+        } failure: {
+            isLocating = false
+        }
     }
 
     private var metadataColor: Color {

@@ -23,6 +23,7 @@ data class AnalyzerSource(
     val subtitles: Map<String, String>? = null,
     val country: String? = null,
     val location: List<Double>? = null,
+    val serviceAreas: List<AnalyzerServiceArea>? = null,
 ) {
     fun displaySubtitle(language: String): String =
         ContentTranslation.pick(subtitles, ContentTranslation.languages(language)) ?: subtitle
@@ -34,6 +35,17 @@ data class AnalyzerSource(
     val viewport: RegionCoordinate? get() = Coordinate.valid(mapCenter?.getOrNull(0), mapCenter?.getOrNull(1))
         ?.let { RegionCoordinate(it.latitude, it.longitude, mapRadiusKm ?: 250.0) }
 }
+@Serializable
+data class AnalyzerServiceArea(
+    val country: String,
+    val subdivision: String? = null,
+    val subdivisionName: String? = null,
+    val metros: List<AnalyzerMetro> = emptyList(),
+)
+
+@Serializable
+data class AnalyzerMetro(val id: String, val name: String, val center: List<Double>? = null)
+
 enum class AnalyzerSourceType(val raw: String) {
     CORESCOPE("corescope"), BEACON("beacon");
     val displayName: String get() = if (this == BEACON) "Beacon" else "CoreScope"

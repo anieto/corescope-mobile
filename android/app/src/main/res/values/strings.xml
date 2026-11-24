@@ -1755,6 +1755,7 @@
     <string name="onboarding_source_request_subject">NodeScope community source request</string>
     <string name="onboarding_suggest_a_public_analyzer_for_the_community_list">Suggest a public analyzer for the community list. Please confirm that its owner or operator permits it to be listed and used in NodeScope.</string>
     <string name="onboarding_tap_a_node_for_its_details_clusters_zoom">Tap a node for its details. Clusters zoom in to reveal nearby nodes.</string>
+    <string name="onboarding_group_by_country">Group by country</string>
     <string name="onboarding_sort_by_nearest">Sort by nearest</string>
     <string name="onboarding_other_sources">Other</string>
     <string name="onboarding_custom_analyzer_hint">Ask your local mesh community for their analyzer’s address.</string>

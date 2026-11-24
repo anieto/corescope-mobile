@@ -1,5 +1,10 @@
 package org.nodescope.android.feature.onboarding
 
+import android.icu.text.ListFormatter
+import androidx.compose.ui.text.font.FontStyle
+import java.util.Locale
+import org.nodescope.android.core.model.AnalyzerServiceArea
+
 import org.nodescope.android.core.design.meshCardColors
 import androidx.core.net.toUri
 import androidx.compose.ui.platform.LocalContext
@@ -77,14 +82,20 @@ fun SourceScreen(
             }.getOrNull()
         }
     }
-    var locate by remember { mutableStateOf(false) }
+    var isLocating by remember { mutableStateOf(false) }
     var location by remember { mutableStateOf<Coordinate?>(null) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        locate = granted
+        isLocating = granted
     }
-    LaunchedEffect(locate) {
-        if (locate && hasLocationPermission(context)) {
-            location = (currentLocation(context) as? LocationResult.Found)?.coordinate
+    LaunchedEffect(isLocating) {
+        if (isLocating) {
+            try {
+                if (hasLocationPermission(context)) {
+                    location = (currentLocation(context) as? LocationResult.Found)?.coordinate
+                }
+            } finally {
+                isLocating = false
+            }
         }
     }
     val customAndRequest: LazyListScope.() -> Unit = {
@@ -94,20 +105,24 @@ fun SourceScreen(
     Column(Modifier.fillMaxSize().imePadding()) {
         TextButton(
             onClick = {
-                if (hasLocationPermission(context)) {
-                    locate = true
+                if (location != null) {
+                    location = null
+                } else if (hasLocationPermission(context)) {
+                    isLocating = true
                 } else if (!permissionRequested) {
                     permissionRequested = true
                     permissionHistory.edit().putBoolean("location_requested", true).apply()
                     permission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
                 }
             },
-            enabled = !locate && (hasLocationPermission(context) || !permissionRequested),
+            enabled = !isLocating && (location != null || hasLocationPermission(context) || !permissionRequested),
             modifier = Modifier.align(Alignment.End).padding(horizontal = 16.dp),
         ) {
             Icon(Icons.Outlined.MyLocation, null, Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.onboarding_sort_by_nearest))
+            Text(stringResource(
+                if (location == null) R.string.onboarding_sort_by_nearest else R.string.onboarding_group_by_country,
+            ))
         }
         LazyColumn(
             modifier = Modifier.weight(1f),
@@ -156,10 +171,39 @@ private fun CommunitySourceRow(source: AnalyzerSource, currentHost: String, savi
                     Text(source.name, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.titleMedium)
                     SourceTypeLabel(source.backendType)
                 }
-                Text(source.displaySubtitle(stringResource(R.string.content_language)), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(source.host, style = MaterialTheme.typography.bodySmall, fontFamily = MonaspaceNeon, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                val subtitle = source.displaySubtitle(stringResource(R.string.content_language))
+                if (subtitle.isNotEmpty()) {
+                    Text(subtitle, style = MaterialTheme.typography.bodySmall,
+                        fontStyle = FontStyle.Italic, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                val area = serviceAreaLabel(source.serviceAreas.orEmpty(), LocalConfiguration.current.locales[0])
+                if (area != null) {
+                    Text(area, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
+                } else {
+                    Text(source.host, style = MaterialTheme.typography.bodySmall,
+                        fontFamily = MonaspaceNeon, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
             if (current) Icon(Icons.Outlined.CheckCircle, stringResource(R.string.onboarding_selected), tint = MaterialTheme.colorScheme.primary)
+        }
+    }
+}
+
+private fun serviceAreaLabel(areas: List<AnalyzerServiceArea>, locale: Locale): String? {
+    val countries = areas.groupBy { it.country }.toSortedMap()
+    if (countries.isEmpty()) return null
+    return countries.entries.joinToString(" · ") { (country, countryAreas) ->
+        val labels = countryAreas.mapNotNull { area ->
+            val region = area.subdivisionName ?: area.subdivision
+            area.metros.singleOrNull()?.let { metro ->
+                listOfNotNull(metro.name, region).joinToString(", ")
+            } ?: region
+        }
+        val name = runCatching { Locale.Builder().setRegion(country).build().getDisplayCountry(locale) }
+            .getOrDefault(country).ifBlank { country }
+        if (labels.isEmpty()) name else {
+            val regions = ListFormatter.getInstance(locale).format(labels)
+            if (country == "US" && countries.size == 1) regions else "$regions, $name"
         }
     }
 }

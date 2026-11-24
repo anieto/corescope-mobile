@@ -1772,6 +1772,7 @@
     <string name="onboarding_source_request_subject">Solicitud de fuente de la comunidad para NodeScope</string>
     <string name="onboarding_suggest_a_public_analyzer_for_the_community_list">Sugiere un analizador público para la lista de la comunidad. Confirma que su dueño u operador permite que se incluya en la lista y se use en NodeScope.</string>
     <string name="onboarding_tap_a_node_for_its_details_clusters_zoom">Toca un nodo para ver sus detalles. Los grupos se acercan para mostrar los nodos cercanos.</string>
+    <string name="onboarding_group_by_country">Agrupar por país</string>
     <string name="onboarding_sort_by_nearest">Ordenar por cercanía</string>
     <string name="onboarding_other_sources">Otros</string>
     <string name="onboarding_custom_analyzer_hint">Pide a tu comunidad mesh local la dirección de su analizador.</string>

@@ -130,6 +130,10 @@ struct InstrumentRowBackground: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+        Self.fill(for: colorScheme)
+    }
+
+    static func fill(for colorScheme: ColorScheme) -> Color {
         colorScheme == .dark
             ? NodeScopeStyle.cardSlate.opacity(0.82)
             : Color.white.opacity(0.86)
@@ -201,8 +205,13 @@ extension View {
     }
 
     /// Gives grouped List or Form rows the card surface. Apply to each Section.
-    func instrumentListRows() -> some View {
-        listRowBackground(InstrumentRowBackground())
+    @ViewBuilder
+    func instrumentListRows(colorScheme: ColorScheme? = nil) -> some View {
+        if let colorScheme {
+            listRowBackground(InstrumentRowBackground.fill(for: colorScheme))
+        } else {
+            listRowBackground(InstrumentRowBackground())
+        }
     }
 
     /// Keeps information-dense phone layouts readable on iPad while naturally

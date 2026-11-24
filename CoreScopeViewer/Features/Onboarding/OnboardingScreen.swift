@@ -119,12 +119,12 @@ struct OnboardingScreen: View {
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(Color.secondary)
+                        .foregroundStyle(Color.accentColor)
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .instrumentCard(fillOpacity: 1)
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 24)
