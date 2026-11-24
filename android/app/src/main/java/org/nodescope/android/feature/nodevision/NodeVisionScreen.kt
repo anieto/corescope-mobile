@@ -311,7 +311,8 @@ internal fun NodeVisionScreen(
             val offset = if (!near && bearing != null && trueHeading != null && tangent != null && projection != null) {
                 FieldGeometry.cameraHorizontalOffset(bearing, trueHeading, tangent)?.plus(projection.centerX * 2 - 1)
             } else null
-            val markerWidth = minOf(192.dp, (paneWidth - 32.dp).coerceAtLeast(0.dp))
+            val markerWidth = minOf(visionMarkerWidth(visionMarkerTier(geometry?.distanceMeters ?: 0.0)).dp,
+                (paneWidth - 32.dp).coerceAtLeast(0.dp))
             val pixel = (offset ?: 0.0) * paneWidth.value / 2
             val limit = (paneWidth.value / 2 - markerWidth.value / 2 - 8).coerceAtLeast(0f)
             val offscreen = abs(pixel) > (limit + if (edge) -6 else 6).coerceAtLeast(0f)
@@ -392,6 +393,7 @@ internal fun NodeVisionScreen(
                     ) {
                         Box(Modifier.width(marker.width.dp).height(80.dp), contentAlignment = Alignment.BottomCenter) {
                             Surface(
+                                modifier = Modifier.fillMaxWidth(),
                                 enabled = visible,
                                 onClick = {
                                     inspectedKey = marker.node.publicKey
@@ -460,6 +462,7 @@ internal fun NodeVisionScreen(
                     Box(Modifier.offset(x = maxWidth / 2 + pixel.dp - markerWidth / 2, y = markerY - 88.dp)
                         .width(markerWidth).height(88.dp), contentAlignment = Alignment.BottomCenter) {
                         Surface(
+                            modifier = Modifier.fillMaxWidth(),
                             color = surface.copy(alpha = 0.98f), shape = markerShape,
                             shadowElevation = 4.dp,
                         ) {
@@ -805,6 +808,18 @@ internal fun NodeVisionScreen(
 }
 
 private data class NearbyVisionNode(val node: MeshNode, val geometry: FieldGeometryResult)
+private fun visionMarkerTier(distance: Double): Int = when {
+    distance < 500 -> 0
+    distance < 2_000 -> 1
+    else -> 2
+}
+
+private fun visionMarkerWidth(tier: Int): Double = when (tier) {
+    0 -> 132.0
+    1 -> 112.0
+    else -> 96.0
+}
+
 private data class DiscoveryMarker(
     val node: MeshNode, val distance: Double, val x: Double, val y: Double, val width: Double, val tier: Int, val approximate: Boolean,
 )
@@ -832,12 +847,8 @@ private fun discoveryMarkers(
         val bearing = candidate.geometry.initialBearingDegrees ?: return
         val offset = FieldGeometry.cameraHorizontalOffset(bearing, heading, projection.halfWidthTangent) ?: return
         val x = paneWidth * (projection.centerX + offset / 2)
-        val tier = when {
-            candidate.geometry.distanceMeters < 500 -> 0
-            candidate.geometry.distanceMeters < 2_000 -> 1
-            else -> 2
-        }
-        val width = when (tier) { 0 -> 132.0; 1 -> 112.0; else -> 96.0 }
+        val tier = visionMarkerTier(candidate.geometry.distanceMeters)
+        val width = visionMarkerWidth(tier)
         val left = x - width / 2 - 5
         val right = x + width / 2 + 5
         if (left < 0 || right > paneWidth) return

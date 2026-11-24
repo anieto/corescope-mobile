@@ -354,7 +354,8 @@ struct NodeVisionScreen: View {
                         }
                     }
                 }
-                let markerWidth = min(192, max(0, pane.size.width - 32))
+                let markerWidth = min(Self.markerWidth(tier: Self.markerTier(distance: geometry?.distanceMeters ?? 0)),
+                                      max(0, pane.size.width - 32))
                 let edge = max(0, pane.size.width / 2 - markerWidth / 2 - 8)
                 let offscreen = offset.map { abs($0 * pane.size.width / 2) > max(0, edge + (arrowShown ? -6 : 6)) } ?? false
                 let showSettings = location.status == .denied || AVCaptureDevice.authorizationStatus(for: .video) == .denied
@@ -612,6 +613,16 @@ struct NodeVisionScreen: View {
         }.sorted { ($0.geometry.distanceMeters, $0.node.publicKey) < ($1.geometry.distanceMeters, $1.node.publicKey) }
     }
 
+    private static func markerTier(distance: Double) -> Int {
+        if distance < 500 { return 0 }
+        if distance < 2_000 { return 1 }
+        return 2
+    }
+
+    private static func markerWidth(tier: Int) -> CGFloat {
+        [132, 112, 96][tier]
+    }
+
     private struct DiscoveryMarker: Identifiable {
         let candidate: NearbyNode
         let x: CGFloat
@@ -648,8 +659,8 @@ struct NodeVisionScreen: View {
                   let offset = FieldGeometry.cameraHorizontalOffset(bearing: bearing,
                     heading: heading.trueHeadingDegrees, halfWidthTangent: tangent),
                   abs(offset) < 1 else { return }
-            let tier = candidate.geometry.distanceMeters < 500 ? 0 : candidate.geometry.distanceMeters < 2_000 ? 1 : 2
-            let width: CGFloat = [132, 112, 96][tier]
+            let tier = Self.markerTier(distance: candidate.geometry.distanceMeters)
+            let width = Self.markerWidth(tier: tier)
             let x = size.width * CGFloat(1 + offset) / 2
             let left = x - width / 2 - 5
             let paddedWidth = width + 10
@@ -1004,7 +1015,7 @@ struct NodeVisionScreen: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 9)
                     .padding(.vertical, 5)
-                    .frame(maxWidth: markerWidth)
+                    .frame(width: markerWidth)
                     .padding(.bottom, 9)
                     .background { markerSurface(approximate: approximate, emphasized: true, spotlight: true) }
                 }
