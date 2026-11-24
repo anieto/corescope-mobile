@@ -2001,6 +2001,7 @@
     <string name="nodevision_location_privacy">Alguns proprietários informam intencionalmente uma localização a uma curta distância da instalação real para evitar que sua residência ou outro local privado seja identificado. O NodeVision aponta para a localização informada.</string>
     <string name="nodevision_above">Alvo acima da área visível</string>
     <string name="nodevision_below">Alvo abaixo da área visível</string>
+    <string name="nodevision_phone_altitude_uncertain">Altitude do celular incerta</string>
     <string name="nodevision_elevation_uncertain">Elevação incerta</string>
     <string name="nodevision_install_height_m">%1$s m</string>
     <string name="nodevision_install_height_ft">%1$s ft</string>
@@ -2018,6 +2019,7 @@
     <string name="nodevision_no_nearby">Nenhum nó próximo foi encontrado.</string>
     <string name="nodevision_help_markers">A bússola mostra para onde a câmera aponta. Os marcadores mostram o nome de cada nó e a distância até ele. Os marcadores menores seguem a direção do nó e podem aparecer em alturas diferentes para facilitar a leitura.</string>
     <string name="nodevision_help_focus">Toque em um marcador para ver uma prévia do nó. Escolha “Destacar nó” para realçá-lo ao girar a câmera. Ao escolher um nó em Próximos, ele é destacado na hora. Quando o nó destacado sai da área visível, as setas nas bordas indicam para onde girar ou inclinar a câmera.</string>
+    <string name="nodevision_help_phone_altitude">Quando a altitude do celular está indisponível ou é imprecisa demais, os marcadores mostram para onde virar. A altura deles na tela não indica se um nó está acima ou abaixo de você.</string>
     <string name="nodevision_help_elevation">Quando a altitude do celular é precisa o suficiente, o NodeVision posiciona os marcadores pela elevação estimada da antena. Sem uma altura informada, usa uma altura típica de telhado ou de dispositivo portátil. Um rótulo mais discreto indica uma posição aproximada baseada em uma altura padrão ou em uma altitude do celular menos precisa.</string>
     <string name="nodevision_nearby_range_miles">Nós a até 10 mi de você</string>
     <string name="nodevision_nearby_range_km">Nós a até 10 km de você</string>

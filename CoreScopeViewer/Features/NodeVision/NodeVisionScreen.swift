@@ -128,6 +128,7 @@ struct NodeVisionScreen: View {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("The compass shows where the camera is pointing. Markers show node names and distances from you. Smaller markers follow the node’s direction and may stagger vertically to keep labels readable.")
                         Text("Tap a marker to preview a node. Choose Spotlight node to highlight it as you pan. Choosing a node from Nearby spotlights it immediately. Edge arrows show which way to turn or tilt when the highlighted node is outside the camera view.")
+                        Text("When your phone’s altitude is missing or too uncertain, markers show which way to turn. Their height on screen doesn’t indicate whether a node is above or below you.")
                         Text("When the phone’s altitude is accurate enough, NodeVision places markers by estimated antenna elevation. Without a reported height, it assumes a typical rooftop or handheld height. A dashed outline marks an approximate placement based on a default height or a less precise phone altitude.")
                         Divider()
                         VStack(alignment: .leading, spacing: 8) {
@@ -430,6 +431,14 @@ struct NodeVisionScreen: View {
                             if cameraAvailable, let heading, let tangent {
                                 compass(heading: heading.trueHeadingDegrees, tangent: tangent, width: pane.size.width)
                             }
+                            if cameraAvailable, heading != nil, tangent != nil, fix != nil, mode == .guide,
+                               target != nil || !discoveryMarkers.isEmpty {
+                                Text("Phone altitude uncertain")
+                                    .font(.caption)
+                                    .foregroundStyle(supportingTextColor)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 4)
+                            }
                         }
                         .padding(.top, insets.top)
                         .background {
@@ -525,12 +534,8 @@ struct NodeVisionScreen: View {
                                     } else if targetStatus == "decommissioned" {
                                         Text("Owner reported: Decommissioned").font(.caption)
                                     }
-                                    if !markerVisible {
-                                        if placement.approximate {
-                                            Text("Approx. elevation").font(.caption)
-                                        } else if mode == .guide {
-                                            Text("Elevation Uncertain").font(.caption)
-                                        }
+                                    if !markerVisible, placement.approximate {
+                                        Text("Approx. elevation").font(.caption)
                                     }
                                     if cameraFailed {
                                         Text("Camera unavailable. You can return to the guide.")
@@ -987,10 +992,6 @@ struct NodeVisionScreen: View {
                         if let geometry { distance(geometry, style: .caption) }
                         if approximate {
                             Text("Approx. elevation").font(.caption2).foregroundStyle(supportingTextColor)
-                        } else if !estimated {
-                            Label("Elevation Uncertain", systemImage: "arrow.left.and.right")
-                                .font(.caption2).foregroundStyle(supportingTextColor)
-                                .accessibilityLabel("Elevation Uncertain. Use the marker for left or right direction.")
                         }
                     }
                     .multilineTextAlignment(.center)

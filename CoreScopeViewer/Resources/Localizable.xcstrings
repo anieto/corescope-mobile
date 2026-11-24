@@ -21575,6 +21575,22 @@
         }
       }
     },
+    "Phone altitude uncertain" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Altitud del teléfono incierta"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Altitude do celular incerta"
+          }
+        }
+      }
+    },
     "Place a transmitter to find nearby known nodes." : {
       "localizations" : {
         "es" : {
@@ -33025,6 +33041,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Quando a altitude do celular é precisa o suficiente, o NodeVision posiciona os marcadores pela elevação estimada da antena. Sem uma altura informada, usa uma altura típica de telhado ou de dispositivo portátil. Um contorno tracejado indica uma posição aproximada baseada em uma altura padrão ou em uma altitude do celular menos precisa."
+          }
+        }
+      }
+    },
+    "When your phone’s altitude is missing or too uncertain, markers show which way to turn. Their height on screen doesn’t indicate whether a node is above or below you." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuando no se dispone de la altitud del teléfono o es demasiado imprecisa, los marcadores indican hacia dónde girar. Su altura en pantalla no indica si un nodo está por encima o por debajo de ti."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quando a altitude do celular está indisponível ou é imprecisa demais, os marcadores mostram para onde virar. A altura deles na tela não indica se um nó está acima ou abaixo de você."
           }
         }
       }

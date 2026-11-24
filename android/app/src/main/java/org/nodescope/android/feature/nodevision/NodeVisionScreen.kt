@@ -463,8 +463,7 @@ internal fun NodeVisionScreen(
                                     overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
                                     onTextLayout = { truncatedName = it.hasVisualOverflow })
                                 geometry?.let { Text(stringResource(R.string.nodevision_distance_away, formatDistance(it.distanceMeters / 1000, distanceUnit)), style = MaterialTheme.typography.labelSmall, fontFamily = MonaspaceNeon) }
-                                if (approximate || mode == VisionElevationMode.Guide) Text(stringResource(
-                                    if (approximate) R.string.nodevision_approx_elevation else R.string.nodevision_elevation_uncertain),
+                                if (approximate) Text(stringResource(R.string.nodevision_approx_elevation),
                                     style = MaterialTheme.typography.labelSmall, fontFamily = androidx.compose.ui.text.font.FontFamily.Default, color = supportingText)
                             }
                         }
@@ -520,6 +519,12 @@ internal fun NodeVisionScreen(
                             }
                             Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 3.dp).size(3.dp, 15.dp).background(accent, shape = androidx.compose.foundation.shape.CircleShape))
                         }
+                    }
+                    if (showCamera && trueHeading != null && projection != null && fix != null &&
+                        mode == VisionElevationMode.Guide && (visionTarget != null || discoveryMarkers.isNotEmpty())) {
+                        Text(stringResource(R.string.nodevision_phone_altitude_uncertain),
+                            Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.bodySmall, color = supportingText)
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
                     if (BuildConfig.DEBUG && showsDiagnostics) {
@@ -585,8 +590,7 @@ internal fun NodeVisionScreen(
                             }
                         }
                         ownerStatus?.let { Text(stringResource(it), style = MaterialTheme.typography.bodySmall) }
-                        if (!markerVisible && (approximate || mode == VisionElevationMode.Guide)) Text(stringResource(
-                            if (approximate) R.string.nodevision_approx_elevation else R.string.nodevision_elevation_uncertain),
+                        if (!markerVisible && approximate) Text(stringResource(R.string.nodevision_approx_elevation),
                             style = MaterialTheme.typography.bodySmall)
                         status?.let { Text(stringResource(it)) }
                         if (showSettings) TextButton(onClick = {
@@ -756,6 +760,7 @@ internal fun NodeVisionScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text(stringResource(R.string.nodevision_help_markers))
                             Text(stringResource(R.string.nodevision_help_focus))
+                            Text(stringResource(R.string.nodevision_help_phone_altitude))
                             Text(stringResource(R.string.nodevision_help_elevation))
                             HorizontalDivider()
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

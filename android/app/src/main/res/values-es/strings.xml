@@ -2001,6 +2001,7 @@
     <string name="nodevision_location_privacy">Algunos propietarios indican deliberadamente una ubicación a poca distancia de la instalación real para evitar que se pueda identificar su domicilio u otro lugar privado. NodeVision apunta hacia la ubicación indicada.</string>
     <string name="nodevision_above">Nodo por encima del campo de visión</string>
     <string name="nodevision_below">Nodo por debajo del campo de visión</string>
+    <string name="nodevision_phone_altitude_uncertain">Altitud del teléfono incierta</string>
     <string name="nodevision_elevation_uncertain">Elevación incierta</string>
     <string name="nodevision_install_height_m">%1$s m</string>
     <string name="nodevision_install_height_ft">%1$s ft</string>
@@ -2018,6 +2019,7 @@
     <string name="nodevision_no_nearby">No se encontraron nodos cercanos.</string>
     <string name="nodevision_help_markers">La brújula muestra hacia dónde apunta la cámara. Los marcadores muestran el nombre de cada nodo y la distancia hasta él. Los marcadores pequeños siguen la dirección del nodo y pueden colocarse a distintas alturas para que las etiquetas se lean bien.</string>
     <string name="nodevision_help_focus">Toca un marcador para ver una vista previa del nodo. Elige «Destacar nodo» para resaltarlo al girar la cámara. Si eliges un nodo desde Cercanos, se destaca de inmediato. Cuando el nodo destacado queda fuera de la vista, las flechas en los bordes indican hacia dónde girar o inclinar la cámara.</string>
+    <string name="nodevision_help_phone_altitude">Cuando no se dispone de la altitud del teléfono o es demasiado imprecisa, los marcadores indican hacia dónde girar. Su altura en pantalla no indica si un nodo está por encima o por debajo de ti.</string>
     <string name="nodevision_help_elevation">Cuando la altitud del teléfono es lo bastante precisa, NodeVision coloca los marcadores según la elevación estimada de la antena. Si no se ha indicado la altura, usa una altura típica de azotea o de dispositivo de mano. Una etiqueta más tenue indica una posición aproximada basada en una altura predeterminada o en una altitud del teléfono menos precisa.</string>
     <string name="nodevision_nearby_range_miles">Nodos a 10 mi o menos</string>
     <string name="nodevision_nearby_range_km">Nodos a 10 km o menos</string>
