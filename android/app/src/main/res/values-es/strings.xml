@@ -2091,4 +2091,17 @@
     </plurals>
     <string name="account_confirm_remove_favorite">¿Quitar de Favoritos?</string>
     <string name="account_repeater_stays_claimed">El repetidor seguirá reclamado.</string>
+    <string name="widget_my_nodes">Mis nodos</string>
+    <string name="widget_choose_node">Toca para elegir un nodo.</string>
+    <string name="widget_save_or_watch">Guarda o sigue un nodo en NodeScope y luego toca para elegirlo.</string>
+    <string name="widget_waiting">Esperando datos</string>
+    <string name="widget_last_heard">Última actividad</string>
+    <string name="widget_last_heard_value">Última actividad %1$s</string>
+    <string name="widget_unknown">Desconocida</string>
+    <string name="widget_checked">Consultado %1$s</string>
+    <string name="widget_open_app">Abrir NodeScope</string>
+    <string name="widget_unavailable">El nodo de este widget ya no está disponible.</string>
+    <string name="widget_choose_nodes_title">Elige nodos</string>
+    <string name="widget_choose_nodes_description">Selecciona hasta tres nodos. El widget compacto muestra el primero. Aumenta la altura para ver más nodos.</string>
+    <string name="widget_save_selection">Guardar selección</string>
 </resources>

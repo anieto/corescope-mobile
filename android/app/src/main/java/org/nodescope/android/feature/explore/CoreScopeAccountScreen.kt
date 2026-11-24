@@ -226,6 +226,7 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
             val current = currentClient.notifications()
             if (client !== currentClient || user?.id != currentUser.id) return
             notifications = current
+            org.nodescope.android.widget.MyNodesWidgetStore.publishWatches(context, host, currentUser.id, current.watches)
             notificationStatus = NotificationStatus.Ready
             if (PushPlatform.enabled) StagingPush.attempt {
                 current.pushRelay?.let { push.renew(context, currentClient, currentUser, it) }
@@ -252,7 +253,9 @@ internal class CoreScopeAccountModel(private val context: Context, private val h
         val currentClient = client ?: return@action
         val currentUser = user ?: return@action
         if (notificationStatus != NotificationStatus.Ready) return@action
-        notifications = currentClient.setWatch(key, watched, currentUser.csrfToken)
+        val updated = currentClient.setWatch(key, watched, currentUser.csrfToken)
+        notifications = updated
+        org.nodescope.android.widget.MyNodesWidgetStore.publishWatches(context, host, currentUser.id, updated.watches)
     }
 
     fun pushEnabled(userId: Long) = push.enabled(origin, userId)

@@ -1,5 +1,6 @@
 import SafariServices
 import SwiftUI
+import WidgetKit
 
 @main
 struct NodeScopeApp: App {
@@ -18,8 +19,11 @@ struct NodeScopeApp: App {
     @State private var favoritesStore = FavoritesStore()
     @State private var recentItemsStore = RecentItemsStore()
     @State private var searchHistoryStore = SearchHistoryStore()
+    @State private var widgetWatches: WidgetWatches?
+    @State private var pendingWidgetNode: String?
     @State private var appNavigationStore = AppNavigationStore()
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @AppStorage(AppearanceSettings.backgroundTextureDefaultsKey) private var backgroundTextureEnabled = true
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -80,6 +84,16 @@ struct NodeScopeApp: App {
                     PackageImportPresenter.present(PackageImportRequest(url: url, removesFile: url.pathComponents.contains { $0.hasSuffix("Inbox") }))
                     return
                 }
+                if url.scheme == "nodescope", url.host == MyNodesWidgetCatalog.nodeCheckHost {
+                    appNavigationStore.open(.nodeCheck)
+                    return
+                }
+                if url.scheme == "nodescope", url.host == "widget-node" {
+                    pendingWidgetNode = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                        .queryItems?.first(where: { $0.name == "id" })?.value ?? ""
+                    openWidgetSelectionIfReady()
+                    return
+                }
                 guard let deepLink = NodeScopeDeepLink(url: url) else { return }
                 appNavigationStore.open(deepLink)
             }
@@ -119,6 +133,16 @@ struct NodeScopeApp: App {
                 }
             }
             #endif
+            .onChange(of: widgetChoices, initial: true) {
+                publishWidgetCatalog()
+                openWidgetSelectionIfReady()
+            }
+            .onChange(of: backgroundTextureEnabled) { publishWidgetCatalog() }
+            .onChange(of: settings.sourceIsReady) { openWidgetSelectionIfReady() }
+            .task(id: widgetWatchRequest) {
+                guard scenePhase == .active, let request = widgetWatchRequest else { return }
+                await refreshWidgetWatches(request)
+            }
             .task {
                 await analyzerSourceRegistry.refresh()
             }
@@ -149,6 +173,100 @@ struct NodeScopeApp: App {
             }
         }
     }
+
+    private func publishWidgetCatalog() {
+        if (try? MyNodesWidgetCatalog.publish(widgetChoices, textureEnabled: backgroundTextureEnabled)) == true {
+            WidgetCenter.shared.reloadTimelines(ofKind: MyNodesWidgetCatalog.widgetKind)
+            WidgetCenter.shared.reloadTimelines(ofKind: MyNodesWidgetCatalog.listWidgetKind)
+        }
+    }
+
+    private struct WidgetWatchRequest: Equatable {
+        let sourceSessionID: UUID
+        let accountID: Int64
+        let revision: Int
+        let active: Bool
+    }
+
+    private struct WidgetWatches {
+        let request: WidgetWatchRequest
+        let nodes: [CoreScopeWatchedNode]
+    }
+
+    private var widgetWatchRequest: WidgetWatchRequest? {
+        let store = CoreScopeAccountSelectionStore.shared
+        guard hasCompletedOnboarding, settings.sourceIsReady, settings.beaconBackend == nil,
+              let accountID = store.activeAccounts.first(where: {
+                  AnalyzerSettings.normalizedHost($0.key) == AnalyzerSettings.normalizedHost(settings.host)
+              })?.value else { return nil }
+        return WidgetWatchRequest(sourceSessionID: settings.sourceSession.id, accountID: accountID,
+                                  revision: store.widgetWatchRevision, active: scenePhase == .active)
+    }
+
+    private var widgetChoices: [MyNodesWidgetChoice] {
+        guard hasCompletedOnboarding, settings.sourceIsReady, settings.beaconBackend == nil else { return [] }
+        let source = AnalyzerSettings.normalizedHost(settings.host)
+        var nodes: [String: MyNodesWidgetChoice] = [:]
+        for favorite in favoritesStore.deviceItems where favorite.kind == .node && favorite.source == source {
+            let key = favorite.entityID.lowercased()
+            nodes[key] = MyNodesWidgetChoice(source: source, key: key, name: favorite.title, accountID: nil)
+        }
+        if let current = widgetWatchRequest, let watches = widgetWatches,
+           watches.request.sourceSessionID == current.sourceSessionID,
+           watches.request.accountID == current.accountID,
+           watches.request.revision == current.revision {
+            for node in watches.nodes {
+                let key = node.pubkey.lowercased()
+                if nodes[key] == nil {
+                    let name = node.name.isEmpty ? String(key.prefix(12)) : node.name
+                    nodes[key] = MyNodesWidgetChoice(source: source, key: key, name: name, accountID: current.accountID)
+                }
+            }
+        }
+        return nodes.values.filter { $0.endpoint != nil }.sorted { $0.id < $1.id }
+    }
+
+    private func refreshWidgetWatches(_ request: WidgetWatchRequest) async {
+        let session = settings.sourceSession
+        var nodes: [CoreScopeWatchedNode] = []
+        do {
+            let origin = settings.baseURL
+            if let cookie = try AccountSessionKeychain.load(origin: origin.absoluteString) {
+                let client = try CoreScopeAccountClient(origin: origin, cookie: cookie, lifetime: session,
+                    save: { token in
+                        // A refresh must not restore a session that was replaced while it ran.
+                        if try AccountSessionKeychain.load(origin: origin.absoluteString) == cookie {
+                            try AccountSessionKeychain.save(token, origin: origin.absoluteString)
+                        }
+                    })
+                if try await client.me().id == request.accountID {
+                    nodes = try await client.notifications().watches
+                }
+            }
+        } catch CoreScopeAccountError.signedOut {
+            nodes = []
+        } catch {
+            // Keep a previously verified list on a transient error for this same identity.
+            if let previous = widgetWatches, previous.request == request {
+                nodes = previous.nodes
+            }
+        }
+        guard !Task.isCancelled, session.isCurrent, widgetWatchRequest == request else { return }
+        widgetWatches = WidgetWatches(request: request, nodes: nodes)
+        openWidgetSelectionIfReady()
+    }
+
+    private func openWidgetSelectionIfReady() {
+        guard settings.sourceIsReady, let id = pendingWidgetNode else { return }
+        if let choice = widgetChoices.first(where: { $0.id == id }) {
+            pendingWidgetNode = nil
+            appNavigationStore.openWatchedNode(publicKey: choice.key, sourceSessionID: settings.sourceSession.id)
+        } else if id.isEmpty || widgetWatchRequest == nil || widgetWatches?.request == widgetWatchRequest {
+            pendingWidgetNode = nil
+            appNavigationStore.openMyNodes()
+        }
+    }
+
 }
 
 

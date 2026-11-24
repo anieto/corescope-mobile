@@ -288,6 +288,17 @@
 		F7AAC2A15896BF2122A20C22 /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B46AA4A5FB82FC08E16B31 /* SettingsScreen.swift */; };
 		F82F20C851C52EAC49BC3931 /* ChannelMonitorStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F93FC8366CD37CCF8C3B02C /* ChannelMonitorStore.swift */; };
 		F880AFD88BBD5C97812E65C7 /* Packet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA006DDF6B3AF7AC55C16467 /* Packet.swift */; };
+		E3012C128B6FEAFAF7062223 /* MyNodesPrototype.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E4B452149BEAF7E22ED8F50 /* MyNodesPrototype.swift */; };
+		D79F9CE0955F4B2FAF7ECA9A /* MyNodesPrototype.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 9E01A8063F9F595EE12BD051 /* MyNodesPrototype.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A1C0DEAA0000000000000002 /* MyNodesWidgetCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DEAA0000000000000001; };
+		A1C0DEAA0000000000000003 /* MyNodesWidgetCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DEAA0000000000000001; };
+		A1C0DEAA0000000000000004 /* AppFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = E583994A85C1799754185206; };
+		A1C0DEAA0000000000000005 /* MonaspaceNeon-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = 3F21B6371EF991370D1D03DF; };
+		A1C0DEAA0000000000000006 /* MonaspaceNeon-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 13D380B1339F9747DE599399; };
+		A1C0DEAA0000000000000007 /* Monaspace-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = CCC3EF3BCC40156BFEC23CAA; };
+		A1C0DEAA0000000000000009 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A1C0DEAA000000000000000A /* PrivacyInfo.xcprivacy */; };
+		A1C0DEAA000000000000000B /* MeshBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31DFA801308F9D3400B8C681 /* MeshBackground.swift */; };
+		A1C0DEAA000000000000000C /* AppearanceSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78E6E9CACE3528A4828C2A2D /* AppearanceSettings.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -298,7 +309,28 @@
 			remoteGlobalIDString = 1FC5C9B7DAF19C9465D027C0;
 			remoteInfo = CoreScopeViewer;
 		};
+		9B9F49AC5C928D4AC126E830 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 125657655B1CE7710083CE61 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 232825CD6C0D8F630AEE33B0;
+			remoteInfo = MyNodesPrototype;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		16BDA98113B7D0EA3D14B952 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				D79F9CE0955F4B2FAF7ECA9A /* MyNodesPrototype.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		D05C0BE10000000000000002 /* texas-boundary.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "shared/analyzer-sources/texas-boundary.json"; sourceTree = SOURCE_ROOT; };
@@ -587,6 +619,10 @@
 		FBD22701CFCB401CB7EBD9F9 /* StudyDraftStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyDraftStoreTests.swift; sourceTree = "<group>"; };
 		FEE734231B3A2D9FDE62ADB6 /* MapViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapViewModel.swift; sourceTree = "<group>"; };
 		FF13FD215F4B08F58FE9D5B0 /* LearnButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnButton.swift; sourceTree = "<group>"; };
+		2E4B452149BEAF7E22ED8F50 /* MyNodesPrototype.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyNodesPrototype.swift; sourceTree = "<group>"; };
+		9E01A8063F9F595EE12BD051 /* MyNodesPrototype.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = MyNodesPrototype.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1C0DEAA0000000000000001 /* MyNodesWidgetCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = shared/widget/MyNodesWidgetCatalog.swift; sourceTree = SOURCE_ROOT; };
+		A1C0DEAA000000000000000A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -604,6 +640,7 @@
 		002B449ACE62846A6E279DD7 /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				9E01A8063F9F595EE12BD051 /* MyNodesPrototype.appex */,
 				6CC49543CC83FFA8F008F3A0 /* NodeScope.app */,
 				8464149BFBEDBC4B0BB32E42 /* CoreScopeViewerTests.xctest */,
 			);
@@ -974,6 +1011,7 @@
 		D9F8E2DFF0AF3A4F68FAC182 = {
 			isa = PBXGroup;
 			children = (
+				BBDBFB453CFB3A30E1C603F3 /* MyNodesPrototype */,
 				F18120000000000000000002 /* shared/rf-engine/build/XCFrameworks/release/NodeScopeRF.xcframework */,
 				F18120000000000000000005 /* shared/rf-engine/licenses/kp1812.txt */,
 				31DC215C30640E6A00F0E9C5 /* NodeScope.storekit */,
@@ -1093,6 +1131,16 @@
 			path = CoreScopeViewerTests;
 			sourceTree = "<group>";
 		};
+		BBDBFB453CFB3A30E1C603F3 /* MyNodesPrototype */ = {
+			isa = PBXGroup;
+			children = (
+				A1C0DEAA0000000000000001 /* MyNodesWidgetCatalog.swift */,
+				2E4B452149BEAF7E22ED8F50 /* MyNodesPrototype.swift */,
+				A1C0DEAA000000000000000A /* PrivacyInfo.xcprivacy */,
+			);
+			path = MyNodesPrototype;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -1100,6 +1148,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = DA1023A25ECB9C20533A0B5A /* Build configuration list for PBXNativeTarget "CoreScopeViewer" */;
 			buildPhases = (
+				16BDA98113B7D0EA3D14B952 /* Embed Foundation Extensions */,
 				87D6E05538D7B3ECE3DD20E9 /* Sources */,
 				F18120000000000000000003 /* Frameworks */,
 				D179B11939AA855C7B6FC9F9 /* Resources */,
@@ -1107,6 +1156,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				B956386C072BC229964BE150 /* PBXTargetDependency */,
 			);
 			name = CoreScopeViewer;
 			packageProductDependencies = (
@@ -1132,6 +1182,24 @@
 			productName = CoreScopeViewerTests;
 			productReference = 8464149BFBEDBC4B0BB32E42 /* CoreScopeViewerTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		232825CD6C0D8F630AEE33B0 /* MyNodesPrototype */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F540D43C19F18D17FCAB8A3C /* Build configuration list for PBXNativeTarget "MyNodesPrototype" */;
+			buildPhases = (
+				BF8C0E7A42034CF571E2D9FF /* Sources */,
+				A1C0DEAA0000000000000008 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MyNodesPrototype;
+			packageProductDependencies = (
+			);
+			productName = MyNodesPrototype;
+			productReference = 9E01A8063F9F595EE12BD051 /* MyNodesPrototype.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -1164,6 +1232,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				232825CD6C0D8F630AEE33B0 /* MyNodesPrototype */,
 				1FC5C9B7DAF19C9465D027C0 /* CoreScopeViewer */,
 				5C75D56D7971E1C9412A462E /* CoreScopeViewerTests */,
 			);
@@ -1195,6 +1264,17 @@
 				A1C0DE5901000000000000C4 /* whats-new.es.json in Resources */,
 				A1C0DE5701000000000000A2 /* Localizable.xcstrings in Resources */,
 				A1C0DE5701000000000000A4 /* InfoPlist.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A1C0DEAA0000000000000008 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1C0DEAA0000000000000005 /* MonaspaceNeon-Regular.otf in Resources */,
+				A1C0DEAA0000000000000006 /* MonaspaceNeon-SemiBold.otf in Resources */,
+				A1C0DEAA0000000000000007 /* Monaspace-OFL.txt in Resources */,
+				A1C0DEAA0000000000000009 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1355,6 +1435,7 @@
 				31DFA802308F9D3400B8C681 /* MeshBackground.swift in Sources */,
 				31DFA7EB308E9F4E00B8C681 /* NodePlannerRFEngine.swift in Sources */,
 				31A2B0043070000100FBA3B4 /* RoutePicker.swift in Sources */,
+				A1C0DEAA0000000000000002 /* MyNodesWidgetCatalog.swift in Sources */,
 				DB9DEC9ABF59879D2D850970 /* AppFont.swift in Sources */,
 				DB9F44BFCC24A15FC2881340 /* LearnButton.swift in Sources */,
 				16CC334CE0E2AE894A6E2811 /* ChannelMessagesCache.swift in Sources */,
@@ -1475,6 +1556,18 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BF8C0E7A42034CF571E2D9FF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1C0DEAA0000000000000003 /* MyNodesWidgetCatalog.swift in Sources */,
+				A1C0DEAA0000000000000004 /* AppFont.swift in Sources */,
+				A1C0DEAA000000000000000B /* MeshBackground.swift in Sources */,
+				A1C0DEAA000000000000000C /* AppearanceSettings.swift in Sources */,
+				E3012C128B6FEAFAF7062223 /* MyNodesPrototype.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -1482,6 +1575,11 @@
 			isa = PBXTargetDependency;
 			target = 1FC5C9B7DAF19C9465D027C0 /* CoreScopeViewer */;
 			targetProxy = 68BA488EA3A16FD6E92C5CC3 /* PBXContainerItemProxy */;
+		};
+		B956386C072BC229964BE150 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 232825CD6C0D8F630AEE33B0 /* MyNodesPrototype */;
+			targetProxy = 9B9F49AC5C928D4AC126E830 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1729,6 +1827,54 @@
 			};
 			name = Release;
 		};
+		488F1910FF0F6C049D4785E4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CW335GEDYX;
+				GENERATE_INFOPLIST_FILE = YES;
+				CODE_SIGN_ENTITLEMENTS = MyNodesPrototype/MyNodesPrototype.entitlements;
+				INFOPLIST_FILE = MyNodesPrototype/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.btdev.nodescope.MyNodesPrototype;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		C61A0B492C9D1CE1E6ABEDB3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CW335GEDYX;
+				GENERATE_INFOPLIST_FILE = YES;
+				CODE_SIGN_ENTITLEMENTS = MyNodesPrototype/MyNodesPrototype.entitlements;
+				INFOPLIST_FILE = MyNodesPrototype/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.btdev.nodescope.MyNodesPrototype;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1755,6 +1901,15 @@
 			buildConfigurations = (
 				3C2997DBF79EDA58C990F93D /* Debug */,
 				B7F8CE769958DFE905B499D6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F540D43C19F18D17FCAB8A3C /* Build configuration list for PBXNativeTarget "MyNodesPrototype" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C61A0B492C9D1CE1E6ABEDB3 /* Debug */,
+				488F1910FF0F6C049D4785E4 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

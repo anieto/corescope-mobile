@@ -120,6 +120,11 @@ class MainActivity : ComponentActivity() {
 
     /** A nodescope:// link, or a saved-plans file opened (VIEW) or shared (SEND) to NodeScope. */
     private fun route(intent: android.content.Intent?, model: AppViewModel) {
+        val uri = intent?.data
+        if (uri?.scheme == "nodescope" && uri.host == org.nodescope.android.widget.WIDGET_NODE_LINK) {
+            openWidgetNode(uri.getQueryParameter("id"), model)
+            return
+        }
         val pushed = StagingPush.route(intent)
         if (pushed != null) {
             openPush(pushed, model)
@@ -131,6 +136,27 @@ class MainActivity : ComponentActivity() {
                 androidx.core.content.IntentCompat.getParcelableExtra(intent, android.content.Intent.EXTRA_STREAM, android.net.Uri::class.java))
             intent.action == android.content.Intent.ACTION_VIEW && intent.data?.scheme in setOf("content", "file") -> model.openImport(intent.data)
             else -> model.openLink(intent.dataString)
+        }
+    }
+
+    private var widgetRouteJob: Job? = null
+
+    private fun openWidgetNode(id: String?, model: AppViewModel) {
+        widgetRouteJob?.cancel()
+        widgetRouteJob = lifecycleScope.launch {
+            val catalog = org.nodescope.android.widget.MyNodesWidgetStore(this@MainActivity)
+            val choice = catalog.nodes(catalog.appPreferences()).firstOrNull { it.id == id }
+            val source = choice?.let {
+                withTimeoutOrNull(12_000) {
+                    model.sourceStatus.first { state -> state.host == choice.source && (state.ready || state.error != null) }
+                }
+            }
+            if (choice != null && source?.ready == true && source.beacon == null &&
+                source.session.isCurrent && catalog.nodes(catalog.appPreferences()).any { it.id == id }) {
+                model.openWatchedNode(choice.key, source.session.id)
+            } else {
+                android.widget.Toast.makeText(this@MainActivity, R.string.widget_unavailable, android.widget.Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

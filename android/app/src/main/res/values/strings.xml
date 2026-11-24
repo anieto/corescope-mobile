@@ -2077,4 +2077,17 @@
     </plurals>
     <string name="account_confirm_remove_favorite">Remove from Favorites?</string>
     <string name="account_repeater_stays_claimed">The repeater will stay claimed.</string>
+    <string name="widget_my_nodes">My Nodes</string>
+    <string name="widget_choose_node">Tap to choose a node.</string>
+    <string name="widget_save_or_watch">Save or watch a node in NodeScope, then tap to choose it.</string>
+    <string name="widget_waiting">Waiting for data</string>
+    <string name="widget_last_heard">Last heard</string>
+    <string name="widget_last_heard_value">Last heard %1$s</string>
+    <string name="widget_unknown">Unknown</string>
+    <string name="widget_checked">Checked %1$s</string>
+    <string name="widget_open_app">Open NodeScope</string>
+    <string name="widget_unavailable">This widget’s node is no longer available.</string>
+    <string name="widget_choose_nodes_title">Choose nodes</string>
+    <string name="widget_choose_nodes_description">Select up to three nodes. The compact widget shows the first. Make the widget taller to see more nodes.</string>
+    <string name="widget_save_selection">Save selection</string>
 </resources>

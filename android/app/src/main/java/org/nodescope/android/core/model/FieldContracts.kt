@@ -69,7 +69,7 @@ sealed interface FieldQrCode {
                 NodeScopeLink.Kind.OBSERVER -> link.identifier.takeIf {
                     it.isNotEmpty() && it.toByteArray(Charsets.UTF_8).size <= 512
                 }?.let { NodeScope(FieldEntityId.Kind.OBSERVER, it) }
-                NodeScopeLink.Kind.CHANNEL, NodeScopeLink.Kind.PACKET -> null
+                NodeScopeLink.Kind.CHANNEL, NodeScopeLink.Kind.PACKET, NodeScopeLink.Kind.NODE_CHECK -> null
             }
         }
 
