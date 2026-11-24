@@ -521,7 +521,7 @@ struct NodeVisionScreen: View {
                                     if let installHeight {
                                         HStack(spacing: 8) {
                                             Image(systemName: "arrow.up.and.down")
-                                                .foregroundStyle(nodeNameColor)
+                                                .foregroundStyle(overlayInk)
                                                 .accessibilityHidden(true)
                                             Text("Reported install height")
                                                 .foregroundStyle(supportingTextColor)
@@ -580,7 +580,7 @@ struct NodeVisionScreen: View {
                                     }
                                 }
                                 .buttonStyle(.bordered)
-                                .tint(nodeNameColor)
+                                .tint(overlayInk)
                                 .padding(.bottom, insets.bottom + 8)
                             }
                         }
@@ -745,11 +745,13 @@ struct NodeVisionScreen: View {
                     }
                 } label: {
                     HStack {
-                        Text(item.name).font(.monaspace(.subheadline).weight(.semibold))
+                        Text(item.name)
+                            .font(.monaspace(.subheadline).weight(.semibold))
+                            .foregroundStyle(nodeNameColor)
                         Spacer(minLength: 10)
                         Image(systemName: expandsInspection ? "chevron.down" : "chevron.up")
                     }
-                    .foregroundStyle(nodeNameColor)
+                    .foregroundStyle(overlayInk)
                     .frame(minHeight: 44)
                     .contentShape(Rectangle())
                 }
@@ -836,6 +838,10 @@ struct NodeVisionScreen: View {
     }
 
     private var nodeNameColor: Color {
+        colorScheme == .dark ? overlayInk.mix(with: .white, by: 0.55) : overlayInk
+    }
+
+    private var overlayInk: Color {
         colorScheme == .dark
             ? NodeScopeStyle.signal
             : NodeScopeStyle.signal.mix(with: NodeScopeStyle.deepNavy, by: 0.45)
@@ -866,13 +872,13 @@ struct NodeVisionScreen: View {
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .foregroundStyle(nodeNameColor)
+        .foregroundStyle(overlayInk)
     }
 
     private func markerSurface(approximate: Bool, emphasized: Bool, spotlight: Bool = false) -> some View {
         let shape = NodeVisionMarkerShape()
         let width: CGFloat = emphasized ? 3 : 2
-        let borderColor = spotlight ? NodeScopeStyle.activity : nodeNameColor
+        let borderColor = spotlight ? NodeScopeStyle.activity : overlayInk
         let backing = colorScheme == .dark ? NodeScopeStyle.deepNavy : Color(uiColor: .systemBackground)
         return overlaySurface(shape, drawsBorder: false)
             .overlay { shape.stroke(backing, lineWidth: width + 2) }

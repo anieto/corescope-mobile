@@ -277,6 +277,7 @@ internal fun NodeVisionScreen(
         with(density) { visionMarkerShape(10.dp.toPx(), 9.dp.toPx(), 8.dp.toPx()) }
     }
     val blue = MaterialTheme.colorScheme.primary
+    val nodeNameColor = if (lightOverlay) blue else lerp(blue, onSurface, 0.55f)
     val typography = MaterialTheme.typography
     fun markerNameStyle(tier: Int) = if (tier == 0) typography.titleSmall else typography.labelMedium
     val markerInk = if (lightOverlay) lerp(blue, onSurface, 0.25f) else blue
@@ -412,7 +413,7 @@ internal fun NodeVisionScreen(
                                     horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text(marker.node.displayName, fontFamily = MonaspaceNeon,
                                         style = markerNameStyle(marker.tier),
-                                        color = blue, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+                                        color = nodeNameColor, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
                                     Text(stringResource(R.string.nodevision_distance_away, formatDistance(marker.distance / 1000, distanceUnit)),
                                         style = MaterialTheme.typography.labelSmall, fontFamily = MonaspaceNeon,
                                         textAlign = TextAlign.Center)
@@ -474,7 +475,7 @@ internal fun NodeVisionScreen(
                                 .padding(bottom = 9.dp).padding(horizontal = 6.dp, vertical = 4.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(visionName, style = markerNameStyle(markerTier), fontFamily = MonaspaceNeon,
-                                    color = MaterialTheme.colorScheme.primary, maxLines = 2,
+                                    color = nodeNameColor, maxLines = 2,
                                     overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
                                     onTextLayout = { truncatedName = it.hasVisualOverflow })
                                 geometry?.let { Text(stringResource(R.string.nodevision_distance_away, formatDistance(it.distanceMeters / 1000, distanceUnit)), style = MaterialTheme.typography.labelSmall, fontFamily = MonaspaceNeon) }
@@ -585,7 +586,7 @@ internal fun NodeVisionScreen(
                 ) {
                     Column(Modifier.background(overlayTint).padding(horizontal = 14.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         if (!markerVisible || truncatedName) {
-                            Text(visionName, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center)
+                            Text(visionName, style = MaterialTheme.typography.titleSmall, color = nodeNameColor, textAlign = TextAlign.Center)
                         }
                         if (!markerVisible) geometry?.let {
                             Text(stringResource(R.string.nodevision_distance_away, formatDistance(it.distanceMeters / 1000, distanceUnit)),
@@ -637,7 +638,7 @@ internal fun NodeVisionScreen(
                                 .verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(inspectedNode.displayName, Modifier.weight(1f).clickable { expandsInspection = !expandsInspection },
-                                        style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                                        style = MaterialTheme.typography.titleSmall, color = nodeNameColor)
                                     IconButton(onClick = { expandsInspection = !expandsInspection }) {
                                         Icon(if (expandsInspection) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
                                             stringResource(if (expandsInspection) R.string.nodevision_collapse_details else R.string.nodevision_expand_details))
