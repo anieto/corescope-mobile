@@ -10,6 +10,7 @@ import org.nodescope.android.feature.nodevision.VisionAntennaHeight
 import org.nodescope.android.feature.nodevision.VisionElevationMode
 import org.nodescope.android.feature.nodevision.VisionTerrainCache
 import org.nodescope.android.feature.nodevision.VisionTerrainPoint
+import org.nodescope.android.feature.nodevision.discoveryMarkerY
 import org.nodescope.android.feature.nodevision.stableVisionAltitude
 import org.nodescope.android.feature.nodevision.visionAntennaHeight
 import org.nodescope.android.feature.nodevision.visionElevationMode
@@ -127,6 +128,13 @@ class FieldGeometryTest {
 
 
 class NodeVisionElevationTest {
+    @Test fun discoveryMarkersLeaveTheEdgesWhenTiltedFartherAway() {
+        assertEquals(166.0, discoveryMarkerY(-24.0, 800.0, 166.0, 700.0))
+        assertEquals(700.0, discoveryMarkerY(824.0, 800.0, 166.0, 700.0))
+        assertNull(discoveryMarkerY(-25.0, 800.0, 166.0, 700.0))
+        assertNull(discoveryMarkerY(825.0, 800.0, 166.0, 700.0))
+    }
+
     @Test fun reportedAndDefaultHeights() {
         assertEquals(VisionAntennaHeight(12.0, false), visionAntennaHeight("repeater", 12.0))
         for (role in listOf("repeater", "room", "room-server")) {

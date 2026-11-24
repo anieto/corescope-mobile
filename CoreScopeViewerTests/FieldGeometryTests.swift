@@ -164,6 +164,13 @@ struct FieldGeometryTests {
 
 
 struct NodeVisionElevationTests {
+    @Test func discoveryMarkersLeaveTheEdgesWhenTiltedFartherAway() {
+        #expect(discoveryMarkerY(projectedY: -24, paneHeight: 800, minimumY: 166, maximumY: 700) == 166)
+        #expect(discoveryMarkerY(projectedY: 824, paneHeight: 800, minimumY: 166, maximumY: 700) == 700)
+        #expect(discoveryMarkerY(projectedY: -25, paneHeight: 800, minimumY: 166, maximumY: 700) == nil)
+        #expect(discoveryMarkerY(projectedY: 825, paneHeight: 800, minimumY: 166, maximumY: 700) == nil)
+    }
+
     @Test func reportedAndDefaultHeights() {
         #expect(VisionAntennaHeight(role: "repeater", reported: 12).meters == 12)
         #expect(!VisionAntennaHeight(role: "repeater", reported: 12).approximate)

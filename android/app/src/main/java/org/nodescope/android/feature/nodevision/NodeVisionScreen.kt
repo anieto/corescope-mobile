@@ -830,7 +830,8 @@ private fun discoveryMarkers(
         val (elevation, height) = antenna(candidate.node)
         val distance = candidate.geometry.distanceMeters
         val vertical = mode.offset(distance, elevation, pitch, projection.halfHeightTangent) ?: return
-        val y = (paneHeight * (projection.centerY - vertical / 2)).coerceIn(minimumY, maximumY)
+        val projectedY = paneHeight * (projection.centerY - vertical / 2)
+        val y = discoveryMarkerY(projectedY, paneHeight, minimumY, maximumY) ?: return
         val approximate = mode.isApproximate(distance, height)
         val nudges = if (mode == VisionElevationMode.Guide) listOf(0.0, if (y + 92 <= maximumY) 92.0 else -92.0)
             else listOf(0.0, 24.0, -24.0, 48.0, -48.0, 72.0, -72.0, 92.0, -92.0)
@@ -1205,4 +1206,10 @@ internal fun stableVisionAltitude(previous: Double?, current: Double?, distance:
     if (current == null || !current.isFinite()) return null
     if (previous == null || distance == null) return current
     return if (kotlin.math.atan2(abs(current - previous), distance) < Math.toRadians(0.15)) previous else current
+}
+
+/** Clamp to the label-safe area while the node is in or just outside the viewfinder. */
+internal fun discoveryMarkerY(projectedY: Double, paneHeight: Double, minimumY: Double, maximumY: Double): Double? {
+    if (projectedY !in -24.0..(paneHeight + 24)) return null
+    return projectedY.coerceIn(minimumY, maximumY)
 }

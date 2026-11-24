@@ -655,7 +655,9 @@ struct NodeVisionScreen: View {
             let distance = candidate.geometry.distanceMeters
             guard let vertical = mode.offset(distance: distance, antenna: antenna, pitch: pitch,
                                              tangent: verticalTangent) else { return }
-            let y = min(max(size.height * CGFloat(1 - vertical) / 2, minY), maxY)
+            let projectedY = size.height * CGFloat(1 - vertical) / 2
+            guard let y = discoveryMarkerY(projectedY: projectedY, paneHeight: size.height,
+                                           minimumY: minY, maximumY: maxY) else { return }
             let approximate = mode.isApproximate(distance: distance, height: height)
             let nudges: [CGFloat] = mode == .guide ? [0, y + 92 <= maxY ? 92 : -92] : [0, 24, -24, 48, -48, 72, -72, 92, -92]
             for nudge in nudges {
@@ -1229,4 +1231,10 @@ func stableVisionAltitude(previous: Double?, current: Double?, distance: Double?
     guard let current, current.isFinite else { return nil }
     guard let previous, let distance else { return current }
     return atan2(abs(current - previous), distance) < 0.15 * .pi / 180 ? previous : current
+}
+
+/// Clamp to the label-safe area while the node is in or just outside the viewfinder.
+func discoveryMarkerY(projectedY: CGFloat, paneHeight: CGFloat, minimumY: CGFloat, maximumY: CGFloat) -> CGFloat? {
+    guard (-24...(paneHeight + 24)).contains(projectedY) else { return nil }
+    return min(max(projectedY, minimumY), maximumY)
 }
