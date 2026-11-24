@@ -5,6 +5,7 @@ import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -465,8 +466,14 @@ internal fun NodeVisionScreen(
                     // The bottom of the tip stays on the bearing band when the label wraps.
                     Box(Modifier.offset(x = maxWidth / 2 + pixel.dp - markerWidth / 2, y = markerY - 88.dp)
                         .width(markerWidth).height(88.dp), contentAlignment = Alignment.BottomCenter) {
+                        val reopenPreview = if (focusedNode != null && inspectedKey != focusedNode.publicKey) {
+                            Modifier.clickable(role = Role.Button) {
+                                inspectedKey = focusedNode.publicKey
+                                expandsInspection = true
+                            }
+                        } else Modifier
                         Surface(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().then(reopenPreview),
                             color = surface.copy(alpha = 0.98f), shape = markerShape,
                             shadowElevation = 4.dp,
                         ) {
