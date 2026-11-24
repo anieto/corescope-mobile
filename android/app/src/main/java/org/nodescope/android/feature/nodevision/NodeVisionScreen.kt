@@ -163,6 +163,12 @@ internal fun NodeVisionScreen(
     }
     val inspectedNode = catalog.firstOrNull { it.publicKey == inspectedKey }
     val focusedNode = catalog.firstOrNull { it.publicKey == focusedKey }
+    val reopenPreview = if (focusedNode != null && inspectedKey != focusedNode.publicKey) {
+        Modifier.clickable(role = Role.Button, onClickLabel = stringResource(R.string.nodevision_expand_details)) {
+            inspectedKey = focusedNode.publicKey
+            expandsInspection = true
+        }
+    } else Modifier
     val visionTarget = focusedNode?.visionCoordinate() ?: target
     val visionName = focusedNode?.displayName ?: name.orEmpty()
     val reportedHeight = focusedNode?.let { repeaterMetadata[it.publicKey.lowercase()]?.applicableHeightMeters() } ?: antennaHeight
@@ -466,12 +472,6 @@ internal fun NodeVisionScreen(
                     // The bottom of the tip stays on the bearing band when the label wraps.
                     Box(Modifier.offset(x = maxWidth / 2 + pixel.dp - markerWidth / 2, y = markerY - 88.dp)
                         .width(markerWidth).height(88.dp), contentAlignment = Alignment.BottomCenter) {
-                        val reopenPreview = if (focusedNode != null && inspectedKey != focusedNode.publicKey) {
-                            Modifier.clickable(role = Role.Button) {
-                                inspectedKey = focusedNode.publicKey
-                                expandsInspection = true
-                            }
-                        } else Modifier
                         Surface(
                             modifier = Modifier.fillMaxWidth().then(reopenPreview),
                             color = surface.copy(alpha = 0.98f), shape = markerShape,
@@ -586,7 +586,8 @@ internal fun NodeVisionScreen(
                             targetCardTop = with(density) { coordinates.positionInParent().y.toDp() }
                         }
                         .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
-                        .padding(horizontal = 16.dp).padding(bottom = if (discovery) 66.dp else 8.dp).widthIn(max = 340.dp),
+                        .padding(horizontal = 16.dp).padding(bottom = if (discovery) 66.dp else 8.dp).widthIn(max = 340.dp)
+                        .then(reopenPreview),
                     color = surface.copy(alpha = 0.97f),
                     shape = MaterialTheme.shapes.medium,
                     border = overlayBorder, shadowElevation = 4.dp,
