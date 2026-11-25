@@ -1,41 +1,50 @@
-NodeScope es una app complementaria no oficial y de solo lectura para CoreScope y Beacon, los analizadores de redes mesh que usan MeshTexas y otras comunidades de MeshCore. Se conecta directamente a la API pública y a la transmisión en vivo de un analizador para mostrar los mismos nodos, tráfico de paquetes, mensajes de canal y datos de observadores que verías en el panel web, en una app nativa para Android.
+NodeScope es una app complementaria no oficial para CoreScope y Beacon, los analizadores de redes mesh que usan MeshTexas y otras comunidades de MeshCore. Se conecta directamente a la API pública y a la transmisión en vivo de un analizador para mostrar sus nodos, paquetes, canales y observadores en una app nativa para Android.
 
 Disponible en inglés, español y portugués de Brasil. La compatibilidad con Beacon está en beta; las funciones y el historial varían según el servidor.
 
 LO QUE TE MUESTRA NODESCOPE
 
+NodeVision
+Apunta la cámara para ver hacia dónde están los nodos cercanos, o ábrelo desde un nodo para encontrarlo.
+
 Mapa en vivo
-Todos los nodos conocidos, con colores según su rol. El tráfico de paquetes en vivo se anima salto por salto mientras cruza la red mesh. Toca una ruta para ver cada salto, el observador que la escuchó y su señal; toca un nodo para ver sus detalles. Filtra por región, rol, actividad reciente u observador receptor, y centra el mapa en ti.
+Todos los nodos conocidos, con colores según su rol. El tráfico de paquetes en vivo se anima salto por salto mientras cruza la red mesh. Toca una ruta para ver cada salto y su señal. Filtra por región, rol, actividad u observador, y centra el mapa en ti.
 
 Explorar
-Un panel con la red de un vistazo: nodos activos, observadores en línea, paquetes y señal promedio, además de una búsqueda global de nodos, observadores, canales y paquetes. Guarda favoritos y vuelve a los elementos que viste recientemente.
+Un panel con la red de un vistazo y una búsqueda global de nodos, observadores, canales y paquetes. Guarda favoritos y vuelve a los elementos que viste recientemente.
+
+Alertas de nodos seguidos
+Toca la campana de un nodo para recibir una alerta push cuando deje de oírse o vuelva a oírse, en analizadores con NodeScope Push.
+
+Tus repetidores
+Consulta el estado y el equipo reportados de los repetidores, y reclama y actualiza los que mantienes desde tu cuenta de CoreScope.
 
 Revisión de nodo
 ¿Se escucha tu nodo? Mira qué observadores lo escuchan y qué corregir, o haz una prueba en vivo mientras envías un anuncio flood. Requiere un servidor CoreScope.
 
 Paquetes en vivo
-Mira los paquetes llegar en tiempo real, agrupados por transmisión, con la carga útil decodificada, los datos sin procesar, cada observación y cada ruta. Reproduce en el mapa la ruta de cualquier paquete.
+Mira los paquetes llegar en tiempo real, agrupados por transmisión, con la carga decodificada, cada observación y cada ruta. Reproduce en el mapa la ruta de cualquier paquete.
 
 Canales
-El tráfico de los canales públicos como un chat en vivo. También puedes monitorear tus propios canales de hashtag o privados: las claves se quedan en tu dispositivo y los mensajes se descifran localmente.
+El tráfico de los canales públicos como un chat en vivo. Monitorea también tus canales de hashtag o privados: las claves y el descifrado se quedan en tu dispositivo.
 
 Observadores
-Los dispositivos que alimentan tu analizador: hardware, firmware, configuración de radio, batería y ruido, además de gráficos de sus tipos de paquete, tráfico y señal.
+Los dispositivos que alimentan tu analizador: hardware, firmware, configuración de radio, batería y ruido, con gráficos de paquetes, tráfico y señal.
 
 Análisis de nodos
-La calidad de la señal explicada con palabras sencillas, la actividad en el tiempo, un mapa de calor semanal, los tipos de paquete, el número de saltos, la cobertura de observadores y los pares con los que habla un nodo.
+Calidad de señal explicada con palabras sencillas, actividad en el tiempo, mapa de calor semanal, tipos de paquete, saltos, cobertura de observadores y pares de un nodo.
 
 Planificador de nodos
-Revisa un sitio antes de instalar equipo. Perfil de enlace muestra el terreno entre dos puntos, la línea de vista, el despeje de Fresnel y el margen estimado del enlace. Cobertura estimada (beta) muestra dónde es probable que se escuche un transmisor. Guarda tus estudios en Planes guardados y compártelos como archivos con Android, iPhone y iPad. Los resultados son estimaciones, no enlaces observados.
+Perfil de enlace muestra el terreno entre dos puntos, la línea de vista, el despeje de Fresnel y el margen estimado del enlace. Cobertura estimada (beta) muestra dónde es probable que se escuche un transmisor. Los estudios usan los ajustes de radio de tu malla y la antena reportada de un repetidor. Guarda tus estudios en Planes guardados y compártelos como archivos con Android, iPhone y iPad. Los resultados son estimaciones, no enlaces observados.
 
 CONVIENE SABER
 
-Usa tu propio analizador. NodeScope muestra los datos directamente del analizador que elijas: una fuente de la comunidad como MeshTexas, o cualquier host compatible con CoreScope o Beacon.
+Usa tu propio analizador: una fuente de la comunidad como MeshTexas, por país o por cercanía, o cualquier host compatible con CoreScope o Beacon.
 
 Funciona con una conexión inestable. Los datos cargados recientemente siguen disponibles y se marcan claramente como no en vivo.
 
-Privacidad desde el diseño. Sin anuncios, sin análisis. Iniciar sesión es opcional y se hace directamente con tu analizador. Las alertas de nodos seguidos también son opcionales: al activarlas, el token push de tu dispositivo, de Firebase Cloud Messaging, se registra en el relé push de NodeScope, que operamos nosotros y que no guarda datos de cuenta, ubicaciones ni mensajes. Tu ubicación se usa en tu dispositivo para centrar el mapa y nunca se envía a un analizador. Perfil de enlace envía los dos puntos que elijas a Open-Meteo para obtener la elevación, y Cobertura estimada descarga teselas de terreno de Amazon Web Services.
+Privacidad desde el diseño. Sin anuncios, sin análisis. Iniciar sesión es opcional y se hace directamente con tu analizador. Las alertas de nodos seguidos también son opcionales: al activarlas, el token push de tu dispositivo, de Firebase Cloud Messaging, se registra en el relé push de NodeScope, que operamos nosotros y que no guarda datos de cuenta, ubicaciones ni mensajes. Tu ubicación se usa en tu dispositivo para centrar el mapa y ordenar fuentes, y nunca se envía a un analizador. La vista de cámara de NodeVision se queda en tu dispositivo. Perfil de enlace envía los dos puntos que elijas a Open-Meteo para obtener la elevación, y Cobertura estimada descarga teselas de terreno de Amazon Web Services.
 
-No está afiliada a CoreScope, Beacon, MeshTexas ni MeshCore. NodeScope es un visor independiente y no oficial.
+NodeScope es un visor independiente y no oficial, no afiliado a CoreScope, Beacon, MeshTexas ni MeshCore.
 
 Soporte, preguntas frecuentes y solicitudes de funciones (en inglés): betweenthieves.dev/nodescope/support

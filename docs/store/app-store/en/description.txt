@@ -1,9 +1,18 @@
-NodeScope is an unofficial, read-only companion for CoreScope and Beacon, the mesh network analyzers used by MeshTexas and other MeshCore communities. It connects directly to a selected analyzer's public API to show nodes, packets, channels, routes, observers, and analytics on iPhone and iPad.
+NodeScope is an unofficial companion for CoreScope and Beacon, the mesh network analyzers used by MeshTexas and other MeshCore communities. It connects directly to the analyzer you choose to show nodes, packets, channels, routes, observers, and analytics on iPhone and iPad.
 
 Available in English, Spanish, and Brazilian Portuguese. Beacon support is in beta; features and history vary by server.
 
+NODEVISION
+Point your camera to see which way nearby mesh nodes are, or open NodeVision from a node's details to find that node.
+
 EXPLORE YOUR NETWORK
 View active nodes, online observers, recent packets, and signal information. Search nodes, observers, channels, public keys, and packets, and save favorites to your dashboard.
+
+WATCHED-NODE ALERTS
+Tap the bell on a node to watch it and get a push alert when it goes quiet or is heard again. Available on analyzers whose administrator has enabled NodeScope Push.
+
+YOUR REPEATERS
+See community-reported status and equipment for repeaters on supported analyzers. Claim the repeaters you maintain and keep their details up to date from your CoreScope account.
 
 NODE CHECK
 Is your node getting out? See which observers hear it and what to fix, or run a live test while you send a flood advert. Requires a CoreScope server.
@@ -12,7 +21,7 @@ NODE ANALYTICS
 Charts for availability, signal quality, activity, relaying, observer coverage, packet types, hops, and neighbors, depending on the analyzer. Missing metrics are marked, never estimated. Export as CSV or JSON.
 
 LIVE MESH MAP
-See nodes by role, with live packet traffic animating hop by hop. Filter by region, role, activity, or observer. Realistic Propagation gathers a packet's reports for a few seconds, then animates all of its paths together. Replay any packet's routes, with the observers that heard it marked.
+See nodes by role, with live packet traffic animating hop by hop. Filter by region, role, activity, or observer. Realistic Propagation animates all of a packet's paths together. Replay any packet's routes, with the observers that heard it marked.
 
 LIVE PACKETS
 Follow traffic as it arrives, grouped by transmission. Filter, inspect, replay routes, or pause the feed while you explore.
@@ -24,7 +33,7 @@ OBSERVERS
 Inspect the devices feeding the analyzer: hardware, firmware, activity, and signal. Supported Beacon servers add battery, noise floor, airtime, and uptime.
 
 NODE PLANNER
-Check a site before you install hardware. Link Profile shows the terrain between two points, line of sight, Fresnel clearance, and estimated link margin. Estimated Coverage (beta) maps where a transmitter is likely to be heard. Keep studies in Saved Plans and share them as files. Results are estimates, not observed links.
+Check a site before you install hardware. Link Profile shows the terrain between two points, line of sight, Fresnel clearance, and estimated link margin. Estimated Coverage (beta) maps where a transmitter is likely to be heard. Studies start with your mesh's radio settings and can use a repeater's reported antenna. Keep studies in Saved Plans and share them as files. Results are estimates, not observed links.
 
 FIELD TOOLS AND LEARNING
 Get the distance and compass heading to a node or observer. Tap ⓘ beside terms like SNR and hops for a plain-language explanation, or browse the Glossary.
@@ -33,9 +42,9 @@ SHARING AND DIAGNOSTICS
 Share links to nodes, observers, channels, and packets. Add nodes to MeshCore with a contact QR code. Check analyzer connectivity, and clear downloaded data without losing favorites or keys.
 
 COMMUNITY ANALYZERS
-Choose a community CoreScope or Beacon source, or enter a compatible analyzer hostname.
+Browse community CoreScope and Beacon sources by country, sort them by nearest, or enter a compatible analyzer hostname.
 
 PRIVACY BY DESIGN
-No advertising, tracking, or analytics SDKs. NodeScope connects directly to the analyzer you choose. Signing in is optional and goes straight to that analyzer. Watched-node alerts are optional too: turning them on registers your device's push token with the NodeScope push relay, which we operate and which stores no account details, locations, or messages. Link Profile sends the two points you pick to Open-Meteo for elevation, and Estimated Coverage downloads terrain tiles from Amazon Web Services. Channel keys never leave your device, and your location is never sent to an analyzer.
+No advertising, tracking, or analytics SDKs. NodeScope connects directly to the analyzer you choose. Signing in is optional and goes straight to that analyzer. Watched-node alerts are optional too: turning them on registers your device's push token with the NodeScope push relay, which we operate and which stores no account details, locations, or messages. NodeVision's camera view stays on your device. Link Profile sends the two points you pick to Open-Meteo for elevation, and Estimated Coverage downloads terrain tiles from Amazon Web Services. Channel keys never leave your device, and your location is never sent to an analyzer.
 
 NodeScope is an independent project and is not affiliated with CoreScope, Beacon, MeshTexas, or MeshCore.

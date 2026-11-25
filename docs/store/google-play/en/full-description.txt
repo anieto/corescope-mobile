@@ -1,14 +1,23 @@
-NodeScope is an unofficial, read-only companion app for CoreScope and Beacon, the mesh network analyzers used by MeshTexas and other MeshCore communities. It connects directly to an analyzer's public API and live feed to show the same nodes, packet traffic, channel messages and observer data you'd see on the web dashboard, in a native Android app.
+NodeScope is an unofficial companion app for CoreScope and Beacon, the mesh network analyzers used by MeshTexas and other MeshCore communities. It connects directly to an analyzer's public API and live feed to show the same nodes, packet traffic, channel messages and observer data you'd see on the web dashboard, in a native Android app.
 
 Available in English, Spanish and Brazilian Portuguese. Beacon support is in beta; features and history vary by server.
 
 WHAT NODESCOPE SHOWS YOU
+
+NodeVision
+Point your camera to see which way nearby mesh nodes are, or open NodeVision from a node's details to find that node.
 
 Live map
 Every known node, color-coded by role. Live packet traffic animates hop by hop as it crosses the mesh. Tap a route to see every hop, the observer that heard it, and its signal; tap a node for its details. Filter by region, role, recent activity or receiving observer, and center the map on yourself.
 
 Explore
 A network-at-a-glance dashboard of active nodes, online observers, packets and average signal, plus global search across nodes, observers, channels and packets. Save favorites and jump back to recently viewed items.
+
+Watched-node alerts
+Tap the bell on a node to watch it and get a push alert when it goes quiet or is heard again. Available on analyzers whose administrator has enabled NodeScope Push.
+
+Your repeaters
+See community-reported status and equipment for repeaters on supported analyzers. Claim the repeaters you maintain and keep their details up to date from your CoreScope account.
 
 Node Check
 Is your node getting out? See which observers hear it and what to fix, or run a live test while you send a flood advert. Requires a CoreScope server.
@@ -26,15 +35,15 @@ Node analytics
 Signal quality explained in plain terms, activity over time, a weekly heatmap, packet types, hop counts, observer coverage and the peers a node talks to.
 
 Node Planner
-Check a site before you install hardware. Link Profile shows the terrain between two points, line of sight, Fresnel clearance and estimated link margin. Estimated Coverage (beta) maps where a transmitter is likely to be heard. Keep studies in Saved Plans and share them as files with Android, iPhone and iPad. Results are estimates, not observed links.
+Check a site before you install hardware. Link Profile shows the terrain between two points, line of sight, Fresnel clearance and estimated link margin. Estimated Coverage (beta) maps where a transmitter is likely to be heard. Studies start with your mesh's radio settings and can use a repeater's reported antenna. Keep studies in Saved Plans and share them as files with Android, iPhone and iPad. Results are estimates, not observed links.
 
 GOOD TO KNOW
 
-Bring your own analyzer. NodeScope shows data straight from the analyzer you pick: a community source such as MeshTexas, or any CoreScope- or Beacon-compatible host.
+Bring your own analyzer. NodeScope shows data straight from the analyzer you pick: a community source such as MeshTexas, browsed by country or sorted by nearest, or any CoreScope- or Beacon-compatible host.
 
 Works on a flaky connection. Recently loaded data stays available and is clearly marked as not live.
 
-Private by design. No ads, no analytics. Signing in is optional and goes straight to your analyzer. Watched-node alerts are optional too: turning them on registers your device's push token, from Firebase Cloud Messaging, with the NodeScope push relay, which we operate and which stores no account details, locations or messages. Your location is used on your device to center the map and is never sent to an analyzer. Link Profile sends the two points you pick to Open-Meteo for elevation, and Estimated Coverage downloads terrain tiles from Amazon Web Services.
+Private by design. No ads, no analytics. Signing in is optional and goes straight to your analyzer. Watched-node alerts are optional too: turning them on registers your device's push token, from Firebase Cloud Messaging, with the NodeScope push relay, which we operate and which stores no account details, locations or messages. Your location is used on your device to center the map and sort sources, and is never sent to an analyzer. NodeVision's camera view stays on your device. Link Profile sends the two points you pick to Open-Meteo for elevation, and Estimated Coverage downloads terrain tiles from Amazon Web Services.
 
 Not affiliated with CoreScope, Beacon, MeshTexas or MeshCore. NodeScope is an independent, unofficial viewer.
 
