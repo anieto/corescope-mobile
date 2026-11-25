@@ -6,6 +6,10 @@
       "title": "NodeVision",
       "detail": "Usa la cámara para ver en qué dirección están los nodos cercanos de la malla, o abre NodeVision desde los detalles de un nodo para encontrarlo."
     },
+    "my-nodes-widgets": {
+      "title": "Widgets de Mis nodos",
+      "detail": "Agrega un widget de Mis nodos a la pantalla de inicio y elige qué nodos quieres vigilar."
+    },
     "watched-node-alerts": {
       "title": "Alertas de nodos seguidos",
       "detail": "Toca la campana en la página de detalles de un nodo para seguirlo. Si el administrador de CoreScope activó NodeScope Push, puedes recibir alertas cuando el nodo deje de oírse o vuelva a oírse. Activa las alertas push para este dispositivo en los ajustes de tu cuenta de CoreScope."

@@ -1,4 +1,5 @@
-Nuevo: NodeVision. Apunta la cámara para ver hacia dónde están los nodos cercanos.
-Sigue nodos y recibe alertas si dejan de oírse o vuelven a oírse en analizadores con NodeScope Push. Consulta los detalles reportados y administra tus repetidores con tu cuenta de CoreScope.
-Busca analizadores por país u ordénalos por cercanía. Perfil de enlace y Cobertura estimada usan ajustes de radio para tu malla, con un preajuste de MeshCore para Brasil.
-Los canales favoritos tienen su propia sección.
+Nuevo: NodeVision muestra hacia dónde están los nodos cercanos con la cámara.
+Elige qué nodos mostrar en un widget de Mis nodos en la pantalla de inicio.
+Sigue nodos y recibe alertas si dejan de oírse o vuelven a oírse con NodeScope Push. Consulta los datos reportados y administra tus repetidores en CoreScope.
+Busca analizadores por país o cercanía. Perfil de enlace y Cobertura estimada usan ajustes de radio para tu malla, incluido MeshCore para Brasil.
+Sección propia para canales favoritos.

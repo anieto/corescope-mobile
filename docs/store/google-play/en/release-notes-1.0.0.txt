@@ -1,4 +1,5 @@
-New: NodeVision. Point your camera to see which way nearby mesh nodes are.
-Watch nodes and get alerts when they go quiet or are heard again on analyzers with NodeScope Push. See reported repeater details and manage repeaters you maintain through your CoreScope account.
-Find analyzers by country or sort by nearest. Link Profile and Estimated Coverage start with radio settings for your mesh, including a MeshCore preset for Brazil.
+New: NodeVision shows the direction of nearby mesh nodes through your camera.
+Choose nodes to show in a My Nodes Home Screen widget.
+Watch nodes and get alerts when they go quiet or are heard again with NodeScope Push. View reported repeater details and manage your repeaters in CoreScope.
+Browse analyzers by country or sort by nearest. Link Profile and Estimated Coverage use mesh radio defaults, including MeshCore for Brazil.
 Favorite channels have their own section.

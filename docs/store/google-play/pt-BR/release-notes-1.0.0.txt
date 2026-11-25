@@ -1,4 +1,5 @@
-Novo: NodeVision. Aponte a câmera para ver a direção dos nós próximos.
-Monitore nós e receba alertas se deixarem de ser ouvidos ou voltarem a ser ouvidos em analisadores com NodeScope Push. Veja os detalhes informados e gerencie seus repetidores pela conta do CoreScope.
-Encontre analisadores por país ou ordene por proximidade. Perfil do enlace e Cobertura estimada usam configurações de rádio para sua malha, com uma predefinição do MeshCore para o Brasil.
+Novo: NodeVision mostra a direção dos nós próximos pela câmera.
+Escolha quais nós mostrar em um widget de Meus nós na tela inicial.
+Monitore nós e receba alertas quando ficarem inativos ou voltarem a ser ouvidos com NodeScope Push. Veja os dados informados e gerencie seus repetidores no CoreScope.
+Encontre analisadores por país ou proximidade. Perfil do enlace e Cobertura estimada usam configurações de rádio da malha, incluindo MeshCore para o Brasil.
 Canais favoritos têm uma seção própria.
